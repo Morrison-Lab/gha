@@ -59,7 +59,7 @@ jobs:
       - name: Check links
         id: lychee
         if: github.event_name != 'pull_request' || steps.check-label.outputs.skip != 'true'
-        uses: d-morrison/gha/check-links@v1
+        uses: d-morrison/gha/check-links@v2
         with:
           lychee-config: ${{ inputs.lychee-config }}
           lychee-args: ${{ inputs.lychee-args }}

@@ -48,7 +48,7 @@ jobs:
           token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
 
       - name: Initialize submodules
-        uses: d-morrison/gha/.github/actions/checkout-submodules@v1
+        uses: d-morrison/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -74,7 +74,7 @@ jobs:
           fi
 
       - name: Open PR if the pointer moved
-        uses: d-morrison/gha/open-sync-pr@v1
+        uses: d-morrison/gha/open-sync-pr@v2
         with:
           branch: ${{ inputs.pr-branch }}
           base: ${{ inputs.base-branch }}

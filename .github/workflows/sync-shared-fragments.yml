@@ -127,7 +127,7 @@ jobs:
           fi
 
       - name: Open PR if the vendored copy changed
-        uses: d-morrison/gha/open-sync-pr@v1
+        uses: d-morrison/gha/open-sync-pr@v2
         with:
           branch: ${{ inputs.pr-branch }}
           base: ${{ inputs.base-branch }}

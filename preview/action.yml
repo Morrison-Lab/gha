@@ -83,7 +83,7 @@ runs:
 
     - name: Set up R
       if: github.event.action != 'closed'
-      uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       with:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
@@ -105,7 +105,7 @@ runs:
 
     - name: Restore R dependencies (renv)
       if: github.event.action != 'closed' && inputs.use-renv == 'true'
-      uses: r-lib/actions/setup-renv@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+      uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       env:
         GITHUB_PAT: ${{ github.token }}
       with:
@@ -126,7 +126,7 @@ runs:
 
     - name: Restore Quarto freeze
       if: github.event.action != 'closed' && !contains(github.event.pull_request.labels.*.name, 'clear freezer')
-      uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze
         key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
@@ -182,7 +182,7 @@ runs:
 
     - name: Save Quarto freeze
       if: github.event.action != 'closed'
-      uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ inputs.path }}/_freeze
         key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}

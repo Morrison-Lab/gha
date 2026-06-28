@@ -85,7 +85,7 @@ jobs:
 
       - name: Checkout submodules
         if: inputs.checkout-submodules
-        uses: d-morrison/gha/.github/actions/checkout-submodules@v1
+        uses: d-morrison/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -105,7 +105,7 @@ jobs:
         # current @v1 composite also renders into output-dir (it just uploads a
         # now-unused Pages artifact afterward), so the staged site below is the
         # same either way.
-        uses: d-morrison/gha/quarto-publish@v1
+        uses: d-morrison/gha/quarto-publish@v2
         with:
           path: ${{ inputs.path }}
           setup-r: ${{ inputs.setup-r }}

@@ -34,7 +34,7 @@ jobs:
       issues: write
       id-token: write
       actions: write       # dispatch the review workflow via `gh workflow run`
-    uses: d-morrison/gha/.github/workflows/claude.yml@v1
+    uses: d-morrison/gha/.github/workflows/claude.yml@v2
     # Pass secrets explicitly (not `secrets: inherit`) for parity with
     # examples/claude.yml; inherit only works for same-owner callers.
     secrets:

@@ -287,7 +287,7 @@ jobs:
       # anonymous fallback; see .github/actions/checkout-submodules.
       - name: Checkout submodules
         if: steps.dedup.outputs.skip != 'true' && inputs.checkout-submodules
-        uses: d-morrison/gha/.github/actions/checkout-submodules@v1
+        uses: d-morrison/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -313,11 +313,11 @@ jobs:
 
       - name: Set up pandoc
         if: steps.dedup.outputs.skip != 'true' && inputs.setup-r
-        uses: r-lib/actions/setup-pandoc@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
 
       - name: Set up R
         if: steps.dedup.outputs.skip != 'true' && inputs.setup-r
-        uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           use-public-rspm: true
 
@@ -330,7 +330,7 @@ jobs:
       # renv flavor (Quarto books / projects pinned with renv) ...
       - name: Restore renv
         if: steps.dedup.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
-        uses: r-lib/actions/setup-renv@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+        uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         env:
           # Without GITHUB_PAT, renv can't reach the GitHub API to resolve
           # GitHub-sourced packages (e.g. ddsjoberg/gtsummary) and
@@ -345,7 +345,7 @@ jobs:
       # checklist.
       - name: Install R dependencies
         if: steps.dedup.outputs.skip != 'true' && inputs.setup-r && !inputs.use-renv
-        uses: r-lib/actions/setup-r-dependencies@a51a8012b0aab7c32ef9d19bf54da93f3254335e # v2.12.0
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           extra-packages: ${{ inputs.r-extra-packages }}
           needs: check
@@ -513,7 +513,7 @@ jobs:
       - name: Run Claude Code
         id: claude
         if: steps.dedup.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@2fee15510437d71399d9139ed60433470484a8fb # v1.0.153
+        uses: anthropics/claude-code-action@a92e7c70a4da9793dc164451d829089dc057a464 # v1.0.159
         # GH_TOKEN authenticates the `gh` commands granted in claude-args
         # (gh pr view/diff/edit, gh issue view, gh api); without it `gh`
         # prompts and fails in CI.
