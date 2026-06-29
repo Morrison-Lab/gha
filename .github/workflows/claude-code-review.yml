@@ -284,10 +284,10 @@ jobs:
           # allowlist gap, not a GitHub-App permission scope issue — the tool
           # ships with the action; it just has to be enabled). Mirrors
           # anthropics/claude-code-action's own pr-review workflows. Additive:
-          # the CLI merges this with the action's base allowlist, so tag mode's
-          # tracking-comment tool is preserved. The tool is only initialized in
-          # tag mode (pull_request); dispatched/agent-mode runs still fall back
-          # to the summary, per the prompt below (claude-code-action #635).
+          # the CLI merges this with the action's base allowlist. The
+          # inline-comment tool is not initialized in agent mode
+          # (claude-code-action #635); the prompt falls back to a
+          # summary-only review when it is unavailable.
           # ...and keep this a REVIEW-ONLY run. Even with a read-only contents
           # token, tag mode hands the reviewer git add/commit/rm and the action's
           # default prompt tells it to commit+push, so it flails through
@@ -527,8 +527,8 @@ jobs:
       # pushes' review comments too, or they linger now that dispatched runs can
       # succeed (allowed_bots, above). The run_id→path match already scopes this
       # to this workflow's comments, so running it on dispatched reviews is safe.
-      # The "Post review comment for dispatched run" step above ensures that
-      # dispatched runs always leave a comment with an `actions/runs/<id>` link,
+      # The "Post review comment" step above ensures that dispatched and
+      # pull_request runs always leave a comment with an `actions/runs/<id>` link,
       # so this collapse step can match and fold it in future rounds.
       - name: Collapse previous Claude review comments
         if: >-
