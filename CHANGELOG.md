@@ -11,6 +11,15 @@ below with migration steps.
 
 ## [Unreleased]
 
+### Changed
+
+- **`claude-code-review` no longer flags cosmetic source-only formatting that
+  renders identically** (#261). The review prompt now tells the reviewer to skip
+  raw-source line-wrap position and line-length nits on Markdown/text prose when
+  the rendered output is unchanged, and to flag only genuine prose problems
+  (ambiguity, meaning-changing grammar, broken links or markup, factual errors).
+  This cuts review-round churn from cosmetic wrapping nits.
+
 ## [2.0.0] - 2026-06-25
 
 ### Breaking
