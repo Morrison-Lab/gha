@@ -94,11 +94,12 @@ jobs:
           REPO: ${{ github.repository }}
         run: |
           # Issue comments hold the summary/tracking comment (verdict).
-          # Filter to comments that contain an actions/runs/ link to exclude
+          # Filter to comments that contain a review heading to exclude
           # @claude task-handler responses (which also post as claude[bot] but
-          # are unrelated to review findings).
+          # use "Claude finished…" / "Claude Code is working…" headers, not
+          # the "### Code Review:" / "### Verdict" heading the review workflow uses).
           SUMMARY=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]" and (.body | test("actions/runs/[0-9]+")))] | .[-3:] |
+            --jq '[.[] | select(.user.login == "claude[bot]" and (.body | test("### (Code Review|Verdict)")))] | .[-3:] |
                   map("=== Summary posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           # PR review comments hold the per-line inline findings — these are the
