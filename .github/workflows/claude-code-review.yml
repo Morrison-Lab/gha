@@ -82,6 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: read
+      pull-requests: read
     outputs:
       prior-context: ${{ steps.fetch.outputs.prior-context }}
     steps:
@@ -92,17 +93,29 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           REPO: ${{ github.repository }}
         run: |
-          REVIEWS=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]")] | .[-3:] |
-                  map("=== Review posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
-            2>/dev/null | head -c 12000 || true)
+          # Issue comments hold the summary/tracking comment (verdict).
+          # Filter to comments that contain an actions/runs/ link to exclude
+          # @claude task-handler responses (which also post as claude[bot] but
+          # are unrelated to review findings).
+          SUMMARY=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]" and (.body | test("actions/runs/[0-9]+")))] | .[-3:] |
+                  map("=== Summary posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
+            2>/dev/null || true)
+          # PR review comments hold the per-line inline findings — these are the
+          # most important for deduplication since the prompt tells Claude not to
+          # restate inline findings in the summary.
+          INLINE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | .[-30:] |
+                  map("=== Inline finding on \(.path):\(.line // .original_line) ===\n\(.body)") | join("\n\n")' \
+            2>/dev/null || true)
+          REVIEWS=$(printf '%s\n\n%s' "$INLINE" "$SUMMARY" | head -c 12000)
           {
             echo 'prior-context<<__EOF__'
-            if [[ -n "$REVIEWS" ]]; then
+            if [[ -n "${REVIEWS//[$'\n ']/}" ]]; then
               printf '%s\n' \
                 '## Prior review context' \
                 '' \
-                'The comments below are your last few reviews on this PR.' \
+                'The comments below are your inline findings and summary verdicts from prior review rounds.' \
                 'Before posting findings, check whether each one was already raised in a prior round.' \
                 'If it was, and the author replied with a rebuttal explaining why the code is correct' \
                 'or the finding is a false positive, and that thread was resolved — do not re-raise it.' \
@@ -137,7 +150,7 @@ jobs:
     # would otherwise red-X an automatic review of a bot-authored diff.
     if: >-
       always() &&
-      needs.gather-context.result != 'failure' &&
+      needs.gather-context.result != 'cancelled' &&
       (
         github.event_name == 'workflow_dispatch' ||
         (
@@ -293,6 +306,8 @@ jobs:
           prompt: |
             /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr-number }}
 
+            ${{ needs.gather-context.outputs.prior-context }}
+
             **Watch for AI hallucinations.** This diff may be partly
             machine-authored, so scrutinize it for confident-but-fabricated
             content: calls to functions, methods, arguments, packages, or APIs
@@ -338,7 +353,6 @@ jobs:
             GitHub URL, and explain that it still stands. This lets readers
             know the confirming review ran and why it produced no new findings,
             rather than leaving the PR thread silent.
-            ${{ needs.gather-context.outputs.prior-context }}
             ${{ inputs.prompt-addendum }}
           # `track_progress` forces tag mode, which guarantees a tracking
           # comment even when the plugin scores the PR below its post
