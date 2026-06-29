@@ -258,6 +258,14 @@ jobs:
             brief overall verdict plus any finding not tied to a specific line;
             don't restate each inline comment there.
 
+            **Don't flag cosmetic source-only formatting that renders
+            identically.** For prose in Markdown/text files, the rendered output
+            is what matters: don't raise nits about where a hard wrap falls, a
+            phrase split across a soft line wrap, or raw-source line length, when
+            the rendered Markdown is unchanged. Flag genuine prose problems —
+            ambiguity, grammar that changes meaning, broken links or markup,
+            factual errors — not where a line happens to wrap.
+
             If the inline-comment tool isn't available in this environment
             (dispatched reviews run in agent mode without it — see
             claude-code-action #635), or if posting an inline comment fails
