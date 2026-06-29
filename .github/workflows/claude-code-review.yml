@@ -9,8 +9,11 @@ name: Claude Code Review (reusable)
 # claude.yml can re-dispatch a review after an @claude run pushes commits.
 # The stub passes the dispatch's pr_number through as the `pr-number` input.
 #
-# This workflow is intentionally read-only: its tools grant no git push, so it
-# never pushes a fix and `cancel-in-progress: true` is safe.
+# This workflow is read-only: it always runs claude-code-action in agent mode
+# (track_progress: false) so git write tools are never in ALLOWED_TOOLS.
+# Tag mode hardcodes git write tools regardless of --disallowedTools, which
+# caused unauthorized commits (serodynamics PR #175, commit 02af72b). Agent
+# mode fixes this; cancel-in-progress: true is safe because no push can occur.
 
 on:
   workflow_call:
@@ -356,15 +359,27 @@ jobs:
             know the confirming review ran and why it produced no new findings,
             rather than leaving the PR thread silent.
             ${{ inputs.prompt-addendum }}
-          # `track_progress` forces tag mode, which guarantees a tracking
-          # comment even when the plugin scores the PR below its post
-          # threshold. The action REJECTS `track_progress` for
-          # workflow_dispatch, so gate it on event_name: tag mode for
-          # pull_request, agent mode (possibly silent) for dispatched runs.
-          # Tag mode also initializes the inline-comment tool; agent mode does
-          # not (claude-code-action #635), so the prompt above falls back to a
-          # summary-only review on dispatched runs.
-          track_progress: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          # Always run in agent mode (track_progress: false).
+          #
+          # Tag mode (track_progress: true) hardcodes git write tools
+          # (Bash(git add:*), Bash(git commit:*), Bash(git rm:*), and the
+          # git-push.sh wrapper) into ALLOWED_TOOLS regardless of what
+          # --disallowedTools is passed via claude_args — the action's
+          # TypeScript sets ALLOWED_TOOLS directly, overriding the CLI flag.
+          # This caused the review bot to push unauthorized commits to PR
+          # branches (confirmed in serodynamics PR #175, commit 02af72b).
+          #
+          # Agent mode builds ALLOWED_TOOLS solely from claude_args, so no
+          # git write tools are ever available. The trade-off: agent mode
+          # does not auto-post a tracking comment or initialize the
+          # inline-comment tool (claude-code-action #635). The "Post review
+          # comment" step below compensates for the missing tracking comment;
+          # the prompt above falls back to a summary-only review when the
+          # inline-comment tool is unavailable.
+          #
+          # The action rejects track_progress on workflow_dispatch regardless,
+          # so this is now consistently false for all event types.
+          track_progress: 'false'
           # Fresh tracking comment per run so each push surfaces as new PR
           # activity; the collapse step below folds priors up as OUTDATED.
           use_sticky_comment: 'false'
@@ -459,21 +474,19 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Claude review skipped — API quota exhausted.** The \`CLAUDE_CODE_OAUTH_TOKEN\` account's API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once the quota resets. [View run]($RUN_URL)"
 
-      # In agent mode (workflow_dispatch), display_report writes Claude's output
-      # to the GitHub Actions step summary — not to the PR. Tag mode
-      # (pull_request) creates a tracking comment automatically; agent mode does
-      # not. Post the review manually here so dispatched reviews are visible on
-      # the PR instead of silently discarded. Closes #87.
-      - name: Post review comment for dispatched run
+      # Agent mode (always, since track_progress is now always false) writes
+      # Claude's output to the GitHub Actions step summary, not to the PR.
+      # Post the review manually here so it appears on the PR. Without this
+      # step the review is silently discarded. Closes #87; extended to cover
+      # pull_request events now that tag mode is disabled.
+      - name: Post review comment
         if: >-
           steps.claude-review.outcome == 'success' &&
-          steps.fail-check.outputs.quota_exhausted != 'true' &&
-          github.event_name == 'workflow_dispatch' &&
-          inputs.pr-number != ''
+          steps.fail-check.outputs.quota_exhausted != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ inputs.pr-number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
         run: |
@@ -552,16 +565,14 @@ jobs:
             done
 
       # When this run is canceled (e.g. cancel-in-progress fires because a newer
-      # commit — or a re-dispatched review of the same PR — superseded it), tag
-      # mode's tracking comment is left stuck showing an unfinished "review in
-      # progress". Explain the cancellation in the
-      # comment, then fold it (minimize as OUTDATED) so the PR doesn't carry a
-      # perpetual in-progress review. Tag mode only runs on pull_request, so a
-      # tracking comment only exists there. The tracking comment is THIS run's
-      # claude[bot] comment, identified by the run it links to — the same
-      # matcher the collapse step uses.
+      # commit superseded it), any tracking comment left by a prior tag-mode run
+      # would be stuck showing "review in progress". Since we now always run in
+      # agent mode (no tracking comment), this step is a no-op in practice, but
+      # kept as a safety net in case a prior tag-mode comment lingers.
+      # The comment is identified by its run ID link — the same matcher the
+      # collapse step uses.
       - name: Explain and fold tracking comment when canceled
-        if: cancelled() && github.event_name == 'pull_request'
+        if: cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
