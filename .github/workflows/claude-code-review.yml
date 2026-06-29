@@ -259,7 +259,7 @@ jobs:
             don't restate each inline comment there.
 
             **Don't flag cosmetic source-only formatting that renders
-            identically.** For prose in Markdown/text files, the rendered output
+            identically.** For prose (not code blocks) in Markdown/text files, the rendered output
             is what matters: don't raise nits about where a hard wrap falls, a
             phrase split across a soft line wrap, or raw-source line length, when
             the rendered Markdown is unchanged. Flag genuine prose problems —
