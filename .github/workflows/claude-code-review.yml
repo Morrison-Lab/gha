@@ -110,8 +110,9 @@ jobs:
                   map("=== Inline finding on \(.path):\(.line // .original_line) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           REVIEWS=$(printf '%s\n\n%s' "$INLINE" "$SUMMARY" | head -c 12000)
+          DELIMITER="eof_$(openssl rand -hex 8)"
           {
-            echo 'prior-context<<__EOF__'
+            echo "prior-context<<${DELIMITER}"
             if [[ -n "${REVIEWS//[$'\n ']/}" ]]; then
               printf '%s\n' \
                 '## Prior review context' \
@@ -125,7 +126,7 @@ jobs:
                 '' \
                 "$REVIEWS"
             fi
-            echo '__EOF__'
+            echo "${DELIMITER}"
           } >> "$GITHUB_OUTPUT"
 
   claude-review:
