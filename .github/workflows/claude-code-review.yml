@@ -67,7 +67,70 @@ on:
         required: false
 
 jobs:
+  # Fetch the last few claude[bot] review comments so the reviewer can skip
+  # findings that were already raised, rebutted, and resolved in a prior round.
+  # Runs under the same conditions as the review job so it skips together with
+  # it (fork PRs, drafts, bot-triggered synchronize events).
+  gather-context:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: read
+    outputs:
+      prior-context: ${{ steps.fetch.outputs.prior-context }}
+    steps:
+      - name: Fetch prior claude[bot] review comments
+        id: fetch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Issue comments hold the summary/tracking comment (verdict).
+          # Filter to comments that contain a review heading to exclude
+          # @claude task-handler responses (which also post as claude[bot] but
+          # use "Claude finished…" / "Claude Code is working…" headers, not
+          # the "### Code Review:" / "### Verdict" heading the review workflow uses).
+          SUMMARY=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]" and (.body | test("### (Code Review|Verdict)")))] | .[-3:] |
+                  map("=== Summary posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
+            2>/dev/null || true)
+          # PR review comments hold the per-line inline findings — these are the
+          # most important for deduplication since the prompt tells Claude not to
+          # restate inline findings in the summary.
+          INLINE=$(gh api "repos/${REPO}/pulls/${PR_NUMBER}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | .[-30:] |
+                  map("=== Inline finding on \(.path):\(.line // .original_line) ===\n\(.body)") | join("\n\n")' \
+            2>/dev/null || true)
+          REVIEWS=$(printf '%s\n\n%s' "$INLINE" "$SUMMARY" | head -c 12000)
+          DELIMITER="eof_$(openssl rand -hex 8)"
+          {
+            echo "prior-context<<${DELIMITER}"
+            if [[ -n "${REVIEWS//[$'\n ']/}" ]]; then
+              printf '%s\n' \
+                '## Prior review context' \
+                '' \
+                'The comments below are your inline findings and summary verdicts from prior review rounds.' \
+                'Before posting findings, check whether each one was already raised in a prior round.' \
+                'If it was, and the author replied with a rebuttal explaining why the code is correct' \
+                'or the finding is a false positive, and that thread was resolved — do not re-raise it.' \
+                'Only re-raise if the current diff introduces a new instance on a different line,' \
+                'or if the fix the author claimed to make is absent from the current diff.' \
+                '' \
+                "$REVIEWS"
+            fi
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
+
   claude-review:
+    needs: gather-context
     # Serialize runs per PR. The stash/restore reviewer dance below assumes
     # only one run mutates the reviewer list at a time. `cancel-in-progress:
     # true` is safe because this workflow is read-only (it never pushes, so it
@@ -88,11 +151,15 @@ jobs:
     # bot-triggered `synchronize` events (e.g. @claude pushing a commit), which
     # would otherwise red-X an automatic review of a bot-authored diff.
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      always() &&
+      needs.gather-context.result != 'cancelled' &&
       (
-        github.event.pull_request.draft == false &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.sender.type != 'Bot'
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.pull_request.draft == false &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.sender.type != 'Bot'
+        )
       )
 
     outputs:
@@ -240,6 +307,8 @@ jobs:
             your review instead."
           prompt: |
             /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr-number }}
+
+            ${{ needs.gather-context.outputs.prior-context }}
 
             **Watch for AI hallucinations.** This diff may be partly
             machine-authored, so scrutinize it for confident-but-fabricated
