@@ -21,6 +21,7 @@ updates:
       - "/check-phi"
       - "/preview"
       - "/quarto-publish"
+      - "/test-coverage"
     schedule:
       interval: "weekly"
     # Batch all action bumps into one PR per run to keep review noise low.

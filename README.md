@@ -46,6 +46,7 @@ Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |
+| `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer` |
 | `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings on `pull_request` runs, consolidated summary on dispatched runs) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
@@ -65,8 +66,10 @@ that need to write must have the **caller** grant it on the calling job:
   `pull-requests: read`, `contents: read`.
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
-- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi` → only
-  `contents: read` (the default), so no `permissions:` block is needed.
+- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
+  `test-coverage` → only `contents: read` (the default), so no `permissions:`
+  block is needed. `test-coverage` additionally takes an optional
+  `CODECOV_TOKEN` secret, passed through the caller's `secrets:` block.
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
   grant `contents: write`, and set Settings → Pages → Source = "Deploy from a
   branch", branch `gh-pages` / `(root)` once. Grant `contents: write` even with
@@ -219,8 +222,9 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. Consumers reference `@v1`. See [`CHANGELOG.md`](CHANGELOG.md) for what
-changes as the `@v1` tag moves and for any breaking-change migration steps.
+release. Consumers reference `@v1`, except `test-coverage.yml`, which ships at
+`@v2` (too new for the frozen `@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
+what changes as a major tag moves and for any breaking-change migration steps.
 
 ### Pinning third-party actions
 

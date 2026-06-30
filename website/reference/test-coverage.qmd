@@ -1,0 +1,52 @@
+---
+title: "test-coverage.yml"
+---
+
+Measure R-package test coverage with [`{covr}`](https://covr.r-lib.org/) and upload the Cobertura report to [Codecov](https://about.codecov.io/).
+Adapts the [`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.yaml` example into the repo's composite-plus-wrapper shape.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
+| `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
+| `extra-packages` | string | `''` | Extra R packages for the coverage run (`covr` and `xml2` are always installed). |
+| `fail-ci-if-error` | string | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `CODECOV_TOKEN` | No | Codecov upload token. Optional for public repos, but recommended -- tokenless uploads are rate-limited and unreliable from pull requests. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/test-coverage.yml in your repo.
+name: Test coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-coverage:
+    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    # with:
+    #   path: '.'                  # package root, if not the repo root
+    #   install-quarto: false      # set true if vignettes need Quarto to build
+    #   extra-packages: ''         # extra R packages for the coverage run
+```
+
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
+for the full caller stub (`test-coverage.yml`).

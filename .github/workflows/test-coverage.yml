@@ -1,0 +1,55 @@
+name: Test coverage (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: >-
+          Path to the R package root (the directory holding DESCRIPTION).
+          Defaults to the repository root.
+        type: string
+        default: '.'
+      install-quarto:
+        description: Install Quarto when setting up R dependencies.
+        type: boolean
+        default: false
+      extra-packages:
+        description: >-
+          Extra R packages to install for the coverage run (covr and xml2 are
+          always installed).
+        type: string
+        default: ''
+      fail-ci-if-error:
+        description: >-
+          Whether a Codecov upload error fails the job. 'auto' (the default)
+          applies the r-lib heuristic -- fail on non-PR events, and on pull
+          requests only when a token is set; pass 'true' or 'false' to force it.
+        type: string
+        default: 'auto'
+    secrets:
+      CODECOV_TOKEN:
+        description: >-
+          Codecov upload token. Optional for public repos, but recommended --
+          tokenless uploads are rate-limited and unreliable from pull requests.
+        required: false
+
+jobs:
+  test-coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Test coverage
+        uses: d-morrison/gha/test-coverage@v2
+        with:
+          path: ${{ inputs.path }}
+          install-quarto: ${{ inputs.install-quarto }}
+          extra-packages: ${{ inputs.extra-packages }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          # 'auto' applies the r-lib heuristic (fail on non-PR runs; on PRs only
+          # when a token is set, since tokenless PR uploads are flaky); an
+          # explicit 'true'/'false' from the caller overrides it.
+          fail-ci-if-error: ${{ inputs.fail-ci-if-error != 'auto' && inputs.fail-ci-if-error || (github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '') }}
