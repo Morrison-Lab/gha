@@ -16,7 +16,7 @@ Package: covfixture
 Title: Coverage Selftest Fixture
 Version: 0.0.1
 Authors@R:
-    person("Selftest", "Fixture", role = c("aut", "cre"))
+    person("Selftest", "Fixture", , "selftest@example.com", role = c("aut", "cre"))
 Description: A minimal package that exercises the test-coverage composite in CI.
 License: GPL-3
 Encoding: UTF-8
