@@ -51,7 +51,7 @@ Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
-| `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open | `preview-dir` |
+| `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
@@ -166,7 +166,9 @@ workflows — install all three stubs from [`examples/`](examples):
    **base-repo** context (where the token can write), then comments the preview
    link on the PR.
 3. **`cleanup-pr-previews.yml`** (housekeeping) — scheduled. Removes preview
-   directories for PRs that have closed.
+   directories for PRs that have closed. Set `compact-history: true` to also
+   orphan-squash `gh-pages` to a single commit each run, so the deleted
+   snapshots don't accumulate and bloat the repo (branch-based Pages only).
 
 The build/deploy split is a **trust boundary**: untrusted fork code only ever
 runs in the read-only build half, while the privileged `gh-pages` push happens

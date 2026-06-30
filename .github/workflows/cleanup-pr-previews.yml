@@ -4,6 +4,14 @@ name: Clean up PR Previews (reusable)
 # tree and delete subdirectories for PRs that are no longer open. The caller
 # stub (see examples/cleanup-pr-previews.yml) owns the `schedule` /
 # `workflow_dispatch` triggers.
+#
+# With `compact-history: true`, this also orphan-squashes the gh-pages branch to
+# a single commit after pruning, so the branch never accumulates the deleted
+# full-site/preview snapshots that otherwise bloat the repo unboundedly (see
+# ucdavis/epi204#352: a course site reached 1360 gh-pages commits / ~5.8 GB).
+# Compaction stays in the branch-based Pages world — it does not touch the
+# Actions-artifact deploy path, so it is compatible with the preview family
+# (#117).
 
 on:
   workflow_call:
@@ -12,6 +20,15 @@ on:
         description: Directory on gh-pages that holds the per-PR preview subdirectories.
         type: string
         default: 'pr-preview'
+      compact-history:
+        description: >
+          When true, orphan-squash the gh-pages branch to a single commit after
+          pruning, discarding all accumulated preview/publish history. Reclaims
+          the space those deleted snapshots still occupy. Safe for branch-based
+          Pages (what the preview family uses); the squashed branch serves
+          normally. Default false (incremental commit, history preserved).
+        type: boolean
+        default: false
 
 jobs:
   cleanup:
@@ -25,17 +42,26 @@ jobs:
         with:
           ref: gh-pages
 
-      - name: Find and remove stale PR previews
+      - name: Prune stale previews and publish
         id: cleanup
         env:
           GH_TOKEN: ${{ github.token }}
           PREVIEW_DIR: ${{ inputs.preview-dir }}
+          COMPACT: ${{ inputs.compact-history }}
         run: |
           set -euo pipefail
-          removed=0
-          if [ ! -d "$PREVIEW_DIR" ]; then
-            echo "No $PREVIEW_DIR directory found, nothing to clean up."
-          else
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Remove preview dirs whose PR is no longer open, in the currently
+          # checked-out gh-pages working tree. Sets the global REMOVED count.
+          prune_stale() {
+            REMOVED=0
+            if [ ! -d "$PREVIEW_DIR" ]; then
+              echo "No $PREVIEW_DIR directory found, nothing to prune."
+              return 0
+            fi
+            local dir pr_number pr_state http_status
             for dir in "$PREVIEW_DIR"/pr-*/; do
               [ -d "$dir" ] || continue
               pr_number=$(basename "$dir" | sed 's/pr-//')
@@ -65,22 +91,72 @@ jobs:
               if [ "$pr_state" != "OPEN" ]; then
                 echo "PR #${pr_number} is ${pr_state} - removing preview at ${dir}"
                 rm -rf "$dir"
-                removed=$((removed + 1))
+                REMOVED=$((REMOVED + 1))
               else
                 echo "PR #${pr_number} is still open - keeping preview"
               fi
             done
+          }
+
+          if [ "$COMPACT" != "true" ]; then
+            # Default path: prune, then push an incremental commit (history kept).
+            prune_stale
+            echo "Removed ${REMOVED} stale PR preview(s)."
+            echo "removed=${REMOVED}" >> "$GITHUB_OUTPUT"
+            if [ "$REMOVED" != "0" ]; then
+              git add -A
+              git commit -m "chore: remove stale PR previews [skip ci]"
+              git push
+            fi
+            exit 0
           fi
 
-          echo "Removed ${removed} stale PR preview(s)."
-          echo "removed=${removed}" >> "$GITHUB_OUTPUT"
+          # Compaction path: prune, then orphan-squash gh-pages to a single
+          # commit and force-push. The published tree is a pure function of the
+          # current gh-pages tip minus closed-PR previews, so each attempt
+          # re-derives it from a fresh fetch (the checkout is shallow, so we
+          # always squash the tip rather than counting history).
+          #
+          # The push uses --force-with-lease pinned to the SHA we fetched, i.e.
+          # a server-side compare-and-swap: it succeeds only if gh-pages still
+          # points where we based the squash. A preview that lands between our
+          # fetch and our push moves gh-pages, so the lease is REJECTED rather
+          # than silently overwriting that preview — and the loop retries.
+          removed=0
+          for attempt in $(seq 1 5); do
+            git fetch --quiet origin gh-pages
+            expected=$(git rev-parse FETCH_HEAD)
+            git checkout --quiet --force -B work "$expected"
+            prune_stale
+            removed="$REMOVED"
 
-      - name: Commit and push changes
-        if: steps.cleanup.outputs.removed != '0'
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "chore: remove stale PR previews [skip ci]"
-          git push
+            git checkout --quiet --orphan compacted
+            git add -A
+            git commit --quiet \
+              -m "chore: compact gh-pages history (pruned ${removed} stale preview(s)) [skip ci]"
+
+            # Skip a redundant rewrite: if nothing was pruned and the squashed
+            # tree already matches an existing compaction commit, there is no
+            # history left to collapse — avoid a no-op force-push (and the Pages
+            # rebuild it would trigger) every scheduled run.
+            if [ "$removed" = "0" ] \
+              && [ "$(git rev-parse 'compacted^{tree}')" = "$(git rev-parse "${expected}^{tree}")" ] \
+              && git log -1 --format=%s "$expected" | grep -q '^chore: compact gh-pages history'; then
+              echo "gh-pages is already compact and unchanged; skipping no-op force-push."
+              echo "removed=0" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            if git push --force-with-lease=gh-pages:"$expected" origin compacted:gh-pages; then
+              echo "Compacted gh-pages to a single commit on attempt ${attempt} (pruned ${removed} stale preview(s))."
+              echo "removed=${removed}" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            echo "Push rejected (gh-pages moved under us); re-fetching and retrying (attempt ${attempt}/5)..."
+            git checkout --quiet --force work
+            git branch --quiet -D compacted
+          done
+
+          echo "::warning::Could not compact gh-pages after 5 attempts (concurrent pushes kept winning). Previews still work; the next scheduled run will retry."
+          echo "removed=${removed}" >> "$GITHUB_OUTPUT"
