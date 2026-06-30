@@ -121,9 +121,10 @@ CI jobs and **cannot be remote-controlled or observed** from the
 requires a live interactive terminal; `anthropics/claude-code-action` has no
 parameter to enable it, and GitHub Actions runners don't expose that hook.
 
-What is available instead. The "Action argument" column lists the argument
-passed to `anthropics/claude-code-action`; these are **not** caller-facing
-`workflow_call` inputs unless the "Caller-configurable?" column says so.
+The table below lists what is available instead. Its "Action argument" column
+gives the argument passed to `anthropics/claude-code-action`; these are **not**
+caller-facing `workflow_call` inputs unless the "Caller-configurable?" column
+says so.
 
 | Feature | Action argument | Caller-configurable? |
 |---|---|---|
