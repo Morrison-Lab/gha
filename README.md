@@ -222,8 +222,9 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. Consumers reference `@v1`. See [`CHANGELOG.md`](CHANGELOG.md) for what
-changes as the `@v1` tag moves and for any breaking-change migration steps.
+release. Consumers reference `@v1`, except `test-coverage.yml`, which ships at
+`@v2` (too new for the frozen `@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
+what changes as a major tag moves and for any breaking-change migration steps.
 
 ### Pinning third-party actions
 

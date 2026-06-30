@@ -24,9 +24,10 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
-Pin every reference to `@v1`.
+Pin every reference to `@v1`, except `test-coverage.yml`, which ships at `@v2`
+(too new for the frozen `@v1` tag).
 The stubs in [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
-already carry the right `permissions:` blocks; copy them as-is.
+already carry the right tag and `permissions:` blocks; copy them as-is.
 
 ## Quality checks {#quality-checks}
 
