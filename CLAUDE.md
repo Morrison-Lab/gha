@@ -45,6 +45,17 @@ have no wrapper or example stub to update. New `.github/workflows/` changes are
 exercised by `_selftest.yml`; because brand-new actions aren't at the `@v1` tag
 yet, the selftest runs them via the local `./<name>` ref until release.
 
+**A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
+was frozen before it existed — see `slide-major-tag.yml` / the Versioning
+section of `README.md`) needs its major tag updated in every place that names
+one, not just the obvious caller stub: `examples/<name>.yml`, the inline
+example in `website/reference/<name>.qmd`, AND any blanket "pin every
+reference to `@v1`" prose elsewhere (`README.md`'s Versioning section,
+`website/workflows.qmd`) — grep the repo for `@v1` rather than relying on
+memory of where it appears. Missing one of these surfaces as a workflow-not-found
+error for consumers who copy that spot literally (gha#148, caught across two
+review rounds).
+
 ### Tests
 
 `check-phi/tests/test_detectors.py` is a pytest suite pinning each PHI detector's
@@ -53,6 +64,16 @@ CI runs it as the `phi-tests` job in `_selftest.yml`. There's no broader unit-te
 harness — most capabilities are validated end-to-end by `_selftest.yml`, running
 against this repo itself or small throwaway fixtures (stable capabilities via
 `@v1`, pre-release ones from local source).
+
+**Generate selftest fixtures at runtime; don't commit them.** A fixture
+committed under a composite's `tests/` dir (e.g. a minimal R package for
+`test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the
+`bib` job's dependency resolution tries to treat it as a real package, and the
+`phi` job's PHI scanner flags any synthetic identifier in it (a fake
+maintainer email, etc.). Generate the fixture in a small script
+(`test-coverage/tests/make-fixture.sh` is the pattern) that the `coverage`
+selftest job runs before invoking the composite, instead of committing R/data
+source files (gha#148).
 
 ## GitHub access in remote / web sessions
 
