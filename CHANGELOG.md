@@ -20,10 +20,11 @@ below with migration steps.
   `codecov/codecov-action`. Adapts the canonical `r-lib/actions`
   `test-coverage.yaml` example into the repo's composite-plus-wrapper shape.
   Inputs: `path` (package root, defaults to repo root), `install-quarto`,
-  `extra-packages`; the optional `CODECOV_TOKEN` secret is passed through the
-  caller's `secrets:` block. `fail_ci_if_error` defaults to the r-lib heuristic
-  (fail on non-PR events, and on PRs only when a token is set, since tokenless PR
-  uploads are flaky). See `examples/test-coverage.yml` for the caller stub.
+  `extra-packages`, and `fail-ci-if-error` (`'auto'` by default, applying the
+  r-lib heuristic -- fail on non-PR events, and on PRs only when a token is set,
+  since tokenless PR uploads are flaky -- or force `'true'`/`'false'`); the
+  optional `CODECOV_TOKEN` secret is passed through the caller's `secrets:`
+  block. See `examples/test-coverage.yml` for the caller stub.
 
 ### Changed
 

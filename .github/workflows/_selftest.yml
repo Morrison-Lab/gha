@@ -152,9 +152,11 @@ jobs:
           echo "open-sync-pr correctly no-opped on a clean tree."
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
-  # composite against the minimal R-package fixture under test-coverage/tests,
-  # with no Codecov token and fail-ci-if-error off, so the upload step is a
-  # harmless no-op and the job proves the covr -> Cobertura path works.
+  # composite against a minimal R-package fixture, with no Codecov token and
+  # fail-ci-if-error off, so the upload step is a harmless no-op and the job
+  # proves the covr -> Cobertura path works. The fixture is generated at run time
+  # (not committed) so its DESCRIPTION/R sources aren't discovered by the other
+  # jobs' repo-wide R dependency scanning (which can't resolve `covfixture`).
   coverage:
     runs-on: ubuntu-latest
     permissions:
@@ -162,10 +164,13 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Generate the R package fixture
+        shell: bash
+        run: bash test-coverage/tests/make-fixture.sh _ci-rpkg
       - name: Measure coverage on the fixture package
         uses: ./test-coverage
         with:
-          path: test-coverage/tests/fixture
+          path: _ci-rpkg
           fail-ci-if-error: 'false'
       - name: Assert the Cobertura report was produced
         shell: bash

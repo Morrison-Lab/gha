@@ -19,6 +19,13 @@ on:
           always installed).
         type: string
         default: ''
+      fail-ci-if-error:
+        description: >-
+          Whether a Codecov upload error fails the job. 'auto' (the default)
+          applies the r-lib heuristic -- fail on non-PR events, and on pull
+          requests only when a token is set; pass 'true' or 'false' to force it.
+        type: string
+        default: 'auto'
     secrets:
       CODECOV_TOKEN:
         description: >-
@@ -42,6 +49,7 @@ jobs:
           install-quarto: ${{ inputs.install-quarto }}
           extra-packages: ${{ inputs.extra-packages }}
           token: ${{ secrets.CODECOV_TOKEN }}
-          # Fail on upload error for push/non-PR runs; on PRs only when a token
-          # is set, since tokenless PR uploads are flaky (the r-lib heuristic).
-          fail-ci-if-error: ${{ github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '' }}
+          # 'auto' applies the r-lib heuristic (fail on non-PR runs; on PRs only
+          # when a token is set, since tokenless PR uploads are flaky); an
+          # explicit 'true'/'false' from the caller overrides it.
+          fail-ci-if-error: ${{ inputs.fail-ci-if-error != 'auto' && inputs.fail-ci-if-error || (github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '') }}

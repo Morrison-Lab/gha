@@ -13,7 +13,7 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`check-phi.yml`](reference/check-phi.qmd) | Scan PRs (added lines only) for content that looks like PHI | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | [`check-links.yml`](reference/check-links.qmd) | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | [`check-news.yml`](reference/check-news.qmd) | Enforce a `NEWS.md` changelog entry on PRs | `changelog` |
-| [`test-coverage.yml`](reference/test-coverage.qmd) | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `CODECOV_TOKEN` |
+| [`test-coverage.yml`](reference/test-coverage.qmd) | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | [`summary.yml`](reference/summary.qmd) | AI summary comment on newly opened issues | -- |
 | [`quarto-publish.yml`](reference/quarto-publish.qmd) | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `output-dir`, `checkout-submodules`, `deploy` |
 | [`preview.yml`](reference/preview.qmd) | Build half of the PR-preview family: render in the PR context and upload an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |

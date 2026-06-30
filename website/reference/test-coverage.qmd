@@ -12,14 +12,13 @@ Adapts the [`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.ya
 | `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
 | `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
 | `extra-packages` | string | `''` | Extra R packages for the coverage run (`covr` and `xml2` are always installed). |
+| `fail-ci-if-error` | string | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it. |
 
 ## Secrets
 
 | Secret | Required | Description |
 |---|---|---|
 | `CODECOV_TOKEN` | No | Codecov upload token. Optional for public repos, but recommended -- tokenless uploads are rate-limited and unreliable from pull requests. |
-
-`fail_ci_if_error` defaults to the r-lib heuristic: fail on non-PR events, and on pull requests only when a token is configured.
 
 ## Permissions
 
@@ -40,7 +39,7 @@ on:
 
 jobs:
   test-coverage:
-    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v1
+    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     # with:
@@ -49,5 +48,5 @@ jobs:
     #   extra-packages: ''         # extra R packages for the coverage run
 ```
 
-See [`examples/test-coverage.yml`](https://github.com/d-morrison/gha/blob/main/examples/test-coverage.yml)
-for the full caller stub.
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
+for the full caller stub (`test-coverage.yml`).
