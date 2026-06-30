@@ -121,13 +121,16 @@ CI jobs and **cannot be remote-controlled or observed** from the
 requires a live interactive terminal; `anthropics/claude-code-action` has no
 parameter to enable it, and GitHub Actions runners don't expose that hook.
 
-What is available instead:
+The table below lists what is available instead. Its "Action argument" column
+gives the argument passed to `anthropics/claude-code-action`; these are **not**
+caller-facing `workflow_call` inputs unless the "Caller-configurable?" column
+says so.
 
-| Feature | Parameter | Where used |
+| Feature | Action argument | Caller-configurable? |
 |---|---|---|
-| Live progress tracking comment on the PR | `track_progress: 'true'` | Enabled automatically on `pull_request` events in `claude-code-review.yml`; not used in `claude.yml` (agent mode, which manages its own progress comments) |
-| Full Claude SDK output in the job log | `show_full_output: 'true'` | Exposed as the `show-full-output` input of `claude-code-review.yml` (off by default; turn on to diagnose silent auth / quota failures). Not currently surfaced in `claude.yml`. |
-| Resume a prior session | `session_id` action output + `--resume` in `claude_args` | Not currently wired up in either workflow |
+| Live progress tracking comment on the PR | `track_progress` | No — hardcoded to `'true'` on `pull_request` events in `claude-code-review.yml` (`'false'` otherwise); not a `workflow_call` input, so callers cannot override it. Not used in `claude.yml` (agent mode manages its own progress comments). |
+| Full Claude SDK output in the job log | `show_full_output` | Yes — driven by the `show-full-output` input of `claude-code-review.yml` (note the hyphen; off by default, turn on to diagnose silent auth / quota failures). Not surfaced in `claude.yml`. |
+| Resume a prior session | `session_id` (internal step output of `anthropics/claude-code-action`) + `--resume` in `claude_args` | No — neither reusable workflow declares `session_id` as a `workflow_call` output, so session resume is not available to consumers of `claude.yml` or `claude-code-review.yml`. |
 
 ## PHI scanning (`check-phi`)
 

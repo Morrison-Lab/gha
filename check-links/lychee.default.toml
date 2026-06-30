@@ -27,4 +27,6 @@ exclude = [
   "https://localhost.*",
   "http://127.0.0.1.*",
   "https://127.0.0.1.*",
+  # Bot-protected hosts that reject automated checkers with a 403 (not dead links)
+  "https://claude.ai.*",
 ]
