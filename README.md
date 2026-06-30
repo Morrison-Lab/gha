@@ -113,6 +113,22 @@ via `workflow_dispatch`. Install both, and keep the review stub named
 `claude-code-review.yml` (or set `claude.yml`'s `review-workflow-file` input to
 match) so the dispatch resolves.
 
+## Claude session visibility
+
+GHA sessions (both `claude.yml` and `claude-code-review.yml`) run as headless
+CI jobs and **cannot be remote-controlled or observed** from the
+[claude.ai](https://claude.ai) web interface. The CLI's "Join session" feature
+requires a live interactive terminal; `anthropics/claude-code-action` has no
+parameter to enable it, and GitHub Actions runners don't expose that hook.
+
+What is available instead:
+
+| Feature | Parameter | Where used |
+|---|---|---|
+| Live progress tracking comment on the PR | `track_progress: 'true'` | Enabled automatically on `pull_request` events in `claude-code-review.yml`; not used in `claude.yml` (agent mode, which manages its own progress comments) |
+| Full Claude SDK output in the job log | `show_full_output: 'true'` | Exposed as the `show-full-output` input of `claude-code-review.yml` (off by default; turn on to diagnose silent auth / quota failures). Not currently surfaced in `claude.yml`. |
+| Resume a prior session | `session_id` action output + `--resume` in `claude_args` | Not currently wired up in either workflow |
+
 ## PHI scanning (`check-phi`)
 
 `check-phi` is a **heuristic tripwire, not a HIPAA compliance tool.** It flags
