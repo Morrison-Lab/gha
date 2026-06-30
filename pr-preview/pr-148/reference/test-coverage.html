@@ -543,6 +543,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>''</code></td>
 <td>Extra R packages for the coverage run (<code>covr</code> and <code>xml2</code> are always installed).</td>
 </tr>
+<tr class="even">
+<td><code>fail-ci-if-error</code></td>
+<td>string</td>
+<td><code>'auto'</code></td>
+<td>Whether a Codecov upload error fails the job. <code>'auto'</code> applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); <code>'true'</code> or <code>'false'</code> force it.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -569,7 +575,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
-<p><code>fail_ci_if_error</code> defaults to the r-lib heuristic: fail on non-PR events, and on pull requests only when a token is configured.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
@@ -589,14 +594,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">test-coverage</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/test-coverage.yml@v1</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/test-coverage.yml@v2</span></span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CODECOV_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CODECOV_TOKEN }}</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'                  # package root, if not the repo root</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false      # set true if vignettes need Quarto to build</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''         # extra R packages for the coverage run</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/d-morrison/gha/blob/main/examples/test-coverage.yml"><code>examples/test-coverage.yml</code></a> for the full caller stub.</p>
+<p>See the <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>test-coverage.yml</code>).</p>
 
 
 </section>

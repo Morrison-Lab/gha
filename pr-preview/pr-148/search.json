@@ -623,7 +623,7 @@
     "href": "reference/test-coverage.html#inputs",
     "title": "test-coverage.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -635,7 +635,7 @@
     "href": "reference/test-coverage.html#secrets",
     "title": "test-coverage.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.\n\n\n\nfail_ci_if_error defaults to the r-lib heuristic: fail on non-PR events, and on pull requests only when a token is configured.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -659,7 +659,7 @@
     "href": "reference/test-coverage.html#example",
     "title": "test-coverage.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v1\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\nSee examples/test-coverage.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
     "crumbs": [
       "Overview",
       "Reference",
