@@ -47,14 +47,20 @@ yet, the selftest runs them via the local `./<name>` ref until release.
 
 **A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
 was frozen before it existed — see `slide-major-tag.yml` / the Versioning
-section of `README.md`) needs its major tag updated in every place that names
-one, not just the obvious caller stub: `examples/<name>.yml`, the inline
-example in `website/reference/<name>.qmd`, AND any blanket "pin every
-reference to `@v1`" prose elsewhere (`README.md`'s Versioning section,
-`website/workflows.qmd`) — grep the repo for `@v1` rather than relying on
-memory of where it appears. Missing one of these surfaces as a workflow-not-found
-error for consumers who copy that spot literally (gha#148, caught across two
-review rounds).
+section of `README.md`) needs its major tag updated at two distinct kinds of
+site, not just the obvious one:
+
+1. **Capability-specific refs** — the new capability's own caller stub
+   (`examples/<name>.yml`) and reference-page example
+   (`website/reference/<name>.qmd`).
+2. **Blanket-rule prose** — any general "pin every reference to `@v1`"
+   statement elsewhere (`README.md`'s Versioning section,
+   `website/workflows.qmd`) needs an exception clause, even though it never
+   names the new capability.
+
+Grep the repo for `@v1` rather than relying on memory of where it appears.
+Missing either kind surfaces as a workflow-not-found error for consumers who
+copy that spot literally (gha#148, caught across two review rounds).
 
 ### Tests
 
