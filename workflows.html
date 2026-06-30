@@ -371,6 +371,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/test-coverage.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">test-coverage.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/summary.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">summary.yml</span></a>
   </div>
@@ -502,53 +508,58 @@ ul.task-list li input[type="checkbox"] {
 <td><code>changelog</code></td>
 </tr>
 <tr class="even">
+<td><a href="./reference/test-coverage.html"><code>test-coverage.yml</code></a></td>
+<td>Measure R-package test coverage with <code>covr</code> and upload the Cobertura report to Codecov</td>
+<td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>fail-ci-if-error</code></td>
+</tr>
+<tr class="odd">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
 <td>AI summary comment on newly opened issues</td>
 <td>–</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto site and deploy it to GitHub Pages</td>
 <td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>tinytex</code>, <code>output-dir</code>, <code>checkout-submodules</code>, <code>deploy</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
 <td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
 <td>–</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
 <td>Housekeeping: delete preview directories for closed PRs</td>
 <td><code>preview-dir</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>checkout-submodules</code>, <code>reviewer</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Read-only Claude PR review</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
 <td>Update a submodule to upstream HEAD and open a PR when the pointer moves</td>
 <td><code>submodule-path</code>, <code>remote-branch</code>, <code>base-branch</code>, <code>pr-branch</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
 <td>Vendor files from an upstream repo (pinned to a commit) and open a PR when they change</td>
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
 </tr>
 </tbody>
 </table>
-<p>Pin every reference to <code>@v1</code>. The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> already carry the right <code>permissions:</code> blocks; copy them as-is.</p>
+<p>Pin every reference to <code>@v1</code>, except <code>test-coverage.yml</code>, which ships at <code>@v2</code> (too new for the frozen <code>@v1</code> tag). The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> already carry the right tag and <code>permissions:</code> blocks; copy them as-is.</p>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
 <p>These run on pull requests (and often on <code>main</code>) to keep a repo’s content clean.</p>
@@ -558,6 +569,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>check-links.yml</code> runs a <a href="https://github.com/lycheeverse/lychee">lychee</a> link check with a bundled config, a PR skip-label, and an auto-filed issue when <code>main</code> breaks.</li>
 <li><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</li>
 <li><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</li>
+<li><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</li>
 </ul>
 </section>
 <section id="phi-scanning" class="level2">

@@ -368,84 +368,95 @@
     ]
   },
   {
-    "objectID": "reference/preview.html",
-    "href": "reference/preview.html",
-    "title": "preview.yml",
+    "objectID": "reference/preview-deploy.html",
+    "href": "reference/preview-deploy.html",
+    "title": "preview-deploy.yml",
     "section": "",
-    "text": "The build half of the PR-preview family. Render the Quarto site read-only in the possibly-forked PR context and upload it plus PR metadata as the pr-preview-site artifact. The deploy half (preview-deploy.yml) publishes it to gh-pages. Keep this workflow’s name: in sync with the workflows: list in the deploy stub. The R and renv machinery is parameterized so non-rme repos can reuse it; turn it off for a pure-markdown site.",
+    "text": "The deploy half of the PR-preview family. Triggered on the build workflow’s workflow_run completion, it downloads the artifact and publishes the preview to gh-pages in the base-repo context, then comments the preview link. Keeping it split from the read-only build half is the trust boundary, so untrusted fork code never holds write permissions. The deploy stub’s on: workflow_run: workflows: value must match the build workflow’s name:.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview.yml"
+      "preview-deploy.yml"
     ]
   },
   {
-    "objectID": "reference/preview.html#inputs",
-    "href": "reference/preview.html#inputs",
-    "title": "preview.yml",
+    "objectID": "reference/preview-deploy.html#inputs",
+    "href": "reference/preview-deploy.html#inputs",
+    "title": "preview-deploy.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath in the caller repo to the Quarto project to render (the directory with _quarto.yml). Defaults to the repo root; set it for a subdirectory site (matches quarto-publish’s path).\n\n\nr-version\nstring\n'4.6.0'\nR version to install with r-lib/actions/setup-r.\n\n\napt-packages\nstring\n(long; see workflow file)\nSystem apt packages to install before R/Quarto setup, space-separated. Defaults to the shared renv stack plus build helpers; set to an empty string to skip the apt step.\n\n\nuse-renv\nboolean\ntrue\nRestore R dependencies with renv. Set false for non-renv repos.\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL . to install the caller repo as a local package before rendering.\n\n\nsetup-chrome\nboolean\ntrue\nInstall Chrome (needed by Quarto for revealjs and screenshot rendering).\n\n\nsubmodules\nstring\n'recursive'\nPassed to actions/checkout submodules ('recursive', 'true', or 'false').\n\n\nrender-profile\nstring\n'website'\nQuarto --profile to render with.",
+    "text": "Inputs\nThis workflow takes no inputs.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview.yml"
+      "preview-deploy.yml"
     ]
   },
   {
-    "objectID": "reference/preview.html#permissions",
-    "href": "reference/preview.html#permissions",
-    "title": "preview.yml",
+    "objectID": "reference/preview-deploy.html#permissions",
+    "href": "reference/preview-deploy.html#permissions",
+    "title": "preview-deploy.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default). The build half is read-only and must never write to the base repo.",
+    "text": "Permissions\nGrant contents: write (push to gh-pages), pull-requests: write (post the preview-link comment), and actions: read (download the build artifact).",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview.yml"
+      "preview-deploy.yml"
     ]
   },
   {
-    "objectID": "reference/preview.html#example",
-    "href": "reference/preview.html#example",
-    "title": "preview.yml",
+    "objectID": "reference/preview-deploy.html#example",
+    "href": "reference/preview-deploy.html#example",
+    "title": "preview-deploy.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/preview.yml in your repo.\n# Build half of the PR-preview family: renders the Quarto site in the (possibly\n# fork) PR context and uploads it + PR metadata as an artifact. The deploy half\n# (preview-deploy.yml) publishes it to gh-pages. This job is read-only\n# (contents: read) --- it must never write to the base repo.\n#\n# IMPORTANT: keep this workflow's `name:` in sync with the `workflows:` list in\n# preview-deploy.yml --- that's how the deploy half finds this run.\nname: Quarto Preview Build\n\non:\n  pull_request:\n    types: [opened, reopened, synchronize, labeled, closed]\n    # Trim/extend these globs to the source paths that affect your rendered site.\n    paths:\n      - 'man/**'\n      - 'vignettes/**'\n      - '_extensions/**'\n      - '_quarto*.yml'\n      - '*.qmd'\n      - 'chapters/**/*.qmd'\n      - '_subfiles/**'\n      - '*.scss'\n\njobs:\n  build:\n    permissions:\n      contents: read\n    uses: d-morrison/gha/.github/workflows/preview.yml@v1\n    # with:\n    #   path: website                      # Quarto project lives in a subdir (default: repo root)\n    #   r-version: '4.6.0'\n    #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list\n    #   use-renv: true                     # set false for non-renv repos\n    #   install-package: true              # `R CMD INSTALL .` before rendering\n    #   setup-chrome: true                 # needed for revealjs / screenshots\n    #   submodules: recursive\n    #   render-profile: website\nSee examples/preview.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/preview-deploy.yml in your repo.\n# Deploy half of the PR-preview family: triggered when the build workflow\n# finishes, downloads its artifact, and publishes the preview to gh-pages. This\n# runs in the BASE-repo context, so its token can write --- keeping it separate\n# from the read-only build half is the trust boundary.\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Quarto Preview Deploy\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  deploy:\n    permissions:\n      contents: write        # push to gh-pages\n      pull-requests: write   # post the preview-link comment\n      actions: read          # download the build artifact\n    uses: d-morrison/gha/.github/workflows/preview-deploy.yml@v1\nSee examples/preview-deploy.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview.yml"
+      "preview-deploy.yml"
     ]
   },
   {
-    "objectID": "versioning.html",
-    "href": "versioning.html",
-    "title": "Versioning",
+    "objectID": "permissions.html",
+    "href": "permissions.html",
+    "title": "Permissions",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. Consumers reference @v1. The v1 tag moves forward as non-breaking fixes land, so a consumer pinned to @v1 picks them up automatically. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as the @v1 tag moves.",
+    "text": "A called reusable workflow cannot hold more GITHUB_TOKEN permissions than the caller grants, and most repos default to a read-only token. So workflows that need to write must have the caller grant it on the calling job. The stubs in examples/ already include the right permissions: blocks; copy them as-is.",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Permissions"
     ]
   },
   {
-    "objectID": "versioning.html#pinning-third-party-actions",
-    "href": "versioning.html#pinning-third-party-actions",
-    "title": "Versioning",
-    "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/*@v1 self-references and the examples/ templates intentionally track the moving @v1 major tag, so they are not SHA-pinned.",
+    "objectID": "permissions.html#per-workflow-grants",
+    "href": "permissions.html#per-workflow-grants",
+    "title": "Permissions",
+    "section": "Per-workflow grants",
+    "text": "Per-workflow grants\n\ncheck-bibliography-dois, check-non-standard-chars, check-phi need only contents: read (the default), so no permissions: block is needed.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview (build half, read-only) needs only contents: read (the default).\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, id-token: write, and the CLAUDE_CODE_OAUTH_TOKEN secret.",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Permissions"
     ]
   },
   {
-    "objectID": "versioning.html#reverse-dependencies",
-    "href": "versioning.html#reverse-dependencies",
-    "title": "Versioning",
-    "section": "Reverse dependencies",
-    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
+    "objectID": "permissions.html#optional-secrets",
+    "href": "permissions.html#optional-secrets",
+    "title": "Permissions",
+    "section": "Optional secrets",
+    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
     "crumbs": [
       "Overview",
-      "Versioning"
+      "Permissions"
+    ]
+  },
+  {
+    "objectID": "permissions.html#notes-for-private-consumers",
+    "href": "permissions.html#notes-for-private-consumers",
+    "title": "Permissions",
+    "section": "Notes for private consumers",
+    "text": "Notes for private consumers\nReusable workflows in this public repo are callable from public repos automatically. A private consumer must allow access to this repo under Settings -&gt; Actions -&gt; General -&gt; Access before it can call these workflows.",
+    "crumbs": [
+      "Overview",
+      "Permissions"
     ]
   },
   {
@@ -453,7 +464,7 @@
     "href": "workflows.html",
     "title": "Workflows",
     "section": "",
-    "text": "Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.\nPin every reference to @v1. The stubs in examples/ already carry the right permissions: blocks; copy them as-is.",
+    "text": "Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.\nPin every reference to @v1, except test-coverage.yml, which ships at @v2 (too new for the frozen @v1 tag). The stubs in examples/ already carry the right tag and permissions: blocks; copy them as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -464,7 +475,7 @@
     "href": "workflows.html#quality-checks",
     "title": "Workflows",
     "section": "Quality checks",
-    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-non-standard-chars.yml flags curly quotes and en/em dashes in .qmd and .R files, which can break Quarto and R rendering.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\ncheck-phi.yml scans for content that looks like protected health information; see below.",
+    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-non-standard-chars.yml flags curly quotes and en/em dashes in .qmd and .R files, which can break Quarto and R rendering.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended).",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -515,95 +526,144 @@
     ]
   },
   {
-    "objectID": "permissions.html",
-    "href": "permissions.html",
-    "title": "Permissions",
+    "objectID": "versioning.html",
+    "href": "versioning.html",
+    "title": "Versioning",
     "section": "",
-    "text": "A called reusable workflow cannot hold more GITHUB_TOKEN permissions than the caller grants, and most repos default to a read-only token. So workflows that need to write must have the caller grant it on the calling job. The stubs in examples/ already include the right permissions: blocks; copy them as-is.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. Consumers reference @v1. The v1 tag moves forward as non-breaking fixes land, so a consumer pinned to @v1 picks them up automatically. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as the @v1 tag moves.",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Versioning"
     ]
   },
   {
-    "objectID": "permissions.html#per-workflow-grants",
-    "href": "permissions.html#per-workflow-grants",
-    "title": "Permissions",
-    "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\ncheck-bibliography-dois, check-non-standard-chars, check-phi need only contents: read (the default), so no permissions: block is needed.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview (build half, read-only) needs only contents: read (the default).\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, id-token: write, and the CLAUDE_CODE_OAUTH_TOKEN secret.",
+    "objectID": "versioning.html#pinning-third-party-actions",
+    "href": "versioning.html#pinning-third-party-actions",
+    "title": "Versioning",
+    "section": "Pinning third-party actions",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/*@v1 self-references and the examples/ templates intentionally track the moving @v1 major tag, so they are not SHA-pinned.",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Versioning"
     ]
   },
   {
-    "objectID": "permissions.html#optional-secrets",
-    "href": "permissions.html#optional-secrets",
-    "title": "Permissions",
-    "section": "Optional secrets",
-    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
+    "objectID": "versioning.html#reverse-dependencies",
+    "href": "versioning.html#reverse-dependencies",
+    "title": "Versioning",
+    "section": "Reverse dependencies",
+    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
     "crumbs": [
       "Overview",
-      "Permissions"
+      "Versioning"
     ]
   },
   {
-    "objectID": "permissions.html#notes-for-private-consumers",
-    "href": "permissions.html#notes-for-private-consumers",
-    "title": "Permissions",
-    "section": "Notes for private consumers",
-    "text": "Notes for private consumers\nReusable workflows in this public repo are callable from public repos automatically. A private consumer must allow access to this repo under Settings -&gt; Actions -&gt; General -&gt; Access before it can call these workflows.",
-    "crumbs": [
-      "Overview",
-      "Permissions"
-    ]
-  },
-  {
-    "objectID": "reference/preview-deploy.html",
-    "href": "reference/preview-deploy.html",
-    "title": "preview-deploy.yml",
+    "objectID": "reference/preview.html",
+    "href": "reference/preview.html",
+    "title": "preview.yml",
     "section": "",
-    "text": "The deploy half of the PR-preview family. Triggered on the build workflow’s workflow_run completion, it downloads the artifact and publishes the preview to gh-pages in the base-repo context, then comments the preview link. Keeping it split from the read-only build half is the trust boundary, so untrusted fork code never holds write permissions. The deploy stub’s on: workflow_run: workflows: value must match the build workflow’s name:.",
+    "text": "The build half of the PR-preview family. Render the Quarto site read-only in the possibly-forked PR context and upload it plus PR metadata as the pr-preview-site artifact. The deploy half (preview-deploy.yml) publishes it to gh-pages. Keep this workflow’s name: in sync with the workflows: list in the deploy stub. The R and renv machinery is parameterized so non-rme repos can reuse it; turn it off for a pure-markdown site.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview-deploy.yml"
+      "preview.yml"
     ]
   },
   {
-    "objectID": "reference/preview-deploy.html#inputs",
-    "href": "reference/preview-deploy.html#inputs",
-    "title": "preview-deploy.yml",
+    "objectID": "reference/preview.html#inputs",
+    "href": "reference/preview.html#inputs",
+    "title": "preview.yml",
     "section": "Inputs",
-    "text": "Inputs\nThis workflow takes no inputs.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath in the caller repo to the Quarto project to render (the directory with _quarto.yml). Defaults to the repo root; set it for a subdirectory site (matches quarto-publish’s path).\n\n\nr-version\nstring\n'4.6.0'\nR version to install with r-lib/actions/setup-r.\n\n\napt-packages\nstring\n(long; see workflow file)\nSystem apt packages to install before R/Quarto setup, space-separated. Defaults to the shared renv stack plus build helpers; set to an empty string to skip the apt step.\n\n\nuse-renv\nboolean\ntrue\nRestore R dependencies with renv. Set false for non-renv repos.\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL . to install the caller repo as a local package before rendering.\n\n\nsetup-chrome\nboolean\ntrue\nInstall Chrome (needed by Quarto for revealjs and screenshot rendering).\n\n\nsubmodules\nstring\n'recursive'\nPassed to actions/checkout submodules ('recursive', 'true', or 'false').\n\n\nrender-profile\nstring\n'website'\nQuarto --profile to render with.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview-deploy.yml"
+      "preview.yml"
     ]
   },
   {
-    "objectID": "reference/preview-deploy.html#permissions",
-    "href": "reference/preview-deploy.html#permissions",
-    "title": "preview-deploy.yml",
+    "objectID": "reference/preview.html#permissions",
+    "href": "reference/preview.html#permissions",
+    "title": "preview.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write (push to gh-pages), pull-requests: write (post the preview-link comment), and actions: read (download the build artifact).",
+    "text": "Permissions\nOnly contents: read (the default). The build half is read-only and must never write to the base repo.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview-deploy.yml"
+      "preview.yml"
     ]
   },
   {
-    "objectID": "reference/preview-deploy.html#example",
-    "href": "reference/preview-deploy.html#example",
-    "title": "preview-deploy.yml",
+    "objectID": "reference/preview.html#example",
+    "href": "reference/preview.html#example",
+    "title": "preview.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/preview-deploy.yml in your repo.\n# Deploy half of the PR-preview family: triggered when the build workflow\n# finishes, downloads its artifact, and publishes the preview to gh-pages. This\n# runs in the BASE-repo context, so its token can write --- keeping it separate\n# from the read-only build half is the trust boundary.\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Quarto Preview Deploy\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  deploy:\n    permissions:\n      contents: write        # push to gh-pages\n      pull-requests: write   # post the preview-link comment\n      actions: read          # download the build artifact\n    uses: d-morrison/gha/.github/workflows/preview-deploy.yml@v1\nSee examples/preview-deploy.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/preview.yml in your repo.\n# Build half of the PR-preview family: renders the Quarto site in the (possibly\n# fork) PR context and uploads it + PR metadata as an artifact. The deploy half\n# (preview-deploy.yml) publishes it to gh-pages. This job is read-only\n# (contents: read) --- it must never write to the base repo.\n#\n# IMPORTANT: keep this workflow's `name:` in sync with the `workflows:` list in\n# preview-deploy.yml --- that's how the deploy half finds this run.\nname: Quarto Preview Build\n\non:\n  pull_request:\n    types: [opened, reopened, synchronize, labeled, closed]\n    # Trim/extend these globs to the source paths that affect your rendered site.\n    paths:\n      - 'man/**'\n      - 'vignettes/**'\n      - '_extensions/**'\n      - '_quarto*.yml'\n      - '*.qmd'\n      - 'chapters/**/*.qmd'\n      - '_subfiles/**'\n      - '*.scss'\n\njobs:\n  build:\n    permissions:\n      contents: read\n    uses: d-morrison/gha/.github/workflows/preview.yml@v1\n    # with:\n    #   path: website                      # Quarto project lives in a subdir (default: repo root)\n    #   r-version: '4.6.0'\n    #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list\n    #   use-renv: true                     # set false for non-renv repos\n    #   install-package: true              # `R CMD INSTALL .` before rendering\n    #   setup-chrome: true                 # needed for revealjs / screenshots\n    #   submodules: recursive\n    #   render-profile: website\nSee examples/preview.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview-deploy.yml"
+      "preview.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html",
+    "href": "reference/test-coverage.html",
+    "title": "test-coverage.yml",
+    "section": "",
+    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#inputs",
+    "href": "reference/test-coverage.html#inputs",
+    "title": "test-coverage.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#secrets",
+    "href": "reference/test-coverage.html#secrets",
+    "title": "test-coverage.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#permissions",
+    "href": "reference/test-coverage.html#permissions",
+    "title": "test-coverage.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#example",
+    "href": "reference/test-coverage.html#example",
+    "title": "test-coverage.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
     ]
   },
   {
