@@ -108,6 +108,29 @@ Only fall back to "can't access it" — or to whatever session tooling can add a
 repo to scope, if any — after the raw fetch also fails (private repo, or the
 network policy blocks the host).
 
+## A canceled review can red-X require-review — don't chase it as a code bug
+
+`claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
+(`claude-review-<PR>`, `cancel-in-progress: true`) across BOTH the automatic
+`pull_request`-triggered review and claude.yml's comment-triggered (`@claude
+review`) re-dispatch. When a push and an `@claude review` comment land close
+together — or claude.yml's agent run finishes and re-dispatches a review a
+minute or two later, landing on top of the next push's auto-review — the two
+reviews race and one cancels the other.
+
+The `require-review` gate job asserts `claude-review`'s result is `success`;
+a *canceled* run (not skipped) makes that assertion fail, so `require-review`
+shows red right after a push even though the surviving review is fine. Before
+treating a post-push `require-review` failure as a real problem: check
+whether `claude-review`'s conclusion is `cancelled` rather than `failure`. If
+so, it's this race, not a code issue — wait for (or re-trigger) an
+uncontested review instead of debugging the diff. To avoid causing it: don't
+post `@claude review` immediately after pushing a commit on a PR using this
+workflow; let the automatic review run alone, or wait for any in-flight
+dispatched review to finish first. (See the `claude-review` job's
+`concurrency:` comment in `.github/workflows/claude-code-review.yml` for the
+full mechanism.)
+
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
