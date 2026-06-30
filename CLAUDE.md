@@ -78,8 +78,8 @@ committed under a composite's `tests/` dir (e.g. a minimal R package for
 `phi` job's PHI scanner flags any synthetic identifier in it (a fake
 maintainer email, etc.). Generate the fixture in a small script
 (`test-coverage/tests/make-fixture.sh` is the pattern) that the `coverage`
-selftest job runs before invoking the composite, instead of committing R/data
-source files (gha#148).
+selftest job runs before invoking the composite, instead of committing R
+package source files (gha#148).
 
 ## GitHub access in remote / web sessions
 
