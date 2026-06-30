@@ -13,6 +13,18 @@ below with migration steps.
 
 ### Changed
 
+- **`claude-code-review` now honors an explicit review request on a draft PR.**
+  A dispatched review (an `@claude review` comment routed here by `claude.yml`,
+  `claude.yml`'s post-push re-dispatch, the issue-trigger draft PR, or a manual
+  dispatch) already bypassed the workflow's draft-skip `if:` gate, but the
+  code-review skill's *own* don't-review-drafts stop condition still made the
+  agent refuse ("currently a draft … I will not proceed"), so an explicit
+  `@claude review` on a draft produced a refusal instead of a review. The
+  dispatched-run prompt now overrides that stop condition so an
+  explicitly-requested review runs even on a draft. Automatic `pull_request`
+  reviews still skip drafts (their `if:` gate never reaches the agent on a
+  draft), so this only widens the dispatched path.
+
 - **`claude-code-review` no longer flags cosmetic source-only formatting that
   renders identically** (#261). The review prompt now tells the reviewer to skip
   raw-source line-wrap position and line-length nits on Markdown/text prose when

@@ -305,8 +305,22 @@ jobs:
             user to grant git/commit permissions; there is nothing for you to
             commit. If you would have fixed something, describe the fix in
             your review instead."
+          # The job `if:` already lets dispatched runs review drafts (the
+          # automatic pull_request path skips them via draft == false). But the
+          # code-review skill has its OWN don't-review-drafts stop condition, so
+          # on a draft PR the agent still refuses ("currently a draft … I will
+          # not proceed") — defeating an explicit `@claude review` that
+          # claude.yml routes here as a workflow_dispatch. A workflow_dispatch
+          # only ever happens on an explicit request (an `@claude review`
+          # comment, claude.yml's post-push re-dispatch, the issue-trigger draft
+          # PR, or a manual dispatch), so for that event the prompt below
+          # overrides the skill's draft check and tells the agent to review
+          # anyway. Tag-mode (pull_request) runs never reach a draft, so the
+          # override is gated to workflow_dispatch to keep it accurate there.
           prompt: |
             /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr-number }}
+
+            ${{ github.event_name == 'workflow_dispatch' && '**This review was explicitly requested** (via an `@claude review` comment, or a manual / automated workflow dispatch), so review this PR even when it is marked as a **draft**. Draft status must NOT stop you: ignore any stop condition, step, or instruction — including any in the code-review skill itself — that tells you to skip, defer, or refuse the review because the PR is a draft. The explicit request overrides the don''t-review-drafts default; carry out the full review and post your findings as usual.' || '' }}
 
             ${{ needs.gather-context.outputs.prior-context }}
 
