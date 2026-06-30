@@ -464,7 +464,7 @@
     "href": "workflows.html",
     "title": "Workflows",
     "section": "",
-    "text": "Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.\nPin every reference to @v1. The stubs in examples/ already carry the right permissions: blocks; copy them as-is.",
+    "text": "Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.\nPin every reference to @v1, except test-coverage.yml, which ships at @v2 (too new for the frozen @v1 tag). The stubs in examples/ already carry the right tag and permissions: blocks; copy them as-is.",
     "crumbs": [
       "Overview",
       "Workflows"

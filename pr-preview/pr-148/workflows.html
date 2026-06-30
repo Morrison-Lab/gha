@@ -559,7 +559,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
-<p>Pin every reference to <code>@v1</code>. The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> already carry the right <code>permissions:</code> blocks; copy them as-is.</p>
+<p>Pin every reference to <code>@v1</code>, except <code>test-coverage.yml</code>, which ships at <code>@v2</code> (too new for the frozen <code>@v1</code> tag). The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> already carry the right tag and <code>permissions:</code> blocks; copy them as-is.</p>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
 <p>These run on pull requests (and often on <code>main</code>) to keep a repo’s content clean.</p>
