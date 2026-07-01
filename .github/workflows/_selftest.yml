@@ -203,6 +203,12 @@ jobs:
           set -euo pipefail
           sha=$(grep -oP 'anthropics/claude-code-action@\K[0-9a-f]{40}' .github/workflows/claude.yml | head -n1)
           url="https://raw.githubusercontent.com/anthropics/claude-code-action/${sha}/src/github/operations/restore-config.ts"
+          # Assumes upstream keeps SENSITIVE_PATHS as a single block that ends
+          # with a bare `];` on its own line (the sed range terminator below).
+          # A reformat there (e.g. `] as const;`, a trailing comment on the
+          # closing line) would make the range run past the intended block.
+          # That can only produce a false *failure* here, never a false pass,
+          # so a red run from this cause is debuggable by fetching $url by hand.
           upstream=$(curl -fsSL "$url" | sed -n '/const SENSITIVE_PATHS/,/];/p' | grep -oP '"\K[^"]+(?=")' | sort)
           local=$(grep -oP 'for cfg in \K.*(?=; do)' .github/workflows/claude.yml | tr ' ' '\n' | sort)
           if [ "$upstream" != "$local" ]; then
