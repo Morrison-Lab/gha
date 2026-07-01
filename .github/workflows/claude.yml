@@ -613,9 +613,10 @@ jobs:
           # change to a config file the action itself reset.
           #
           # The list mirrors the action's SENSITIVE_PATHS (root-only, path-
-          # literal) from src/github/operations/restore-config.ts on the @v1
-          # line (read 2026-06). This copy can't detect upstream drift, so
-          # re-check it against that file when bumping claude-code-action.
+          # literal) from src/github/operations/restore-config.ts. The
+          # sensitive-paths job in _selftest.yml diffs this list against the
+          # pinned SHA's copy on every PR, so drift on a claude-code-action
+          # bump fails CI instead of relying on a manual re-check (gha#152).
           #
           # `git checkout HEAD -- "$cfg"` restores paths tracked in HEAD; for a
           # path absent from HEAD but left on disk — a PR that DELETED a config
