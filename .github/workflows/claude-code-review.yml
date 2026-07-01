@@ -292,9 +292,16 @@ jobs:
           # comment. Disallow the git-write tools (disallowed beats the action's
           # generated allow-list) and tell the agent up front not to attempt
           # edits, so it folds any would-be fix into its review instead.
+          #
+          # `Bash(python3:*)` lets the reviewer actually run a Python script
+          # under review (e.g. execute a CI guard script against sample
+          # input) instead of only tracing its logic by eye — this job's
+          # sandbox is already read-only (contents: read, no git-write
+          # tools), so running Python doesn't widen what the agent can
+          # persist or push (gha#154).
           claude_args: >-
             --allowedTools
-            "mcp__github_inline_comment__create_inline_comment"
+            "mcp__github_inline_comment__create_inline_comment,Bash(python3:*)"
             --disallowedTools
             "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*)"
             --append-system-prompt
