@@ -177,3 +177,14 @@ Above all, code should be **highly modular and idiomatic**:
 
 Be specific and cite the relevant manual section or principle when raising a
 point. Distinguish blocking issues from optional suggestions.
+
+### 3. Challenge ambiguous phrasing and terminology
+
+Flag ambiguous terms and phrasing rather than accepting a plausible-sounding
+reading — a name that could mean more than one thing, a claim that cites a
+value or construct without confirming it exists in the actual code. This is a
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus.
+Ambiguity accepted at face value is how a factually wrong claim (e.g.
+documentation citing a nonexistent enum value) slips through review
+unchallenged.
