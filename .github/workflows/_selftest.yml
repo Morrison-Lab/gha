@@ -185,3 +185,29 @@ jobs:
           fi
           echo "cobertura.xml produced ($(wc -l < cobertura.xml) lines):"
           head -n 20 cobertura.xml
+  # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
+  # (from src/github/operations/restore-config.ts) so its auto-commit step
+  # never reverts a PR's own edits to those files (#39). That mirror can't
+  # detect upstream drift on its own, so diff the pinned SHA's actual copy of
+  # SENSITIVE_PATHS against the local list here on every PR (gha#152).
+  sensitive-paths:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Diff claude.yml's SENSITIVE_PATHS mirror against the pinned claude-code-action SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=$(grep -oP 'anthropics/claude-code-action@\K[0-9a-f]{40}' .github/workflows/claude.yml | head -n1)
+          url="https://raw.githubusercontent.com/anthropics/claude-code-action/${sha}/src/github/operations/restore-config.ts"
+          upstream=$(curl -fsSL "$url" | sed -n '/const SENSITIVE_PATHS/,/];/p' | grep -oP '"\K[^"]+(?=")' | sort)
+          local=$(grep -oP 'for cfg in \K.*(?=; do)' .github/workflows/claude.yml | tr ' ' '\n' | sort)
+          if [ "$upstream" != "$local" ]; then
+            echo "::error::claude.yml's SENSITIVE_PATHS mirror is out of sync with claude-code-action@${sha}."
+            diff <(echo "$upstream") <(echo "$local") || true
+            exit 1
+          fi
+          echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."
