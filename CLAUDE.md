@@ -182,8 +182,9 @@ point. Distinguish blocking issues from optional suggestions.
 
 Flag ambiguous terms and phrasing rather than accepting a plausible-sounding
 reading — a name that could mean more than one thing, a claim that cites a
-value or construct without confirming it exists in the actual code (a global
-`ai-config` standing rule; see `shared/workflow/challenge-ambiguous-terminology.md`
-there). Ambiguity accepted at face value is how a factually wrong claim (e.g.
+value or construct without confirming it exists in the actual code. This is a
+global standing rule defined in
+[`d-morrison/ai-config`'s `shared/workflow/challenge-ambiguous-terminology.md`](https://github.com/d-morrison/ai-config/blob/main/shared/workflow/challenge-ambiguous-terminology.md).
+Ambiguity accepted at face value is how a factually wrong claim (e.g.
 documentation citing a nonexistent enum value) slips through review
 unchallenged.
