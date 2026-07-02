@@ -33,8 +33,9 @@ jobs:
     uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v1
 ```
 
-Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
-`@main` from consumers.
+Pin each workflow to the major tag its own reference page documents (`@v1`
+for `check-bibliography-dois.yml`; see [Versioning](#versioning) for which
+capabilities pin `@v2` instead). Do not reference `@main` from consumers.
 
 ## Available reusable workflows
 
