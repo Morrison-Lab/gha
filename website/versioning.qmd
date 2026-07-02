@@ -37,9 +37,12 @@ That matters here because jobs like the preview deploy run with
 bumps these pins as upstreams publish releases, so they stay current instead of freezing.
 When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*@v1` self-references and the
+First-party `d-morrison/gha/*` self-references and most
 [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) templates
-intentionally track the moving `@v1` major tag, so they are **not** SHA-pinned.
+intentionally track the moving major tag (currently `@v1`, except
+`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`quarto-publish.yml`, `test-coverage.yml`, and `check-equation-renders.yml` at
+`@v2` - see the versioning note above), so they are **not** SHA-pinned.
 
 ## Reverse dependencies
 
