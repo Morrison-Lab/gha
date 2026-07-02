@@ -4,13 +4,15 @@ title: "Versioning"
 
 Releases are tagged `vX.Y.Z`, and the `vX` major tag moves to the latest compatible release,
 following the [`r-lib/actions`](https://github.com/r-lib/actions) convention.
-Consumers reference `@v1`.
-The `v1` tag moves forward as non-breaking fixes land,
-so a consumer pinned to `@v1` picks them up automatically.
+`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
+change cut `@v2`, so it has picked up no fixes since - not even non-breaking
+ones. Pin `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
+`quarto-publish.yml` to `@v2`; see [Workflows](workflows.qmd#versioning) for
+the full breakdown, including which capabilities still pin `@v1` and why.
 Breaking changes bump the major tag (`v2`, and so on) with migration steps.
 
 See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
-for what changes as the `@v1` tag moves.
+for what changes as the major tag moves.
 
 Changelog entries are added as fragment files under `changelog.d/`
 (one per PR, so parallel PRs never conflict on the shared changelog) and
