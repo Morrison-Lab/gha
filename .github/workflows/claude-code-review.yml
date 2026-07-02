@@ -392,6 +392,31 @@ jobs:
 
             ${{ needs.gather-context.outputs.prior-context }}
 
+            **Hold this PR to the SERG lab manual.** This repository is part
+            of the `d-morrison` / `UCD-SERG` / `ucdavis` family of R-package
+            and Quarto repositories, so evaluate the diff against the
+            [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
+            the lab's authority on coding, reproducibility, and collaboration
+            conventions — in addition to correctness. Especially:
+
+            - [Coding style](https://ucd-serg.github.io/lab-manual/coding-style.html) —
+              object naming, line breaks/formatting, function documentation,
+              comments, message/communication style, and Quarto code-reference
+              conventions (backticked `pkg::fn()`, markdown package links, no
+              raw HTML in `.qmd`).
+            - [Coding practices](https://ucd-serg.github.io/lab-manual/coding-practices.html) —
+              function decomposition and
+              [length limits](https://ucd-serg.github.io/lab-manual/coding-practices.html#function-length-limits),
+              testing requirements, the QA checklist, documentation, `{here}`
+              for paths, and tidyverse idioms.
+            - [Code repositories](https://ucd-serg.github.io/lab-manual/code-repositories.html) —
+              repository organization and version-control practices.
+
+            The manual defers to the [tidyverse style guide](https://style.tidyverse.org/)
+            for R; prefer tidyverse idioms and the native `|>` pipe. Cite the
+            relevant manual section when raising a point, and distinguish
+            blocking issues from optional suggestions.
+
             **Watch for AI hallucinations.** This diff may be partly
             machine-authored, so scrutinize it for confident-but-fabricated
             content: calls to functions, methods, arguments, packages, or APIs

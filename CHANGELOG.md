@@ -11,6 +11,16 @@ below with migration steps.
 
 ## [Unreleased]
 
+### Changed
+
+- **`claude-code-review.yml` now bakes in SERG lab manual enforcement** (#170).
+  The reusable review prompt now always evaluates a PR against the
+  [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) — coding
+  style, coding practices (including function decomposition/length limits),
+  and repository conventions — so every consumer repo gets this check
+  automatically, without needing to pass a `prompt-addendum`. Mirrors the
+  wording already in this repo's own `CLAUDE.md` "Code review guidelines".
+
 ### Added
 
 - **`test-coverage` — R-package test coverage with Codecov upload** (#147). A new
