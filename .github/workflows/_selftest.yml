@@ -90,6 +90,9 @@ jobs:
       - name: Run fail-check fixture tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-fixture-tests.sh
+      - name: Run parse-workflow-ref fixture tests
+        shell: bash
+        run: bash .github/actions/parse-workflow-ref/tests/run-tests.sh
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest

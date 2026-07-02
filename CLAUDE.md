@@ -138,6 +138,22 @@ runtime — unlike the R-package/PHI-shaped fixtures the rule above warns
 about, they're plain JSON execution-output data with no content that would
 trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
 
+`.github/actions/parse-workflow-ref/` is a small composite action that parses
+a `github.workflow_ref`/`github.job_workflow_ref`-shaped string
+(`owner/repo/.github/workflows/<file>@ref`) into its `repo`/`path`/`ref`
+parts, shared by every step across `claude-code-review.yml` and
+`claude-review.yml` that needs one of these strings apart instead of each
+duplicating the `sed` logic inline. Its
+`tests/run-tests.sh` exercises the extracted `parse-workflow-ref.sh` offline
+against a tag, a branch, and a full-SHA ref; CI runs it as a step in the same
+`review-fail-check` job (gha#191). Note the ordering constraint that makes
+this a *script-called-from-a-composite-action* rather than a plain checked-out
+script like `check-review-execution.sh` above: some call sites (`selfmod`)
+run before any checkout has happened, so the parsing logic can't rely on
+`GITHUB_WORKSPACE` containing anything yet — a composite action's own files
+are always available via `uses:` regardless of checkout state, which a bare
+script path is not.
+
 ## GitHub access in remote / web sessions
 
 Claude Code on the web (and other remote/CI sessions) runs in a sandbox where the
