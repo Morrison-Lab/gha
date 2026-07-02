@@ -24,11 +24,32 @@ declare -A expected=(
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
   [quota-exhausted.json]=skip
+  [verdict-label-format.json]=pass
+  [verdict-not-last-block.json]=pass
+)
+
+# For `pass` fixtures where the posted review_text_file's content matters
+# (gha#173): the block it must contain, and a block it must NOT contain.
+declare -A must_contain=(
+  [verdict-not-last-block.json]='Ready for merge'
+)
+declare -A must_not_contain=(
+  [verdict-not-last-block.json]="I've posted my findings"
 )
 
 assert_pass() {
-  local exit_code="$1" output_file="$2"
-  [[ "$exit_code" -eq 0 ]] && grep -q '^review_text_file=' "$output_file"
+  local fixture="$1" exit_code="$2" output_file="$3"
+  [[ "$exit_code" -eq 0 ]] && grep -q '^review_text_file=' "$output_file" || return 1
+
+  local posted_file
+  posted_file="$(sed -n 's/^review_text_file=//p' "$output_file")"
+  if [[ -n "${must_contain[$fixture]:-}" ]] && ! grep -qF "${must_contain[$fixture]}" "$posted_file"; then
+    return 1
+  fi
+  if [[ -n "${must_not_contain[$fixture]:-}" ]] && grep -qF "${must_not_contain[$fixture]}" "$posted_file"; then
+    return 1
+  fi
+  return 0
 }
 
 assert_fail() {
@@ -54,7 +75,7 @@ for fixture in "${!expected[@]}"; do
 
   ok=false
   case "$want" in
-    pass) assert_pass "$exit_code" "$output_file" && ok=true ;;
+    pass) assert_pass "$fixture" "$exit_code" "$output_file" && ok=true ;;
     fail) assert_fail "$exit_code" && ok=true ;;
     skip) assert_skip "$exit_code" "$output_file" && ok=true ;;
     *) echo "::error::unknown expected outcome '$want' for fixture $fixture"; exit 1 ;;
