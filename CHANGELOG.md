@@ -26,6 +26,24 @@ below with migration steps.
   optional `CODECOV_TOKEN` secret is passed through the caller's `secrets:`
   block. See `examples/test-coverage.yml` for the caller stub.
 
+- **`check-equation-renders` — catch equations MathJax can't render in PR previews**
+  (#159). A new fourth leg of the PR-preview family: a composite
+  (`check-equation-renders/action.yml`) that crawls a built Quarto/HTML site with a
+  headless Chromium (Playwright), lets MathJax finish typesetting each page, and
+  fails on either of the two ways MathJax signals a broken formula: a hard parse
+  error (a `[data-mjx-error]` node), or an undefined macro, which MathJax renders
+  as literal, unresolved `\command` text rather than a hard error (no error node
+  to find, so the check looks for the raw command name surviving into the
+  rendered output instead). Wired into
+  the family as a reusable workflow (`.github/workflows/check-equation-renders.yml`)
+  triggered the same way as `preview-deploy.yml` (`workflow_run` on the build
+  workflow's completion), downloading the `pr-preview-site` artifact directly rather
+  than depending on the deploy. Motivated by a broken equation
+  (`d-morrison/rme#954`) that shipped silently: Quarto's `html-math-method: mathjax`
+  embeds raw TeX unchanged in the static HTML, and MathJax only parses it
+  client-side, so a bad equation produces no warning in the Quarto/pandoc build log.
+  Ships at `@v2` (too new for the frozen `@v1` tag), like `test-coverage`. See
+  `examples/check-equation-renders.yml` for the caller stub.
 - **`claude-code-review` accepts `apt-packages`/`pip-packages` inputs** (#161),
   mirroring the inputs `claude.yml` already had. Lets a math-heavy consumer
   repo install a computer algebra system (e.g. `apt-packages: maxima`,
