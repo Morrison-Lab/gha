@@ -5,4 +5,4 @@
   into `CHANGELOG.md` at release time, grouped by keepachangelog category. This
   sidesteps GitHub's PR-UI merge conflicts on the shared changelog, which the
   `.gitattributes` `merge=union` driver can't fix (GitHub doesn't apply custom
-  merge drivers). See [`changelog.d/README.md`](changelog.d/README.md).
+  merge drivers). See `changelog.d/README.md`.
