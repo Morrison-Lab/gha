@@ -59,14 +59,6 @@ below with migration steps.
   (ambiguity, meaning-changing grammar, broken links or markup, factual errors).
   This cuts review-round churn from cosmetic wrapping nits.
 
-- **`test-coverage`'s R runtime image now includes Python** (#146). R sessions
-  spawned from `setup-r` previously had no `python3` on `PATH`, so any
-  package invoking `reticulate` failed at coverage time. Adds a
-  `python-version` input (default `'3.11'`) and an `actions/setup-python`
-  step before `setup-r`, run only when `use-renv` is false (renv resolves its
-  own Python via `renv::use_python()`), consistent with `r-lib/actions`'
-  `check-standard.yaml` pattern.
-
 ## [2.0.0] - 2026-06-25
 
 ### Breaking
