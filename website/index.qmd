@@ -38,8 +38,9 @@ jobs:
     uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v1
 ```
 
-Pin to `@v1`, a moving major tag updated as fixes land.
-Do not reference `@main` from consumers.
+Pin each workflow to the major tag its own reference page documents (`@v1`
+for `check-bibliography-dois.yml`; see [Versioning](versioning.qmd) for which
+capabilities pin `@v2` instead). Do not reference `@main` from consumers.
 
 {{< include _actions-vs-workflows.qmd >}}
 
@@ -47,7 +48,7 @@ Do not reference `@main` from consumers.
 
 - [Workflows](workflows.qmd) catalogs every reusable workflow and what it does.
 - [Permissions](permissions.qmd) lists the `GITHUB_TOKEN` permissions and secrets each one needs.
-- [Versioning](versioning.qmd) explains the moving `@v1` tag and how third-party actions are pinned.
+- [Versioning](versioning.qmd) explains the major-tag scheme (`@v1` vs `@v2`) and how third-party actions are pinned.
 
 This very site is built and shipped by the workflows it documents:
 [`quarto-publish`](workflows.qmd#quarto-sites) deploys it to GitHub Pages,

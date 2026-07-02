@@ -19,17 +19,30 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`preview.yml`](reference/preview.qmd) | Build half of the PR-preview family: render in the PR context and upload an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | [`preview-deploy.yml`](reference/preview-deploy.qmd) | Deploy half: publish the artifact to `gh-pages` and comment the preview link | -- |
 | [`check-equation-renders.yml`](reference/check-equation-renders.qmd) | Crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
-| [`cleanup-pr-previews.yml`](reference/cleanup-pr-previews.qmd) | Housekeeping: delete preview directories for closed PRs | `preview-dir` |
+| [`cleanup-pr-previews.yml`](reference/cleanup-pr-previews.qmd) | Housekeeping: delete preview directories for closed PRs | `preview-dir`, `compact-history` |
 | [`claude.yml`](reference/claude.qmd) | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `reviewer` |
 | [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages` |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
-Pin every reference to `@v1`, except `test-coverage.yml` and
-`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
-`@v1` tag).
+## Versioning {#versioning}
+
+`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
+change cut `@v2`, so any capability pinned there has picked up no fixes since -
+including non-breaking ones, like `cleanup-pr-previews`'s `compact-history`
+input, which does not exist at `@v1` at all. **Pin `preview.yml`,
+`preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to
+`@v2`**; `test-coverage.yml` and `check-equation-renders.yml` only ever
+shipped at `@v2` (too new to exist at the frozen `@v1` tag). `quarto-publish.yml`
+additionally has a genuine behavioral fork: `@v1` stays frozen on the older
+GitHub Actions Pages-artifact deploy, while `@v2` deploys to the `gh-pages`
+branch instead - required if the same repo also uses the PR-preview family,
+since Pages can only have one Source. The remaining capabilities' stubs still
+pin `@v1`, which stays valid for them until they are audited and bumped
+(tracked in [gha#182](https://github.com/d-morrison/gha/issues/182)).
 The stubs in [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
-already carry the right tag and `permissions:` blocks; copy them as-is.
+carry the tag and `permissions:` block documented on each workflow's own
+reference page; copy the specific stub you need as-is.
 
 ## Quality checks {#quality-checks}
 
