@@ -1,0 +1,35 @@
+// Default config for lint-markdown. "default": true starts from
+// markdownlint's full built-in ruleset
+// (https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md), with
+// the overrides below; a caller-supplied config-file input takes precedence
+// over this file (see run-markdownlint.mjs).
+{
+  "default": true,
+
+  // The lab manual's prose convention is semantic line breaks (one sentence
+  // or phrase per source line), not a fixed character-width wrap -- a
+  // line-length rule would fight that convention on every genuinely fine
+  // paragraph.
+  "MD013": false,
+
+  // Raw HTML is disallowed in .qmd prose (lab manual), but this linter's
+  // default scope is plain .md files, where badges/table-of-contents HTML
+  // are common and legitimate (e.g. README badges, <details> blocks).
+  "MD033": false,
+
+  // Don't require a level-1 heading as the first line; many of this repo's
+  // .md files (CHANGELOG fragments, reference docs) intentionally start
+  // elsewhere.
+  "MD041": false,
+
+  // Only flag a duplicate heading among siblings under the same parent, not
+  // anywhere in the document -- a changelog's repeated "### Added"/"### Fixed"
+  // subheadings across different "## [x.y.z]" releases are expected, not a
+  // mistake.
+  "MD024": { "siblings_only": true },
+
+  // Table pipe-padding style consistency (added in markdownlint 0.41) is
+  // stricter than the mixed padded-content/compact-divider style already in
+  // wide use across this repo's tables and the broader GFM ecosystem.
+  "MD060": false
+}

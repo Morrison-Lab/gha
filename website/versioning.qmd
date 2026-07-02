@@ -43,8 +43,9 @@ First-party `d-morrison/gha/*` self-references and most
 [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) templates
 intentionally track the moving major tag (currently `@v1`, except
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
-`quarto-publish.yml`, `test-coverage.yml`, and `check-equation-renders.yml` at
-`@v2` - see the versioning note above), so they are **not** SHA-pinned.
+`quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
+`lint-yaml.yml`, and `lint-markdown.yml` at `@v2` - see the versioning note
+above), so they are **not** SHA-pinned.
 
 ## Reverse dependencies
 

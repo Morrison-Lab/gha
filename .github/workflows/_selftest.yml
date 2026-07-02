@@ -16,6 +16,29 @@ jobs:
       create-issue-on-main: false
   chars:
     uses: ./.github/workflows/check-non-standard-chars.yml
+  # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
+  # aren't at the released `@v2` tag their reusable workflows' internal
+  # `uses: d-morrison/gha/lint-*@v2` step resolves against yet. Exercise the
+  # local composites directly against this repo's own tracked YAML/Markdown,
+  # bypassing the wrapper the way check-phi/quarto-publish/test-coverage do.
+  lint-yaml:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Lint YAML
+        uses: ./lint-yaml
+  lint-markdown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Lint Markdown
+        uses: ./lint-markdown
   bib:
     permissions:
       contents: read

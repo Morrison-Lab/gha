@@ -45,6 +45,8 @@ capabilities pin `@v2` instead). Do not reference `@main` from consumers.
 | `check-non-standard-chars.yml` | Detect curly quotes / en–em dashes in `.qmd` and `.R` files | `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
+| `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
+| `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
@@ -246,9 +248,9 @@ release. `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
 no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all. Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
-`quarto-publish.yml` to `@v2`; `test-coverage.yml` and
-`check-equation-renders.yml` only ever shipped at `@v2` (too new to exist at
-the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+`quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
+`lint-yaml.yml`, and `lint-markdown.yml` only ever shipped at `@v2` (too new to
+exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
 `@v2` deploys to the `gh-pages` branch instead — required alongside the
 PR-preview family (`preview.yml` / `preview-deploy.yml`), since Pages can only
@@ -282,8 +284,9 @@ freezing. When adding a new third-party action, pin it the same way.
 First-party `d-morrison/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
-`quarto-publish.yml`, `test-coverage.yml`, and `check-equation-renders.yml` at
-`@v2` — see the Versioning section above), and so are **not** SHA-pinned.
+`quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
+`lint-yaml.yml`, and `lint-markdown.yml` at `@v2` — see the Versioning section
+above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 
