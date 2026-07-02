@@ -129,9 +129,11 @@ below with migration steps.
   push-triggered review red-X'd (gha#175) even when it posted a full review with
   a verdict. `fail-check` now scans **all** of the run's assistant text (not just
   the final block) and accepts a verdict line in any heading/label/bold form
-  (`### Verdict`, `**Verdict:**`, `Verdict:`). A genuine stub still states no
-  verdict and still fails, preserving the original intent of catching the
-  silent-stub failure mode
+  (`### Verdict`, `**Verdict:**`, `Verdict:`), and the comment posted back to the
+  PR uses the verdict-bearing block rather than the final one, so a trailing
+  wrap-up message ("I've posted my findings") isn't mistaken for the review body
+  (sparta#594). A genuine stub still states no verdict and still fails,
+  preserving the original intent of catching the silent-stub failure mode
   ([`Lacaedemon/sparta#590`](https://github.com/Lacaedemon/sparta/issues/590)).
 
 - **`claude-code-review`'s pass/fail check now catches stub reviews, not just

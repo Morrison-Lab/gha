@@ -588,9 +588,21 @@ jobs:
           #   2. Location: in agent mode the verdict may land in an earlier
           #      assistant message, so scan ALL assistant text, not just the last
           #      block.
-          # The text POSTED to the PR is still the final assistant message.
+          # The text POSTED to the PR is the verdict-bearing block (below).
+          #
+          # POSTING text: the review summary is the LAST assistant block that
+          # carries a verdict line — not necessarily the final block, since a
+          # short wrap-up ("I've posted my findings") can follow it in agent mode
+          # (gha#173, sparta#590/#594). Fall back to the final block when no block
+          # carries a verdict (the check below then fails the run regardless).
           review_text_file="$(mktemp)"
-          jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // ""' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
+          jq -rs '
+            flatten
+            | [ .[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text ] as $blocks
+            | ( [ $blocks[] | select(test("(?im)^[\\s>*_#-]*verdict\\b")) ] | last )
+              // ( $blocks | last )
+              // ""
+          ' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
           all_text_file="$(mktemp)"
           jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n")' "$EXECUTION_FILE" > "$all_text_file" 2>/dev/null || true
           if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
