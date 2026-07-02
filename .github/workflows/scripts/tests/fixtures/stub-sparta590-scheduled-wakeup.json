@@ -1,0 +1,23 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "I'll wait for the background agents to finish and the scheduled wakeup or task notifications to arrive."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 2,
+    "duration_ms": 4300,
+    "total_cost_usd": 0.03,
+    "permission_denials_count": 0
+  }
+]

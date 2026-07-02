@@ -111,6 +111,18 @@ maintainer email, etc.). Generate the fixture in a small script
 selftest job runs before invoking the composite, instead of committing R
 package source files (gha#148).
 
+`.github/workflows/scripts/check-review-execution.sh` holds
+`claude-code-review.yml`'s fail-check guard logic (stub/placeholder-review
+detection, quota-exhaustion skip) as a standalone script, so it can run
+offline against canned execution-output fixtures instead of requiring a live
+Claude API call. `.github/workflows/scripts/tests/run-fixture-tests.sh` feeds
+each fixture under `scripts/tests/fixtures/` through the script and asserts
+the expected pass/fail/skip outcome; CI runs it as the `review-fail-check`
+job in `_selftest.yml`. These fixtures ARE committed rather than generated at
+runtime — unlike the R-package/PHI-shaped fixtures the rule above warns
+about, they're plain JSON execution-output data with no content that would
+trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
+
 ## GitHub access in remote / web sessions
 
 Claude Code on the web (and other remote/CI sessions) runs in a sandbox where the
