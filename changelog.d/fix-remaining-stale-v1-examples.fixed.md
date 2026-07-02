@@ -1,9 +1,10 @@
 - **Example stubs and reference docs for 7 more capabilities pinned the frozen
   `@v1` tag while `main` had picked up real fixes since the freeze** (#182).
   `examples/check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
-  `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
-  `update-snapshots.yml`, plus their matching `website/reference/*.qmd` pages,
-  all pinned `@v1`. A consumer following those stubs would miss: the
+  `check-non-standard-chars.yml`, `claude.yml`, and `claude-code-review.yml`,
+  plus their matching `website/reference/*.qmd` pages, and
+  `examples/update-snapshots.yml` (which has no reference page), all pinned
+  `@v1`. A consumer following those stubs would miss: the
   `ANTHROPIC_API_KEY` secret (direct API / GitHub App auth, an alternative to
   `CLAUDE_CODE_OAUTH_TOKEN`) on `claude.yml` and `claude-code-review.yml`; a
   security fix on `claude-code-review.yml` for unauthorized commits from tag
