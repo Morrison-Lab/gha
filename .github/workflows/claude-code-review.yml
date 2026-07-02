@@ -158,6 +158,20 @@ jobs:
     # so the later run supersedes (cancels) the earlier one. That's the intended
     # dedupe: the survivor posts the current review and the collapse/cancel
     # steps fold the other as OUTDATED, leaving one visible review per push.
+    #
+    # Caveat for require-review (below): a CANCELED claude-review run makes
+    # require-review FAIL outright (cancelled != skipped, so its `if:` still
+    # runs the assert, which then sees a non-success result). A consumer PR
+    # that pushes a commit and ALSO posts an `@claude review` comment around
+    # the same time — or whose claude.yml agent run finishes and re-dispatches
+    # a review 1-3 minutes later, landing on top of the next push's
+    # auto-review — can show a red require-review that is just this race, not
+    # a real review failure. Check whether claude-review's conclusion is
+    # `cancelled` (not `failure`) before troubleshooting the PR's content; the
+    # survivor run's review is what to trust. To avoid triggering the race,
+    # don't post `@claude review` immediately after pushing — let the
+    # automatic review run alone, or wait for any in-flight dispatched review
+    # to finish first.
     concurrency:
       group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
