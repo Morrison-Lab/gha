@@ -480,7 +480,7 @@
     "href": "versioning.html",
     "title": "Versioning",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. Consumers reference @v1. The v1 tag moves forward as non-breaking fixes land, so a consumer pinned to @v1 picks them up automatically. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as the @v1 tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time — see changelog.d/README.md.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. Consumers reference @v1. The v1 tag moves forward as non-breaking fixes land, so a consumer pinned to @v1 picks them up automatically. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as the @v1 tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
     "crumbs": [
       "Overview",
       "Versioning"

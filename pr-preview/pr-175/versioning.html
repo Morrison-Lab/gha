@@ -506,7 +506,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>Releases are tagged <code>vX.Y.Z</code>, and the <code>vX</code> major tag moves to the latest compatible release, following the <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> convention. Consumers reference <code>@v1</code>. The <code>v1</code> tag moves forward as non-breaking fixes land, so a consumer pinned to <code>@v1</code> picks them up automatically. Breaking changes bump the major tag (<code>v2</code>, and so on) with migration steps.</p>
 <p>See <a href="https://github.com/d-morrison/gha/blob/main/CHANGELOG.md"><code>CHANGELOG.md</code></a> for what changes as the <code>@v1</code> tag moves.</p>
-<p>Changelog entries are added as fragment files under <a href="https://github.com/d-morrison/gha/tree/main/changelog.d"><code>changelog.d/</code></a> (one per PR, so parallel PRs never conflict on the shared changelog) and collated into <code>CHANGELOG.md</code> at release time — see <a href="https://github.com/d-morrison/gha/blob/main/changelog.d/README.md"><code>changelog.d/README.md</code></a>.</p>
+<p>Changelog entries are added as fragment files under <code>changelog.d/</code> (one per PR, so parallel PRs never conflict on the shared changelog) and collated into <code>CHANGELOG.md</code> at release time; see <code>changelog.d/README.md</code> for the fragment format and release flow.</p>
 <section id="pinning-third-party-actions" class="level2">
 <h2 class="anchored" data-anchor-id="pinning-third-party-actions">Pinning third-party actions</h2>
 <p>Every <strong>third-party</strong> action is pinned to a full commit SHA, with the human-readable version in a trailing comment:</p>
