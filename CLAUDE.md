@@ -188,3 +188,16 @@ global standing rule from the
 Ambiguity accepted at face value is how a factually wrong claim (e.g.
 documentation citing a nonexistent enum value) slips through review
 unchallenged.
+
+### 4. Fact-check prose against domain knowledge and external sources
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), assess the accuracy and clarity of its claims — check each
+against domain knowledge and, where checkable, an external source (the
+referenced tool's own docs, a linked spec) — and check any document-internal
+reasoning the prose makes (e.g. a justification for why a workflow does
+something a particular way). State which claims are inaccurate, cite the
+specific source checked for each judgment, and proactively suggest
+additional citations where they'd help. This is a global standing rule from
+the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/fact-check-prose.md`).
