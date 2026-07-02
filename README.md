@@ -48,7 +48,7 @@ Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer` |
-| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings on `pull_request` runs, consolidated summary on dispatched runs) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `apt-packages`, `pip-packages` |
+| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
@@ -119,6 +119,15 @@ via `workflow_dispatch`. Install both, and keep the review stub named
 `claude-code-review.yml` (or set `claude.yml`'s `review-workflow-file` input to
 match) so the dispatch resolves.
 
+You can also start a review **directly**, without waking the `@claude` agent, by
+commenting `/review` at the start of a PR comment. `claude-code-review.yml`
+listens for that comment itself and re-dispatches its own `workflow_dispatch`
+review of the PR — so `/review` needs only `claude-code-review.yml` installed
+(no `claude.yml`), and it works for `OWNER`/`MEMBER`/`COLLABORATOR` commenters
+once the workflow is on your default branch. It's a slash command rather than an
+`@claude review` mention on purpose: any `@claude` substring would also trigger
+`claude.yml`, so the slash command keeps the direct path independent.
+
 ## Claude session visibility
 
 GHA sessions (both `claude.yml` and `claude-code-review.yml`) run as headless
@@ -134,7 +143,7 @@ says so.
 
 | Feature | Action argument | Caller-configurable? |
 |---|---|---|
-| Live progress tracking comment on the PR | `track_progress` | No — hardcoded to `'true'` on `pull_request` events in `claude-code-review.yml` (`'false'` otherwise); not a `workflow_call` input, so callers cannot override it. Not used in `claude.yml` (agent mode manages its own progress comments). |
+| Live progress tracking comment on the PR | `track_progress` | Yes — driven by the `track-progress` input of `claude-code-review.yml` (default `false`; tag mode with tracking comment and inline-comment tool when `true`, agent/summary-only mode when `false`). Not used in `claude.yml`. See `track-progress` warning in the inputs table: tag mode exposes git write tools until anthropics/claude-code-action#1415 lands. |
 | Full Claude SDK output in the job log | `show_full_output` | Yes — driven by the `show-full-output` input of `claude-code-review.yml` (note the hyphen; off by default, turn on to diagnose silent auth / quota failures). Not surfaced in `claude.yml`. |
 | Resume a prior session | `session_id` (internal step output of `anthropics/claude-code-action`) + `--resume` in `claude_args` | No — neither reusable workflow declares `session_id` as a `workflow_call` output, so session resume is not available to consumers of `claude.yml` or `claude-code-review.yml`. |
 
