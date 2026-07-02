@@ -122,6 +122,56 @@ jobs:
     with:
       path: website
       deploy: false
+  # check-equation-renders is brand new, so (like check-phi/quarto-publish above)
+  # it isn't at the released tag the reusable workflow pins yet. Exercise the
+  # local composite against a fixture with one good page and one page with two
+  # kinds of deliberately broken equation -- a hard parse error (missing
+  # `\frac` argument, surfaces as a `[data-mjx-error]` node) and an undefined
+  # macro (surfaces as MathJax's literal-text fallback, the realistic failure
+  # mode for a repo like rme that leans on custom TeX macros) -- proving the
+  # composite catches both, not just running clean.
+  equation-renders:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Generate a fixture site with one good and one broken page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-equation-fixture
+          cat > _ci-equation-fixture/good.html <<'EOF'
+          <!doctype html>
+          <html><head><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head>
+          <body><p id="eq-good">\(a + b = c\)</p></body></html>
+          EOF
+          cat > _ci-equation-fixture/bad.html <<'EOF'
+          <!doctype html>
+          <html><head><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head>
+          <body>
+          <p id="eq-bad-brace">\(\frac{1}\)</p>
+          <p id="eq-bad-macro">\(\undefinedmacroxyz{1}\)</p>
+          </body></html>
+          EOF
+      - name: Check equation renders (expect failure)
+        id: check
+        continue-on-error: true
+        uses: ./check-equation-renders
+        with:
+          site-dir: _ci-equation-fixture
+      - name: Assert the broken equation was caught
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.check.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::check-equation-renders should have failed on the fixture's broken equation (outcome=$OUTCOME)"
+            exit 1
+          fi
+          echo "check-equation-renders correctly failed on the broken equation."
   # bump-submodule / sync-shared-fragments open PRs (write side effects), so the
   # selftest can't run them end-to-end. Exercise the shared open-sync-pr
   # composite's no-op path instead: on a clean tree it must report no change and

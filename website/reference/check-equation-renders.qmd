@@ -1,0 +1,62 @@
+---
+title: "check-equation-renders.yml"
+---
+
+Fourth leg of the PR-preview family, alongside `preview.yml` and `preview-deploy.yml`.
+Triggered on the build workflow's `workflow_run` completion, it downloads the same
+`pr-preview-site` artifact `preview-deploy.yml` uses, crawls the extracted site with a
+headless browser, and fails when any equation fails to render.
+
+Quarto's `html-math-method: mathjax` embeds raw TeX (`\(...\)`, `$$...$$`) unchanged in
+the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad
+equation therefore produces no warning in the Quarto/pandoc build log -- the static HTML
+is "valid" pandoc output even when the embedded TeX can't be typeset. This workflow is
+what actually runs MathJax (via a headless Chromium) and inspects the DOM for MathJax's
+own error markers (`mjx-merror`, `.mjx-error`).
+
+It runs independently of `preview-deploy.yml` -- both trigger on the same build
+completion, but this one downloads the artifact directly rather than depending on the
+deploy, so it needs no `gh-pages` write access and no live preview URL.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `fail` | boolean | `true` | Fail the workflow run when equation render errors are found. |
+
+## Permissions
+
+Grant `contents: read` (the default) and `actions: read` (download the build artifact).
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-equation-renders.yml in your repo.
+# Fourth leg of the PR-preview family, alongside preview.yml and
+# preview-deploy.yml: triggered when the build workflow finishes, downloads its
+# artifact, and crawls the extracted site with a headless browser to catch
+# equations that fail to render (MathJax only typesets client-side, so a bad
+# equation never shows up in the Quarto/pandoc build log).
+#
+# NOTE: the `workflows:` value below MUST match the `name:` of your build
+# workflow (examples/preview.yml). `workflow_run` triggers only fire when this
+# file lives on the default branch.
+name: Check Equation Renders
+
+on:
+  workflow_run:
+    workflows: ["Quarto Preview Build"]
+    types: [completed]
+
+jobs:
+  check:
+    permissions:
+      contents: read
+      actions: read  # needed to download the build artifact
+    uses: d-morrison/gha/.github/workflows/check-equation-renders.yml@v2
+    # with:
+    #   fail: false   # report equation render errors without failing the run
+```
+
+See [`examples/check-equation-renders.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-equation-renders.yml)
+for the full caller stub.

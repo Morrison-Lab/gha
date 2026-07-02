@@ -1,0 +1,34 @@
+name: Check equation renders
+description: >-
+  Crawl a built Quarto/HTML site with a headless browser, let MathJax finish
+  typesetting each page, and fail when any equation failed to render.
+  Quarto's `html-math-method: mathjax` embeds raw TeX unchanged in the static
+  HTML; only a real browser run of MathJax (not the Quarto/pandoc build log)
+  reveals a broken formula.
+inputs:
+  site-dir:
+    description: >-
+      Path (relative to the caller repo, or absolute) to the built site
+      directory to crawl (the directory containing the rendered `.html` files).
+    required: true
+  fail:
+    description: Fail the action when equation render errors are found.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install Playwright
+      shell: bash
+      run: |
+        set -euo pipefail
+        npm install --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
+        npx --prefix "$GITHUB_ACTION_PATH" playwright install --with-deps chromium
+
+    - name: Check equation renders
+      shell: bash
+      env:
+        SITE_DIR: ${{ inputs.site-dir }}
+        FAIL: ${{ inputs.fail }}
+      run: |
+        set -euo pipefail
+        node "$GITHUB_ACTION_PATH/check_equations.mjs" --site-dir "$SITE_DIR" --fail "$FAIL"

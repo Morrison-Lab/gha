@@ -52,6 +52,7 @@ Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
+| `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
@@ -98,6 +99,8 @@ that need to write must have the **caller** grant it on the calling job:
 - `preview` (build half, read-only) → only `contents: read` (the default).
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
+- `check-equation-renders` (downloads the build artifact, read-only) → grant
+  `contents: read`, `actions: read`.
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments` (open a PR) → grant `contents: write`,
@@ -160,8 +163,8 @@ exist but are **off by default** (too noisy in source); enable them via the
 ## PR previews (`preview` family)
 
 The PR-preview family publishes a rendered Quarto site for each open PR to a
-`pr-preview/pr-<n>/` directory on `gh-pages`. It is **three** cooperating
-workflows — install all three stubs from [`examples/`](examples):
+`pr-preview/pr-<n>/` directory on `gh-pages`. It is **four** cooperating
+workflows — install all four stubs from [`examples/`](examples):
 
 1. **`preview.yml`** (build) — triggered on `pull_request`. Renders the site and
    uploads it plus the PR metadata as a `pr-preview-site` artifact. Runs
@@ -171,7 +174,13 @@ workflows — install all three stubs from [`examples/`](examples):
    the build. Downloads the artifact and publishes it to `gh-pages` in the
    **base-repo** context (where the token can write), then comments the preview
    link on the PR.
-3. **`cleanup-pr-previews.yml`** (housekeeping) — scheduled. Removes preview
+3. **`check-equation-renders.yml`** — also triggered on `workflow_run`
+   completion of the build. Downloads the same artifact and crawls it with a
+   headless browser, failing when MathJax can't typeset an equation — a failure
+   mode invisible to the Quarto/pandoc build log, since MathJax only runs
+   client-side. Runs independently of the deploy (no `gh-pages` write needed),
+   not sequenced after it.
+4. **`cleanup-pr-previews.yml`** (housekeeping) — scheduled. Removes preview
    directories for PRs that have closed. Set `compact-history: true` to also
    orphan-squash `gh-pages` to a single commit each run, so the deleted
    snapshots don't accumulate and bloat the repo (branch-based Pages only).
@@ -182,9 +191,9 @@ in the deploy half against base-repo code. Don't collapse them into one job.
 
 Two wiring requirements:
 
-- The deploy stub's `on: workflow_run: workflows:` value **must match the
-  build stub's `name:`** (both default to `Quarto Preview Build` in the
-  examples). That string is how `workflow_run` finds the build.
+- The deploy stub's and the equation-check stub's `on: workflow_run: workflows:`
+  value **must match the build stub's `name:`** (all default to `Quarto Preview
+  Build` in the examples). That string is how `workflow_run` finds the build.
 - `workflow_run` and `schedule` triggers only fire for the copy of the file on
   the **default branch**, so previews and cleanup don't take effect until the
   stubs are merged to `main`.
@@ -222,8 +231,9 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. Consumers reference `@v1`, except `test-coverage.yml`, which ships at
-`@v2` (too new for the frozen `@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
+release. Consumers reference `@v1`, except `test-coverage.yml` and
+`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
+`@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
 ### Pinning third-party actions
