@@ -61,7 +61,21 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ github.token }}
 
+      - name: Read PR metadata
+        # On a `closed` PR event, preview/action.yml skips staging the site
+        # into the artifact (only meta/ is uploaded, no site/), so this check
+        # has nothing to crawl. Matches preview-deploy.yml's own read of this
+        # file, including its fail-loudly-on-missing guard (see
+        # d-morrison/rme#913: a bare `$(cat missing)` inside `echo` yields
+        # empty output and exit 0, silently no-opping instead of erroring).
+        id: meta
+        run: |
+          set -euo pipefail
+          action=$(cat _preview_download/meta/action.txt) || { echo "::error::Missing action.txt in preview artifact"; exit 1; }
+          echo "action=$action" >> "$GITHUB_OUTPUT"
+
       - name: Check equation renders
+        if: steps.meta.outputs.action == 'deploy'
         uses: d-morrison/gha/check-equation-renders@v2
         with:
           site-dir: _preview_download/site/
