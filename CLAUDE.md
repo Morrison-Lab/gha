@@ -119,6 +119,17 @@ where `gh` is on `PATH`, use `gh` as the skill describes.)
 
 This repo is `d-morrison/gha`, so MCP calls use `owner: d-morrison`, `repo: gha`.
 
+**Some of these sessions have no local git checkout at all** (not just a missing
+`gh` CLI) — there is no working tree to run `git commit`/`git push` against, so
+every change (branch, file edit, PR) must go through the MCP write tools below.
+Editing a file means: `mcp__github__get_file_contents` first to get its current
+blob `sha` (required on every update, not just the first — re-fetch it after
+each write since it changes on every commit), then
+`mcp__github__create_or_update_file` with the **full** new file content (it
+replaces the whole file, there is no patch/diff mode) and that `sha`. A stale
+`sha` (from before another commit landed) fails the write — re-fetch and retry
+rather than guessing.
+
 | Operation / `gh`/`glab` command | GitHub MCP equivalent |
 | --- | --- |
 | `gh pr list` | `mcp__github__list_pull_requests` |
@@ -136,6 +147,8 @@ This repo is `d-morrison/gha`, so MCP calls use `owner: d-morrison`, `repo: gha`
 | resolve a review thread | `mcp__github__pull_request_review_write` (`method: resolve_thread`, `threadId: <id from get_review_comments>`) |
 | `gh issue list` / `gh issue view <n>` | `mcp__github__list_issues` / `mcp__github__issue_read` |
 | read a file / repo contents | `mcp__github__get_file_contents` |
+| create/edit a file (no local checkout) | `mcp__github__create_or_update_file` — needs the target branch, full new file content, and the file's current blob `sha` (from `get_file_contents`) if it already exists |
+| create a branch (no local checkout) | `mcp__github__create_branch` |
 | CI runs & job logs | `mcp__github__actions_list`, `mcp__github__actions_get`, `mcp__github__get_job_logs` |
 | watch / stop watching PR activity | `mcp__github__subscribe_pr_activity` / `mcp__github__unsubscribe_pr_activity` |
 | `glab mr ...` (GitLab) | N/A — this repo is on GitHub; use the tools above |
