@@ -240,9 +240,17 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. Consumers reference `@v1`, except `test-coverage.yml` and
-`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
-`@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
+release. `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
+`quarto-publish` change cut `@v2`, so it has picked up no fixes since —
+including non-breaking ones, like `cleanup-pr-previews`'s `compact-history`
+input, which does not exist at `@v1` at all. New consumers should reference
+`@v2` for every workflow; `test-coverage.yml` and `check-equation-renders.yml`
+only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
+`quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` deploys
+via the GitHub Actions Pages artifact, while `@v2` deploys to the `gh-pages`
+branch instead — required alongside the PR-preview family (`preview.yml` /
+`preview-deploy.yml`), since Pages can only have one Source. See
+[`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
 Changelog entries are added as fragment files under

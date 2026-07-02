@@ -25,9 +25,16 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
-Pin every reference to `@v1`, except `test-coverage.yml` and
-`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
-`@v1` tag).
+`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
+change cut `@v2`, so it has picked up no fixes since — including non-breaking
+ones, like `cleanup-pr-previews`'s `compact-history` input, which does not
+exist at `@v1` at all. **Pin every reference to `@v2`**; `test-coverage.yml`
+and `check-equation-renders.yml` only ever shipped at `@v2` (too new to exist
+at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+behavioral fork: `@v1` stays frozen on the older GitHub Actions Pages-artifact
+deploy, while `@v2` deploys to the `gh-pages` branch instead — required if the
+same repo also uses the PR-preview family, since Pages can only have one
+Source.
 The stubs in [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
 already carry the right tag and `permissions:` blocks; copy them as-is.
 
