@@ -40,10 +40,13 @@ jobs:
         with:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
-          # the detector unit-test fixtures, which carry synthetic PHI-shaped
-          # strings by design and are skipped via paths-ignore below.
+          # test fixtures that carry synthetic PHI-shaped strings by design (the
+          # detector unit tests, and the coverage fixture generator's synthetic
+          # maintainer email), which are skipped via paths-ignore below.
           detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'
-          paths-ignore: 'check-phi/tests/**'
+          paths-ignore: |
+            check-phi/tests/**
+            test-coverage/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
@@ -119,6 +122,60 @@ jobs:
     with:
       path: website
       deploy: false
+  # check-equation-renders is brand new, so (like check-phi/quarto-publish above)
+  # it isn't at the released tag the reusable workflow pins yet. Exercise the
+  # local composite against a fixture with one good page and one page with two
+  # kinds of deliberately broken equation -- a hard parse error (missing
+  # `\frac` argument, surfaces as a `[data-mjx-error]` node) and an undefined
+  # macro (surfaces as MathJax's literal-text fallback, the realistic failure
+  # mode for a repo like rme that leans on custom TeX macros) -- proving the
+  # composite catches both, not just running clean.
+  equation-renders:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # Loads MathJax from cdn.jsdelivr.net rather than vendoring it: this runs
+      # on a GitHub-hosted runner, which has outbound internet by default,
+      # unlike the sandboxed environment used to validate the detection logic
+      # during development (which vendored a local copy of the bundle instead).
+      - name: Generate a fixture site with one good and one broken page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-equation-fixture
+          cat > _ci-equation-fixture/good.html <<'EOF'
+          <!doctype html>
+          <html><head><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head>
+          <body><p id="eq-good">\(a + b = c\)</p></body></html>
+          EOF
+          cat > _ci-equation-fixture/bad.html <<'EOF'
+          <!doctype html>
+          <html><head><script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script></head>
+          <body>
+          <p id="eq-bad-brace">\(\frac{1}\)</p>
+          <p id="eq-bad-macro">\(\undefinedmacroxyz{1}\)</p>
+          </body></html>
+          EOF
+      - name: Check equation renders (expect failure)
+        id: check
+        continue-on-error: true
+        uses: ./check-equation-renders
+        with:
+          site-dir: _ci-equation-fixture
+      - name: Assert the broken equation was caught
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.check.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::check-equation-renders should have failed on the fixture's broken equation (outcome=$OUTCOME)"
+            exit 1
+          fi
+          echo "check-equation-renders correctly failed on the broken equation."
   # bump-submodule / sync-shared-fragments open PRs (write side effects), so the
   # selftest can't run them end-to-end. Exercise the shared open-sync-pr
   # composite's no-op path instead: on a clean tree it must report no change and
@@ -150,3 +207,67 @@ jobs:
             exit 1
           fi
           echo "open-sync-pr correctly no-opped on a clean tree."
+  # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
+  # at the released tag the reusable workflow pins yet. Exercise the local
+  # composite against a minimal R-package fixture, with no Codecov token and
+  # fail-ci-if-error off, so the upload step is a harmless no-op and the job
+  # proves the covr -> Cobertura path works. The fixture is generated at run time
+  # (not committed) so its DESCRIPTION/R sources aren't discovered by the other
+  # jobs' repo-wide R dependency scanning (which can't resolve `covfixture`).
+  coverage:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Generate the R package fixture
+        shell: bash
+        run: bash test-coverage/tests/make-fixture.sh _ci-rpkg
+      - name: Measure coverage on the fixture package
+        uses: ./test-coverage
+        with:
+          path: _ci-rpkg
+          fail-ci-if-error: 'false'
+      - name: Assert the Cobertura report was produced
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s cobertura.xml ]; then
+            echo "::error::test-coverage did not produce cobertura.xml"
+            exit 1
+          fi
+          echo "cobertura.xml produced ($(wc -l < cobertura.xml) lines):"
+          head -n 20 cobertura.xml
+  # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
+  # (from src/github/operations/restore-config.ts) so its auto-commit step
+  # never reverts a PR's own edits to those files (#39). That mirror can't
+  # detect upstream drift on its own, so diff the pinned SHA's actual copy of
+  # SENSITIVE_PATHS against the local list here on every PR (gha#152).
+  sensitive-paths:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Diff claude.yml's SENSITIVE_PATHS mirror against the pinned claude-code-action SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha=$(grep -oP 'anthropics/claude-code-action@\K[0-9a-f]{40}' .github/workflows/claude.yml | head -n1)
+          url="https://raw.githubusercontent.com/anthropics/claude-code-action/${sha}/src/github/operations/restore-config.ts"
+          # Assumes upstream keeps SENSITIVE_PATHS as a single block that ends
+          # with a bare `];` on its own line (the sed range terminator below).
+          # A reformat there (e.g. `] as const;`, a trailing comment on the
+          # closing line) would make the range run past the intended block.
+          # That can only produce a false *failure* here, never a false pass,
+          # so a red run from this cause is debuggable by fetching $url by hand.
+          upstream=$(curl -fsSL "$url" | sed -n '/const SENSITIVE_PATHS/,/];/p' | grep -oP '"\K[^"]+(?=")' | sort)
+          local=$(grep -oP 'for cfg in \K.*(?=; do)' .github/workflows/claude.yml | tr ' ' '\n' | sort)
+          if [ "$upstream" != "$local" ]; then
+            echo "::error::claude.yml's SENSITIVE_PATHS mirror is out of sync with claude-code-action@${sha}."
+            diff <(echo "$upstream") <(echo "$local") || true
+            exit 1
+          fi
+          echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."

@@ -21,6 +21,7 @@ updates:
       - "/check-phi"
       - "/preview"
       - "/quarto-publish"
+      - "/test-coverage"
     schedule:
       interval: "weekly"
     # Batch all action bumps into one PR per run to keep review noise low.
@@ -28,6 +29,17 @@ updates:
       github-actions:
         patterns:
           - "*"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+
+  # check-equation-renders pins its Playwright version in package.json rather
+  # than a SHA (it's an npm dependency, not a `uses:` action), so it needs its
+  # own npm ecosystem entry to stay current.
+  - package-ecosystem: "npm"
+    directory: "/check-equation-renders"
+    schedule:
+      interval: "weekly"
     commit-message:
       prefix: "ci"
       include: "scope"

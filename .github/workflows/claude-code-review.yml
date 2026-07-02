@@ -56,6 +56,23 @@ on:
           failing check alone.
         type: boolean
         default: false
+      apt-packages:
+        description: >-
+          Space-separated system packages to `apt-get install` before the
+          review runs (e.g. `maxima` for a computer-algebra system so the
+          reviewer's Bash tool can symbolically check a derivation it's
+          reviewing). Mirrors claude.yml's `apt-packages` input. Empty by
+          default — most repos don't need any.
+        type: string
+        default: ''
+      pip-packages:
+        description: >-
+          Space-separated pip packages to install (`pip3 install
+          --break-system-packages`) before the review runs (e.g. `sympy` for
+          symbolic math). Mirrors claude.yml's `pip-packages` input. Empty by
+          default.
+        type: string
+        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -144,6 +161,20 @@ jobs:
     # so the later run supersedes (cancels) the earlier one. That's the intended
     # dedupe: the survivor posts the current review and the collapse/cancel
     # steps fold the other as OUTDATED, leaving one visible review per push.
+    #
+    # Caveat for require-review (below): a CANCELED claude-review run makes
+    # require-review FAIL outright (cancelled != skipped, so its `if:` still
+    # runs the assert, which then sees a non-success result). A consumer PR
+    # that pushes a commit and ALSO posts an `@claude review` comment around
+    # the same time — or whose claude.yml agent run finishes and re-dispatches
+    # a review 1-3 minutes later, landing on top of the next push's
+    # auto-review — can show a red require-review that is just this race, not
+    # a real review failure. Check whether claude-review's conclusion is
+    # `cancelled` (not `failure`) before troubleshooting the PR's content; the
+    # survivor run's review is what to trust. To avoid triggering the race,
+    # don't post `@claude review` immediately after pushing — let the
+    # automatic review run alone, or wait for any in-flight dispatched review
+    # to finish first.
     concurrency:
       group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
@@ -228,6 +259,17 @@ jobs:
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
+      # Optional system/pip packages the reviewer's Bash tool can use — e.g. a
+      # computer-algebra system (`apt-packages: maxima`, `pip-packages: sympy`)
+      # so a math-heavy repo's reviewer can symbolically check a derivation
+      # instead of eyeballing it. Empty by default; most repos need neither.
+      - name: Install packages
+        if: steps.selfmod.outputs.self_mod != 'true'
+        uses: d-morrison/gha/.github/actions/install-packages@v2
+        with:
+          apt-packages: ${{ inputs.apt-packages }}
+          pip-packages: ${{ inputs.pip-packages }}
+
       # Clear the requested reviewers (human and AI, e.g. Copilot) before
       # Claude runs so they aren't notified mid-run, then re-add them when
       # Claude finishes so the re-add fires a fresh notification — letting a
@@ -268,7 +310,7 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         if: steps.selfmod.outputs.self_mod != 'true'
-        uses: anthropics/claude-code-action@a92e7c70a4da9793dc164451d829089dc057a464 # v1.0.159
+        uses: anthropics/claude-code-action@6c0083bb7289c31716797a039b6367b3079cc46e # v1.0.162
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -295,11 +337,24 @@ jobs:
           # comment. Disallow the git-write tools (disallowed beats the action's
           # generated allow-list) and tell the agent up front not to attempt
           # edits, so it folds any would-be fix into its review instead.
+          #
+          # `Bash(python3:*)` lets the reviewer actually run a Python script
+          # under review (e.g. execute a CI guard script against sample
+          # input) instead of only tracing its logic by eye (gha#154). This
+          # job doesn't get GIT-write capability from it, but on a same-repo
+          # (non-fork) PR the job does hold CLAUDE_CODE_OAUTH_TOKEN /
+          # ANTHROPIC_API_KEY as secrets, so unrestricted `python3 -c`/`-m`
+          # would let a reviewed diff — or the agent itself — run arbitrary
+          # code (e.g. dump env vars into the visible review comment, open a
+          # network connection). Denying `-c`/`-m` below restricts the grant
+          # to running an existing file under the checkout (`python3
+          # path/to/script.py ...`), the actual use case, while blocking
+          # inline/module code execution.
           claude_args: >-
             --allowedTools
-            "mcp__github_inline_comment__create_inline_comment"
+            "mcp__github_inline_comment__create_inline_comment,Bash(python3:*)"
             --disallowedTools
-            "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*)"
+            "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -c:*),Bash(python3 -m:*)"
             --append-system-prompt
             "This is a review-only run. Report every issue you find as part
             of your review. Do NOT modify, stage, commit, or push files, and
@@ -308,8 +363,22 @@ jobs:
             user to grant git/commit permissions; there is nothing for you to
             commit. If you would have fixed something, describe the fix in
             your review instead."
+          # The job `if:` already lets dispatched runs review drafts (the
+          # automatic pull_request path skips them via draft == false). But the
+          # code-review skill has its OWN don't-review-drafts stop condition, so
+          # on a draft PR the agent still refuses ("currently a draft … I will
+          # not proceed") — defeating an explicit `@claude review` that
+          # claude.yml routes here as a workflow_dispatch. A workflow_dispatch
+          # only ever happens on an explicit request (an `@claude review`
+          # comment, claude.yml's post-push re-dispatch, the issue-trigger draft
+          # PR, or a manual dispatch), so for that event the prompt below
+          # overrides the skill's draft check and tells the agent to review
+          # anyway. Tag-mode (pull_request) runs never reach a draft, so the
+          # override is gated to workflow_dispatch to keep it accurate there.
           prompt: |
             /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr-number }}
+
+            ${{ github.event_name == 'workflow_dispatch' && '**This review was explicitly requested** (via an `@claude review` comment, or a manual / automated workflow dispatch), so review this PR even when it is marked as a **draft**. Draft status must NOT stop you: ignore any stop condition, step, or instruction — including any in the code-review skill itself — that tells you to skip, defer, or refuse the review because the PR is a draft. The explicit request overrides the don''t-review-drafts default; carry out the full review and post your findings as usual.' || '' }}
 
             ${{ needs.gather-context.outputs.prior-context }}
 
@@ -329,6 +398,16 @@ jobs:
             list in the summary. Reserve the top-level summary comment for a
             brief overall verdict plus any finding not tied to a specific line;
             don't restate each inline comment there.
+
+            **Every review must end with an explicit overall conclusion**
+            under a `### Verdict` heading: a single clear status line such as
+            **Ready for merge** or **Needs more work** (or another clearly
+            labeled alternative, e.g. **Blocked on human review** for an
+            escalated impasse). State this status explicitly even when there
+            are no new findings — "no new findings" or "looks good" can
+            explain the verdict, but it doesn't substitute for it; the
+            explicit status line must still be present and unambiguous at a
+            glance.
 
             **Don't flag cosmetic source-only formatting that renders
             identically.** For prose (not code blocks) in Markdown/text files, the rendered output
@@ -357,7 +436,9 @@ jobs:
             explicitly: state the prior verdict, link to that comment by its
             GitHub URL, and explain that it still stands. This lets readers
             know the confirming review ran and why it produced no new findings,
-            rather than leaving the PR thread silent.
+            rather than leaving the PR thread silent. Still close with the
+            explicit `### Verdict` status line required above — restating that
+            the prior verdict stands is not itself the status line.
             ${{ inputs.prompt-addendum }}
           # Always run in agent mode (track_progress: false).
           #

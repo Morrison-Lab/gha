@@ -46,12 +46,14 @@ Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |
+| `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer` |
-| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings on `pull_request` runs, consolidated summary on dispatched runs) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots` |
+| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings on `pull_request` runs, consolidated summary on dispatched runs) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `apt-packages`, `pip-packages` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
-| `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open | `preview-dir` |
+| `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
+| `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
@@ -65,8 +67,10 @@ that need to write must have the **caller** grant it on the calling job:
   `pull-requests: read`, `contents: read`.
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
-- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi` → only
-  `contents: read` (the default), so no `permissions:` block is needed.
+- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
+  `test-coverage` → only `contents: read` (the default), so no `permissions:`
+  block is needed. `test-coverage` additionally takes an optional
+  `CODECOV_TOKEN` secret, passed through the caller's `secrets:` block.
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
   grant `contents: write`, and set Settings → Pages → Source = "Deploy from a
   branch", branch `gh-pages` / `(root)` once. Grant `contents: write` even with
@@ -95,6 +99,8 @@ that need to write must have the **caller** grant it on the calling job:
 - `preview` (build half, read-only) → only `contents: read` (the default).
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
+- `check-equation-renders` (downloads the build artifact, read-only) → grant
+  `contents: read`, `actions: read`.
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments` (open a PR) → grant `contents: write`,
@@ -112,6 +118,25 @@ Claude pushes) routes through `claude.yml`, which dispatches `claude-code-review
 via `workflow_dispatch`. Install both, and keep the review stub named
 `claude-code-review.yml` (or set `claude.yml`'s `review-workflow-file` input to
 match) so the dispatch resolves.
+
+## Claude session visibility
+
+GHA sessions (both `claude.yml` and `claude-code-review.yml`) run as headless
+CI jobs and **cannot be remote-controlled or observed** from the
+[claude.ai](https://claude.ai) web interface. The CLI's "Join session" feature
+requires a live interactive terminal; `anthropics/claude-code-action` has no
+parameter to enable it, and GitHub Actions runners don't expose that hook.
+
+The table below lists what is available instead. Its "Action argument" column
+gives the argument passed to `anthropics/claude-code-action`; these are **not**
+caller-facing `workflow_call` inputs unless the "Caller-configurable?" column
+says so.
+
+| Feature | Action argument | Caller-configurable? |
+|---|---|---|
+| Live progress tracking comment on the PR | `track_progress` | No — hardcoded to `'true'` on `pull_request` events in `claude-code-review.yml` (`'false'` otherwise); not a `workflow_call` input, so callers cannot override it. Not used in `claude.yml` (agent mode manages its own progress comments). |
+| Full Claude SDK output in the job log | `show_full_output` | Yes — driven by the `show-full-output` input of `claude-code-review.yml` (note the hyphen; off by default, turn on to diagnose silent auth / quota failures). Not surfaced in `claude.yml`. |
+| Resume a prior session | `session_id` (internal step output of `anthropics/claude-code-action`) + `--resume` in `claude_args` | No — neither reusable workflow declares `session_id` as a `workflow_call` output, so session resume is not available to consumers of `claude.yml` or `claude-code-review.yml`. |
 
 ## PHI scanning (`check-phi`)
 
@@ -138,8 +163,8 @@ exist but are **off by default** (too noisy in source); enable them via the
 ## PR previews (`preview` family)
 
 The PR-preview family publishes a rendered Quarto site for each open PR to a
-`pr-preview/pr-<n>/` directory on `gh-pages`. It is **three** cooperating
-workflows — install all three stubs from [`examples/`](examples):
+`pr-preview/pr-<n>/` directory on `gh-pages`. It is **four** cooperating
+workflows — install all four stubs from [`examples/`](examples):
 
 1. **`preview.yml`** (build) — triggered on `pull_request`. Renders the site and
    uploads it plus the PR metadata as a `pr-preview-site` artifact. Runs
@@ -149,8 +174,16 @@ workflows — install all three stubs from [`examples/`](examples):
    the build. Downloads the artifact and publishes it to `gh-pages` in the
    **base-repo** context (where the token can write), then comments the preview
    link on the PR.
-3. **`cleanup-pr-previews.yml`** (housekeeping) — scheduled. Removes preview
-   directories for PRs that have closed.
+3. **`check-equation-renders.yml`** — also triggered on `workflow_run`
+   completion of the build. Downloads the same artifact and crawls it with a
+   headless browser, failing when MathJax can't typeset an equation — a failure
+   mode invisible to the Quarto/pandoc build log, since MathJax only runs
+   client-side. Runs independently of the deploy (no `gh-pages` write needed),
+   not sequenced after it.
+4. **`cleanup-pr-previews.yml`** (housekeeping) — scheduled. Removes preview
+   directories for PRs that have closed. Set `compact-history: true` to also
+   orphan-squash `gh-pages` to a single commit each run, so the deleted
+   snapshots don't accumulate and bloat the repo (branch-based Pages only).
 
 The build/deploy split is a **trust boundary**: untrusted fork code only ever
 runs in the read-only build half, while the privileged `gh-pages` push happens
@@ -158,9 +191,9 @@ in the deploy half against base-repo code. Don't collapse them into one job.
 
 Two wiring requirements:
 
-- The deploy stub's `on: workflow_run: workflows:` value **must match the
-  build stub's `name:`** (both default to `Quarto Preview Build` in the
-  examples). That string is how `workflow_run` finds the build.
+- The deploy stub's and the equation-check stub's `on: workflow_run: workflows:`
+  value **must match the build stub's `name:`** (all default to `Quarto Preview
+  Build` in the examples). That string is how `workflow_run` finds the build.
 - `workflow_run` and `schedule` triggers only fire for the copy of the file on
   the **default branch**, so previews and cleanup don't take effect until the
   stubs are merged to `main`.
@@ -198,8 +231,10 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. Consumers reference `@v1`. See [`CHANGELOG.md`](CHANGELOG.md) for what
-changes as the `@v1` tag moves and for any breaking-change migration steps.
+release. Consumers reference `@v1`, except `test-coverage.yml` and
+`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
+`@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
+what changes as a major tag moves and for any breaking-change migration steps.
 
 ### Pinning third-party actions
 

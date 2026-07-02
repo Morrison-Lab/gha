@@ -11,7 +11,78 @@ below with migration steps.
 
 ## [Unreleased]
 
+### Added
+
+- **`test-coverage` — R-package test coverage with Codecov upload** (#147). A new
+  composite (`test-coverage/action.yml`) and reusable workflow
+  (`.github/workflows/test-coverage.yml`) that set up R and dependencies, run
+  `covr::package_coverage()`, and upload the Cobertura report with
+  `codecov/codecov-action`. Adapts the canonical `r-lib/actions`
+  `test-coverage.yaml` example into the repo's composite-plus-wrapper shape.
+  Inputs: `path` (package root, defaults to repo root), `install-quarto`,
+  `extra-packages`, and `fail-ci-if-error` (`'auto'` by default, applying the
+  r-lib heuristic -- fail on non-PR events, and on PRs only when a token is set,
+  since tokenless PR uploads are flaky -- or force `'true'`/`'false'`); the
+  optional `CODECOV_TOKEN` secret is passed through the caller's `secrets:`
+  block. See `examples/test-coverage.yml` for the caller stub.
+
+- **`check-equation-renders` — catch equations MathJax can't render in PR previews**
+  (#159). A new fourth leg of the PR-preview family: a composite
+  (`check-equation-renders/action.yml`) that crawls a built Quarto/HTML site with a
+  headless Chromium (Playwright), lets MathJax finish typesetting each page, and
+  fails on either of the two ways MathJax signals a broken formula: a hard parse
+  error (a `[data-mjx-error]` node), or an undefined macro, which MathJax renders
+  as literal, unresolved `\command` text rather than a hard error (no error node
+  to find, so the check looks for the raw command name surviving into the
+  rendered output instead). Wired into
+  the family as a reusable workflow (`.github/workflows/check-equation-renders.yml`)
+  triggered the same way as `preview-deploy.yml` (`workflow_run` on the build
+  workflow's completion), downloading the `pr-preview-site` artifact directly rather
+  than depending on the deploy. Motivated by a broken equation
+  (`d-morrison/rme#954`) that shipped silently: Quarto's `html-math-method: mathjax`
+  embeds raw TeX unchanged in the static HTML, and MathJax only parses it
+  client-side, so a bad equation produces no warning in the Quarto/pandoc build log.
+  Ships at `@v2` (too new for the frozen `@v1` tag), like `test-coverage`. See
+  `examples/check-equation-renders.yml` for the caller stub.
+- **`claude-code-review` accepts `apt-packages`/`pip-packages` inputs** (#161),
+  mirroring the inputs `claude.yml` already had. Lets a math-heavy consumer
+  repo install a computer algebra system (e.g. `apt-packages: maxima`,
+  `pip-packages: sympy`) so the reviewer's `Bash` tool can symbolically check
+  a derivation instead of eyeballing the algebra. Both default to `''`
+  (no-op), so this is backward compatible for every existing caller. The
+  install steps for both workflows are now factored into a shared
+  `.github/actions/install-packages` composite rather than duplicated.
+
+- **Added `.gitattributes`** (#163). Normalizes line endings (`text=auto
+  eol=lf`, explicit for `*.sh`) and union-merges `CHANGELOG.md` so two
+  sibling PRs appending entries under `## [Unreleased]` merge cleanly
+  instead of conflicting on adjacent insertions (mirrors `d-morrison/ai-config`).
+
 ### Changed
+
+- **`claude-code-review` grants the reviewer `Bash(python3 <file>)`.** The
+  review agent could previously only trace a Python script's logic by eye,
+  since its `--allowedTools` covered just the inline-comment tool plus the
+  action's base allowlist (Read/Glob/Grep and narrow git-read Bash) — no way
+  to actually execute the script under review (rme#970). Scoped to running an
+  existing file under the checkout (`-c`/`-m` denied, so inline/module code
+  execution stays blocked) — same-repo PRs give this job
+  `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY` as secrets, so unrestricted
+  `python3:*` would have been a real capability widening beyond the existing
+  git-read-only sandbox, not just a git-push question. It can now verify a
+  script's behavior instead of guessing from source alone (#154).
+
+- **`claude-code-review` now honors an explicit review request on a draft PR.**
+  A dispatched review (an `@claude review` comment routed here by `claude.yml`,
+  `claude.yml`'s post-push re-dispatch, the issue-trigger draft PR, or a manual
+  dispatch) already bypassed the workflow's draft-skip `if:` gate, but the
+  code-review skill's *own* don't-review-drafts stop condition still made the
+  agent refuse ("currently a draft … I will not proceed"), so an explicit
+  `@claude review` on a draft produced a refusal instead of a review. The
+  dispatched-run prompt now overrides that stop condition so an
+  explicitly-requested review runs even on a draft. Automatic `pull_request`
+  reviews still skip drafts (their `if:` gate never reaches the agent on a
+  draft), so this only widens the dispatched path.
 
 - **`claude-code-review` no longer flags cosmetic source-only formatting that
   renders identically** (#261). The review prompt now tells the reviewer to skip

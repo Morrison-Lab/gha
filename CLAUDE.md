@@ -31,12 +31,19 @@ composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1
   `workflow_call` reusable workflow (inline shell logic, no external composite);
   `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
   reusable workflows that call the shared internal `open-sync-pr` composite;
-  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this repo.
+  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this
+  repo; `require-changelog.yml` is likewise `pull_request`-triggered and runs
+  only in this repo, dogfooding `check-news.yml` on `CHANGELOG.md`.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
-  `REVDEPS.md` — lists registered downstream consumer repos.
+  `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
+  changes user-facing behavior needs a `CHANGELOG.md` entry under
+  `## [Unreleased]`; `require-changelog.yml` enforces this (dogfoods the
+  repo's own `check-news.yml`) and is skippable per-PR with the `no
+  changelog` label for changes with nothing to log (docs typos, CI-only
+  tweaks with no consumer-visible effect).
 
 When editing a consumer-facing capability, change the composite (`<name>/action.yml`,
 plus its helper script if one exists) and keep the wrapping reusable workflow and its
@@ -44,6 +51,41 @@ plus its helper script if one exists) and keep the wrapping reusable workflow an
 have no wrapper or example stub to update. New `.github/workflows/` changes are
 exercised by `_selftest.yml`; because brand-new actions aren't at the `@v1` tag
 yet, the selftest runs them via the local `./<name>` ref until release.
+
+**A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
+was frozen before it existed — see `slide-major-tag.yml` / the Versioning
+section of `README.md`) needs its major tag updated at two distinct kinds of
+site, not just the obvious one:
+
+1. **Capability-specific refs** — the new capability's own caller stub
+   (`examples/<name>.yml`) and reference-page example
+   (`website/reference/<name>.qmd`).
+2. **Blanket-rule prose** — any general "pin every reference to `@v1`"
+   statement elsewhere (`README.md`'s Versioning section,
+   `website/workflows.qmd`) needs an exception clause, even though it never
+   names the new capability.
+
+Grep the repo for `@v1` rather than relying on memory of where it appears.
+Missing either kind surfaces as a workflow-not-found error for consumers who
+copy that spot literally (gha#148, caught across two review rounds).
+
+**Adding a new `workflow_call` input to an existing reusable workflow** needs
+its own doc sync at three sites beyond the workflow file itself, or the input
+is invisible to a consumer skimming the docs:
+
+1. **`README.md`**'s per-workflow table row's "Key inputs" cell.
+2. **`website/workflows.qmd`**'s equivalent table row — a separate table, not
+   generated from `README.md`, so it drifts independently.
+3. **`website/reference/<name>.qmd`**'s Inputs table, plus a commented usage
+   line in its `## Example` block.
+
+Grep the repo for the workflow's filename (e.g. `claude-code-review.yml`)
+across `README.md`, `website/workflows.qmd`, and `website/reference/` rather
+than assuming only one needs the update. Caught across four review rounds on
+gha#161 — the fix for round 2's finding (missing composite) surfaced round
+3's finding (docs out of sync), whose fix left one more untouched table row
+that round 3 flagged as out-of-scope, fixed anyway before round 4 confirmed
+clean.
 
 ### Tests
 
@@ -53,6 +95,16 @@ CI runs it as the `phi-tests` job in `_selftest.yml`. There's no broader unit-te
 harness — most capabilities are validated end-to-end by `_selftest.yml`, running
 against this repo itself or small throwaway fixtures (stable capabilities via
 `@v1`, pre-release ones from local source).
+
+**Generate selftest fixtures at runtime; don't commit them.** A fixture
+committed under a composite's `tests/` dir (e.g. a minimal R package for
+`test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the
+`bib` job's dependency resolution tries to treat it as a real package, and the
+`phi` job's PHI scanner flags any synthetic identifier in it (a fake
+maintainer email, etc.). Generate the fixture in a small script
+(`test-coverage/tests/make-fixture.sh` is the pattern) that the `coverage`
+selftest job runs before invoking the composite, instead of committing R
+package source files (gha#148).
 
 ## GitHub access in remote / web sessions
 
@@ -108,6 +160,29 @@ Only fall back to "can't access it" — or to whatever session tooling can add a
 repo to scope, if any — after the raw fetch also fails (private repo, or the
 network policy blocks the host).
 
+## A canceled review can red-X require-review — don't chase it as a code bug
+
+`claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
+(`claude-review-<PR>`, `cancel-in-progress: true`) across BOTH the automatic
+`pull_request`-triggered review and claude.yml's comment-triggered (`@claude
+review`) re-dispatch. When a push and an `@claude review` comment land close
+together — or claude.yml's agent run finishes and re-dispatches a review a
+minute or two later, landing on top of the next push's auto-review — the two
+reviews race and one cancels the other.
+
+The `require-review` gate job asserts `claude-review`'s result is `success`;
+a *canceled* run (not skipped) makes that assertion fail, so `require-review`
+shows red right after a push even though the surviving review is fine. Before
+treating a post-push `require-review` failure as a real problem: check
+whether `claude-review`'s conclusion is `cancelled` rather than `failure`. If
+so, it's this race, not a code issue — wait for (or re-trigger) an
+uncontested review instead of debugging the diff. To avoid causing it: don't
+post `@claude review` immediately after pushing a commit on a PR using this
+workflow; let the automatic review run alone, or wait for any in-flight
+dispatched review to finish first. (See the `claude-review` job's
+`concurrency:` comment in `.github/workflows/claude-code-review.yml` for the
+full mechanism.)
+
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
@@ -150,3 +225,27 @@ Above all, code should be **highly modular and idiomatic**:
 
 Be specific and cite the relevant manual section or principle when raising a
 point. Distinguish blocking issues from optional suggestions.
+
+### 3. Challenge ambiguous phrasing and terminology
+
+Flag ambiguous terms and phrasing rather than accepting a plausible-sounding
+reading — a name that could mean more than one thing, a claim that cites a
+value or construct without confirming it exists in the actual code. This is a
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus.
+Ambiguity accepted at face value is how a factually wrong claim (e.g.
+documentation citing a nonexistent enum value) slips through review
+unchallenged.
+
+### 4. Fact-check prose against domain knowledge and external sources
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), assess the accuracy and clarity of its claims — check each
+against domain knowledge and, where checkable, an external source (the
+referenced tool's own docs, a linked spec) — and check any document-internal
+reasoning the prose makes (e.g. a justification for why a workflow does
+something a particular way). State which claims are inaccurate, cite the
+specific source checked for each judgment, and proactively suggest
+additional citations where they'd help. This is a global standing rule from
+the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/fact-check-prose.md`).

@@ -1,0 +1,88 @@
+name: Test coverage
+description: >-
+  Measure R-package test coverage with covr and upload the Cobertura report to
+  Codecov. Adapts the r-lib/actions test-coverage example into a reusable
+  composite: set up R and dependencies, run covr::package_coverage(), and upload
+  the result with codecov/codecov-action.
+inputs:
+  path:
+    description: >-
+      Path to the R package root (the directory holding DESCRIPTION). Defaults
+      to the repository root.
+    default: '.'
+  install-quarto:
+    description: Install Quarto when setting up R dependencies.
+    default: 'false'
+  extra-packages:
+    description: >-
+      Extra R packages to install for the coverage run, passed to
+      r-lib/actions/setup-r-dependencies. covr and xml2 are always installed.
+    default: ''
+  token:
+    description: >-
+      Codecov upload token (the CODECOV_TOKEN secret). Optional for public
+      repos, but recommended -- tokenless uploads are rate-limited and
+      unreliable from pull requests.
+    default: ''
+  fail-ci-if-error:
+    description: Fail the job when the Codecov upload errors.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up R
+      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        use-public-rspm: true
+
+    - name: Set up R dependencies
+      uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        working-directory: ${{ inputs.path }}
+        install-quarto: ${{ inputs.install-quarto }}
+        # covr/xml2 power the coverage run; `needs: coverage` adds the package's
+        # Config/Needs/coverage dependencies from DESCRIPTION.
+        extra-packages: |
+          any::covr
+          any::xml2
+          ${{ inputs.extra-packages }}
+        needs: coverage
+
+    - name: Measure coverage
+      shell: Rscript {0}
+      env:
+        COVERAGE_PATH: ${{ inputs.path }}
+      run: |
+        # Keep the built+tested package tree around so the testthat output is
+        # available for the "Show testthat output" step on failure.
+        coverage <- covr::package_coverage(
+          path = Sys.getenv("COVERAGE_PATH"),
+          quiet = FALSE,
+          clean = FALSE,
+          install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
+        )
+        # Written to the working directory as cobertura.xml regardless of `path`.
+        covr::to_cobertura(coverage)
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+      with:
+        token: ${{ inputs.token }}
+        fail_ci_if_error: ${{ inputs.fail-ci-if-error }}
+        files: ./cobertura.xml
+        plugins: noop
+        disable_search: true
+
+    - name: Show testthat output
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        find "${RUNNER_TEMP}/package" -name 'testthat.Rout*' -exec cat '{}' \; || true
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: coverage-test-failures
+        path: ${{ runner.temp }}/package

@@ -1,0 +1,17 @@
+# Dogfoods this repo's own check-news.yml reusable workflow on itself,
+# pointed at CHANGELOG.md instead of the NEWS.md default. Opt out of a
+# specific PR with the "no changelog" label (hardcoded by
+# UCD-SERG/changelog-check-action; see check-news.yml).
+name: Require Changelog Entry
+
+on:
+  pull_request:
+    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]
+    branches:
+      - main
+
+jobs:
+  check:
+    uses: d-morrison/gha/.github/workflows/check-news.yml@v2
+    with:
+      changelog: CHANGELOG.md
