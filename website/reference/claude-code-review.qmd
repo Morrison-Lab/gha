@@ -15,6 +15,7 @@ keep the stub named `claude-code-review.yml` (or set `claude.yml`'s `review-work
 | `prompt-addendum` | string | `''` | Repo-specific review guidance appended to the plugin prompt. |
 | `checkout-submodules` | boolean | `false` | Check out submodules so the reviewer can read their contents. Private submodules require the `SUBMODULES_TOKEN` secret. |
 | `allowed-bots` | string | `'github-actions[bot]'` | Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human. |
+| `track-progress` | boolean | `false` | Enable tag mode: live tracking comment + inline-comment tool on `pull_request` events. Default `false` (agent/summary-only mode) is safe. **Only set `true` after [anthropics/claude-code-action#1415](https://github.com/anthropics/claude-code-action/issues/1415) ships a `read_only` input** — until then, tag mode exposes git write tools and the reviewer may push commits to the branch. |
 | `show-full-output` | boolean | `false` | Show the full JSON output from Claude Code. Turn it on to diagnose a review that fails inside the model call. |
 | `apt-packages` | string | `''` | Space-separated system packages to `apt-get install` before the review runs (e.g. `maxima` for a computer algebra system). Empty to skip. |
 | `pip-packages` | string | `''` | Space-separated pip packages to install with `pip3 --break-system-packages` before the review runs (e.g. `sympy`). Empty to skip. |
@@ -73,6 +74,7 @@ jobs:
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
+    #   track-progress: true        # tag mode: live tracking comment + inline comments (unsafe until anthropics/claude-code-action#1415 ships)
     #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS
     #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos
     #   prompt-addendum: |
