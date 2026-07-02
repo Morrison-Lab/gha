@@ -53,6 +53,11 @@ below with migration steps.
   install steps for both workflows are now factored into a shared
   `.github/actions/install-packages` composite rather than duplicated.
 
+- **Added `.gitattributes`** (#163). Normalizes line endings (`text=auto
+  eol=lf`, explicit for `*.sh`) and union-merges `CHANGELOG.md` so two
+  sibling PRs appending entries under `## [Unreleased]` merge cleanly
+  instead of conflicting on adjacent insertions (mirrors `d-morrison/ai-config`).
+
 ### Changed
 
 - **`claude-code-review` grants the reviewer `Bash(python3 <file>)`.** The
