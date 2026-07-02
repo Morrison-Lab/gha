@@ -569,6 +569,29 @@ jobs:
             jq '{subtype, is_error, num_turns, duration_ms, total_cost_usd, permission_denials_count}' <<< "$result" || true
             exit 1
           fi
+          # Guard against a run that reports is_error:false but never
+          # actually produced a review — e.g. it exits after posting only an
+          # orchestration placeholder ("waiting for background agents...",
+          # "Still waiting on the remaining three review agents...") instead
+          # of finished findings. subtype/is_error can't catch this because
+          # the SDK call itself succeeded; only the content reveals the
+          # review never finished (Lacaedemon/sparta#590). Enumerating every
+          # phrasing of "I'm still waiting" is a losing game (gha#172 review),
+          # so check instead for the one thing every *finished* review is
+          # required to contain: the "### Verdict" heading mandated by this
+          # prompt above. A stub is narration, never a finished review, so it
+          # can't have produced that heading.
+          review_text_file="$(mktemp)"
+          jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // ""' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
+          if [[ -z "$(tr -d '[:space:]' < "$review_text_file")" ]]; then
+            echo "::error::Claude review produced no review text — treating as a failed review."
+            exit 1
+          fi
+          if ! grep -qiE '^###[[:space:]]*verdict\b' "$review_text_file"; then
+            echo "::error::Claude review has no '### Verdict' heading — looks like an incomplete/stub review, not a finished one (Lacaedemon/sparta#590)."
+            exit 1
+          fi
+          echo "review_text_file=$review_text_file" >> "$GITHUB_OUTPUT"
           echo "Claude review completed cleanly (subtype=$subtype)."
 
       # When the API rejected the request before Claude could review (quota
@@ -600,13 +623,12 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
+          REVIEW_TEXT_FILE: ${{ steps.fail-check.outputs.review_text_file }}
         run: |
-          if [[ -z "$EXECUTION_FILE" || ! -f "$EXECUTION_FILE" ]]; then
-            EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
-          fi
-          # Extract the last assistant text block — Claude's final review output.
-          REVIEW=$(jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // ""' "$EXECUTION_FILE" 2>/dev/null || true)
+          # fail-check already extracted and validated the review text (and
+          # would have failed the job if it were empty), so reuse its file
+          # instead of re-parsing $EXECUTION_FILE here too.
+          REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
             echo "No review text found in execution output; skipping comment."
             exit 0
