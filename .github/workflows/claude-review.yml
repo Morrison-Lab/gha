@@ -40,7 +40,7 @@ jobs:
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/review') &&
+      (github.event.comment.body == '/review' || startsWith(github.event.comment.body, '/review ')) &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     permissions:
@@ -61,7 +61,9 @@ jobs:
           # regardless of what the file is named in a consumer repo.
           WF_FILE=$(printf '%s' "$WORKFLOW_REF" | sed -E 's#.*/([^/@]+)@.*#\1#')
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER (/review comment)."
-          gh workflow run "$WF_FILE" -f pr_number="$PR_NUMBER"
+          # --repo is required: this job doesn't check out the repo, so gh has no
+          # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).
+          gh workflow run "$WF_FILE" --repo "$REPO" -f pr_number="$PR_NUMBER"
           gh issue comment "$PR_NUMBER" --repo "$REPO" \
             --body ":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
             || echo "::warning::Could not acknowledge the /review comment."
