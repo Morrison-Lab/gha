@@ -278,9 +278,11 @@ with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.git
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*@v1` self-references and the [`examples/`](examples/)
-templates intentionally track the `@v1` major tag (so consumers ride the moving
-major), and so are **not** SHA-pinned.
+First-party `d-morrison/gha/*` self-references and most [`examples/`](examples/)
+templates intentionally track the moving major tag (currently `@v1`, except
+`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`quarto-publish.yml`, `test-coverage.yml`, and `check-equation-renders.yml` at
+`@v2` — see the Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 
