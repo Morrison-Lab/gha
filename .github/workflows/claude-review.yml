@@ -100,3 +100,10 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       pr-number: ${{ inputs.pr_number }}
+      # gha is a GitHub Actions repo, not R-package/Quarto, so it should opt out
+      # of the R/tidyverse SERG lab manual in reviews (its CLAUDE.md still carries
+      # that guidance for the agent, so nothing is lost). Enable this ONLY after
+      # the `lab-manual` input lands on the `@v2` tag (this PR's post-merge tag
+      # slide) — passing an input that `@v2` doesn't yet define fails
+      # workflow-call validation with "Unexpected input 'lab-manual'":
+      #   lab-manual: false
