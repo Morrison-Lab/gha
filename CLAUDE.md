@@ -173,6 +173,18 @@ Only fall back to "can't access it" — or to whatever session tooling can add a
 repo to scope, if any — after the raw fetch also fails (private repo, or the
 network policy blocks the host).
 
+**A 403 from a *rendered* docs site is not the same as the content being
+inaccessible.** A GitHub Pages / Quarto-rendered site (e.g.
+`ucd-serg.github.io/lab-manual/coding-style.html`) can reject `WebFetch`
+(anti-scraping) even though the *source* file it was built from is a plain
+file in a public repo. Don't conclude the content is unreachable — find the
+source path (often the same repo, e.g. `coding-style.qmd` for
+`coding-style.html`, sometimes with `_`-prefixed included fragments) and
+raw-fetch that instead: `https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>.qmd`.
+(Used to confirm ettbc's `.lintr.R` predated `UCD-SERG/lab-manual`'s move to
+a shared `lms` linter package: the manual's own docs page 403'd, but its
+`.qmd` source and the referenced `.lintr.R` file both fetched cleanly.)
+
 ## A canceled review can red-X require-review — don't chase it as a code bug
 
 `claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
