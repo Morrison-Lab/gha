@@ -530,6 +530,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'pr-preview'</code></td>
 <td>Directory on <code>gh-pages</code> that holds the per-PR preview subdirectories.</td>
 </tr>
+<tr class="even">
+<td><code>compact-history</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Orphan-squash the <code>gh-pages</code> branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses).</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -555,9 +561,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/cleanup-pr-previews.yml@v1</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/cleanup-pr-previews.yml@v2</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preview-dir: pr-preview   # gh-pages dir holding the per-PR previews</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   compact-history: true       # orphan-squash gh-pages to one commit after</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # pruning, so deleted snapshots stop bloating</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # the repo. Branch-based Pages only.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/d-morrison/gha/blob/main/examples/cleanup-pr-previews.yml"><code>examples/cleanup-pr-previews.yml</code></a> for the full caller stub.</p>
 
 

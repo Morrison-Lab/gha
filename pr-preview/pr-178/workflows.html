@@ -441,7 +441,8 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#quality-checks" id="toc-quality-checks" class="nav-link active" data-scroll-target="#quality-checks">Quality checks</a></li>
+  <li><a href="#versioning" id="toc-versioning" class="nav-link active" data-scroll-target="#versioning">Versioning</a></li>
+  <li><a href="#quality-checks" id="toc-quality-checks" class="nav-link" data-scroll-target="#quality-checks">Quality checks</a></li>
   <li><a href="#phi-scanning" id="toc-phi-scanning" class="nav-link" data-scroll-target="#phi-scanning">PHI scanning</a></li>
   <li><a href="#quarto-sites" id="toc-quarto-sites" class="nav-link" data-scroll-target="#quarto-sites">Quarto sites</a></li>
   <li><a href="#claude-bots" id="toc-claude-bots" class="nav-link" data-scroll-target="#claude-bots">Claude bots</a></li>
@@ -540,7 +541,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
 <td>Housekeeping: delete preview directories for closed PRs</td>
-<td><code>preview-dir</code></td>
+<td><code>preview-dir</code>, <code>compact-history</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
@@ -564,7 +565,10 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 </tbody>
 </table>
-<p>Pin every reference to <code>@v1</code>, except <code>test-coverage.yml</code> and <code>check-equation-renders.yml</code>, which ship at <code>@v2</code> (too new for the frozen <code>@v1</code> tag). The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> already carry the right tag and <code>permissions:</code> blocks; copy them as-is.</p>
+<section id="versioning" class="level2">
+<h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>‘s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code> and <code>check-equation-renders.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. The remaining capabilities’ stubs still pin <code>@v1</code>, which stays valid for them until they are audited and bumped (tracked in <a href="https://github.com/d-morrison/gha/issues/182">gha#182</a>). The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+</section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
 <p>These run on pull requests (and often on <code>main</code>) to keep a repo’s content clean.</p>

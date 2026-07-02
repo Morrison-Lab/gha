@@ -523,7 +523,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v1</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Pin to <code>@v1</code>, a moving major tag updated as fixes land. Do not reference <code>@main</code> from consumers.</p>
+<p>Pin each workflow to the major tag its own reference page documents (<code>@v1</code> for <code>check-bibliography-dois.yml</code>; see <a href="./versioning.html">Versioning</a> for which capabilities pin <code>@v2</code> instead). Do not reference <code>@main</code> from consumers.</p>
 </section>
 <section id="actions-vs.-workflows" class="level2">
 <h2 class="anchored" data-anchor-id="actions-vs.-workflows">Actions vs.&nbsp;workflows</h2>
@@ -635,7 +635,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <ul>
 <li><a href="./workflows.html">Workflows</a> catalogs every reusable workflow and what it does.</li>
 <li><a href="./permissions.html">Permissions</a> lists the <code>GITHUB_TOKEN</code> permissions and secrets each one needs.</li>
-<li><a href="./versioning.html">Versioning</a> explains the moving <code>@v1</code> tag and how third-party actions are pinned.</li>
+<li><a href="./versioning.html">Versioning</a> explains the major-tag scheme (<code>@v1</code> vs <code>@v2</code>) and how third-party actions are pinned.</li>
 </ul>
 <p>This very site is built and shipped by the workflows it documents: <a href="./workflows.html#quarto-sites"><code>quarto-publish</code></a> deploys it to GitHub Pages, and the <a href="./workflows.html#quarto-sites"><code>preview</code></a> family renders a preview for each pull request.</p>
 
