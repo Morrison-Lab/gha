@@ -26,7 +26,7 @@ jobs:
   build:
     permissions:
       contents: read
-    uses: d-morrison/gha/.github/workflows/preview.yml@v1
+    uses: d-morrison/gha/.github/workflows/preview.yml@v2
     # with:
     #   path: website                      # Quarto project lives in a subdir (default: repo root)
     #   r-version: '4.6.0'

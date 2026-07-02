@@ -6,7 +6,12 @@ Guidance for Claude Code when working in this repository.
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
 and Quarto repositories (see [`README.md`](README.md)). Each capability ships as a
-composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1`.
+composite action plus a `workflow_call` reusable workflow. Consumers pin the
+major tag each capability's own reference page documents (`@v1` for most,
+`@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
+`test-coverage`, and `check-equation-renders` — see the Versioning section of
+`README.md`). `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no
+fixes since, which is why the six capabilities above moved to `@v2`.
 
 ### Layout
 
@@ -105,6 +110,18 @@ maintainer email, etc.). Generate the fixture in a small script
 (`test-coverage/tests/make-fixture.sh` is the pattern) that the `coverage`
 selftest job runs before invoking the composite, instead of committing R
 package source files (gha#148).
+
+`.github/workflows/scripts/check-review-execution.sh` holds
+`claude-code-review.yml`'s fail-check guard logic (stub/placeholder-review
+detection, quota-exhaustion skip) as a standalone script, so it can run
+offline against canned execution-output fixtures instead of requiring a live
+Claude API call. `.github/workflows/scripts/tests/run-fixture-tests.sh` feeds
+each fixture under `scripts/tests/fixtures/` through the script and asserts
+the expected pass/fail/skip outcome; CI runs it as the `review-fail-check`
+job in `_selftest.yml`. These fixtures ARE committed rather than generated at
+runtime — unlike the R-package/PHI-shaped fixtures the rule above warns
+about, they're plain JSON execution-output data with no content that would
+trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
 
 ## GitHub access in remote / web sessions
 

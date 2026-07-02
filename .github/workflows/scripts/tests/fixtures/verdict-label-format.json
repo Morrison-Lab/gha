@@ -1,0 +1,23 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Code review\n\nNo blocking issues found.\n\n**Verdict:** Ready for merge."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 3,
+    "duration_ms": 30210,
+    "total_cost_usd": 0.31,
+    "permission_denials_count": 0
+  }
+]
