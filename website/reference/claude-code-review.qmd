@@ -16,6 +16,8 @@ keep the stub named `claude-code-review.yml` (or set `claude.yml`'s `review-work
 | `checkout-submodules` | boolean | `false` | Check out submodules so the reviewer can read their contents. Private submodules require the `SUBMODULES_TOKEN` secret. |
 | `allowed-bots` | string | `'github-actions[bot]'` | Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human. |
 | `show-full-output` | boolean | `false` | Show the full JSON output from Claude Code. Turn it on to diagnose a review that fails inside the model call. |
+| `apt-packages` | string | `''` | Space-separated system packages to `apt-get install` before the review runs (e.g. `maxima` for a computer algebra system). Empty to skip. |
+| `pip-packages` | string | `''` | Space-separated pip packages to install with `pip3 --break-system-packages` before the review runs (e.g. `sympy`). Empty to skip. |
 
 ## Secrets
 
@@ -71,6 +73,8 @@ jobs:
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
+    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS
+    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).
 ```
