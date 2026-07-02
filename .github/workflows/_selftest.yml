@@ -74,6 +74,22 @@ jobs:
           # Pin pytest for reproducible runs (bump deliberately, not implicitly).
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-phi/tests/ -q
+  # claude-code-review.yml's fail-check step (its stub/placeholder-review
+  # guard, #172) had no automated coverage — it was only verified by manual
+  # trace against known stub texts, since a live Claude API call isn't
+  # something a selftest job can exercise. The guard logic itself is pure,
+  # offline shell (scripts/check-review-execution.sh), so run it directly
+  # against canned execution-output fixtures instead (#174).
+  review-fail-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run fail-check fixture tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-fixture-tests.sh
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest

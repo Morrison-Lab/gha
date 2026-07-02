@@ -100,3 +100,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       pr-number: ${{ inputs.pr_number }}
+      # gha is a GitHub Actions repo, not R-package/Quarto, so opt out of the
+      # R/tidyverse SERG lab manual in reviews. (gha's own CLAUDE.md still carries
+      # that guidance for the reviewing agent, so nothing is lost.)
+      lab-manual: false

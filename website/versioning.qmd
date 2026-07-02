@@ -4,27 +4,26 @@ title: "Versioning"
 
 Releases are tagged `vX.Y.Z`, and the `vX` major tag moves to the latest compatible release,
 following the [`r-lib/actions`](https://github.com/r-lib/actions) convention.
-`@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since —
-not even non-breaking ones. `test-coverage.yml` and `check-equation-renders.yml`
-only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
-`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
-`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
-`update-snapshots.yml` also pin `@v2`: each picked up a real fix since the
-freeze (a dependency-pin bump, a new input, or a security fix) that a
-consumer still on `@v1` would miss (audited in
-[gha#182](https://github.com/d-morrison/gha/issues/182)). `check-news.yml`,
-`summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
-audited in the same pass and found unchanged since the freeze, so `@v1`
-remains current for them; see [Workflows](workflows.qmd) for the full
-breakdown. Breaking changes bump the major tag (`v2`, and so on) with
-migration steps.
+`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
+change cut `@v2`, so it has picked up no fixes since - not even non-breaking
+ones. Pin `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`quarto-publish.yml`, `check-bibliography-dois.yml`, `check-phi.yml`,
+`check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
+`claude-code-review.yml`, and `update-snapshots.yml` to `@v2`;
+`test-coverage.yml` and `check-equation-renders.yml` only ever shipped at
+`@v2` (too new to exist at the frozen `@v1` tag). See
+[Workflows](workflows.qmd#versioning) for the full breakdown, including which
+capabilities still pin `@v1` and why. Breaking changes bump the major tag
+(`v2`, and so on) with migration steps.
 
 See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
 for what changes as a major tag moves.
 
-Changelog entries are added as fragment files under `changelog.d/`
+Changelog entries are added as fragment files under
+[`changelog.d/`](https://github.com/d-morrison/gha/tree/main/changelog.d)
 (one per PR, so parallel PRs never conflict on the shared changelog) and
-collated into `CHANGELOG.md` at release time; see `changelog.d/README.md`
+collated into `CHANGELOG.md` at release time; see
+[`changelog.d/README.md`](https://github.com/d-morrison/gha/blob/main/changelog.d/README.md)
 for the fragment format and release flow.
 
 ## Pinning third-party actions
@@ -45,10 +44,15 @@ That matters here because jobs like the preview deploy run with
 bumps these pins as upstreams publish releases, so they stay current instead of freezing.
 When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*` self-references and the
+First-party `d-morrison/gha/*` self-references and most
 [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) templates
-intentionally track a moving major tag (`@v1` or `@v2`, per capability — see
-above), so they are **not** SHA-pinned.
+intentionally track the moving major tag (currently `@v1`, except
+`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
+`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
+`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
+`update-snapshots.yml` at `@v2` - see the versioning note above), so they are
+**not** SHA-pinned.
 
 ## Reverse dependencies
 

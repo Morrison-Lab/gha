@@ -1,0 +1,23 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "   \n\n  \t\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 1,
+    "duration_ms": 900,
+    "total_cost_usd": 0.01,
+    "permission_denials_count": 0
+  }
+]

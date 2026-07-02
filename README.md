@@ -51,7 +51,7 @@ not reference `@main` from consumers.
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer` |
-| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages` |
+| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
@@ -244,14 +244,22 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no
-fixes since. `test-coverage.yml` and `check-equation-renders.yml` only ever
-shipped at `@v2` (too new to exist at the frozen `@v1` tag).
-`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
-`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
-`update-snapshots.yml` also pin `@v2`: each picked up a real fix since the
-freeze (a dependency-pin bump, a new input, or a security fix) that a
-consumer still on `@v1` would miss (audited in
+release. `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
+`quarto-publish` change cut `@v2`, so any capability pinned there has picked up
+no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
+`compact-history` input, which does not exist at `@v1` at all. Pin
+`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
+`quarto-publish.yml` to `@v2`; `test-coverage.yml` and
+`check-equation-renders.yml` only ever shipped at `@v2` (too new to exist at
+the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
+`@v2` deploys to the `gh-pages` branch instead — required alongside the
+PR-preview family (`preview.yml` / `preview-deploy.yml`), since Pages can only
+have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
+`check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
+`claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
+picked up a real fix since the freeze (a dependency-pin bump, a new input, or
+a security fix) that a consumer still on `@v1` would miss (audited in
 [gha#182](https://github.com/d-morrison/gha/issues/182)). `summary.yml`,
 `check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
@@ -279,10 +287,14 @@ with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.git
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*` self-references and the [`examples/`](examples/)
-templates intentionally track a moving major tag (`@v1` or `@v2`, per
-capability — see [Versioning](#versioning) above) so consumers ride the moving
-major, and so are **not** SHA-pinned.
+First-party `d-morrison/gha/*` self-references and most [`examples/`](examples/)
+templates intentionally track the moving major tag (currently `@v1`, except
+`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
+`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
+`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
+`update-snapshots.yml` at `@v2` — see the Versioning section above), and so
+are **not** SHA-pinned.
 
 ## Reverse dependencies
 

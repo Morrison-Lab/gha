@@ -83,6 +83,16 @@ on:
           default.
         type: string
         default: ''
+      lab-manual:
+        description: >-
+          Hold the PR to the SERG lab manual (coding style, coding practices,
+          repository conventions) during the review, in addition to correctness.
+          On by default for the R-package / Quarto repos this workflow targets;
+          set false for repos where that R/tidyverse/Quarto-focused manual
+          doesn't apply (e.g. a pure GitHub Actions, shell, or docs repo), so the
+          reviewer isn't handed guidance irrelevant to the diff.
+        type: boolean
+        default: true
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -317,6 +327,54 @@ jobs:
               | gh api -X DELETE "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input - || true
           fi
 
+      # Compose the SERG lab-manual review guidance, gated on the `lab-manual`
+      # input. Empty when a caller opts out (e.g. a non-R/Quarto repo), so the
+      # reviewer isn't handed R/tidyverse-specific instructions irrelevant to its
+      # diff. Interpolated into the prompt below as
+      # `steps.labmanual.outputs.guidance`. Kept as a here-doc (not an inline
+      # `${{ ... && '...' || '' }}` ternary) because the guidance is multi-line.
+      - name: Compose lab-manual review guidance
+        id: labmanual
+        if: steps.selfmod.outputs.self_mod != 'true'
+        env:
+          LAB_MANUAL: ${{ inputs.lab-manual }}
+        run: |
+          if [ "$LAB_MANUAL" != "true" ]; then
+            printf 'guidance=\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          DELIM="labman_$(openssl rand -hex 8)"
+          {
+          printf '%s\n' "guidance<<$DELIM"
+          cat <<'GUIDANCE'
+          **Hold this PR to the SERG lab manual.** This repository is part
+          of the `d-morrison` / `UCD-SERG` / `ucdavis` family of R-package
+          and Quarto repositories, so evaluate the diff against the
+          [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
+          the lab's authority on coding, reproducibility, and collaboration
+          conventions — in addition to correctness. Especially:
+
+          - [Coding style](https://ucd-serg.github.io/lab-manual/coding-style.html) —
+            object naming, line breaks/formatting, function documentation,
+            comments, message/communication style, and Quarto code-reference
+            conventions (backticked `pkg::fn()`, markdown package links, no
+            raw HTML in `.qmd`).
+          - [Coding practices](https://ucd-serg.github.io/lab-manual/coding-practices.html) —
+            function decomposition and
+            [length limits](https://ucd-serg.github.io/lab-manual/coding-practices.html#function-length-limits),
+            testing requirements, the QA checklist, documentation, `{here}`
+            for paths, and tidyverse idioms.
+          - [Code repositories](https://ucd-serg.github.io/lab-manual/code-repositories.html) —
+            repository organization and version-control practices.
+
+          The manual defers to the [tidyverse style guide](https://style.tidyverse.org/)
+          for R; prefer tidyverse idioms and the native `|>` pipe. Cite the
+          relevant manual section when raising a point, and distinguish
+          blocking issues from optional suggestions.
+          GUIDANCE
+          printf '%s\n' "$DELIM"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code Review
         id: claude-review
         if: steps.selfmod.outputs.self_mod != 'true'
@@ -392,30 +450,7 @@ jobs:
 
             ${{ needs.gather-context.outputs.prior-context }}
 
-            **Hold this PR to the SERG lab manual.** This repository is part
-            of the `d-morrison` / `UCD-SERG` / `ucdavis` family of R-package
-            and Quarto repositories, so evaluate the diff against the
-            [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
-            the lab's authority on coding, reproducibility, and collaboration
-            conventions — in addition to correctness. Especially:
-
-            - [Coding style](https://ucd-serg.github.io/lab-manual/coding-style.html) —
-              object naming, line breaks/formatting, function documentation,
-              comments, message/communication style, and Quarto code-reference
-              conventions (backticked `pkg::fn()`, markdown package links, no
-              raw HTML in `.qmd`).
-            - [Coding practices](https://ucd-serg.github.io/lab-manual/coding-practices.html) —
-              function decomposition and
-              [length limits](https://ucd-serg.github.io/lab-manual/coding-practices.html#function-length-limits),
-              testing requirements, the QA checklist, documentation, `{here}`
-              for paths, and tidyverse idioms.
-            - [Code repositories](https://ucd-serg.github.io/lab-manual/code-repositories.html) —
-              repository organization and version-control practices.
-
-            The manual defers to the [tidyverse style guide](https://style.tidyverse.org/)
-            for R; prefer tidyverse idioms and the native `|>` pipe. Cite the
-            relevant manual section when raising a point, and distinguish
-            blocking issues from optional suggestions.
+            ${{ steps.labmanual.outputs.guidance }}
 
             **Watch for AI hallucinations.** This diff may be partly
             machine-authored, so scrutinize it for confident-but-fabricated
@@ -530,6 +565,10 @@ jobs:
       # wrong — the PR hasn't been reviewed, but it also hasn't been found to
       # have problems. Skip gracefully instead and post a comment so the author
       # knows to re-trigger once the quota resets.
+      # The guard logic itself lives in scripts/check-review-execution.sh so
+      # it can be exercised offline against canned fixtures (see
+      # scripts/tests/), without a live Claude API call — see the
+      # `review-fail-check` job in _selftest.yml (#174).
       - name: Fail the check if the review did not complete
         id: fail-check
         if: steps.claude-review.outcome == 'success'
@@ -542,83 +581,7 @@ jobs:
             EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
             echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
           fi
-          if [[ ! -f "$EXECUTION_FILE" ]]; then
-            echo "::error::Claude review produced no execution output — treating as a failed review."
-            exit 1
-          fi
-          # Handles NDJSON stream or a single JSON array; grabs the last result object.
-          result="$(jq -s 'flatten | map(select(.type=="result")) | last // empty' "$EXECUTION_FILE")"
-          if [[ -z "$result" || "$result" == "null" ]]; then
-            echo "::error::No result object in execution output — review did not finish."
-            exit 1
-          fi
-          is_error="$(jq -r '.is_error // false' <<< "$result")"
-          subtype="$(jq -r '.subtype // ""' <<< "$result")"
-          if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
-            # total_cost_usd==0 with num_turns==1 means the API rejected the
-            # request before any real processing — quota exhaustion, auth
-            # failure, or an immediate network error. Skip gracefully.
-            total_cost="$(jq -r '.total_cost_usd // 1' <<< "$result")"
-            num_turns="$(jq -r '.num_turns // 0' <<< "$result")"
-            if [[ "$total_cost" == "0" && "$num_turns" == "1" ]]; then
-              echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
-              echo "::warning::Claude review skipped — CLAUDE_CODE_OAUTH_TOKEN quota or auth error (zero cost, turn 1). Re-trigger the review once the quota resets."
-              exit 0
-            fi
-            echo "::error::Claude review ended in an error state (is_error=$is_error, subtype=$subtype)."
-            jq '{subtype, is_error, num_turns, duration_ms, total_cost_usd, permission_denials_count}' <<< "$result" || true
-            exit 1
-          fi
-          # Guard against a run that reports is_error:false but never actually
-          # produced a review — e.g. it exits after posting only an orchestration
-          # placeholder ("waiting for background agents...", "needs your
-          # approval") instead of finished findings. subtype/is_error can't catch
-          # this because the SDK call itself succeeded; only the content reveals
-          # the review never finished (gha#173, Lacaedemon/sparta#590).
-          #
-          # A *finished* review states a verdict; a stub is pure narration and
-          # never does. So require a verdict line — but match it leniently on two
-          # axes, because requiring the exact "### Verdict" heading in only the
-          # final block false-failed *complete* reviews (gha#172 was too strict —
-          # every push-triggered review red-X'd, gha#175):
-          #   1. Form: the code-review plugin writes the verdict as a "Verdict:"
-          #      label, not the "### Verdict" heading the prompt requests, so
-          #      accept any heading/label/bold form (`### Verdict`, `**Verdict:**`,
-          #      `Verdict:`).
-          #   2. Location: in agent mode the verdict may land in an earlier
-          #      assistant message, so scan ALL assistant text, not just the last
-          #      block.
-          # The text POSTED to the PR is the verdict-bearing block (below).
-          #
-          # POSTING text: the review summary is the LAST assistant block that
-          # carries a verdict line — not necessarily the final block, since a
-          # short wrap-up ("I've posted my findings") can follow it in agent mode
-          # (gha#173, sparta#590/#594). Fall back to the final block when no block
-          # carries a verdict (the check below then fails the run regardless).
-          review_text_file="$(mktemp)"
-          jq -rs '
-            flatten
-            | [ .[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text ] as $blocks
-            | ( [ $blocks[] | select(test("(?im)^[\\s>*_#-]*verdict\\b")) ] | last )
-              // ( $blocks | last )
-              // ""
-          ' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
-          all_text_file="$(mktemp)"
-          jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n")' "$EXECUTION_FILE" > "$all_text_file" 2>/dev/null || true
-          if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
-            echo "::error::Claude review produced no review text — treating as a failed review."
-            exit 1
-          fi
-          # A verdict line: optional leading blockquote / list / heading / bold
-          # markers, then "verdict" (case-insensitive). Matches `### Verdict`,
-          # `**Verdict:**`, `Verdict:`, `> Verdict`, `- Verdict:`; a stub
-          # ("waiting for background agents…", "needs your approval") has none.
-          if ! grep -qiE '^[[:space:]>*_#-]*verdict\b' "$all_text_file"; then
-            echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
-            exit 1
-          fi
-          echo "review_text_file=$review_text_file" >> "$GITHUB_OUTPUT"
-          echo "Claude review completed cleanly (subtype=$subtype)."
+          bash "${GITHUB_WORKSPACE}/.github/workflows/scripts/check-review-execution.sh" "$EXECUTION_FILE"
 
       # When the API rejected the request before Claude could review (quota
       # exhaustion, auth failure, etc.), post a notice so the PR author knows

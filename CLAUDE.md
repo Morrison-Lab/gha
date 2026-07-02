@@ -6,10 +6,14 @@ Guidance for Claude Code when working in this repository.
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
 and Quarto repositories (see [`README.md`](README.md)). Each capability ships as a
-composite action plus a `workflow_call` reusable workflow. Consumers pin to a
-moving major tag — `@v1` or `@v2`, per capability — since `@v1` was frozen at
-the pre-`2.0.0` snapshot and has picked up no fixes since (see the Versioning
-section of `README.md`).
+composite action plus a `workflow_call` reusable workflow. Consumers pin the
+major tag each capability's own reference page documents (`@v1` for most,
+`@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
+`test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
+`check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
+`claude-code-review`, and `update-snapshots` — see the Versioning section of
+`README.md`). `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no
+fixes since, which is why the capabilities above moved to `@v2`.
 
 ### Layout
 
@@ -72,6 +76,21 @@ Grep the repo for `@v1` rather than relying on memory of where it appears.
 Missing either kind surfaces as a workflow-not-found error for consumers who
 copy that spot literally (gha#148, caught across two review rounds).
 
+**When narrowing an already-fixed blanket claim, re-grep the WHOLE repo after
+every edit — not just the files you already know about.** The same versioning
+convention gets restated in multiple, independently-worded spots: not just
+once per file, but in separate sections of the *same* file (e.g. `README.md`'s
+`## Versioning` section and its nested `### Pinning third-party actions`
+subsection both needed the same `@v1`/`@v2` exception clause), and across sibling
+pages that all describe the tag scheme (`website/index.qmd`'s nav blurb,
+`website/versioning.qmd`, `website/workflows.qmd`, `CLAUDE.md`'s own "About
+this repo"). Fixing the first instance you find and moving on invites the
+reviewer to find the next one in a later round — gha#181 took six review
+rounds to fully sweep this exact pattern (`@v1`/`@v2` scoping) because each
+fix only searched the files already in the diff. Before considering a
+versioning-prose fix complete, `grep -rn "@v1\|@v2"` (or whatever pattern is
+narrowing) across the **entire** repo, not just the files already touched.
+
 **Adding a new `workflow_call` input to an existing reusable workflow** needs
 its own doc sync at three sites beyond the workflow file itself, or the input
 is invisible to a consumer skimming the docs:
@@ -108,6 +127,18 @@ maintainer email, etc.). Generate the fixture in a small script
 (`test-coverage/tests/make-fixture.sh` is the pattern) that the `coverage`
 selftest job runs before invoking the composite, instead of committing R
 package source files (gha#148).
+
+`.github/workflows/scripts/check-review-execution.sh` holds
+`claude-code-review.yml`'s fail-check guard logic (stub/placeholder-review
+detection, quota-exhaustion skip) as a standalone script, so it can run
+offline against canned execution-output fixtures instead of requiring a live
+Claude API call. `.github/workflows/scripts/tests/run-fixture-tests.sh` feeds
+each fixture under `scripts/tests/fixtures/` through the script and asserts
+the expected pass/fail/skip outcome; CI runs it as the `review-fail-check`
+job in `_selftest.yml`. These fixtures ARE committed rather than generated at
+runtime — unlike the R-package/PHI-shaped fixtures the rule above warns
+about, they're plain JSON execution-output data with no content that would
+trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
 
 ## GitHub access in remote / web sessions
 
@@ -175,6 +206,23 @@ were obtained to port them faithfully into the reusable workflows for #44/#45.)
 Only fall back to "can't access it" — or to whatever session tooling can add a
 repo to scope, if any — after the raw fetch also fails (private repo, or the
 network policy blocks the host).
+
+**A 403 from a *rendered* docs site is not the same as the content being
+inaccessible.** A GitHub Pages / Quarto-rendered site (e.g.
+`ucd-serg.github.io/lab-manual/coding-style.html`) can reject `WebFetch` (for
+reasons unclear — possibly anti-scraping) even though the *source* file it
+was built from is a plain file in a public repo. Don't conclude the content is
+unreachable — find the source path (often the same repo, e.g.
+`coding-style.qmd` for `coding-style.html`, sometimes with `_`-prefixed
+included fragments) and raw-fetch that instead using the same
+`<path>`-includes-its-extension template above, e.g.
+`https://raw.githubusercontent.com/<owner>/<repo>/<branch>/coding-style.qmd`.
+(Confirmed this way that `ettbc`'s `.lintr.R` predates
+`UCD-SERG/lab-manual`'s move to a shared `lms` linter package (source:
+[`UCD-SERG/lab-manual/.lintr.R`](https://github.com/UCD-SERG/lab-manual/blob/main/.lintr.R),
+which calls `lms::default_linters()` from a package defined in that repo's own
+`lms/` subdirectory) — the manual's own docs page 403'd, but its `.qmd`
+source and the referenced `.lintr.R` file both fetched cleanly.)
 
 ## A canceled review can red-X require-review — don't chase it as a code bug
 
