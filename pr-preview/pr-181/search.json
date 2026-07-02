@@ -480,7 +480,7 @@
     "href": "versioning.html",
     "title": "Versioning",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. Consumers reference @v1. The v1 tag moves forward as non-breaking fixes land, so a consumer pinned to @v1 picks them up automatically. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as the @v1 tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; see Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as the major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -513,7 +513,18 @@
     "href": "workflows.html",
     "title": "Workflows",
     "section": "",
-    "text": "Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin every reference to @v2; test-coverage.yml and check-equation-renders.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. The stubs in examples/ already carry the right tag and permissions: blocks; copy them as-is.",
+    "text": "Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.",
+    "crumbs": [
+      "Overview",
+      "Workflows"
+    ]
+  },
+  {
+    "objectID": "workflows.html#versioning",
+    "href": "workflows.html#versioning",
+    "title": "Workflows",
+    "section": "Versioning",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews‘s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml and check-equation-renders.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. The remaining capabilities’ stubs still pin @v1, which stays valid for them until they are audited and bumped (tracked in gha#182). The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
