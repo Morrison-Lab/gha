@@ -12,6 +12,12 @@ Breaking changes bump the major tag (`v2`, and so on) with migration steps.
 See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
 for what changes as the `@v1` tag moves.
 
+Changelog entries are added as fragment files under
+[`changelog.d/`](https://github.com/d-morrison/gha/tree/main/changelog.d)
+(one per PR, so parallel PRs never conflict on the shared changelog) and
+collated into `CHANGELOG.md` at release time — see
+[`changelog.d/README.md`](https://github.com/d-morrison/gha/blob/main/changelog.d/README.md).
+
 ## Pinning third-party actions
 
 Every **third-party** action is pinned to a full commit SHA,

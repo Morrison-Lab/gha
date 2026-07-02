@@ -20,12 +20,20 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 changelog="$here/../CHANGELOG.md"
 
-# keepachangelog categories, in display order, mapped to their heading text.
+# keepachangelog categories, in display order. A plain list + `case` mapping
+# (not a bash-4 `declare -A`) keeps this runnable on stock macOS bash 3.2.
 categories=(breaking added changed deprecated removed fixed security)
-declare -A heading=(
-  [breaking]=Breaking [added]=Added [changed]=Changed [deprecated]=Deprecated
-  [removed]=Removed [fixed]=Fixed [security]=Security
-)
+heading_for() {
+  case "$1" in
+    breaking)   printf 'Breaking' ;;
+    added)      printf 'Added' ;;
+    changed)    printf 'Changed' ;;
+    deprecated) printf 'Deprecated' ;;
+    removed)    printf 'Removed' ;;
+    fixed)      printf 'Fixed' ;;
+    security)   printf 'Security' ;;
+  esac
+}
 
 block=""
 consumed=()
@@ -34,7 +42,7 @@ for cat in "${categories[@]}"; do
   frags=( "$here"/*."$cat".md )
   shopt -u nullglob
   [ ${#frags[@]} -gt 0 ] || continue
-  block+="### ${heading[$cat]}"$'\n\n'
+  block+="### $(heading_for "$cat")"$'\n\n'
   for f in "${frags[@]}"; do
     # $(cat) strips trailing newlines; re-add exactly one blank-line separator.
     block+="$(cat "$f")"$'\n\n'
@@ -53,16 +61,25 @@ if ! grep -q '^## \[Unreleased\]' "$changelog"; then
 fi
 
 # Splice the collated block in immediately after the "## [Unreleased]" line.
+# The block is handed to awk via a FILE (read with getline), never `-v`: a
+# `-v var=value` assignment runs C-style backslash-escape processing on the
+# value, which would silently corrupt a fragment containing a literal backslash
+# sequence (e.g. \`cmd\`). Only the temp-file path — never the content — goes
+# through `-v`.
+block_file="$(mktemp)"
+printf '%s' "$block" > "$block_file"   # %s: the content is written verbatim
 tmp="$(mktemp)"
-awk -v block="$block" '
+awk -v block_file="$block_file" '
   { print }
   /^## \[Unreleased\]/ && !inserted {
     print ""
-    printf "%s", block
+    while ((getline line < block_file) > 0) print line
+    close(block_file)
     inserted = 1
   }
 ' "$changelog" > "$tmp"
 mv "$tmp" "$changelog"
+rm -f "$block_file"
 
 for f in "${consumed[@]}"; do
   rm -f "$f"
