@@ -15,7 +15,8 @@ Each capability is shipped as two layers:
 
 - **Composite action** (e.g. `check-bibliography-dois/action.yml`) — bundles the
   real steps and any helper script. Referenced as
-  `d-morrison/gha/<name>@v1`.
+  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  recommends — see [Versioning](#versioning) below).
 - **Reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`) —
   wraps the composite, declares permissions, and checks out the caller's repo.
   This is what consumer repos target.
@@ -30,11 +31,13 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v1
+    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v2
 ```
 
-Pin to `@v1` (a moving major tag updated as fixes land). Do not reference
-`@main` from consumers.
+Pin to the major tag that capability currently recommends (`@v2` in the
+example above) — see [Versioning](#versioning) below for the full breakdown,
+since it varies per capability rather than defaulting uniformly to `@v1`. Do
+not reference `@main` from consumers.
 
 ## Available reusable workflows
 
@@ -78,7 +81,8 @@ that need to write must have the **caller** grant it on the calling job:
   grant its permissions even when it is skipped.
 - `claude` (pushes branches, opens PRs, dispatches the review workflow) → grant
   `contents: write`, `pull-requests: write`, `issues: write`, `id-token: write`,
-  `actions: write`, and add the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  `actions: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
+  `ANTHROPIC_API_KEY` secret.
   - **Optional:** if Claude will edit files under `.github/workflows/`, also add
     a `WORKFLOW_TOKEN` secret (a PAT or GitHub App token with `contents:write` +
     `workflows:write`). The integrated `GITHUB_TOKEN` cannot push workflow-file
@@ -90,8 +94,8 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, `id-token: write`, and the
-  `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  `pull-requests: write`, `issues: write`, `id-token: write`, and either the
+  `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
     submodules clone anonymously; private ones additionally need a
@@ -240,9 +244,18 @@ pointer/manifest) so the two auto-PRs don't ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. Consumers reference `@v1`, except `test-coverage.yml` and
-`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
-`@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
+release. `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no
+fixes since. `test-coverage.yml` and `check-equation-renders.yml` only ever
+shipped at `@v2` (too new to exist at the frozen `@v1` tag).
+`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
+`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
+`update-snapshots.yml` also pin `@v2`: each picked up a real fix since the
+freeze (a dependency-pin bump, a new input, or a security fix) that a
+consumer still on `@v1` would miss (audited in
+[gha#182](https://github.com/d-morrison/gha/issues/182)). `summary.yml`,
+`check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+audited in the same pass and found unchanged since the freeze, so `@v1`
+remains current for them. See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
 Changelog entries are added as fragment files under
@@ -266,9 +279,10 @@ with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.git
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*@v1` self-references and the [`examples/`](examples/)
-templates intentionally track the `@v1` major tag (so consumers ride the moving
-major), and so are **not** SHA-pinned.
+First-party `d-morrison/gha/*` self-references and the [`examples/`](examples/)
+templates intentionally track a moving major tag (`@v1` or `@v2`, per
+capability — see [Versioning](#versioning) above) so consumers ride the moving
+major, and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 

@@ -6,7 +6,10 @@ Guidance for Claude Code when working in this repository.
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
 and Quarto repositories (see [`README.md`](README.md)). Each capability ships as a
-composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1`.
+composite action plus a `workflow_call` reusable workflow. Consumers pin to a
+moving major tag — `@v1` or `@v2`, per capability — since `@v1` was frozen at
+the pre-`2.0.0` snapshot and has picked up no fixes since (see the Versioning
+section of `README.md`).
 
 ### Layout
 

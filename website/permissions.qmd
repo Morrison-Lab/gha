@@ -31,10 +31,11 @@ already include the right `permissions:` blocks; copy them as-is.
   and enable Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
 - `claude` pushes branches, opens PRs, and dispatches the review workflow, so grant
   `contents: write`, `pull-requests: write`, `issues: write`,
-  `id-token: write`, `actions: write`, and add the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  `id-token: write`, `actions: write`, and add either the
+  `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 - `claude-code-review` (read-only review) grants
   `contents: read`, `pull-requests: write`, `issues: write`, `id-token: write`,
-  and the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 
 ## Optional secrets
 

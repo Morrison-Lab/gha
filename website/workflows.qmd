@@ -25,9 +25,17 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
-Pin every reference to `@v1`, except `test-coverage.yml` and
-`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
-`@v1` tag).
+`@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since.
+`test-coverage.yml` and `check-equation-renders.yml` only ever shipped at
+`@v2` (too new to exist at the frozen `@v1` tag). `check-bibliography-dois.yml`,
+`check-phi.yml`, `check-links.yml`, `check-non-standard-chars.yml`,
+`claude.yml`, `claude-code-review.yml`, and `update-snapshots.yml` also pin
+`@v2`: each picked up a real fix since the freeze (a dependency-pin bump, a
+new input, or a security fix) that a consumer still on `@v1` would miss
+(audited in [gha#182](https://github.com/d-morrison/gha/issues/182)).
+`check-news.yml`, `summary.yml`, `bump-submodule.yml`, and
+`sync-shared-fragments.yml` were audited in the same pass and found unchanged
+since the freeze, so `@v1` remains current for them.
 The stubs in [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
 already carry the right tag and `permissions:` blocks; copy them as-is.
 
