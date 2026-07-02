@@ -31,12 +31,19 @@ composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1
   `workflow_call` reusable workflow (inline shell logic, no external composite);
   `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
   reusable workflows that call the shared internal `open-sync-pr` composite;
-  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this repo.
+  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this
+  repo; `require-changelog.yml` is likewise `pull_request`-triggered and runs
+  only in this repo, dogfooding `check-news.yml` on `CHANGELOG.md`.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
-  `REVDEPS.md` — lists registered downstream consumer repos.
+  `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
+  changes user-facing behavior needs a `CHANGELOG.md` entry under
+  `## [Unreleased]`; `require-changelog.yml` enforces this (dogfoods the
+  repo's own `check-news.yml`) and is skippable per-PR with the `no
+  changelog` label for changes with nothing to log (docs typos, CI-only
+  tweaks with no consumer-visible effect).
 
 When editing a consumer-facing capability, change the composite (`<name>/action.yml`,
 plus its helper script if one exists) and keep the wrapping reusable workflow and its
