@@ -26,6 +26,15 @@ below with migration steps.
   optional `CODECOV_TOKEN` secret is passed through the caller's `secrets:`
   block. See `examples/test-coverage.yml` for the caller stub.
 
+- **`claude-code-review` accepts `apt-packages`/`pip-packages` inputs** (#161),
+  mirroring the inputs `claude.yml` already had. Lets a math-heavy consumer
+  repo install a computer algebra system (e.g. `apt-packages: maxima`,
+  `pip-packages: sympy`) so the reviewer's `Bash` tool can symbolically check
+  a derivation instead of eyeballing the algebra. Both default to `''`
+  (no-op), so this is backward compatible for every existing caller. The
+  install steps for both workflows are now factored into a shared
+  `.github/actions/install-packages` composite rather than duplicated.
+
 ### Changed
 
 - **`claude-code-review` now honors an explicit review request on a draft PR.**

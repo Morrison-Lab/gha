@@ -36,7 +36,12 @@ composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1
   reusable workflows.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
-  `REVDEPS.md` — lists registered downstream consumer repos.
+  `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
+  changes user-facing behavior needs a `CHANGELOG.md` entry under
+  `## [Unreleased]`; `require-changelog.yml` enforces this (dogfoods the
+  repo's own `check-news.yml`) and is skippable per-PR with the `no
+  changelog` label for changes with nothing to log (docs typos, CI-only
+  tweaks with no consumer-visible effect).
 
 When editing a consumer-facing capability, change the composite (`<name>/action.yml`,
 plus its helper script if one exists) and keep the wrapping reusable workflow and its
