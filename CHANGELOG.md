@@ -55,6 +55,18 @@ below with migration steps.
 
 ### Changed
 
+- **`claude-code-review` grants the reviewer `Bash(python3 <file>)`.** The
+  review agent could previously only trace a Python script's logic by eye,
+  since its `--allowedTools` covered just the inline-comment tool plus the
+  action's base allowlist (Read/Glob/Grep and narrow git-read Bash) — no way
+  to actually execute the script under review (rme#970). Scoped to running an
+  existing file under the checkout (`-c`/`-m` denied, so inline/module code
+  execution stays blocked) — same-repo PRs give this job
+  `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY` as secrets, so unrestricted
+  `python3:*` would have been a real capability widening beyond the existing
+  git-read-only sandbox, not just a git-push question. It can now verify a
+  script's behavior instead of guessing from source alone (#154).
+
 - **`claude-code-review` now honors an explicit review request on a draft PR.**
   A dispatched review (an `@claude review` comment routed here by `claude.yml`,
   `claude.yml`'s post-push re-dispatch, the issue-trigger draft PR, or a manual
