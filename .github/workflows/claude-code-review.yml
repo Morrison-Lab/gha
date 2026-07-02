@@ -45,6 +45,16 @@ on:
           if you loosen that gate to review bot-authored pushes directly.
         type: string
         default: 'github-actions[bot]'
+      track-progress:
+        description: >-
+          Enable tag mode (track_progress: true) for pull_request events so the
+          reviewer posts a live tracking comment and can use the inline-comment
+          tool. Defaults to false (agent mode), which is safe but produces
+          summary-only reviews. Set to true only after anthropics/claude-code-action#1415
+          ships a read_only input — until then, tag mode grants git write tools
+          and the reviewer may push commits to the branch.
+        type: boolean
+        default: false
       show-full-output:
         description: >-
           Show the full JSON output from Claude Code (passed through to
@@ -440,27 +450,22 @@ jobs:
             explicit `### Verdict` status line required above — restating that
             the prior verdict stands is not itself the status line.
             ${{ inputs.prompt-addendum }}
-          # Always run in agent mode (track_progress: false).
+          # Agent mode (false) by default; tag mode (true) when the caller
+          # opts in via the track-progress input on pull_request events.
+          # The action rejects track_progress on workflow_dispatch regardless.
           #
-          # Tag mode (track_progress: true) hardcodes git write tools
-          # (Bash(git add:*), Bash(git commit:*), Bash(git rm:*), and the
-          # git-push.sh wrapper) into ALLOWED_TOOLS regardless of what
-          # --disallowedTools is passed via claude_args — the action's
-          # TypeScript sets ALLOWED_TOOLS directly, overriding the CLI flag.
-          # This caused the review bot to push unauthorized commits to PR
-          # branches (confirmed in serodynamics PR #175, commit 02af72b).
-          #
-          # Agent mode builds ALLOWED_TOOLS solely from claude_args, so no
-          # git write tools are ever available. The trade-off: agent mode
-          # does not auto-post a tracking comment or initialize the
-          # inline-comment tool (claude-code-action #635). The "Post review
-          # comment" step below compensates for the missing tracking comment;
-          # the prompt above falls back to a summary-only review when the
-          # inline-comment tool is unavailable.
-          #
-          # The action rejects track_progress on workflow_dispatch regardless,
-          # so this is now consistently false for all event types.
-          track_progress: 'false'
+          # WARNING: tag mode hardcodes git write tools into ALLOWED_TOOLS
+          # regardless of --disallowedTools (the action's TypeScript sets the
+          # env var directly, overriding the CLI flag). This caused the
+          # reviewer to push commits to PR branches (serodynamics PR #175,
+          # commit 02af72b). Only enable tag mode after
+          # anthropics/claude-code-action#1415 ships a read_only input.
+          # In agent mode, ALLOWED_TOOLS comes solely from claude_args so
+          # no git write tools are ever available; the trade-off is
+          # summary-only reviews (no live tracking comment or inline-comment
+          # tool — see claude-code-action #635). The "Post review comment"
+          # step below compensates when running in agent mode.
+          track_progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           # Fresh tracking comment per run so each push surfaces as new PR
           # activity; the collapse step below folds priors up as OUTDATED.
           use_sticky_comment: 'false'
@@ -555,15 +560,16 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Claude review skipped — API quota exhausted.** The \`CLAUDE_CODE_OAUTH_TOKEN\` account's API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once the quota resets. [View run]($RUN_URL)"
 
-      # Agent mode (always, since track_progress is now always false) writes
-      # Claude's output to the GitHub Actions step summary, not to the PR.
-      # Post the review manually here so it appears on the PR. Without this
-      # step the review is silently discarded. Closes #87; extended to cover
-      # pull_request events now that tag mode is disabled.
+      # In agent mode, display_report writes Claude's output to the step
+      # summary, not to the PR. Post it manually here. Tag mode auto-posts
+      # the tracking comment on pull_request events, so skip this step then
+      # (it would duplicate the comment). Always run on workflow_dispatch
+      # since the action rejects track_progress there regardless. Closes #87.
       - name: Post review comment
         if: >-
           steps.claude-review.outcome == 'success' &&
-          steps.fail-check.outputs.quota_exhausted != 'true'
+          steps.fail-check.outputs.quota_exhausted != 'true' &&
+          !(inputs['track-progress'] && github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
