@@ -245,6 +245,11 @@ release. Consumers reference `@v1`, except `test-coverage.yml` and
 `@v1` tag). See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
+Changelog entries are added as fragment files under
+[`changelog.d/`](changelog.d) (one per PR, so parallel PRs never conflict on the
+shared changelog) and collated into `CHANGELOG.md` at release time — see
+[`changelog.d/README.md`](changelog.d/README.md).
+
 ### Pinning third-party actions
 
 Every **third-party** action is pinned to a full commit SHA, with the
