@@ -21,6 +21,16 @@ below with migration steps.
   automatically, without needing to pass a `prompt-addendum`. Mirrors the
   wording already in this repo's own `CLAUDE.md` "Code review guidelines".
 
+- **`claude-code-review` gates SERG lab-manual enforcement behind a `lab-manual`
+  input** (default `true`). #170 baked the R/tidyverse/Quarto-focused lab manual
+  into the review prompt for *every* consumer unconditionally, which is noise for
+  a repo the manual doesn't target (a pure GitHub Actions, shell, or docs repo)
+  and bloats an already-large prompt. The guidance is now emitted only when
+  `lab-manual: true` (the default, so R/Quarto consumers are unchanged); set
+  `lab-manual: false` to skip it. `gha`'s own review caller sets it `false` (its
+  `CLAUDE.md` still carries the guidance for the reviewing agent, so nothing is
+  lost).
+
 ### Added
 
 - **`test-coverage` — R-package test coverage with Codecov upload** (#147). A new

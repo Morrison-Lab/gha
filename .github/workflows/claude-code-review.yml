@@ -83,6 +83,16 @@ on:
           default.
         type: string
         default: ''
+      lab-manual:
+        description: >-
+          Hold the PR to the SERG lab manual (coding style, coding practices,
+          repository conventions) during the review, in addition to correctness.
+          On by default for the R-package / Quarto repos this workflow targets;
+          set false for repos where that R/tidyverse/Quarto-focused manual
+          doesn't apply (e.g. a pure GitHub Actions, shell, or docs repo), so the
+          reviewer isn't handed guidance irrelevant to the diff.
+        type: boolean
+        default: true
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -317,6 +327,54 @@ jobs:
               | gh api -X DELETE "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input - || true
           fi
 
+      # Compose the SERG lab-manual review guidance, gated on the `lab-manual`
+      # input. Empty when a caller opts out (e.g. a non-R/Quarto repo), so the
+      # reviewer isn't handed R/tidyverse-specific instructions irrelevant to its
+      # diff. Interpolated into the prompt below as
+      # `steps.labmanual.outputs.guidance`. Kept as a here-doc (not an inline
+      # `${{ ... && '...' || '' }}` ternary) because the guidance is multi-line.
+      - name: Compose lab-manual review guidance
+        id: labmanual
+        if: steps.selfmod.outputs.self_mod != 'true'
+        env:
+          LAB_MANUAL: ${{ inputs.lab-manual }}
+        run: |
+          if [ "$LAB_MANUAL" != "true" ]; then
+            printf 'guidance=\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          DELIM="labman_$(openssl rand -hex 8)"
+          {
+          printf '%s\n' "guidance<<$DELIM"
+          cat <<'GUIDANCE'
+          **Hold this PR to the SERG lab manual.** This repository is part
+          of the `d-morrison` / `UCD-SERG` / `ucdavis` family of R-package
+          and Quarto repositories, so evaluate the diff against the
+          [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
+          the lab's authority on coding, reproducibility, and collaboration
+          conventions — in addition to correctness. Especially:
+
+          - [Coding style](https://ucd-serg.github.io/lab-manual/coding-style.html) —
+            object naming, line breaks/formatting, function documentation,
+            comments, message/communication style, and Quarto code-reference
+            conventions (backticked `pkg::fn()`, markdown package links, no
+            raw HTML in `.qmd`).
+          - [Coding practices](https://ucd-serg.github.io/lab-manual/coding-practices.html) —
+            function decomposition and
+            [length limits](https://ucd-serg.github.io/lab-manual/coding-practices.html#function-length-limits),
+            testing requirements, the QA checklist, documentation, `{here}`
+            for paths, and tidyverse idioms.
+          - [Code repositories](https://ucd-serg.github.io/lab-manual/code-repositories.html) —
+            repository organization and version-control practices.
+
+          The manual defers to the [tidyverse style guide](https://style.tidyverse.org/)
+          for R; prefer tidyverse idioms and the native `|>` pipe. Cite the
+          relevant manual section when raising a point, and distinguish
+          blocking issues from optional suggestions.
+          GUIDANCE
+          printf '%s\n' "$DELIM"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Run Claude Code Review
         id: claude-review
         if: steps.selfmod.outputs.self_mod != 'true'
@@ -392,30 +450,7 @@ jobs:
 
             ${{ needs.gather-context.outputs.prior-context }}
 
-            **Hold this PR to the SERG lab manual.** This repository is part
-            of the `d-morrison` / `UCD-SERG` / `ucdavis` family of R-package
-            and Quarto repositories, so evaluate the diff against the
-            [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
-            the lab's authority on coding, reproducibility, and collaboration
-            conventions — in addition to correctness. Especially:
-
-            - [Coding style](https://ucd-serg.github.io/lab-manual/coding-style.html) —
-              object naming, line breaks/formatting, function documentation,
-              comments, message/communication style, and Quarto code-reference
-              conventions (backticked `pkg::fn()`, markdown package links, no
-              raw HTML in `.qmd`).
-            - [Coding practices](https://ucd-serg.github.io/lab-manual/coding-practices.html) —
-              function decomposition and
-              [length limits](https://ucd-serg.github.io/lab-manual/coding-practices.html#function-length-limits),
-              testing requirements, the QA checklist, documentation, `{here}`
-              for paths, and tidyverse idioms.
-            - [Code repositories](https://ucd-serg.github.io/lab-manual/code-repositories.html) —
-              repository organization and version-control practices.
-
-            The manual defers to the [tidyverse style guide](https://style.tidyverse.org/)
-            for R; prefer tidyverse idioms and the native `|>` pipe. Cite the
-            relevant manual section when raising a point, and distinguish
-            blocking issues from optional suggestions.
+            ${{ steps.labmanual.outputs.guidance }}
 
             **Watch for AI hallucinations.** This diff may be partly
             machine-authored, so scrutinize it for confident-but-fabricated
