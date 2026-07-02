@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Workflows – d-morrison/gha</title>
+<title>check-equation-renders.yml – d-morrison/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -23,32 +23,65 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<link href="./permissions.html" rel="next">
-<link href="./index.html" rel="prev">
-<script src="site_libs/quarto-html/quarto.js" type="module"></script>
-<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-21dfb6f5b24708782b3851273225b992.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-1d9ce628b283cb5cd0383b305d90339b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-21dfb6f5b24708782b3851273225b992.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-dark-0a6b7249c26820e032cb0bd839ff02b1.css" rel="stylesheet" class="quarto-color-scheme quarto-color-alternate" id="quarto-text-highlighting-styles">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap-21dfb6f5b24708782b3851273225b992.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-1d9ce628b283cb5cd0383b305d90339b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-21dfb6f5b24708782b3851273225b992.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -249,7 +282,7 @@ ul.task-list li input[type="checkbox"] {
     <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container mx-auto">
-    <a class="navbar-brand" href="./index.html">
+    <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">d-morrison/gha</span>
     </a>
   </div>
@@ -260,19 +293,19 @@ ul.task-list li input[type="checkbox"] {
           <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="navbar-nav navbar-nav-scroll me-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./index.html" aria-current="page"> 
+    <a class="nav-link active" href="../index.html" aria-current="page"> 
 <span class="menu-text">Overview</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./workflows.html"> 
+    <a class="nav-link" href="../workflows.html"> 
 <span class="menu-text">Workflows</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./permissions.html"> 
+    <a class="nav-link" href="../permissions.html"> 
 <span class="menu-text">Permissions</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./versioning.html"> 
+    <a class="nav-link" href="../versioning.html"> 
 <span class="menu-text">Versioning</span></a>
   </li>  
 </ul>
@@ -294,7 +327,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./workflows.html">Workflows</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">check-equation-renders.yml</li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -308,25 +341,25 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link">
+  <a href="../index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">d-morrison/gha</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./workflows.html" class="sidebar-item-text sidebar-link active">
+  <a href="../workflows.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Workflows</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./permissions.html" class="sidebar-item-text sidebar-link">
+  <a href="../permissions.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Permissions</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./versioning.html" class="sidebar-item-text sidebar-link">
+  <a href="../versioning.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Versioning</span></a>
   </div>
 </li>
@@ -341,91 +374,91 @@ ul.task-list li input[type="checkbox"] {
       <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/check-bibliography-dois.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-bibliography-dois.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-bibliography-dois.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-non-standard-chars.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/check-phi.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-phi.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-phi.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/check-links.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-links.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-links.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/check-news.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/test-coverage.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/test-coverage.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">test-coverage.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/summary.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/summary.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">summary.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/quarto-publish.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/quarto-publish.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">quarto-publish.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/preview.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/preview.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">preview.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/preview-deploy.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/preview-deploy.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">preview-deploy.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/cleanup-pr-previews.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/cleanup-pr-previews.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">cleanup-pr-previews.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/claude.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/claude.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">claude.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/claude-code-review.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/claude-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">claude-code-review.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/bump-submodule.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/bump-submodule.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">bump-submodule.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./reference/sync-shared-fragments.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/sync-shared-fragments.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">sync-shared-fragments.yml</span></a>
   </div>
 </li>
@@ -441,13 +474,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#quality-checks" id="toc-quality-checks" class="nav-link active" data-scroll-target="#quality-checks">Quality checks</a></li>
-  <li><a href="#phi-scanning" id="toc-phi-scanning" class="nav-link" data-scroll-target="#phi-scanning">PHI scanning</a></li>
-  <li><a href="#quarto-sites" id="toc-quarto-sites" class="nav-link" data-scroll-target="#quarto-sites">Quarto sites</a></li>
-  <li><a href="#claude-bots" id="toc-claude-bots" class="nav-link" data-scroll-target="#claude-bots">Claude bots</a></li>
-  <li><a href="#shared-content-sync" id="toc-shared-content-sync" class="nav-link" data-scroll-target="#shared-content-sync">Shared-content sync</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
+  <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/workflows.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/reference/check-equation-renders.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
@@ -455,7 +486,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Workflows</h1>
+<h1 class="title">check-equation-renders.yml</h1>
 </div>
 
 
@@ -472,159 +503,72 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<p>Every capability is a reusable workflow you call with a small stub. The table below is the full catalog; each workflow links to its reference page, with full input tables and a copy-paste example.</p>
+<p>Fourth leg of the PR-preview family, alongside <code>preview.yml</code> and <code>preview-deploy.yml</code>. Triggered on the build workflow’s <code>workflow_run</code> completion, it downloads the same <code>pr-preview-site</code> artifact <code>preview-deploy.yml</code> uses, crawls the extracted site with a headless browser, and fails when any equation fails to render.</p>
+<p>Quarto’s <code>html-math-method: mathjax</code> embeds raw TeX (<code>\(...\)</code>, <code>$$...$$</code>) unchanged in the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad equation therefore produces no warning in the Quarto/pandoc build log – the static HTML is “valid” pandoc output even when the embedded TeX can’t be typeset. This workflow is what actually runs MathJax (via a headless Chromium) and checks for both of the ways it signals a broken formula:</p>
+<ul>
+<li>A hard parse error (unmatched braces, wrong argument count, …) inserts a <code>[data-mjx-error]</code> node carrying the message.</li>
+<li>An undefined macro (e.g.&nbsp;a custom command from a macro file that didn’t load) is <em>not</em> a hard error by default – MathJax falls back to rendering the raw, unresolved command name (<code>\foo</code>) as literal text, so there’s no error node to find. The check instead looks for a rendered <code>\command</code>-shaped token surviving into the typeset output, since resolved math never leaves its own TeX source behind.</li>
+</ul>
+<p>It runs independently of <code>preview-deploy.yml</code> – both trigger on the same build completion, but this one downloads the artifact directly rather than depending on the deploy, so it needs no <code>gh-pages</code> write access and no live preview URL.</p>
+<section id="inputs" class="level2">
+<h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
 <thead>
 <tr class="header">
-<th>Workflow</th>
-<th>Purpose</th>
-<th>Key inputs</th>
+<th>Input</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><a href="./reference/check-bibliography-dois.html"><code>check-bibliography-dois.yml</code></a></td>
-<td>Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata</td>
-<td><code>exclude-keys</code>, <code>install-quarto</code>, <code>no-metadata-check</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/check-non-standard-chars.html"><code>check-non-standard-chars.yml</code></a></td>
-<td>Detect curly quotes and en/em dashes in <code>.qmd</code> and <code>.R</code> files</td>
-<td><code>python-version</code></td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/check-phi.html"><code>check-phi.yml</code></a></td>
-<td>Scan PRs (added lines only) for content that looks like PHI</td>
-<td><code>detectors</code>, <code>paths-ignore</code>, <code>allowlist-file</code>, <code>fail</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/check-links.html"><code>check-links.yml</code></a></td>
-<td>lychee link check with bundled config, PR skip-label, and auto-issue on <code>main</code></td>
-<td><code>lychee-config</code>, <code>lychee-args</code>, <code>fail-if-empty</code>, <code>create-issue-on-main</code>, <code>skip-label</code></td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/check-news.html"><code>check-news.yml</code></a></td>
-<td>Enforce a <code>NEWS.md</code> changelog entry on PRs</td>
-<td><code>changelog</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/test-coverage.html"><code>test-coverage.yml</code></a></td>
-<td>Measure R-package test coverage with <code>covr</code> and upload the Cobertura report to Codecov</td>
-<td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>fail-ci-if-error</code></td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
-<td>AI summary comment on newly opened issues</td>
-<td>–</td>
-</tr>
-<tr class="even">
-<td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
-<td>Render a Quarto site and deploy it to GitHub Pages</td>
-<td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>tinytex</code>, <code>output-dir</code>, <code>checkout-submodules</code>, <code>deploy</code></td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
-<td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
-<td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
-<td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
-<td>–</td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a></td>
-<td>Crawl the build artifact with a headless browser and fail on equations MathJax can’t render</td>
 <td><code>fail</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
-<td>Housekeeping: delete preview directories for closed PRs</td>
-<td><code>preview-dir</code></td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
-<td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
-<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>reviewer</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
-<td>Read-only Claude PR review</td>
-<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>apt-packages</code>, <code>pip-packages</code></td>
-</tr>
-<tr class="odd">
-<td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
-<td>Update a submodule to upstream HEAD and open a PR when the pointer moves</td>
-<td><code>submodule-path</code>, <code>remote-branch</code>, <code>base-branch</code>, <code>pr-branch</code></td>
-</tr>
-<tr class="even">
-<td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
-<td>Vendor files from an upstream repo (pinned to a commit) and open a PR when they change</td>
-<td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Fail the workflow run when equation render errors are found.</td>
 </tr>
 </tbody>
 </table>
-<p>Pin every reference to <code>@v1</code>, except <code>test-coverage.yml</code> and <code>check-equation-renders.yml</code>, which ship at <code>@v2</code> (too new for the frozen <code>@v1</code> tag). The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> already carry the right tag and <code>permissions:</code> blocks; copy them as-is.</p>
-<section id="quality-checks" class="level2">
-<h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
-<p>These run on pull requests (and often on <code>main</code>) to keep a repo’s content clean.</p>
-<ul>
-<li><code>check-bibliography-dois.yml</code> confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.</li>
-<li><code>check-non-standard-chars.yml</code> flags curly quotes and en/em dashes in <code>.qmd</code> and <code>.R</code> files, which can break Quarto and R rendering.</li>
-<li><code>check-links.yml</code> runs a <a href="https://github.com/lycheeverse/lychee">lychee</a> link check with a bundled config, a PR skip-label, and an auto-filed issue when <code>main</code> breaks.</li>
-<li><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</li>
-<li><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</li>
-<li><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</li>
-</ul>
 </section>
-<section id="phi-scanning" class="level2">
-<h2 class="anchored" data-anchor-id="phi-scanning">PHI scanning</h2>
-<p><code>check-phi</code> is a <strong>heuristic tripwire, not a HIPAA compliance tool.</strong> It flags patterns that should almost never be committed: US Social Security numbers, medical record numbers, dates of birth, and PHI-suggestive column headers in delimited data files (<code>.csv</code>/<code>.tsv</code>/<code>.psv</code>), so a human reviews before the data merges. It is tuned for high precision, so it misses free-text PHI such as patient names.</p>
-<ul>
-<li><strong>Diff-scoped on PRs.</strong> Only lines <em>added</em> by the PR are scanned; <code>push</code> runs scan the whole tracked tree.</li>
-<li><strong>Values are never printed.</strong> Findings report only <code>file:line:col</code> and the detector name, never the matched text, because a leaked identifier in a CI log is still a leak.</li>
-<li><strong>Suppressing false positives.</strong> Add a <code>phi-allow</code> comment on the line, or list a regex in an allowlist file (defaults to <code>.github/phi-allowlist.txt</code>). Use <code>fail: false</code> to downgrade findings to warnings.</li>
-</ul>
-<p>The <code>phone</code> and <code>email</code> detectors exist but are <strong>off by default</strong> because they are noisy in source; enable them through the <code>detectors</code> input.</p>
+<section id="permissions" class="level2">
+<h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
+<p>Grant <code>contents: read</code> (the default) and <code>actions: read</code> (download the build artifact).</p>
 </section>
-<section id="quarto-sites" class="level2">
-<h2 class="anchored" data-anchor-id="quarto-sites">Quarto sites</h2>
-<p>This family builds and ships Quarto sites, and it builds this very site.</p>
-<ul>
-<li><code>quarto-publish.yml</code> renders a Quarto project and deploys it to the <code>gh-pages</code> branch on <code>main</code>. One-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch <code>gh-pages</code> / <code>(root)</code>.</li>
-<li>The <strong>preview family</strong> publishes a rendered site for each open PR to a <code>pr-preview/pr-&lt;n&gt;/</code> directory on <code>gh-pages</code>. It is four cooperating workflows:
-<ol type="1">
-<li><code>preview.yml</code> (build) renders the site and uploads it plus PR metadata as an artifact. It runs <strong>read-only</strong> in the possibly-forked PR context, so it cannot write to the base repo.</li>
-<li><code>preview-deploy.yml</code> (deploy) triggers on the build’s <code>workflow_run</code> completion, downloads the artifact, and publishes it to <code>gh-pages</code> in the <strong>base-repo</strong> context, then comments the preview link.</li>
-<li><code>check-equation-renders.yml</code> also triggers on the build’s <code>workflow_run</code> completion, downloads the same artifact, and crawls it with a headless browser to catch equations MathJax can’t typeset – invisible in the Quarto/pandoc build log, since MathJax only runs client-side.</li>
-<li><code>cleanup-pr-previews.yml</code> (housekeeping) runs on a schedule and removes preview directories for PRs that have closed.</li>
-</ol></li>
-</ul>
-<p>The build/deploy split is a <strong>trust boundary</strong>: untrusted fork code only ever runs in the read-only build half, while the privileged <code>gh-pages</code> push happens in the deploy half against base-repo code. Do not collapse them into one job.</p>
-<p>Two wiring requirements:</p>
-<ul>
-<li>Both the deploy stub’s and the equation-check stub’s <code>on: workflow_run: workflows:</code> value <strong>must match the build stub’s <code>name:</code></strong>. That string is how <code>workflow_run</code> finds the build.</li>
-<li><code>workflow_run</code> and <code>schedule</code> triggers only fire for the copy of the file on the <strong>default branch</strong>, so previews and cleanup do not take effect until the stubs merge to <code>main</code>.</li>
-</ul>
-<p>This repo dogfoods all five. The caller stubs live in <a href="https://github.com/d-morrison/gha/tree/main/.github/workflows"><code>.github/workflows/</code></a>: <code>website-publish.yml</code>, <code>website-preview.yml</code>, <code>website-preview-deploy.yml</code>, <code>website-check-equation-renders.yml</code>, and <code>website-preview-cleanup.yml</code>. They render this pure-markdown site with the R machinery turned off (no renv, no <code>R CMD INSTALL</code>, no Chrome).</p>
-</section>
-<section id="claude-bots" class="level2">
-<h2 class="anchored" data-anchor-id="claude-bots">Claude bots</h2>
-<p>The two Claude workflows are a pair.</p>
-<ul>
-<li><code>claude.yml</code> runs the agent-mode Claude Code bot: it responds to <code>@claude</code> mentions, edits files, and opens or updates PRs.</li>
-<li><code>claude-code-review.yml</code> runs a read-only Claude review: inline findings on <code>pull_request</code> runs, a consolidated summary on dispatched runs.</li>
-</ul>
-<p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves.</p>
-</section>
-<section id="shared-content-sync" class="level2">
-<h2 class="anchored" data-anchor-id="shared-content-sync">Shared-content sync</h2>
-<p>Two repos can share single-source-of-truth content and keep both copies current without hand-bumping. The pair handles the two directions:</p>
-<ul>
-<li><code>bump-submodule.yml</code> is for the side that vendors the other repo as a git submodule. A scheduled run advances the submodule to its upstream HEAD and opens a PR when it moved.</li>
-<li><code>sync-shared-fragments.yml</code> is for the side that cannot add a submodule because the other repo already submodules <em>it</em> (a mutual submodule would recurse). It vendors a pinned copy of the named files into a <code>dest-dir</code>, records the source repo and commit in a JSON manifest, and opens a PR when the copy changes.</li>
-</ul>
-<p>Both reuse the <code>open-sync-pr</code> composite, which commits staged changes to a reused automation branch and opens or updates one PR (a no-op when nothing changed). Path-filter or scope each side to the <em>other</em> repo’s shared content so the two auto-PRs do not ping-pong.</p>
+<section id="example" class="level2">
+<h2 class="anchored" data-anchor-id="example">Example</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-equation-renders.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Fourth leg of the PR-preview family, alongside preview.yml and</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># preview-deploy.yml: triggered when the build workflow finishes, downloads its</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># artifact, and crawls the extracted site with a headless browser to catch</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># equations that fail to render (MathJax only typesets client-side, so a bad</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># equation never shows up in the Quarto/pandoc build log).</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: the `workflows:` value below MUST match the `name:` of your build</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># workflow (examples/preview.yml). `workflow_run` triggers only fire when this</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># file lives on the default branch.</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check Equation Renders</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_run</span><span class="kw">:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">workflows</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"Quarto Preview Build"</span><span class="kw">]</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">completed</span><span class="kw">]</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> read</span><span class="co">  # needed to download the build artifact</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/check-equation-renders.yml@v2</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false   # report equation render errors without failing the run</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>check-equation-renders.yml</code>).</p>
 
 
 </section>
@@ -1043,21 +987,9 @@ ul.task-list li input[type="checkbox"] {
     }
   });
   </script>
-<nav class="page-navigation">
-  <div class="nav-page nav-page-previous">
-      <a href="./index.html" class="pagination-link" aria-label="d-morrison/gha">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">d-morrison/gha</span>
-      </a>          
-  </div>
-  <div class="nav-page nav-page-next">
-      <a href="./permissions.html" class="pagination-link" aria-label="Permissions">
-        <span class="nav-page-text">Permissions</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
-  </div>
-</nav>
 </div> <!-- /content -->
 
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/workflows.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/reference/check-equation-renders.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
