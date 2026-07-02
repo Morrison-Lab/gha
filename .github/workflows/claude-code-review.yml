@@ -581,7 +581,35 @@ jobs:
       # The guard logic itself lives in scripts/check-review-execution.sh so
       # it can be exercised offline against canned fixtures (see
       # scripts/tests/), without a live Claude API call — see the
-      # `review-fail-check` job in _selftest.yml (#174).
+      # `review-fail-check` job in _selftest.yml (#174). That script lives in
+      # THIS reusable workflow's own repo (d-morrison/gha), not the caller's
+      # — the "Checkout repository" step above checks out the CALLER (its
+      # `github.workflow_ref` is the caller's stub path; only
+      # `github.job_workflow_ref` exposes the repo/ref this reusable workflow
+      # is actually running from, same distinction the `selfmod` step above
+      # documents). Fetch the script from that ref into a side directory so
+      # it resolves correctly no matter which repo calls this workflow
+      # (gha#190 — every consumer hit "No such file or directory" here once
+      # #176 moved the guard out of an inline `run:` block).
+      - name: Resolve this reusable workflow's own repo/ref
+        id: gha-self
+        if: steps.claude-review.outcome == 'success'
+        env:
+          JOB_WORKFLOW_REF: ${{ github.job_workflow_ref }}
+        run: |
+          set -euo pipefail
+          printf 'repo=%s\n' "$(printf '%s' "$JOB_WORKFLOW_REF" | sed -E 's#^([^/]+/[^/]+)/.*#\1#')" >> "$GITHUB_OUTPUT"
+          printf 'ref=%s\n' "$(printf '%s' "$JOB_WORKFLOW_REF" | sed -E 's#.*@##')" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout review guard script
+        if: steps.claude-review.outcome == 'success'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: ${{ steps.gha-self.outputs.repo }}
+          ref: ${{ steps.gha-self.outputs.ref }}
+          path: .gha-review-guard
+          fetch-depth: 1
+
       - name: Fail the check if the review did not complete
         id: fail-check
         if: steps.claude-review.outcome == 'success'
@@ -594,7 +622,7 @@ jobs:
             EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
             echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
           fi
-          bash "${GITHUB_WORKSPACE}/.github/workflows/scripts/check-review-execution.sh" "$EXECUTION_FILE"
+          bash "${GITHUB_WORKSPACE}/.gha-review-guard/.github/workflows/scripts/check-review-execution.sh" "$EXECUTION_FILE"
 
       # When the API rejected the request before Claude could review (quota
       # exhaustion, auth failure, etc.), post a notice so the PR author knows
