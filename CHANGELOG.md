@@ -112,7 +112,7 @@ below with migration steps.
 ### Fixed
 
 - **`claude-code-review`'s pass/fail check now catches stub reviews, not just
-  API errors** (gha#171). The reusable workflow's `fail-check` step previously
+  API errors** (#171). The reusable workflow's `fail-check` step previously
   only inspected `is_error`/`subtype` on the SDK result, so a run that
   reported success while actually exiting on an orchestration placeholder
   (e.g. "Waiting for both background agents... before proceeding to the next
@@ -120,8 +120,11 @@ below with migration steps.
   check stayed green — the same silent-stub failure mode reported upstream in
   [`Lacaedemon/sparta#590`](https://github.com/Lacaedemon/sparta/issues/590).
   `fail-check` now also extracts the run's final review text and fails the
-  check if it's empty or matches a known "waiting for background agent(s)"
-  placeholder pattern.
+  check if it's empty (including whitespace-only) or missing the `### Verdict`
+  heading this workflow's own prompt requires of every finished review —
+  a stub is narration, never a finished review, so it can't contain that
+  heading, which catches every observed stub phrasing without having to
+  enumerate them individually.
 
 - **`claude-code-review` no longer pushes unauthorized commits to PR
   branches** (#134). Tag mode (`track_progress: true`) in `claude-code-action`
