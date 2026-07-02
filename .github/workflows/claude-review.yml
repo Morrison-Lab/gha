@@ -40,7 +40,7 @@ jobs:
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
-      (github.event.comment.body == '/review' || startsWith(github.event.comment.body, '/review ')) &&
+      startsWith(github.event.comment.body, '/review') &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     permissions:
@@ -53,9 +53,21 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.issue.number }}
           WORKFLOW_REF: ${{ github.workflow_ref }}
+          # Passed via env (not inlined into the script) so the comment body is
+          # a shell value, never interpreted as script — avoids injection.
+          COMMENT_BODY: ${{ github.event.comment.body }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+          # The job-level `if:` only does a cheap startsWith('/review') pre-filter;
+          # GitHub Actions expressions can't reliably tell '/review' from
+          # '/reviewer' or handle a newline/tab after the command. Enforce the real
+          # match here: the body must begin with a standalone '/review' token,
+          # followed by whitespace (space/tab/newline) or end-of-string.
+          if [[ ! "$COMMENT_BODY" =~ ^/review([[:space:]]|$) ]]; then
+            echo "Comment does not start with a standalone '/review' command; skipping dispatch."
+            exit 0
+          fi
           # Derive this workflow's own filename from github.workflow_ref
           # (owner/repo/.github/workflows/<file>@ref), so the dispatch resolves
           # regardless of what the file is named in a consumer repo.
