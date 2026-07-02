@@ -30,7 +30,11 @@ below with migration steps.
   (#159). A new fourth leg of the PR-preview family: a composite
   (`check-equation-renders/action.yml`) that crawls a built Quarto/HTML site with a
   headless Chromium (Playwright), lets MathJax finish typesetting each page, and
-  fails when it finds a MathJax error node (`mjx-merror`/`.mjx-error`). Wired into
+  fails on either of the two ways MathJax signals a broken formula: a hard parse
+  error (a `[data-mjx-error]` node), or an undefined macro, which MathJax renders
+  as literal, unresolved `\command` text rather than a hard error (no error node
+  to find, so the check looks for the raw command name surviving into the
+  rendered output instead). Wired into
   the family as a reusable workflow (`.github/workflows/check-equation-renders.yml`)
   triggered the same way as `preview-deploy.yml` (`workflow_run` on the build
   workflow's completion), downloading the `pr-preview-site` artifact directly rather
