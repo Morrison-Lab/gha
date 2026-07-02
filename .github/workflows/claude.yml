@@ -294,22 +294,12 @@ jobs:
       # System libraries some R/Quarto packages need to compile or run (e.g.
       # jags, libglpk-dev, poppler-utils). Runs before R setup so renv/
       # setup-r-dependencies can build against them.
-      - name: Install apt packages
-        if: steps.dedup.outputs.skip != 'true' && inputs.apt-packages != ''
-        env:
-          APT_PACKAGES: ${{ inputs.apt-packages }}
-        run: |
-          sudo apt-get update
-          # Pipe through xargs rather than unquoted word-splitting so any shell
-          # metacharacters in the input are passed to apt-get as literal args
-          # (which it rejects) instead of being interpreted by the shell.
-          echo "$APT_PACKAGES" | xargs sudo apt-get install -y
-
-      - name: Install pip packages
-        if: steps.dedup.outputs.skip != 'true' && inputs.pip-packages != ''
-        env:
-          PIP_PACKAGES: ${{ inputs.pip-packages }}
-        run: echo "$PIP_PACKAGES" | xargs pip3 install --break-system-packages
+      - name: Install packages
+        if: steps.dedup.outputs.skip != 'true'
+        uses: d-morrison/gha/.github/actions/install-packages@v2
+        with:
+          apt-packages: ${{ inputs.apt-packages }}
+          pip-packages: ${{ inputs.pip-packages }}
 
       - name: Set up pandoc
         if: steps.dedup.outputs.skip != 'true' && inputs.setup-r
@@ -513,7 +503,7 @@ jobs:
       - name: Run Claude Code
         id: claude
         if: steps.dedup.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@a92e7c70a4da9793dc164451d829089dc057a464 # v1.0.159
+        uses: anthropics/claude-code-action@fad22eb3fa582b7357fc0ea48af6645851b884fd # v1.0.161
         # GH_TOKEN authenticates the `gh` commands granted in claude-args
         # (gh pr view/diff/edit, gh issue view, gh api); without it `gh`
         # prompts and fails in CI.

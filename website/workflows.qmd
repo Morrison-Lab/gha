@@ -13,19 +13,23 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`check-phi.yml`](reference/check-phi.qmd) | Scan PRs (added lines only) for content that looks like PHI | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | [`check-links.yml`](reference/check-links.qmd) | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | [`check-news.yml`](reference/check-news.qmd) | Enforce a `NEWS.md` changelog entry on PRs | `changelog` |
+| [`test-coverage.yml`](reference/test-coverage.qmd) | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | [`summary.yml`](reference/summary.qmd) | AI summary comment on newly opened issues | -- |
 | [`quarto-publish.yml`](reference/quarto-publish.qmd) | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `output-dir`, `checkout-submodules`, `deploy` |
 | [`preview.yml`](reference/preview.qmd) | Build half of the PR-preview family: render in the PR context and upload an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | [`preview-deploy.yml`](reference/preview-deploy.qmd) | Deploy half: publish the artifact to `gh-pages` and comment the preview link | -- |
+| [`check-equation-renders.yml`](reference/check-equation-renders.qmd) | Crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | [`cleanup-pr-previews.yml`](reference/cleanup-pr-previews.qmd) | Housekeeping: delete preview directories for closed PRs | `preview-dir` |
-| [`claude.yml`](reference/claude.qmd) | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `checkout-submodules`, `reviewer` |
-| [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots` |
+| [`claude.yml`](reference/claude.qmd) | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `reviewer` |
+| [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `apt-packages`, `pip-packages` |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
-Pin every reference to `@v1`.
+Pin every reference to `@v1`, except `test-coverage.yml` and
+`check-equation-renders.yml`, which ship at `@v2` (too new for the frozen
+`@v1` tag).
 The stubs in [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
-already carry the right `permissions:` blocks; copy them as-is.
+already carry the right tag and `permissions:` blocks; copy them as-is.
 
 ## Quality checks {#quality-checks}
 
@@ -38,6 +42,9 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   with a bundled config, a PR skip-label, and an auto-filed issue when `main` breaks.
 - `check-news.yml` enforces a `NEWS.md` changelog entry on each PR.
 - `check-phi.yml` scans for content that looks like protected health information; see [below](#phi-scanning).
+- `test-coverage.yml` measures R-package test coverage with `covr` and uploads the
+  Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the caller's
+  `secrets:` block (optional for public repos, but recommended).
 
 ## PHI scanning {#phi-scanning}
 
@@ -66,13 +73,17 @@ This family builds and ships Quarto sites, and it builds this very site.
 - `quarto-publish.yml` renders a Quarto project and deploys it to the `gh-pages` branch on `main`.
   One-time setup: set Settings -> Pages -> Source to "Deploy from a branch", branch `gh-pages` / `(root)`.
 - The **preview family** publishes a rendered site for each open PR
-  to a `pr-preview/pr-<n>/` directory on `gh-pages`. It is three cooperating workflows:
+  to a `pr-preview/pr-<n>/` directory on `gh-pages`. It is four cooperating workflows:
   1. `preview.yml` (build) renders the site and uploads it plus PR metadata as an artifact.
      It runs **read-only** in the possibly-forked PR context, so it cannot write to the base repo.
   2. `preview-deploy.yml` (deploy) triggers on the build's `workflow_run` completion,
      downloads the artifact, and publishes it to `gh-pages` in the **base-repo** context,
      then comments the preview link.
-  3. `cleanup-pr-previews.yml` (housekeeping) runs on a schedule and removes
+  3. `check-equation-renders.yml` also triggers on the build's `workflow_run` completion,
+     downloads the same artifact, and crawls it with a headless browser to catch
+     equations MathJax can't typeset -- invisible in the Quarto/pandoc build log,
+     since MathJax only runs client-side.
+  4. `cleanup-pr-previews.yml` (housekeeping) runs on a schedule and removes
      preview directories for PRs that have closed.
 
 The build/deploy split is a **trust boundary**:
@@ -82,16 +93,17 @@ Do not collapse them into one job.
 
 Two wiring requirements:
 
-- The deploy stub's `on: workflow_run: workflows:` value **must match the build stub's `name:`**.
-  That string is how `workflow_run` finds the build.
+- Both the deploy stub's and the equation-check stub's `on: workflow_run: workflows:`
+  value **must match the build stub's `name:`**. That string is how `workflow_run`
+  finds the build.
 - `workflow_run` and `schedule` triggers only fire for the copy of the file on the
   **default branch**, so previews and cleanup do not take effect until the stubs merge to `main`.
 
-This repo dogfoods all four.
+This repo dogfoods all five.
 The caller stubs live in
 [`.github/workflows/`](https://github.com/d-morrison/gha/tree/main/.github/workflows):
-`website-publish.yml`, `website-preview.yml`, `website-preview-deploy.yml`, and
-`website-preview-cleanup.yml`.
+`website-publish.yml`, `website-preview.yml`, `website-preview-deploy.yml`,
+`website-check-equation-renders.yml`, and `website-preview-cleanup.yml`.
 They render this pure-markdown site with the R machinery turned off
 (no renv, no `R CMD INSTALL`, no Chrome).
 

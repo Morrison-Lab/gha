@@ -1,5 +1,9 @@
 name: Check NEWS.md Changelog (reusable)
 
+# Wraps UCD-SERG/changelog-check-action, which hardcodes the skip label as
+# "no changelog" (not configurable via this workflow's inputs) --- apply that
+# label to a PR to skip the check.
+
 on:
   workflow_call:
     inputs:

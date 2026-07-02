@@ -40,5 +40,7 @@ jobs:
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
+    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS
+    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).

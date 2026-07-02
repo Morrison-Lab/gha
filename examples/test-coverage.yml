@@ -1,0 +1,22 @@
+# Copy to .github/workflows/test-coverage.yml in your repo.
+name: Test coverage
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test-coverage:
+    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2
+    secrets:
+      # Add CODECOV_TOKEN as a repository secret. Optional for public repos, but
+      # recommended -- tokenless uploads are rate-limited and flaky on PRs.
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    # with:
+    #   path: '.'                  # package root, if not the repo root
+    #   install-quarto: false      # set true if vignettes need Quarto to build
+    #   extra-packages: ''         # extra R packages for the coverage run
+    #   fail-ci-if-error: 'auto'   # 'true'/'false' to force; 'auto' applies the r-lib heuristic
