@@ -57,6 +57,13 @@ below with migration steps.
   eol=lf`, explicit for `*.sh`) and union-merges `CHANGELOG.md` so two
   sibling PRs appending entries under `## [Unreleased]` merge cleanly
   instead of conflicting on adjacent insertions (mirrors `d-morrison/ai-config`).
+- **`claude-code-review` gains a `track-progress` input** (#134). Consumers
+  can now opt into tag mode (live tracking comment + inline-comment tool) by
+  setting `track-progress: true`. The default remains `false` (agent mode),
+  which is safe — agent mode never grants git write tools, preventing the
+  review bot from pushing commits to PR branches. Only set `track-progress:
+  true` once [anthropics/claude-code-action#1415](https://github.com/anthropics/claude-code-action/issues/1415)
+  ships a `read_only` input; until then, tag mode exposes git write tools.
 
 ### Changed
 
@@ -90,6 +97,18 @@ below with migration steps.
   the rendered output is unchanged, and to flag only genuine prose problems
   (ambiguity, meaning-changing grammar, broken links or markup, factual errors).
   This cuts review-round churn from cosmetic wrapping nits.
+
+### Fixed
+
+- **`claude-code-review` no longer pushes unauthorized commits to PR
+  branches** (#134). Tag mode (`track_progress: true`) in `claude-code-action`
+  hardcodes git write tools into `ALLOWED_TOOLS` regardless of `--disallowedTools`,
+  causing the review bot to commit and push during review runs (confirmed:
+  serodynamics PR #175, commit `02af72b`). The workflow now defaults to agent
+  mode, which builds `ALLOWED_TOOLS` solely from `claude_args` with no git write
+  tools. Trade-off: reviews are summary-only (no inline comments) in the default
+  mode; opt into tag mode with the new `track-progress` input when the upstream
+  fix is available.
 
 ## [2.0.0] - 2026-06-25
 

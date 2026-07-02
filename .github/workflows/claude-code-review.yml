@@ -9,8 +9,11 @@ name: Claude Code Review (reusable)
 # claude.yml can re-dispatch a review after an @claude run pushes commits.
 # The stub passes the dispatch's pr_number through as the `pr-number` input.
 #
-# This workflow is intentionally read-only: its tools grant no git push, so it
-# never pushes a fix and `cancel-in-progress: true` is safe.
+# This workflow is read-only: it always runs claude-code-action in agent mode
+# (track_progress: false) so git write tools are never in ALLOWED_TOOLS.
+# Tag mode hardcodes git write tools regardless of --disallowedTools, which
+# caused unauthorized commits (serodynamics PR #175, commit 02af72b). Agent
+# mode fixes this; cancel-in-progress: true is safe because no push can occur.
 
 on:
   workflow_call:
@@ -42,6 +45,16 @@ on:
           if you loosen that gate to review bot-authored pushes directly.
         type: string
         default: 'github-actions[bot]'
+      track-progress:
+        description: >-
+          Enable tag mode (track_progress: true) for pull_request events so the
+          reviewer posts a live tracking comment and can use the inline-comment
+          tool. Defaults to false (agent mode), which is safe but produces
+          summary-only reviews. Set to true only after anthropics/claude-code-action#1415
+          ships a read_only input — until then, tag mode grants git write tools
+          and the reviewer may push commits to the branch.
+        type: boolean
+        default: false
       show-full-output:
         description: >-
           Show the full JSON output from Claude Code (passed through to
@@ -323,10 +336,10 @@ jobs:
           # allowlist gap, not a GitHub-App permission scope issue — the tool
           # ships with the action; it just has to be enabled). Mirrors
           # anthropics/claude-code-action's own pr-review workflows. Additive:
-          # the CLI merges this with the action's base allowlist, so tag mode's
-          # tracking-comment tool is preserved. The tool is only initialized in
-          # tag mode (pull_request); dispatched/agent-mode runs still fall back
-          # to the summary, per the prompt below (claude-code-action #635).
+          # the CLI merges this with the action's base allowlist. The
+          # inline-comment tool is not initialized in agent mode
+          # (claude-code-action #635); the prompt falls back to a
+          # summary-only review when it is unavailable.
           # ...and keep this a REVIEW-ONLY run. Even with a read-only contents
           # token, tag mode hands the reviewer git add/commit/rm and the action's
           # default prompt tells it to commit+push, so it flails through
@@ -437,15 +450,22 @@ jobs:
             explicit `### Verdict` status line required above — restating that
             the prior verdict stands is not itself the status line.
             ${{ inputs.prompt-addendum }}
-          # `track_progress` forces tag mode, which guarantees a tracking
-          # comment even when the plugin scores the PR below its post
-          # threshold. The action REJECTS `track_progress` for
-          # workflow_dispatch, so gate it on event_name: tag mode for
-          # pull_request, agent mode (possibly silent) for dispatched runs.
-          # Tag mode also initializes the inline-comment tool; agent mode does
-          # not (claude-code-action #635), so the prompt above falls back to a
-          # summary-only review on dispatched runs.
-          track_progress: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+          # Agent mode (false) by default; tag mode (true) when the caller
+          # opts in via the track-progress input on pull_request events.
+          # The action rejects track_progress on workflow_dispatch regardless.
+          #
+          # WARNING: tag mode hardcodes git write tools into ALLOWED_TOOLS
+          # regardless of --disallowedTools (the action's TypeScript sets the
+          # env var directly, overriding the CLI flag). This caused the
+          # reviewer to push commits to PR branches (serodynamics PR #175,
+          # commit 02af72b). Only enable tag mode after
+          # anthropics/claude-code-action#1415 ships a read_only input.
+          # In agent mode, ALLOWED_TOOLS comes solely from claude_args so
+          # no git write tools are ever available; the trade-off is
+          # summary-only reviews (no live tracking comment or inline-comment
+          # tool — see claude-code-action #635). The "Post review comment"
+          # step below compensates when running in agent mode.
+          track_progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           # Fresh tracking comment per run so each push surfaces as new PR
           # activity; the collapse step below folds priors up as OUTDATED.
           use_sticky_comment: 'false'
@@ -540,21 +560,20 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Claude review skipped — API quota exhausted.** The \`CLAUDE_CODE_OAUTH_TOKEN\` account's API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once the quota resets. [View run]($RUN_URL)"
 
-      # In agent mode (workflow_dispatch), display_report writes Claude's output
-      # to the GitHub Actions step summary — not to the PR. Tag mode
-      # (pull_request) creates a tracking comment automatically; agent mode does
-      # not. Post the review manually here so dispatched reviews are visible on
-      # the PR instead of silently discarded. Closes #87.
-      - name: Post review comment for dispatched run
+      # In agent mode, display_report writes Claude's output to the step
+      # summary, not to the PR. Post it manually here. Tag mode auto-posts
+      # the tracking comment on pull_request events, so skip this step then
+      # (it would duplicate the comment). Always run on workflow_dispatch
+      # since the action rejects track_progress there regardless. Closes #87.
+      - name: Post review comment
         if: >-
           steps.claude-review.outcome == 'success' &&
           steps.fail-check.outputs.quota_exhausted != 'true' &&
-          github.event_name == 'workflow_dispatch' &&
-          inputs.pr-number != ''
+          !(inputs.track-progress && github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ inputs.pr-number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
         run: |
@@ -595,8 +614,8 @@ jobs:
       # pushes' review comments too, or they linger now that dispatched runs can
       # succeed (allowed_bots, above). The run_id→path match already scopes this
       # to this workflow's comments, so running it on dispatched reviews is safe.
-      # The "Post review comment for dispatched run" step above ensures that
-      # dispatched runs always leave a comment with an `actions/runs/<id>` link,
+      # The "Post review comment" step above ensures that dispatched and
+      # pull_request runs always leave a comment with an `actions/runs/<id>` link,
       # so this collapse step can match and fold it in future rounds.
       - name: Collapse previous Claude review comments
         if: >-
@@ -633,16 +652,14 @@ jobs:
             done
 
       # When this run is canceled (e.g. cancel-in-progress fires because a newer
-      # commit — or a re-dispatched review of the same PR — superseded it), tag
-      # mode's tracking comment is left stuck showing an unfinished "review in
-      # progress". Explain the cancellation in the
-      # comment, then fold it (minimize as OUTDATED) so the PR doesn't carry a
-      # perpetual in-progress review. Tag mode only runs on pull_request, so a
-      # tracking comment only exists there. The tracking comment is THIS run's
-      # claude[bot] comment, identified by the run it links to — the same
-      # matcher the collapse step uses.
+      # commit superseded it), any tracking comment left by a tag-mode run
+      # (track-progress: true) would be stuck showing "review in progress".
+      # In agent mode (the default), no tracking comment is created, so this
+      # step is a no-op — kept as a safety net for tag-mode opt-in callers.
+      # The comment is identified by its run ID link — the same matcher the
+      # collapse step uses.
       - name: Explain and fold tracking comment when canceled
-        if: cancelled() && github.event_name == 'pull_request'
+        if: cancelled()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

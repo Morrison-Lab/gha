@@ -21,7 +21,7 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`check-equation-renders.yml`](reference/check-equation-renders.qmd) | Crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | [`cleanup-pr-previews.yml`](reference/cleanup-pr-previews.qmd) | Housekeeping: delete preview directories for closed PRs | `preview-dir` |
 | [`claude.yml`](reference/claude.qmd) | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `reviewer` |
-| [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `apt-packages`, `pip-packages` |
+| [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages` |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 
