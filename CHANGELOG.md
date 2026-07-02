@@ -64,6 +64,17 @@ below with migration steps.
   review bot from pushing commits to PR branches. Only set `track-progress:
   true` once [anthropics/claude-code-action#1415](https://github.com/anthropics/claude-code-action/issues/1415)
   ships a `read_only` input; until then, tag mode exposes git write tools.
+- **`/review` comment trigger for `claude-code-review`.** Commenting `/review`
+  at the start of a PR comment now starts a review of that PR on demand, without
+  routing through `claude.yml`'s `@claude` agent. The review caller listens for
+  the comment (gated to `OWNER`/`MEMBER`/`COLLABORATOR` authors) and re-dispatches
+  its own `workflow_dispatch` review, reusing the existing dispatched-review flow
+  — so the reusable `claude-code-review.yml` is unchanged and consumers get the
+  tag by updating their `examples/claude-code-review.yml` stub. It's a slash
+  command rather than an `@claude review` mention on purpose: any `@claude`
+  substring also wakes `claude.yml`, so the slash command keeps the direct path
+  independent. Works once the workflow is on the default branch (`gh workflow
+  run` requires it).
 
 ### Changed
 

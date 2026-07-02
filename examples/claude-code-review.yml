@@ -8,11 +8,15 @@
 # The workflow_dispatch path lets claude.yml re-dispatch a review after an
 # @claude run pushes commits — keep the file named claude-code-review.yml (or
 # set claude.yml's review-workflow-file to match).
+# The issue_comment path lets a trusted collaborator start a review on demand by
+# commenting `/review` on a PR, without going through claude.yml's @claude agent.
 name: Claude Code Review
 
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -21,7 +25,45 @@ on:
         type: string
 
 jobs:
+  # `/review` at the start of a PR comment (from an OWNER/MEMBER/COLLABORATOR)
+  # dispatches an on-demand review of that PR — independent of claude.yml. It's a
+  # slash command, not an `@claude …` mention, on purpose: any `@claude` also
+  # wakes claude.yml. This re-enters the workflow_dispatch path below via
+  # `gh workflow run` (the reusable workflow's jobs skip a raw issue_comment
+  # run), so `gh workflow run` needs this file on the default branch first.
+  dispatch-on-comment:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/review') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write        # dispatch this workflow via `gh workflow run`
+      issues: write         # acknowledge the /review comment
+    steps:
+      - name: Dispatch a review for the commented PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Derive this workflow's filename from github.workflow_ref so the
+          # dispatch resolves whatever you name the file.
+          WF_FILE=$(printf '%s' "$WORKFLOW_REF" | sed -E 's#.*/([^/@]+)@.*#\1#')
+          echo "Dispatching $WF_FILE to review PR #$PR_NUMBER (/review comment)."
+          gh workflow run "$WF_FILE" -f pr_number="$PR_NUMBER"
+          gh issue comment "$PR_NUMBER" --repo "$REPO" \
+            --body ":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
+            || echo "::warning::Could not acknowledge the /review comment."
+
   review:
+    # pull_request and workflow_dispatch only; the issue_comment path is handled
+    # by dispatch-on-comment above (which re-enters via workflow_dispatch).
+    if: github.event_name != 'issue_comment'
     permissions:
       contents: read
       pull-requests: write

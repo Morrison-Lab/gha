@@ -1,11 +1,21 @@
 # Active caller for this repo's own reusable Claude PR review workflow
 # (dogfooding). Distinct filename from the reusable
 # .github/workflows/claude-code-review.yml it calls.
+#
+# Three ways to start a review:
+#   - pull_request events (opened / synchronize / ready_for_review / reopened)
+#     — the automatic review.
+#   - workflow_dispatch with a pr_number — manual, and the path claude.yml
+#     re-dispatches on an `@claude review` mention or after Claude pushes commits.
+#   - a `/review` comment on a PR (see the dispatch-on-comment job) — a direct,
+#     on-demand review that does NOT route through claude.yml's @claude agent.
 name: Claude Code Review
 
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -14,7 +24,54 @@ on:
         type: string
 
 jobs:
+  # A trusted author commenting `/review` at the start of a PR comment triggers
+  # an on-demand review of that PR — bypassing claude.yml's @claude agent
+  # entirely. The tag is deliberately a slash command, NOT an `@claude …`
+  # mention: any `@claude` substring also wakes claude.yml (its caller gate
+  # matches it), so a slash command keeps this path independent of that agent.
+  #
+  # Rather than call the reusable workflow directly — its jobs gate on
+  # workflow_dispatch / pull_request and would skip an issue_comment run — this
+  # re-enters the workflow_dispatch path below via `gh workflow run`, reusing
+  # the reusable workflow's tested dispatched-review flow with no changes to it.
+  # `gh workflow run` needs the workflow present on the default branch, so
+  # `/review` works once this file is merged there.
+  dispatch-on-comment:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/review') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write        # dispatch this workflow via `gh workflow run`
+      issues: write         # acknowledge the /review comment
+    steps:
+      - name: Dispatch a review for the commented PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Derive this workflow's own filename from github.workflow_ref
+          # (owner/repo/.github/workflows/<file>@ref), so the dispatch resolves
+          # regardless of what the file is named in a consumer repo.
+          WF_FILE=$(printf '%s' "$WORKFLOW_REF" | sed -E 's#.*/([^/@]+)@.*#\1#')
+          echo "Dispatching $WF_FILE to review PR #$PR_NUMBER (/review comment)."
+          gh workflow run "$WF_FILE" -f pr_number="$PR_NUMBER"
+          gh issue comment "$PR_NUMBER" --repo "$REPO" \
+            --body ":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
+            || echo "::warning::Could not acknowledge the /review comment."
+
   review:
+    # pull_request and workflow_dispatch only; the issue_comment path is handled
+    # by dispatch-on-comment above (which re-enters via workflow_dispatch).
+    # Without this gate every PR comment would spawn a pointless (skipped) call
+    # of the reusable workflow.
+    if: github.event_name != 'issue_comment'
     permissions:
       contents: read
       pull-requests: write

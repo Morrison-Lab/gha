@@ -119,6 +119,15 @@ via `workflow_dispatch`. Install both, and keep the review stub named
 `claude-code-review.yml` (or set `claude.yml`'s `review-workflow-file` input to
 match) so the dispatch resolves.
 
+You can also start a review **directly**, without waking the `@claude` agent, by
+commenting `/review` at the start of a PR comment. `claude-code-review.yml`
+listens for that comment itself and re-dispatches its own `workflow_dispatch`
+review of the PR — so `/review` needs only `claude-code-review.yml` installed
+(no `claude.yml`), and it works for `OWNER`/`MEMBER`/`COLLABORATOR` commenters
+once the workflow is on your default branch. It's a slash command rather than an
+`@claude review` mention on purpose: any `@claude` substring would also trigger
+`claude.yml`, so the slash command keeps the direct path independent.
+
 ## Claude session visibility
 
 GHA sessions (both `claude.yml` and `claude-code-review.yml`) run as headless
