@@ -13,23 +13,17 @@ below with migration steps.
 
 ### Changed
 
-- **`claude-code-review.yml` now bakes in SERG lab manual enforcement** (#170).
-  The reusable review prompt now always evaluates a PR against the
-  [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) — coding
-  style, coding practices (including function decomposition/length limits),
-  and repository conventions — so every consumer repo gets this check
-  automatically, without needing to pass a `prompt-addendum`. Mirrors the
-  wording already in this repo's own `CLAUDE.md` "Code review guidelines".
-
-- **`claude-code-review` gates SERG lab-manual enforcement behind a `lab-manual`
-  input** (default `true`). #170 baked the R/tidyverse/Quarto-focused lab manual
-  into the review prompt for *every* consumer unconditionally, which is noise for
-  a repo the manual doesn't target (a pure GitHub Actions, shell, or docs repo)
-  and bloats an already-large prompt. The guidance is now emitted only when
-  `lab-manual: true` (the default, so R/Quarto consumers are unchanged); set
-  `lab-manual: false` to skip it. `gha`'s own review caller sets it `false` (its
-  `CLAUDE.md` still carries the guidance for the reviewing agent, so nothing is
-  lost).
+- **`claude-code-review` holds PRs to the SERG lab manual, opt-outable via a
+  `lab-manual` input** (#170, #171). The reusable review prompt evaluates a PR
+  against the [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
+  coding style, coding practices (including function decomposition/length
+  limits), and repository conventions — in addition to correctness, so every
+  R/Quarto consumer gets this check without needing a `prompt-addendum` (it
+  mirrors the wording in this repo's own `CLAUDE.md` "Code review guidelines").
+  It is gated behind a `lab-manual` boolean (default `true`, so R/Quarto
+  consumers are unchanged); set `lab-manual: false` for repos the
+  R/tidyverse/Quarto-focused manual doesn't target (a pure GitHub Actions,
+  shell, or docs repo) so the reviewer isn't handed irrelevant guidance.
 
 ### Added
 
