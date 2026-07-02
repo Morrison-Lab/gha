@@ -74,6 +74,21 @@ Grep the repo for `@v1` rather than relying on memory of where it appears.
 Missing either kind surfaces as a workflow-not-found error for consumers who
 copy that spot literally (gha#148, caught across two review rounds).
 
+**When narrowing an already-fixed blanket claim, re-grep the WHOLE repo after
+every edit — not just the files you already know about.** The same versioning
+convention gets restated in multiple, independently-worded spots: not just
+once per file, but in separate sections of the *same* file (e.g. `README.md`'s
+`## Versioning` section and its nested `### Pinning third-party actions`
+subsection both needed the same `@v1`/`@v2` exception clause), and across sibling
+pages that all describe the tag scheme (`website/index.qmd`'s nav blurb,
+`website/versioning.qmd`, `website/workflows.qmd`, `CLAUDE.md`'s own "About
+this repo"). Fixing the first instance you find and moving on invites the
+reviewer to find the next one in a later round — gha#181 took six review
+rounds to fully sweep this exact pattern (`@v1`/`@v2` scoping) because each
+fix only searched the files already in the diff. Before considering a
+versioning-prose fix complete, `grep -rn "@v1\|@v2"` (or whatever pattern is
+narrowing) across the **entire** repo, not just the files already touched.
+
 **Adding a new `workflow_call` input to an existing reusable workflow** needs
 its own doc sync at three sites beyond the workflow file itself, or the input
 is invisible to a consumer skimming the docs:
