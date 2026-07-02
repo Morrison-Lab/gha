@@ -341,6 +341,16 @@ jobs:
             brief overall verdict plus any finding not tied to a specific line;
             don't restate each inline comment there.
 
+            **Every review must end with an explicit overall conclusion**
+            under a `### Verdict` heading: a single clear status line such as
+            **Ready for merge** or **Needs more work** (or another clearly
+            labeled alternative, e.g. **Blocked on human review** for an
+            escalated impasse). State this status explicitly even when there
+            are no new findings — "no new findings" or "looks good" can
+            explain the verdict, but it doesn't substitute for it; the
+            explicit status line must still be present and unambiguous at a
+            glance.
+
             **Don't flag cosmetic source-only formatting that renders
             identically.** For prose (not code blocks) in Markdown/text files, the rendered output
             is what matters: don't raise nits about where a hard wrap falls, a
@@ -368,7 +378,9 @@ jobs:
             explicitly: state the prior verdict, link to that comment by its
             GitHub URL, and explain that it still stands. This lets readers
             know the confirming review ran and why it produced no new findings,
-            rather than leaving the PR thread silent.
+            rather than leaving the PR thread silent. Still close with the
+            explicit `### Verdict` status line required above — restating that
+            the prior verdict stands is not itself the status line.
             ${{ inputs.prompt-addendum }}
           # `track_progress` forces tag mode, which guarantees a tracking
           # comment even when the plugin scores the PR below its post
