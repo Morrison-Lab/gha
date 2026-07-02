@@ -544,6 +544,21 @@ jobs:
             jq '{subtype, is_error, num_turns, duration_ms, total_cost_usd, permission_denials_count}' <<< "$result" || true
             exit 1
           fi
+          # Guard against a run that reports is_error:false but never
+          # actually produced a review — e.g. it exits after posting only an
+          # orchestration placeholder ("waiting for background agents...")
+          # instead of finished findings. subtype/is_error can't catch this
+          # because the SDK call itself succeeded; only the content reveals
+          # the review never finished (Lacaedemon/sparta#590).
+          review_text="$(jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // ""' "$EXECUTION_FILE" 2>/dev/null || true)"
+          if [[ -z "$review_text" ]]; then
+            echo "::error::Claude review produced no review text — treating as a failed review."
+            exit 1
+          fi
+          if grep -qiE 'waiting for (both |the )?background agent|i.ll wait for (the )?background agent' <<< "$review_text"; then
+            echo "::error::Claude review ended on an orchestration placeholder instead of a finished review (Lacaedemon/sparta#590)."
+            exit 1
+          fi
           echo "Claude review completed cleanly (subtype=$subtype)."
 
       # When the API rejected the request before Claude could review (quota

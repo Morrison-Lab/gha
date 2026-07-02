@@ -111,6 +111,18 @@ below with migration steps.
 
 ### Fixed
 
+- **`claude-code-review`'s pass/fail check now catches stub reviews, not just
+  API errors** (gha#171). The reusable workflow's `fail-check` step previously
+  only inspected `is_error`/`subtype` on the SDK result, so a run that
+  reported success while actually exiting on an orchestration placeholder
+  (e.g. "Waiting for both background agents... before proceeding to the next
+  review steps") still posted that placeholder as the finished review and the
+  check stayed green — the same silent-stub failure mode reported upstream in
+  [`Lacaedemon/sparta#590`](https://github.com/Lacaedemon/sparta/issues/590).
+  `fail-check` now also extracts the run's final review text and fails the
+  check if it's empty or matches a known "waiting for background agent(s)"
+  placeholder pattern.
+
 - **`claude-code-review` no longer pushes unauthorized commits to PR
   branches** (#134). Tag mode (`track_progress: true`) in `claude-code-action`
   hardcodes git write tools into `ALLOWED_TOOLS` regardless of `--disallowedTools`,
