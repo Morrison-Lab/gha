@@ -77,9 +77,9 @@ copy that spot literally (gha#148, caught across two review rounds).
 **When narrowing an already-fixed blanket claim, re-grep the WHOLE repo after
 every edit — not just the files you already know about.** The same versioning
 convention gets restated in multiple, independently-worded spots: not just
-once per file, but in separate sections of the *same* file (e.g. `README.md`
-has both a `## Versioning` section and a separate `## Pinning third-party
-actions` section that each make their own blanket claim), and across sibling
+once per file, but in separate sections of the *same* file (e.g. `README.md`'s
+`## Versioning` section and its nested `### Pinning third-party actions`
+subsection both needed the same `@v1`/`@v2` exception clause), and across sibling
 pages that all describe the tag scheme (`website/index.qmd`'s nav blurb,
 `website/versioning.qmd`, `website/workflows.qmd`, `CLAUDE.md`'s own "About
 this repo"). Fixing the first instance you find and moving on invites the
