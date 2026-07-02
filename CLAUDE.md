@@ -38,9 +38,12 @@ composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
-  changes user-facing behavior should add a `CHANGELOG.md` entry under
-  `## [Unreleased]`, though this is no longer CI-enforced (`require-changelog.yml`
-  was removed).
+  changes user-facing behavior should add a **changelog fragment** under
+  `changelog.d/` (a `<slug>.<category>.md` file — see `changelog.d/README.md`)
+  rather than editing `CHANGELOG.md` directly, so parallel PRs never conflict on
+  the same `## [Unreleased]` lines. `changelog.d/assemble.sh` collates the
+  fragments into `CHANGELOG.md` at release time. This is not CI-enforced
+  (`require-changelog.yml` was removed).
 
 When editing a consumer-facing capability, change the composite (`<name>/action.yml`,
 plus its helper script if one exists) and keep the wrapping reusable workflow and its
