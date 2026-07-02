@@ -183,9 +183,12 @@ unreachable — find the source path (often the same repo, e.g.
 included fragments) and raw-fetch that instead using the same
 `<path>`-includes-its-extension template above, e.g.
 `https://raw.githubusercontent.com/<owner>/<repo>/<branch>/coding-style.qmd`.
-(Used to confirm ettbc's `.lintr.R` predated `UCD-SERG/lab-manual`'s move to
-a shared `lms` linter package: the manual's own docs page 403'd, but its
-`.qmd` source and the referenced `.lintr.R` file both fetched cleanly.)
+(Used on `ucdavis/ettbc#12` / `#32` to confirm ettbc's `.lintr.R` predated
+`UCD-SERG/lab-manual`'s move to a shared `lms` linter package (source:
+[`UCD-SERG/lab-manual/.lintr.R`](https://github.com/UCD-SERG/lab-manual/blob/main/.lintr.R),
+which calls `lms::default_linters()` from a package defined in that repo's own
+`lms/` subdirectory) — the manual's own docs page 403'd, but its `.qmd`
+source and the referenced `.lintr.R` file both fetched cleanly.)
 
 ## A canceled review can red-X require-review — don't chase it as a code bug
 
