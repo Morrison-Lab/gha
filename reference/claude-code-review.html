@@ -510,12 +510,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -550,18 +544,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human.</td>
 </tr>
 <tr class="odd">
+<td><code>track-progress</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Enable tag mode: live tracking comment + inline-comment tool on <code>pull_request</code> events. Default <code>false</code> (agent/summary-only mode) is safe. <strong>Only set <code>true</code> after <a href="https://github.com/anthropics/claude-code-action/issues/1415">anthropics/claude-code-action#1415</a> ships a <code>read_only</code> input</strong> - until then, tag mode exposes git write tools and the reviewer may push commits to the branch.</td>
+</tr>
+<tr class="even">
 <td><code>show-full-output</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Show the full JSON output from Claude Code. Turn it on to diagnose a review that fails inside the model call.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Space-separated system packages to <code>apt-get install</code> before the review runs (e.g.&nbsp;<code>maxima</code> for a computer algebra system). Empty to skip.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>pip-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
@@ -639,10 +639,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # tag mode: live tracking comment + inline comments (unsafe until anthropics/claude-code-action#1415 ships)</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/d-morrison/gha/blob/main/examples/claude-code-review.yml"><code>examples/claude-code-review.yml</code></a> for the full caller stub.</p>
 
 
