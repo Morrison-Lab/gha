@@ -53,6 +53,23 @@ on:
           failing check alone.
         type: boolean
         default: false
+      apt-packages:
+        description: >-
+          Space-separated system packages to `apt-get install` before the
+          review runs (e.g. `maxima` for a computer-algebra system so the
+          reviewer's Bash tool can symbolically check a derivation it's
+          reviewing). Mirrors claude.yml's `apt-packages` input. Empty by
+          default — most repos don't need any.
+        type: string
+        default: ''
+      pip-packages:
+        description: >-
+          Space-separated pip packages to install (`pip3 install
+          --break-system-packages`) before the review runs (e.g. `sympy` for
+          symbolic math). Mirrors claude.yml's `pip-packages` input. Empty by
+          default.
+        type: string
+        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -224,6 +241,17 @@ jobs:
         uses: d-morrison/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      # Optional system/pip packages the reviewer's Bash tool can use — e.g. a
+      # computer-algebra system (`apt-packages: maxima`, `pip-packages: sympy`)
+      # so a math-heavy repo's reviewer can symbolically check a derivation
+      # instead of eyeballing it. Empty by default; most repos need neither.
+      - name: Install packages
+        if: steps.selfmod.outputs.self_mod != 'true'
+        uses: d-morrison/gha/.github/actions/install-packages@v2
+        with:
+          apt-packages: ${{ inputs.apt-packages }}
+          pip-packages: ${{ inputs.pip-packages }}
 
       # Clear the requested reviewers (human and AI, e.g. Copilot) before
       # Claude runs so they aren't notified mid-run, then re-add them when
