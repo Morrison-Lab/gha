@@ -569,7 +569,7 @@ jobs:
         if: >-
           steps.claude-review.outcome == 'success' &&
           steps.fail-check.outputs.quota_exhausted != 'true' &&
-          !(inputs['track-progress'] && github.event_name == 'pull_request')
+          !(inputs.track-progress && github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -652,10 +652,10 @@ jobs:
             done
 
       # When this run is canceled (e.g. cancel-in-progress fires because a newer
-      # commit superseded it), any tracking comment left by a prior tag-mode run
-      # would be stuck showing "review in progress". Since we now always run in
-      # agent mode (no tracking comment), this step is a no-op in practice, but
-      # kept as a safety net in case a prior tag-mode comment lingers.
+      # commit superseded it), any tracking comment left by a tag-mode run
+      # (track-progress: true) would be stuck showing "review in progress".
+      # In agent mode (the default), no tracking comment is created, so this
+      # step is a no-op — kept as a safety net for tag-mode opt-in callers.
       # The comment is identified by its run ID link — the same matcher the
       # collapse step uses.
       - name: Explain and fold tracking comment when canceled
