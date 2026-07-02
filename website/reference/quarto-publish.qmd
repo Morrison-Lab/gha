@@ -68,7 +68,7 @@ jobs:
       # reusable workflow's caller must grant a job's permissions even when that
       # job is skipped. The build job downscopes its own token to read.
       contents: write
-    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v1
+    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
     # with:
     #   path: website          # Quarto project lives in a subdir (default: repo root)
     #   setup-r: true           # for R/knitr Quarto projects (default: false)
