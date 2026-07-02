@@ -504,7 +504,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Fourth leg of the PR-preview family, alongside <code>preview.yml</code> and <code>preview-deploy.yml</code>. Triggered on the build workflow’s <code>workflow_run</code> completion, it downloads the same <code>pr-preview-site</code> artifact <code>preview-deploy.yml</code> uses, crawls the extracted site with a headless browser, and fails when any equation fails to render.</p>
-<p>Quarto’s <code>html-math-method: mathjax</code> embeds raw TeX (<code>\(...\)</code>, <code>$$...$$</code>) unchanged in the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad equation therefore produces no warning in the Quarto/pandoc build log – the static HTML is “valid” pandoc output even when the embedded TeX can’t be typeset. This workflow is what actually runs MathJax (via a headless Chromium) and inspects the DOM for MathJax’s own error markers (<code>mjx-merror</code>, <code>.mjx-error</code>).</p>
+<p>Quarto’s <code>html-math-method: mathjax</code> embeds raw TeX (<code>\(...\)</code>, <code>$$...$$</code>) unchanged in the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad equation therefore produces no warning in the Quarto/pandoc build log – the static HTML is “valid” pandoc output even when the embedded TeX can’t be typeset. This workflow is what actually runs MathJax (via a headless Chromium) and checks for both of the ways it signals a broken formula:</p>
+<ul>
+<li>A hard parse error (unmatched braces, wrong argument count, …) inserts a <code>[data-mjx-error]</code> node carrying the message.</li>
+<li>An undefined macro (e.g.&nbsp;a custom command from a macro file that didn’t load) is <em>not</em> a hard error by default – MathJax falls back to rendering the raw, unresolved command name (<code>\foo</code>) as literal text, so there’s no error node to find. The check instead looks for a rendered <code>\command</code>-shaped token surviving into the typeset output, since resolved math never leaves its own TeX source behind.</li>
+</ul>
 <p>It runs independently of <code>preview-deploy.yml</code> – both trigger on the same build completion, but this one downloads the artifact directly rather than depending on the deploy, so it needs no <code>gh-pages</code> write access and no live preview URL.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
