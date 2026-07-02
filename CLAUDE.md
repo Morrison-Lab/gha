@@ -62,6 +62,24 @@ Grep the repo for `@v1` rather than relying on memory of where it appears.
 Missing either kind surfaces as a workflow-not-found error for consumers who
 copy that spot literally (gha#148, caught across two review rounds).
 
+**Adding a new `workflow_call` input to an existing reusable workflow** needs
+its own doc sync at three sites beyond the workflow file itself, or the input
+is invisible to a consumer skimming the docs:
+
+1. **`README.md`**'s per-workflow table row's "Key inputs" cell.
+2. **`website/workflows.qmd`**'s equivalent table row — a separate table, not
+   generated from `README.md`, so it drifts independently.
+3. **`website/reference/<name>.qmd`**'s Inputs table, plus a commented usage
+   line in its `## Example` block.
+
+Grep the repo for the workflow's filename (e.g. `claude-code-review.yml`)
+across `README.md`, `website/workflows.qmd`, and `website/reference/` rather
+than assuming only one needs the update. Caught across four review rounds on
+gha#161 — the fix for round 2's finding (missing composite) surfaced round
+3's finding (docs out of sync), whose fix left one more untouched table row
+that round 3 flagged as out-of-scope, fixed anyway before round 4 confirmed
+clean.
+
 ### Tests
 
 `check-phi/tests/test_detectors.py` is a pytest suite pinning each PHI detector's
