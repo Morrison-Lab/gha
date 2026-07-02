@@ -37,7 +37,7 @@
     "href": "index.html#where-to-go-next",
     "title": "d-morrison/gha",
     "section": "Where to go next",
-    "text": "Where to go next\n\nWorkflows catalogs every reusable workflow and what it does.\nPermissions lists the GITHUB_TOKEN permissions and secrets each one needs.\nVersioning explains the moving @v1 tag and how third-party actions are pinned.\n\nThis very site is built and shipped by the workflows it documents: quarto-publish deploys it to GitHub Pages, and the preview family renders a preview for each pull request.",
+    "text": "Where to go next\n\nWorkflows catalogs every reusable workflow and what it does.\nPermissions lists the GITHUB_TOKEN permissions and secrets each one needs.\nVersioning explains the major-tag scheme (@v1 vs @v2) and how third-party actions are pinned.\n\nThis very site is built and shipped by the workflows it documents: quarto-publish deploys it to GitHub Pages, and the preview family renders a preview for each pull request.",
     "crumbs": [
       "Overview",
       "d-morrison/gha"
