@@ -137,6 +137,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      # Loads MathJax from cdn.jsdelivr.net rather than vendoring it: this runs
+      # on a GitHub-hosted runner, which has outbound internet by default,
+      # unlike the sandboxed environment used to validate the detection logic
+      # during development (which vendored a local copy of the bundle instead).
       - name: Generate a fixture site with one good and one broken page
         shell: bash
         run: |

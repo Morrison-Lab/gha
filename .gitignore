@@ -9,4 +9,3 @@ __pycache__/
 **/*.quarto_ipynb
 
 node_modules/
-package-lock.json

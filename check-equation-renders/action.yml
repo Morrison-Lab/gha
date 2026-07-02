@@ -21,7 +21,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        npm install --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
+        npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
         npx --prefix "$GITHUB_ACTION_PATH" playwright install --with-deps chromium
 
     - name: Check equation renders
