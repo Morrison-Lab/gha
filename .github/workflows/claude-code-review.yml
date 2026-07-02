@@ -569,26 +569,40 @@ jobs:
             jq '{subtype, is_error, num_turns, duration_ms, total_cost_usd, permission_denials_count}' <<< "$result" || true
             exit 1
           fi
-          # Guard against a run that reports is_error:false but never
-          # actually produced a review — e.g. it exits after posting only an
-          # orchestration placeholder ("waiting for background agents...",
-          # "Still waiting on the remaining three review agents...") instead
-          # of finished findings. subtype/is_error can't catch this because
-          # the SDK call itself succeeded; only the content reveals the
-          # review never finished (Lacaedemon/sparta#590). Enumerating every
-          # phrasing of "I'm still waiting" is a losing game (gha#172 review),
-          # so check instead for the one thing every *finished* review is
-          # required to contain: the "### Verdict" heading mandated by this
-          # prompt above. A stub is narration, never a finished review, so it
-          # can't have produced that heading.
+          # Guard against a run that reports is_error:false but never actually
+          # produced a review — e.g. it exits after posting only an orchestration
+          # placeholder ("waiting for background agents...", "needs your
+          # approval") instead of finished findings. subtype/is_error can't catch
+          # this because the SDK call itself succeeded; only the content reveals
+          # the review never finished (gha#173, Lacaedemon/sparta#590).
+          #
+          # A *finished* review states a verdict; a stub is pure narration and
+          # never does. So require a verdict line — but match it leniently on two
+          # axes, because requiring the exact "### Verdict" heading in only the
+          # final block false-failed *complete* reviews (gha#172 was too strict —
+          # every push-triggered review red-X'd, gha#175):
+          #   1. Form: the code-review plugin writes the verdict as a "Verdict:"
+          #      label, not the "### Verdict" heading the prompt requests, so
+          #      accept any heading/label/bold form (`### Verdict`, `**Verdict:**`,
+          #      `Verdict:`).
+          #   2. Location: in agent mode the verdict may land in an earlier
+          #      assistant message, so scan ALL assistant text, not just the last
+          #      block.
+          # The text POSTED to the PR is still the final assistant message.
           review_text_file="$(mktemp)"
           jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | last // ""' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
-          if [[ -z "$(tr -d '[:space:]' < "$review_text_file")" ]]; then
+          all_text_file="$(mktemp)"
+          jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n")' "$EXECUTION_FILE" > "$all_text_file" 2>/dev/null || true
+          if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
             echo "::error::Claude review produced no review text — treating as a failed review."
             exit 1
           fi
-          if ! grep -qiE '^###[[:space:]]*verdict\b' "$review_text_file"; then
-            echo "::error::Claude review has no '### Verdict' heading — looks like an incomplete/stub review, not a finished one (Lacaedemon/sparta#590)."
+          # A verdict line: optional leading blockquote / list / heading / bold
+          # markers, then "verdict" (case-insensitive). Matches `### Verdict`,
+          # `**Verdict:**`, `Verdict:`, `> Verdict`, `- Verdict:`; a stub
+          # ("waiting for background agents…", "needs your approval") has none.
+          if ! grep -qiE '^[[:space:]>*_#-]*verdict\b' "$all_text_file"; then
+            echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
             exit 1
           fi
           echo "review_text_file=$review_text_file" >> "$GITHUB_OUTPUT"
