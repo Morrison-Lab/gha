@@ -246,19 +246,12 @@ jobs:
       # computer-algebra system (`apt-packages: maxima`, `pip-packages: sympy`)
       # so a math-heavy repo's reviewer can symbolically check a derivation
       # instead of eyeballing it. Empty by default; most repos need neither.
-      - name: Install apt packages
-        if: steps.selfmod.outputs.self_mod != 'true' && inputs.apt-packages != ''
-        env:
-          APT_PACKAGES: ${{ inputs.apt-packages }}
-        run: |
-          sudo apt-get update
-          echo "$APT_PACKAGES" | xargs sudo apt-get install -y
-
-      - name: Install pip packages
-        if: steps.selfmod.outputs.self_mod != 'true' && inputs.pip-packages != ''
-        env:
-          PIP_PACKAGES: ${{ inputs.pip-packages }}
-        run: echo "$PIP_PACKAGES" | xargs pip3 install --break-system-packages
+      - name: Install packages
+        if: steps.selfmod.outputs.self_mod != 'true'
+        uses: d-morrison/gha/.github/actions/install-packages@v2
+        with:
+          apt-packages: ${{ inputs.apt-packages }}
+          pip-packages: ${{ inputs.pip-packages }}
 
       # Clear the requested reviewers (human and AI, e.g. Copilot) before
       # Claude runs so they aren't notified mid-run, then re-add them when
