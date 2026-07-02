@@ -31,12 +31,19 @@ composite action plus a `workflow_call` reusable workflow. Consumers pin to `@v1
   `workflow_call` reusable workflow (inline shell logic, no external composite);
   `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
   reusable workflows that call the shared internal `open-sync-pr` composite;
-  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this repo.
+  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this
+  repo; `require-changelog.yml` is likewise `pull_request`-triggered and runs
+  only in this repo, dogfooding `check-news.yml` on `CHANGELOG.md`.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
-  `REVDEPS.md` — lists registered downstream consumer repos.
+  `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
+  changes user-facing behavior needs a `CHANGELOG.md` entry under
+  `## [Unreleased]`; `require-changelog.yml` enforces this (dogfoods the
+  repo's own `check-news.yml`) and is skippable per-PR with the `no
+  changelog` label for changes with nothing to log (docs typos, CI-only
+  tweaks with no consumer-visible effect).
 
 When editing a consumer-facing capability, change the composite (`<name>/action.yml`,
 plus its helper script if one exists) and keep the wrapping reusable workflow and its
@@ -61,6 +68,24 @@ site, not just the obvious one:
 Grep the repo for `@v1` rather than relying on memory of where it appears.
 Missing either kind surfaces as a workflow-not-found error for consumers who
 copy that spot literally (gha#148, caught across two review rounds).
+
+**Adding a new `workflow_call` input to an existing reusable workflow** needs
+its own doc sync at three sites beyond the workflow file itself, or the input
+is invisible to a consumer skimming the docs:
+
+1. **`README.md`**'s per-workflow table row's "Key inputs" cell.
+2. **`website/workflows.qmd`**'s equivalent table row — a separate table, not
+   generated from `README.md`, so it drifts independently.
+3. **`website/reference/<name>.qmd`**'s Inputs table, plus a commented usage
+   line in its `## Example` block.
+
+Grep the repo for the workflow's filename (e.g. `claude-code-review.yml`)
+across `README.md`, `website/workflows.qmd`, and `website/reference/` rather
+than assuming only one needs the update. Caught across four review rounds on
+gha#161 — the fix for round 2's finding (missing composite) surfaced round
+3's finding (docs out of sync), whose fix left one more untouched table row
+that round 3 flagged as out-of-scope, fixed anyway before round 4 confirmed
+clean.
 
 ### Tests
 
@@ -188,3 +213,16 @@ global standing rule from the
 Ambiguity accepted at face value is how a factually wrong claim (e.g.
 documentation citing a nonexistent enum value) slips through review
 unchallenged.
+
+### 4. Fact-check prose against domain knowledge and external sources
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), assess the accuracy and clarity of its claims — check each
+against domain knowledge and, where checkable, an external source (the
+referenced tool's own docs, a linked spec) — and check any document-internal
+reasoning the prose makes (e.g. a justification for why a workflow does
+something a particular way). State which claims are inaccurate, cite the
+specific source checked for each judgment, and proactively suggest
+additional citations where they'd help. This is a global standing rule from
+the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/fact-check-prose.md`).

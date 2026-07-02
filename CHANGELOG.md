@@ -44,6 +44,14 @@ below with migration steps.
   client-side, so a bad equation produces no warning in the Quarto/pandoc build log.
   Ships at `@v2` (too new for the frozen `@v1` tag), like `test-coverage`. See
   `examples/check-equation-renders.yml` for the caller stub.
+- **`claude-code-review` accepts `apt-packages`/`pip-packages` inputs** (#161),
+  mirroring the inputs `claude.yml` already had. Lets a math-heavy consumer
+  repo install a computer algebra system (e.g. `apt-packages: maxima`,
+  `pip-packages: sympy`) so the reviewer's `Bash` tool can symbolically check
+  a derivation instead of eyeballing the algebra. Both default to `''`
+  (no-op), so this is backward compatible for every existing caller. The
+  install steps for both workflows are now factored into a shared
+  `.github/actions/install-packages` composite rather than duplicated.
 
 ### Changed
 
