@@ -567,6 +567,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>''</code></td>
 <td>Space-separated pip packages to install with <code>pip3 --break-system-packages</code> before the review runs (e.g.&nbsp;<code>sympy</code>). Empty to skip.</td>
 </tr>
+<tr class="odd">
+<td><code>lab-manual</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Hold the PR to the SERG lab manual (coding style/practices, repository conventions) during review, in addition to correctness. Default <code>true</code>; set <code>false</code> for repos where the R/tidyverse/Quarto-focused manual doesn’t apply (e.g.&nbsp;a GitHub Actions, shell, or docs repo), so the reviewer isn’t handed guidance irrelevant to the diff.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -640,10 +646,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # tag mode: live tracking comment + inline comments (unsafe until anthropics/claude-code-action#1415 ships)</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/d-morrison/gha/blob/main/examples/claude-code-review.yml"><code>examples/claude-code-review.yml</code></a> for the full caller stub.</p>
 
 
