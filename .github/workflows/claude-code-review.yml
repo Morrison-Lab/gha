@@ -430,7 +430,20 @@ jobs:
             disallowed. Never describe changes as 'uncommitted' or ask the
             user to grant git/commit permissions; there is nothing for you to
             commit. If you would have fixed something, describe the fix in
-            your review instead."
+            your review instead.
+
+            This sandboxed environment has no network-fetch tools
+            (WebFetch/WebSearch) enabled. Do not attempt to fetch external
+            URLs to verify a claim; when a fact-check would require live
+            network access, verify what you can from the repository's own
+            content and your own knowledge, and note in your review that the
+            rest could not be independently verified in this environment
+            instead of trying the fetch. More generally: a denied tool call
+            is never a reason to stop the review early. If any tool call is
+            denied for any reason, continue with the information you already
+            have and still finish by posting your findings and the explicit
+            ### Verdict line required below — do not end the run silently or
+            wait for approval."
           # The job `if:` already lets dispatched runs review drafts (the
           # automatic pull_request path skips them via draft == false). But the
           # code-review skill has its OWN don't-review-drafts stop condition, so
