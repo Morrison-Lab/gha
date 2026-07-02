@@ -144,9 +144,11 @@ a `github.workflow_ref`/`github.job_workflow_ref`-shaped string
 parts, shared by the three `claude-code-review.yml` steps that each need one
 of these strings apart (`selfmod`, the guard-script repo/ref resolver, and
 the comment-collapse step, which reuses `selfmod`'s already-parsed output)
-instead of each duplicating the `sed` logic inline. `claude-review.yml` has
-its own, separate inline `sed` parse of `github.workflow_ref` and does not
-use this action. Its `tests/run-tests.sh` exercises the extracted
+instead of each duplicating the `sed` logic inline, plus `claude-review.yml`'s
+`dispatch-on-comment` job (which needs just the filename, so it basenames the
+`path` output) and the matching `dispatch-on-comment` job in the
+`examples/claude-code-review.yml` stub. Its `tests/run-tests.sh` exercises
+the extracted
 `parse-workflow-ref.sh` offline against a tag, a branch, and a full-SHA ref;
 CI runs it as a step in the same `review-fail-check` job (gha#191). Note the
 ordering constraint that makes this a *script-called-from-a-composite-action*

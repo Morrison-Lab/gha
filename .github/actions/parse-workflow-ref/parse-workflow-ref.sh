@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Parses a workflow-ref string (owner/repo/.github/workflows/<file>@ref --
 # the shape of both github.workflow_ref and github.job_workflow_ref) into its
-# repo, path, and ref parts. Shared by every claude-code-review.yml /
-# claude-review.yml step that needs to pick one of these strings apart
-# (selfmod, the review-guard-script resolver, and the review-comment collapse
-# step) instead of three independent inline `sed` copies (gha#191 review).
+# repo, path, and ref parts. Shared by every claude-code-review.yml step that
+# needs to pick one of these strings apart (selfmod, the review-guard-script
+# resolver, and the review-comment collapse step, which reuses selfmod's
+# already-parsed output) and by claude-review.yml's dispatch-on-comment job,
+# instead of four independent inline `sed` copies (gha#191 review).
 #
 # Usage: bash parse-workflow-ref.sh <owner/repo/.github/workflows/file@ref>
 # Prints `repo=...`, `path=...`, `ref=...` to stdout (GITHUB_OUTPUT format).
