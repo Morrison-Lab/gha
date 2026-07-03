@@ -15,9 +15,11 @@ fixtures_dir="$script_dir/fixtures"
 #   pass      — check-review-execution.sh exits 0 and writes review_text_file
 #   fail      — it exits non-zero, and does NOT write stub_review=true
 #   fail-stub — it exits non-zero AND writes stub_review=true (gha#185's
-#               retryable signature: real, non-empty text but no verdict —
-#               distinct from a hard SDK error or genuinely empty output,
-#               neither of which claude-code-review.yml retries)
+#               retryable signature: real, non-empty text, no verdict, and a
+#               LOW permission_denials_count — distinct from a hard SDK
+#               error, genuinely empty output, or gha#198's textually
+#               identical but high-denial-count pattern, none of which
+#               claude-code-review.yml retries)
 #   skip      — it exits 0 and writes quota_exhausted=true (graceful skip)
 declare -A expected=(
   [genuine-finished-review.json]=pass
@@ -25,6 +27,7 @@ declare -A expected=(
   [stub-pr171-remaining-review-agents.json]=fail-stub
   [stub-sparta590-scheduled-wakeup.json]=fail-stub
   [stub-sparta590-unnecessary-call.json]=fail-stub
+  [stub-gha198-high-denial-count.json]=fail
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
   [quota-exhausted.json]=skip

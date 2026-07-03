@@ -482,14 +482,20 @@ jobs:
       # reproduced repeatedly with a low permission_denials_count, consistent
       # with a single denied tool call derailing an otherwise-short run
       # (gha#185). A hard SDK error or genuinely empty output is a different
-      # failure class (not retried here); a run stubbing for OTHER reasons
-      # (e.g. gha#198's much-higher-denial-count signature) is also excluded
-      # by the stub_review check, since that one has repeatedly NOT recovered
-      # on retry per #198's own findings.
+      # failure class (not retried here). A run stubbing for a DIFFERENT
+      # reason (e.g. gha#198's much-higher-denial-count signature, which has
+      # repeatedly NOT recovered on retry per #198's own findings) is
+      # excluded by check-review-execution.sh's own
+      # permission_denials_count <= STUB_RETRY_MAX_DENIALS (default 5) check
+      # — stub_review is NOT set purely from "no verdict"; the denial-count
+      # gate is what actually keeps this retry from firing on #198's pattern
+      # (gha#201 review caught an earlier version of this comment claiming
+      # that exclusion without the code actually implementing it).
       #
-      # Empirically, re-running has recovered cleanly: the issue's original
-      # report noted two other runs on the same PR completed normally, and
-      # this recurrence was itself found by re-running the same PR.
+      # Empirically, re-running has recovered cleanly for THIS (low-denial)
+      # signature: the issue's original report noted two other runs on the
+      # same PR completed normally, and this recurrence was itself found by
+      # re-running the same PR.
       - name: Retry Claude Code Review after a stub result
         id: claude-review-retry
         if: >-
@@ -567,10 +573,25 @@ jobs:
             echo "::notice::Attempt 1 produced a stub review (no verdict, gha#185); the retry recovered cleanly."
             exit 0
           fi
-          if [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
-            echo "::error::Both the initial attempt and the retry ended without a verdict (gha#185's stub-review signature) — treating as a failed review."
+          # Both attempts failed to produce a usable review. Attribute the
+          # failure to whichever attempt actually ran last, rather than
+          # always citing attempt 1's stub_review flag — the retry can fail
+          # for a DIFFERENT reason than attempt 1 did (a hard SDK error, an
+          # empty result, or another stub that this time exceeded the
+          # denial-count threshold), and misattributing that undercuts this
+          # PR's own diagnosability goal (gha#201 review finding 2).
+          if [[ "${{ steps.fail-check-retry.outcome }}" == "failure" ]]; then
+            if [[ "${{ steps.fail-check-retry.outputs.stub_review }}" == "true" ]]; then
+              echo "::error::Attempt 1 produced a stub review (gha#185) and the retry ALSO ended without a verdict with a low denial count — treating as a failed review."
+            else
+              echo "::error::Attempt 1 produced a stub review (gha#185) but the retry failed for a different reason (hard SDK error, empty output, or a no-verdict result above the denial-count threshold) — treating as a failed review."
+            fi
+          elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" ]]; then
+            echo "::error::Attempt 1 produced a stub review (gha#185) and the retry ran but never produced a checkable execution file — treating as a failed review."
+          elif [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
+            echo "::error::Attempt 1 produced a stub review (gha#185's low-denial signature) but the retry itself did not run to completion — treating as a failed review."
           else
-            echo "::error::Claude review did not complete successfully and was not eligible for a stub-review retry."
+            echo "::error::Claude review did not complete successfully and was not eligible for a stub-review retry (either a hard SDK error, empty output, or a no-verdict result above the denial-count threshold — see gha#198)."
           fi
           exit 1
 
