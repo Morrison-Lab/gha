@@ -482,8 +482,8 @@ ul.task-list li input[type="checkbox"] {
 <li><code>preview-deploy</code> (deploy half) pushes <code>gh-pages</code> and comments, so grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>actions: read</code>.</li>
 <li><code>cleanup-pr-previews</code> commits deletions to <code>gh-pages</code>, so grant <code>contents: write</code>, <code>pull-requests: read</code>.</li>
 <li><code>bump-submodule</code>, <code>sync-shared-fragments</code> open a PR, so grant <code>contents: write</code>, <code>pull-requests: write</code>, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.</li>
-<li><code>claude</code> pushes branches, opens PRs, and dispatches the review workflow, so grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, <code>actions: write</code>, and add the <code>CLAUDE_CODE_OAUTH_TOKEN</code> secret.</li>
-<li><code>claude-code-review</code> (read-only review) grants <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and the <code>CLAUDE_CODE_OAUTH_TOKEN</code> secret.</li>
+<li><code>claude</code> pushes branches, opens PRs, and dispatches the review workflow, so grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, <code>actions: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</li>
+<li><code>claude-code-review</code> (read-only review) grants <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</li>
 </ul>
 </section>
 <section id="optional-secrets" class="level2">
