@@ -429,8 +429,8 @@ embedded in it — is *right*, not just correctly styled:
   mismatches, or numerical instability.
 - **Math/stats in code.** Verify a formula, statistical test, or model
   against its source (a paper, a spec, a package's reference
-  implementation) with the same rigor item 4 applies to a derivation in
-  prose.
+  implementation) with the same rigor that item 4 applies to a derivation
+  in prose.
 
 Distinguish a strategic finding (needs a different approach) from a
 tactical one (needs a correction within the existing approach) — the fix
