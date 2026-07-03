@@ -426,6 +426,5 @@ in a multi-file Quarto book is out of scope, check it manually. This is a
 global standing rule proposed for the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus in
 [d-morrison/ai-config#443](https://github.com/d-morrison/ai-config/pull/443)
-(not yet merged as of this writing — once it lands, tighten this citation
-to the specific `shared/writing/definition-crossrefs.md` path, matching
-item 4 above).
+— once merged, the specific fragment is
+`shared/writing/definition-crossrefs.md` there.
