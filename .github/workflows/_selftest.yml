@@ -137,6 +137,30 @@ jobs:
             exit 1
           fi
           echo "run-review-guard produced review_text_file=$REVIEW_TEXT_FILE"
+      # A second real `uses:` call, against a stub fixture, proving the
+      # composite action's stub_review output passthrough works end-to-end —
+      # not just check-review-execution.sh's own output (already covered by
+      # the fixture tests above). claude-code-review.yml's retry (gha#185)
+      # gates entirely on this composite output, so a passthrough wiring bug
+      # here would silently disable the retry without any fixture test
+      # catching it.
+      - name: Exercise run-review-guard composite action end-to-end (stub fixture)
+        id: guard-e2e-stub
+        continue-on-error: true
+        uses: ./.github/actions/run-review-guard
+        with:
+          execution-file: .github/workflows/scripts/tests/fixtures/stub-pr171-waiting-background-agents.json
+      - name: Assert run-review-guard surfaced stub_review=true
+        shell: bash
+        env:
+          STUB_REVIEW: ${{ steps.guard-e2e-stub.outputs.stub_review }}
+        run: |
+          set -euo pipefail
+          if [[ "$STUB_REVIEW" != "true" ]]; then
+            echo "::error::run-review-guard did not surface stub_review=true for a known stub fixture"
+            exit 1
+          fi
+          echo "run-review-guard correctly surfaced stub_review=true"
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest

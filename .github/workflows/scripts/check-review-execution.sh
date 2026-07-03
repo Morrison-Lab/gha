@@ -15,7 +15,20 @@
 #   - fails if the run's assistant text is empty/whitespace-only, or states no
 #     verdict anywhere (no `### Verdict` heading, `**Verdict:**` label, or
 #     `Verdict:` line in any assistant block — catches stub/placeholder
-#     reviews, gha#173, Lacaedemon/sparta#590);
+#     reviews, gha#173, Lacaedemon/sparta#590). When this ALSO has a low
+#     permission_denials_count (<= STUB_RETRY_MAX_DENIALS, default 5), it
+#     writes stub_review=true to $GITHUB_OUTPUT, so a caller can distinguish
+#     this specific, retryable signature from other failures (a hard SDK
+#     error, genuinely empty output, or a no-verdict result with a HIGH
+#     denial count) and retry once — re-running has been observed to recover
+#     cleanly for the low-denial case (gha#185). The denial-count cutoff
+#     matters: gha#185's reproductions all had permission_denials_count 1,
+#     while gha#198's separate, much-larger no-verdict pattern (a different
+#     root cause, still unresolved as of this writing) had 17-35 — retrying
+#     that pattern has repeatedly NOT recovered per #198's own findings, so
+#     stub_review must NOT fire for it (an earlier version of this fix
+#     claimed this exclusion without actually implementing it — caught in
+#     review on gha#201);
 #   - otherwise writes review_text_file=<path> (the verdict-bearing assistant
 #     block, falling back to the final block) to $GITHUB_OUTPUT and exits 0.
 #
@@ -98,6 +111,20 @@ fi
 # `**Verdict:**`, `Verdict:`, `> Verdict`, `- Verdict:`; a stub
 # ("waiting for background agents…", "needs your approval") has none.
 if ! grep -qiE '^[[:space:]>*_#-]*verdict\b' "$all_text_file"; then
+  # gha#185 (low denial count, e.g. 1) vs gha#198 (high denial count,
+  # 17-35) are the same textual shape — real text, is_error:false, no
+  # verdict — and are only distinguishable by permission_denials_count.
+  # Only the low-count case has been observed to recover on a same-prompt
+  # retry; #198's pattern has repeatedly NOT recovered, so exclude it here
+  # rather than let a caller retry (and re-spend $2-4/attempt) on a known
+  # non-recovering pattern.
+  denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
+  max_denials="${STUB_RETRY_MAX_DENIALS:-5}"
+  if [[ "$denials" -le "$max_denials" ]]; then
+    echo "stub_review=true" >> "$GITHUB_OUTPUT"
+  else
+    echo "::warning::permission_denials_count=$denials exceeds the stub-retry threshold ($max_denials) — this looks like gha#198's pattern, not gha#185's; not marking as retryable."
+  fi
   echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
   exit 1
 fi

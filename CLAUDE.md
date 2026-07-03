@@ -55,8 +55,9 @@ capabilities above moved to `@v2`.
   is not.
 - `.github/actions/run-review-guard/` — a thin composite-action wrapper around
   `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
-  "Fail the check if the review did not complete" step. #191 tried to locate
-  that script by resolving d-morrison/gha's own repo/ref from
+  "Fail the check if the review did not complete (attempt 1)" step (and again
+  from its retry counterpart — see `run-claude-review-attempt` below). #191
+  tried to locate that script by resolving d-morrison/gha's own repo/ref from
   `github.job_workflow_ref` and checking it out into a side directory, but
   that context var came back empty at runtime on real consumer runs even
   though the calling step passed it correctly (gha#196) — the #191 fix was
@@ -65,6 +66,28 @@ capabilities above moved to `@v2`.
   action's own files are always reachable through it regardless of how the
   calling reusable workflow was invoked, the same reasoning `parse-workflow-ref`
   itself relies on.
+- `.github/actions/run-claude-review-attempt/` — wraps the single
+  `anthropics/claude-code-action` call `claude-code-review.yml` uses to review
+  a PR (allowedTools/disallowedTools, the review prompt). Extracted into a
+  composite action so `claude-code-review.yml` can invoke it a second time,
+  unchanged, as a same-prompt retry when the first attempt completes without
+  an SDK error but never states a verdict — the "stub review" signature
+  (gha#185): `check-review-execution.sh` surfaces this specific case via a
+  `stub_review` output (through `run-review-guard`), and the workflow retries
+  once before failing the check for real. Keeping the `claude-code-action`
+  call itself in one place (rather than duplicating its ~100-line `with:`
+  block between two near-identical steps) follows this file's own DRY
+  guidance below. `claude-code-review.yml`'s "Resolve final review outcome"
+  step is the single point that decides which attempt's output to use and the
+  only step that actually fails the job when neither attempt produces a
+  usable review — both "Fail the check" steps are `continue-on-error: true`
+  so a recovered retry doesn't leave the job red.
+- `.github/actions/upload-review-execution/` — resolves claude-code-action's
+  `execution_file` output (with its temp-path fallback) and uploads it as a
+  workflow artifact, in one composite action shared between attempt 1 and the
+  `run-claude-review-attempt` retry above — the same DRY rationale that
+  motivated extracting that (much larger) composite action, just at a
+  smaller scale (gha#201 review).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -157,7 +180,9 @@ detection, quota-exhaustion skip) as a standalone script, so it can run
 offline against canned execution-output fixtures instead of requiring a live
 Claude API call. `.github/workflows/scripts/tests/run-fixture-tests.sh` feeds
 each fixture under `scripts/tests/fixtures/` through the script and asserts
-the expected pass/fail/skip outcome; CI runs it as the `review-fail-check`
+the expected pass/fail/skip/fail-stub outcome (`fail-stub` — gha#185 — is a
+`fail` fixture that must ALSO write `stub_review=true`, the signature
+`claude-code-review.yml` retries on); CI runs it as the `review-fail-check`
 job in `_selftest.yml`. These fixtures ARE committed rather than generated at
 runtime — unlike the R-package/PHI-shaped fixtures the rule above warns
 about, they're plain JSON execution-output data with no content that would
@@ -171,12 +196,18 @@ branch, and a full-SHA ref; CI runs it as a step in the same
 `review-fail-check` also runs `run-review-guard` (see Layout above) itself via
 a real `uses: ./.github/actions/run-review-guard` step against the
 `genuine-finished-review.json` fixture, asserting it produces a non-empty
-`review_text_file` output. Unlike the fixture tests above (which invoke
-`check-review-execution.sh` directly), this proves the composite action's
-`github.action_path`-relative resolution of that script actually works — a
-gap that let gha#191's `job_workflow_ref` regression (gha#196) go unnoticed:
-the sed-parsing logic was unit-tested, but nothing exercised the real
-`uses:` call end-to-end.
+`review_text_file` output — and a second such step against a stub fixture,
+asserting the `stub_review` output comes back `true`. Unlike the fixture
+tests above (which invoke `check-review-execution.sh` directly), these prove
+the composite action's `github.action_path`-relative resolution of that
+script, and its output passthrough wiring, actually work — a gap that let
+gha#191's `job_workflow_ref` regression (gha#196) go unnoticed: the
+sed-parsing logic was unit-tested, but nothing exercised the real `uses:`
+call end-to-end. `run-claude-review-attempt` (see Layout above) has no
+equivalent selftest coverage — it wraps a live `anthropics/claude-code-action`
+call, which isn't something a selftest job can exercise offline; it's
+validated the same way the inline step it replaced always was, by real PR
+reviews once merged and released.
 
 ## GitHub access in remote / web sessions
 
