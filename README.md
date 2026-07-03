@@ -15,7 +15,8 @@ Each capability is shipped as two layers:
 
 - **Composite action** (e.g. `check-bibliography-dois/action.yml`) — bundles the
   real steps and any helper script. Referenced as
-  `d-morrison/gha/<name>@v1`.
+  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  recommends — see [Versioning](#versioning) below).
 - **Reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`) —
   wraps the composite, declares permissions, and checks out the caller's repo.
   This is what consumer repos target.
@@ -30,12 +31,13 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v1
+    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v2
 ```
 
-Pin each workflow to the major tag its own reference page documents (`@v1`
-for `check-bibliography-dois.yml`; see [Versioning](#versioning) for which
-capabilities pin `@v2` instead). Do not reference `@main` from consumers.
+Pin to the major tag that capability currently recommends (`@v2` in the
+example above) — see [Versioning](#versioning) below for the full breakdown,
+since it varies per capability rather than defaulting uniformly to `@v1`. Do
+not reference `@main` from consumers.
 
 ## Available reusable workflows
 
@@ -81,7 +83,8 @@ that need to write must have the **caller** grant it on the calling job:
   grant its permissions even when it is skipped.
 - `claude` (pushes branches, opens PRs, dispatches the review workflow) → grant
   `contents: write`, `pull-requests: write`, `issues: write`, `id-token: write`,
-  `actions: write`, and add the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  `actions: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
+  `ANTHROPIC_API_KEY` secret.
   - **Optional:** if Claude will edit files under `.github/workflows/`, also add
     a `WORKFLOW_TOKEN` secret (a PAT or GitHub App token with `contents:write` +
     `workflows:write`). The integrated `GITHUB_TOKEN` cannot push workflow-file
@@ -93,8 +96,8 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, `id-token: write`, and the
-  `CLAUDE_CODE_OAUTH_TOKEN` secret.
+  `pull-requests: write`, `issues: write`, `id-token: write`, and either the
+  `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
     submodules clone anonymously; private ones additionally need a
@@ -249,15 +252,20 @@ no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all. Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
-`lint-yaml.yml`, and `lint-markdown.yml` only ever shipped at `@v2` (too new to
-exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+`lint-yaml.yml`, and `lint-markdown.yml` only ever shipped at `@v2` (too new
+to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
 `@v2` deploys to the `gh-pages` branch instead — required alongside the
 PR-preview family (`preview.yml` / `preview-deploy.yml`), since Pages can only
-have one Source. The remaining capabilities' `examples/` stubs still pin
-`@v1`, which stays valid for them until they are audited and bumped (tracked
-in [gha#182](https://github.com/d-morrison/gha/issues/182)). See
-[`CHANGELOG.md`](CHANGELOG.md) for
+have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
+`check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
+`claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
+picked up a real fix since the freeze (a dependency-pin bump, a new input, or
+a security fix) that a consumer still on `@v1` would miss (audited in
+[gha#182](https://github.com/d-morrison/gha/issues/182)). `summary.yml`,
+`check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+audited in the same pass and found unchanged since the freeze, so `@v1`
+remains current for them. See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
 Changelog entries are added as fragment files under
@@ -285,8 +293,10 @@ First-party `d-morrison/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
-`lint-yaml.yml`, and `lint-markdown.yml` at `@v2` — see the Versioning section
-above), and so are **not** SHA-pinned.
+`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
+`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
+`update-snapshots.yml`, `lint-yaml.yml`, and `lint-markdown.yml` at `@v2` —
+see the Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 
