@@ -6,13 +6,18 @@ Releases are tagged `vX.Y.Z`, and the `vX` major tag moves to the latest compati
 following the [`r-lib/actions`](https://github.com/r-lib/actions) convention.
 `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
 change cut `@v2`, so it has picked up no fixes since - not even non-breaking
-ones. Pin `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
-`quarto-publish.yml` to `@v2`; see [Workflows](workflows.qmd#versioning) for
-the full breakdown, including which capabilities still pin `@v1` and why.
-Breaking changes bump the major tag (`v2`, and so on) with migration steps.
+ones. Pin `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`quarto-publish.yml`, `check-bibliography-dois.yml`, `check-phi.yml`,
+`check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
+`claude-code-review.yml`, and `update-snapshots.yml` to `@v2`;
+`test-coverage.yml` and `check-equation-renders.yml` only ever shipped at
+`@v2` (too new to exist at the frozen `@v1` tag). See
+[Workflows](workflows.qmd#versioning) for the full breakdown, including which
+capabilities still pin `@v1` and why. Breaking changes bump the major tag
+(`v2`, and so on) with migration steps.
 
 See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
-for what changes as the major tag moves.
+for what changes as a major tag moves.
 
 Changelog entries are added as fragment files under
 [`changelog.d/`](https://github.com/d-morrison/gha/tree/main/changelog.d)
@@ -43,8 +48,11 @@ First-party `d-morrison/gha/*` self-references and most
 [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) templates
 intentionally track the moving major tag (currently `@v1`, except
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
-`quarto-publish.yml`, `test-coverage.yml`, and `check-equation-renders.yml` at
-`@v2` - see the versioning note above), so they are **not** SHA-pinned.
+`quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
+`check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
+`check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`, and
+`update-snapshots.yml` at `@v2` - see the versioning note above), so they are
+**not** SHA-pinned.
 
 ## Reverse dependencies
 

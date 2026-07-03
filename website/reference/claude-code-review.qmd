@@ -25,26 +25,28 @@ keep the stub named `claude-code-review.yml` (or set `claude.yml`'s `review-work
 
 | Secret | Required | Description |
 |---|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | no | OAuth token for Claude Code. |
+| `CLAUDE_CODE_OAUTH_TOKEN` | no | OAuth token for Claude Code (Claude Max plan). |
+| `ANTHROPIC_API_KEY` | no | Direct Anthropic API key (or GitHub App via `/install-github-app`), used instead of `CLAUDE_CODE_OAUTH_TOKEN`. |
 | `SUBMODULES_TOKEN` | no | Read access to private submodules. |
 
 ## Permissions
 
 Grant `contents: read`, `pull-requests: write`, `issues: write`, and `id-token: write`,
-and add the `CLAUDE_CODE_OAUTH_TOKEN` secret.
+and add either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 
 ## Example
 
 ```yaml
 # Copy to .github/workflows/claude-code-review.yml in your repo.
-# NOTE: requires the CLAUDE_CODE_OAUTH_TOKEN repository secret. Pass it
-# explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
-# secrets into a reusable workflow owned by the same org/user, so a cross-owner
-# caller (e.g. a UCD-SERG-org repo calling this d-morrison user-owned workflow)
-# inherits an empty token and the run fails env-validation. The
-# workflow_dispatch path lets claude.yml re-dispatch a review after an @claude
-# run pushes commits --- keep the file named claude-code-review.yml (or set
-# claude.yml's review-workflow-file to match).
+# NOTE: requires either CLAUDE_CODE_OAUTH_TOKEN (Claude Max plan) or
+# ANTHROPIC_API_KEY (direct API / GitHub App via /install-github-app). Pass
+# secrets explicitly (below) rather than via `secrets: inherit`: GitHub only
+# inherits secrets into a reusable workflow owned by the same org/user, so a
+# cross-owner caller (e.g. a UCD-SERG-org repo calling this d-morrison
+# user-owned workflow) inherits an empty token and the run fails env-validation.
+# The workflow_dispatch path lets claude.yml re-dispatch a review after an
+# @claude run pushes commits --- keep the file named claude-code-review.yml (or
+# set claude.yml's review-workflow-file to match).
 name: Claude Code Review
 
 on:
@@ -64,9 +66,10 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@v1
+    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # Max-plan OAuth; empty when using API key
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}               # direct API key; empty when using OAuth
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch

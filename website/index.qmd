@@ -19,7 +19,8 @@ Each capability ships as two layers:
 
 - A **composite action** (for example `check-bibliography-dois/action.yml`)
   bundles the real steps and any helper script.
-  It is referenced as `d-morrison/gha/<name>@v1`.
+  It is referenced as `d-morrison/gha/<name>@vN` (the major tag that
+  capability currently recommends - see [Versioning](versioning.qmd)).
 - A **reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`)
   wraps the composite, declares permissions, and checks out the caller's repo.
   This is what consumer repos target.
@@ -35,12 +36,13 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v1
+    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v2
 ```
 
-Pin each workflow to the major tag its own reference page documents (`@v1`
-for `check-bibliography-dois.yml`; see [Versioning](versioning.qmd) for which
-capabilities pin `@v2` instead). Do not reference `@main` from consumers.
+Pin to the major tag that capability currently recommends (`@v2` in the
+example above) - it varies per capability rather than defaulting uniformly to
+`@v1`; see [Versioning](versioning.qmd) for the full breakdown.
+Do not reference `@main` from consumers.
 
 {{< include _actions-vs-workflows.qmd >}}
 
@@ -48,7 +50,7 @@ capabilities pin `@v2` instead). Do not reference `@main` from consumers.
 
 - [Workflows](workflows.qmd) catalogs every reusable workflow and what it does.
 - [Permissions](permissions.qmd) lists the `GITHUB_TOKEN` permissions and secrets each one needs.
-- [Versioning](versioning.qmd) explains the major-tag scheme (`@v1` vs `@v2`) and how third-party actions are pinned.
+- [Versioning](versioning.qmd) explains the moving major tags (`@v1`/`@v2`, per capability) and how third-party actions are pinned.
 
 This very site is built and shipped by the workflows it documents:
 [`quarto-publish`](workflows.qmd#quarto-sites) deploys it to GitHub Pages,
