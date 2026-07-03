@@ -126,9 +126,29 @@ runs:
         # itself via its "Post review comment" step (with dedup/collapse
         # handling), so letting the plugin self-post would risk duplicate
         # or uncontrolled comments.
+        #
+        # `WebFetch` and `Bash(curl:*)` let the reviewer fetch the rendered
+        # output a repo's `prompt-addendum` may tell it to check the diff
+        # against — e.g. "verify each computed value and figure against the
+        # PR-preview site" (rme). The `code-review` plugin fans out to 4
+        # parallel sub-agents, each of which then tries to fetch the preview
+        # for every value/figure and — with no fetch tool granted — racks up
+        # a denial per attempt, enough to finish is_error:false but never
+        # emit a verdict (the gha#173 stub signature again, this time from a
+        # third cause; reproduced at permission_denials_count:36 on
+        # rme#954). This adds no exfiltration capability beyond
+        # `Bash(python3:*)` above, which already permits arbitrary network
+        # calls via `urllib`; it just lets the reviewer fetch directly
+        # instead of scripting it. (`WebFetch` is GET-only; `Bash(curl:*)`
+        # is a prefix match that also allows write verbs like `curl -X POST`
+        # / `--data` / `-T`, but those stay within the `python3` network
+        # capability already granted.) The `--append-system-prompt` below is
+        # updated in lockstep to tell the reviewer these fetch tools ARE
+        # available — granting the tool without that leaves the prompt saying
+        # "no fetch tools; don't fetch", which would defeat the grant.
         claude_args: >-
           --allowedTools
-          "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
+          "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
           --disallowedTools
           "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*)"
           --append-system-prompt
@@ -140,13 +160,10 @@ runs:
           commit. If you would have fixed something, describe the fix in
           your review instead.
 
-          This sandboxed environment has no network-fetch tools
-          (WebFetch/WebSearch) enabled. Do not attempt to fetch external
-          URLs to verify a claim; when a fact-check would require live
-          network access, verify what you can from the repository's own
-          content and your own knowledge, and note in your review that the
-          rest could not be independently verified in this environment
-          instead of trying the fetch. More generally: a denied tool call
+          WebFetch and curl are available so you can verify a computed
+          value or figure against rendered output (for example a
+          PR-preview site) when a repo's review guidance asks you to;
+          use them for that purpose. More generally: a denied tool call
           is never a reason to stop the review early. If any tool call is
           denied for any reason, continue with the information you already
           have and still finish by posting your findings and the explicit
