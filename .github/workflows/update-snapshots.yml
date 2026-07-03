@@ -46,7 +46,8 @@ on:
         description: >
           Space-separated apt packages to install before R setup. Defaults to
           the standard system libraries needed to build a typical R package's
-          dependencies from source (Cairo, fonts, graphics, gettext, OpenMP).
+          dependencies from source (curl, TLS, XML, compression, fonts,
+          graphics, Cairo, gettext, OpenMP, and a C/C++ build toolchain).
           Pass your own list to override, or an empty string to skip the
           install step.
         type: string
