@@ -334,11 +334,16 @@ cause. The current workaround is to re-trigger the review (push, or
 `@claude review` — see the race-avoidance note above) as many times as
 needed, or just proceed to merge on the strength of a manual/offline review
 once CI's other jobs and a careful read of the diff are clean. (Hit on
-gha#201 and gha#202, both fixes to `claude-code-review.yml`'s own
-`claude_args`/retry logic — each PR's `claude-review` check failed with
-the precise stub-review signature its own diff was fixing, right up until
-merge, at which point `@v2` picked up the fix and the next PR's review on
-the same file went clean immediately.)
+gha#201, whose diff fixed `claude-code-review.yml`'s stub-review bug
+directly: every review of the PR itself failed with that exact signature —
+`is_error:false`, a low `permission_denials_count`, no verdict — right up
+until merge. gha#202 (a different fix, allowlisting `WebFetch`/`Bash(curl:*)`)
+hit the identical signature as a bystander while it still edited
+`claude-code-review.yml`'s inline `claude_args` block directly, before a
+rebase onto #201 relocated that edit into the new `run-claude-review-attempt`
+composite action — confirmed via that run's own execution output:
+`permission_denials_count:1`, no verdict. Once `@v2` picked up #201's fix,
+both PRs' subsequent reviews went clean.)
 
 ## Code review guidelines
 
