@@ -451,6 +451,7 @@ embedded in it — is *right*, not just correctly styled:
 
 Distinguish a strategic finding (needs a different approach) from a
 tactical one (needs a correction within the existing approach) — the fix
-differs. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
-(`shared/coding/fact-check-code-logic.md`).
+differs. This is a global standing rule proposed in
+[`d-morrison/ai-config#455`](https://github.com/d-morrison/ai-config/pull/455)
+— once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
+there.
