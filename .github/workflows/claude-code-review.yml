@@ -423,9 +423,30 @@ jobs:
           # to running an existing file under the checkout (`python3
           # path/to/script.py ...`), the actual use case, while blocking
           # inline/module code execution.
+          #
+          # `Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),
+          # Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)`
+          # are the read-only `gh` subcommands the upstream `code-review`
+          # plugin's own `/code-review` command declares as `allowed-tools`
+          # (github.com/anthropics/claude-code, plugins/code-review/commands/
+          # code-review.md). Without them, every one of the plugin's 4
+          # parallel sub-agents hits a permission denial on each attempt.
+          # #187 already stopped a denial from ending the run early, but a
+          # heavier prompt (e.g. a dispatched re-review carrying prior-review
+          # context) can still rack up enough denials across all 4 sub-agents
+          # — reproduced with permission_denials_count:28, num_turns:50 on a
+          # dispatched re-review of PR #183 — that the run finishes
+          # is_error:false but never emits a concluding verdict block: the
+          # same stub-review signature check-review-execution.sh detects
+          # (gha#173, Lacaedemon/sparta#590), from this separate cause.
+          # `gh pr comment` — also in the plugin's declared tool list — is
+          # deliberately NOT granted: this workflow posts the review itself
+          # via the "Post review comment" step below (with dedup/collapse
+          # handling), so letting the plugin self-post would risk duplicate
+          # or uncontrolled comments.
           claude_args: >-
             --allowedTools
-            "mcp__github_inline_comment__create_inline_comment,Bash(python3:*)"
+            "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
             --disallowedTools
             "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -c:*),Bash(python3 -m:*)"
             --append-system-prompt
