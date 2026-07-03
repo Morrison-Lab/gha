@@ -430,7 +430,44 @@ clustering, not an isolated instance. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/ai-tells.md`).
 
-### 6. Challenge unnecessary complexity
+### 6. Suggest semantic line breaks in prose
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), check that lines break at clause/sentence boundaries (roughly
+60–80 characters) instead of reflowing into long unbroken lines — a semantic
+break keeps a diff scoped to the changed sentence. Raise violations as a
+suggestion, not a blocking requirement, and don't re-raise it if the author
+declines. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/semantic-line-breaks.md`).
+
+### 7. Check code and math for strategic and tactical correctness
+
+Beyond style, check whether the diff's code — and any math or statistics
+embedded in it — is *right*, not just correctly styled:
+
+- **Strategic correctness.** Is this the right algorithm or design for the
+  problem? A clean implementation of the wrong approach (wrong data
+  structure for the scale, a statistical method whose assumptions don't
+  hold for this data, a concurrency strategy prone to races) is still
+  wrong.
+- **Tactical correctness.** Given the chosen approach, does the code
+  correctly execute it — no off-by-one errors, sign errors, wrong
+  comparison operators, mis-transcribed formulas, unit/dimension
+  mismatches, or numerical instability.
+- **Math/stats in code.** Verify a formula, statistical test, or model
+  against its source (a paper, a spec, a package's reference
+  implementation) with the same rigor that item 4 applies to a derivation
+  in prose.
+
+Distinguish a strategic finding (needs a different approach) from a
+tactical one (needs a correction within the existing approach) — the fix
+differs. This is a global standing rule proposed in
+[`d-morrison/ai-config#455`](https://github.com/d-morrison/ai-config/pull/455)
+— once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
+there.
+
+### 8. Challenge unnecessary complexity
 
 When reviewing prose, math, or code, check whether it is more complex than
 the problem requires — not just whether it's correct or clear. Flag
@@ -441,5 +478,7 @@ that restates a point through more clauses or jargon than a plain rewrite
 needs. For each finding, propose the concrete simplification rather than
 just naming the complexity, and confirm it doesn't drop a feature, an edge
 case, or a meaning the original carried. This is a global standing rule
-from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
-corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
+proposed in
+[`d-morrison/ai-config#454`](https://github.com/d-morrison/ai-config/pull/454)
+— once merged, the fragment lives at
+`shared/workflow/challenge-unnecessary-complexity.md` there.
