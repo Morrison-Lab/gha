@@ -1,0 +1,64 @@
+name: Lint Markdown
+description: >-
+  Lint the caller's tracked Markdown files with markdownlint-cli2 (bundled
+  default config, overridable), plus a companion check that flags fenced code
+  blocks longer than a configurable line threshold as decomposition
+  candidates.
+inputs:
+  config-file:
+    description: >-
+      Path (relative to the caller repo) to a markdownlint config file
+      (.jsonc/.json/.yaml/.cjs). If empty or the file does not exist, the
+      bundled default config is used.
+    default: ''
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to lint. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip, for
+      both the markdownlint pass and the code-block-length check. Supports
+      `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: Fail the action when markdownlint reports an error.
+    default: 'true'
+  max-code-block-lines:
+    description: >-
+      Flag a fenced code block longer than this many lines as a
+      decomposition candidate. Matches the lab manual's <150-line
+      function-length heuristic (coding-practices/function-length-limits.qmd).
+    default: '150'
+  fail-on-long-code-blocks:
+    description: >-
+      Fail the action when a fenced code block exceeds max-code-block-lines.
+      Defaults to warn-only, since the lab manual documents its line-count
+      heuristic as a provisional trigger to reassess decomposition, not a
+      hard constraint.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Install markdownlint-cli2
+      shell: bash
+      run: npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
+
+    - name: Run markdownlint
+      shell: bash
+      env:
+        MARKDOWNLINT_CONFIG_FILE: ${{ inputs.config-file }}
+        MARKDOWNLINT_GLOBS: ${{ inputs.globs }}
+        MARKDOWNLINT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        MARKDOWNLINT_FAIL: ${{ inputs.fail }}
+      run: node "$GITHUB_ACTION_PATH/run_markdownlint.mjs"
+
+    - name: Check fenced code block length
+      shell: bash
+      env:
+        MARKDOWNLINT_GLOBS: ${{ inputs.globs }}
+        CODEBLOCK_LENGTH_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        CODEBLOCK_LENGTH_MAX_LINES: ${{ inputs.max-code-block-lines }}
+        CODEBLOCK_LENGTH_FAIL: ${{ inputs.fail-on-long-code-blocks }}
+      run: node "$GITHUB_ACTION_PATH/check_code_block_length.mjs"

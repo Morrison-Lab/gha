@@ -1,0 +1,49 @@
+---
+title: "lint-yaml.yml"
+---
+
+Lint tracked YAML files with [`yamllint`](https://yamllint.readthedocs.io/) using a bundled default config (overridable), plus a companion check that flags `run:` script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo's own R/Python capabilities already do.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `python-version` | string | `'3.x'` | Python version to set up. |
+| `config-file` | string | `''` | Path (in the caller repo) to a yamllint config file. Falls back to the bundled default when empty or the file does not exist. |
+| `paths-ignore` | string | `''` | Comma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports `*`, `?`, and recursive `**`. |
+| `fail` | boolean | `true` | Fail the workflow when yamllint reports an error (not a warning). |
+| `max-script-lines` | string | `'150'` | Flag a `run:` block longer than this many lines. Matches the [lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html) `<150`-line function-length heuristic. |
+| `fail-on-long-scripts` | boolean | `false` | Fail when a `run:` block exceeds `max-script-lines`. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/lint-yaml.yml in your repo.
+# Lints tracked YAML files with yamllint (bundled default config), plus a
+# companion check that flags long `run:` script blocks in workflow/action
+# YAML as decomposition candidates.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Lint YAML
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: d-morrison/gha/.github/workflows/lint-yaml.yml@v2
+    # with:
+    #   config-file: '.yamllint.yml'   # override the bundled default config
+    #   paths-ignore: 'renv/**'        # skip known-vendored paths
+    #   fail: false                    # warn instead of failing on yamllint errors
+```
+
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
+for the full caller stub (`lint-yaml.yml`).

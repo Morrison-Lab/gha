@@ -1,0 +1,55 @@
+name: Lint Markdown (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      config-file:
+        description: >-
+          Path (in the caller repo) to a markdownlint config file. Falls
+          back to the bundled default when empty or the file does not exist.
+        type: string
+        default: ''
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to lint (recursive
+          by default).
+        type: string
+        default: '*.md'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: Fail the workflow when markdownlint reports an error.
+        type: boolean
+        default: true
+      max-code-block-lines:
+        description: >-
+          Flag a fenced code block longer than this many lines as a
+          decomposition candidate.
+        type: string
+        default: '150'
+      fail-on-long-code-blocks:
+        description: Fail the workflow when a code block exceeds max-code-block-lines.
+        type: boolean
+        default: false
+
+jobs:
+  lint-markdown:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Lint Markdown
+        uses: d-morrison/gha/lint-markdown@v2
+        with:
+          config-file: ${{ inputs.config-file }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          max-code-block-lines: ${{ inputs.max-code-block-lines }}
+          fail-on-long-code-blocks: ${{ inputs.fail-on-long-code-blocks }}

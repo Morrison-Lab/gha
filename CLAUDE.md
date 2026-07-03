@@ -11,9 +11,10 @@ major tag each capability's own reference page documents (`@v1` for most,
 `@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
-`claude-code-review`, and `update-snapshots` — see the Versioning section of
-`README.md`). `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no
-fixes since, which is why the capabilities above moved to `@v2`.
+`claude-code-review`, `update-snapshots`, `lint-yaml`, and `lint-markdown` —
+see the Versioning section of `README.md`). `@v1` was frozen at the
+pre-`2.0.0` snapshot and has picked up no fixes since, which is why the
+capabilities above moved to `@v2`.
 
 ### Layout
 

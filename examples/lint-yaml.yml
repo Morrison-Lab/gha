@@ -1,0 +1,23 @@
+# Copy to .github/workflows/lint-yaml.yml in your repo.
+# Lints tracked YAML files with yamllint (bundled default config), plus a
+# companion check that flags long `run:` script blocks in workflow/action
+# YAML as decomposition candidates.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Lint YAML
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: d-morrison/gha/.github/workflows/lint-yaml.yml@v2
+    # with:
+    #   config-file: '.yamllint.yml'   # override the bundled default config
+    #   paths-ignore: 'renv/**'        # skip known-vendored paths
+    #   fail: false                    # warn instead of failing on yamllint errors
+    #   max-script-lines: '150'        # run: block line-count threshold
+    #   fail-on-long-scripts: true     # fail (not just warn) on long run: blocks

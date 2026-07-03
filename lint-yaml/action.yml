@@ -1,0 +1,67 @@
+name: Lint YAML
+description: >-
+  Lint the caller's tracked YAML files with yamllint (bundled default
+  config, overridable), plus a companion check that flags `run:` script
+  blocks in workflow/action YAML longer than a configurable line threshold as
+  decomposition candidates.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  config-file:
+    description: >-
+      Path (relative to the caller repo) to a yamllint config file. If empty
+      or the file does not exist, the bundled default config is used.
+    default: ''
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip, for
+      both the yamllint pass and the script-length check. Supports `*`,
+      `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: Fail the action when yamllint reports an error (not a warning).
+    default: 'true'
+  max-script-lines:
+    description: >-
+      Flag a `run:` block longer than this many lines as a decomposition
+      candidate. Matches the lab manual's <150-line function-length
+      heuristic (coding-practices/function-length-limits.qmd).
+    default: '150'
+  fail-on-long-scripts:
+    description: >-
+      Fail the action when a `run:` block exceeds max-script-lines. Defaults
+      to warn-only, since the lab manual documents its line-count heuristic
+      as a provisional trigger to reassess decomposition, not a hard
+      constraint.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install yamllint
+      shell: bash
+      # pyyaml is also a yamllint dependency, but check-script-length.py
+      # imports it directly, so declare it explicitly rather than relying on
+      # that transitive install.
+      run: pip install --quiet yamllint pyyaml
+
+    - name: Run yamllint
+      shell: bash
+      env:
+        YAMLLINT_CONFIG_FILE: ${{ inputs.config-file }}
+        YAMLLINT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        YAMLLINT_FAIL: ${{ inputs.fail }}
+      run: python3 "$GITHUB_ACTION_PATH/run-yamllint.py"
+
+    - name: Check embedded script length
+      shell: bash
+      env:
+        SCRIPT_LENGTH_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        SCRIPT_LENGTH_MAX_LINES: ${{ inputs.max-script-lines }}
+        SCRIPT_LENGTH_FAIL: ${{ inputs.fail-on-long-scripts }}
+      run: python3 "$GITHUB_ACTION_PATH/check-script-length.py"

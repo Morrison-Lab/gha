@@ -1,0 +1,53 @@
+name: Lint YAML (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      config-file:
+        description: >-
+          Path (in the caller repo) to a yamllint config file. Falls back to
+          the bundled default when empty or the file does not exist.
+        type: string
+        default: ''
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: Fail the workflow when yamllint reports an error.
+        type: boolean
+        default: true
+      max-script-lines:
+        description: >-
+          Flag a `run:` block longer than this many lines as a decomposition
+          candidate.
+        type: string
+        default: '150'
+      fail-on-long-scripts:
+        description: Fail the workflow when a `run:` block exceeds max-script-lines.
+        type: boolean
+        default: false
+
+jobs:
+  lint-yaml:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Lint YAML
+        uses: d-morrison/gha/lint-yaml@v2
+        with:
+          python-version: ${{ inputs.python-version }}
+          config-file: ${{ inputs.config-file }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          max-script-lines: ${{ inputs.max-script-lines }}
+          fail-on-long-scripts: ${{ inputs.fail-on-long-scripts }}

@@ -25,6 +25,37 @@ below with migration steps.
   R/tidyverse/Quarto-focused manual doesn't target (a pure GitHub Actions,
   shell, or docs repo) so the reviewer isn't handed irrelevant guidance.
 
+- **`claude-code-review` grants the reviewer `Bash(python3 <file>)`.** The
+  review agent could previously only trace a Python script's logic by eye,
+  since its `--allowedTools` covered just the inline-comment tool plus the
+  action's base allowlist (Read/Glob/Grep and narrow git-read Bash) — no way
+  to actually execute the script under review (rme#970). Scoped to running an
+  existing file under the checkout (`-c`/`-m` denied, so inline/module code
+  execution stays blocked) — same-repo PRs give this job
+  `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY` as secrets, so unrestricted
+  `python3:*` would have been a real capability widening beyond the existing
+  git-read-only sandbox, not just a git-push question. It can now verify a
+  script's behavior instead of guessing from source alone (#154).
+
+- **`claude-code-review` now honors an explicit review request on a draft PR.**
+  A dispatched review (an `@claude review` comment routed here by `claude.yml`,
+  `claude.yml`'s post-push re-dispatch, the issue-trigger draft PR, or a manual
+  dispatch) already bypassed the workflow's draft-skip `if:` gate, but the
+  code-review skill's *own* don't-review-drafts stop condition still made the
+  agent refuse ("currently a draft … I will not proceed"), so an explicit
+  `@claude review` on a draft produced a refusal instead of a review. The
+  dispatched-run prompt now overrides that stop condition so an
+  explicitly-requested review runs even on a draft. Automatic `pull_request`
+  reviews still skip drafts (their `if:` gate never reaches the agent on a
+  draft), so this only widens the dispatched path.
+
+- **`claude-code-review` no longer flags cosmetic source-only formatting that
+  renders identically** (#261). The review prompt now tells the reviewer to skip
+  raw-source line-wrap position and line-length nits on Markdown/text prose when
+  the rendered output is unchanged, and to flag only genuine prose problems
+  (ambiguity, meaning-changing grammar, broken links or markup, factual errors).
+  This cuts review-round churn from cosmetic wrapping nits.
+
 ### Added
 
 - **`test-coverage` — R-package test coverage with Codecov upload** (#147). A new
@@ -89,39 +120,6 @@ below with migration steps.
   substring also wakes `claude.yml`, so the slash command keeps the direct path
   independent. Works once the workflow is on the default branch (`gh workflow
   run` requires it).
-
-### Changed
-
-- **`claude-code-review` grants the reviewer `Bash(python3 <file>)`.** The
-  review agent could previously only trace a Python script's logic by eye,
-  since its `--allowedTools` covered just the inline-comment tool plus the
-  action's base allowlist (Read/Glob/Grep and narrow git-read Bash) — no way
-  to actually execute the script under review (rme#970). Scoped to running an
-  existing file under the checkout (`-c`/`-m` denied, so inline/module code
-  execution stays blocked) — same-repo PRs give this job
-  `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY` as secrets, so unrestricted
-  `python3:*` would have been a real capability widening beyond the existing
-  git-read-only sandbox, not just a git-push question. It can now verify a
-  script's behavior instead of guessing from source alone (#154).
-
-- **`claude-code-review` now honors an explicit review request on a draft PR.**
-  A dispatched review (an `@claude review` comment routed here by `claude.yml`,
-  `claude.yml`'s post-push re-dispatch, the issue-trigger draft PR, or a manual
-  dispatch) already bypassed the workflow's draft-skip `if:` gate, but the
-  code-review skill's *own* don't-review-drafts stop condition still made the
-  agent refuse ("currently a draft … I will not proceed"), so an explicit
-  `@claude review` on a draft produced a refusal instead of a review. The
-  dispatched-run prompt now overrides that stop condition so an
-  explicitly-requested review runs even on a draft. Automatic `pull_request`
-  reviews still skip drafts (their `if:` gate never reaches the agent on a
-  draft), so this only widens the dispatched path.
-
-- **`claude-code-review` no longer flags cosmetic source-only formatting that
-  renders identically** (#261). The review prompt now tells the reviewer to skip
-  raw-source line-wrap position and line-length nits on Markdown/text prose when
-  the rendered output is unchanged, and to flag only genuine prose problems
-  (ambiguity, meaning-changing grammar, broken links or markup, factual errors).
-  This cuts review-round churn from cosmetic wrapping nits.
 
 ### Fixed
 

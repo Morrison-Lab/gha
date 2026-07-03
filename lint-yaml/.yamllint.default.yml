@@ -1,0 +1,23 @@
+# Default config for lint-yaml. Extends yamllint's own "default" ruleset
+# (https://yamllint.readthedocs.io/en/stable/configuration.html#default-configuration)
+# with the overrides below; see run-yamllint.py for how a caller-supplied
+# config-file input takes precedence over this file.
+extends: default
+
+rules:
+  # GitHub Actions workflow/action YAML embeds shell scripts and Claude
+  # prompts as block scalars, which routinely exceed conventional prose
+  # widths; enforcing a fixed width here would force reformatting content
+  # that was never hand-wrapped in the first place. The structural rules
+  # below (indentation, trailing spaces, key-duplicates, etc.) still catch
+  # real style problems.
+  line-length: disable
+
+  # Composite/workflow files intentionally omit the `---` document marker.
+  document-start: disable
+
+  truthy:
+    # GitHub Actions idiomatically uses bare `on:` (not `"on":`), which
+    # yamllint's default truthy check otherwise flags as an ambiguous
+    # boolean-like key.
+    check-keys: false
