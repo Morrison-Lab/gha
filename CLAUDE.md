@@ -417,10 +417,12 @@ the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 
 When a diff touches prose that defines technical terms or named results via
 Quarto's theorem-like crossref divs (`::: {#def-...}`, `{#thm-...}`,
-`{#lem-...}`, `{#cor-...}`, `{#prp-...}`, `{#cnj-...}`), check that every
-mention of a term or result links to the div that defines it, and that the
-div appears *before* its first mention in reading order — a link to a
-definition the reader hasn't reached yet is a forward reference. This is a
+`{#lem-...}`, `{#cor-...}`, `{#prp-...}`, `{#cnj-...}`, `{#exm-...}`,
+`{#exr-...}`), check that every mention of a term or result links to the
+div that defines it, and that the div appears *before* its first mention in
+reading order — a link to a definition the reader hasn't reached yet is a
+forward reference. This scope is per rendered file: cross-chapter ordering
+in a multi-file Quarto book is out of scope, check it manually. This is a
 global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/definition-crossrefs.md`).
