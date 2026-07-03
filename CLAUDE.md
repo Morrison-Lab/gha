@@ -412,3 +412,15 @@ specific source checked for each judgment, and proactively suggest
 additional citations where they'd help. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
+
+### 5. Hyperlink technical terms/results; no forward references
+
+When a diff touches prose that defines technical terms or named results via
+Quarto's theorem-like crossref divs (`::: {#def-...}`, `{#thm-...}`,
+`{#lem-...}`, `{#cor-...}`, `{#prp-...}`, `{#cnj-...}`), check that every
+mention of a term or result links to the div that defines it, and that the
+div appears *before* its first mention in reading order — a link to a
+definition the reader hasn't reached yet is a forward reference. This is a
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/definition-crossrefs.md`).
