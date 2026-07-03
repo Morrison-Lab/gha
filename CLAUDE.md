@@ -412,3 +412,16 @@ specific source checked for each judgment, and proactively suggest
 additional citations where they'd help. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
+
+### 5. Check for AI-generated prose tells
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), scan it for the telltale signs of AI/LLM authorship —
+overused vocabulary (delve, leverage, robust, seamless, tapestry,
+testament…), the "it's not just X, it's Y" antithesis, mechanical
+rule-of-three lists, hedging stacks, signposting filler, em-dash overuse,
+bold-leading bullets, emoji headers, and promotional register. Flag each
+tell found with its location and a de-slopped suggested revision — weigh
+clustering, not an isolated instance. This is a global standing rule from
+the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/ai-tells.md`).
