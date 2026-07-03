@@ -440,3 +440,29 @@ suggestion, not a blocking requirement, and don't re-raise it if the author
 declines. This is a global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/semantic-line-breaks.md`).
+
+### 7. Check code and math for strategic and tactical correctness
+
+Beyond style, check whether the diff's code — and any math or statistics
+embedded in it — is *right*, not just correctly styled:
+
+- **Strategic correctness.** Is this the right algorithm or design for the
+  problem? A clean implementation of the wrong approach (wrong data
+  structure for the scale, a statistical method whose assumptions don't
+  hold for this data, a concurrency strategy prone to races) is still
+  wrong.
+- **Tactical correctness.** Given the chosen approach, does the code
+  correctly execute it — no off-by-one errors, sign errors, wrong
+  comparison operators, mis-transcribed formulas, unit/dimension
+  mismatches, or numerical instability.
+- **Math/stats in code.** Verify a formula, statistical test, or model
+  against its source (a paper, a spec, a package's reference
+  implementation) with the same rigor that item 4 applies to a derivation
+  in prose.
+
+Distinguish a strategic finding (needs a different approach) from a
+tactical one (needs a correction within the existing approach) — the fix
+differs. This is a global standing rule proposed in
+[`d-morrison/ai-config#455`](https://github.com/d-morrison/ai-config/pull/455)
+— once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
+there.
