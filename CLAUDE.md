@@ -428,4 +428,4 @@ global standing rule proposed for the
 [d-morrison/ai-config#443](https://github.com/d-morrison/ai-config/pull/443)
 (not yet merged as of this writing — once it lands, tighten this citation
 to the specific `shared/writing/definition-crossrefs.md` path, matching
-items 3 and 4 above).
+item 4 above).
