@@ -433,36 +433,18 @@ jobs:
       # invoked (workflow_call, a re-dispatched workflow_dispatch, automatic
       # pull_request, ...) — the same reasoning that made parse-workflow-ref
       # itself a composite action rather than a checked-out script.
-      - name: Resolve execution file path
+      # Resolves execution_file (with its temp-path fallback) and uploads it
+      # as a workflow artifact, in one composite action shared with the retry
+      # block below — see the action's own header comment for why this is
+      # extracted (gha#201 review: the same DRY rationale that motivated
+      # extracting run-claude-review-attempt, just at a smaller scale).
+      - name: Resolve and upload execution file path
         id: exec-file
         if: steps.claude-review.outcome == 'success'
-        shell: bash
-        env:
-          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$EXECUTION_FILE" ]]; then
-            EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
-            echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
-          fi
-          echo "path=$EXECUTION_FILE" >> "$GITHUB_OUTPUT"
-
-      # Persist the raw execution output regardless of what the guard finds,
-      # so a stub-review recurrence (gha#185, gha#198) has a downloadable
-      # turn-by-turn transcript to diagnose instead of needing show-full-output
-      # flipped on ahead of time and a lucky re-trigger — the gap that left
-      # #185's original report undiagnosable ("the exact denied tool call
-      # isn't visible in the log"). continue-on-error: the artifact is a
-      # diagnostic nicety, never a reason to fail an otherwise-clean review.
-      - name: Upload review execution output
-        if: steps.exec-file.outcome == 'success'
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: d-morrison/gha/.github/actions/upload-review-execution@v2
         with:
-          name: claude-review-execution-${{ github.run_id }}-${{ github.run_attempt }}-attempt1
-          path: ${{ steps.exec-file.outputs.path }}
-          retention-days: 14
-          if-no-files-found: warn
+          execution-file: ${{ steps.claude-review.outputs.execution_file }}
+          attempt-label: attempt1
 
       # continue-on-error: true so a stub result (gha#185) doesn't red-X the
       # job outright — the retry block below gets a chance to recover it
@@ -516,30 +498,14 @@ jobs:
           allowed-bots: ${{ inputs.allowed-bots }}
           is-retry: 'true'
 
-      - name: Resolve execution file path (retry)
+      - name: Resolve and upload execution file path (retry)
         id: exec-file-retry
         if: steps.claude-review-retry.outcome == 'success'
         continue-on-error: true
-        shell: bash
-        env:
-          EXECUTION_FILE: ${{ steps.claude-review-retry.outputs.execution_file }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$EXECUTION_FILE" ]]; then
-            EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
-            echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
-          fi
-          echo "path=$EXECUTION_FILE" >> "$GITHUB_OUTPUT"
-
-      - name: Upload review execution output (retry)
-        if: steps.exec-file-retry.outcome == 'success'
-        continue-on-error: true
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: d-morrison/gha/.github/actions/upload-review-execution@v2
         with:
-          name: claude-review-execution-${{ github.run_id }}-${{ github.run_attempt }}-attempt2
-          path: ${{ steps.exec-file-retry.outputs.path }}
-          retention-days: 14
-          if-no-files-found: warn
+          execution-file: ${{ steps.claude-review-retry.outputs.execution_file }}
+          attempt-label: attempt2
 
       - name: Fail the check if the retry also did not complete
         id: fail-check-retry

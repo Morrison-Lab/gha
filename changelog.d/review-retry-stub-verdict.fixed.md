@@ -21,6 +21,7 @@
   `anthropics/claude-code-action` call itself moved into a new
   `run-claude-review-attempt` composite action so the retry doesn't duplicate
   that ~100-line step. The raw execution output is also now uploaded as a
-  workflow artifact on every attempt (`claude-review-execution-*`), so any
+  workflow artifact on every attempt (`claude-review-execution-*`, via a new
+  `upload-review-execution` composite action shared by both attempts), so any
   future recurrence has a downloadable turn-by-turn transcript to diagnose
   instead of needing `show-full-output` pre-enabled and a lucky re-trigger.

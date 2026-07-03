@@ -81,6 +81,12 @@ fixes since, which is why the capabilities above moved to `@v2`.
   only step that actually fails the job when neither attempt produces a
   usable review — both "Fail the check" steps are `continue-on-error: true`
   so a recovered retry doesn't leave the job red.
+- `.github/actions/upload-review-execution/` — resolves claude-code-action's
+  `execution_file` output (with its temp-path fallback) and uploads it as a
+  workflow artifact, in one composite action shared between attempt 1 and the
+  `run-claude-review-attempt` retry above — the same DRY rationale that
+  motivated extracting that (much larger) composite action, just at a
+  smaller scale (gha#201 review).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
