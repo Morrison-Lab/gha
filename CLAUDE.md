@@ -53,6 +53,18 @@ capabilities above moved to `@v2`.
   before any checkout has happened — a composite action's own files are
   available via `uses:` regardless of checkout state, which a bare script path
   is not.
+- `.github/actions/run-review-guard/` — a thin composite-action wrapper around
+  `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
+  "Fail the check if the review did not complete" step. #191 tried to locate
+  that script by resolving d-morrison/gha's own repo/ref from
+  `github.job_workflow_ref` and checking it out into a side directory, but
+  that context var came back empty at runtime on real consumer runs even
+  though the calling step passed it correctly (gha#196) — the #191 fix was
+  only unit-tested via the sed-parsing logic in isolation, never exercised
+  end-to-end. `github.action_path` doesn't have that failure mode: a composite
+  action's own files are always reachable through it regardless of how the
+  calling reusable workflow was invoked, the same reasoning `parse-workflow-ref`
+  itself relies on.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -155,6 +167,16 @@ trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
 extracted `parse-workflow-ref.sh` (see Layout above) offline against a tag, a
 branch, and a full-SHA ref; CI runs it as a step in the same
 `review-fail-check` job in `_selftest.yml` (gha#191).
+
+`review-fail-check` also runs `run-review-guard` (see Layout above) itself via
+a real `uses: ./.github/actions/run-review-guard` step against the
+`genuine-finished-review.json` fixture, asserting it produces a non-empty
+`review_text_file` output. Unlike the fixture tests above (which invoke
+`check-review-execution.sh` directly), this proves the composite action's
+`github.action_path`-relative resolution of that script actually works — a
+gap that let gha#191's `job_workflow_ref` regression (gha#196) go unnoticed:
+the sed-parsing logic was unit-tested, but nothing exercised the real
+`uses:` call end-to-end.
 
 ## GitHub access in remote / web sessions
 

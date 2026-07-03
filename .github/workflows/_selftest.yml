@@ -116,6 +116,27 @@ jobs:
       - name: Run parse-workflow-ref fixture tests
         shell: bash
         run: bash .github/actions/parse-workflow-ref/tests/run-tests.sh
+      # Exercises the run-review-guard composite action itself (not just the
+      # check-review-execution.sh script it wraps) via a real `uses:` step, so
+      # its github.action_path-relative resolution of the script is actually
+      # proven to work end-to-end — a unit test of the script alone would not
+      # have caught #191's job_workflow_ref regression (gha#196).
+      - name: Exercise run-review-guard composite action end-to-end
+        id: guard-e2e
+        uses: ./.github/actions/run-review-guard
+        with:
+          execution-file: .github/workflows/scripts/tests/fixtures/genuine-finished-review.json
+      - name: Assert run-review-guard produced review text
+        shell: bash
+        env:
+          REVIEW_TEXT_FILE: ${{ steps.guard-e2e.outputs.review_text_file }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$REVIEW_TEXT_FILE" || ! -s "$REVIEW_TEXT_FILE" ]]; then
+            echo "::error::run-review-guard did not produce a non-empty review_text_file output"
+            exit 1
+          fi
+          echo "run-review-guard produced review_text_file=$REVIEW_TEXT_FILE"
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest
