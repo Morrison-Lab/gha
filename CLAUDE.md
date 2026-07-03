@@ -412,3 +412,12 @@ specific source checked for each judgment, and proactively suggest
 additional citations where they'd help. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
+
+### 5. Suggest semantic line breaks in prose
+
+When a diff touches prose (`README.md`, `website/`, action descriptions),
+check that lines break at clause/sentence boundaries (roughly 60–80
+characters) instead of reflowing into long unbroken lines. Raise violations
+as a suggestion, not a blocking requirement. This is a global standing rule
+from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+corpus (`shared/writing/semantic-line-breaks.md`).
