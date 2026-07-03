@@ -1,0 +1,40 @@
+name: Run review guard
+description: >-
+  Runs claude-code-review.yml's check-review-execution.sh guard script,
+  located via github.action_path rather than a separate checkout resolved
+  from github.job_workflow_ref. That resolution came back empty at runtime
+  on real consumer runs even though the calling step passed it correctly
+  (gha#196) — a composite action's own files are always reachable via
+  github.action_path regardless of how the calling reusable workflow was
+  invoked (workflow_call, a re-dispatched workflow_dispatch, automatic
+  pull_request, ...), the same reasoning parse-workflow-ref itself relies on.
+
+inputs:
+  execution-file:
+    description: Path to the claude-code-action execution-output file to check.
+    required: true
+
+outputs:
+  quota_exhausted:
+    description: >-
+      'true' when the run was skipped because the API rejected the request
+      before Claude did any work (quota exhaustion, auth failure, or similar
+      pre-processing rejection).
+    value: ${{ steps.run.outputs.quota_exhausted }}
+  review_text_file:
+    description: Path to the extracted verdict-bearing review text, when the review completed cleanly.
+    value: ${{ steps.run.outputs.review_text_file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run check-review-execution.sh
+      id: run
+      shell: bash
+      env:
+        EXECUTION_FILE: ${{ inputs.execution-file }}
+      # check-review-execution.sh lives in ../../workflows/scripts/ relative
+      # to this action's own directory — two levels up (out of
+      # run-review-guard/, out of actions/) lands at .github/, then down into
+      # workflows/scripts/.
+      run: bash "${{ github.action_path }}/../../workflows/scripts/check-review-execution.sh" "$EXECUTION_FILE"
