@@ -12,15 +12,22 @@ check_script="$repo_root/.github/workflows/scripts/check-review-execution.sh"
 fixtures_dir="$script_dir/fixtures"
 
 # fixture file -> expected outcome:
-#   pass — check-review-execution.sh exits 0 and writes review_text_file
-#   fail — it exits non-zero
-#   skip — it exits 0 and writes quota_exhausted=true (graceful skip)
+#   pass      — check-review-execution.sh exits 0 and writes review_text_file
+#   fail      — it exits non-zero, and does NOT write stub_review=true
+#   fail-stub — it exits non-zero AND writes stub_review=true (gha#185's
+#               retryable signature: real, non-empty text, no verdict, and a
+#               LOW permission_denials_count — distinct from a hard SDK
+#               error, genuinely empty output, or gha#198's textually
+#               identical but high-denial-count pattern, none of which
+#               claude-code-review.yml retries)
+#   skip      — it exits 0 and writes quota_exhausted=true (graceful skip)
 declare -A expected=(
   [genuine-finished-review.json]=pass
-  [stub-pr171-waiting-background-agents.json]=fail
-  [stub-pr171-remaining-review-agents.json]=fail
-  [stub-sparta590-scheduled-wakeup.json]=fail
-  [stub-sparta590-unnecessary-call.json]=fail
+  [stub-pr171-waiting-background-agents.json]=fail-stub
+  [stub-pr171-remaining-review-agents.json]=fail-stub
+  [stub-sparta590-scheduled-wakeup.json]=fail-stub
+  [stub-sparta590-unnecessary-call.json]=fail-stub
+  [stub-gha198-high-denial-count.json]=fail
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
   [quota-exhausted.json]=skip
@@ -53,8 +60,13 @@ assert_pass() {
 }
 
 assert_fail() {
-  local exit_code="$1"
-  [[ "$exit_code" -ne 0 ]]
+  local exit_code="$1" output_file="$2"
+  [[ "$exit_code" -ne 0 ]] && ! grep -q '^stub_review=true$' "$output_file"
+}
+
+assert_fail_stub() {
+  local exit_code="$1" output_file="$2"
+  [[ "$exit_code" -ne 0 ]] && grep -q '^stub_review=true$' "$output_file"
 }
 
 assert_skip() {
@@ -76,7 +88,8 @@ for fixture in "${!expected[@]}"; do
   ok=false
   case "$want" in
     pass) assert_pass "$fixture" "$exit_code" "$output_file" && ok=true ;;
-    fail) assert_fail "$exit_code" && ok=true ;;
+    fail) assert_fail "$exit_code" "$output_file" && ok=true ;;
+    fail-stub) assert_fail_stub "$exit_code" "$output_file" && ok=true ;;
     skip) assert_skip "$exit_code" "$output_file" && ok=true ;;
     *) echo "::error::unknown expected outcome '$want' for fixture $fixture"; exit 1 ;;
   esac
