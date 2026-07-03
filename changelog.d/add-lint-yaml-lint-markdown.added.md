@@ -13,8 +13,8 @@
   configurable line threshold (default 150) as decomposition candidates,
   matching the [lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html)
   `<150`-line function-length heuristic; this check defaults to warn-only,
-  since the manual documents that heuristic as "a provisional trigger to
-  reassess decomposition, not a hard constraint." Ships at `@v2` (too new for
-  the frozen `@v1` tag), like `test-coverage`/`check-equation-renders`. See
+  since the manual documents that heuristic as "a provisional heuristic
+  trigger to reassess decomposition, not a hard constraint." Ships at `@v2`
+  (too new for the frozen `@v1` tag), like `test-coverage`/`check-equation-renders`. See
   `examples/lint-yaml.yml` and `examples/lint-markdown.yml` for the caller
   stubs.

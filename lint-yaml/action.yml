@@ -45,7 +45,10 @@ runs:
 
     - name: Install yamllint
       shell: bash
-      run: pip install --quiet yamllint
+      # pyyaml is also a yamllint dependency, but check-script-length.py
+      # imports it directly, so declare it explicitly rather than relying on
+      # that transitive install.
+      run: pip install --quiet yamllint pyyaml
 
     - name: Run yamllint
       shell: bash
