@@ -423,6 +423,9 @@ div that defines it, and that the div appears *before* its first mention in
 reading order — a link to a definition the reader hasn't reached yet is a
 forward reference. This scope is per rendered file: cross-chapter ordering
 in a multi-file Quarto book is out of scope, check it manually. This is a
-global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
-(`shared/writing/definition-crossrefs.md`).
+global standing rule proposed for the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus in
+[d-morrison/ai-config#443](https://github.com/d-morrison/ai-config/pull/443)
+(not yet merged as of this writing — once it lands, tighten this citation
+to the specific `shared/writing/definition-crossrefs.md` path, matching
+items 3 and 4 above).
