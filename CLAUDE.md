@@ -429,3 +429,14 @@ tell found with its location and a de-slopped suggested revision — weigh
 clustering, not an isolated instance. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/ai-tells.md`).
+
+### 6. Question redundant content
+
+When a diff touches prose, math, or code, check for content that could be
+consolidated without losing completeness or generality — a claim or
+explanation restated in two places, a formula re-derived as a special case
+the general form already covers, duplicated logic across functions/files.
+Flag it only when nothing would be lost by merging; genuinely distinct
+content that merely looks similar should stay separate. This is a global
+standing rule from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+corpus (`shared/workflow/challenge-redundant-content.md`).
