@@ -429,3 +429,14 @@ tell found with its location and a de-slopped suggested revision — weigh
 clustering, not an isolated instance. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/ai-tells.md`).
+
+### 6. Suggest semantic line breaks in prose
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), check that lines break at clause/sentence boundaries (roughly
+60–80 characters) instead of reflowing into long unbroken lines — a semantic
+break keeps a diff scoped to the changed sentence. Raise violations as a
+suggestion, not a blocking requirement, and don't re-raise it if the author
+declines. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/semantic-line-breaks.md`).
