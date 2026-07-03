@@ -29,6 +29,12 @@ inputs:
     description: Lab-manual review guidance, from claude-code-review.yml's Compose lab-manual review guidance step.
     required: false
     default: ''
+  latexmacros-guidance:
+    description: >-
+      LaTeX-macro review guidance, from claude-code-review.yml's Compose
+      LaTeX-macro review guidance step.
+    required: false
+    default: ''
   prompt-addendum:
     description: Repo-specific review guidance (claude-code-review.yml's prompt-addendum input).
     required: false
@@ -200,6 +206,8 @@ runs:
           ${{ inputs.prior-context }}
 
           ${{ inputs.labmanual-guidance }}
+
+          ${{ inputs.latexmacros-guidance }}
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated
