@@ -430,7 +430,18 @@ clustering, not an isolated instance. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/ai-tells.md`).
 
-### 6. Check code and math for strategic and tactical correctness
+### 6. Suggest semantic line breaks in prose
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), check that lines break at clause/sentence boundaries (roughly
+60–80 characters) instead of reflowing into long unbroken lines — a semantic
+break keeps a diff scoped to the changed sentence. Raise violations as a
+suggestion, not a blocking requirement, and don't re-raise it if the author
+declines. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/semantic-line-breaks.md`).
+
+### 7. Check code and math for strategic and tactical correctness
 
 Beyond style, check whether the diff's code — and any math or statistics
 embedded in it — is *right*, not just correctly styled:
