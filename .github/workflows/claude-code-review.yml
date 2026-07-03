@@ -244,16 +244,21 @@ jobs:
       # (reusable) path is exposed separately as github.job_workflow_ref — hence
       # this matches whatever name the consumer's stub uses, not just the
       # claude-code-review.yml convention. (Ported from qwt — gha #45.)
+      - name: Parse caller workflow ref
+        id: caller-wf
+        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
       - name: Skip self-review when the PR edits this workflow
         id: selfmod
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WF_PATH: ${{ steps.caller-wf.outputs.path }}
         run: |
           set -euo pipefail
-          WF_PATH=$(printf '%s' "$WORKFLOW_REF" | sed -E 's#^[^/]+/[^/]+/(\.github/workflows/[^@]+)@.*#\1#')
           files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' 2>/dev/null || true)
           if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
@@ -602,20 +607,59 @@ jobs:
       # The guard logic itself lives in scripts/check-review-execution.sh so
       # it can be exercised offline against canned fixtures (see
       # scripts/tests/), without a live Claude API call — see the
-      # `review-fail-check` job in _selftest.yml (#174).
+      # `review-fail-check` job in _selftest.yml (#174). That script lives in
+      # THIS reusable workflow's own repo (d-morrison/gha), not the caller's
+      # — the "Checkout repository" step above checks out the CALLER (its
+      # `github.workflow_ref` is the caller's stub path; only
+      # `github.job_workflow_ref` exposes the repo/ref this reusable workflow
+      # is actually running from, same distinction the `selfmod` step above
+      # documents — both parse it via the shared parse-workflow-ref action).
+      # Fetch the script from that ref into a side directory so it resolves
+      # correctly no matter which repo calls this workflow (gha#190 — every
+      # consumer hit "No such file or directory" here once #176 moved the
+      # guard out of an inline `run:` block).
+      - name: Resolve this reusable workflow's own repo/ref
+        id: gha-self
+        if: steps.claude-review.outcome == 'success'
+        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.job_workflow_ref }}
+
+      - name: Checkout review guard script
+        if: steps.claude-review.outcome == 'success'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: ${{ steps.gha-self.outputs.repo }}
+          ref: ${{ steps.gha-self.outputs.ref }}
+          path: .gha-review-guard
+          fetch-depth: 1
+
       - name: Fail the check if the review did not complete
         id: fail-check
         if: steps.claude-review.outcome == 'success'
         shell: bash
         env:
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
+          GHA_SELF_REPO: ${{ steps.gha-self.outputs.repo }}
+          GHA_SELF_REF: ${{ steps.gha-self.outputs.ref }}
         run: |
           set -euo pipefail
           if [[ -z "$EXECUTION_FILE" ]]; then
             EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
             echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
           fi
-          bash "${GITHUB_WORKSPACE}/.github/workflows/scripts/check-review-execution.sh" "$EXECUTION_FILE"
+          GUARD_SCRIPT="${GITHUB_WORKSPACE}/.gha-review-guard/.github/workflows/scripts/check-review-execution.sh"
+          # Distinguish "the review completed with no verdict" (the script's own
+          # verdict) from "we couldn't even fetch the script that checks for a
+          # verdict" (the "Checkout review guard script" step above failed) —
+          # the latter is an infra hiccup unrelated to this PR's review content,
+          # and would otherwise surface as an opaque "No such file or directory"
+          # (gha#191 review).
+          if [[ ! -f "$GUARD_SCRIPT" ]]; then
+            echo "::error::Could not find check-review-execution.sh after checking out $GHA_SELF_REPO@$GHA_SELF_REF — the 'Checkout review guard script' step above likely failed (see its logs). This is an infrastructure failure, not a finding about this PR's review; re-run the job once the fetch issue is resolved."
+            exit 1
+          fi
+          bash "$GUARD_SCRIPT" "$EXECUTION_FILE"
 
       # When the API rejected the request before Claude could review (quota
       # exhaustion, auth failure, etc.), post a notice so the PR author knows
@@ -696,13 +740,12 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           CURRENT_RUN_ID: ${{ github.run_id }}
-          REVIEW_WF: ${{ github.workflow_ref }}
-        run: |
           # The caller invokes this reusable workflow, so a comment "belongs"
           # to this review iff its linked run used the same workflow file the
-          # current run did. Derive that file path from github.workflow_ref
-          # (owner/repo/.github/workflows/<file>@ref -> <file>).
-          THIS_WF=$(printf '%s' "$REVIEW_WF" | sed -E 's#^[^/]+/[^/]+/(\.github/workflows/[^@]+)@.*#\1#')
+          # current run did. Reuse the `caller-wf` step's already-parsed path
+          # (from github.workflow_ref) instead of re-deriving it here.
+          THIS_WF: ${{ steps.caller-wf.outputs.path }}
+        run: |
           gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[]
                   | select(.user.login == "claude[bot]")

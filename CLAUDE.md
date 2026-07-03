@@ -42,6 +42,16 @@ fixes since, which is why the capabilities above moved to `@v2`.
   repo.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
+- `.github/actions/parse-workflow-ref/` — a small composite action that parses a
+  `github.workflow_ref`/`github.job_workflow_ref`-shaped string
+  (`owner/repo/.github/workflows/<file>@ref`) into its `repo`/`path`/`ref` parts,
+  shared by every `claude-code-review.yml` and `claude-review.yml` step that
+  needs to pick one of these strings apart instead of duplicating the `sed`
+  logic inline. It has to be a composite action rather than a plain checked-out
+  script (like `check-review-execution.sh` below) because some call sites run
+  before any checkout has happened — a composite action's own files are
+  available via `uses:` regardless of checkout state, which a bare script path
+  is not.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -139,6 +149,11 @@ job in `_selftest.yml`. These fixtures ARE committed rather than generated at
 runtime — unlike the R-package/PHI-shaped fixtures the rule above warns
 about, they're plain JSON execution-output data with no content that would
 trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
+
+`.github/actions/parse-workflow-ref/tests/run-tests.sh` exercises the
+extracted `parse-workflow-ref.sh` (see Layout above) offline against a tag, a
+branch, and a full-SHA ref; CI runs it as a step in the same
+`review-fail-check` job in `_selftest.yml` (gha#191).
 
 ## GitHub access in remote / web sessions
 
