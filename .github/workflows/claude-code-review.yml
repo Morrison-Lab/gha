@@ -618,15 +618,26 @@ jobs:
       # correctly no matter which repo calls this workflow (gha#190 — every
       # consumer hit "No such file or directory" here once #176 moved the
       # guard out of an inline `run:` block).
+      #
+      # `github.job_workflow_ref` is a known no-op for a SAME-repository
+      # reusable-workflow call (github/community discussions #31054, #45342):
+      # it only populates for a genuine cross-repo `owner/repo/...@ref` call.
+      # That's exactly this repo's own dogfooding setup — claude-review.yml
+      # calling claude-code-review.yml, both in d-morrison/gha — which #191's
+      # own description already flagged as untestable from gha's own CI for
+      # this reason. Skip the redundant checkout in that case: a same-repo
+      # call means the "Checkout repository" step above already IS this
+      # reusable workflow's own tree, so the guard script is already present
+      # at its normal path.
       - name: Resolve this reusable workflow's own repo/ref
         id: gha-self
-        if: steps.claude-review.outcome == 'success'
+        if: steps.claude-review.outcome == 'success' && github.job_workflow_ref != ''
         uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
         with:
           workflow-ref: ${{ github.job_workflow_ref }}
 
       - name: Checkout review guard script
-        if: steps.claude-review.outcome == 'success'
+        if: steps.claude-review.outcome == 'success' && github.job_workflow_ref != ''
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: ${{ steps.gha-self.outputs.repo }}
@@ -642,13 +653,22 @@ jobs:
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
           GHA_SELF_REPO: ${{ steps.gha-self.outputs.repo }}
           GHA_SELF_REF: ${{ steps.gha-self.outputs.ref }}
+          # Empty for a same-repo call (see the comment above the
+          # "Resolve this reusable workflow's own repo/ref" step) — the
+          # signal that no separate checkout happened and the guard script
+          # is already in this checkout's normal path.
+          JOB_WORKFLOW_REF: ${{ github.job_workflow_ref }}
         run: |
           set -euo pipefail
           if [[ -z "$EXECUTION_FILE" ]]; then
             EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
             echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
           fi
-          GUARD_SCRIPT="${GITHUB_WORKSPACE}/.gha-review-guard/.github/workflows/scripts/check-review-execution.sh"
+          if [[ -z "$JOB_WORKFLOW_REF" ]]; then
+            GUARD_SCRIPT="${GITHUB_WORKSPACE}/.github/workflows/scripts/check-review-execution.sh"
+          else
+            GUARD_SCRIPT="${GITHUB_WORKSPACE}/.gha-review-guard/.github/workflows/scripts/check-review-execution.sh"
+          fi
           # Distinguish "the review completed with no verdict" (the script's own
           # verdict) from "we couldn't even fetch the script that checks for a
           # verdict" (the "Checkout review guard script" step above failed) —
