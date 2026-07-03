@@ -9,7 +9,18 @@ semantics.
 """
 
 import re
+import subprocess
 from typing import List
+
+
+def tracked_files(patterns: List[str], ignores: List["re.Pattern[str]"]) -> List[str]:
+    """Git-tracked files matching any of ``patterns`` (git pathspecs, matched
+    at any depth), filtered against ``ignores``."""
+    out = subprocess.run(
+        ["git", "ls-files", "--", *patterns],
+        capture_output=True, text=True, check=True,
+    ).stdout.splitlines()
+    return [f for f in out if not is_ignored(f, ignores)]
 
 
 def split_list(raw: str) -> List[str]:

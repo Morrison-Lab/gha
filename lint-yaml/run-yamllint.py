@@ -17,7 +17,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from _pathspec import compile_ignores, is_ignored, split_list
+from _pathspec import compile_ignores, split_list, tracked_files
 
 
 def resolve_config(action_path: Path) -> Path:
@@ -30,20 +30,12 @@ def resolve_config(action_path: Path) -> Path:
     return default
 
 
-def tracked_yaml_files(ignores) -> list:
-    out = subprocess.run(
-        ["git", "ls-files", "--", "*.yml", "*.yaml"],
-        capture_output=True, text=True, check=True,
-    ).stdout.splitlines()
-    return [f for f in out if not is_ignored(f, ignores)]
-
-
 def main() -> int:
     action_path = Path(os.environ["GITHUB_ACTION_PATH"])
     ignores = compile_ignores(split_list(os.environ.get("YAMLLINT_PATHS_IGNORE", "")))
     fail = os.environ.get("YAMLLINT_FAIL", "true").strip().lower() != "false"
 
-    files = tracked_yaml_files(ignores)
+    files = tracked_files(["*.yml", "*.yaml"], ignores)
     if not files:
         print("No tracked .yml/.yaml files to lint.")
         return 0

@@ -4,6 +4,10 @@
 // function-length heuristic (coding-practices/function-length-limits.qmd).
 //
 // Configuration (env vars, set by the composite action):
+//   MARKDOWNLINT_GLOBS             Space-separated git pathspecs of tracked
+//                                  files to check (default "*.md"), matching
+//                                  run_markdownlint.mjs's scope so both
+//                                  checks see the same file set.
 //   CODEBLOCK_LENGTH_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
 //   CODEBLOCK_LENGTH_MAX_LINES     Line-count threshold per fenced code block
 //                                  (default 150).
@@ -13,14 +17,8 @@
 //                                  provisional heuristic trigger ... not a
 //                                  hard constraint".
 
-import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { compileIgnores, isIgnored, splitList } from './_pathspec.mjs';
-
-function trackedMarkdownFiles(ignores) {
-  const out = execFileSync('git', ['ls-files', '--', '*.md'], { encoding: 'utf8' });
-  return out.split('\n').filter(Boolean).filter((f) => !isIgnored(f, ignores));
-}
+import { compileIgnores, splitList, trackedFiles } from './_pathspec.mjs';
 
 // A heuristic tripwire, not a full CommonMark parser: a fence is any line
 // starting with 3+ backticks or tildes; a matching close uses the same
@@ -60,11 +58,12 @@ function report(findings, maxLines) {
 }
 
 function main() {
+  const pathspecs = (process.env.MARKDOWNLINT_GLOBS || '*.md').split(/\s+/).filter(Boolean);
   const ignores = compileIgnores(splitList(process.env.CODEBLOCK_LENGTH_PATHS_IGNORE || ''));
   const maxLines = parseInt(process.env.CODEBLOCK_LENGTH_MAX_LINES || '150', 10);
   const fail = (process.env.CODEBLOCK_LENGTH_FAIL || 'false').trim().toLowerCase() === 'true';
 
-  const findings = trackedMarkdownFiles(ignores).flatMap((path) => findLongCodeBlocks(path, maxLines));
+  const findings = trackedFiles(pathspecs, ignores).flatMap((path) => findLongCodeBlocks(path, maxLines));
 
   if (findings.length === 0) {
     console.log(`No fenced code blocks longer than ${maxLines} lines.`);

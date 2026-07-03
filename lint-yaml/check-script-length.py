@@ -19,28 +19,19 @@ Configuration (all via environment variables, set by the composite action):
 """
 
 import os
-import subprocess
 import sys
 from pathlib import Path
 from typing import List, NamedTuple
 
 import yaml
 
-from _pathspec import compile_ignores, is_ignored, split_list
+from _pathspec import compile_ignores, split_list, tracked_files
 
 
 class Finding(NamedTuple):
     path: str
     line: int
     n_lines: int
-
-
-def tracked_yaml_files(ignores) -> List[str]:
-    out = subprocess.run(
-        ["git", "ls-files", "--", "*.yml", "*.yaml"],
-        capture_output=True, text=True, check=True,
-    ).stdout.splitlines()
-    return [f for f in out if not is_ignored(f, ignores)]
 
 
 def iter_run_blocks(node: yaml.Node):
@@ -100,7 +91,7 @@ def main() -> int:
     fail = os.environ.get("SCRIPT_LENGTH_FAIL", "false").strip().lower() == "true"
 
     findings = []
-    for path in tracked_yaml_files(ignores):
+    for path in tracked_files(["*.yml", "*.yaml"], ignores):
         findings.extend(find_long_scripts(path, max_lines))
 
     if not findings:

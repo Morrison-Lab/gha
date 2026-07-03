@@ -28,7 +28,7 @@
   // mistake.
   "MD024": { "siblings_only": true },
 
-  // Table pipe-padding style consistency (added in markdownlint 0.41) is
+  // Table pipe-padding style consistency (added in markdownlint 0.39) is
   // stricter than the mixed padded-content/compact-divider style already in
   // wide use across this repo's tables and the broader GFM ecosystem.
   "MD060": false

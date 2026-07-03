@@ -47,7 +47,7 @@ not reference `@main` from consumers.
 | `check-non-standard-chars.yml` | Detect curly quotes / en–em dashes in `.qmd` and `.R` files | `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
-| `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
+| `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |

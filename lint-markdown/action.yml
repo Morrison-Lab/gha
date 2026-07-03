@@ -57,6 +57,7 @@ runs:
     - name: Check fenced code block length
       shell: bash
       env:
+        MARKDOWNLINT_GLOBS: ${{ inputs.globs }}
         CODEBLOCK_LENGTH_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         CODEBLOCK_LENGTH_MAX_LINES: ${{ inputs.max-code-block-lines }}
         CODEBLOCK_LENGTH_FAIL: ${{ inputs.fail-on-long-code-blocks }}

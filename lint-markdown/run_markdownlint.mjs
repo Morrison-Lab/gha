@@ -14,11 +14,11 @@
 //                              reports an error; otherwise warn (the report is
 //                              still printed) but exit 0.
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { compileIgnores, isIgnored, splitList } from './_pathspec.mjs';
+import { compileIgnores, splitList, trackedFiles } from './_pathspec.mjs';
 
 const ACTION_DIR = dirname(fileURLToPath(import.meta.url));
 
@@ -30,11 +30,6 @@ function resolveConfig() {
   }
   console.log('Using bundled default markdownlint config');
   return join(ACTION_DIR, '.markdownlint.default.jsonc');
-}
-
-function trackedFiles(pathspecs, ignores) {
-  const out = execFileSync('git', ['ls-files', '--', ...pathspecs], { encoding: 'utf8' });
-  return out.split('\n').filter(Boolean).filter((f) => !isIgnored(f, ignores));
 }
 
 function main() {
