@@ -24,6 +24,12 @@ outputs:
   review_text_file:
     description: Path to the extracted verdict-bearing review text, when the review completed cleanly.
     value: ${{ steps.run.outputs.review_text_file }}
+  stub_review:
+    description: >-
+      'true' when the run completed without an SDK-level error but produced
+      no verdict line — the retryable "stub review" signature (gha#185). The
+      caller can use this to retry once instead of failing outright.
+    value: ${{ steps.run.outputs.stub_review }}
 
 runs:
   using: composite

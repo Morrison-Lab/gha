@@ -15,7 +15,11 @@
 #   - fails if the run's assistant text is empty/whitespace-only, or states no
 #     verdict anywhere (no `### Verdict` heading, `**Verdict:**` label, or
 #     `Verdict:` line in any assistant block — catches stub/placeholder
-#     reviews, gha#173, Lacaedemon/sparta#590);
+#     reviews, gha#173, Lacaedemon/sparta#590). This specific case (real,
+#     non-empty assistant text, no SDK error, but no verdict) also writes
+#     stub_review=true to $GITHUB_OUTPUT, so a caller can distinguish it from
+#     other failures (a hard SDK error, or genuinely empty output) and retry
+#     once — re-running has been observed to recover cleanly (gha#185);
 #   - otherwise writes review_text_file=<path> (the verdict-bearing assistant
 #     block, falling back to the final block) to $GITHUB_OUTPUT and exits 0.
 #
@@ -98,6 +102,7 @@ fi
 # `**Verdict:**`, `Verdict:`, `> Verdict`, `- Verdict:`; a stub
 # ("waiting for background agents…", "needs your approval") has none.
 if ! grep -qiE '^[[:space:]>*_#-]*verdict\b' "$all_text_file"; then
+  echo "stub_review=true" >> "$GITHUB_OUTPUT"
   echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
   exit 1
 fi
