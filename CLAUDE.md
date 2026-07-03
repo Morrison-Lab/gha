@@ -407,13 +407,30 @@ descriptions), assess the accuracy and clarity of its claims — check each
 against domain knowledge and, where checkable, an external source (the
 referenced tool's own docs, a linked spec) — and check any document-internal
 reasoning the prose makes (e.g. a justification for why a workflow does
-something a particular way). State which claims are inaccurate, cite the
-specific source checked for each judgment, and proactively suggest
-additional citations where they'd help. This is a global standing rule from
-the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+something a particular way). Also check that every factual claim is
+*defended*, separately from whether it's accurate: it needs either
+reasoning in the surrounding text or a citation, and a bare assertion with
+neither is a finding even when it turns out to be true. State which claims
+are inaccurate or undefended, cite the specific source checked for each
+judgment, and proactively suggest additional citations where they'd help.
+This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
 
-### 5. Check code and math for strategic and tactical correctness
+### 5. Check for AI-generated prose tells
+
+When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
+descriptions), scan it for the telltale signs of AI/LLM authorship —
+overused vocabulary (delve, leverage, robust, seamless, tapestry,
+testament…), the "it's not just X, it's Y" antithesis, mechanical
+rule-of-three lists, hedging stacks, signposting filler, em-dash overuse,
+bold-leading bullets, emoji headers, and promotional register. Flag each
+tell found with its location and a de-slopped suggested revision — weigh
+clustering, not an isolated instance. This is a global standing rule from
+the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/ai-tells.md`).
+
+### 6. Check code and math for strategic and tactical correctness
 
 Beyond style, check whether the diff's code — and any math or statistics
 embedded in it — is *right*, not just correctly styled:
