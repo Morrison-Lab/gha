@@ -407,8 +407,12 @@ descriptions), assess the accuracy and clarity of its claims — check each
 against domain knowledge and, where checkable, an external source (the
 referenced tool's own docs, a linked spec) — and check any document-internal
 reasoning the prose makes (e.g. a justification for why a workflow does
-something a particular way). State which claims are inaccurate, cite the
-specific source checked for each judgment, and proactively suggest
-additional citations where they'd help. This is a global standing rule from
-the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+something a particular way). Also check that every factual claim is
+*defended*, separately from whether it's accurate: it needs either
+reasoning in the surrounding text or a citation, and a bare assertion with
+neither is a finding even when it turns out to be true. State which claims
+are inaccurate or undefended, cite the specific source checked for each
+judgment, and proactively suggest additional citations where they'd help.
+This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
