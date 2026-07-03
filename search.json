@@ -272,160 +272,188 @@
     ]
   },
   {
-    "objectID": "reference/check-news.html",
-    "href": "reference/check-news.html",
-    "title": "check-news.yml",
+    "objectID": "reference/bump-submodule.html",
+    "href": "reference/bump-submodule.html",
+    "title": "bump-submodule.yml",
     "section": "",
-    "text": "Enforce a changelog entry on each pull request (wraps UCD-SERG/changelog-check-action).",
+    "text": "Update a named submodule to its upstream HEAD and open a PR when the pointer moves. Used by the side that vendors another repo as a git submodule (for example the lab manual tracking .ai-config).",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-news.yml"
+      "bump-submodule.yml"
     ]
   },
   {
-    "objectID": "reference/check-news.html#inputs",
-    "href": "reference/check-news.html#inputs",
-    "title": "check-news.yml",
+    "objectID": "reference/bump-submodule.html#inputs",
+    "href": "reference/bump-submodule.html#inputs",
+    "title": "bump-submodule.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nchangelog\nstring\n'NEWS.md'\nPath to the changelog file to check.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsubmodule-path\nstring\nrequired\nPath of the submodule to bump (for example .ai-config).\n\n\nremote-branch\nstring\n''\nUpstream branch to track. Empty follows the submodule’s configured branch, or its remote default branch.\n\n\nbase-branch\nstring\nmain\nBase branch to open the PR against.\n\n\npr-branch\nstring\nautomated/bump-submodule\nHead branch for the automation PR.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-news.yml"
+      "bump-submodule.yml"
     ]
   },
   {
-    "objectID": "reference/check-news.html#permissions",
-    "href": "reference/check-news.html#permissions",
-    "title": "check-news.yml",
-    "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-news.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-news.html#example",
-    "href": "reference/check-news.html#example",
-    "title": "check-news.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/news.yaml in your repo.\nname: Check NEWS.md Changelog\n\non:\n  pull_request:\n    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]\n    branches:\n      - main\n\njobs:\n  check:\n    uses: d-morrison/gha/.github/workflows/check-news.yml@v1\n    # with:\n    #   changelog: NEWS.md\nSee examples/check-news.yml for the full caller stub.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-news.yml"
-    ]
-  },
-  {
-    "objectID": "reference/summary.html",
-    "href": "reference/summary.html",
-    "title": "summary.yml",
-    "section": "",
-    "text": "Post an AI summary comment on newly opened issues, using the GitHub models API.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "summary.yml"
-    ]
-  },
-  {
-    "objectID": "reference/summary.html#inputs",
-    "href": "reference/summary.html#inputs",
-    "title": "summary.yml",
-    "section": "Inputs",
-    "text": "Inputs\nThis workflow takes no inputs.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "summary.yml"
-    ]
-  },
-  {
-    "objectID": "reference/summary.html#permissions",
-    "href": "reference/summary.html#permissions",
-    "title": "summary.yml",
-    "section": "Permissions",
-    "text": "Permissions\nGrant issues: write, models: read, and contents: read.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "summary.yml"
-    ]
-  },
-  {
-    "objectID": "reference/summary.html#example",
-    "href": "reference/summary.html#example",
-    "title": "summary.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/summary.yml in your repo.\n# NOTE: the calling job must grant issues:write + models:read.\nname: Summarize new issues\n\non:\n  issues:\n    types: [opened]\n\njobs:\n  summary:\n    permissions:\n      issues: write\n      models: read\n      contents: read\n    uses: d-morrison/gha/.github/workflows/summary.yml@v1\nSee examples/summary.yml for the full caller stub.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "summary.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html",
-    "href": "reference/test-coverage.html",
-    "title": "test-coverage.yml",
-    "section": "",
-    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#inputs",
-    "href": "reference/test-coverage.html#inputs",
-    "title": "test-coverage.yml",
-    "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#secrets",
-    "href": "reference/test-coverage.html#secrets",
-    "title": "test-coverage.yml",
+    "objectID": "reference/bump-submodule.html#secrets",
+    "href": "reference/bump-submodule.html#secrets",
+    "title": "bump-submodule.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nSUBMODULES_TOKEN\nno\nRead access to a private submodule.\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token; needed only to push to a protected branch.",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "bump-submodule.yml"
     ]
   },
   {
-    "objectID": "reference/test-coverage.html#permissions",
-    "href": "reference/test-coverage.html#permissions",
-    "title": "test-coverage.yml",
+    "objectID": "reference/bump-submodule.html#permissions",
+    "href": "reference/bump-submodule.html#permissions",
+    "title": "bump-submodule.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant contents: write and pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "bump-submodule.yml"
+    ]
+  },
+  {
+    "objectID": "reference/bump-submodule.html#example",
+    "href": "reference/bump-submodule.html#example",
+    "title": "bump-submodule.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/bump-submodule.yml in your repo.\n# Periodically bump a submodule to its upstream HEAD and open a PR when it moves.\n# Requires Settings -&gt; Actions -&gt; General -&gt; \"Allow GitHub Actions to create and\n# approve pull requests\" (the integrated GITHUB_TOKEN opens the PR).\nname: Bump submodule\n\non:\n  workflow_dispatch:\n  schedule:\n    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC\n\njobs:\n  bump:\n    permissions:\n      contents: write\n      pull-requests: write\n    uses: d-morrison/gha/.github/workflows/bump-submodule.yml@v1\n    with:\n      submodule-path: .ai-config\n      # remote-branch: main        # defaults to the submodule's configured branch\n    secrets:\n      # Needed only for private submodules; omit for public ones.\n      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}\n      # Set only if the bot must push to a protected branch; otherwise omit and\n      # the push falls back to GITHUB_TOKEN.\n      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}\nSee examples/bump-submodule.yml for the full caller stub.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "bump-submodule.yml"
+    ]
+  },
+  {
+    "objectID": "reference/cleanup-pr-previews.html",
+    "href": "reference/cleanup-pr-previews.html",
+    "title": "cleanup-pr-previews.yml",
+    "section": "",
+    "text": "The housekeeping half of the PR-preview family. On a schedule, it deletes gh-pages preview directories for pull requests that are no longer open.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "cleanup-pr-previews.yml"
+    ]
+  },
+  {
+    "objectID": "reference/cleanup-pr-previews.html#inputs",
+    "href": "reference/cleanup-pr-previews.html#inputs",
+    "title": "cleanup-pr-previews.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npreview-dir\nstring\n'pr-preview'\nDirectory on gh-pages that holds the per-PR preview subdirectories.\n\n\ncompact-history\nboolean\nfalse\nOrphan-squash the gh-pages branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "cleanup-pr-previews.yml"
+    ]
+  },
+  {
+    "objectID": "reference/cleanup-pr-previews.html#permissions",
+    "href": "reference/cleanup-pr-previews.html#permissions",
+    "title": "cleanup-pr-previews.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant contents: write (commit the deletions to gh-pages) and pull-requests: read.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "cleanup-pr-previews.yml"
+    ]
+  },
+  {
+    "objectID": "reference/cleanup-pr-previews.html#example",
+    "href": "reference/cleanup-pr-previews.html#example",
+    "title": "cleanup-pr-previews.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/cleanup-pr-previews.yml in your repo.\n# Housekeeping half of the PR-preview family: periodically deletes gh-pages\n# preview directories for PRs that are no longer open. The calling job grants\n# contents:write so it can commit the deletions back to gh-pages.\nname: Clean up PR Previews\n\non:\n  workflow_dispatch:\n  schedule:\n    - cron: '0 0 * * 0' # Weekly on Sunday at midnight UTC\n\njobs:\n  cleanup:\n    permissions:\n      contents: write\n      pull-requests: read\n    uses: d-morrison/gha/.github/workflows/cleanup-pr-previews.yml@v2\n    # with:\n    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews\n    #   compact-history: true       # orphan-squash gh-pages to one commit after\n    #                               # pruning, so deleted snapshots stop bloating\n    #                               # the repo. Branch-based Pages only.\nSee examples/cleanup-pr-previews.yml for the full caller stub.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "cleanup-pr-previews.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-phi.html",
+    "href": "reference/check-phi.html",
+    "title": "check-phi.yml",
+    "section": "",
+    "text": "Scan pull requests (added lines only; the whole tracked tree on push) for content that looks like protected health information: US Social Security numbers, medical record numbers, dates of birth, and PHI-suggestive column headers in delimited data files. It is a heuristic tripwire, not a HIPAA compliance tool. Matched values are never printed to the log; findings report only file:line:col and the detector name.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-phi.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-phi.html#inputs",
+    "href": "reference/check-phi.html#inputs",
+    "title": "check-phi.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\ndetectors\nstring\n''\nComma-separated detector set, overriding the default (ssn, mrn, dob, csv_phi_header). Also available: phone, email.\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nallowlist-file\nstring\n''\nPath in the caller repo to a regex allowlist file.\n\n\nfail\nboolean\ntrue\nFail the workflow when possible PHI is found; otherwise warn only.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-phi.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-phi.html#permissions",
+    "href": "reference/check-phi.html#permissions",
+    "title": "check-phi.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "check-phi.yml"
     ]
   },
   {
-    "objectID": "reference/test-coverage.html#example",
-    "href": "reference/test-coverage.html#example",
-    "title": "test-coverage.yml",
+    "objectID": "reference/check-phi.html#example",
+    "href": "reference/check-phi.html#example",
+    "title": "check-phi.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
+    "text": "Example\n# Copy to .github/workflows/check-phi.yml in your repo.\n# Scans pull requests for content that looks like Protected Health Information\n# (SSNs, medical record numbers, dates of birth, PHI column headers in data\n# files). On PRs only the added lines are scanned; on push the whole tree is.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check for PHI\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: d-morrison/gha/.github/workflows/check-phi.yml@v2\n    # with:\n    #   detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'  # add phone/email\n    #   paths-ignore: 'tests/testthat/fixtures/*,docs/*'      # skip known-safe paths\n    #   allowlist-file: '.github/phi-allowlist.txt'           # regexes to suppress\n    #   fail: false                                           # warn instead of failing\n#\n# Suppressing false positives:\n#   - Add a `phi-allow` comment on the offending line, or\n#   - List a regex matching the synthetic value in the allowlist file\n#     (defaults to .github/phi-allowlist.txt when present).\nSee examples/check-phi.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "check-phi.yml"
     ]
+  },
+  {
+    "objectID": "reference/lint-yaml.html",
+    "href": "reference/lint-yaml.html",
+    "title": "lint-yaml.yml",
+    "section": "",
+    "text": "Lint tracked YAML files with yamllint using a bundled default config (overridable), plus a companion check that flags run: script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo’s own R/Python capabilities already do."
+  },
+  {
+    "objectID": "reference/lint-yaml.html#inputs",
+    "href": "reference/lint-yaml.html#inputs",
+    "title": "lint-yaml.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a yamllint config file. Falls back to the bundled default when empty or the file does not exist.\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when yamllint reports an error (not a warning).\n\n\nmax-script-lines\nstring\n'150'\nFlag a run: block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-scripts\nboolean\nfalse\nFail when a run: block exceeds max-script-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint."
+  },
+  {
+    "objectID": "reference/lint-yaml.html#permissions",
+    "href": "reference/lint-yaml.html#permissions",
+    "title": "lint-yaml.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+  },
+  {
+    "objectID": "reference/lint-yaml.html#example",
+    "href": "reference/lint-yaml.html#example",
+    "title": "lint-yaml.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-yaml.yml in your repo.\n# Lints tracked YAML files with yamllint (bundled default config), plus a\n# companion check that flags long `run:` script blocks in workflow/action\n# YAML as decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint YAML\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: d-morrison/gha/.github/workflows/lint-yaml.yml@v2\n    # with:\n    #   config-file: '.yamllint.yml'   # override the bundled default config\n    #   paths-ignore: 'renv/**'        # skip known-vendored paths\n    #   fail: false                    # warn instead of failing on yamllint errors\nSee the examples/ directory for the full caller stub (lint-yaml.yml)."
   },
   {
     "objectID": "reference/preview.html",
@@ -480,7 +508,7 @@
     "href": "versioning.html",
     "title": "Versioning",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml to @v2; test-coverage.yml and check-equation-renders.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, and lint-markdown.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -491,7 +519,7 @@
     "href": "versioning.html#pinning-third-party-actions",
     "title": "Versioning",
     "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, and lint-markdown.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -524,7 +552,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml and check-equation-renders.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). check-news.yml, summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, and lint-markdown.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). check-news.yml, summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -535,7 +563,7 @@
     "href": "workflows.html#quality-checks",
     "title": "Workflows",
     "section": "Quality checks",
-    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-non-standard-chars.yml flags curly quotes and en/em dashes in .qmd and .R files, which can break Quarto and R rendering.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended).",
+    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-non-standard-chars.yml flags curly quotes and en/em dashes in .qmd and .R files, which can break Quarto and R rendering.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\nlint-yaml.yml runs yamllint over tracked YAML with a bundled config, plus a check that flags long run: script blocks as decomposition candidates.\nlint-markdown.yml runs markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended).",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -678,160 +706,188 @@
     ]
   },
   {
-    "objectID": "reference/check-phi.html",
-    "href": "reference/check-phi.html",
-    "title": "check-phi.yml",
+    "objectID": "reference/test-coverage.html",
+    "href": "reference/test-coverage.html",
+    "title": "test-coverage.yml",
     "section": "",
-    "text": "Scan pull requests (added lines only; the whole tracked tree on push) for content that looks like protected health information: US Social Security numbers, medical record numbers, dates of birth, and PHI-suggestive column headers in delimited data files. It is a heuristic tripwire, not a HIPAA compliance tool. Matched values are never printed to the log; findings report only file:line:col and the detector name.",
+    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-phi.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/check-phi.html#inputs",
-    "href": "reference/check-phi.html#inputs",
-    "title": "check-phi.yml",
+    "objectID": "reference/test-coverage.html#inputs",
+    "href": "reference/test-coverage.html#inputs",
+    "title": "test-coverage.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\ndetectors\nstring\n''\nComma-separated detector set, overriding the default (ssn, mrn, dob, csv_phi_header). Also available: phone, email.\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nallowlist-file\nstring\n''\nPath in the caller repo to a regex allowlist file.\n\n\nfail\nboolean\ntrue\nFail the workflow when possible PHI is found; otherwise warn only.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-phi.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/check-phi.html#permissions",
-    "href": "reference/check-phi.html#permissions",
-    "title": "check-phi.yml",
+    "objectID": "reference/test-coverage.html#secrets",
+    "href": "reference/test-coverage.html#secrets",
+    "title": "test-coverage.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#permissions",
+    "href": "reference/test-coverage.html#permissions",
+    "title": "test-coverage.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-phi.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/check-phi.html#example",
-    "href": "reference/check-phi.html#example",
-    "title": "check-phi.yml",
+    "objectID": "reference/test-coverage.html#example",
+    "href": "reference/test-coverage.html#example",
+    "title": "test-coverage.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-phi.yml in your repo.\n# Scans pull requests for content that looks like Protected Health Information\n# (SSNs, medical record numbers, dates of birth, PHI column headers in data\n# files). On PRs only the added lines are scanned; on push the whole tree is.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check for PHI\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: d-morrison/gha/.github/workflows/check-phi.yml@v2\n    # with:\n    #   detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'  # add phone/email\n    #   paths-ignore: 'tests/testthat/fixtures/*,docs/*'      # skip known-safe paths\n    #   allowlist-file: '.github/phi-allowlist.txt'           # regexes to suppress\n    #   fail: false                                           # warn instead of failing\n#\n# Suppressing false positives:\n#   - Add a `phi-allow` comment on the offending line, or\n#   - List a regex matching the synthetic value in the allowlist file\n#     (defaults to .github/phi-allowlist.txt when present).\nSee examples/check-phi.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-phi.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/cleanup-pr-previews.html",
-    "href": "reference/cleanup-pr-previews.html",
-    "title": "cleanup-pr-previews.yml",
+    "objectID": "reference/summary.html",
+    "href": "reference/summary.html",
+    "title": "summary.yml",
     "section": "",
-    "text": "The housekeeping half of the PR-preview family. On a schedule, it deletes gh-pages preview directories for pull requests that are no longer open.",
+    "text": "Post an AI summary comment on newly opened issues, using the GitHub models API.",
     "crumbs": [
       "Overview",
       "Reference",
-      "cleanup-pr-previews.yml"
+      "summary.yml"
     ]
   },
   {
-    "objectID": "reference/cleanup-pr-previews.html#inputs",
-    "href": "reference/cleanup-pr-previews.html#inputs",
-    "title": "cleanup-pr-previews.yml",
+    "objectID": "reference/summary.html#inputs",
+    "href": "reference/summary.html#inputs",
+    "title": "summary.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npreview-dir\nstring\n'pr-preview'\nDirectory on gh-pages that holds the per-PR preview subdirectories.\n\n\ncompact-history\nboolean\nfalse\nOrphan-squash the gh-pages branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses).",
+    "text": "Inputs\nThis workflow takes no inputs.",
     "crumbs": [
       "Overview",
       "Reference",
-      "cleanup-pr-previews.yml"
+      "summary.yml"
     ]
   },
   {
-    "objectID": "reference/cleanup-pr-previews.html#permissions",
-    "href": "reference/cleanup-pr-previews.html#permissions",
-    "title": "cleanup-pr-previews.yml",
+    "objectID": "reference/summary.html#permissions",
+    "href": "reference/summary.html#permissions",
+    "title": "summary.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write (commit the deletions to gh-pages) and pull-requests: read.",
+    "text": "Permissions\nGrant issues: write, models: read, and contents: read.",
     "crumbs": [
       "Overview",
       "Reference",
-      "cleanup-pr-previews.yml"
+      "summary.yml"
     ]
   },
   {
-    "objectID": "reference/cleanup-pr-previews.html#example",
-    "href": "reference/cleanup-pr-previews.html#example",
-    "title": "cleanup-pr-previews.yml",
+    "objectID": "reference/summary.html#example",
+    "href": "reference/summary.html#example",
+    "title": "summary.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/cleanup-pr-previews.yml in your repo.\n# Housekeeping half of the PR-preview family: periodically deletes gh-pages\n# preview directories for PRs that are no longer open. The calling job grants\n# contents:write so it can commit the deletions back to gh-pages.\nname: Clean up PR Previews\n\non:\n  workflow_dispatch:\n  schedule:\n    - cron: '0 0 * * 0' # Weekly on Sunday at midnight UTC\n\njobs:\n  cleanup:\n    permissions:\n      contents: write\n      pull-requests: read\n    uses: d-morrison/gha/.github/workflows/cleanup-pr-previews.yml@v2\n    # with:\n    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews\n    #   compact-history: true       # orphan-squash gh-pages to one commit after\n    #                               # pruning, so deleted snapshots stop bloating\n    #                               # the repo. Branch-based Pages only.\nSee examples/cleanup-pr-previews.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/summary.yml in your repo.\n# NOTE: the calling job must grant issues:write + models:read.\nname: Summarize new issues\n\non:\n  issues:\n    types: [opened]\n\njobs:\n  summary:\n    permissions:\n      issues: write\n      models: read\n      contents: read\n    uses: d-morrison/gha/.github/workflows/summary.yml@v1\nSee examples/summary.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "cleanup-pr-previews.yml"
+      "summary.yml"
     ]
   },
   {
-    "objectID": "reference/bump-submodule.html",
-    "href": "reference/bump-submodule.html",
-    "title": "bump-submodule.yml",
+    "objectID": "reference/check-news.html",
+    "href": "reference/check-news.html",
+    "title": "check-news.yml",
     "section": "",
-    "text": "Update a named submodule to its upstream HEAD and open a PR when the pointer moves. Used by the side that vendors another repo as a git submodule (for example the lab manual tracking .ai-config).",
+    "text": "Enforce a changelog entry on each pull request (wraps UCD-SERG/changelog-check-action).",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-submodule.yml"
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "reference/bump-submodule.html#inputs",
-    "href": "reference/bump-submodule.html#inputs",
-    "title": "bump-submodule.yml",
+    "objectID": "reference/check-news.html#inputs",
+    "href": "reference/check-news.html#inputs",
+    "title": "check-news.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsubmodule-path\nstring\nrequired\nPath of the submodule to bump (for example .ai-config).\n\n\nremote-branch\nstring\n''\nUpstream branch to track. Empty follows the submodule’s configured branch, or its remote default branch.\n\n\nbase-branch\nstring\nmain\nBase branch to open the PR against.\n\n\npr-branch\nstring\nautomated/bump-submodule\nHead branch for the automation PR.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nchangelog\nstring\n'NEWS.md'\nPath to the changelog file to check.",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-submodule.yml"
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "reference/bump-submodule.html#secrets",
-    "href": "reference/bump-submodule.html#secrets",
-    "title": "bump-submodule.yml",
-    "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nSUBMODULES_TOKEN\nno\nRead access to a private submodule.\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token; needed only to push to a protected branch.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "bump-submodule.yml"
-    ]
-  },
-  {
-    "objectID": "reference/bump-submodule.html#permissions",
-    "href": "reference/bump-submodule.html#permissions",
-    "title": "bump-submodule.yml",
+    "objectID": "reference/check-news.html#permissions",
+    "href": "reference/check-news.html#permissions",
+    "title": "check-news.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write and pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-submodule.yml"
+      "check-news.yml"
     ]
   },
   {
-    "objectID": "reference/bump-submodule.html#example",
-    "href": "reference/bump-submodule.html#example",
-    "title": "bump-submodule.yml",
+    "objectID": "reference/check-news.html#example",
+    "href": "reference/check-news.html#example",
+    "title": "check-news.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/bump-submodule.yml in your repo.\n# Periodically bump a submodule to its upstream HEAD and open a PR when it moves.\n# Requires Settings -&gt; Actions -&gt; General -&gt; \"Allow GitHub Actions to create and\n# approve pull requests\" (the integrated GITHUB_TOKEN opens the PR).\nname: Bump submodule\n\non:\n  workflow_dispatch:\n  schedule:\n    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC\n\njobs:\n  bump:\n    permissions:\n      contents: write\n      pull-requests: write\n    uses: d-morrison/gha/.github/workflows/bump-submodule.yml@v1\n    with:\n      submodule-path: .ai-config\n      # remote-branch: main        # defaults to the submodule's configured branch\n    secrets:\n      # Needed only for private submodules; omit for public ones.\n      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}\n      # Set only if the bot must push to a protected branch; otherwise omit and\n      # the push falls back to GITHUB_TOKEN.\n      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}\nSee examples/bump-submodule.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/news.yaml in your repo.\nname: Check NEWS.md Changelog\n\non:\n  pull_request:\n    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]\n    branches:\n      - main\n\njobs:\n  check:\n    uses: d-morrison/gha/.github/workflows/check-news.yml@v1\n    # with:\n    #   changelog: NEWS.md\nSee examples/check-news.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-submodule.yml"
+      "check-news.yml"
     ]
+  },
+  {
+    "objectID": "reference/lint-markdown.html",
+    "href": "reference/lint-markdown.html",
+    "title": "lint-markdown.yml",
+    "section": "",
+    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates."
+  },
+  {
+    "objectID": "reference/lint-markdown.html#inputs",
+    "href": "reference/lint-markdown.html#inputs",
+    "title": "lint-markdown.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint."
+  },
+  {
+    "objectID": "reference/lint-markdown.html#permissions",
+    "href": "reference/lint-markdown.html#permissions",
+    "title": "lint-markdown.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+  },
+  {
+    "objectID": "reference/lint-markdown.html#example",
+    "href": "reference/lint-markdown.html#example",
+    "title": "lint-markdown.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus a companion check that flags long fenced code blocks as\n# decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: d-morrison/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\nSee the examples/ directory for the full caller stub (lint-markdown.yml)."
   },
   {
     "objectID": "reference/quarto-publish.html",
