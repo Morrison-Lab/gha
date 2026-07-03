@@ -429,3 +429,17 @@ tell found with its location and a de-slopped suggested revision — weigh
 clustering, not an isolated instance. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/ai-tells.md`).
+
+### 6. Challenge unnecessary complexity
+
+When reviewing prose, math, or code, check whether it is more complex than
+the problem requires — not just whether it's correct or clear. Flag
+needlessly convoluted control flow, abstraction layers that add
+indirection without earning it, an overcomplicated derivation or an
+unnecessarily general result when a simpler equivalent exists, and prose
+that restates a point through more clauses or jargon than a plain rewrite
+needs. For each finding, propose the concrete simplification rather than
+just naming the complexity, and confirm it doesn't drop a feature, an edge
+case, or a meaning the original carried. This is a global standing rule
+from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
