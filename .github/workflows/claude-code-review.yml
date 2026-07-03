@@ -93,6 +93,18 @@ on:
           reviewer isn't handed guidance irrelevant to the diff.
         type: boolean
         default: true
+      check-latex-macros:
+        description: >-
+          Check PR diffs for LaTeX math that could be simplified using an
+          existing macro from the d-morrison/macros submodule, and for
+          nontrivial math expressions (more than ~5 constituent parts)
+          repeated 3+ times with no existing macro — a candidate for a new
+          one. Off by default. This reviewer has no network-fetch tools, so
+          it can only read macro definitions from a locally checked-out
+          submodule: set checkout-submodules: true too, or this only ever
+          reports that it found no macro definitions to check against.
+        type: boolean
+        default: false
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -380,6 +392,68 @@ jobs:
           printf '%s\n' "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
+      # Compose the LaTeX-macro review guidance, gated on the
+      # `check-latex-macros` input, mirroring the lab-manual step above.
+      # Empty when a caller opts out (the default — most consumers have no
+      # LaTeX math), so the reviewer isn't handed instructions irrelevant to
+      # its diff. Interpolated into the prompt (via run-claude-review-attempt)
+      # as `steps.latexmacros.outputs.guidance`.
+      - name: Compose LaTeX-macro review guidance
+        id: latexmacros
+        if: steps.selfmod.outputs.self_mod != 'true'
+        env:
+          CHECK_LATEX_MACROS: ${{ inputs.check-latex-macros }}
+        run: |
+          if [ "$CHECK_LATEX_MACROS" != "true" ]; then
+            printf 'guidance=\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          DELIM="latexmac_$(openssl rand -hex 8)"
+          {
+          printf '%s\n' "guidance<<$DELIM"
+          cat <<'GUIDANCE'
+          **Check for LaTeX macro opportunities.** This repository may vendor
+          the shared [d-morrison/macros](https://github.com/d-morrison/macros)
+          submodule (a `macros.qmd` of `\def`/`\providecommand`/`\renewcommand`
+          definitions). First locate it: look for a submodule entry in
+          `.gitmodules` referencing `d-morrison/macros`, or a
+          `{{< include .../macros.qmd >}}` / `\input{macros}` reference in a
+          changed file — the vendored path varies by repo (`macros/`,
+          `latex-macros/`, `vignettes/macros/`, `inst/analyses/macros/` are
+          all attested, so don't assume one). Read the local `macros.qmd` if
+          you find it.
+
+          This sandboxed environment has no network-fetch tools, so you can
+          only see macro definitions that are checked out locally. If you
+          can't find a macros submodule or its `macros.qmd`, say so once in
+          your review (e.g. "no d-morrison/macros submodule found — skipping
+          the macro checks") and skip both checks below rather than guessing
+          at definitions you can't read.
+
+          When you do have `macros.qmd`, check the LaTeX math **added or
+          changed in this PR's diff** for two things:
+
+          1. **Simplification opportunities.** Does any added/changed math
+             expression duplicate the expansion of a macro already defined in
+             `macros.qmd` (allowing for equivalent spacing or argument
+             order)? If so, show the current raw form and the macro-using
+             replacement.
+          2. **New-macro candidates.** Within the diff, is there a nontrivial
+             math expression (rough heuristic: more than ~5 constituent
+             parts — commands, braces, sub/superscripts) that recurs 3 or
+             more times with no existing macro covering it? If so, suggest a
+             macro name (follow `macros.qmd`'s naming conventions — e.g. an
+             `h` prefix for a hat/estimator, an `f` suffix for "applied to an
+             argument", a `v` prefix for a vector; see the macros repo's
+             `CONTRIBUTING.md` for the full convention) and a
+             `\providecommand` definition.
+
+          Post these as ordinary review findings — suggestions the author can
+          accept, rebut, or defer, like any other finding.
+          GUIDANCE
+          printf '%s\n' "$DELIM"
+          } >> "$GITHUB_OUTPUT"
+
       # The actual claude-code-action call (allowedTools/disallowedTools,
       # system prompt, review prompt) lives in the run-claude-review-attempt
       # composite action so it can be invoked a second time, unchanged, as a
@@ -397,6 +471,7 @@ jobs:
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
+          latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}
@@ -492,6 +567,7 @@ jobs:
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
+          latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}
