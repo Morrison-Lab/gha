@@ -23,7 +23,7 @@ jobs:
       # julia: true
       # julia-version: '1'
       # julia-project: inst/julia
-      # apt-packages: ''
+      # apt-packages: ''   # default installs the standard R system-deps list; set '' to skip, or pass your own
       # extra-packages: any::testthat
       # needs: check
       # commit-message: 'Update testthat snapshots [auto]'
