@@ -47,12 +47,18 @@ jobs:
       actions: write        # dispatch this workflow via `gh workflow run`
       issues: write         # acknowledge the /review comment
     steps:
+      - name: Parse this workflow's ref
+        id: this-wf
+        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
       - name: Dispatch a review for the commented PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.issue.number }}
-          WORKFLOW_REF: ${{ github.workflow_ref }}
+          WF_PATH: ${{ steps.this-wf.outputs.path }}
           # Passed via env (not inlined into the script) so the comment body is
           # a shell value, never interpreted as script — avoids injection.
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -68,10 +74,12 @@ jobs:
             echo "Comment does not start with a standalone '/review' command; skipping dispatch."
             exit 0
           fi
-          # Derive this workflow's own filename from github.workflow_ref
-          # (owner/repo/.github/workflows/<file>@ref), so the dispatch resolves
-          # regardless of what the file is named in a consumer repo.
-          WF_FILE=$(printf '%s' "$WORKFLOW_REF" | sed -E 's#.*/([^/@]+)@.*#\1#')
+          # This workflow's own filename, so the dispatch resolves regardless
+          # of what the file is named in a consumer repo — WF_PATH (from the
+          # shared parse-workflow-ref action, above) is the
+          # .github/workflows/<file> portion; strip the directory to get just
+          # the filename `gh workflow run` expects.
+          WF_FILE=$(basename "$WF_PATH")
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER (/review comment)."
           # --repo is required: this job doesn't check out the repo, so gh has no
           # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).

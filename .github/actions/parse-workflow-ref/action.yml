@@ -1,0 +1,32 @@
+name: Parse workflow-ref
+description: >-
+  Parses a workflow-ref string (owner/repo/.github/workflows/<file>@ref --
+  the shape of github.workflow_ref and github.job_workflow_ref) into its
+  repo, path, and ref parts, so callers don't each duplicate the sed logic
+  (gha#191).
+
+inputs:
+  workflow-ref:
+    description: A workflow-ref string, e.g. owner/repo/.github/workflows/file.yml@v2.
+    required: true
+
+outputs:
+  repo:
+    description: The owner/repo portion.
+    value: ${{ steps.parse.outputs.repo }}
+  path:
+    description: The .github/workflows/<file> portion.
+    value: ${{ steps.parse.outputs.path }}
+  ref:
+    description: The ref (branch, tag, or SHA) portion.
+    value: ${{ steps.parse.outputs.ref }}
+
+runs:
+  using: composite
+  steps:
+    - name: Parse
+      id: parse
+      shell: bash
+      env:
+        WORKFLOW_REF: ${{ inputs.workflow-ref }}
+      run: bash "${{ github.action_path }}/parse-workflow-ref.sh" "$WORKFLOW_REF" >> "$GITHUB_OUTPUT"
