@@ -588,57 +588,38 @@ jobs:
       # scripts/tests/), without a live Claude API call — see the
       # `review-fail-check` job in _selftest.yml (#174). That script lives in
       # THIS reusable workflow's own repo (d-morrison/gha), not the caller's
-      # — the "Checkout repository" step above checks out the CALLER (its
-      # `github.workflow_ref` is the caller's stub path; only
-      # `github.job_workflow_ref` exposes the repo/ref this reusable workflow
-      # is actually running from, same distinction the `selfmod` step above
-      # documents — both parse it via the shared parse-workflow-ref action).
-      # Fetch the script from that ref into a side directory so it resolves
-      # correctly no matter which repo calls this workflow (gha#190 — every
-      # consumer hit "No such file or directory" here once #176 moved the
-      # guard out of an inline `run:` block).
-      - name: Resolve this reusable workflow's own repo/ref
-        id: gha-self
-        if: steps.claude-review.outcome == 'success'
-        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
-        with:
-          workflow-ref: ${{ github.job_workflow_ref }}
-
-      - name: Checkout review guard script
-        if: steps.claude-review.outcome == 'success'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          repository: ${{ steps.gha-self.outputs.repo }}
-          ref: ${{ steps.gha-self.outputs.ref }}
-          path: .gha-review-guard
-          fetch-depth: 1
-
-      - name: Fail the check if the review did not complete
-        id: fail-check
+      # — the "Checkout repository" step above checks out the CALLER, not
+      # d-morrison/gha. #191 tried resolving d-morrison/gha's own ref via
+      # github.job_workflow_ref and checking it out into a side directory, but
+      # that context var came back EMPTY at this call site on real consumer
+      # runs even though the calling step passed it correctly (gha#196) — the
+      # #191 fix was only unit-tested via the sed-parsing logic in isolation,
+      # never exercised end-to-end. Delegate to a composite action instead: a
+      # composite action's own files are always reachable via
+      # github.action_path regardless of how the calling reusable workflow was
+      # invoked (workflow_call, a re-dispatched workflow_dispatch, automatic
+      # pull_request, ...) — the same reasoning that made parse-workflow-ref
+      # itself a composite action rather than a checked-out script.
+      - name: Resolve execution file path
+        id: exec-file
         if: steps.claude-review.outcome == 'success'
         shell: bash
         env:
           EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
-          GHA_SELF_REPO: ${{ steps.gha-self.outputs.repo }}
-          GHA_SELF_REF: ${{ steps.gha-self.outputs.ref }}
         run: |
           set -euo pipefail
           if [[ -z "$EXECUTION_FILE" ]]; then
             EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
             echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
           fi
-          GUARD_SCRIPT="${GITHUB_WORKSPACE}/.gha-review-guard/.github/workflows/scripts/check-review-execution.sh"
-          # Distinguish "the review completed with no verdict" (the script's own
-          # verdict) from "we couldn't even fetch the script that checks for a
-          # verdict" (the "Checkout review guard script" step above failed) —
-          # the latter is an infra hiccup unrelated to this PR's review content,
-          # and would otherwise surface as an opaque "No such file or directory"
-          # (gha#191 review).
-          if [[ ! -f "$GUARD_SCRIPT" ]]; then
-            echo "::error::Could not find check-review-execution.sh after checking out $GHA_SELF_REPO@$GHA_SELF_REF — the 'Checkout review guard script' step above likely failed (see its logs). This is an infrastructure failure, not a finding about this PR's review; re-run the job once the fetch issue is resolved."
-            exit 1
-          fi
-          bash "$GUARD_SCRIPT" "$EXECUTION_FILE"
+          echo "path=$EXECUTION_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Fail the check if the review did not complete
+        id: fail-check
+        if: steps.claude-review.outcome == 'success'
+        uses: d-morrison/gha/.github/actions/run-review-guard@v2
+        with:
+          execution-file: ${{ steps.exec-file.outputs.path }}
 
       # When the API rejected the request before Claude could review (quota
       # exhaustion, auth failure, etc.), post a notice so the PR author knows
