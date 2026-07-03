@@ -349,7 +349,7 @@ both PRs' subsequent reviews went clean.)
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
-PR bot), evaluate the diff against **both** of the following, in addition to
+PR bot), evaluate the diff against **all** of the following, in addition to
 correctness:
 
 ### 1. The SERG lab manual
