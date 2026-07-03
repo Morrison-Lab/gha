@@ -1,0 +1,285 @@
+name: Run a Claude Code Review attempt
+description: >-
+  Runs a single attempt of the `code-review` plugin via
+  `anthropics/claude-code-action`, with claude-code-review.yml's review-only
+  `allowedTools`/`disallowedTools` and prompt. Extracted into a composite
+  action (rather than left inline) so claude-code-review.yml can invoke it
+  TWICE — once for the initial attempt, once as a same-prompt retry when the
+  first attempt stubs out (gha#185) — without duplicating this ~100-line
+  `with:` block between two near-identical steps, which the review priorities
+  in this repo's own CLAUDE.md flag as a DRY violation.
+
+inputs:
+  claude-code-oauth-token:
+    description: Forwarded to claude-code-action's claude_code_oauth_token.
+    required: false
+    default: ''
+  anthropic-api-key:
+    description: Forwarded to claude-code-action's anthropic_api_key.
+    required: false
+    default: ''
+  pr-number:
+    description: PR number under review (already resolved by the caller).
+    required: true
+  prior-context:
+    description: Prior-round review context, from claude-code-review.yml's gather-context job.
+    required: false
+    default: ''
+  labmanual-guidance:
+    description: Lab-manual review guidance, from claude-code-review.yml's Compose lab-manual review guidance step.
+    required: false
+    default: ''
+  prompt-addendum:
+    description: Repo-specific review guidance (claude-code-review.yml's prompt-addendum input).
+    required: false
+    default: ''
+  track-progress:
+    description: Already-resolved 'true'/'false' string for claude-code-action's track_progress.
+    required: true
+  show-full-output:
+    description: Forwarded to claude-code-action's show_full_output.
+    required: true
+  allowed-bots:
+    description: Forwarded to claude-code-action's allowed_bots.
+    required: true
+  is-retry:
+    description: >-
+      'true' when this is the same-prompt retry attempt run after the first
+      attempt completed without an SDK error but produced no verdict (gha#185).
+      Adds an extra, more forceful instruction to the system prompt so the
+      retry doesn't repeat the same stub outcome.
+    required: false
+    default: 'false'
+
+outputs:
+  execution_file:
+    description: Passthrough of claude-code-action's execution_file output.
+    value: ${{ steps.run.outputs.execution_file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run Claude Code Review
+      id: run
+      uses: anthropics/claude-code-action@6c0083bb7289c31716797a039b6367b3079cc46e # v1.0.162
+      with:
+        claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
+        anthropic_api_key: ${{ inputs.anthropic-api-key }}
+        plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
+        plugins: 'code-review@claude-code-plugins'
+        # Allowlist the inline-comment tool so line-specific findings can be
+        # anchored to the diff. Without an explicit `claude_args`, the action's
+        # computed `--allowedTools` covers only Read/Glob/Grep, the
+        # comment-update + CI MCP tools, and git Bash — NOT
+        # `mcp__github_inline_comment__create_inline_comment`. Lacking the
+        # tool, Claude falls back to `gh api`, hits a tool-permission denial,
+        # and the inline comments silently never post (this is an
+        # allowlist gap, not a GitHub-App permission scope issue — the tool
+        # ships with the action; it just has to be enabled). Mirrors
+        # anthropics/claude-code-action's own pr-review workflows. Additive:
+        # the CLI merges this with the action's base allowlist. The
+        # inline-comment tool is not initialized in agent mode
+        # (claude-code-action #635); the prompt falls back to a
+        # summary-only review when it is unavailable.
+        # ...and keep this a REVIEW-ONLY run. Even with a read-only contents
+        # token, tag mode hands the reviewer git add/commit/rm and the action's
+        # default prompt tells it to commit+push, so it flails through
+        # permission denials and posts a misleading "grant me git permissions"
+        # comment. Disallow the git-write tools (disallowed beats the action's
+        # generated allow-list) and tell the agent up front not to attempt
+        # edits, so it folds any would-be fix into its review instead.
+        #
+        # `Bash(python3:*)` and `Bash(maxima:*)` let the reviewer actually
+        # run the computer-algebra tools the `pip-packages` / `apt-packages`
+        # inputs install (SymPy, Maxima) to symbolically check a derivation
+        # under review, instead of only tracing the algebra by eye (gha#154,
+        # gha#199). `Bash(python3:*)` also covers running an existing Python
+        # script under the checkout (e.g. a CI guard against sample input).
+        # This job gets no git-write capability from these, but on a
+        # same-repo (non-fork) PR it does hold CLAUDE_CODE_OAUTH_TOKEN /
+        # ANTHROPIC_API_KEY as secrets. `Bash(python3:*)` already permits
+        # running arbitrary `.py` files, so ALSO denying `python3 -c` bought
+        # little real protection while blocking the inline SymPy one-liners
+        # the CAS-review addendum (`prompt-addendum`) tells the reviewer to
+        # run — so `-c` is allowed. `Bash(python3 -m:*)` stays denied:
+        # module execution (pip installs, `http.server`, …) isn't needed for
+        # symbolic checks and is a broader grant. All git-write tools remain
+        # denied below.
+        #
+        # `Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),
+        # Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)`
+        # are the read-only `gh` subcommands the upstream `code-review`
+        # plugin's own `/code-review` command declares as `allowed-tools`
+        # (github.com/anthropics/claude-code, plugins/code-review/commands/
+        # code-review.md). Without them, every one of the plugin's 4
+        # parallel sub-agents hits a permission denial on each attempt.
+        # #187 already stopped a denial from ending the run early, but a
+        # heavier prompt (e.g. a dispatched re-review carrying prior-review
+        # context) can still rack up enough denials across all 4 sub-agents
+        # — reproduced with permission_denials_count:28, num_turns:50 on a
+        # dispatched re-review of PR #183 — that the run finishes
+        # is_error:false but never emits a concluding verdict block: the
+        # same stub-review signature check-review-execution.sh detects
+        # (gha#173, Lacaedemon/sparta#590), from this separate cause.
+        # `gh pr comment` — also in the plugin's declared tool list — is
+        # deliberately NOT granted: claude-code-review.yml posts the review
+        # itself via its "Post review comment" step (with dedup/collapse
+        # handling), so letting the plugin self-post would risk duplicate
+        # or uncontrolled comments.
+        claude_args: >-
+          --allowedTools
+          "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
+          --disallowedTools
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*)"
+          --append-system-prompt
+          "This is a review-only run. Report every issue you find as part
+          of your review. Do NOT modify, stage, commit, or push files, and
+          do NOT attempt to; the git write tools are intentionally
+          disallowed. Never describe changes as 'uncommitted' or ask the
+          user to grant git/commit permissions; there is nothing for you to
+          commit. If you would have fixed something, describe the fix in
+          your review instead.
+
+          This sandboxed environment has no network-fetch tools
+          (WebFetch/WebSearch) enabled. Do not attempt to fetch external
+          URLs to verify a claim; when a fact-check would require live
+          network access, verify what you can from the repository's own
+          content and your own knowledge, and note in your review that the
+          rest could not be independently verified in this environment
+          instead of trying the fetch. More generally: a denied tool call
+          is never a reason to stop the review early. If any tool call is
+          denied for any reason, continue with the information you already
+          have and still finish by posting your findings and the explicit
+          ### Verdict line required below — do not end the run silently or
+          wait for approval.${{ inputs.is-retry == 'true' && '
+
+
+          This is a RETRY: an earlier attempt at this same review completed
+          without an API error but ended without ever stating a verdict —
+          most likely it stopped early after a denied tool call instead of
+          continuing (gha#185). Do not repeat that outcome. However far you
+          get, and whatever gets denied along the way, your LAST action in
+          this run must be to post your findings (best-effort, noting
+          anything you could not fully verify) followed by the explicit
+          ### Verdict line. Treat reaching a verdict as a higher priority
+          than being exhaustive.' || '' }}"
+        # The job `if:` already lets dispatched runs review drafts (the
+        # automatic pull_request path skips them via draft == false). But the
+        # code-review skill has its OWN don't-review-drafts stop condition, so
+        # on a draft PR the agent still refuses ("currently a draft … I will
+        # not proceed") — defeating an explicit `@claude review` that
+        # claude.yml routes here as a workflow_dispatch. A workflow_dispatch
+        # only ever happens on an explicit request (an `@claude review`
+        # comment, claude.yml's post-push re-dispatch, the issue-trigger draft
+        # PR, or a manual dispatch), so for that event the prompt below
+        # overrides the skill's draft check and tells the agent to review
+        # anyway. Tag-mode (pull_request) runs never reach a draft, so the
+        # override is gated to workflow_dispatch to keep it accurate there.
+        prompt: |
+          /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr-number }}
+
+          ${{ github.event_name == 'workflow_dispatch' && '**This review was explicitly requested** (via an `@claude review` comment, or a manual / automated workflow dispatch), so review this PR even when it is marked as a **draft**. Draft status must NOT stop you: ignore any stop condition, step, or instruction — including any in the code-review skill itself — that tells you to skip, defer, or refuse the review because the PR is a draft. The explicit request overrides the don''t-review-drafts default; carry out the full review and post your findings as usual.' || '' }}
+
+          ${{ inputs.prior-context }}
+
+          ${{ inputs.labmanual-guidance }}
+
+          **Watch for AI hallucinations.** This diff may be partly
+          machine-authored, so scrutinize it for confident-but-fabricated
+          content: calls to functions, methods, arguments, packages, or APIs
+          that don't exist; references, citations, DOIs, or URLs that are
+          invented or don't resolve; file paths, config keys, or constants
+          that look plausible but aren't real; and comments or documentation
+          that describe behavior the code doesn't actually implement. Verify
+          questionable symbols against the codebase and its dependencies rather
+          than assuming they exist, and flag anything you can't confirm as a
+          possible hallucination.
+
+          **Post line-specific findings as inline review comments** anchored
+          to the relevant line(s) — use the inline-comment tool, not a prose
+          list in the summary. Reserve the top-level summary comment for a
+          brief overall verdict plus any finding not tied to a specific line;
+          don't restate each inline comment there.
+
+          **Every review must end with an explicit overall conclusion**
+          under a `### Verdict` heading: a single clear status line such as
+          **Ready for merge** or **Needs more work** (or another clearly
+          labeled alternative, e.g. **Blocked on human review** for an
+          escalated impasse). State this status explicitly even when there
+          are no new findings — "no new findings" or "looks good" can
+          explain the verdict, but it doesn't substitute for it; the
+          explicit status line must still be present and unambiguous at a
+          glance.
+
+          **Don't flag cosmetic source-only formatting that renders
+          identically.** For prose (not code blocks) in Markdown/text files, the rendered output
+          is what matters: don't raise nits about where a hard wrap falls, a
+          phrase split across a soft line wrap, or raw-source line length, when
+          the rendered Markdown is unchanged. Flag genuine prose problems —
+          ambiguity, grammar that changes meaning, broken links or markup,
+          factual errors — not where a line happens to wrap.
+
+          If the inline-comment tool isn't available in this environment
+          (dispatched reviews run in agent mode without it — see
+          claude-code-action #635), or if posting an inline comment fails
+          with a permission error (e.g. a 403 "Resource not accessible by
+          integration"), don't drop the findings: put every finding in the
+          top-level summary comment instead, grouped by file with `path:line`
+          anchors. Don't announce a tool that's simply missing in agent mode,
+          but when the cause is a permission error, add a one-line footnote at
+          the bottom of the summary so the failure is diagnosable:
+          `> ℹ️ Inline comments were unavailable (permission error); findings appear above with path:line anchors.`
+
+          **Confirming review (no new findings):** If you find no new issues
+          — because no code changed since the last review, or every concern
+          is already addressed — do not just say "no issues found." Find the
+          most recent prior review comment on this PR (look for a
+          `claude[bot]` comment containing a review verdict) and reference it
+          explicitly: state the prior verdict, link to that comment by its
+          GitHub URL, and explain that it still stands. This lets readers
+          know the confirming review ran and why it produced no new findings,
+          rather than leaving the PR thread silent. Still close with the
+          explicit `### Verdict` status line required above — restating that
+          the prior verdict stands is not itself the status line.
+          ${{ inputs.prompt-addendum }}
+        # Agent mode (false) by default; tag mode (true) when the caller
+        # opts in via the track-progress input on pull_request events.
+        # The action rejects track_progress on workflow_dispatch regardless.
+        #
+        # WARNING: tag mode hardcodes git write tools into ALLOWED_TOOLS
+        # regardless of --disallowedTools (the action's TypeScript sets the
+        # env var directly, overriding the CLI flag). This caused the
+        # reviewer to push commits to PR branches (serodynamics PR #175,
+        # commit 02af72b). Only enable tag mode after
+        # anthropics/claude-code-action#1415 ships a read_only input.
+        # In agent mode, ALLOWED_TOOLS comes solely from claude_args so
+        # no git write tools are ever available; the trade-off is
+        # summary-only reviews (no live tracking comment or inline-comment
+        # tool — see claude-code-action #635). claude-code-review.yml's
+        # "Post review comment" step compensates when running in agent mode.
+        track_progress: ${{ inputs.track-progress }}
+        # Fresh tracking comment per run so each push surfaces as new PR
+        # activity; claude-code-review.yml's collapse step folds priors up
+        # as OUTDATED.
+        use_sticky_comment: 'false'
+        display_report: 'true'
+        # Surface the full SDK output when the caller opts in (show-full-output
+        # input, default false), so a review that fails inside the model call
+        # — auth / usage-limit / credit, which the action otherwise hides
+        # behind "full output hidden for security" — is diagnosable from the
+        # job log instead of opaque.
+        show_full_output: ${{ inputs.show-full-output }}
+        # Permit bot actors to initiate this run (default github-actions[bot],
+        # overridable via claude-code-review.yml's allowed-bots input).
+        # claude.yml re-dispatches a review after an @claude run pushes
+        # commits, and `gh workflow run` there runs as github-actions[bot].
+        # But the action's AGENT mode — which workflow_dispatch uses
+        # (track_progress is 'false' for dispatched runs) — blocks bot
+        # actors by default, failing with "Workflow initiated by non-human
+        # actor: github-actions". Without this, every re-dispatched review
+        # dies before it can post. Scoped to the bot(s) that legitimately
+        # dispatch us: the caller's job `if:` already filters bot actors out
+        # of the automatic pull_request path, so this only widens the
+        # dispatch path, which is itself reachable only via claude.yml's
+        # trusted-author gate (or a manual dispatch, which needs write access).
+        allowed_bots: ${{ inputs.allowed-bots }}

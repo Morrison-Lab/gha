@@ -1,0 +1,23 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "I've reviewed several files in this PR so far and found a few things worth flagging, but I keep hitting permission denials on tool calls the code-review plugin's sub-agents rely on. Continuing to work through the remaining files."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 29,
+    "duration_ms": 196559,
+    "total_cost_usd": 2.2062398500000007,
+    "permission_denials_count": 20
+  }
+]

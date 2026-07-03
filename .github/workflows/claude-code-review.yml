@@ -217,7 +217,7 @@ jobs:
       )
 
     outputs:
-      quota_exhausted: ${{ steps.fail-check.outputs.quota_exhausted }}
+      quota_exhausted: ${{ steps.resolve-final.outputs.quota_exhausted }}
 
     runs-on: ubuntu-latest
     permissions:
@@ -380,219 +380,27 @@ jobs:
           printf '%s\n' "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
+      # The actual claude-code-action call (allowedTools/disallowedTools,
+      # system prompt, review prompt) lives in the run-claude-review-attempt
+      # composite action so it can be invoked a second time, unchanged, as a
+      # same-prompt retry below — without duplicating that ~100-line `with:`
+      # block between two near-identical steps (gha#185; see the composite
+      # action's own header comment for why a duplicated inline step would be
+      # a DRY violation this repo's CLAUDE.md flags).
       - name: Run Claude Code Review
         id: claude-review
         if: steps.selfmod.outputs.self_mod != 'true'
-        uses: anthropics/claude-code-action@6c0083bb7289c31716797a039b6367b3079cc46e # v1.0.162
+        uses: d-morrison/gha/.github/actions/run-claude-review-attempt@v2
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          # Allowlist the inline-comment tool so line-specific findings can be
-          # anchored to the diff. Without an explicit `claude_args`, the action's
-          # computed `--allowedTools` covers only Read/Glob/Grep, the
-          # comment-update + CI MCP tools, and git Bash — NOT
-          # `mcp__github_inline_comment__create_inline_comment`. Lacking the
-          # tool, Claude falls back to `gh api`, hits a tool-permission denial,
-          # and the inline comments silently never post (this is an
-          # allowlist gap, not a GitHub-App permission scope issue — the tool
-          # ships with the action; it just has to be enabled). Mirrors
-          # anthropics/claude-code-action's own pr-review workflows. Additive:
-          # the CLI merges this with the action's base allowlist. The
-          # inline-comment tool is not initialized in agent mode
-          # (claude-code-action #635); the prompt falls back to a
-          # summary-only review when it is unavailable.
-          # ...and keep this a REVIEW-ONLY run. Even with a read-only contents
-          # token, tag mode hands the reviewer git add/commit/rm and the action's
-          # default prompt tells it to commit+push, so it flails through
-          # permission denials and posts a misleading "grant me git permissions"
-          # comment. Disallow the git-write tools (disallowed beats the action's
-          # generated allow-list) and tell the agent up front not to attempt
-          # edits, so it folds any would-be fix into its review instead.
-          #
-          # `Bash(python3:*)` and `Bash(maxima:*)` let the reviewer actually
-          # run the computer-algebra tools the `pip-packages` / `apt-packages`
-          # inputs install (SymPy, Maxima) to symbolically check a derivation
-          # under review, instead of only tracing the algebra by eye (gha#154,
-          # gha#199). `Bash(python3:*)` also covers running an existing Python
-          # script under the checkout (e.g. a CI guard against sample input).
-          # This job gets no git-write capability from these, but on a
-          # same-repo (non-fork) PR it does hold CLAUDE_CODE_OAUTH_TOKEN /
-          # ANTHROPIC_API_KEY as secrets. `Bash(python3:*)` already permits
-          # running arbitrary `.py` files, so ALSO denying `python3 -c` bought
-          # little real protection while blocking the inline SymPy one-liners
-          # the CAS-review addendum (`prompt-addendum`) tells the reviewer to
-          # run — so `-c` is allowed. `Bash(python3 -m:*)` stays denied:
-          # module execution (pip installs, `http.server`, …) isn't needed for
-          # symbolic checks and is a broader grant. All git-write tools remain
-          # denied below.
-          #
-          # `Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),
-          # Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)`
-          # are the read-only `gh` subcommands the upstream `code-review`
-          # plugin's own `/code-review` command declares as `allowed-tools`
-          # (github.com/anthropics/claude-code, plugins/code-review/commands/
-          # code-review.md). Without them, every one of the plugin's 4
-          # parallel sub-agents hits a permission denial on each attempt.
-          # #187 already stopped a denial from ending the run early, but a
-          # heavier prompt (e.g. a dispatched re-review carrying prior-review
-          # context) can still rack up enough denials across all 4 sub-agents
-          # — reproduced with permission_denials_count:28, num_turns:50 on a
-          # dispatched re-review of PR #183 — that the run finishes
-          # is_error:false but never emits a concluding verdict block: the
-          # same stub-review signature check-review-execution.sh detects
-          # (gha#173, Lacaedemon/sparta#590), from this separate cause.
-          # `gh pr comment` — also in the plugin's declared tool list — is
-          # deliberately NOT granted: this workflow posts the review itself
-          # via the "Post review comment" step below (with dedup/collapse
-          # handling), so letting the plugin self-post would risk duplicate
-          # or uncontrolled comments.
-          claude_args: >-
-            --allowedTools
-            "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
-            --disallowedTools
-            "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*)"
-            --append-system-prompt
-            "This is a review-only run. Report every issue you find as part
-            of your review. Do NOT modify, stage, commit, or push files, and
-            do NOT attempt to; the git write tools are intentionally
-            disallowed. Never describe changes as 'uncommitted' or ask the
-            user to grant git/commit permissions; there is nothing for you to
-            commit. If you would have fixed something, describe the fix in
-            your review instead.
-
-            This sandboxed environment has no network-fetch tools
-            (WebFetch/WebSearch) enabled. Do not attempt to fetch external
-            URLs to verify a claim; when a fact-check would require live
-            network access, verify what you can from the repository's own
-            content and your own knowledge, and note in your review that the
-            rest could not be independently verified in this environment
-            instead of trying the fetch. More generally: a denied tool call
-            is never a reason to stop the review early. If any tool call is
-            denied for any reason, continue with the information you already
-            have and still finish by posting your findings and the explicit
-            ### Verdict line required below — do not end the run silently or
-            wait for approval."
-          # The job `if:` already lets dispatched runs review drafts (the
-          # automatic pull_request path skips them via draft == false). But the
-          # code-review skill has its OWN don't-review-drafts stop condition, so
-          # on a draft PR the agent still refuses ("currently a draft … I will
-          # not proceed") — defeating an explicit `@claude review` that
-          # claude.yml routes here as a workflow_dispatch. A workflow_dispatch
-          # only ever happens on an explicit request (an `@claude review`
-          # comment, claude.yml's post-push re-dispatch, the issue-trigger draft
-          # PR, or a manual dispatch), so for that event the prompt below
-          # overrides the skill's draft check and tells the agent to review
-          # anyway. Tag-mode (pull_request) runs never reach a draft, so the
-          # override is gated to workflow_dispatch to keep it accurate there.
-          prompt: |
-            /code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number || inputs.pr-number }}
-
-            ${{ github.event_name == 'workflow_dispatch' && '**This review was explicitly requested** (via an `@claude review` comment, or a manual / automated workflow dispatch), so review this PR even when it is marked as a **draft**. Draft status must NOT stop you: ignore any stop condition, step, or instruction — including any in the code-review skill itself — that tells you to skip, defer, or refuse the review because the PR is a draft. The explicit request overrides the don''t-review-drafts default; carry out the full review and post your findings as usual.' || '' }}
-
-            ${{ needs.gather-context.outputs.prior-context }}
-
-            ${{ steps.labmanual.outputs.guidance }}
-
-            **Watch for AI hallucinations.** This diff may be partly
-            machine-authored, so scrutinize it for confident-but-fabricated
-            content: calls to functions, methods, arguments, packages, or APIs
-            that don't exist; references, citations, DOIs, or URLs that are
-            invented or don't resolve; file paths, config keys, or constants
-            that look plausible but aren't real; and comments or documentation
-            that describe behavior the code doesn't actually implement. Verify
-            questionable symbols against the codebase and its dependencies rather
-            than assuming they exist, and flag anything you can't confirm as a
-            possible hallucination.
-
-            **Post line-specific findings as inline review comments** anchored
-            to the relevant line(s) — use the inline-comment tool, not a prose
-            list in the summary. Reserve the top-level summary comment for a
-            brief overall verdict plus any finding not tied to a specific line;
-            don't restate each inline comment there.
-
-            **Every review must end with an explicit overall conclusion**
-            under a `### Verdict` heading: a single clear status line such as
-            **Ready for merge** or **Needs more work** (or another clearly
-            labeled alternative, e.g. **Blocked on human review** for an
-            escalated impasse). State this status explicitly even when there
-            are no new findings — "no new findings" or "looks good" can
-            explain the verdict, but it doesn't substitute for it; the
-            explicit status line must still be present and unambiguous at a
-            glance.
-
-            **Don't flag cosmetic source-only formatting that renders
-            identically.** For prose (not code blocks) in Markdown/text files, the rendered output
-            is what matters: don't raise nits about where a hard wrap falls, a
-            phrase split across a soft line wrap, or raw-source line length, when
-            the rendered Markdown is unchanged. Flag genuine prose problems —
-            ambiguity, grammar that changes meaning, broken links or markup,
-            factual errors — not where a line happens to wrap.
-
-            If the inline-comment tool isn't available in this environment
-            (dispatched reviews run in agent mode without it — see
-            claude-code-action #635), or if posting an inline comment fails
-            with a permission error (e.g. a 403 "Resource not accessible by
-            integration"), don't drop the findings: put every finding in the
-            top-level summary comment instead, grouped by file with `path:line`
-            anchors. Don't announce a tool that's simply missing in agent mode,
-            but when the cause is a permission error, add a one-line footnote at
-            the bottom of the summary so the failure is diagnosable:
-            `> ℹ️ Inline comments were unavailable (permission error); findings appear above with path:line anchors.`
-
-            **Confirming review (no new findings):** If you find no new issues
-            — because no code changed since the last review, or every concern
-            is already addressed — do not just say "no issues found." Find the
-            most recent prior review comment on this PR (look for a
-            `claude[bot]` comment containing a review verdict) and reference it
-            explicitly: state the prior verdict, link to that comment by its
-            GitHub URL, and explain that it still stands. This lets readers
-            know the confirming review ran and why it produced no new findings,
-            rather than leaving the PR thread silent. Still close with the
-            explicit `### Verdict` status line required above — restating that
-            the prior verdict stands is not itself the status line.
-            ${{ inputs.prompt-addendum }}
-          # Agent mode (false) by default; tag mode (true) when the caller
-          # opts in via the track-progress input on pull_request events.
-          # The action rejects track_progress on workflow_dispatch regardless.
-          #
-          # WARNING: tag mode hardcodes git write tools into ALLOWED_TOOLS
-          # regardless of --disallowedTools (the action's TypeScript sets the
-          # env var directly, overriding the CLI flag). This caused the
-          # reviewer to push commits to PR branches (serodynamics PR #175,
-          # commit 02af72b). Only enable tag mode after
-          # anthropics/claude-code-action#1415 ships a read_only input.
-          # In agent mode, ALLOWED_TOOLS comes solely from claude_args so
-          # no git write tools are ever available; the trade-off is
-          # summary-only reviews (no live tracking comment or inline-comment
-          # tool — see claude-code-action #635). The "Post review comment"
-          # step below compensates when running in agent mode.
-          track_progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
-          # Fresh tracking comment per run so each push surfaces as new PR
-          # activity; the collapse step below folds priors up as OUTDATED.
-          use_sticky_comment: 'false'
-          display_report: 'true'
-          # Surface the full SDK output when the caller opts in (show-full-output
-          # input, default false), so a review that fails inside the model call
-          # — auth / usage-limit / credit, which the action otherwise hides
-          # behind "full output hidden for security" — is diagnosable from the
-          # job log instead of opaque.
-          show_full_output: ${{ inputs.show-full-output }}
-          # Permit bot actors to initiate this run (default github-actions[bot],
-          # overridable via the allowed-bots input). claude.yml re-dispatches a
-          # review after an @claude run pushes commits, and `gh workflow run`
-          # there runs as github-actions[bot]. But the action's AGENT mode —
-          # which workflow_dispatch uses (track_progress is 'false' above for
-          # dispatched runs) — blocks bot actors by default, failing with
-          # "Workflow initiated by non-human actor: github-actions". Without
-          # this, every re-dispatched review dies before it can post. Scoped to
-          # the bot(s) that legitimately dispatch us: the `if:` gate already
-          # filters bot actors out of the automatic pull_request path, so this
-          # only widens the dispatch path, which is itself reachable only via
-          # claude.yml's trusted-author gate (or a manual dispatch, which needs
-          # write access).
-          allowed_bots: ${{ inputs.allowed-bots }}
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          prior-context: ${{ needs.gather-context.outputs.prior-context }}
+          labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
+          prompt-addendum: ${{ inputs.prompt-addendum }}
+          track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
+          show-full-output: ${{ inputs.show-full-output }}
+          allowed-bots: ${{ inputs.allowed-bots }}
 
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
@@ -625,32 +433,139 @@ jobs:
       # invoked (workflow_call, a re-dispatched workflow_dispatch, automatic
       # pull_request, ...) — the same reasoning that made parse-workflow-ref
       # itself a composite action rather than a checked-out script.
-      - name: Resolve execution file path
+      # Resolves execution_file (with its temp-path fallback) and uploads it
+      # as a workflow artifact, in one composite action shared with the retry
+      # block below — see the action's own header comment for why this is
+      # extracted (gha#201 review: the same DRY rationale that motivated
+      # extracting run-claude-review-attempt, just at a smaller scale).
+      - name: Resolve and upload execution file path
         id: exec-file
         if: steps.claude-review.outcome == 'success'
-        shell: bash
-        env:
-          EXECUTION_FILE: ${{ steps.claude-review.outputs.execution_file }}
-        run: |
-          set -euo pipefail
-          if [[ -z "$EXECUTION_FILE" ]]; then
-            EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
-            echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
-          fi
-          echo "path=$EXECUTION_FILE" >> "$GITHUB_OUTPUT"
+        uses: d-morrison/gha/.github/actions/upload-review-execution@v2
+        with:
+          execution-file: ${{ steps.claude-review.outputs.execution_file }}
+          attempt-label: attempt1
 
-      - name: Fail the check if the review did not complete
+      # continue-on-error: true so a stub result (gha#185) doesn't red-X the
+      # job outright — the retry block below gets a chance to recover it
+      # first. "Resolve final review outcome" (below) is what actually fails
+      # the job for real when neither attempt produces a usable review.
+      - name: Fail the check if the review did not complete (attempt 1)
         id: fail-check
         if: steps.claude-review.outcome == 'success'
+        continue-on-error: true
         uses: d-morrison/gha/.github/actions/run-review-guard@v2
         with:
           execution-file: ${{ steps.exec-file.outputs.path }}
+
+      # Same-prompt retry, ONLY for the specific signature this issue tracks:
+      # the SDK call succeeded (no is_error, no quota/auth rejection) and
+      # produced real, non-empty text, but never stated a verdict —
+      # reproduced repeatedly with a low permission_denials_count, consistent
+      # with a single denied tool call derailing an otherwise-short run
+      # (gha#185). A hard SDK error or genuinely empty output is a different
+      # failure class (not retried here). A run stubbing for a DIFFERENT
+      # reason (e.g. gha#198's much-higher-denial-count signature, which has
+      # repeatedly NOT recovered on retry per #198's own findings) is
+      # excluded by check-review-execution.sh's own
+      # permission_denials_count <= STUB_RETRY_MAX_DENIALS (default 5) check
+      # — stub_review is NOT set purely from "no verdict"; the denial-count
+      # gate is what actually keeps this retry from firing on #198's pattern
+      # (gha#201 review caught an earlier version of this comment claiming
+      # that exclusion without the code actually implementing it).
+      #
+      # Empirically, re-running has recovered cleanly for THIS (low-denial)
+      # signature: the issue's original report noted two other runs on the
+      # same PR completed normally, and this recurrence was itself found by
+      # re-running the same PR.
+      - name: Retry Claude Code Review after a stub result
+        id: claude-review-retry
+        if: >-
+          steps.claude-review.outcome == 'success' &&
+          steps.fail-check.outcome == 'failure' &&
+          steps.fail-check.outputs.stub_review == 'true'
+        continue-on-error: true
+        uses: d-morrison/gha/.github/actions/run-claude-review-attempt@v2
+        with:
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          prior-context: ${{ needs.gather-context.outputs.prior-context }}
+          labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
+          prompt-addendum: ${{ inputs.prompt-addendum }}
+          track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
+          show-full-output: ${{ inputs.show-full-output }}
+          allowed-bots: ${{ inputs.allowed-bots }}
+          is-retry: 'true'
+
+      - name: Resolve and upload execution file path (retry)
+        id: exec-file-retry
+        if: steps.claude-review-retry.outcome == 'success'
+        continue-on-error: true
+        uses: d-morrison/gha/.github/actions/upload-review-execution@v2
+        with:
+          execution-file: ${{ steps.claude-review-retry.outputs.execution_file }}
+          attempt-label: attempt2
+
+      - name: Fail the check if the retry also did not complete
+        id: fail-check-retry
+        if: steps.exec-file-retry.outcome == 'success'
+        continue-on-error: true
+        uses: d-morrison/gha/.github/actions/run-review-guard@v2
+        with:
+          execution-file: ${{ steps.exec-file-retry.outputs.path }}
+
+      # Single point that decides which attempt's outputs the rest of the job
+      # uses, and the ONLY step that genuinely fails the job when neither
+      # attempt produced a usable review (both "Fail the check" steps above
+      # are continue-on-error so a recovered retry doesn't leave the job
+      # red). Runs unconditionally (always()) so it can report cleanly even
+      # if an earlier step in this chain errored outright.
+      - name: Resolve final review outcome
+        id: resolve-final
+        if: always() && steps.selfmod.outputs.self_mod != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.fail-check.outcome }}" == "success" ]]; then
+            echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
+            echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
+            echo "Attempt 1 completed cleanly."
+            exit 0
+          fi
+          if [[ "${{ steps.fail-check-retry.outcome }}" == "success" ]]; then
+            echo "review_text_file=${{ steps.fail-check-retry.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
+            echo "quota_exhausted=${{ steps.fail-check-retry.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
+            echo "::notice::Attempt 1 produced a stub review (no verdict, gha#185); the retry recovered cleanly."
+            exit 0
+          fi
+          # Both attempts failed to produce a usable review. Attribute the
+          # failure to whichever attempt actually ran last, rather than
+          # always citing attempt 1's stub_review flag — the retry can fail
+          # for a DIFFERENT reason than attempt 1 did (a hard SDK error, an
+          # empty result, or another stub that this time exceeded the
+          # denial-count threshold), and misattributing that undercuts this
+          # PR's own diagnosability goal (gha#201 review finding 2).
+          if [[ "${{ steps.fail-check-retry.outcome }}" == "failure" ]]; then
+            if [[ "${{ steps.fail-check-retry.outputs.stub_review }}" == "true" ]]; then
+              echo "::error::Attempt 1 produced a stub review (gha#185) and the retry ALSO ended without a verdict with a low denial count — treating as a failed review."
+            else
+              echo "::error::Attempt 1 produced a stub review (gha#185) but the retry failed for a different reason (hard SDK error, empty output, or a no-verdict result above the denial-count threshold) — treating as a failed review."
+            fi
+          elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" ]]; then
+            echo "::error::Attempt 1 produced a stub review (gha#185) and the retry ran but never produced a checkable execution file — treating as a failed review."
+          elif [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
+            echo "::error::Attempt 1 produced a stub review (gha#185's low-denial signature) but the retry itself did not run to completion — treating as a failed review."
+          else
+            echo "::error::Claude review did not complete successfully and was not eligible for a stub-review retry (either a hard SDK error, empty output, or a no-verdict result above the denial-count threshold — see gha#198)."
+          fi
+          exit 1
 
       # When the API rejected the request before Claude could review (quota
       # exhaustion, auth failure, etc.), post a notice so the PR author knows
       # why the review didn't run and how to re-trigger it.
       - name: Post quota-exhausted comment
-        if: steps.fail-check.outputs.quota_exhausted == 'true'
+        if: steps.resolve-final.outputs.quota_exhausted == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -667,19 +582,20 @@ jobs:
       # since the action rejects track_progress there regardless. Closes #87.
       - name: Post review comment
         if: >-
-          steps.claude-review.outcome == 'success' &&
-          steps.fail-check.outputs.quota_exhausted != 'true' &&
+          steps.resolve-final.outcome == 'success' &&
+          steps.resolve-final.outputs.quota_exhausted != 'true' &&
           !(inputs.track-progress && github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          REVIEW_TEXT_FILE: ${{ steps.fail-check.outputs.review_text_file }}
+          REVIEW_TEXT_FILE: ${{ steps.resolve-final.outputs.review_text_file }}
         run: |
-          # fail-check already extracted and validated the review text (and
-          # would have failed the job if it were empty), so reuse its file
-          # instead of re-parsing $EXECUTION_FILE here too.
+          # resolve-final already picked the winning attempt's extracted and
+          # validated review text (and would have failed the job if neither
+          # attempt produced one), so reuse its file instead of re-parsing
+          # $EXECUTION_FILE here too.
           REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
             echo "No review text found in execution output; skipping comment."
@@ -718,8 +634,8 @@ jobs:
       # so this collapse step can match and fold it in future rounds.
       - name: Collapse previous Claude review comments
         if: >-
-          steps.claude-review.outcome == 'success' &&
-          steps.fail-check.outputs.quota_exhausted != 'true'
+          steps.resolve-final.outcome == 'success' &&
+          steps.resolve-final.outputs.quota_exhausted != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

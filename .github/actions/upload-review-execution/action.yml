@@ -1,0 +1,58 @@
+name: Resolve and upload a review execution file
+description: >-
+  Resolves claude-code-action's execution_file output (falling back to the
+  well-known temp path when the action doesn't expose it on the pinned
+  version) and uploads it as a workflow artifact. claude-code-review.yml
+  calls this once per claude-review-attempt (attempt 1 and the gha#185
+  same-prompt retry), so the resolve-plus-upload shell/upload-artifact pair
+  isn't duplicated between the two near-identical step groups — the same DRY
+  rationale the run-claude-review-attempt composite action gives for
+  extracting the (much larger) claude-code-action call itself (gha#201 review).
+
+inputs:
+  execution-file:
+    description: >-
+      Raw execution_file output from the claude-review-attempt step (may be
+      empty if the action didn't expose it on the pinned version).
+    required: true
+  attempt-label:
+    description: Suffix for the uploaded artifact's name (e.g. attempt1, attempt2).
+    required: true
+
+outputs:
+  path:
+    description: The resolved execution file path (with the temp-path fallback applied).
+    value: ${{ steps.resolve.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve execution file path
+      id: resolve
+      shell: bash
+      env:
+        EXECUTION_FILE: ${{ inputs.execution-file }}
+      run: |
+        set -euo pipefail
+        if [[ -z "$EXECUTION_FILE" ]]; then
+          EXECUTION_FILE="${RUNNER_TEMP:-/home/runner/work/_temp}/claude-execution-output.json"
+          echo "::warning::execution_file output not set; falling back to $EXECUTION_FILE"
+        fi
+        echo "path=$EXECUTION_FILE" >> "$GITHUB_OUTPUT"
+
+    # Persist the raw execution output regardless of what the guard finds, so
+    # a stub-review recurrence (gha#185, gha#198) has a downloadable
+    # turn-by-turn transcript to diagnose instead of needing show-full-output
+    # flipped on ahead of time and a lucky re-trigger — the gap that left
+    # #185's original report undiagnosable ("the exact denied tool call isn't
+    # visible in the log"). continue-on-error: the artifact is a diagnostic
+    # nicety, never a reason to fail an otherwise-clean review.
+    - name: Upload review execution output
+      if: steps.resolve.outcome == 'success'
+      continue-on-error: true
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: claude-review-execution-${{ github.run_id }}-${{ github.run_attempt }}-${{ inputs.attempt-label }}
+        path: ${{ steps.resolve.outputs.path }}
+        retention-days: 14
+        if-no-files-found: warn
