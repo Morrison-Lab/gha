@@ -315,6 +315,36 @@ dispatched review to finish first. (See the `claude-review` job's
 `concurrency:` comment in `.github/workflows/claude-code-review.yml` for the
 full mechanism.)
 
+## A PR fixing claude-code-review.yml itself can't self-verify before merge
+
+This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
+calls `d-morrison/gha/.github/workflows/claude-code-review.yml@v2` — the
+**released, floating tag**, not a local `./` ref (unlike `_selftest.yml`'s
+handling of brand-new pre-release capabilities; see "About this repo" above).
+`@v2` only advances to include a fix once that fix's PR merges to `main` and
+`slide-major-tag.yml` runs.
+
+So a PR that fixes a bug **in** `claude-code-review.yml` itself cannot
+exercise its own fix via this repo's automatic review — every review of that
+PR runs the **pre-fix** version, and will keep hitting the exact bug being
+fixed until after merge. Seeing `review / claude-review` or
+`review / require-review` fail on such a PR with the bug's own signature is
+expected, not a regression in the diff; don't debug the new code as the
+cause. The current workaround is to re-trigger the review (push, or
+`@claude review` — see the race-avoidance note above) as many times as
+needed, or just proceed to merge on the strength of a manual/offline review
+once CI's other jobs and a careful read of the diff are clean. (Hit on
+gha#201, whose diff fixed `claude-code-review.yml`'s stub-review bug
+directly: every review of the PR itself failed with that exact signature —
+`is_error:false`, a low `permission_denials_count`, no verdict — right up
+until merge. gha#202 (a different fix, allowlisting `WebFetch`/`Bash(curl:*)`)
+hit the identical signature as a bystander while it still edited
+`claude-code-review.yml`'s inline `claude_args` block directly, before a
+rebase onto #201 relocated that edit into the new `run-claude-review-attempt`
+composite action — confirmed via that run's own execution output:
+`permission_denials_count:1`, no verdict. Once `@v2` picked up #201's fix,
+both PRs' subsequent reviews went clean.)
+
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
