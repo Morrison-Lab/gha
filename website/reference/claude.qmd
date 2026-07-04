@@ -29,6 +29,7 @@ it dispatches the review workflow via `workflow_dispatch`.
 | `webfetch-allowlist-url` | string | `''` | URL of a newline-delimited hostname allowlist; each host becomes a `WebFetch(domain:<host>)` grant. Empty to disable WebFetch. |
 | `claude-args` | string | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied. |
 | `runs-on` | string | `'ubuntu-latest'` | Runner for the job. |
+| `report-cost` | boolean | `true` | Append the run's dollar cost (`total_cost_usd`) to whichever comment this workflow posts back to the thread. The action itself only writes this to the job step summary, never a comment. Set false to suppress it. |
 
 ## Secrets
 
@@ -104,6 +105,7 @@ jobs:
     #   eager-pr: true              # open the draft PR up front (Copilot-style)
     #   mark-ready-for-review: false # keep Claude's PRs as drafts
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
+    #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   prompt-addendum: |
     #     This is the <name> R package. Before committing, run

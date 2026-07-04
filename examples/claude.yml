@@ -55,6 +55,7 @@ jobs:
     #   eager-pr: true              # open the draft PR up front (Copilot-style)
     #   mark-ready-for-review: false # keep Claude's PRs as drafts
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
+    #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   prompt-addendum: |
     #     This is the <name> R package. Before committing, run

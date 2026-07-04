@@ -31,6 +31,10 @@
 #     review on gha#201);
 #   - otherwise writes review_text_file=<path> (the verdict-bearing assistant
 #     block, falling back to the final block) to $GITHUB_OUTPUT and exits 0.
+#   - whenever a result object is found (success, quota-skip, stub, or hard
+#     error alike), also writes total_cost_usd=<value> to $GITHUB_OUTPUT —
+#     the run incurs cost regardless of how it concluded, and the caller
+#     (claude-code-review.yml) surfaces it in a PR comment (gha#219).
 #
 # $GITHUB_OUTPUT is optional so this can run standalone in a test harness;
 # when unset, output assignments are silently dropped.
@@ -48,6 +52,10 @@ result="$(jq -s 'flatten | map(select(.type=="result")) | last // empty' "$EXECU
 if [[ -z "$result" || "$result" == "null" ]]; then
   echo "::error::No result object in execution output — review did not finish."
   exit 1
+fi
+total_cost_usd="$(jq -r '.total_cost_usd // empty' <<< "$result")"
+if [[ -n "$total_cost_usd" ]]; then
+  echo "total_cost_usd=$total_cost_usd" >> "$GITHUB_OUTPUT"
 fi
 is_error="$(jq -r '.is_error // false' <<< "$result")"
 subtype="$(jq -r '.subtype // ""' <<< "$result")"

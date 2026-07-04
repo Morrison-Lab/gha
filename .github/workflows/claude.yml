@@ -155,6 +155,16 @@ on:
         description: Runner for the job.
         type: string
         default: 'ubuntu-latest'
+      report-cost:
+        description: >-
+          Append the run's dollar cost (total_cost_usd from
+          claude-code-action's execution output) to whichever comment this
+          workflow posts back to the thread. Upstream computes this cost but
+          only writes it to the job step summary, never the comment (gha#219)
+          — this surfaces it alongside Claude's response. On by default; set
+          false to suppress it.
+        type: boolean
+        default: true
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
@@ -726,6 +736,7 @@ jobs:
           ISSUE_BASELINE_SHA: ${{ steps.eager_pr.outputs.seed_sha || steps.issue_branch.outputs.starting_sha }}
           PR_HEAD_BEFORE: ${{ steps.head_before.outputs.sha }}
           PR_HEAD_AFTER: ${{ steps.head_after.outputs.sha }}
+          REPORT_COST: ${{ inputs.report-cost }}
         run: |
           # Did Claude commit anything? Issue triggers: $BRANCH tip vs the
           # baseline (seed commit or branch start) — measure the branch, not
@@ -782,7 +793,17 @@ jobs:
           … (response truncated at ${MAX_LEN} bytes; full text in the [workflow run](${RUN_URL}))"
           fi
 
-          BODY="$(printf '%s\n\n<sub>— posted by @claude post-step from [workflow run](%s)</sub>\n' "$RESPONSE" "$RUN_URL")"
+          # total_cost_usd lives on the run's "result" event, the same field
+          # claude-code-review.yml's check-review-execution.sh reads — the
+          # action computes it but only writes it to the job step summary,
+          # never a comment (gha#219).
+          COST_LINE=""
+          if [ "$REPORT_COST" = "true" ]; then
+            COST_USD=$(jq -rs 'flatten(1) | map(select(.type == "result")) | last.total_cost_usd // empty' < "$FILE")
+            [ -n "$COST_USD" ] && COST_LINE=$(printf '\n\n💰 **Cost:** $%s' "$COST_USD")
+          fi
+
+          BODY="$(printf '%s\n\n<sub>— posted by @claude post-step from [workflow run](%s)</sub>%s\n' "$RESPONSE" "$RUN_URL" "$COST_LINE")"
           # When the trigger was an inline review comment, reply IN-THREAD to it
           # (pulls/.../comments/<id>/replies) so the conversation stays anchored
           # to the diff line; every other trigger gets a top-level comment (issue
@@ -921,6 +942,8 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          REPORT_COST: ${{ inputs.report-cost }}
         run: |
           # Sweep changes Claude staged or left untracked but never committed so
           # the no-new-commits check below doesn't discard them. The agent works
@@ -1000,6 +1023,14 @@ jobs:
               echo "::warning::Could not mark PR #${PR_URL##*/} ready for review."
             fi
           fi
+          COST_LINE=""
+          if [ "$REPORT_COST" = "true" ]; then
+            EXEC_FILE="${EXECUTION_FILE:-/home/runner/work/_temp/claude-execution-output.json}"
+            if [ -f "$EXEC_FILE" ]; then
+              COST_USD=$(jq -rs 'flatten(1) | map(select(.type == "result")) | last.total_cost_usd // empty' < "$EXEC_FILE")
+              [ -n "$COST_USD" ] && COST_LINE=$(printf '\n\n💰 **Cost:** $%s' "$COST_USD")
+            fi
+          fi
           gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" \
-            --body "Pushed Claude's commits to \`${BRANCH}\` and ${PR_VERB}: ${PR_URL}" \
+            --body "Pushed Claude's commits to \`${BRANCH}\` and ${PR_VERB}: ${PR_URL}${COST_LINE}" \
             || echo "::warning::Could not post PR link as issue comment."
