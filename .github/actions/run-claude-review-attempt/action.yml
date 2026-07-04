@@ -174,7 +174,17 @@ runs:
           denied for any reason, continue with the information you already
           have and still finish by posting your findings and the explicit
           ### Verdict line required below — do not end the run silently or
-          wait for approval.${{ inputs.is-retry == 'true' && '
+          wait for approval.
+
+          This run is a single, synchronous CI job with a fixed timeout and
+          no one to resume it afterward. Do NOT spawn a background agent or
+          sub-task to continue the review later, and do NOT schedule a
+          follow-up, wait for external state, or defer any part of the
+          review to a future turn — nothing will ever run this job again to
+          pick that up, and doing so has produced reviews that silently
+          never finish (gha#218). Complete the entire review yourself,
+          inline, within this run, and end by posting the ### Verdict line
+          before the run ends.${{ inputs.is-retry == 'true' && '
 
 
           This is a RETRY: an earlier attempt at this same review completed
