@@ -269,6 +269,26 @@ audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
+### Advancing a major tag
+
+A major tag no longer slides automatically on every push to `main` — merging a
+change does not, by itself, change what any consumer pinned to `@v1`/`@v2`
+picks up next. Advancing the tag is a deliberate, manual step, so a change can
+be tried out before every consumer has to deal with it:
+
+1. Merge the change to `main`.
+2. Optionally, validate it against one or a few consumer repos first: point a
+   consumer's `uses:` line at `@main`, at a specific commit SHA, or temporarily
+   at a feature branch of this repo, then let that consumer's own CI run
+   against the unreleased change.
+3. Once you're confident, advance the shared major tag to `main`'s current tip
+   — either by running
+   [`slide-major-tag.yml`](.github/workflows/slide-major-tag.yml) via
+   `workflow_dispatch` (Actions tab → "Slide major-version tag" → Run workflow,
+   from `main`), or with `git tag -f`/`git push --force` directly (the
+   `ai-config` repo's `slide-tag` skill automates this). Every consumer pinned
+   to that tag picks up the change the next time its CI runs.
+
 Changelog entries are added as fragment files under
 [`changelog.d/`](changelog.d) (one per PR, so parallel PRs never conflict on the
 shared changelog) and collated into `CHANGELOG.md` at release time — see
