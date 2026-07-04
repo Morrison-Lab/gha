@@ -478,10 +478,9 @@ that restates a point through more clauses or jargon than a plain rewrite
 needs. For each finding, propose the concrete simplification rather than
 just naming the complexity, and confirm it doesn't drop a feature, an edge
 case, or a meaning the original carried. This is a global standing rule
-proposed in
-[`d-morrison/ai-config#454`](https://github.com/d-morrison/ai-config/pull/454)
-— once merged, the fragment lives at
-`shared/workflow/challenge-unnecessary-complexity.md` there.
+from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
+
 ### 9. Question redundant content
 
 When a diff touches prose, math, or code, check for content that could be
