@@ -476,7 +476,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#pinning-third-party-actions" id="toc-pinning-third-party-actions" class="nav-link active" data-scroll-target="#pinning-third-party-actions">Pinning third-party actions</a></li>
+  <li><a href="#advancing-a-major-tag" id="toc-advancing-a-major-tag" class="nav-link active" data-scroll-target="#advancing-a-major-tag">Advancing a major tag</a></li>
+  <li><a href="#pinning-third-party-actions" id="toc-pinning-third-party-actions" class="nav-link" data-scroll-target="#pinning-third-party-actions">Pinning third-party actions</a></li>
   <li><a href="#reverse-dependencies" id="toc-reverse-dependencies" class="nav-link" data-scroll-target="#reverse-dependencies">Reverse dependencies</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/versioning.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -505,8 +506,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Releases are tagged <code>vX.Y.Z</code>, and the <code>vX</code> major tag moves to the latest compatible release, following the <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> convention. <code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so it has picked up no fixes since - not even non-breaking ones. Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, <code>quarto-publish.yml</code>, <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> to <code>@v2</code>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, and <code>lint-markdown.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). See <a href="./workflows.html#versioning">Workflows</a> for the full breakdown, including which capabilities still pin <code>@v1</code> and why. Breaking changes bump the major tag (<code>v2</code>, and so on) with migration steps.</p>
+<section id="advancing-a-major-tag" class="level2">
+<h2 class="anchored" data-anchor-id="advancing-a-major-tag">Advancing a major tag</h2>
+<p>Unlike <code>r-lib/actions</code>, a major tag here does not slide automatically on every push to <code>main</code> - merging a change does not, by itself, change what a consumer pinned to <code>@v1</code>/<code>@v2</code> picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:</p>
+<ol type="1">
+<li>Merge the change to <code>main</code>.</li>
+<li>Optionally, point a consumer’s <code>uses:</code> line at <code>@main</code>, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.</li>
+<li>Once confident, advance the shared major tag to <code>main</code>’s current tip by running <a href="https://github.com/d-morrison/gha/blob/main/.github/workflows/slide-major-tag.yml"><code>slide-major-tag.yml</code></a> via <code>workflow_dispatch</code> (from <code>main</code>), or with <code>git tag -f</code> / <code>git push --force</code> directly. Every consumer pinned to that tag picks up the change the next time its CI runs.</li>
+</ol>
 <p>See <a href="https://github.com/d-morrison/gha/blob/main/CHANGELOG.md"><code>CHANGELOG.md</code></a> for what changes as a major tag moves.</p>
 <p>Changelog entries are added as fragment files under <a href="https://github.com/d-morrison/gha/tree/main/changelog.d"><code>changelog.d/</code></a> (one per PR, so parallel PRs never conflict on the shared changelog) and collated into <code>CHANGELOG.md</code> at release time; see <a href="https://github.com/d-morrison/gha/blob/main/changelog.d/README.md"><code>changelog.d/README.md</code></a> for the fragment format and release flow.</p>
+</section>
 <section id="pinning-third-party-actions" class="level2">
 <h2 class="anchored" data-anchor-id="pinning-third-party-actions">Pinning third-party actions</h2>
 <p>Every <strong>third-party</strong> action is pinned to a full commit SHA, with the human-readable version in a trailing comment:</p>
