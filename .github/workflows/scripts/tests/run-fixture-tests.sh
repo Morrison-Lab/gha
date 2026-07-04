@@ -44,6 +44,31 @@ declare -A must_not_contain=(
   [verdict-not-last-block.json]="I've posted my findings"
 )
 
+# total_cost_usd is written unconditionally whenever a result object is
+# parsed (gha#219) — every fixture below has one, so every fixture asserts
+# an exact cost regardless of its pass/fail/fail-stub/skip outcome. Values
+# are each fixture's result.total_cost_usd, verbatim as `jq -r` prints it.
+declare -A expected_cost=(
+  [genuine-finished-review.json]=0.42
+  [stub-pr171-waiting-background-agents.json]=0.05
+  [stub-pr171-remaining-review-agents.json]=0.08
+  [stub-sparta590-scheduled-wakeup.json]=0.03
+  [stub-sparta590-unnecessary-call.json]=0.03
+  [stub-gha198-high-denial-count.json]=2.2062398500000007
+  [empty-review-text.json]=0.01
+  [is-error-result.json]=0.15
+  [quota-exhausted.json]=0
+  [verdict-label-format.json]=0.31
+  [verdict-not-last-block.json]=0.37
+)
+
+assert_cost() {
+  local fixture="$1" output_file="$2"
+  local want="${expected_cost[$fixture]}" got
+  got="$(sed -n 's/^total_cost_usd=//p' "$output_file")"
+  [[ "$got" == "$want" ]]
+}
+
 assert_pass() {
   local fixture="$1" exit_code="$2" output_file="$3"
   [[ "$exit_code" -eq 0 ]] && grep -q '^review_text_file=' "$output_file" || return 1
@@ -93,6 +118,11 @@ for fixture in "${!expected[@]}"; do
     skip) assert_skip "$exit_code" "$output_file" && ok=true ;;
     *) echo "::error::unknown expected outcome '$want' for fixture $fixture"; exit 1 ;;
   esac
+
+  if [[ "$ok" == "true" ]] && ! assert_cost "$fixture" "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: total_cost_usd mismatch (want ${expected_cost[$fixture]}, got $(sed -n 's/^total_cost_usd=//p' "$output_file"))"
+  fi
 
   if [[ "$ok" == "true" ]]; then
     echo "OK   $fixture (expected $want, exit=$exit_code)"

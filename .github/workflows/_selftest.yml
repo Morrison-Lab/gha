@@ -137,6 +137,21 @@ jobs:
             exit 1
           fi
           echo "run-review-guard produced review_text_file=$REVIEW_TEXT_FILE"
+      # Proves the composite action's total_cost_usd passthrough works
+      # end-to-end (gha#219) — the fixture tests above already cover
+      # check-review-execution.sh's own output; this is the same
+      # real-`uses:` reasoning that motivated the stub_review e2e check below.
+      - name: Assert run-review-guard surfaced total_cost_usd
+        shell: bash
+        env:
+          TOTAL_COST_USD: ${{ steps.guard-e2e.outputs.total_cost_usd }}
+        run: |
+          set -euo pipefail
+          if [[ "$TOTAL_COST_USD" != "0.42" ]]; then
+            echo "::error::run-review-guard did not surface total_cost_usd=0.42 for genuine-finished-review.json (got '$TOTAL_COST_USD')"
+            exit 1
+          fi
+          echo "run-review-guard correctly surfaced total_cost_usd=$TOTAL_COST_USD"
       # A second real `uses:` call, against a stub fixture, proving the
       # composite action's stub_review output passthrough works end-to-end —
       # not just check-review-execution.sh's own output (already covered by
@@ -161,6 +176,19 @@ jobs:
             exit 1
           fi
           echo "run-review-guard correctly surfaced stub_review=true"
+      # total_cost_usd is written regardless of outcome (gha#219), so a stub
+      # result must surface it too — not just the passing case above.
+      - name: Assert run-review-guard surfaced total_cost_usd (stub fixture)
+        shell: bash
+        env:
+          TOTAL_COST_USD: ${{ steps.guard-e2e-stub.outputs.total_cost_usd }}
+        run: |
+          set -euo pipefail
+          if [[ "$TOTAL_COST_USD" != "0.05" ]]; then
+            echo "::error::run-review-guard did not surface total_cost_usd=0.05 for stub-pr171-waiting-background-agents.json (got '$TOTAL_COST_USD')"
+            exit 1
+          fi
+          echo "run-review-guard correctly surfaced total_cost_usd=$TOTAL_COST_USD for a stub result"
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest
