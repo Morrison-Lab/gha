@@ -481,7 +481,21 @@ differs. This is a global standing rule proposed in
 — once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
 there.
 
-### 8. Question redundant content
+### 8. Challenge unnecessary complexity
+
+When reviewing prose, math, or code, check whether it is more complex than
+the problem requires — not just whether it's correct or clear. Flag
+needlessly convoluted control flow, abstraction layers that add
+indirection without earning it, an overcomplicated derivation or an
+unnecessarily general result when a simpler equivalent exists, and prose
+that restates a point through more clauses or jargon than a plain rewrite
+needs. For each finding, propose the concrete simplification rather than
+just naming the complexity, and confirm it doesn't drop a feature, an edge
+case, or a meaning the original carried. This is a global standing rule
+from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
+
+### 9. Question redundant content
 
 When a diff touches prose, math, or code, check for content that could be
 consolidated without losing completeness or generality — a claim or
