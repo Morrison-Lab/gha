@@ -349,7 +349,7 @@ both PRs' subsequent reviews went clean.)
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
-PR bot), evaluate the diff against **both** of the following, in addition to
+PR bot), evaluate the diff against **all** of the following, in addition to
 correctness:
 
 ### 1. The SERG lab manual
@@ -482,3 +482,14 @@ proposed in
 [`d-morrison/ai-config#454`](https://github.com/d-morrison/ai-config/pull/454)
 — once merged, the fragment lives at
 `shared/workflow/challenge-unnecessary-complexity.md` there.
+### 9. Question redundant content
+
+When a diff touches prose, math, or code, check for content that could be
+consolidated without losing completeness or generality — a claim or
+explanation restated in two places, a formula re-derived as a special case
+the general form already covers, duplicated logic across functions/files.
+Flag it only when nothing would be lost by merging; genuinely distinct
+content that merely looks similar should stay separate. This is a global
+standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/workflow/challenge-redundant-content.md`).
