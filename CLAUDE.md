@@ -518,6 +518,7 @@ drift. Also flag a wrapper function that manually re-declares and relays
 arguments it never touches itself instead of forwarding
 [`...`](https://adv-r.hadley.nz/functions.html?q=dot-dot#fun-dot-dot-dot)
 straight to the subfunction (documented via `@inheritDotParams`). This is a
-global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
-(`shared/coding/reuse-docs-and-args.md`).
+global standing rule proposed in
+[`d-morrison/ai-config#474`](https://github.com/d-morrison/ai-config/pull/474)
+— once merged, the fragment lives at `shared/coding/reuse-docs-and-args.md`
+there.
