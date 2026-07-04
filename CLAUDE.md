@@ -519,3 +519,19 @@ is consistently base-R, or a hot loop needs base R's performance. This is a
 global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/coding/tidy-code.md`).
+
+### 12. Reuse function documentation and argument lists
+
+Flag R code that copy-pastes a `@param` description or a prose section
+between roxygen blocks instead of using
+[roxygen2's tag-reuse tags](https://roxygen2.r-lib.org/reference/tags-reuse.html)
+(`@inheritParams`, `@inheritDotParams`, `@inheritSection`) — reused docs stay
+in sync when the source function's docs change; copy-pasted docs silently
+drift. Also flag a wrapper function that manually re-declares and relays
+arguments it never touches itself instead of forwarding
+[`...`](https://adv-r.hadley.nz/functions.html?q=dot-dot#fun-dot-dot-dot)
+straight to the subfunction (documented via `@inheritDotParams`). This is a
+global standing rule proposed in
+[`d-morrison/ai-config#474`](https://github.com/d-morrison/ai-config/pull/474)
+— once merged, the fragment lives at `shared/coding/reuse-docs-and-args.md`
+there.
