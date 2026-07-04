@@ -110,9 +110,10 @@ on:
           Post a follow-up PR comment with the review's dollar cost
           (total_cost_usd from claude-code-action's execution output, summed
           across the initial attempt and the gha#185 stub-review retry when
-          one ran). Upstream computes this cost but only writes it to the
-          job step summary, never the PR comment (gha#219) — this surfaces
-          it on the PR itself. On by default; set false to suppress it.
+          one ran). Upstream computes this cost but never surfaces it in a PR
+          comment (gha#219; see README.md's feature-parity table for the
+          upstream source citation) — this surfaces it on the PR itself. On
+          by default; set false to suppress it.
         type: boolean
         default: true
     secrets:
@@ -601,6 +602,21 @@ jobs:
         with:
           execution-file: ${{ steps.exec-file-retry.outputs.path }}
 
+      # Both attempts, when they ran, incur real cost — sum them so a
+      # gha#185 stub-retry's total reflects both API calls, not just the
+      # winning one (gha#219). Extracted into its own composite-action step
+      # (rather than an inline awk one-liner) so the arithmetic has offline
+      # test coverage — see run-sum-costs-tests.sh and _selftest.yml's
+      # `run-sum-costs-tests` and end-to-end `uses:` steps (gha#219 review
+      # finding 5).
+      - name: Sum attempt costs
+        id: sum-cost
+        if: always() && steps.selfmod.outputs.self_mod != 'true'
+        uses: d-morrison/gha/.github/actions/sum-costs@v2
+        with:
+          cost-a: ${{ steps.fail-check.outputs.total_cost_usd }}
+          cost-b: ${{ steps.fail-check-retry.outputs.total_cost_usd }}
+
       # Single point that decides which attempt's outputs the rest of the job
       # uses, and the ONLY step that genuinely fails the job when neither
       # attempt produced a usable review (both "Fail the check" steps above
@@ -612,14 +628,9 @@ jobs:
         if: always() && steps.selfmod.outputs.self_mod != 'true'
         shell: bash
         env:
-          # Both attempts, when they ran, incur real cost — sum them so a
-          # gha#185 stub-retry's total reflects both API calls, not just the
-          # winning one (gha#219).
-          COST_ATTEMPT1: ${{ steps.fail-check.outputs.total_cost_usd }}
-          COST_ATTEMPT2: ${{ steps.fail-check-retry.outputs.total_cost_usd }}
+          TOTAL_COST: ${{ steps.sum-cost.outputs.total }}
         run: |
           set -euo pipefail
-          TOTAL_COST="$(awk -v a="${COST_ATTEMPT1:-0}" -v b="${COST_ATTEMPT2:-0}" 'BEGIN { printf "%.4f", a + b }')"
           if [[ "${{ steps.fail-check.outcome }}" == "success" ]]; then
             echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
             echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
