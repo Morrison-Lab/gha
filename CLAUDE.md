@@ -430,7 +430,21 @@ clustering, not an isolated instance. This is a global standing rule from
 the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/ai-tells.md`).
 
-### 6. Suggest semantic line breaks in prose
+### 6. Hyperlink technical terms/results; no forward references
+
+When a diff touches prose that defines technical terms or named results via
+Quarto's theorem-like crossref divs (`::: {#def-...}`, `{#thm-...}`,
+`{#lem-...}`, `{#cor-...}`, `{#prp-...}`, `{#cnj-...}`, `{#exm-...}`,
+`{#exr-...}`), check that every mention of a term or result links to the
+div that defines it, and that the div appears *before* its first mention in
+reading order — a link to a definition the reader hasn't reached yet is a
+forward reference. This scope is per rendered file: cross-chapter ordering
+in a multi-file Quarto book is out of scope, check it manually. This is a
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/definition-crossrefs.md`).
+
+### 7. Suggest semantic line breaks in prose
 
 When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
 descriptions), check that lines break at clause/sentence boundaries (roughly
@@ -441,7 +455,7 @@ declines. This is a global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/semantic-line-breaks.md`).
 
-### 7. Check code and math for strategic and tactical correctness
+### 8. Check code and math for strategic and tactical correctness
 
 Beyond style, check whether the diff's code — and any math or statistics
 embedded in it — is *right*, not just correctly styled:
