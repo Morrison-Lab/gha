@@ -1,0 +1,41 @@
+name: Sum two attempt costs
+description: >-
+  Sums two total_cost_usd values (each may be empty when that attempt didn't
+  run or reported no cost), formatted to 4 decimal places. Extracted from
+  claude-code-review.yml's "Resolve final review outcome" step -- which sums
+  the initial attempt's cost with the gha#185 stub-retry attempt's cost, when
+  a retry ran -- so the arithmetic can be unit-tested offline (gha#219 review
+  finding 5). Wrapped in a composite action, located via github.action_path,
+  for the same reason run-review-guard wraps check-review-execution.sh:
+  claude-code-review.yml's steps run against the CALLER's checkout, not
+  d-morrison/gha's own tree.
+
+inputs:
+  cost-a:
+    description: First attempt's total_cost_usd, or empty if it didn't run / had no cost.
+    required: false
+    default: ''
+  cost-b:
+    description: Second attempt's total_cost_usd, or empty if it didn't run / had no cost.
+    required: false
+    default: ''
+
+outputs:
+  total:
+    description: cost-a + cost-b, formatted to 4 decimal places.
+    value: ${{ steps.run.outputs.total }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run sum-costs.sh
+      id: run
+      shell: bash
+      env:
+        COST_A: ${{ inputs.cost-a }}
+        COST_B: ${{ inputs.cost-b }}
+      # sum-costs.sh lives in ../../workflows/scripts/ relative to this
+      # action's own directory, mirroring run-review-guard's own resolution.
+      run: |
+        TOTAL="$(bash "${{ github.action_path }}/../../workflows/scripts/sum-costs.sh" "$COST_A" "$COST_B")"
+        echo "total=$TOTAL" >> "$GITHUB_OUTPUT"

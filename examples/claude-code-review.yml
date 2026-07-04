@@ -106,5 +106,6 @@ jobs:
     #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS
     #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos
     #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true
+    #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).

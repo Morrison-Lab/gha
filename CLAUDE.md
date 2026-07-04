@@ -88,6 +88,21 @@ capabilities above moved to `@v2`.
   `run-claude-review-attempt` retry above — the same DRY rationale that
   motivated extracting that (much larger) composite action, just at a
   smaller scale (gha#201 review).
+- `.github/actions/extract-total-cost/` — wraps
+  `scripts/extract-total-cost.sh`, which extracts `total_cost_usd` from a
+  claude-code-action execution-output file's last `result` event. `claude.yml`
+  calls it once, right after "Run Claude Code", and both its
+  comment-posting steps ("Post Claude's response if no code was committed"
+  and "Push branch and finalize PR for issue trigger") read the shared
+  `steps.cost.outputs.cost` — a single extraction instead of duplicating the
+  jq filter at both call sites (gha#219 review finding 1).
+- `.github/actions/sum-costs/` — wraps `scripts/sum-costs.sh`, which sums two
+  (each optionally empty) `total_cost_usd` values. `claude-code-review.yml`'s
+  "Sum attempt costs" step calls it once, combining the initial attempt's
+  cost with the gha#185 stub-retry attempt's cost when one ran, so the
+  arithmetic has offline test coverage instead of being an inline `awk`
+  one-liner only exercised by a live two-attempt review run (gha#219 review
+  finding 5).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -208,6 +223,16 @@ equivalent selftest coverage — it wraps a live `anthropics/claude-code-action`
 call, which isn't something a selftest job can exercise offline; it's
 validated the same way the inline step it replaced always was, by real PR
 reviews once merged and released.
+
+`.github/workflows/scripts/tests/run-sum-costs-tests.sh` exercises
+`sum-costs.sh` (see Layout above) offline against a table of
+`(cost-a, cost-b)` pairs, including both-empty and one-empty cases; CI runs
+it as a step in the same `review-fail-check` job. `review-fail-check` also runs
+`extract-total-cost` and `sum-costs` themselves via real `uses:` steps (the
+same `github.action_path`-resolution proof the `run-review-guard` e2e steps
+give), asserting `extract-total-cost` surfaces the right cost for a real
+fixture and stays silent for a missing file, and `sum-costs` surfaces the
+right total for a real `uses:` call (gha#219 review finding 5).
 
 ## GitHub access in remote / web sessions
 

@@ -116,6 +116,9 @@ jobs:
       - name: Run parse-workflow-ref fixture tests
         shell: bash
         run: bash .github/actions/parse-workflow-ref/tests/run-tests.sh
+      - name: Run sum-costs arithmetic tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-sum-costs-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -137,6 +140,21 @@ jobs:
             exit 1
           fi
           echo "run-review-guard produced review_text_file=$REVIEW_TEXT_FILE"
+      # Proves the composite action's total_cost_usd passthrough works
+      # end-to-end (gha#219) — the fixture tests above already cover
+      # check-review-execution.sh's own output; this is the same
+      # real-`uses:` reasoning that motivated the stub_review e2e check below.
+      - name: Assert run-review-guard surfaced total_cost_usd
+        shell: bash
+        env:
+          TOTAL_COST_USD: ${{ steps.guard-e2e.outputs.total_cost_usd }}
+        run: |
+          set -euo pipefail
+          if [[ "$TOTAL_COST_USD" != "0.42" ]]; then
+            echo "::error::run-review-guard did not surface total_cost_usd=0.42 for genuine-finished-review.json (got '$TOTAL_COST_USD')"
+            exit 1
+          fi
+          echo "run-review-guard correctly surfaced total_cost_usd=$TOTAL_COST_USD"
       # A second real `uses:` call, against a stub fixture, proving the
       # composite action's stub_review output passthrough works end-to-end —
       # not just check-review-execution.sh's own output (already covered by
@@ -161,6 +179,77 @@ jobs:
             exit 1
           fi
           echo "run-review-guard correctly surfaced stub_review=true"
+      # total_cost_usd is written regardless of outcome (gha#219), so a stub
+      # result must surface it too — not just the passing case above.
+      - name: Assert run-review-guard surfaced total_cost_usd (stub fixture)
+        shell: bash
+        env:
+          TOTAL_COST_USD: ${{ steps.guard-e2e-stub.outputs.total_cost_usd }}
+        run: |
+          set -euo pipefail
+          if [[ "$TOTAL_COST_USD" != "0.05" ]]; then
+            echo "::error::run-review-guard did not surface total_cost_usd=0.05 for stub-pr171-waiting-background-agents.json (got '$TOTAL_COST_USD')"
+            exit 1
+          fi
+          echo "run-review-guard correctly surfaced total_cost_usd=$TOTAL_COST_USD for a stub result"
+      # Proves claude.yml's extract-total-cost composite action end-to-end
+      # (gha#219 review finding 1) -- the same real-`uses:` reasoning as
+      # run-review-guard above, since a unit test of the underlying script
+      # alone would not catch a github.action_path resolution regression.
+      - name: Exercise extract-total-cost composite action end-to-end
+        id: cost-e2e
+        uses: ./.github/actions/extract-total-cost
+        with:
+          execution-file: .github/workflows/scripts/tests/fixtures/genuine-finished-review.json
+      - name: Assert extract-total-cost surfaced the fixture's cost
+        shell: bash
+        env:
+          COST: ${{ steps.cost-e2e.outputs.cost }}
+        run: |
+          set -euo pipefail
+          if [[ "$COST" != "0.42" ]]; then
+            echo "::error::extract-total-cost did not surface cost=0.42 for genuine-finished-review.json (got '$COST')"
+            exit 1
+          fi
+          echo "extract-total-cost correctly surfaced cost=$COST"
+      - name: Exercise extract-total-cost composite action end-to-end (missing file)
+        id: cost-e2e-missing
+        uses: ./.github/actions/extract-total-cost
+        with:
+          execution-file: .github/workflows/scripts/tests/fixtures/does-not-exist.json
+      - name: Assert extract-total-cost is silent for a missing file
+        shell: bash
+        env:
+          COST: ${{ steps.cost-e2e-missing.outputs.cost }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$COST" ]]; then
+            echo "::error::extract-total-cost should surface no cost output for a missing execution file (got '$COST')"
+            exit 1
+          fi
+          echo "extract-total-cost correctly surfaced no cost for a missing file"
+      # Proves claude-code-review.yml's sum-costs composite action end-to-end
+      # (gha#219 review finding 5) -- the arithmetic itself is unit-tested
+      # above; this proves the github.action_path resolution and output
+      # passthrough actually work, the same reasoning as the run-review-guard
+      # and extract-total-cost e2e steps above.
+      - name: Exercise sum-costs composite action end-to-end
+        id: sum-costs-e2e
+        uses: ./.github/actions/sum-costs
+        with:
+          cost-a: '0.30'
+          cost-b: '0.12'
+      - name: Assert sum-costs surfaced the correct total
+        shell: bash
+        env:
+          TOTAL: ${{ steps.sum-costs-e2e.outputs.total }}
+        run: |
+          set -euo pipefail
+          if [[ "$TOTAL" != "0.4200" ]]; then
+            echo "::error::sum-costs did not surface total=0.4200 for 0.30 + 0.12 (got '$TOTAL')"
+            exit 1
+          fi
+          echo "sum-costs correctly surfaced total=$TOTAL"
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest

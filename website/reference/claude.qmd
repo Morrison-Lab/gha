@@ -29,6 +29,7 @@ it dispatches the review workflow via `workflow_dispatch`.
 | `webfetch-allowlist-url` | string | `''` | URL of a newline-delimited hostname allowlist; each host becomes a `WebFetch(domain:<host>)` grant. Empty to disable WebFetch. |
 | `claude-args` | string | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied. |
 | `runs-on` | string | `'ubuntu-latest'` | Runner for the job. |
+| `report-cost` | boolean | `true` | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/d-morrison/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
 
 ## Secrets
 
@@ -104,6 +105,7 @@ jobs:
     #   eager-pr: true              # open the draft PR up front (Copilot-style)
     #   mark-ready-for-review: false # keep Claude's PRs as drafts
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
+    #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   prompt-addendum: |
     #     This is the <name> R package. Before committing, run

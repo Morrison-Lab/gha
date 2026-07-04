@@ -30,6 +30,12 @@ outputs:
       no verdict line — the retryable "stub review" signature (gha#185). The
       caller can use this to retry once instead of failing outright.
     value: ${{ steps.run.outputs.stub_review }}
+  total_cost_usd:
+    description: >-
+      This attempt's total_cost_usd from the execution output, when present
+      (gha#219) — set regardless of whether the attempt succeeded, was a
+      quota skip, or was a stub, since cost is incurred either way.
+    value: ${{ steps.run.outputs.total_cost_usd }}
 
 runs:
   using: composite

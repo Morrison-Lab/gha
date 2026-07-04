@@ -1,0 +1,33 @@
+name: Extract total cost
+description: >-
+  Extracts total_cost_usd from a claude-code-action execution-output file's
+  last "result" event, located via github.action_path rather than a checked-
+  out script path -- claude.yml's steps operate on the CALLER's checkout, not
+  d-morrison/gha's own tree, so a bare relative script path would not
+  resolve there. The same reasoning parse-workflow-ref and run-review-guard
+  rely on. Shared by claude.yml's two comment-posting call sites so the jq
+  filter isn't duplicated between them (gha#219 review finding 1).
+
+inputs:
+  execution-file:
+    description: Path to the claude-code-action execution-output file (may be empty or not exist).
+    required: true
+
+outputs:
+  cost:
+    description: total_cost_usd from the file's last result event, or empty if absent/missing.
+    value: ${{ steps.run.outputs.cost }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run extract-total-cost.sh
+      id: run
+      shell: bash
+      env:
+        EXECUTION_FILE: ${{ inputs.execution-file }}
+      # extract-total-cost.sh lives in ../../workflows/scripts/ relative to
+      # this action's own directory -- two levels up (out of
+      # extract-total-cost/, out of actions/) lands at .github/, then down
+      # into workflows/scripts/. Mirrors run-review-guard's own resolution.
+      run: bash "${{ github.action_path }}/../../workflows/scripts/extract-total-cost.sh" "$EXECUTION_FILE"

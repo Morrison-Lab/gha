@@ -105,6 +105,17 @@ on:
           reports that it found no macro definitions to check against.
         type: boolean
         default: false
+      report-cost:
+        description: >-
+          Post a follow-up PR comment with the review's dollar cost
+          (total_cost_usd from claude-code-action's execution output, summed
+          across the initial attempt and the gha#185 stub-review retry when
+          one ran). Upstream computes this cost but never surfaces it in a PR
+          comment (gha#219; see README.md's feature-parity table for the
+          upstream source citation) — this surfaces it on the PR itself. On
+          by default; set false to suppress it.
+        type: boolean
+        default: true
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -591,6 +602,21 @@ jobs:
         with:
           execution-file: ${{ steps.exec-file-retry.outputs.path }}
 
+      # Both attempts, when they ran, incur real cost — sum them so a
+      # gha#185 stub-retry's total reflects both API calls, not just the
+      # winning one (gha#219). Extracted into its own composite-action step
+      # (rather than an inline awk one-liner) so the arithmetic has offline
+      # test coverage — see run-sum-costs-tests.sh and _selftest.yml's
+      # `run-sum-costs-tests` and end-to-end `uses:` steps (gha#219 review
+      # finding 5).
+      - name: Sum attempt costs
+        id: sum-cost
+        if: always() && steps.selfmod.outputs.self_mod != 'true'
+        uses: d-morrison/gha/.github/actions/sum-costs@v2
+        with:
+          cost-a: ${{ steps.fail-check.outputs.total_cost_usd }}
+          cost-b: ${{ steps.fail-check-retry.outputs.total_cost_usd }}
+
       # Single point that decides which attempt's outputs the rest of the job
       # uses, and the ONLY step that genuinely fails the job when neither
       # attempt produced a usable review (both "Fail the check" steps above
@@ -601,17 +627,21 @@ jobs:
         id: resolve-final
         if: always() && steps.selfmod.outputs.self_mod != 'true'
         shell: bash
+        env:
+          TOTAL_COST: ${{ steps.sum-cost.outputs.total }}
         run: |
           set -euo pipefail
           if [[ "${{ steps.fail-check.outcome }}" == "success" ]]; then
             echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
             echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
+            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
             echo "Attempt 1 completed cleanly."
             exit 0
           fi
           if [[ "${{ steps.fail-check-retry.outcome }}" == "success" ]]; then
             echo "review_text_file=${{ steps.fail-check-retry.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
             echo "quota_exhausted=${{ steps.fail-check-retry.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
+            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
             echo "::notice::Attempt 1 produced a stub review (no verdict, gha#185); the retry recovered cleanly."
             exit 0
           fi
@@ -657,6 +687,7 @@ jobs:
       # (it would duplicate the comment). Always run on workflow_dispatch
       # since the action rejects track_progress there regardless. Closes #87.
       - name: Post review comment
+        id: post-comment
         if: >-
           steps.resolve-final.outcome == 'success' &&
           steps.resolve-final.outputs.quota_exhausted != 'true' &&
@@ -691,14 +722,55 @@ jobs:
           printf '%s\n\n---\n\n%s' \
             "**Claude finished review** — [View run]($RUN_URL)" \
             "$REVIEW" > "$BODY_FILE"
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"
+          # `gh pr comment` prints the new comment's URL to stdout; capture it
+          # so the cost-comment step below can link back to it (gha#219).
+          COMMENT_URL="$(gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE")"
+          echo "comment_url=$COMMENT_URL" >> "$GITHUB_OUTPUT"
 
-      # With sticky disabled, every run leaves its own review comment. Collapse
-      # the older ones (minimize as OUTDATED) so the PR shows one expanded,
-      # current review with history folded beneath it. Only THIS workflow's
-      # review comments are touched — identified by the run each comment links
-      # to (its workflow `path` is this file) — so `@claude` task comments from
-      # claude.yml (same `claude[bot]` author) are left alone.
+      # Surfaces claude-code-action's total_cost_usd (summed across the
+      # attempt-1 + gha#185 stub-retry attempts by resolve-final) in its own
+      # follow-up comment. Upstream computes this cost but only writes it to
+      # the job step summary, never the PR comment it posts (gha#219) — this
+      # is a repo-local workaround, not a duplicate of the review comment's
+      # content. Runs regardless of whether "Post review comment" ran (tag
+      # mode skips that step but still incurs cost), just without a link back
+      # to a comment that doesn't exist in that case.
+      - name: Post cost comment
+        if: >-
+          inputs.report-cost &&
+          steps.resolve-final.outcome == 'success' &&
+          steps.resolve-final.outputs.quota_exhausted != 'true' &&
+          steps.resolve-final.outputs.total_cost_usd != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TOTAL_COST: ${{ steps.resolve-final.outputs.total_cost_usd }}
+          COMMENT_URL: ${{ steps.post-comment.outputs.comment_url }}
+        run: |
+          # Include the run URL (like "Post review comment" does) so the
+          # collapse step below folds older cost comments the same way it
+          # folds older review comments — without it, every push in an ARDI
+          # loop would leave its own uncollapsed cost comment (gha#219).
+          if [[ -n "$COMMENT_URL" ]]; then
+            BODY="💰 **Cost:** \$${TOTAL_COST} ([review]($COMMENT_URL)) — [run]($RUN_URL)"
+          else
+            BODY="💰 **Cost:** \$${TOTAL_COST} — [run]($RUN_URL)"
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
+
+      # With sticky disabled, every run leaves its own review comment (and,
+      # when report-cost is on, its own cost comment). Collapse the older
+      # ones (minimize as OUTDATED) so the PR shows one expanded, current
+      # review (plus current cost comment) with history folded beneath it.
+      # Only THIS workflow's comments are touched — identified by the run
+      # each comment links to (its workflow `path` is this file) — so
+      # `@claude` task comments from claude.yml (same `claude[bot]` author)
+      # are left alone. This matches on the run-URL link alone, not comment
+      # content, so it folds both "Post review comment"'s and "Post cost
+      # comment"'s output identically (gha#219) — the cost comment includes
+      # its own `actions/runs/<id>` link for exactly this reason.
       #
       # Not gated to pull_request: a dispatched (workflow_dispatch / agent-mode)
       # review that wins the per-PR concurrency race must fold the earlier
