@@ -152,11 +152,27 @@ runs:
         # updated in lockstep to tell the reviewer these fetch tools ARE
         # available — granting the tool without that leaves the prompt saying
         # "no fetch tools; don't fetch", which would defeat the grant.
+        #
+        # `ScheduleWakeup,SendMessage,Monitor` are interactive-session-only
+        # orchestration tools (schedule a future turn, message another agent,
+        # stream a background process) that make no sense in a one-shot
+        # headless CI run: there is no later turn for a scheduled wakeup to
+        # fire into, and no other agent to message. anthropics/claude-code-action#1462
+        # documents exactly this failure mode — the model calls one of these
+        # in good faith, ends its turn believing it'll resume later, the
+        # process then exits (killing any background subagent it also
+        # spawned), and the run reports success with no review ever posted
+        # (gha#218's root cause 2 matches this signature: a background Agent
+        # call followed by ScheduleWakeup, never resumes). Denying them
+        # outright is safer than the prompt-only mitigation below on its
+        # own, and doesn't touch the `code-review` plugin's own legitimate
+        # `Task`/`Agent` fan-out to its 4 parallel sub-agents, which uses a
+        # different tool than these three.
         claude_args: >-
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*)"
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor"
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and
