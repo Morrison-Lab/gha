@@ -481,7 +481,7 @@ differs. This is a global standing rule proposed in
 — once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
 there.
 
-### 8. Challenge unnecessary complexity
+### 9. Challenge unnecessary complexity
 
 When reviewing prose, math, or code, check whether it is more complex than
 the problem requires — not just whether it's correct or clear. Flag
@@ -495,7 +495,7 @@ case, or a meaning the original carried. This is a global standing rule
 from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
 corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
 
-### 9. Question redundant content
+### 10. Question redundant content
 
 When a diff touches prose, math, or code, check for content that could be
 consolidated without losing completeness or generality — a claim or
@@ -506,3 +506,19 @@ content that merely looks similar should stay separate. This is a global
 standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/workflow/challenge-redundant-content.md`).
+
+### 11. Reuse function documentation and argument lists
+
+Flag R code that copy-pastes a `@param` description or a prose section
+between roxygen blocks instead of using
+[roxygen2's tag-reuse tags](https://roxygen2.r-lib.org/reference/tags-reuse.html)
+(`@inheritParams`, `@inheritDotParams`, `@inheritSection`) — reused docs stay
+in sync when the source function's docs change; copy-pasted docs silently
+drift. Also flag a wrapper function that manually re-declares and relays
+arguments it never touches itself instead of forwarding
+[`...`](https://adv-r.hadley.nz/functions.html?q=dot-dot#fun-dot-dot-dot)
+straight to the subfunction (documented via `@inheritDotParams`). This is a
+global standing rule proposed in
+[`d-morrison/ai-config#474`](https://github.com/d-morrison/ai-config/pull/474)
+— once merged, the fragment lives at `shared/coding/reuse-docs-and-args.md`
+there.
