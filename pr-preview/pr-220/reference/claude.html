@@ -510,12 +510,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -631,7 +625,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>report-cost</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Append the run’s dollar cost (<code>total_cost_usd</code>) to whichever comment this workflow posts back to the thread. The action itself only writes this to the job step summary, never a comment. Set false to suppress it.</td>
+<td>Surface the run’s dollar cost (<code>total_cost_usd</code>): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See <a href="https://github.com/d-morrison/gha#readme">README.md</a>’s feature-parity table for the upstream source citation. Set false to suppress it.</td>
 </tr>
 </tbody>
 </table>
