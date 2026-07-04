@@ -481,7 +481,7 @@ differs. This is a global standing rule proposed in
 — once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
 there.
 
-### 8. Challenge unnecessary complexity
+### 9. Challenge unnecessary complexity
 
 When reviewing prose, math, or code, check whether it is more complex than
 the problem requires — not just whether it's correct or clear. Flag
@@ -495,7 +495,7 @@ case, or a meaning the original carried. This is a global standing rule
 from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
 corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
 
-### 9. Question redundant content
+### 10. Question redundant content
 
 When a diff touches prose, math, or code, check for content that could be
 consolidated without losing completeness or generality — a claim or
@@ -506,3 +506,16 @@ content that merely looks similar should stay separate. This is a global
 standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/workflow/challenge-redundant-content.md`).
+
+### 11. Write and recommend tidy, concise code
+
+Beyond style-guide compliance, check whether the diff's code is genuinely
+tidy — no leftover debug output, no dead branches, no function doing three
+unrelated things at once. In R code specifically, flag verbose base R or
+`{rlang}` constructs where a concise tidyverse equivalent (`dplyr`, `purrr`,
+the `{{ }}` embrace) does the same job more clearly, unless the tidyverse
+form would pull in a heavy dependency for a one-liner, the surrounding file
+is consistently base-R, or a hot loop needs base R's performance. This is a
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/coding/tidy-code.md`).
