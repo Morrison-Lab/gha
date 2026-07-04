@@ -443,6 +443,7 @@ in a multi-file Quarto book is out of scope, check it manually. This is a
 global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/definition-crossrefs.md`).
+
 ### 7. Suggest semantic line breaks in prose
 
 When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
