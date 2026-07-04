@@ -194,13 +194,15 @@ runs:
 
           This run is a single, synchronous CI job with a fixed timeout and
           no one to resume it afterward. Do NOT spawn a background agent or
-          sub-task to continue the review later, and do NOT schedule a
-          follow-up, wait for external state, or defer any part of the
-          review to a future turn — nothing will ever run this job again to
-          pick that up, and doing so has produced reviews that silently
-          never finish (gha#218). Complete the entire review yourself,
-          inline, within this run, and end by posting the ### Verdict line
-          before the run ends.${{ inputs.is-retry == 'true' && '
+          sub-task to continue the review in a future turn or after this
+          job ends, and do NOT schedule a follow-up, wait for external
+          state, or defer any part of the review that way — nothing will
+          ever run this job again to pick that up, and doing so has
+          produced reviews that silently never finish (gha#218). (The
+          code-review plugin's own same-run parallel sub-agent fan-out is
+          fine — this only forbids deferring work past the end of this
+          run.) Complete the entire review yourself, inline, within this
+          run, and end by posting the ### Verdict line before the run ends.${{ inputs.is-retry == 'true' && '
 
 
           This is a RETRY: an earlier attempt at this same review completed
