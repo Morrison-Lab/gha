@@ -516,6 +516,6 @@ unrelated things at once. In R code specifically, flag verbose base R or
 the `{{ }}` embrace) does the same job more clearly, unless the tidyverse
 form would pull in a heavy dependency for a one-liner, the surrounding file
 is consistently base-R, or a hot loop needs base R's performance. This is a
-global standing rule proposed in
-[`d-morrison/ai-config#476`](https://github.com/d-morrison/ai-config/pull/476)
-— once merged, the fragment lives at `shared/coding/tidy-code.md` there.
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/coding/tidy-code.md`).
