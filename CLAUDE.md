@@ -532,7 +532,20 @@ standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/workflow/challenge-redundant-content.md`).
 
-### 11. Reuse function documentation and argument lists
+### 11. Write and recommend tidy, concise code
+
+Beyond style-guide compliance, check whether the diff's code is genuinely
+tidy — no leftover debug output, no dead branches, no function doing three
+unrelated things at once. In R code specifically, flag verbose base R or
+`{rlang}` constructs where a concise tidyverse equivalent (`dplyr`, `purrr`,
+the `{{ }}` embrace) does the same job more clearly, unless the tidyverse
+form would pull in a heavy dependency for a one-liner, the surrounding file
+is consistently base-R, or a hot loop needs base R's performance. This is a
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/coding/tidy-code.md`).
+
+### 12. Reuse function documentation and argument lists
 
 Flag R code that copy-pastes a `@param` description or a prose section
 between roxygen blocks instead of using
