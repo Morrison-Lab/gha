@@ -44,10 +44,17 @@ on:
         default: 'check'
       apt-packages:
         description: >
-          Space-separated apt packages to install before R setup. Leave empty
-          to skip the install step.
+          Space-separated apt packages to install before R setup. Defaults to
+          the standard system libraries needed to build a typical R package's
+          dependencies from source (Cairo, fonts, graphics, gettext, OpenMP).
+          Pass your own list to override, or an empty string to skip the
+          install step.
         type: string
-        default: ''
+        default: >-
+          libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev
+          libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev
+          libtiff5-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
+          libcairo2-dev gettext
       commit-message:
         description: Commit message for the snapshot update commit.
         type: string
