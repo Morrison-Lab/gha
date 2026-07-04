@@ -17,6 +17,25 @@ frozen `@v1` tag). See
 capabilities still pin `@v1` and why. Breaking changes bump the major tag
 (`v2`, and so on) with migration steps.
 
+## Advancing a major tag
+
+Unlike `r-lib/actions`, a major tag here does not slide automatically on every
+push to `main` - merging a change does not, by itself, change what a consumer
+pinned to `@v1`/`@v2` picks up next. Advancing the tag is a deliberate, manual
+step, so a change can be validated on one or a few consumer repos before
+everyone else has to deal with it:
+
+1. Merge the change to `main`.
+2. Optionally, point a consumer's `uses:` line at `@main`, at a specific
+   commit SHA, or temporarily at a feature branch of this repo, and let that
+   consumer's own CI run against the unreleased change.
+3. Once confident, advance the shared major tag to `main`'s current tip by
+   running
+   [`slide-major-tag.yml`](https://github.com/d-morrison/gha/blob/main/.github/workflows/slide-major-tag.yml)
+   via `workflow_dispatch` (from `main`), or with `git tag -f` /
+   `git push --force` directly. Every consumer pinned to that tag picks up the
+   change the next time its CI runs.
+
 See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
 for what changes as a major tag moves.
 

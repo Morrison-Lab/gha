@@ -39,7 +39,7 @@ capabilities above moved to `@v2`.
   `workflow_call` reusable workflow (inline shell logic, no external composite);
   `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
   reusable workflows that call the shared internal `open-sync-pr` composite;
-  `slide-major-tag.yml` is push- and dispatch-triggered and runs only in this
+  `slide-major-tag.yml` is dispatch-triggered and runs only in this
   repo.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.

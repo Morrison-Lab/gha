@@ -1,16 +1,18 @@
-# Keep the major-version tag (e.g. v1) pointing at the tip of main, the way
-# r-lib/actions maintains its sliding v2/v3 tags. Consumers pin to `@v1`, so
-# every merge to main re-points that tag at the new HEAD. The major version is
-# derived from the latest semver tag (vX.Y.Z), so cutting a v2.0.0 release makes
-# this start sliding v2 automatically.
+# Move the active major-version tag (e.g. v1) to main's tip on demand,
+# the way r-lib/actions maintains its sliding v2/v3 tags -- except here the
+# slide is a deliberate manual step, not an automatic reaction to every push.
+# Consumers pin to `@v1`, so advancing the tag is what rolls a change out to
+# everyone at once. That's why this only runs on `workflow_dispatch`: merge
+# the change to main, optionally point a canary consumer at `@main` (or a
+# feature branch/SHA) to try it first, then dispatch this workflow once
+# you're confident. The major version is derived from the latest semver tag
+# (vX.Y.Z), so cutting a v2.0.0 release makes this start sliding v2 instead.
 name: Slide major-version tag
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
-# Never let two slides race; the most recent push wins.
+# Never let two slides race; the most recent dispatch wins.
 concurrency:
   group: ${{ github.workflow }}
   cancel-in-progress: true
