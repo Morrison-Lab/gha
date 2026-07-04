@@ -734,22 +734,32 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           TOTAL_COST: ${{ steps.resolve-final.outputs.total_cost_usd }}
           COMMENT_URL: ${{ steps.post-comment.outputs.comment_url }}
         run: |
+          # Include the run URL (like "Post review comment" does) so the
+          # collapse step below folds older cost comments the same way it
+          # folds older review comments — without it, every push in an ARDI
+          # loop would leave its own uncollapsed cost comment (gha#219).
           if [[ -n "$COMMENT_URL" ]]; then
-            BODY="💰 **Cost:** \$${TOTAL_COST} ([review]($COMMENT_URL))"
+            BODY="💰 **Cost:** \$${TOTAL_COST} ([review]($COMMENT_URL)) — [run]($RUN_URL)"
           else
-            BODY="💰 **Cost:** \$${TOTAL_COST}"
+            BODY="💰 **Cost:** \$${TOTAL_COST} — [run]($RUN_URL)"
           fi
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
 
-      # With sticky disabled, every run leaves its own review comment. Collapse
-      # the older ones (minimize as OUTDATED) so the PR shows one expanded,
-      # current review with history folded beneath it. Only THIS workflow's
-      # review comments are touched — identified by the run each comment links
-      # to (its workflow `path` is this file) — so `@claude` task comments from
-      # claude.yml (same `claude[bot]` author) are left alone.
+      # With sticky disabled, every run leaves its own review comment (and,
+      # when report-cost is on, its own cost comment). Collapse the older
+      # ones (minimize as OUTDATED) so the PR shows one expanded, current
+      # review (plus current cost comment) with history folded beneath it.
+      # Only THIS workflow's comments are touched — identified by the run
+      # each comment links to (its workflow `path` is this file) — so
+      # `@claude` task comments from claude.yml (same `claude[bot]` author)
+      # are left alone. This matches on the run-URL link alone, not comment
+      # content, so it folds both "Post review comment"'s and "Post cost
+      # comment"'s output identically (gha#219) — the cost comment includes
+      # its own `actions/runs/<id>` link for exactly this reason.
       #
       # Not gated to pull_request: a dispatched (workflow_dispatch / agent-mode)
       # review that wins the per-PR concurrency race must fold the earlier
