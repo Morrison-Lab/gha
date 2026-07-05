@@ -127,7 +127,7 @@ jobs:
             done
 
       - name: Comment with preview link
-        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: steps.meta.outputs.action == 'deploy' && steps.preview.outputs.deployment-action != 'none'
         continue-on-error: true
         with:
@@ -146,7 +146,7 @@ jobs:
             <sub>Built to branch [`gh-pages`](${{ github.server_url }}/${{ github.repository }}/tree/gh-pages) at ${{ steps.preview.outputs.action-start-time }}.</sub>
 
       - name: Remove preview comment
-        uses: marocchino/sticky-pull-request-comment@0ea0beb66eb9baf113663a64ec522f60e49231c0 # v3.0.4
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: steps.meta.outputs.action == 'remove' && steps.preview-remove.outputs.deployment-action == 'remove'
         continue-on-error: true
         with:
