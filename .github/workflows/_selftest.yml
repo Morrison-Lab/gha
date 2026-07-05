@@ -305,7 +305,9 @@ jobs:
   # `\frac` argument, surfaces as a `[data-mjx-error]` node) and an undefined
   # macro (surfaces as MathJax's literal-text fallback, the realistic failure
   # mode for a repo like rme that leans on custom TeX macros) -- proving the
-  # composite catches both, not just running clean.
+  # composite catches both, not just running clean. A separate fixture below
+  # exercises a third failure mode -- MathJax itself never loading (gha#230) --
+  # which has nothing to do with any individual equation's TeX.
   equation-renders:
     runs-on: ubuntu-latest
     permissions:
@@ -352,6 +354,40 @@ jobs:
             exit 1
           fi
           echo "check-equation-renders correctly failed on the broken equation."
+      # gha#230: a page whose MathJax script can never load (a guaranteed-
+      # unresolvable ".invalid" host, per RFC 2606) must also fail the check --
+      # previously this silently reported success, since the DOM scan found no
+      # error nodes for the simple reason that MathJax never ran at all. The
+      # equation on this page is otherwise valid TeX; only the script load
+      # fails, isolating this failure mode from the hard-error and
+      # undefined-macro cases above.
+      - name: Generate a fixture page whose MathJax script never loads
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-equation-fixture-unreachable
+          cat > _ci-equation-fixture-unreachable/unreachable.html <<'EOF'
+          <!doctype html>
+          <html><head><script src="https://mathjax.invalid/es5/tex-mml-chtml.js"></script></head>
+          <body><p id="eq-unreachable">\(a + b = c\)</p></body></html>
+          EOF
+      - name: Check equation renders on the unreachable-script fixture (expect failure)
+        id: check-unreachable
+        continue-on-error: true
+        uses: ./check-equation-renders
+        with:
+          site-dir: _ci-equation-fixture-unreachable
+      - name: Assert the MathJax load failure was caught
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.check-unreachable.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::check-equation-renders should have failed when MathJax's script never loads (outcome=$OUTCOME)"
+            exit 1
+          fi
+          echo "check-equation-renders correctly failed when MathJax never initialized."
   # bump-submodule / sync-shared-fragments open PRs (write side effects), so the
   # selftest can't run them end-to-end. Exercise the shared open-sync-pr
   # composite's no-op path instead: on a clean tree it must report no change and
