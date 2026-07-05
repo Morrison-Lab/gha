@@ -572,7 +572,6 @@ after it), name the specific operation that closes it, and draft the missing
 line(s) where feasible rather than only flagging "skipped steps" in general.
 This is distinct from item 8's derivation-validity check (whether each
 *stated* step follows correctly) — this one catches a step that isn't
-stated at all. This is a global standing rule proposed in
-[`d-morrison/ai-config#502`](https://github.com/d-morrison/ai-config/pull/502)
-— once merged, the fragment lives at `shared/writing/math-derivation-steps.md`
-there.
+stated at all. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/math-derivation-steps.md`).
