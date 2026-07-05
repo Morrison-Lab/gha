@@ -560,3 +560,18 @@ global standing rule proposed in
 [`d-morrison/ai-config#474`](https://github.com/d-morrison/ai-config/pull/474)
 — once merged, the fragment lives at `shared/coding/reuse-docs-and-args.md`
 there.
+
+### 13. Flag skipped steps in math derivations
+
+When a diff touches a mathematical derivation (an algebraic manipulation, a
+proof, a statistical argument), check that every step is shown — no two or
+more operations (distribution, cancellation, substitution, applying a named
+identity or assumption) combined into a single displayed line. When a step is
+missing, name the exact gap (the last line before the jump and the first line
+after it), name the specific operation that closes it, and draft the missing
+line(s) where feasible rather than only flagging "skipped steps" in general.
+This is distinct from item 8's derivation-validity check (whether each
+*stated* step follows correctly) — this one catches a step that isn't
+stated at all. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/math-derivation-steps.md`).
