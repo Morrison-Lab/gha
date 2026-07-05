@@ -1,7 +1,3 @@
 * text=auto eol=lf
 *.sh text eol=lf
 CHANGELOG.md merge=union
-
-# Files where conflicting edits from both branches should typically both be
-# kept rather than forcing a manual conflict resolution.
-CLAUDE.md merge=union
