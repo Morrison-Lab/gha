@@ -11,8 +11,8 @@ Quarto's `html-math-method: mathjax` embeds raw TeX (`\(...\)`, `$$...$$`) uncha
 the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad
 equation therefore produces no warning in the Quarto/pandoc build log -- the static HTML
 is "valid" pandoc output even when the embedded TeX can't be typeset. This workflow is
-what actually runs MathJax (via a headless Chromium) and checks for both of the ways it
-signals a broken formula:
+what actually runs MathJax (via a headless Chromium) and checks for three ways a page
+can fail to render its equations:
 
 - A hard parse error (unmatched braces, wrong argument count, ...) inserts a
   `[data-mjx-error]` node carrying the message.
@@ -21,6 +21,10 @@ signals a broken formula:
   name (`\foo`) as literal text, so there's no error node to find. The check instead
   looks for a rendered `\command`-shaped token surviving into the typeset output, since
   resolved math never leaves its own TeX source behind.
+- MathJax itself failing to load or initialize (a CDN hiccup, a blocked host, a broken
+  script path) on a page that references it -- caught separately from the two cases
+  above, since a page where MathJax never ran would otherwise show zero error nodes and
+  read as a false pass.
 
 It runs independently of `preview-deploy.yml` -- both trigger on the same build
 completion, but this one downloads the artifact directly rather than depending on the
