@@ -29,9 +29,8 @@
 // nothing was wrong, but because MathJax never ran at all -- a silent false
 // pass for a check whose whole point is catching invisible-looking-fine
 // breakage. checkPage() tracks this explicitly (see loadErrors below) so it
-// is reported the same as a genuine equation error, rather than swallowed by
-// the `.catch(() => {})` that intentionally tolerates pages with no MathJax
-// script at all.
+// is reported the same as a genuine equation error, rather than silently
+// skipped the way a page with no MathJax script at all correctly is.
 
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
