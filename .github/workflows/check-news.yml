@@ -1,12 +1,17 @@
 name: Check NEWS.md Changelog (reusable)
 
 # Wraps UCD-SERG/changelog-check-action. That action's own skip-label check is
-# hardcoded to the string "no changelog" (with a space, not configurable) and
-# reads github.event.pull_request directly from inside a composite-action step
-# nested under this workflow_call job --- not a context this workflow controls.
-# Rather than depend on that internal check, this job does the label check
-# itself via `if:` and skips the composite entirely when the configurable
-# `no-changelog-label` input is present on the PR (gha#143).
+# hardcoded to the string "no changelog" (with a space) and is not
+# configurable --- at least one consumer (UCD-SERG/serocalculator) documents
+# and uses "no-changelog" (hyphen) instead, so the composite's own escape
+# hatch never actually fires for that PR label. This job does its own label
+# check via `if:`, against a configurable `no-changelog-label` input, and
+# skips the composite entirely when it matches (gha#143). This does NOT
+# suppress the composite's own hardcoded "no changelog" (space) recognition
+# --- that's baked into UCD-SERG/changelog-check-action's own action.yml and
+# can't be overridden from here, so a PR labeled literally "no changelog"
+# still short-circuits the check even when no-changelog-label is set to ''
+# below.
 
 on:
   workflow_call:
@@ -17,8 +22,13 @@ on:
         default: 'NEWS.md'
       no-changelog-label:
         description: >-
-          PR label that skips the changelog check. Set to an empty string to
-          disable the escape hatch entirely.
+          PR label that skips this workflow's own changelog check. Set to an
+          empty string to disable this workflow's escape hatch (an empty
+          string never matches a real label). Note: the wrapped
+          UCD-SERG/changelog-check-action separately, unconditionally
+          recognizes its own hardcoded "no changelog" (space) label — that
+          recognition isn't controlled by this input and can't be suppressed
+          from here.
         type: string
         default: 'no-changelog'
 

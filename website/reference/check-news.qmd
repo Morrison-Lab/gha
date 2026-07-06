@@ -9,7 +9,7 @@ Enforce a changelog entry on each pull request (wraps `UCD-SERG/changelog-check-
 | Input | Type | Default | Description |
 |---|---|---|---|
 | `changelog` | string | `'NEWS.md'` | Path to the changelog file to check. |
-| `no-changelog-label` | string | `'no-changelog'` | PR label that skips the changelog check. Set to an empty string to disable the escape hatch entirely. |
+| `no-changelog-label` | string | `'no-changelog'` | PR label that skips this workflow's own changelog check. Set to an empty string to disable this workflow's escape hatch. The wrapped `UCD-SERG/changelog-check-action` separately, unconditionally recognizes its own hardcoded `no changelog` (space) label — not controlled by this input. |
 
 ## Permissions
 
