@@ -1,8 +1,12 @@
 name: Check NEWS.md Changelog (reusable)
 
-# Wraps UCD-SERG/changelog-check-action, which hardcodes the skip label as
-# "no changelog" (not configurable via this workflow's inputs) --- apply that
-# label to a PR to skip the check.
+# Wraps UCD-SERG/changelog-check-action. That action's own skip-label check is
+# hardcoded to the string "no changelog" (with a space, not configurable) and
+# reads github.event.pull_request directly from inside a composite-action step
+# nested under this workflow_call job --- not a context this workflow controls.
+# Rather than depend on that internal check, this job does the label check
+# itself via `if:` and skips the composite entirely when the configurable
+# `no-changelog-label` input is present on the PR (gha#143).
 
 on:
   workflow_call:
@@ -11,11 +15,18 @@ on:
         description: Path to the changelog file to check.
         type: string
         default: 'NEWS.md'
+      no-changelog-label:
+        description: >-
+          PR label that skips the changelog check. Set to an empty string to
+          disable the escape hatch entirely.
+        type: string
+        default: 'no-changelog'
 
 jobs:
   Check-Changelog:
     name: Check Changelog Action
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
       - uses: UCD-SERG/changelog-check-action@0189fc7eedec3ef3e9648c713908f6f2a6e99057 # v2 (major-only tag; no vX.Y.Z published)
         with:

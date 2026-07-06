@@ -50,7 +50,7 @@ not reference `@main` from consumers.
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
-| `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog` |
+| `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer`, `report-cost` |
 | `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost` |
