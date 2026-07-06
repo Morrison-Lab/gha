@@ -158,8 +158,39 @@ jobs:
       issues: read
       pull-requests: read
     outputs:
+      dispatch-guard-blocked: ${{ steps.dispatch-guard.outputs.blocked }}
       prior-context: ${{ steps.fetch.outputs.prior-context }}
     steps:
+      # Defense-in-depth for the workflow_dispatch path (gha#235): the
+      # automatic pull_request path already gates on same-repo/non-draft/
+      # non-bot via the job `if:` below, using the event payload directly.
+      # workflow_dispatch carries no such payload (only inputs.pr-number), so
+      # a manual dispatch against a fork or Dependabot PR number would
+      # otherwise run unconditionally. Both real dispatch entry points
+      # (claude.yml's trusted-author gate, and the /review-comment path's
+      # OWNER/MEMBER/COLLABORATOR check) are already trust-gated upstream of
+      # this, and a dispatched run reads the PR's diff over the API rather
+      # than executing checked-out fork code -- so this isn't closing an
+      # active hole, just failing a mistaken manual dispatch fast with a
+      # clear message instead of running a review against an unexpected PR.
+      - name: Guard dispatched reviews against fork / Dependabot PRs
+        id: dispatch-guard
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: |
+          set -euo pipefail
+          IS_CROSS_REPO=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository --jq '.isCrossRepository')
+          AUTHOR_LOGIN=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json author --jq '.author.login')
+          if [[ "$IS_CROSS_REPO" == "true" || "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork or Dependabot PR (isCrossRepository=$IS_CROSS_REPO, author=$AUTHOR_LOGIN)."
+          else
+            echo "blocked=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Fetch prior claude[bot] review comments
         id: fetch
         env:
@@ -234,16 +265,19 @@ jobs:
       cancel-in-progress: true
 
     # Dispatched runs review unconditionally (so a review fires on the draft PR
-    # claude.yml opens for an issue trigger). Otherwise skip — don't fail —
-    # drafts, Dependabot, fork PRs (forks can't read the OAuth token), and
-    # bot-triggered `synchronize` events (e.g. @claude pushing a commit), which
-    # would otherwise red-X an automatic review of a bot-authored diff.
+    # claude.yml opens for an issue trigger), except when gather-context's
+    # dispatch-guard step (gha#235) found the dispatched PR is a fork or
+    # Dependabot PR. Otherwise skip — don't fail — drafts, Dependabot, fork
+    # PRs (forks can't read the OAuth token), and bot-triggered `synchronize`
+    # events (e.g. @claude pushing a commit), which would otherwise red-X an
+    # automatic review of a bot-authored diff.
     if: >-
       always() &&
       needs.gather-context.result != 'cancelled' &&
       (
-        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
         (
+          github.event_name != 'workflow_dispatch' &&
           github.event.pull_request.draft == false &&
           github.event.pull_request.head.repo.full_name == github.repository &&
           github.event.sender.type != 'Bot'
