@@ -841,7 +841,7 @@
     "href": "reference/check-news.html#inputs",
     "title": "check-news.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nchangelog\nstring\n'NEWS.md'\nPath to the changelog file to check.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nchangelog\nstring\n'NEWS.md'\nPath to the changelog file to check.\n\n\nno-changelog-label\nstring\n'no-changelog'\nPR label that skips this workflow’s own changelog check. Set to an empty string to disable this workflow’s escape hatch. The wrapped UCD-SERG/changelog-check-action separately, unconditionally recognizes its own hardcoded no changelog (space) label - not controlled by this input.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -865,7 +865,7 @@
     "href": "reference/check-news.html#example",
     "title": "check-news.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/news.yaml in your repo.\nname: Check NEWS.md Changelog\n\non:\n  pull_request:\n    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]\n    branches:\n      - main\n\njobs:\n  check:\n    uses: d-morrison/gha/.github/workflows/check-news.yml@v1\n    # with:\n    #   changelog: NEWS.md\nSee examples/check-news.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/news.yaml in your repo.\nname: Check NEWS.md Changelog\n\non:\n  pull_request:\n    types: [assigned, opened, synchronize, reopened, labeled, unlabeled]\n    branches:\n      - main\n\njobs:\n  check:\n    uses: d-morrison/gha/.github/workflows/check-news.yml@v1\n    # with:\n    #   changelog: NEWS.md\n    #   no-changelog-label: no-changelog\nSee examples/check-news.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
