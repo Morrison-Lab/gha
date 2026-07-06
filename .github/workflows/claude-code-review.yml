@@ -181,7 +181,19 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ inputs.pr-number }}
         run: |
-          set -uo pipefail
+          # Explicit `+e`, not just omitting it: a run: step with no shell:
+          # key defaults to `bash -e {0}` (GitHub's own default shell
+          # invocation), so -e is already active before this script starts
+          # and stays active unless a `set` call names it explicitly -- a
+          # bare `set -uo pipefail` does NOT turn it off. With -e active,
+          # IS_CROSS_REPO=$(gh pr view ...) is a plain assignment statement
+          # (not inside an if/while test or negated with !, the only -e
+          # exemptions), so a failing `gh pr view` would abort the script
+          # AT that line, before any following `if [[ $? -ne 0 ]]` check
+          # ever runs -- reproducing the exact fail-open bug this is meant
+          # to fix (gha#244 review, round 2; confirmed with a standalone
+          # `bash -e {0}` repro before applying this fix).
+          set +e -uo pipefail
           # Fail CLOSED, not open: if either `gh pr view` call itself fails
           # (rate limit, transient 5xx, bad pr-number), write blocked=true
           # before exiting non-zero. Without this, the step's failure would
