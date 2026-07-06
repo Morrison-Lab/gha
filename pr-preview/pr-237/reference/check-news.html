@@ -534,7 +534,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>no-changelog-label</code></td>
 <td>string</td>
 <td><code>'no-changelog'</code></td>
-<td>PR label that skips the changelog check. Set to an empty string to disable the escape hatch entirely.</td>
+<td>PR label that skips this workflow’s own changelog check. Set to an empty string to disable this workflow’s escape hatch. The wrapped <code>UCD-SERG/changelog-check-action</code> separately, unconditionally recognizes its own hardcoded <code>no changelog</code> (space) label - not controlled by this input.</td>
 </tr>
 </tbody>
 </table>
