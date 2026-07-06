@@ -132,7 +132,7 @@ migration as drop-in; don't infer parity from the reusable version's inputs
 table or its being "the canonical, more capable version" in general. When a
 gap turns up, file it upstream (here) and defer that one file's migration
 rather than silently dropping the feature or hand-duplicating it in the
-consumer's stub. ([`UCD-SERG/serocalculator`#548](https://github.com/UCD-SERG/serocalculator/issues/548)/[#549](https://github.com/UCD-SERG/serocalculator/pull/549):
+consumer's stub. ([`UCD-SERG/serocalculator#548`](https://github.com/UCD-SERG/serocalculator/issues/548)/[#549](https://github.com/UCD-SERG/serocalculator/pull/549):
 `test-coverage.yml` looked like a straightforward superset of
 serocalculator's bespoke `test-coverage.yaml` — same coverage measurement,
 same testthat-output and failure-artifact steps — but was missing the
