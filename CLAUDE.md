@@ -469,6 +469,18 @@ global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/definition-crossrefs.md`).
 
+The same problem also shows up as plain-text signposting — "as discussed
+below", "in the following section", "we'll cover this later" — pointing at
+content the reader hasn't reached yet, in *any* prose, not just documents
+with crossref divs. Flag these too: confirm each hit is a genuine reference
+(not an idiom like "values below the threshold") and that the target really
+comes later, then suggest reordering the content earlier or rewording the
+pointer into a working link. This is a global standing rule proposed in
+[`d-morrison/ai-config#507`](https://github.com/d-morrison/ai-config/pull/507)
+— once merged, the fragment lives at `shared/writing/forward-references.md`
+there, with a dedicated `fix-forward-references` (`ffr`) skill that applies
+the fix directly rather than only flagging it in review.
+
 ### 7. Suggest semantic line breaks in prose
 
 When a diff touches prose (`README.md`, `CHANGELOG.md`, `website/`, action
