@@ -109,7 +109,31 @@ jq -rs '
     // ""
 ' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
 all_text_file="$(mktemp)"
-jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n")' "$EXECUTION_FILE" > "$all_text_file" 2>/dev/null || true
+# Also scan tool_use calls to GitHub-posting tools, not just plain "text"
+# blocks: a verdict can be posted entirely through the inline-comment MCP
+# tool (mcp__github_inline_comment__create_inline_comment's `body`) or a
+# `gh pr comment`/`gh api .../comments` Bash call, with only a narrative
+# aside ("Posted a comment ending in ### Verdict: ...") left in the run's
+# own text — which this script's line-start-anchored verdict regex
+# correctly does NOT match, since the word isn't at the start of that
+# line. That shape is a genuinely complete review, not a stub, but scanning
+# only "text" blocks can't tell the difference (gha#218). Restricted to
+# known posting tools specifically so an unrelated tool_use (Read, Grep,
+# WebFetch...) that merely happens to contain the word "verdict" in
+# something it read can't produce a false *pass* in the other direction.
+jq -rs '
+  flatten
+  | [ .[] | select(.type == "assistant") | .message.content[]?
+      | if .type == "text" then .text
+        elif .type == "tool_use" and .name == "mcp__github_inline_comment__create_inline_comment"
+          then (.input.body // "")
+        elif .type == "tool_use" and .name == "Bash"
+          and ((.input.command // "") | test("gh (pr comment|api [^\n]*(pulls|issues)/[^\n]*comments)"))
+          then (.input.command // "")
+        else empty
+        end ]
+  | join("\n")
+' "$EXECUTION_FILE" > "$all_text_file" 2>/dev/null || true
 if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
   echo "::error::Claude review produced no review text — treating as a failed review."
   exit 1

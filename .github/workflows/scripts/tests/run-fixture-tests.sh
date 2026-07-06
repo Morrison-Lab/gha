@@ -33,6 +33,7 @@ declare -A expected=(
   [quota-exhausted.json]=skip
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
+  [verdict-via-inline-comment-tool.json]=pass
 )
 
 # For `pass` fixtures where the posted review_text_file's content matters
@@ -60,6 +61,7 @@ declare -A expected_cost=(
   [quota-exhausted.json]=0
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
+  [verdict-via-inline-comment-tool.json]=0.55
 )
 
 assert_cost() {
