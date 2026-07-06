@@ -26,7 +26,7 @@ on:
           empty string to disable this workflow's escape hatch (an empty
           string never matches a real label). Note: the wrapped
           UCD-SERG/changelog-check-action separately, unconditionally
-          recognizes its own hardcoded "no changelog" (space) label — that
+          recognizes its own hardcoded "no changelog" (space) label --- that
           recognition isn't controlled by this input and can't be suppressed
           from here.
         type: string
