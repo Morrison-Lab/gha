@@ -186,15 +186,15 @@ jobs:
           # invocation), so -e is already active before this script starts
           # and stays active unless a `set` call names it explicitly -- a
           # bare `set -uo pipefail` does NOT turn it off. With -e active,
-          # IS_CROSS_REPO=$(gh pr view ...) is a plain assignment statement
-          # (not inside an if/while test or negated with !, the only -e
+          # PR_JSON=$(gh pr view ...) is a plain assignment statement (not
+          # inside an if/while test or negated with !, the only -e
           # exemptions), so a failing `gh pr view` would abort the script
           # AT that line, before any following `if [[ $? -ne 0 ]]` check
           # ever runs -- reproducing the exact fail-open bug this is meant
           # to fix (gha#244 review, round 2; confirmed with a standalone
           # `bash -e {0}` repro before applying this fix).
           set +e -uo pipefail
-          # Fail CLOSED, not open: if either `gh pr view` call itself fails
+          # Fail CLOSED, not open: if the `gh pr view` call itself fails
           # (rate limit, transient 5xx, bad pr-number), write blocked=true
           # before exiting non-zero. Without this, the step's failure would
           # leave `blocked` unset -- and claude-review's `if:` below only
@@ -203,18 +203,14 @@ jobs:
           # would satisfy both and let the review run anyway, defeating the
           # guard's whole purpose on exactly the transient error it should
           # be most defensive about (gha#244 review).
-          IS_CROSS_REPO=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository --jq '.isCrossRepository')
+          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author)
           if [[ $? -ne 0 ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
-            echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status via gh pr view; failing closed (treating as blocked)."
+            echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository/author status via gh pr view; failing closed (treating as blocked)."
             exit 1
           fi
-          AUTHOR_LOGIN=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json author --jq '.author.login')
-          if [[ $? -ne 0 ]]; then
-            echo "blocked=true" >> "$GITHUB_OUTPUT"
-            echo "::error::Could not resolve PR #$PR_NUMBER's author via gh pr view; failing closed (treating as blocked)."
-            exit 1
-          fi
+          IS_CROSS_REPO=$(jq -r '.isCrossRepository' <<< "$PR_JSON")
+          AUTHOR_LOGIN=$(jq -r '.author.login' <<< "$PR_JSON")
           if [[ "$IS_CROSS_REPO" == "true" || "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork or Dependabot PR (isCrossRepository=$IS_CROSS_REPO, author=$AUTHOR_LOGIN)."
