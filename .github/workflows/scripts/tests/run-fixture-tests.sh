@@ -33,15 +33,23 @@ declare -A expected=(
   [quota-exhausted.json]=skip
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
+  [verdict-via-inline-comment-tool.json]=pass
+  [denied-bash-comment-not-trusted.json]=fail-stub
 )
 
 # For `pass` fixtures where the posted review_text_file's content matters
 # (gha#173): the block it must contain, and a block it must NOT contain.
 declare -A must_contain=(
   [verdict-not-last-block.json]='Ready for merge'
+  # gha#218 review finding 2: review_text_file must carry the actual
+  # verdict-bearing content (from the inline-comment tool's body), not
+  # just fall back to the narration text block that happens to satisfy
+  # the pass/fail scan.
+  [verdict-via-inline-comment-tool.json]='Ready for merge'
 )
 declare -A must_not_contain=(
   [verdict-not-last-block.json]="I've posted my findings"
+  [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
 )
 
 # total_cost_usd is written unconditionally whenever a result object is
@@ -60,6 +68,8 @@ declare -A expected_cost=(
   [quota-exhausted.json]=0
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
+  [verdict-via-inline-comment-tool.json]=0.55
+  [denied-bash-comment-not-trusted.json]=0.4
 )
 
 assert_cost() {

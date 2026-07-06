@@ -100,16 +100,51 @@ fi
 # short wrap-up ("I've posted my findings") can follow it in agent mode
 # (gha#173, sparta#590/#594). Fall back to the final block when no block
 # carries a verdict (the check below then fails the run regardless).
-review_text_file="$(mktemp)"
-jq -rs '
+#
+# denials is computed here (not just at its original use site further
+# below) because it also gates one of the "blocks" candidates next: a
+# Bash `gh pr comment`/`gh api .../comments` call is NOT in
+# run-claude-review-attempt's allowedTools (deliberately — see that
+# composite action's own header comment), so any such call in the
+# transcript was necessarily DENIED whenever this run had ANY permission
+# denials at all (each one increments this counter). Trusting that call's
+# argument text as evidence of a posted verdict is only safe when denials
+# is exactly zero — otherwise a denied attempt (which never actually
+# posted anything) could be mistaken for a genuine review and skip the
+# stub/retry safety net entirely (gha#218 review, finding 1).
+denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
+# review_text_file (posted to the PR) and all_text_file (the pass/fail scan
+# below) must draw from the exact same candidate blocks, or a verdict this
+# script recognizes as "posted" can differ from what the PR actually shows
+# (gha#218 review, finding 2). Candidates are plain assistant "text", plus
+# GitHub-posting tool_use calls whose arguments can carry a verdict a plain
+# text block never restates: the inline-comment MCP tool's `body` (always
+# trusted; it's actually granted) and the gated Bash case above. Restricted
+# to these specific posting tools so an unrelated tool_use (Read, Grep,
+# WebFetch...) that merely happens to contain the word "verdict" in
+# something it read can't produce a false *pass* in the other direction.
+blocks_file="$(mktemp)"
+jq -s --argjson denials "$denials" '
   flatten
-  | [ .[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text ] as $blocks
+  | [ .[] | select(.type == "assistant") | .message.content[]?
+      | if .type == "text" then .text
+        elif .type == "tool_use" and .name == "mcp__github_inline_comment__create_inline_comment"
+          then (.input.body // "")
+        elif .type == "tool_use" and .name == "Bash" and ($denials == 0)
+          and ((.input.command // "") | test("gh (pr comment|api [^\n]*(pulls|issues)/[^\n]*comments)"))
+          then (.input.command // "")
+        else empty
+        end ]
+' "$EXECUTION_FILE" > "$blocks_file" 2>/dev/null || echo '[]' > "$blocks_file"
+review_text_file="$(mktemp)"
+jq -r '
+  . as $blocks
   | ( [ $blocks[] | select(test("(?im)^[\\s>*_#-]*verdict\\b")) ] | last )
     // ( $blocks | last )
     // ""
-' "$EXECUTION_FILE" > "$review_text_file" 2>/dev/null || true
+' "$blocks_file" > "$review_text_file" 2>/dev/null || true
 all_text_file="$(mktemp)"
-jq -rs 'flatten | [.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n")' "$EXECUTION_FILE" > "$all_text_file" 2>/dev/null || true
+jq -r '.[]' "$blocks_file" > "$all_text_file" 2>/dev/null || true
 if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
   echo "::error::Claude review produced no review text — treating as a failed review."
   exit 1
@@ -125,8 +160,8 @@ if ! grep -qiE '^[[:space:]>*_#-]*verdict\b' "$all_text_file"; then
   # Only the low-count case has been observed to recover on a same-prompt
   # retry; #198's pattern has repeatedly NOT recovered, so exclude it here
   # rather than let a caller retry (and re-spend $2-4/attempt) on a known
-  # non-recovering pattern.
-  denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
+  # non-recovering pattern. (denials was already computed above, where it
+  # also gates the Bash-tool-use blocks candidate.)
   max_denials="${STUB_RETRY_MAX_DENIALS:-5}"
   if [[ "$denials" -le "$max_denials" ]]; then
     echo "stub_review=true" >> "$GITHUB_OUTPUT"
