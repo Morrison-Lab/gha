@@ -5,7 +5,7 @@
 // Quarto (html-math-method: mathjax) embeds raw TeX (`\(...\)`, `$$...$$`)
 // unchanged in the static HTML; MathJax only parses it client-side in the
 // browser. A bad equation therefore produces no warning in the Quarto/pandoc
-// build log — the static HTML is "valid" even when the embedded TeX can't be
+// build log -- the static HTML is "valid" even when the embedded TeX can't be
 // typeset. Only a real browser run of MathJax reveals the failure.
 //
 // MathJax signals a broken formula two different ways, both checked here:
@@ -20,6 +20,17 @@
 //      surviving into the rendered text *is* safe: resolved math never
 //      leaves its own TeX source behind, so a leading `\word` can only mean
 //      MathJax gave up on it.
+//
+// A third failure mode has nothing to do with the equations themselves:
+// MathJax is loaded from a CDN (<script src="...mathjax...">) rather than
+// vendored, so a transient network hiccup, a blocked host, or a broken CDN
+// path can keep MathJax from ever initializing on a page that references it.
+// When that happens, the DOM scan above finds zero error nodes not because
+// nothing was wrong, but because MathJax never ran at all -- a silent false
+// pass for a check whose whole point is catching invisible-looking-fine
+// breakage. checkPage() tracks this explicitly (see loadErrors below) so it
+// is reported the same as a genuine equation error, rather than silently
+// skipped the way a page with no MathJax script at all correctly is.
 
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
@@ -96,18 +107,35 @@ async function checkPage(browser, baseUrl, relPath) {
       waitUntil: 'networkidle',
       timeout: PAGE_LOAD_TIMEOUT_MS,
     });
-    // A page that doesn't load MathJax at all never defines window.MathJax; skip
-    // straight to the DOM scan (there's nothing to wait for).
-    await page
-      .waitForFunction(() => window.MathJax?.startup?.promise !== undefined, {
-        timeout: MATHJAX_TIMEOUT_MS,
-      })
-      .catch(() => {});
-    await page
-      .evaluate(() => window.MathJax.startup.promise)
-      .catch(() => {}); // a page whose MathJax setup itself throws is caught by the DOM scan below
+
+    const referencesMathJax = await page.evaluate(() =>
+      Array.from(document.scripts).some((s) => /mathjax/i.test(s.src))
+    );
+
+    // A page that doesn't reference MathJax at all never defines
+    // window.MathJax; skip straight to the DOM scan (there's nothing to wait
+    // for, and mathJaxReady staying true is correct since nothing was expected).
+    let mathJaxReady = true;
+    if (referencesMathJax) {
+      mathJaxReady = await page
+        .waitForFunction(() => window.MathJax?.startup?.promise !== undefined, {
+          timeout: MATHJAX_TIMEOUT_MS,
+        })
+        .then(() => true)
+        .catch(() => false);
+    }
+
+    let startupError = null;
+    if (mathJaxReady && referencesMathJax) {
+      await page
+        .evaluate(() => window.MathJax.startup.promise)
+        .catch((err) => {
+          startupError = err.message;
+        });
+    }
     await page.waitForTimeout(250); // let post-promise DOM mutations (error node insertion) settle
-    return await page.evaluate(() => {
+
+    const domErrors = await page.evaluate(() => {
       const anchorIdOf = (node) => node.closest('[id]')?.id ?? null;
 
       const hardErrors = Array.from(document.querySelectorAll('[data-mjx-error]')).map((node) => ({
@@ -135,6 +163,21 @@ async function checkPage(browser, baseUrl, relPath) {
         return true;
       });
     });
+
+    const loadErrors = [];
+    if (referencesMathJax && !mathJaxReady) {
+      loadErrors.push({
+        anchorId: null,
+        message:
+          'MathJax script referenced but never initialized (window.MathJax.startup.promise) ' +
+          'before timeout -- equation rendering could not be verified on this page',
+      });
+    }
+    if (startupError) {
+      loadErrors.push({ anchorId: null, message: `MathJax startup failed: ${startupError}` });
+    }
+
+    return [...loadErrors, ...domErrors];
   } catch (err) {
     return [{ anchorId: null, message: `page failed to load: ${err.message}` }];
   } finally {
