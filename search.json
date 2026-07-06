@@ -733,7 +733,7 @@
     "href": "reference/test-coverage.html#inputs",
     "title": "test-coverage.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.\n\n\nupload-test-results\nboolean\ntrue\nAlso generate a JUnit test-results report (testthat::JunitReporter) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -769,7 +769,7 @@
     "href": "reference/test-coverage.html#example",
     "title": "test-coverage.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
+    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\n    #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
     "crumbs": [
       "Overview",
       "Reference",
