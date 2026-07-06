@@ -181,9 +181,28 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ inputs.pr-number }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
+          # Fail CLOSED, not open: if either `gh pr view` call itself fails
+          # (rate limit, transient 5xx, bad pr-number), write blocked=true
+          # before exiting non-zero. Without this, the step's failure would
+          # leave `blocked` unset -- and claude-review's `if:` below only
+          # excludes a `cancelled` gather-context result and an explicit
+          # `blocked == 'true'`, so an empty output from a *failed* guard
+          # would satisfy both and let the review run anyway, defeating the
+          # guard's whole purpose on exactly the transient error it should
+          # be most defensive about (gha#244 review).
           IS_CROSS_REPO=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository --jq '.isCrossRepository')
+          if [[ $? -ne 0 ]]; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status via gh pr view; failing closed (treating as blocked)."
+            exit 1
+          fi
           AUTHOR_LOGIN=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json author --jq '.author.login')
+          if [[ $? -ne 0 ]]; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "::error::Could not resolve PR #$PR_NUMBER's author via gh pr view; failing closed (treating as blocked)."
+            exit 1
+          fi
           if [[ "$IS_CROSS_REPO" == "true" || "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork or Dependabot PR (isCrossRepository=$IS_CROSS_REPO, author=$AUTHOR_LOGIN)."
