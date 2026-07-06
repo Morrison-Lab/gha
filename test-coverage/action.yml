@@ -27,6 +27,16 @@ inputs:
   fail-ci-if-error:
     description: Fail the job when the Codecov upload errors.
     default: 'false'
+  upload-test-results:
+    description: >-
+      Also generate a JUnit test-results report (testthat::JunitReporter) and
+      upload it to Codecov via codecov/test-results-action, powering Codecov's
+      Test Analytics (failed/flaky-test reporting) -- separate from the
+      Cobertura line-coverage upload above, which only measures which lines
+      ran, not which tests passed or failed. On by default, matching the
+      pre-migration convention at least one consumer (UCD-SERG/serocalculator)
+      already used (gha#234).
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -72,6 +82,30 @@ runs:
         files: ./cobertura.xml
         plugins: noop
         disable_search: true
+
+    # Runs the package's tests a second time (covr::package_coverage above
+    # already ran them once) purely to get a JUnit-formatted report --
+    # covr's own coverage object isn't convertible to JUnit. Matches the
+    # pattern UCD-SERG/serocalculator's bespoke workflow already used.
+    - name: Create JUnit test-results report
+      if: always() && inputs.upload-test-results == 'true'
+      shell: Rscript {0}
+      env:
+        COVERAGE_PATH: ${{ inputs.path }}
+      run: |
+        junit_path <- file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "junit.xml")
+        testthat::test_local(
+          path = Sys.getenv("COVERAGE_PATH"),
+          reporter = testthat::JunitReporter$new(junit_path)
+        )
+
+    - name: Upload test results to Codecov
+      if: always() && inputs.upload-test-results == 'true'
+      uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3 # v1.2.1
+      with:
+        token: ${{ inputs.token }}
+        fail_ci_if_error: ${{ inputs.fail-ci-if-error }}
+        file: ${{ runner.temp }}/junit.xml
 
     - name: Show testthat output
       if: always()

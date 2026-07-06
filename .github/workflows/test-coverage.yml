@@ -26,6 +26,13 @@ on:
           requests only when a token is set; pass 'true' or 'false' to force it.
         type: string
         default: 'auto'
+      upload-test-results:
+        description: >-
+          Also generate a JUnit test-results report and upload it to Codecov
+          Test Analytics (failed/flaky-test reporting), separate from the
+          Cobertura line-coverage upload. On by default.
+        type: boolean
+        default: true
     secrets:
       CODECOV_TOKEN:
         description: >-
@@ -53,3 +60,4 @@ jobs:
           # when a token is set, since tokenless PR uploads are flaky); an
           # explicit 'true'/'false' from the caller overrides it.
           fail-ci-if-error: ${{ inputs.fail-ci-if-error != 'auto' && inputs.fail-ci-if-error || (github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '') }}
+          upload-test-results: ${{ inputs.upload-test-results }}

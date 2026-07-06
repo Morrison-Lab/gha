@@ -13,6 +13,7 @@ Adapts the [`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.ya
 | `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
 | `extra-packages` | string | `''` | Extra R packages for the coverage run (`covr` and `xml2` are always installed). |
 | `fail-ci-if-error` | string | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it. |
+| `upload-test-results` | boolean | `true` | Also generate a JUnit test-results report (`testthat::JunitReporter`) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload. |
 
 ## Secrets
 
@@ -46,6 +47,7 @@ jobs:
     #   path: '.'                  # package root, if not the repo root
     #   install-quarto: false      # set true if vignettes need Quarto to build
     #   extra-packages: ''         # extra R packages for the coverage run
+    #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)
 ```
 
 See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
