@@ -107,5 +107,6 @@ jobs:
     #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos
     #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true
     #   report-cost: false          # suppress the dollar-cost comment (default true)
+    #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).

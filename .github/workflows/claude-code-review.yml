@@ -116,6 +116,17 @@ on:
           by default; set false to suppress it.
         type: boolean
         default: true
+      model:
+        description: >-
+          Model for the reviewer to run on (passed through to the underlying
+          Claude Code CLI's --model flag, e.g. claude-opus-4-8). Empty by
+          default, which falls through to claude-code-action's own default.
+          Unlike claude.yml, this workflow has no generic claude-args
+          passthrough input (its claude_args is entirely computed inside the
+          run-claude-review-attempt composite action), so this is the only
+          way a caller can influence which model reviews its PRs (gha#186).
+        type: string
+        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -487,6 +498,7 @@ jobs:
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
+          model: ${{ inputs.model }}
 
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
@@ -583,6 +595,7 @@ jobs:
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
+          model: ${{ inputs.model }}
           is-retry: 'true'
 
       - name: Resolve and upload execution file path (retry)
