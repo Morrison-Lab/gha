@@ -339,6 +339,12 @@ jobs:
           # renv::restore() aborts with "GitHub authentication credentials are
           # not available."
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+          # renv::restore() only needs each package's already-pinned RemoteSha
+          # from renv.lock; it doesn't need to also re-resolve the consumer's
+          # DESCRIPTION Remotes: field against GitHub's API on every run (a
+          # source of flaky/rate-limited failures -- see
+          # d-morrison/rme#994 / gha#239).
+          RENV_CONFIG_INSTALL_REMOTES: false
         with:
           cache-version: ${{ inputs.renv-cache-version }}
 
