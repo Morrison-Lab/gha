@@ -451,6 +451,16 @@ jobs:
           fi
           echo "cobertura.xml produced ($(wc -l < cobertura.xml) lines):"
           head -n 20 cobertura.xml
+      - name: Assert the JUnit test-results report was produced
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -s "${RUNNER_TEMP}/junit.xml" ]; then
+            echo "::error::test-coverage did not produce junit.xml (upload-test-results, gha#234)"
+            exit 1
+          fi
+          echo "junit.xml produced ($(wc -l < "${RUNNER_TEMP}/junit.xml") lines):"
+          head -n 20 "${RUNNER_TEMP}/junit.xml"
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't
