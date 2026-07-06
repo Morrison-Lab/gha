@@ -1,8 +1,17 @@
 name: Check NEWS.md Changelog (reusable)
 
-# Wraps UCD-SERG/changelog-check-action, which hardcodes the skip label as
-# "no changelog" (not configurable via this workflow's inputs) --- apply that
-# label to a PR to skip the check.
+# Wraps UCD-SERG/changelog-check-action. That action's own skip-label check is
+# hardcoded to the string "no changelog" (with a space) and is not
+# configurable --- at least one consumer (UCD-SERG/serocalculator) documents
+# and uses "no-changelog" (hyphen) instead, so the composite's own escape
+# hatch never actually fires for that PR label. This job does its own label
+# check via `if:`, against a configurable `no-changelog-label` input, and
+# skips the composite entirely when it matches (gha#143). This does NOT
+# suppress the composite's own hardcoded "no changelog" (space) recognition
+# --- that's baked into UCD-SERG/changelog-check-action's own action.yml and
+# can't be overridden from here, so a PR labeled literally "no changelog"
+# still short-circuits the check even when no-changelog-label is set to ''
+# below.
 
 on:
   workflow_call:
@@ -11,11 +20,23 @@ on:
         description: Path to the changelog file to check.
         type: string
         default: 'NEWS.md'
+      no-changelog-label:
+        description: >-
+          PR label that skips this workflow's own changelog check. Set to an
+          empty string to disable this workflow's escape hatch (an empty
+          string never matches a real label). Note: the wrapped
+          UCD-SERG/changelog-check-action separately, unconditionally
+          recognizes its own hardcoded "no changelog" (space) label --- that
+          recognition isn't controlled by this input and can't be suppressed
+          from here.
+        type: string
+        default: 'no-changelog'
 
 jobs:
   Check-Changelog:
     name: Check Changelog Action
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
       - uses: UCD-SERG/changelog-check-action@0189fc7eedec3ef3e9648c713908f6f2a6e99057 # v2 (major-only tag; no vX.Y.Z published)
         with:
