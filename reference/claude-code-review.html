@@ -585,6 +585,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>true</code></td>
 <td>Post a follow-up PR comment with the review’s dollar cost (<code>total_cost_usd</code>, summed across the initial attempt and any stub-review retry). See <a href="https://github.com/d-morrison/gha#readme">README.md</a>’s feature-parity table for the upstream source citation. Set false to suppress it.</td>
 </tr>
+<tr class="even">
+<td><code>model</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Model for the reviewer to run on, passed through as the Claude Code CLI’s <code>--model</code> flag (e.g.&nbsp;<code>claude-opus-4-8</code>). Empty (default) falls through to <code>claude-code-action</code>’s own default. Unlike <code>claude.yml</code>, this workflow has no generic <code>claude-args</code> passthrough, so this is the only way to influence the model.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -675,8 +681,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
 <span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true</span></span>
 <span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   report-cost: false          # suppress the dollar-cost comment (default true)</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/d-morrison/gha/blob/main/examples/claude-code-review.yml"><code>examples/claude-code-review.yml</code></a> for the full caller stub.</p>
 
 
