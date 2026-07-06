@@ -56,6 +56,13 @@ inputs:
       retry doesn't repeat the same stub outcome.
     required: false
     default: 'false'
+  model:
+    description: >-
+      Model for the reviewer to run on, passed through as the Claude Code
+      CLI's --model flag (e.g. claude-opus-4-8). Empty (default) omits the
+      flag entirely, falling through to claude-code-action's own default.
+    required: false
+    default: ''
 
 outputs:
   execution_file:
@@ -172,7 +179,7 @@ runs:
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor"
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and
