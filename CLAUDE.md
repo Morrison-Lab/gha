@@ -120,6 +120,27 @@ have no wrapper or example stub to update. New `.github/workflows/` changes are
 exercised by `_selftest.yml`; because brand-new actions aren't at the `@v1` tag
 yet, the selftest runs them via the local `./<name>` ref until release.
 
+**Migrating a consumer's bespoke workflow to a reusable one here needs a
+feature-by-feature diff, not just a structural read.** A reusable capability
+can look like a superset of the bespoke version it replaces — more inputs,
+more hardening, more edge-case handling — while still missing one specific
+step the bespoke version had, because that step covered something the
+reusable capability's original author's own repos never needed. Read the
+bespoke workflow line-by-line and confirm each step (not just each job) has
+an equivalent in the composite/reusable version before treating the
+migration as drop-in; don't infer parity from the reusable version's inputs
+table or its being "the canonical, more capable version" in general. When a
+gap turns up, file it upstream (here) and defer that one file's migration
+rather than silently dropping the feature or hand-duplicating it in the
+consumer's stub. ([`UCD-SERG/serocalculator`#548](https://github.com/UCD-SERG/serocalculator/issues/548)/[#549](https://github.com/UCD-SERG/serocalculator/pull/549):
+`test-coverage.yml` looked like a straightforward superset of
+serocalculator's bespoke `test-coverage.yaml` — same coverage measurement,
+same testthat-output and failure-artifact steps — but was missing the
+JUnit-report upload to Codecov Test Analytics (`codecov/test-results-action`)
+the bespoke version also did; gha#234 tracks closing that gap, and the
+consumer left that one file unmigrated in the meantime rather than lose the
+feature.)
+
 **A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
 was frozen before it existed — see `slide-major-tag.yml` / the Versioning
 section of `README.md`) needs its major tag updated at two distinct kinds of
@@ -136,26 +157,6 @@ site, not just the obvious one:
 Grep the repo for `@v1` rather than relying on memory of where it appears.
 Missing either kind surfaces as a workflow-not-found error for consumers who
 copy that spot literally (gha#148, caught across two review rounds).
-
-**Migrating a consumer's bespoke workflow to a reusable one here needs a
-feature-by-feature diff, not just a structural read.** A reusable capability
-can look like a superset of the bespoke version it replaces — more inputs,
-more hardening, more edge-case handling — while still missing one specific
-step the bespoke version had, because that step covered something the
-reusable capability's original author's own repos never needed. Read the
-bespoke workflow line-by-line and confirm each step (not just each job) has
-an equivalent in the composite/reusable version before treating the
-migration as drop-in; don't infer parity from the reusable version's inputs
-table or its being "the canonical, more capable version" in general. When a
-gap turns up, file it upstream (here) and defer that one file's migration
-rather than silently dropping the feature or hand-duplicating it in the
-consumer's stub. (`UCD-SERG/serocalculator`#548/#549: `test-coverage.yml`
-looked like a straightforward superset of serocalculator's bespoke
-`test-coverage.yaml` — same coverage measurement, same testthat-output and
-failure-artifact steps — but was missing the JUnit-report upload to Codecov
-Test Analytics (`codecov/test-results-action`) the bespoke version also did;
-gha#234 tracks closing that gap, and the consumer left that one file
-unmigrated in the meantime rather than lose the feature.)
 
 **When narrowing an already-fixed blanket claim, re-grep the WHOLE repo after
 every edit — not just the files you already know about.** The same versioning
