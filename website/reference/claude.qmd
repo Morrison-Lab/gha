@@ -8,6 +8,16 @@ It pairs with `claude-code-review.yml`:
 when Claude pushes commits (or an `@claude review` mention fires),
 it dispatches the review workflow via `workflow_dispatch`.
 
+It also runs unattended on `workflow_dispatch`/`schedule` events (e.g. a
+periodic skill invocation with no human comment to react to) — the caller's
+`on:` just needs to include one of those triggers. Both are trusted by
+construction (triggering them already requires repo write access), so the
+job's `@claude`-mention/author-association gate doesn't apply to them. These
+runs get no triggering issue/PR, so no branch or draft PR is set up and no
+reply comment is posted; use the `prompt-addendum` input to supply the actual
+task, and have it use whatever tools `claude-args` grants to persist output
+(e.g. `gh issue create`).
+
 ## Inputs
 
 | Input | Type | Default | Description |

@@ -2,9 +2,13 @@ name: Claude Code (reusable)
 
 # Agent-mode Claude Code workflow. Responds to "@claude" mentions in issues,
 # issue comments, PR review comments, and PR reviews, and can edit files and
-# open/update PRs in response. Ported from the canonical d-morrison versions
-# (serocalculator / rme) and parameterized so one workflow serves R packages,
-# Quarto books, and static repos.
+# open/update PRs in response. Also runs unattended on workflow_dispatch/
+# schedule events (e.g. a periodic "run this skill" automation with no human
+# comment to react to) — see the job's `if:` below for the trust model those
+# two events use instead of the @claude-mention/author_association check.
+# Ported from the canonical d-morrison versions (serocalculator / rme) and
+# parameterized so one workflow serves R packages, Quarto books, and static
+# repos.
 #
 # The caller stub (see examples/claude.yml) holds the `on:` triggers; this
 # reusable workflow inherits the caller's event context. Requires the
@@ -187,14 +191,22 @@ on:
 
 jobs:
   claude:
-    # Only trigger for trusted authors (OWNER / MEMBER / COLLABORATOR).
-    # Without this, anyone who can comment on a public issue or PR could
-    # trigger an LLM run with a write-scoped GITHUB_TOKEN.
+    # Only trigger for trusted authors (OWNER / MEMBER / COLLABORATOR) on the
+    # four reactive comment/review/issue events below. Without this, anyone
+    # who can comment on a public issue or PR could trigger an LLM run with a
+    # write-scoped GITHUB_TOKEN.
+    #
+    # workflow_dispatch/schedule events have no comment/issue body or
+    # author_association to gate on, but need no such gate: both require the
+    # triggering actor (or the caller repo's own Actions cron) to already have
+    # repo write access, so they're trusted by construction (gha#245).
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule'
 
     # Serialize @claude sessions per issue/PR so rapid mentions don't fire
     # competing runs that race to push the same branch. `cancel-in-progress:
@@ -541,12 +553,12 @@ jobs:
           # triggering comment/issue body is already supplied by the action's
           # default prompt; this adds the workflow's own operating instructions.
           prompt: |
-            You were triggered by an @claude mention in a
-            ${{ github.event_name }} event. Address the request in the
-            triggering comment / issue / review.
+            ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && format('You were triggered by a {0} event — an unattended run with no triggering comment, issue, or review to react to. Follow the task described in the addendum at the end of this prompt instead.', github.event_name) || format('You were triggered by an @claude mention in a {0} event. Address the request in the triggering comment / issue / review.', github.event_name) }}
 
             **Before declaring the task complete, check for additional @claude
-            requests that arrived after the triggering event:**
+            requests that arrived after the triggering event (skip this whole
+            section on a workflow_dispatch/schedule run — there is no
+            triggering comment, issue, or PR to poll):**
 
             1. Fetch the latest activity. Always check the issue/PR
                conversation; on a PR also check review comments and reviews
@@ -588,6 +600,12 @@ jobs:
             - **PR triggers**: the PR's head branch is already checked out for
               you. Make your edits and `git commit` them. Do NOT push — a
               post-step pushes your commits when the head SHA moves.
+            - **workflow_dispatch/schedule triggers**: neither of the above
+              applies — there is no triggering issue or PR, so no branch or
+              draft PR is set up for you, and no post-step posts a reply
+              comment (there is no thread to post it to). If your task needs
+              to persist output, do it yourself with the tools `claude-args`
+              grants you (e.g. `gh issue create`/`gh api`), per the addendum.
 
             If your reply is **prose** (answering a question, a recommendation,
             a review) rather than a code change, write your final message as

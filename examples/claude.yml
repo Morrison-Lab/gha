@@ -20,6 +20,11 @@ on:
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
+  # For unattended runs (a periodic skill invocation with no human comment to
+  # react to), also add:
+  # schedule:
+  #   - cron: '0 13 * * 1'   # every Monday at 13:00 UTC
+  # workflow_dispatch: {}    # lets you fire it manually too
 
 jobs:
   claude:
@@ -27,6 +32,11 @@ jobs:
     # mention is actually present, so unrelated comment / review / issue events
     # don't spawn a (skipped) reusable-workflow run. The reusable workflow still
     # enforces the trusted-author gate (OWNER/MEMBER/COLLABORATOR).
+    #
+    # If you added schedule/workflow_dispatch above, widen this too — neither
+    # event has a comment/issue body to check, and both are trusted by
+    # construction (triggering them requires repo write access):
+    #   || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
@@ -61,3 +71,9 @@ jobs:
     #     This is the <name> R package. Before committing, run
     #     lintr::lint_package(), spelling::spell_check_package(), and
     #     devtools::test(); add a NEWS.md bullet for user-facing changes.
+    #
+    #     # On a workflow_dispatch/schedule run there's no triggering comment,
+    #     # so prompt-addendum is also where you state the actual task, e.g.:
+    #     # "Run the /opposition-research skill and file the results as a new
+    #     # issue via `gh issue create`." (make sure claude-args allows the
+    #     # tools that task needs — the default toolset omits `gh issue create`.)
