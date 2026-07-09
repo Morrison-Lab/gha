@@ -197,9 +197,11 @@ jobs:
     # write-scoped GITHUB_TOKEN.
     #
     # workflow_dispatch/schedule events have no comment/issue body or
-    # author_association to gate on, but need no such gate: both require the
-    # triggering actor (or the caller repo's own Actions cron) to already have
-    # repo write access, so they're trusted by construction (gha#245).
+    # author_association to gate on, but need no such gate: workflow_dispatch
+    # requires the dispatching actor to have repo write access, and a
+    # schedule (cron) trigger has no triggering actor at all — it can only
+    # exist because someone with write access committed its `cron:` config to
+    # the default branch. Both are trusted by construction (gha#245).
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
@@ -289,7 +291,7 @@ jobs:
       # keeps a transient comment-API hiccup from failing the run. Posted by
       # github-actions[bot], so it does not re-trigger this workflow.
       - name: Acknowledge @claude mention
-        if: steps.dedup.outputs.skip != 'true'
+        if: steps.dedup.outputs.skip != 'true' && (github.event.issue.number || github.event.pull_request.number)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -758,6 +760,7 @@ jobs:
         if: |
           always() &&
           steps.dedup.outputs.skip != 'true' &&
+          (github.event.issue.number || github.event.pull_request.number) &&
           steps.claude.outcome == 'success' &&
           !(
             (

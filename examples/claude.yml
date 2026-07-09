@@ -33,9 +33,12 @@ jobs:
     # don't spawn a (skipped) reusable-workflow run. The reusable workflow still
     # enforces the trusted-author gate (OWNER/MEMBER/COLLABORATOR).
     #
-    # If you added schedule/workflow_dispatch above, widen this too — neither
-    # event has a comment/issue body to check, and both are trusted by
-    # construction (triggering them requires repo write access):
+    # If you added schedule/workflow_dispatch above, widen this too - neither
+    # event has a comment/issue body to check. Both are trusted by
+    # construction: workflow_dispatch requires the dispatching actor to have
+    # repo write access, and schedule has no triggering actor at all - it can
+    # only exist because someone with write access committed the cron:
+    # config to the default branch.
     #   || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
