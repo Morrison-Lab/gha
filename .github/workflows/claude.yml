@@ -535,7 +535,7 @@ jobs:
       - name: Run Claude Code
         id: claude
         if: steps.dedup.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@558b1d6cab4085c7753fe402c10bef0fbb92ac7a # v1.0.165
+        uses: anthropics/claude-code-action@e90deca47693f9457b72f2b53c17d7c445a87342 # v1.0.171
         # GH_TOKEN authenticates the `gh` commands granted in claude-args
         # (gh pr view/diff/edit, gh issue view, gh api); without it `gh`
         # prompts and fails in CI.
