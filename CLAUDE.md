@@ -395,16 +395,22 @@ single-push PR just to suppress a cosmetic, self-resolving non-issue on the
 rare double-push. The fix is behavioral: batch closely-related changes into
 one commit/push instead of two in quick succession.
 
-**Cheap self-check before investigating any CI-failure webhook event:**
+**Cheap self-check before investigating a post-push `require-review`/`claude-review` failure:**
 compare the failing check's commit SHA against the PR's *current* head SHA
 (`pull_request_read` method `get`, its `head.sha` field). If they don't
 match, the event is almost certainly this exact race on a now-superseded
 commit — skip straight to "wait for the head commit's review" instead of
 spending a tool call fetching the workflow run to confirm `cancelled` vs
-`failure`. (`Lacaedemon/sparta` PR #780, 2026-07-12: two pushes 3 minutes
-apart triggered exactly this; confirmed via `actions_get`
-`get_workflow_run` that the flagged run's conclusion was `cancelled` on the
-non-head SHA, matching this pattern.)
+`failure`. This shortcut is scoped to the two jobs that actually run under
+`cancel-in-progress: true` (`claude-review`/`preview`) — `_selftest.yml`'s
+jobs (`check-links`, `phi-tests`, `bib`, `coverage`, `review-fail-check`,
+etc.) have no `concurrency:` block, so a `failure` there on a non-head SHA
+is a real result the reader hasn't re-checked yet, not this race; don't
+apply the shortcut outside `claude-review`/`require-review`/`preview`.
+(`Lacaedemon/sparta` PR #780, 2026-07-12: two pushes 3 minutes apart
+triggered exactly this on `require-review`; confirmed via `actions_get`
+`get_workflow_run` that the failing check's conclusion was `cancelled` on
+the non-head SHA, matching this pattern.)
 
 ## A PR fixing claude-code-review.yml itself can't self-verify before merge
 
