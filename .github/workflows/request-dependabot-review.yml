@@ -20,6 +20,10 @@ name: Request Dependabot PR Review (reusable)
 # (https://github.com/cli/cli/issues/7671). The REST endpoint below takes
 # user logins directly, with no team lookup.
 #
+# The comma-split/trim logic lives in the build-reviewer-args composite
+# action (not inline here) so it can be unit-tested offline instead of only
+# exercised by a live Dependabot PR (gha#253 review).
+#
 # Workflow runs triggered by Dependabot via `pull_request` get a read-only
 # GITHUB_TOKEN by default, but have honored the job's own `permissions:`
 # block since October 2021
@@ -46,17 +50,22 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      - name: Build reviewer args
+        id: reviewers
+        uses: d-morrison/gha/.github/actions/build-reviewer-args@v2
+        with:
+          reviewers: ${{ inputs.reviewers }}
+
       - name: Request review
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          REVIEWERS: ${{ inputs.reviewers }}
+          REVIEWERS_JSON: ${{ steps.reviewers.outputs.reviewers-json }}
         run: |
           set -euo pipefail
           args=()
-          IFS=',' read -ra reviewer_list <<< "$REVIEWERS"
-          for reviewer in "${reviewer_list[@]}"; do
+          while IFS= read -r reviewer; do
             args+=(-f "reviewers[]=$reviewer")
-          done
+          done < <(jq -r '.[]' <<< "$REVIEWERS_JSON")
           gh api "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" "${args[@]}"

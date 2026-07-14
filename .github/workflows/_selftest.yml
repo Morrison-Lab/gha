@@ -250,6 +250,41 @@ jobs:
             exit 1
           fi
           echo "sum-costs correctly surfaced total=$TOTAL"
+  # request-dependabot-review is brand new, so (like the internal composites
+  # tested above) its own reusable-workflow layer isn't exercisable end-to-end
+  # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't
+  # resolve until @v2 is advanced past this PR's merge. Test the local
+  # build-reviewer-args composite directly instead -- the same "test-coverage"
+  # precedent used below, and the same offline-unit-test-plus-real-`uses:`-e2e
+  # pattern used for run-review-guard/extract-total-cost/sum-costs above
+  # (gha#253 review: missing selftest coverage for a new workflow with real
+  # side effects, precedented by the sync-pr job's open-sync-pr no-op test).
+  dependabot-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Run build-reviewer-args split/trim tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-build-reviewer-args-tests.sh
+      - name: Exercise build-reviewer-args composite action end-to-end
+        id: args-e2e
+        uses: ./.github/actions/build-reviewer-args
+        with:
+          reviewers: 'alice, bob'
+      - name: Assert build-reviewer-args trimmed and split correctly
+        shell: bash
+        env:
+          REVIEWERS_JSON: ${{ steps.args-e2e.outputs.reviewers-json }}
+        run: |
+          set -euo pipefail
+          if [[ "$REVIEWERS_JSON" != '["alice","bob"]' ]]; then
+            echo "::error::build-reviewer-args did not surface [\"alice\",\"bob\"] for 'alice, bob' (got '$REVIEWERS_JSON')"
+            exit 1
+          fi
+          echo "build-reviewer-args correctly surfaced reviewers-json=$REVIEWERS_JSON"
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest
