@@ -1,0 +1,19 @@
+name: Request Dependabot PR Review
+
+# Dogfoods request-dependabot-review.yml against this repo's own Dependabot
+# PRs (see #252). Uses a local `./` ref rather than `@v2` because the tag
+# hasn't been advanced to include this brand-new workflow yet (see
+# CLAUDE.md, "About this repo") — the same local-ref convention
+# `_selftest.yml` uses for pre-release capabilities.
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  request-review:
+    permissions:
+      pull-requests: write
+    uses: ./.github/workflows/request-dependabot-review.yml
+    with:
+      reviewers: d-morrison

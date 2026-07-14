@@ -54,6 +54,7 @@ not reference `@main` from consumers.
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer`, `report-cost` |
 | `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
+| `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
@@ -115,6 +116,8 @@ that need to write must have the **caller** grant it on the calling job:
   `GITHUB_TOKEN` can open the PR. For private submodules, `bump-submodule` also
   needs a `SUBMODULES_TOKEN` secret. Add a `WORKFLOW_TOKEN` only to push to a
   protected branch; otherwise pushes fall back to `GITHUB_TOKEN`.
+- `request-dependabot-review` (requests a reviewer on the PR) → grant
+  `pull-requests: write`.
 
 The stubs in [`examples/`](examples) already include the right `permissions:`
 blocks — copy them as-is.
@@ -263,7 +266,10 @@ have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
-[gha#182](https://github.com/d-morrison/gha/issues/182)). `summary.yml`,
+[gha#182](https://github.com/d-morrison/gha/issues/182)).
+`request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
+the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)).
+`summary.yml`,
 `check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. See [`CHANGELOG.md`](CHANGELOG.md) for
@@ -316,8 +322,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, and `lint-markdown.yml` at `@v2` —
-see the Versioning section above), and so are **not** SHA-pinned.
+`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, and
+`request-dependabot-review.yml` at `@v2` — see the Versioning section above),
+and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 

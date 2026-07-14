@@ -11,10 +11,10 @@ major tag each capability's own reference page documents (`@v1` for most,
 `@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
-`claude-code-review`, `update-snapshots`, `lint-yaml`, and `lint-markdown` —
-see the Versioning section of `README.md`). `@v1` was frozen at the
-pre-`2.0.0` snapshot and has picked up no fixes since, which is why the
-capabilities above moved to `@v2`.
+`claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`, and
+`request-dependabot-review` — see the Versioning section of `README.md`).
+`@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
+which is why the capabilities above moved to `@v2`.
 
 ### Layout
 
@@ -35,12 +35,13 @@ capabilities above moved to `@v2`.
   the Claude bot in this repo, not `workflow_call` wrappers.
 - Several workflows have no corresponding root composite: `check-news.yml`,
   `summary.yml`, and `preview-deploy.yml` are `workflow_call` reusable workflows
-  that wrap external actions; `cleanup-pr-previews.yml` is a self-contained
-  `workflow_call` reusable workflow (inline shell logic, no external composite);
-  `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
-  reusable workflows that call the shared internal `open-sync-pr` composite;
-  `slide-major-tag.yml` is dispatch-triggered and runs only in this
-  repo.
+  that wrap external actions; `cleanup-pr-previews.yml` and
+  `request-dependabot-review.yml` are self-contained `workflow_call` reusable
+  workflows (inline shell logic / a single `gh api` call, no external
+  composite); `bump-submodule.yml` and `sync-shared-fragments.yml` are
+  `workflow_call` reusable workflows that call the shared internal
+  `open-sync-pr` composite; `slide-major-tag.yml` is dispatch-triggered and
+  runs only in this repo.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
 - `.github/actions/parse-workflow-ref/` — a small composite action that parses a
