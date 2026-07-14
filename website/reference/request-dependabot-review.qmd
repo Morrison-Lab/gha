@@ -39,5 +39,5 @@ jobs:
       # bot-actor: renovate[bot]   # override the default (dependabot[bot])
 ```
 
-See [`examples/request-dependabot-review.yml`](https://github.com/d-morrison/gha/blob/main/examples/request-dependabot-review.yml)
-for the full caller stub.
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
+for the full caller stub (`request-dependabot-review.yml`).

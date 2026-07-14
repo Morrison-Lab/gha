@@ -48,7 +48,7 @@ since Pages can only have one Source. `check-bibliography-dois.yml`,
 new input, or a security fix) that a consumer still on `@v1` would miss
 (audited in [gha#182](https://github.com/d-morrison/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
-the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)).
+the freeze - see [gha#252](https://github.com/d-morrison/gha/issues/252)).
 `check-news.yml`, `summary.yml`, `bump-submodule.yml`, and
 `sync-shared-fragments.yml` were audited in the same pass and found unchanged
 since the freeze, so `@v1` remains current for them.
