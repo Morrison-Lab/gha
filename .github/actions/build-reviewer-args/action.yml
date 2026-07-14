@@ -1,0 +1,33 @@
+name: Build gh api reviewer args
+description: >-
+  Split a comma-separated reviewers list into a JSON array of trimmed,
+  non-empty GitHub usernames, ready to expand into `gh api -f
+  reviewers[]=...` arguments. Wrapped in a composite action, located via
+  github.action_path, for the same reason sum-costs/extract-total-cost do:
+  request-dependabot-review.yml's steps run against the CALLER's checkout,
+  not d-morrison/gha's own tree.
+
+inputs:
+  reviewers:
+    description: Comma-separated GitHub usernames.
+    required: true
+
+outputs:
+  reviewers-json:
+    description: JSON array of trimmed, non-empty usernames.
+    value: ${{ steps.run.outputs.reviewers-json }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run build-reviewer-args.sh
+      id: run
+      shell: bash
+      env:
+        REVIEWERS: ${{ inputs.reviewers }}
+      # build-reviewer-args.sh lives in ../../workflows/scripts/ relative to
+      # this action's own directory, mirroring sum-costs/extract-total-cost's
+      # own resolution.
+      run: |
+        JSON="$(bash "${{ github.action_path }}/../../workflows/scripts/build-reviewer-args.sh" "$REVIEWERS")"
+        echo "reviewers-json=$JSON" >> "$GITHUB_OUTPUT"

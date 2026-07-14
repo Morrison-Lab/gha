@@ -1,0 +1,17 @@
+# Copy to .github/workflows/request-dependabot-review.yml in your repo.
+# NOTE: the calling job grants pull-requests:write so the workflow can
+# request a review. Required because repos default to a read-only token.
+name: Request Dependabot PR Review
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  request-review:
+    permissions:
+      pull-requests: write
+    uses: d-morrison/gha/.github/workflows/request-dependabot-review.yml@v2
+    with:
+      reviewers: your-github-username
+      # bot-actor: renovate[bot]   # override the default (dependabot[bot])

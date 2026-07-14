@@ -11,10 +11,10 @@ major tag each capability's own reference page documents (`@v1` for most,
 `@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
-`claude-code-review`, `update-snapshots`, `lint-yaml`, and `lint-markdown` —
-see the Versioning section of `README.md`). `@v1` was frozen at the
-pre-`2.0.0` snapshot and has picked up no fixes since, which is why the
-capabilities above moved to `@v2`.
+`claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`, and
+`request-dependabot-review` — see the Versioning section of `README.md`).
+`@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
+which is why the capabilities above moved to `@v2`.
 
 ### Layout
 
@@ -39,8 +39,10 @@ capabilities above moved to `@v2`.
   `workflow_call` reusable workflow (inline shell logic, no external composite);
   `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
   reusable workflows that call the shared internal `open-sync-pr` composite;
-  `slide-major-tag.yml` is dispatch-triggered and runs only in this
-  repo.
+  `request-dependabot-review.yml` similarly calls the internal
+  `build-reviewer-args` composite (see below) for its reviewer-list
+  split/trim logic; `slide-major-tag.yml` is dispatch-triggered and runs
+  only in this repo.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
 - `.github/actions/parse-workflow-ref/` — a small composite action that parses a
@@ -103,6 +105,14 @@ capabilities above moved to `@v2`.
   arithmetic has offline test coverage instead of being an inline `awk`
   one-liner only exercised by a live two-attempt review run (gha#219 review
   finding 5).
+- `.github/actions/build-reviewer-args/` — wraps
+  `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
+  list into a JSON array of trimmed, non-empty usernames.
+  `request-dependabot-review.yml` calls it once to build its `gh api -f
+  reviewers[]=...` arguments, so the split/trim logic has offline test
+  coverage instead of only being exercised by a live Dependabot PR (gha#253
+  review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
+  bob"` sent an invalid `reviewers[]= bob` and failed the job).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -274,6 +284,26 @@ same `github.action_path`-resolution proof the `run-review-guard` e2e steps
 give), asserting `extract-total-cost` surfaces the right cost for a real
 fixture and stays silent for a missing file, and `sum-costs` surfaces the
 right total for a real `uses:` call (gha#219 review finding 5).
+
+`.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
+`build-reviewer-args.sh` (see Layout above) offline against a table of
+reviewer-list inputs, including comma-only, whitespace-padded, and
+doubled-comma cases; CI runs it as a step in the `dependabot-review` job.
+That job also runs `build-reviewer-args` itself via a real `uses:` step (the
+same `github.action_path`-resolution proof the `run-review-guard` /
+`extract-total-cost` / `sum-costs` e2e steps above give), asserting it
+surfaces the correctly trimmed and split JSON array for a real call. Unlike
+those other e2e steps, this one can't also exercise
+`request-dependabot-review.yml`'s own reusable-workflow layer end-to-end yet:
+that workflow calls `build-reviewer-args` via `d-morrison/gha/...@v2`, which
+won't resolve until `@v2` is advanced past this capability's merge (the same
+`test-coverage` bootstrapping gap the Layout section's `_selftest.yml`/
+local-ref paragraph describes) — so `dependabot-review` tests the composite
+directly, the same
+"local composite, not the full reusable-workflow chain" precedent `coverage`
+below uses for `test-coverage.yml` (gha#253 review: missing selftest coverage
+for a new workflow with real side effects, precedented by the `sync-pr` job's
+`open-sync-pr` no-op test).
 
 ## GitHub access in remote / web sessions
 

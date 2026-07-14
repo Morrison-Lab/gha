@@ -1,0 +1,71 @@
+name: Request Dependabot PR Review (reusable)
+
+# Requests review from the given reviewers on a PR opened by Dependabot (or
+# another configured bot), so scheduled dependency bumps don't merge without
+# a human look — see #252 (motivated by d-morrison/qwt#131, a submodule bump
+# that auto-merged with "No reviews" / "No one assigned").
+#
+# dependabot.yml's own `reviewers:` config option used to cover this
+# declaratively, but GitHub retired it in favor of CODEOWNERS as of August
+# 2025 (https://github.blog/changelog/2025-08-08-dependabot-reviewers-configuration-option-is-replaced-by-code-owners/).
+# CODEOWNERS can't stand in for it here: a CODEOWNERS rule fires for *any* PR
+# touching the matched paths, with no way to scope it to bot-authored PRs
+# only. This workflow re-implements the retired behavior directly via the
+# REST API instead.
+#
+# Uses `gh api` rather than `gh pr edit --add-reviewer`: the latter also
+# looks up organization teams to disambiguate user vs. team reviewers, which
+# needs org-level read access the default GITHUB_TOKEN never has, and fails
+# with "Resource not accessible by integration" even for plain usernames
+# (https://github.com/cli/cli/issues/7671). The REST endpoint below takes
+# user logins directly, with no team lookup.
+#
+# The comma-split/trim logic lives in the build-reviewer-args composite
+# action (not inline here) so it can be unit-tested offline instead of only
+# exercised by a live Dependabot PR (gha#253 review).
+#
+# Workflow runs triggered by Dependabot via `pull_request` get a read-only
+# GITHUB_TOKEN by default, but have honored the job's own `permissions:`
+# block since October 2021
+# (https://github.blog/changelog/2021-10-06-github-actions-workflows-triggered-by-dependabot-prs-will-respect-permissions-key-in-workflows/),
+# so granting `pull-requests: write` here is enough — no need for the riskier
+# `pull_request_target` trigger.
+
+on:
+  workflow_call:
+    inputs:
+      reviewers:
+        description: Comma-separated GitHub usernames to request review from.
+        type: string
+        required: true
+      bot-actor:
+        description: Only request review when the PR author's login matches this.
+        type: string
+        default: 'dependabot[bot]'
+
+jobs:
+  request-review:
+    if: github.event.pull_request.user.login == inputs.bot-actor
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Build reviewer args
+        id: reviewers
+        uses: d-morrison/gha/.github/actions/build-reviewer-args@v2
+        with:
+          reviewers: ${{ inputs.reviewers }}
+
+      - name: Request review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEWERS_JSON: ${{ steps.reviewers.outputs.reviewers-json }}
+        run: |
+          set -euo pipefail
+          args=()
+          while IFS= read -r reviewer; do
+            args+=(-f "reviewers[]=$reviewer")
+          done < <(jq -r '.[]' <<< "$REVIEWERS_JSON")
+          gh api "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" "${args[@]}"

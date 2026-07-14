@@ -26,6 +26,7 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
+| [`request-dependabot-review.yml`](reference/request-dependabot-review.qmd) | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 
 ## Versioning {#versioning}
 
@@ -46,6 +47,8 @@ since Pages can only have one Source. `check-bibliography-dois.yml`,
 `@v2`: each picked up a real fix since the freeze (a dependency-pin bump, a
 new input, or a security fix) that a consumer still on `@v1` would miss
 (audited in [gha#182](https://github.com/d-morrison/gha/issues/182)).
+`request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
+the freeze - see [gha#252](https://github.com/d-morrison/gha/issues/252)).
 `check-news.yml`, `summary.yml`, `bump-submodule.yml`, and
 `sync-shared-fragments.yml` were audited in the same pass and found unchanged
 since the freeze, so `@v1` remains current for them.
