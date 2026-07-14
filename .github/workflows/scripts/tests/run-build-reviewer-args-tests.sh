@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Exercises build-reviewer-args.sh's split/trim logic offline, mirroring
 # run-sum-costs-tests.sh's pattern. Wired into _selftest.yml's
-# `review-fail-check` job (gha#253 review finding).
+# `dependabot-review` job (gha#253 review finding).
 #
 # Usage: bash .github/workflows/scripts/tests/run-build-reviewer-args-tests.sh
 set -euo pipefail

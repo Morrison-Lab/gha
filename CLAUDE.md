@@ -35,13 +35,14 @@ which is why the capabilities above moved to `@v2`.
   the Claude bot in this repo, not `workflow_call` wrappers.
 - Several workflows have no corresponding root composite: `check-news.yml`,
   `summary.yml`, and `preview-deploy.yml` are `workflow_call` reusable workflows
-  that wrap external actions; `cleanup-pr-previews.yml` and
-  `request-dependabot-review.yml` are self-contained `workflow_call` reusable
-  workflows (inline shell logic / a single `gh api` call, no external
-  composite); `bump-submodule.yml` and `sync-shared-fragments.yml` are
-  `workflow_call` reusable workflows that call the shared internal
-  `open-sync-pr` composite; `slide-major-tag.yml` is dispatch-triggered and
-  runs only in this repo.
+  that wrap external actions; `cleanup-pr-previews.yml` is a self-contained
+  `workflow_call` reusable workflow (inline shell logic, no external composite);
+  `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
+  reusable workflows that call the shared internal `open-sync-pr` composite;
+  `request-dependabot-review.yml` similarly calls the internal
+  `build-reviewer-args` composite (see below) for its reviewer-list
+  split/trim logic; `slide-major-tag.yml` is dispatch-triggered and runs
+  only in this repo.
 - `.github/actions/checkout-submodules/` — a small shared composite reused by the
   reusable workflows.
 - `.github/actions/parse-workflow-ref/` — a small composite action that parses a
@@ -296,8 +297,9 @@ those other e2e steps, this one can't also exercise
 `request-dependabot-review.yml`'s own reusable-workflow layer end-to-end yet:
 that workflow calls `build-reviewer-args` via `d-morrison/gha/...@v2`, which
 won't resolve until `@v2` is advanced past this capability's merge (the same
-`test-coverage` bootstrapping gap the "brand-new capability" note above
-describes) — so `dependabot-review` tests the composite directly, the same
+`test-coverage` bootstrapping gap the Layout section's `_selftest.yml`/
+local-ref paragraph describes) — so `dependabot-review` tests the composite
+directly, the same
 "local composite, not the full reusable-workflow chain" precedent `coverage`
 below uses for `test-coverage.yml` (gha#253 review: missing selftest coverage
 for a new workflow with real side effects, precedented by the `sync-pr` job's
