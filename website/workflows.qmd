@@ -26,6 +26,7 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
+| [`sync-upstream.yml`](reference/sync-upstream.qmd) | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
 | [`request-dependabot-review.yml`](reference/request-dependabot-review.qmd) | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 
 ## Versioning {#versioning}
@@ -48,7 +49,9 @@ since Pages can only have one Source. `check-bibliography-dois.yml`,
 new input, or a security fix) that a consumer still on `@v1` would miss
 (audited in [gha#182](https://github.com/d-morrison/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
-the freeze - see [gha#252](https://github.com/d-morrison/gha/issues/252)).
+the freeze - see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
+does `sync-upstream.yml` (added after the freeze - see
+[gha#254](https://github.com/d-morrison/gha/issues/254)).
 `check-news.yml`, `summary.yml`, `bump-submodule.yml`, and
 `sync-shared-fragments.yml` were audited in the same pass and found unchanged
 since the freeze, so `@v1` remains current for them.
@@ -151,10 +154,12 @@ which dispatches `claude-code-review.yml` via `workflow_dispatch`.
 Install both, and keep the review stub named `claude-code-review.yml`
 (or set `claude.yml`'s `review-workflow-file` input to match) so the dispatch resolves.
 
-## Shared-content sync {#shared-content-sync}
+## Content sync {#content-sync}
 
-Two repos can share single-source-of-truth content and keep both copies current
-without hand-bumping. The pair handles the two directions:
+Three workflows keep a repo current with content that lives elsewhere,
+without hand-bumping.
+The first two are the two directions of sharing single-source-of-truth content between a pair of repos;
+the third tracks an upstream a fork was cut from.
 
 - `bump-submodule.yml` is for the side that vendors the other repo as a git submodule.
   A scheduled run advances the submodule to its upstream HEAD and opens a PR when it moved.
@@ -162,9 +167,16 @@ without hand-bumping. The pair handles the two directions:
   because the other repo already submodules *it* (a mutual submodule would recurse).
   It vendors a pinned copy of the named files into a `dest-dir`,
   records the source repo and commit in a JSON manifest, and opens a PR when the copy changes.
+- `sync-upstream.yml` is for a fork that tracks the project it was cut from.
+  A scheduled run merges the upstream branch into a fork-owned automation branch
+  and opens a PR when the merge brings changes,
+  so the fork's own changes are preserved and upstream's updates are reviewed before they land.
+  On a clean merge the PR is mergeable;
+  on a conflict it carries the conflict markers for manual resolution.
 
-Both reuse the `open-sync-pr` composite,
+All three reuse the `open-sync-pr` composite,
 which commits staged changes to a reused automation branch and opens or updates one PR
 (a no-op when nothing changed).
-Path-filter or scope each side to the *other* repo's shared content
+For `bump-submodule.yml`/`sync-shared-fragments.yml`,
+scope each side to the *other* repo's shared content
 so the two auto-PRs do not ping-pong.
