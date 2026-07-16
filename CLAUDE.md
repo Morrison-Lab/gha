@@ -24,8 +24,8 @@ which is why the capabilities above moved to `@v2`.
   script — e.g. `check-bibliography-dois/` (R), `check-non-standard-chars/` and
   `check-phi/` (Python). `check-links/` bundles `lychee.default.toml`;
   `preview/`, `quarto-publish/`, and `open-sync-pr/` are action-only (the last
-  is the shared push-and-open-PR helper used by `bump-submodule` and
-  `sync-shared-fragments`).
+  is the shared push-and-open-PR helper used by `bump-submodule`,
+  `sync-shared-fragments`, and `sync-upstream`).
 - `.github/workflows/` — the `workflow_call` reusable workflows that wrap the
   composites (one per consumer-facing capability — the shared internal
   `open-sync-pr` composite has no wrapper), plus the `claude.yml` and
