@@ -336,9 +336,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, and
-`request-dependabot-review.yml` at `@v2` — see the Versioning section above),
-and so are **not** SHA-pinned.
+`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
+`request-dependabot-review.yml`, and `sync-upstream.yml` at `@v2` — see the
+Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 

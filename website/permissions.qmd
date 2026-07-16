@@ -26,7 +26,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `contents: write`, `pull-requests: write`, `actions: read`.
 - `cleanup-pr-previews` commits deletions to `gh-pages`, so grant
   `contents: write`, `pull-requests: read`.
-- `bump-submodule`, `sync-shared-fragments` open a PR, so grant
+- `bump-submodule`, `sync-shared-fragments`, `sync-upstream` open a PR, so grant
   `contents: write`, `pull-requests: write`,
   and enable Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
 - `claude` pushes branches, opens PRs, and dispatches the review workflow, so grant
