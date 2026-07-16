@@ -1,0 +1,154 @@
+name: Sync upstream fork (reusable)
+
+# Periodically merge an upstream repository's branch into this fork and open a
+# PR when the merge brings changes. For a fork of another project (e.g.
+# d-morrison/altdoc tracking etiennebacher/altdoc), a scheduled run merges the
+# upstream branch into a fork-owned automation branch and opens a PR, so the
+# fork's own changes are preserved while upstream's updates are reviewed before
+# they land on the default branch. The caller stub (examples/sync-upstream.yml)
+# owns the schedule / workflow_dispatch triggers.
+#
+# On a clean merge the PR is immediately mergeable. When upstream and the fork
+# have both changed the same lines, the merge conflicts: by default the
+# conflict markers are committed to the PR branch (every non-conflicting
+# upstream change still merges cleanly) so the drift surfaces as a visible PR a
+# human resolves; set fail-on-conflict to fail the run instead.
+
+on:
+  workflow_call:
+    inputs:
+      upstream-repo:
+        description: >-
+          Upstream repository to sync from, in owner/name form
+          (e.g. etiennebacher/altdoc). A private upstream needs an UPSTREAM_TOKEN
+          secret with read access; the default GITHUB_TOKEN can only read the
+          repo running the workflow.
+        type: string
+        required: true
+      upstream-branch:
+        description: Branch on the upstream repo to merge from.
+        type: string
+        default: main
+      base-branch:
+        description: >-
+          Base branch in this fork to open the PR against. The workflow merges
+          into whatever ref it was triggered on, so this should name that ref
+          (normally the fork's default branch).
+        type: string
+        default: main
+      pr-branch:
+        description: Head branch for the automation PR.
+        type: string
+        default: automated/sync-upstream
+      fail-on-conflict:
+        description: >-
+          When true, fail the run if the merge conflicts instead of opening a PR
+          that carries the conflict markers for manual resolution.
+        type: boolean
+        default: false
+    secrets:
+      UPSTREAM_TOKEN:
+        required: false
+      WORKFLOW_TOKEN:
+        required: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Full history so a merge base with upstream exists, and a push-capable
+          # token so open-sync-pr can push without putting the token in the
+          # remote URL.
+          fetch-depth: 0
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
+
+      - name: Merge upstream into the working tree
+        id: merge
+        env:
+          UPSTREAM_REPO: ${{ inputs.upstream-repo }}
+          UPSTREAM_BRANCH: ${{ inputs.upstream-branch }}
+          BASE_BRANCH: ${{ inputs.base-branch }}
+          UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}
+          FAIL_ON_CONFLICT: ${{ inputs.fail-on-conflict }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Fetch the upstream branch without recording a token-bearing remote URL
+          # in the git config, so a fetch error can't leak the token in the log.
+          # The token, when set, appears only in this command's arguments, which
+          # Actions masks.
+          fetch_url="https://github.com/${UPSTREAM_REPO}.git"
+          if [ -n "${UPSTREAM_TOKEN:-}" ]; then
+            fetch_url="https://x-access-token:${UPSTREAM_TOKEN}@github.com/${UPSTREAM_REPO}.git"
+          fi
+          git fetch --no-tags "$fetch_url" \
+            "+refs/heads/${UPSTREAM_BRANCH}:refs/remotes/upstream/${UPSTREAM_BRANCH}"
+
+          upstream_ref="refs/remotes/upstream/${UPSTREAM_BRANCH}"
+          upstream_sha=$(git rev-parse --short "$upstream_ref")
+          new_commits=$(git rev-list --count "HEAD..${upstream_ref}")
+          echo "upstream-sha=${upstream_sha}" >> "$GITHUB_OUTPUT"
+          echo "new-commits=${new_commits}" >> "$GITHUB_OUTPUT"
+
+          # Squash-merge upstream into the working tree without committing, so the
+          # shared open-sync-pr helper can commit exactly one "sync" commit onto
+          # the reused automation branch. --squash keeps us out of a MERGE_HEAD
+          # state, which open-sync-pr's `git switch -C` needs, while still doing a
+          # real three-way merge (so the fork's own files are preserved and only
+          # upstream's changes are applied).
+          conflicts=false
+          if git merge --squash "$upstream_ref"; then
+            :
+          else
+            conflicts=true
+          fi
+          echo "conflicts=${conflicts}" >> "$GITHUB_OUTPUT"
+
+          if [ "$conflicts" = "true" ]; then
+            if [ "$FAIL_ON_CONFLICT" = "true" ]; then
+              echo "::error::Merging ${UPSTREAM_REPO}@${UPSTREAM_BRANCH} conflicts and fail-on-conflict is set."
+              exit 1
+            fi
+            # Stage the conflict markers so no unmerged entries remain in the
+            # index: open-sync-pr's `git switch -C` refuses to run with unmerged
+            # paths. Every non-conflicting upstream change is already staged.
+            git add -A
+            echo "::warning::Merge conflicts detected; the PR will carry conflict markers for manual resolution."
+            commit_message="Merge upstream ${UPSTREAM_REPO}@${upstream_sha} (conflicts — manual resolution required)"
+          else
+            commit_message="Merge upstream ${UPSTREAM_REPO}@${upstream_sha}"
+          fi
+          echo "commit-message=${commit_message}" >> "$GITHUB_OUTPUT"
+
+          # Build the PR body (a multi-line step output).
+          {
+            echo 'pr-body<<PRBODY'
+            echo "Automated merge of [\`${UPSTREAM_REPO}@${UPSTREAM_BRANCH}\`](https://github.com/${UPSTREAM_REPO}/tree/${UPSTREAM_BRANCH}) (\`${upstream_sha}\`, ${new_commits} new commit(s) ahead) into \`${BASE_BRANCH}\`."
+            echo ""
+            if [ "$conflicts" = "true" ]; then
+              echo "⚠️ **This merge has conflicts.** Every non-conflicting upstream change is included; the conflicting files carry \`<<<<<<<\` markers. Check out this branch, resolve them, and push before merging."
+              echo ""
+            fi
+            echo "The fork's own changes are preserved — only upstream's changes since the last common commit are applied. Generated by the \`sync-upstream\` reusable workflow in [\`d-morrison/gha\`](https://github.com/d-morrison/gha)."
+            echo 'PRBODY'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open PR if upstream brought changes
+        uses: d-morrison/gha/open-sync-pr@v2
+        with:
+          branch: ${{ inputs.pr-branch }}
+          base: ${{ inputs.base-branch }}
+          # The whole working tree is the merge output, so commit everything (a
+          # no-op when the merge introduced nothing).
+          paths: '.'
+          commit-message: ${{ steps.merge.outputs.commit-message }}
+          pr-body: ${{ steps.merge.outputs.pr-body }}
+          token: ${{ secrets.WORKFLOW_TOKEN || github.token }}

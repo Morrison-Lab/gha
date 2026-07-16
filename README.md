@@ -62,6 +62,7 @@ not reference `@main` from consumers.
 | `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
+| `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes — keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
 
 ## Permissions
 
@@ -110,12 +111,13 @@ that need to write must have the **caller** grant it on the calling job:
   `contents: read`, `actions: read`.
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
-- `bump-submodule`, `sync-shared-fragments` (open a PR) → grant `contents: write`,
-  `pull-requests: write`, and enable Settings → Actions → General → "Allow
-  GitHub Actions to create and approve pull requests" so the integrated
-  `GITHUB_TOKEN` can open the PR. For private submodules, `bump-submodule` also
-  needs a `SUBMODULES_TOKEN` secret. Add a `WORKFLOW_TOKEN` only to push to a
-  protected branch; otherwise pushes fall back to `GITHUB_TOKEN`.
+- `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant
+  `contents: write`, `pull-requests: write`, and enable Settings → Actions →
+  General → "Allow GitHub Actions to create and approve pull requests" so the
+  integrated `GITHUB_TOKEN` can open the PR. For private submodules,
+  `bump-submodule` also needs a `SUBMODULES_TOKEN` secret; `sync-upstream` takes
+  an `UPSTREAM_TOKEN` for a private upstream. Add a `WORKFLOW_TOKEN` only to push
+  to a protected branch; otherwise pushes fall back to `GITHUB_TOKEN`.
 - `request-dependabot-review` (requests a reviewer on the PR) → grant
   `pull-requests: write`.
 
@@ -223,10 +225,12 @@ profile). Label-gated extras are preserved: add `preview:pdf`, `preview:docx`,
 or `preview:revealjs` to a PR to render those formats too, and `clear freezer`
 to bypass the Quarto freeze cache.
 
-## Shared-content sync (`bump-submodule` + `sync-shared-fragments`)
+## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 
-Two repos can share single-source-of-truth content and keep both copies current
-without hand-bumping. The pair handles the two directions:
+Three workflows keep a repo current with content that lives elsewhere, without
+hand-bumping. The first two are the two directions of sharing single-source-of-
+truth content between a pair of repos; the third tracks an upstream a fork was
+cut from.
 
 - **`bump-submodule`** — for the side that vendors the other repo as a git
   submodule. A scheduled run advances the submodule to its upstream HEAD and
@@ -240,12 +244,20 @@ without hand-bumping. The pair handles the two directions:
   authored fragments.) Don't hand-edit the vendored copies — edit them upstream
   and let the workflow refresh them; a consumer-side drift check can assert the
   copy matches the pinned commit.
+- **`sync-upstream`** — for a fork that tracks the project it was cut from. A
+  scheduled run merges the upstream branch into a fork-owned automation branch
+  and opens a PR when the merge brings changes, so the fork's own changes are
+  preserved and upstream's updates are reviewed before they land. On a clean
+  merge the PR is mergeable; on a conflict it carries the conflict markers for
+  manual resolution (or set `fail-on-conflict` to fail the run instead). (Used
+  by `d-morrison/altdoc`, a fork of `etiennebacher/altdoc`.)
 
-Both reuse the `open-sync-pr` composite, which commits staged changes to a
+All three reuse the `open-sync-pr` composite, which commits staged changes to a
 reused automation branch and opens or updates one PR (no-op when nothing
 changed). Schedule and `workflow_dispatch` triggers live in the caller stubs.
-Path-filter or scope each side to the *other* repo's shared content (not its own
-pointer/manifest) so the two auto-PRs don't ping-pong.
+For `bump-submodule`/`sync-shared-fragments`, scope each side to the *other*
+repo's shared content (not its own pointer/manifest) so the two auto-PRs don't
+ping-pong.
 
 ## Versioning
 
@@ -268,7 +280,9 @@ picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
 [gha#182](https://github.com/d-morrison/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
-the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)).
+the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
+does `sync-upstream.yml` (added after the freeze — see
+[gha#254](https://github.com/d-morrison/gha/issues/254)).
 `summary.yml`,
 `check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
@@ -322,9 +336,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, and
-`request-dependabot-review.yml` at `@v2` — see the Versioning section above),
-and so are **not** SHA-pinned.
+`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
+`request-dependabot-review.yml`, and `sync-upstream.yml` at `@v2` — see the
+Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies
 

@@ -11,8 +11,8 @@ ones. Pin `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` to `@v2`;
 `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
-`lint-markdown.yml`, and `request-dependabot-review.yml` only ever shipped at
-`@v2` (too new to exist at the frozen `@v1` tag). See
+`lint-markdown.yml`, `request-dependabot-review.yml`, and `sync-upstream.yml`
+only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
 capabilities still pin `@v1` and why. Breaking changes bump the major tag
 (`v2`, and so on) with migration steps.
@@ -71,9 +71,9 @@ intentionally track the moving major tag (currently `@v1`, except
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, and
-`request-dependabot-review.yml` at `@v2` - see the versioning note above), so
-they are **not** SHA-pinned.
+`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
+`request-dependabot-review.yml`, and `sync-upstream.yml` at `@v2` - see the
+versioning note above), so they are **not** SHA-pinned.
 
 ## Reverse dependencies
 

@@ -1,0 +1,29 @@
+# Copy to .github/workflows/sync-upstream.yml in your repo.
+# Periodically merge an upstream repo's branch into this fork and open a PR when
+# the merge brings changes. For a fork that tracks another project's repo: the
+# fork's own changes are preserved and upstream's updates land via a reviewable
+# PR. Requires Settings -> Actions -> General -> "Allow GitHub Actions to create
+# and approve pull requests" (the integrated GITHUB_TOKEN opens the PR).
+name: Sync upstream fork
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+
+jobs:
+  sync:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: d-morrison/gha/.github/workflows/sync-upstream.yml@v2
+    with:
+      upstream-repo: etiennebacher/altdoc
+      # upstream-branch: main    # branch on the upstream repo to merge from
+      # fail-on-conflict: false  # true fails the run instead of opening a conflicted PR
+    secrets:
+      # Needed only if upstream-repo is private; omit for public upstreams.
+      UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}
+      # Set only if the bot must push to a protected branch; otherwise omit and
+      # the push falls back to GITHUB_TOKEN.
+      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}

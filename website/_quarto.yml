@@ -50,6 +50,7 @@ website:
           - reference/claude-code-review.qmd
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd
+          - reference/sync-upstream.qmd
 
 format:
   html:

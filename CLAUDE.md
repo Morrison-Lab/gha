@@ -11,8 +11,9 @@ major tag each capability's own reference page documents (`@v1` for most,
 `@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
-`claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`, and
-`request-dependabot-review` — see the Versioning section of `README.md`).
+`claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
+`request-dependabot-review`, and `sync-upstream` — see the Versioning section
+of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`.
 
@@ -23,8 +24,8 @@ which is why the capabilities above moved to `@v2`.
   script — e.g. `check-bibliography-dois/` (R), `check-non-standard-chars/` and
   `check-phi/` (Python). `check-links/` bundles `lychee.default.toml`;
   `preview/`, `quarto-publish/`, and `open-sync-pr/` are action-only (the last
-  is the shared push-and-open-PR helper used by `bump-submodule` and
-  `sync-shared-fragments`).
+  is the shared push-and-open-PR helper used by `bump-submodule`,
+  `sync-shared-fragments`, and `sync-upstream`).
 - `.github/workflows/` — the `workflow_call` reusable workflows that wrap the
   composites (one per consumer-facing capability — the shared internal
   `open-sync-pr` composite has no wrapper), plus the `claude.yml` and
@@ -37,8 +38,12 @@ which is why the capabilities above moved to `@v2`.
   `summary.yml`, and `preview-deploy.yml` are `workflow_call` reusable workflows
   that wrap external actions; `cleanup-pr-previews.yml` is a self-contained
   `workflow_call` reusable workflow (inline shell logic, no external composite);
-  `bump-submodule.yml` and `sync-shared-fragments.yml` are `workflow_call`
-  reusable workflows that call the shared internal `open-sync-pr` composite;
+  `bump-submodule.yml`, `sync-shared-fragments.yml`, and `sync-upstream.yml`
+  are `workflow_call` reusable workflows that call the shared internal
+  `open-sync-pr` composite (`sync-upstream` merges an upstream repo's branch
+  into a fork via `git merge --squash` — which stays out of a `MERGE_HEAD`
+  state so `open-sync-pr`'s `git switch -C` works — then lets `open-sync-pr`
+  commit the merge and open the PR);
   `request-dependabot-review.yml` similarly calls the internal
   `build-reviewer-args` composite (see below) for its reviewer-list
   split/trim logic; `slide-major-tag.yml` is dispatch-triggered and runs
