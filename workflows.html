@@ -46,9 +46,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-15634bcf2e68342d4ad2dfa704d543f6.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-21dfb6f5b24708782b3851273225b992.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-1d9ce628b283cb5cd0383b305d90339b.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-21dfb6f5b24708782b3851273225b992.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-c77c9138bec0b7f87654b70582999a87.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-ac5bb5289c2b1a5be279e62d808716b0.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-c77c9138bec0b7f87654b70582999a87.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -429,6 +429,12 @@ ul.task-list li input[type="checkbox"] {
  <span class="menu-text">sync-shared-fragments.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/sync-upstream.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">sync-upstream.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -446,7 +452,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#phi-scanning" id="toc-phi-scanning" class="nav-link" data-scroll-target="#phi-scanning">PHI scanning</a></li>
   <li><a href="#quarto-sites" id="toc-quarto-sites" class="nav-link" data-scroll-target="#quarto-sites">Quarto sites</a></li>
   <li><a href="#claude-bots" id="toc-claude-bots" class="nav-link" data-scroll-target="#claude-bots">Claude bots</a></li>
-  <li><a href="#shared-content-sync" id="toc-shared-content-sync" class="nav-link" data-scroll-target="#shared-content-sync">Shared-content sync</a></li>
+  <li><a href="#content-sync" id="toc-content-sync" class="nav-link" data-scroll-target="#content-sync">Content sync</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/workflows.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
@@ -574,6 +580,11 @@ ul.task-list li input[type="checkbox"] {
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/sync-upstream.html"><code>sync-upstream.yml</code></a></td>
+<td>Merge an upstream repo’s branch into a fork and open a PR when the merge brings changes</td>
+<td><code>upstream-repo</code>, <code>upstream-branch</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>fail-on-conflict</code></td>
+</tr>
+<tr class="even">
 <td><a href="./reference/request-dependabot-review.html"><code>request-dependabot-review.yml</code></a></td>
 <td>Request review from configured reviewers when a PR’s author matches a bot actor (Dependabot by default)</td>
 <td><code>reviewers</code>, <code>bot-actor</code></td>
@@ -582,7 +593,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, and <code>lint-markdown.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/d-morrison/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/d-morrison/gha/issues/252">gha#252</a>). <code>check-news.yml</code>, <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, and <code>lint-markdown.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/d-morrison/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/d-morrison/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/d-morrison/gha/issues/254">gha#254</a>). <code>check-news.yml</code>, <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
@@ -638,14 +649,15 @@ ul.task-list li input[type="checkbox"] {
 </ul>
 <p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves.</p>
 </section>
-<section id="shared-content-sync" class="level2">
-<h2 class="anchored" data-anchor-id="shared-content-sync">Shared-content sync</h2>
-<p>Two repos can share single-source-of-truth content and keep both copies current without hand-bumping. The pair handles the two directions:</p>
+<section id="content-sync" class="level2">
+<h2 class="anchored" data-anchor-id="content-sync">Content sync</h2>
+<p>Three workflows keep a repo current with content that lives elsewhere, without hand-bumping. The first two are the two directions of sharing single-source-of-truth content between a pair of repos; the third tracks an upstream a fork was cut from.</p>
 <ul>
 <li><code>bump-submodule.yml</code> is for the side that vendors the other repo as a git submodule. A scheduled run advances the submodule to its upstream HEAD and opens a PR when it moved.</li>
 <li><code>sync-shared-fragments.yml</code> is for the side that cannot add a submodule because the other repo already submodules <em>it</em> (a mutual submodule would recurse). It vendors a pinned copy of the named files into a <code>dest-dir</code>, records the source repo and commit in a JSON manifest, and opens a PR when the copy changes.</li>
+<li><code>sync-upstream.yml</code> is for a fork that tracks the project it was cut from. A scheduled run merges the upstream branch into a fork-owned automation branch and opens a PR when the merge brings changes, so the fork’s own changes are preserved and upstream’s updates are reviewed before they land. On a clean merge the PR is mergeable; on a conflict it carries the conflict markers for manual resolution.</li>
 </ul>
-<p>Both reuse the <code>open-sync-pr</code> composite, which commits staged changes to a reused automation branch and opens or updates one PR (a no-op when nothing changed). Path-filter or scope each side to the <em>other</em> repo’s shared content so the two auto-PRs do not ping-pong.</p>
+<p>All three reuse the <code>open-sync-pr</code> composite, which commits staged changes to a reused automation branch and opens or updates one PR (a no-op when nothing changed). For <code>bump-submodule.yml</code>/<code>sync-shared-fragments.yml</code>, scope each side to the <em>other</em> repo’s shared content so the two auto-PRs do not ping-pong.</p>
 
 
 </section>
