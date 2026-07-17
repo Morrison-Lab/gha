@@ -82,6 +82,14 @@ runs:
       with:
         packages: ${{ inputs.r-packages }}
 
+    - name: Raise Deno V8 heap cap for large site renders
+      shell: bash
+      # Same override as preview/action.yml (see that file's comment for the
+      # full rationale): lift Quarto's default 8 GB Deno heap cap so large
+      # multi-chapter sites don't crash the publish render with
+      # "Fatal JavaScript out of memory" (gha#262).
+      run: echo "QUARTO_DENO_V8_OPTIONS=--max-old-space-size=12288,--max-heap-size=12288" >> "$GITHUB_ENV"
+
     - name: Render Quarto project
       shell: bash
       env:

@@ -142,6 +142,20 @@ runs:
           quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
           quarto-freezer-${{ runner.os }}-
 
+    - name: Raise Deno V8 heap cap for large site renders
+      if: github.event.action != 'closed'
+      shell: bash
+      # Quarto's launcher defaults Deno to an 8 GB V8 heap
+      # (--max-old-space-size=8192,--max-heap-size=8192) and appends any
+      # user-supplied QUARTO_DENO_V8_OPTIONS after those defaults; V8 lets
+      # the last occurrence of a flag win, so this override takes effect.
+      # Large multi-chapter sites (d-morrison/rme, ~37 pages) exceed 8 GB
+      # of cumulative heap late in `quarto render` and crash with
+      # "Fatal JavaScript out of memory" (exit 133); standard GitHub
+      # runners have 16 GB of RAM, so 12 GB leaves headroom for R and the
+      # OS while lifting the binding constraint (gha#262).
+      run: echo "QUARTO_DENO_V8_OPTIONS=--max-old-space-size=12288,--max-heap-size=12288" >> "$GITHUB_ENV"
+
     - name: Render pdf
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:pdf')
       shell: bash
