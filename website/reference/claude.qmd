@@ -89,14 +89,15 @@ on:
 jobs:
   claude:
     # Cheap caller-side gate: only invoke the reusable workflow when an @claude
-    # mention is actually present, so unrelated comment / review / issue events
-    # don't spawn a (skipped) reusable-workflow run. The reusable workflow still
-    # enforces the trusted-author gate (OWNER/MEMBER/COLLABORATOR).
+    # mention is present AND the author is trusted (OWNER/MEMBER/COLLABORATOR),
+    # so an untrusted commenter's mention doesn't even spawn the
+    # reusable-workflow run. This mirrors the reusable workflow's own
+    # trusted-author gate as defense-in-depth.
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
     permissions:
       contents: write
       pull-requests: write
