@@ -16,6 +16,8 @@ already include the right `permissions:` blocks; copy them as-is.
   `issues: write`, `pull-requests: read`, `contents: read`.
 - `summary` comments on issues and calls the models API, so grant
   `issues: write`, `models: read`, `contents: read`.
+- `update-snapshots` pushes the snapshot-update commit back to the branch, so grant
+  `contents: write`.
 - `quarto-publish` deploys to the `gh-pages` branch, so grant
   `contents: write`, and set Settings -> Pages -> Source to
   "Deploy from a branch", branch `gh-pages` / `(root)` once.
