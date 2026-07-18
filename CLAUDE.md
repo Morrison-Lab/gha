@@ -702,7 +702,9 @@ functionality has already been done — in one of the lab's own repos
 trustworthy external source the code could depend on instead (base R,
 [r-lib](https://github.com/r-lib),
 [tidyverse](https://github.com/tidyverse), a focused, well-maintained
-CRAN package, the GitHub Actions marketplace). Flag a hand-rolled
+CRAN package, a vetted, well-maintained GitHub Actions marketplace
+action — SHA-pinned per `README.md`'s "Pinning third-party actions"
+subsection). Flag a hand-rolled
 equivalent of functionality that already exists: name the existing
 implementation, and prefer depending on it — or forking and/or
 contributing to it — over re-building from scratch. Accept the custom
