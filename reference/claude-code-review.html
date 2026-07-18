@@ -583,7 +583,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>check-latex-macros</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Check PR diffs for LaTeX math simplifiable via an existing macro from the <code>d-morrison/macros</code> submodule, and for nontrivial expressions repeated 3+ times that are candidates for a new one. Off by default. The reviewer has no network-fetch tools, so this only finds real macro definitions when the repo vendors the <code>d-morrison/macros</code> submodule <strong>and</strong> <code>checkout-submodules: true</code> is also set.</td>
+<td>Check PR diffs for LaTeX math simplifiable via an existing macro from the <code>d-morrison/macros</code> submodule, and for nontrivial expressions repeated 3+ times that are candidates for a new one. Off by default. The macro checks read definitions only from a locally checked-out submodule (the repo’s pinned version is authoritative), so this only finds real macro definitions when the repo vendors the <code>d-morrison/macros</code> submodule <strong>and</strong> <code>checkout-submodules: true</code> is also set.</td>
 </tr>
 <tr class="odd">
 <td><code>report-cost</code></td>
