@@ -581,10 +581,11 @@ content the reader hasn't reached yet, in *any* prose, not just documents
 with crossref divs. Flag these too: confirm each hit is a genuine reference
 (not an idiom like "values below the threshold") and that the target really
 comes later, then suggest reordering the content earlier or rewording the
-pointer into a working link. This is a global standing rule proposed in
-[`d-morrison/ai-config#507`](https://github.com/d-morrison/ai-config/pull/507)
-— once merged, the fragment lives at `shared/writing/forward-references.md`
-there, with a dedicated `fix-forward-references` (`ffr`) skill that applies
+pointer into a working link. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/writing/forward-references.md`, added in
+[ai-config#507](https://github.com/d-morrison/ai-config/pull/507)), with a
+dedicated `fix-forward-references` (`ffr`) skill there that applies
 the fix directly rather than only flagging it in review.
 
 ### 7. Suggest semantic line breaks in prose
@@ -619,10 +620,10 @@ embedded in it — is *right*, not just correctly styled:
 
 Distinguish a strategic finding (needs a different approach) from a
 tactical one (needs a correction within the existing approach) — the fix
-differs. This is a global standing rule proposed in
-[`d-morrison/ai-config#455`](https://github.com/d-morrison/ai-config/pull/455)
-— once merged, the fragment lives at `shared/coding/fact-check-code-logic.md`
-there.
+differs. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/coding/fact-check-code-logic.md`, added in
+[ai-config#455](https://github.com/d-morrison/ai-config/pull/455)).
 
 ### 9. Challenge unnecessary complexity
 
@@ -674,10 +675,10 @@ drift. Also flag a wrapper function that manually re-declares and relays
 arguments it never touches itself instead of forwarding
 [`...`](https://adv-r.hadley.nz/functions.html?q=dot-dot#fun-dot-dot-dot)
 straight to the subfunction (documented via `@inheritDotParams`). This is a
-global standing rule proposed in
-[`d-morrison/ai-config#474`](https://github.com/d-morrison/ai-config/pull/474)
-— once merged, the fragment lives at `shared/coding/reuse-docs-and-args.md`
-there.
+global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/coding/reuse-docs-and-args.md`, added in
+[ai-config#474](https://github.com/d-morrison/ai-config/pull/474)).
 
 ### 13. Flag skipped steps in math derivations
 
@@ -714,7 +715,6 @@ one-liner), and ask for a note in the PR description or a code comment
 — "checked existing options, nothing fit" — when it's missing. This is a global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/coding/prefer-packaged-functions.md` states the R-function
-case); its umbrella statement is proposed in
-[`d-morrison/ai-config#603`](https://github.com/d-morrison/ai-config/pull/603)
-— once merged, the fragment lives at
-`shared/principles/dont-reinvent-wheel.md` there.
+case); its umbrella statement lives at
+`shared/principles/dont-reinvent-wheel.md` there, added in
+[ai-config#603](https://github.com/d-morrison/ai-config/pull/603).
