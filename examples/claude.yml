@@ -33,8 +33,8 @@ jobs:
     # so an untrusted commenter's mention doesn't even spawn the
     # reusable-workflow run. This mirrors the reusable workflow's own
     # trusted-author gate as defense-in-depth: without it, the run still gets
-    # skipped downstream, but only after burning runner minutes and invoking a
-    # workflow that was granted elevated permissions and passed secrets.
+    # skipped downstream, but only after invoking a workflow that was granted
+    # elevated permissions and passed secrets.
     #
     # If you added schedule/workflow_dispatch above, widen this too - neither
     # event has a comment/issue body or author_association to check. Both are

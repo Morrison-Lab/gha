@@ -24,8 +24,8 @@ jobs:
     # so an untrusted commenter's mention doesn't even spawn the
     # reusable-workflow run. This mirrors the reusable workflow's own
     # trusted-author gate as defense-in-depth: without it, the run still gets
-    # skipped downstream, but only after burning runner minutes and invoking a
-    # workflow that was granted elevated permissions and passed secrets.
+    # skipped downstream, but only after invoking a workflow that was granted
+    # elevated permissions and passed secrets.
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||

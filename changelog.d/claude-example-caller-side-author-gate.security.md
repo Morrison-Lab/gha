@@ -5,9 +5,9 @@
   mention in the triggering comment/review/issue, so any commenter — not
   just a trusted one — could spawn a run of the reusable workflow; its own
   trusted-author gate (`OWNER`/`MEMBER`/`COLLABORATOR`) still made the
-  run's jobs skip, so no secrets were exercised, but the run still burned
-  runner minutes and invoked a workflow granted elevated permissions and
-  passed secrets. The gate now requires
+  run's job skip, so no secrets were exercised, but the run still invoked
+  a workflow granted elevated permissions and passed secrets. The gate now
+  requires
   `contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), ...author_association)`
   alongside each event's mention check, mirroring the reusable workflow's
   own gate as defense-in-depth.
