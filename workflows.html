@@ -377,6 +377,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">update-snapshots.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/summary.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">summary.yml</span></a>
   </div>
@@ -530,61 +536,66 @@ ul.task-list li input[type="checkbox"] {
 <td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>fail-ci-if-error</code>, <code>upload-test-results</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/update-snapshots.html"><code>update-snapshots.yml</code></a></td>
+<td>Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit</td>
+<td><code>ref</code>, <code>pr-mode</code>, <code>julia</code>, <code>extra-packages</code>, <code>apt-packages</code>, <code>commit-message</code></td>
+</tr>
+<tr class="even">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
 <td>AI summary comment on newly opened issues</td>
 <td>–</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto site and deploy it to GitHub Pages</td>
 <td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>tinytex</code>, <code>output-dir</code>, <code>checkout-submodules</code>, <code>deploy</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
 <td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
 <td>–</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a></td>
 <td>Crawl the build artifact with a headless browser and fail on equations MathJax can’t render</td>
 <td><code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
 <td>Housekeeping: delete preview directories for closed PRs</td>
 <td><code>preview-dir</code>, <code>compact-history</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>reviewer</code>, <code>report-cost</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Read-only Claude PR review</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>report-cost</code>, <code>model</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
 <td>Update a submodule to upstream HEAD and open a PR when the pointer moves</td>
 <td><code>submodule-path</code>, <code>remote-branch</code>, <code>base-branch</code>, <code>pr-branch</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
 <td>Vendor files from an upstream repo (pinned to a commit) and open a PR when they change</td>
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/sync-upstream.html"><code>sync-upstream.yml</code></a></td>
 <td>Merge an upstream repo’s branch into a fork and open a PR when the merge brings changes</td>
 <td><code>upstream-repo</code>, <code>upstream-branch</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>fail-on-conflict</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/request-dependabot-review.html"><code>request-dependabot-review.yml</code></a></td>
 <td>Request review from configured reviewers when a PR’s author matches a bot actor (Dependabot by default)</td>
 <td><code>reviewers</code>, <code>bot-actor</code></td>

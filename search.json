@@ -15,7 +15,7 @@
     "href": "permissions.html#per-workflow-grants",
     "title": "Permissions",
     "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\ncheck-bibliography-dois, check-non-standard-chars, check-phi need only contents: read (the default), so no permissions: block is needed.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview (build half, read-only) needs only contents: read (the default).\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, id-token: write, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.",
+    "text": "Per-workflow grants\n\ncheck-bibliography-dois, check-non-standard-chars, check-phi need only contents: read (the default), so no permissions: block is needed.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview (build half, read-only) needs only contents: read (the default).\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, id-token: write, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.",
     "crumbs": [
       "Overview",
       "Permissions"
@@ -477,6 +477,186 @@
     "text": "Example\n# Copy to .github/workflows/lint-yaml.yml in your repo.\n# Lints tracked YAML files with yamllint (bundled default config), plus a\n# companion check that flags long `run:` script blocks in workflow/action\n# YAML as decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint YAML\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: d-morrison/gha/.github/workflows/lint-yaml.yml@v2\n    # with:\n    #   config-file: '.yamllint.yml'   # override the bundled default config\n    #   paths-ignore: 'renv/**'        # skip known-vendored paths\n    #   fail: false                    # warn instead of failing on yamllint errors\nSee the examples/ directory for the full caller stub (lint-yaml.yml)."
   },
   {
+    "objectID": "reference/test-coverage.html",
+    "href": "reference/test-coverage.html",
+    "title": "test-coverage.yml",
+    "section": "",
+    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#inputs",
+    "href": "reference/test-coverage.html#inputs",
+    "title": "test-coverage.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.\n\n\nupload-test-results\nboolean\ntrue\nAlso generate a JUnit test-results report (testthat::JunitReporter) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#secrets",
+    "href": "reference/test-coverage.html#secrets",
+    "title": "test-coverage.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#permissions",
+    "href": "reference/test-coverage.html#permissions",
+    "title": "test-coverage.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#example",
+    "href": "reference/test-coverage.html#example",
+    "title": "test-coverage.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\n    #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/preview-deploy.html",
+    "href": "reference/preview-deploy.html",
+    "title": "preview-deploy.yml",
+    "section": "",
+    "text": "The deploy half of the PR-preview family. Triggered on the build workflow’s workflow_run completion, it downloads the artifact and publishes the preview to gh-pages in the base-repo context, then comments the preview link. Keeping it split from the read-only build half is the trust boundary, so untrusted fork code never holds write permissions. The deploy stub’s on: workflow_run: workflows: value must match the build workflow’s name:.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "preview-deploy.yml"
+    ]
+  },
+  {
+    "objectID": "reference/preview-deploy.html#inputs",
+    "href": "reference/preview-deploy.html#inputs",
+    "title": "preview-deploy.yml",
+    "section": "Inputs",
+    "text": "Inputs\nThis workflow takes no inputs.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "preview-deploy.yml"
+    ]
+  },
+  {
+    "objectID": "reference/preview-deploy.html#permissions",
+    "href": "reference/preview-deploy.html#permissions",
+    "title": "preview-deploy.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant contents: write (push to gh-pages), pull-requests: write (post the preview-link comment), and actions: read (download the build artifact).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "preview-deploy.yml"
+    ]
+  },
+  {
+    "objectID": "reference/preview-deploy.html#example",
+    "href": "reference/preview-deploy.html#example",
+    "title": "preview-deploy.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/preview-deploy.yml in your repo.\n# Deploy half of the PR-preview family: triggered when the build workflow\n# finishes, downloads its artifact, and publishes the preview to gh-pages. This\n# runs in the BASE-repo context, so its token can write --- keeping it separate\n# from the read-only build half is the trust boundary.\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Quarto Preview Deploy\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  deploy:\n    permissions:\n      contents: write        # push to gh-pages\n      pull-requests: write   # post the preview-link comment\n      actions: read          # download the build artifact\n    uses: d-morrison/gha/.github/workflows/preview-deploy.yml@v2\nSee examples/preview-deploy.yml for the full caller stub.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "preview-deploy.yml"
+    ]
+  },
+  {
+    "objectID": "versioning.html",
+    "href": "versioning.html",
+    "title": "Versioning",
+    "section": "",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, request-dependabot-review.yml, and sync-upstream.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#advancing-a-major-tag",
+    "href": "versioning.html#advancing-a-major-tag",
+    "title": "Versioning",
+    "section": "Advancing a major tag",
+    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#pinning-third-party-actions",
+    "href": "versioning.html#pinning-third-party-actions",
+    "title": "Versioning",
+    "section": "Pinning third-party actions",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, request-dependabot-review.yml, and sync-upstream.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "versioning.html#reverse-dependencies",
+    "href": "versioning.html#reverse-dependencies",
+    "title": "Versioning",
+    "section": "Reverse dependencies",
+    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
+    "crumbs": [
+      "Overview",
+      "Versioning"
+    ]
+  },
+  {
+    "objectID": "reference/lint-markdown.html",
+    "href": "reference/lint-markdown.html",
+    "title": "lint-markdown.yml",
+    "section": "",
+    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates."
+  },
+  {
+    "objectID": "reference/lint-markdown.html#inputs",
+    "href": "reference/lint-markdown.html#inputs",
+    "title": "lint-markdown.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint."
+  },
+  {
+    "objectID": "reference/lint-markdown.html#permissions",
+    "href": "reference/lint-markdown.html#permissions",
+    "title": "lint-markdown.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+  },
+  {
+    "objectID": "reference/lint-markdown.html#example",
+    "href": "reference/lint-markdown.html#example",
+    "title": "lint-markdown.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus a companion check that flags long fenced code blocks as\n# decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: d-morrison/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\nSee the examples/ directory for the full caller stub (lint-markdown.yml)."
+  },
+  {
     "objectID": "reference/claude.html",
     "href": "reference/claude.html",
     "title": "claude.yml",
@@ -537,183 +717,63 @@
     ]
   },
   {
-    "objectID": "reference/lint-markdown.html",
-    "href": "reference/lint-markdown.html",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/update-snapshots.html",
+    "href": "reference/update-snapshots.html",
+    "title": "update-snapshots.yml",
     "section": "",
-    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates."
+    "text": "Regenerate testthat snapshots for an R package: run the test suite, accept the output the code now produces (testthat::snapshot_accept()), re-run the tests, then commit and push the changed files under tests/testthat/_snaps/. Optionally sets up Julia first, for packages whose tests call a bundled Julia project.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "update-snapshots.yml"
+    ]
   },
   {
-    "objectID": "reference/lint-markdown.html#inputs",
-    "href": "reference/lint-markdown.html#inputs",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/update-snapshots.html#inputs",
+    "href": "reference/update-snapshots.html#inputs",
+    "title": "update-snapshots.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nref\nstring\n''\nBranch or SHA to check out. Defaults to the event ref when empty; pass a branch name for workflow_dispatch callers or github.head_ref for pull_request callers.\n\n\npr-mode\nboolean\nfalse\nUse r-lib/actions/pr-fetch and pr-push instead of direct checkout and push. Set true for PR-comment (issue_comment) triggers.\n\n\njulia\nboolean\nfalse\nSet up the Julia runtime before running tests.\n\n\njulia-version\nstring\n'1'\nJulia version to install. Only used when julia is true.\n\n\njulia-project\nstring\n'inst/julia'\nPath to the Julia project to instantiate. Only used when julia is true.\n\n\nextra-packages\nstring\n'any::testthat'\nExtra R packages forwarded to r-lib/actions/setup-r-dependencies.\n\n\nneeds\nstring\n'check'\nneeds label forwarded to r-lib/actions/setup-r-dependencies.\n\n\napt-packages\nstring\n(standard R system-deps list)\nSpace-separated apt packages to install before R setup. The default covers the system libraries a typical R package’s dependencies need to build from source (Cairo, fonts, graphics, gettext, OpenMP). Pass your own list to override, or an empty string to skip the install step.\n\n\ncommit-message\nstring\n'Update testthat snapshots [auto]'\nCommit message for the snapshot update commit.\n\n\ncommitter-name\nstring\n'github-actions[bot]'\nGit committer name.\n\n\ncommitter-email\nstring\n'41898282+github-actions[bot]@users.noreply.github.com'\nGit committer email.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "update-snapshots.yml"
+    ]
   },
   {
-    "objectID": "reference/lint-markdown.html#permissions",
-    "href": "reference/lint-markdown.html#permissions",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/update-snapshots.html#permissions",
+    "href": "reference/update-snapshots.html#permissions",
+    "title": "update-snapshots.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+    "text": "Permissions\nGrant contents: write so the job can push the snapshot commit back to the branch.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "update-snapshots.yml"
+    ]
   },
   {
-    "objectID": "reference/lint-markdown.html#example",
-    "href": "reference/lint-markdown.html#example",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/update-snapshots.html#when-are-the-updated-snapshots-checked",
+    "href": "reference/update-snapshots.html#when-are-the-updated-snapshots-checked",
+    "title": "update-snapshots.yml",
+    "section": "When are the updated snapshots checked?",
+    "text": "When are the updated snapshots checked?\nThe workflow itself checks only consistency, never correctness. Its test-and-accept step:\n\nruns the test suite once, so that failing snapshot expectations write their pending new snapshot files (a tryCatch keeps a hard R error, e.g. a test file that errors outright, from killing the job before the accept step; plain expectation failures don’t stop this run anyway, since devtools::test() defaults to stop_on_failure = FALSE);\ncalls testthat::snapshot_accept(), which accepts whatever the new output is, unconditionally;\nruns devtools::test(stop_on_failure = TRUE) a second time, failing the job, and skipping the commit-and-push steps, if the suite still fails.\n\nThat second test run proves the suite passes against the freshly accepted snapshots. It cannot judge whether the new output is right: code that produces wrong-but-stable output passes it.\nThe semantic check, “do the updated snapshots make sense?”, is left to pull request review. When the workflow runs against a PR’s head branch (pr-mode: true from an issue_comment trigger, a workflow_dispatch with ref set to the PR’s branch, or a pull_request-triggered caller passing ref: github.head_ref), the snapshot commit lands on the PR, and the reviewer inspects the tests/testthat/_snaps/ diff before merge. That review is the only point where snapshot content is judged; nothing re-checks it after merge.\nTwo consequences worth planning around:\n\nDispatching against a plain branch skips review entirely. The example caller stub defaults to main, where the snapshot commit lands directly, with no reviewable diff in between. Prefer running against a PR branch when the snapshot changes deserve eyes.\nThe snapshot commit does not re-trigger CI normally. The push uses the workflow’s own GITHUB_TOKEN, and events triggered by GITHUB_TOKEN do not create new workflow runs (the same behavior the WORKFLOW_TOKEN note on Permissions describes), with one exception that applies here: on a pull request, the resulting synchronize event creates the runs in an approval-required state, and a user with write access starts them from the “Approve workflows to run” prompt in the PR’s merge box. For a direct push to a plain branch there is no such prompt; re-trigger checks yourself if you need them, e.g. by pushing an empty commit.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "update-snapshots.yml"
+    ]
+  },
+  {
+    "objectID": "reference/update-snapshots.html#example",
+    "href": "reference/update-snapshots.html#example",
+    "title": "update-snapshots.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus a companion check that flags long fenced code blocks as\n# decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: d-morrison/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\nSee the examples/ directory for the full caller stub (lint-markdown.yml)."
-  },
-  {
-    "objectID": "versioning.html",
-    "href": "versioning.html",
-    "title": "Versioning",
-    "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, request-dependabot-review.yml, and sync-upstream.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#advancing-a-major-tag",
-    "href": "versioning.html#advancing-a-major-tag",
-    "title": "Versioning",
-    "section": "Advancing a major tag",
-    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#pinning-third-party-actions",
-    "href": "versioning.html#pinning-third-party-actions",
-    "title": "Versioning",
-    "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, request-dependabot-review.yml, and sync-upstream.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "versioning.html#reverse-dependencies",
-    "href": "versioning.html#reverse-dependencies",
-    "title": "Versioning",
-    "section": "Reverse dependencies",
-    "text": "Reverse dependencies\nREVDEPS.md tracks repos that call these workflows, so consumers can be notified before a breaking change. If your repo uses gha, please add it there.",
-    "crumbs": [
-      "Overview",
-      "Versioning"
-    ]
-  },
-  {
-    "objectID": "reference/preview-deploy.html",
-    "href": "reference/preview-deploy.html",
-    "title": "preview-deploy.yml",
-    "section": "",
-    "text": "The deploy half of the PR-preview family. Triggered on the build workflow’s workflow_run completion, it downloads the artifact and publishes the preview to gh-pages in the base-repo context, then comments the preview link. Keeping it split from the read-only build half is the trust boundary, so untrusted fork code never holds write permissions. The deploy stub’s on: workflow_run: workflows: value must match the build workflow’s name:.",
+    "text": "Example\n# Copy to .github/workflows/update-snapshots.yml in your repo.\nname: Update snapshots\n\non:\n  workflow_dispatch:\n    inputs:\n      branch:\n        description: Branch to update snapshots on\n        required: true\n        default: main\n\njobs:\n  update-snapshots:\n    uses: d-morrison/gha/.github/workflows/update-snapshots.yml@v2\n    permissions:\n      contents: write\n    with:\n      ref: ${{ inputs.branch }}\n      # julia: true\n      # julia-version: '1'\n      # julia-project: inst/julia\n      # apt-packages: ''   # default installs the standard R system-deps list; set '' to skip, or pass your own\n      # extra-packages: any::testthat\n      # needs: check\n      # commit-message: 'Update testthat snapshots [auto]'\n      # committer-name: github-actions[bot]\n      # committer-email: 41898282+github-actions[bot]@users.noreply.github.com\nSee examples/update-snapshots.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "preview-deploy.yml"
-    ]
-  },
-  {
-    "objectID": "reference/preview-deploy.html#inputs",
-    "href": "reference/preview-deploy.html#inputs",
-    "title": "preview-deploy.yml",
-    "section": "Inputs",
-    "text": "Inputs\nThis workflow takes no inputs.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "preview-deploy.yml"
-    ]
-  },
-  {
-    "objectID": "reference/preview-deploy.html#permissions",
-    "href": "reference/preview-deploy.html#permissions",
-    "title": "preview-deploy.yml",
-    "section": "Permissions",
-    "text": "Permissions\nGrant contents: write (push to gh-pages), pull-requests: write (post the preview-link comment), and actions: read (download the build artifact).",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "preview-deploy.yml"
-    ]
-  },
-  {
-    "objectID": "reference/preview-deploy.html#example",
-    "href": "reference/preview-deploy.html#example",
-    "title": "preview-deploy.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/preview-deploy.yml in your repo.\n# Deploy half of the PR-preview family: triggered when the build workflow\n# finishes, downloads its artifact, and publishes the preview to gh-pages. This\n# runs in the BASE-repo context, so its token can write --- keeping it separate\n# from the read-only build half is the trust boundary.\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Quarto Preview Deploy\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  deploy:\n    permissions:\n      contents: write        # push to gh-pages\n      pull-requests: write   # post the preview-link comment\n      actions: read          # download the build artifact\n    uses: d-morrison/gha/.github/workflows/preview-deploy.yml@v2\nSee examples/preview-deploy.yml for the full caller stub.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "preview-deploy.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html",
-    "href": "reference/test-coverage.html",
-    "title": "test-coverage.yml",
-    "section": "",
-    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#inputs",
-    "href": "reference/test-coverage.html#inputs",
-    "title": "test-coverage.yml",
-    "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.\n\n\nupload-test-results\nboolean\ntrue\nAlso generate a JUnit test-results report (testthat::JunitReporter) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#secrets",
-    "href": "reference/test-coverage.html#secrets",
-    "title": "test-coverage.yml",
-    "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#permissions",
-    "href": "reference/test-coverage.html#permissions",
-    "title": "test-coverage.yml",
-    "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#example",
-    "href": "reference/test-coverage.html#example",
-    "title": "test-coverage.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                  # package root, if not the repo root\n    #   install-quarto: false      # set true if vignettes need Quarto to build\n    #   extra-packages: ''         # extra R packages for the coverage run\n    #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
+      "update-snapshots.yml"
     ]
   },
   {
