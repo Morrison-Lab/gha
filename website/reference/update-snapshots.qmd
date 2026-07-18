@@ -35,14 +35,19 @@ branch.
 The workflow itself checks only **consistency**, never **correctness**.
 Its test-and-accept step:
 
-1. runs the test suite once, catching the expected failure
-   (stale snapshots make the suite fail; the run still writes the pending
-   new snapshot files);
+1. runs the test suite once, so that failing snapshot expectations write
+   their pending new snapshot files
+   (a `tryCatch` keeps a hard R error, e.g. a test file that errors
+   outright, from killing the job before the accept step;
+   plain expectation failures don't stop this run anyway, since
+   [`devtools::test()`](https://devtools.r-lib.org/reference/test.html)
+   defaults to `stop_on_failure = FALSE`);
 2. calls
    [`testthat::snapshot_accept()`](https://testthat.r-lib.org/reference/snapshot_accept.html),
    which accepts whatever the new output is, unconditionally;
-3. runs `devtools::test()` a second time, failing the job if the suite
-   still fails.
+3. runs `devtools::test(stop_on_failure = TRUE)` a second time, failing
+   the job, and skipping the commit-and-push steps, if the suite still
+   fails.
 
 That second test run proves the suite passes against the freshly accepted
 snapshots.
@@ -65,13 +70,18 @@ Two consequences worth planning around:
   The [example caller stub](#example) defaults to `main`, where the snapshot
   commit lands directly, with no reviewable diff in between.
   Prefer running against a PR branch when the snapshot changes deserve eyes.
-- **The snapshot commit does not re-trigger CI by itself.**
+- **The snapshot commit does not re-trigger CI normally.**
   The push uses the workflow's own `GITHUB_TOKEN`, and
-  [events triggered by `GITHUB_TOKEN` do not create new workflow runs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow)
+  [events triggered by `GITHUB_TOKEN` do not create new workflow runs](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow)
   (the same behavior the `WORKFLOW_TOKEN` note on
-  [Permissions](../permissions.qmd) describes).
-  If branch protection requires checks on the new head commit,
-  re-trigger them yourself, e.g. by pushing an empty commit.
+  [Permissions](../permissions.qmd) describes),
+  with one exception that applies here:
+  on a pull request, the resulting `synchronize` event creates the runs in
+  an **approval-required** state, and a user with write access starts them
+  from the "Approve workflows to run" prompt in the PR's merge box.
+  For a direct push to a plain branch there is no such prompt;
+  re-trigger checks yourself if you need them, e.g. by pushing an empty
+  commit.
 
 ## Example
 

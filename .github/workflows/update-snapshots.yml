@@ -137,7 +137,9 @@ jobs:
             message("First test run: ", conditionMessage(e))
           })
           testthat::snapshot_accept()
-          devtools::test()
+          # devtools::test() defaults to stop_on_failure = FALSE, which would
+          # let a still-failing suite exit 0 and push broken snapshots anyway.
+          devtools::test(stop_on_failure = TRUE)
 
       - name: Commit snapshot changes
         env:
