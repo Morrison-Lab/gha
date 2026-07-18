@@ -99,10 +99,12 @@ on:
           existing macro from the d-morrison/macros submodule, and for
           nontrivial math expressions (more than ~5 constituent parts)
           repeated 3+ times with no existing macro — a candidate for a new
-          one. Off by default. This reviewer has no network-fetch tools, so
-          it can only read macro definitions from a locally checked-out
-          submodule: set checkout-submodules: true too, or this only ever
-          reports that it found no macro definitions to check against.
+          one. Off by default. The macro checks read definitions only from
+          a locally checked-out submodule (the repo's own pinned version
+          is authoritative, so the reviewer is told not to fetch the
+          upstream macros repo instead): set checkout-submodules: true
+          too, or this only ever reports that it found no macro
+          definitions to check against.
         type: boolean
         default: false
       report-cost:
@@ -506,12 +508,14 @@ jobs:
           all attested, so don't assume one). Read the local `macros.qmd` if
           you find it.
 
-          This sandboxed environment has no network-fetch tools, so you can
-          only see macro definitions that are checked out locally. If you
-          can't find a macros submodule or its `macros.qmd`, say so once in
-          your review (e.g. "no d-morrison/macros submodule found — skipping
-          the macro checks") and skip both checks below rather than guessing
-          at definitions you can't read.
+          Read macro definitions only from the local checkout — the repo's
+          pinned submodule version is the authoritative one, so don't fetch
+          the upstream macros repo from the web even though fetch tools are
+          available. If you can't find a macros submodule or its
+          `macros.qmd`, say so once in your review (e.g. "no
+          d-morrison/macros submodule found — skipping the macro checks")
+          and skip both checks below rather than guessing at definitions
+          you can't read.
 
           When you do have `macros.qmd`, check the LaTeX math **added or
           changed in this PR's diff** for two things:
