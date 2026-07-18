@@ -693,3 +693,28 @@ This is distinct from item 8's derivation-validity check (whether each
 stated at all. This is a global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/writing/math-derivation-steps.md`).
+
+### 14. Don't reinvent the wheel
+
+When a diff adds a new function or feature, check whether that
+functionality has already been done — in one of the lab's own repos
+(the lab packages, this repo's reusable workflows and actions), or in a
+trustworthy external source the code could depend on instead (base R,
+[r-lib](https://github.com/r-lib),
+[tidyverse](https://github.com/tidyverse), a focused, well-maintained
+CRAN package, a vetted, well-maintained GitHub Actions marketplace
+action — SHA-pinned per `README.md`'s "Pinning third-party actions"
+subsection). Flag a hand-rolled
+equivalent of functionality that already exists: name the existing
+implementation, and prefer depending on it — or forking and/or
+contributing to it — over re-building from scratch. Accept the custom
+version when the existing option is genuinely unfit (wrong API,
+unmaintained, license-incompatible, or a heavy dependency for a
+one-liner), and ask for a note in the PR description or a code comment
+— "checked existing options, nothing fit" — when it's missing. This is a global standing rule from the
+[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+(`shared/coding/prefer-packaged-functions.md` states the R-function
+case); its umbrella statement is proposed in
+[`d-morrison/ai-config#603`](https://github.com/d-morrison/ai-config/pull/603)
+— once merged, the fragment lives at
+`shared/principles/dont-reinvent-wheel.md` there.
