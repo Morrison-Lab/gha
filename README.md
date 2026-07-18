@@ -52,6 +52,7 @@ not reference `@main` from consumers.
 | `summary.yml` | AI summary comment on newly opened issues | — |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
+| `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push — the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer`, `report-cost` |
 | `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
@@ -78,6 +79,8 @@ that need to write must have the **caller** grant it on the calling job:
   `test-coverage` → only `contents: read` (the default), so no `permissions:`
   block is needed. `test-coverage` additionally takes an optional
   `CODECOV_TOKEN` secret, passed through the caller's `secrets:` block.
+- `update-snapshots` (pushes the snapshot-update commit back to the branch) →
+  grant `contents: write`.
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
   grant `contents: write`, and set Settings → Pages → Source = "Deploy from a
   branch", branch `gh-pages` / `(root)` once. Grant `contents: write` even with

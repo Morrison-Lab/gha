@@ -1,0 +1,109 @@
+---
+title: "update-snapshots.yml"
+---
+
+Regenerate [testthat snapshots](https://testthat.r-lib.org/articles/snapshotting.html)
+for an R package: run the test suite, accept the output the code now produces
+(`testthat::snapshot_accept()`), re-run the tests, then commit and push the
+changed files under `tests/testthat/_snaps/`.
+Optionally sets up Julia first, for packages whose tests call a bundled
+Julia project.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `ref` | string | `''` | Branch or SHA to check out. Defaults to the event ref when empty; pass a branch name for `workflow_dispatch` callers or `github.head_ref` for `pull_request` callers. |
+| `pr-mode` | boolean | `false` | Use `r-lib/actions/pr-fetch` and `pr-push` instead of direct checkout and push. Set `true` for PR-comment (`issue_comment`) triggers. |
+| `julia` | boolean | `false` | Set up the Julia runtime before running tests. |
+| `julia-version` | string | `'1'` | Julia version to install. Only used when `julia` is true. |
+| `julia-project` | string | `'inst/julia'` | Path to the Julia project to instantiate. Only used when `julia` is true. |
+| `extra-packages` | string | `'any::testthat'` | Extra R packages forwarded to `r-lib/actions/setup-r-dependencies`. |
+| `needs` | string | `'check'` | `needs` label forwarded to `r-lib/actions/setup-r-dependencies`. |
+| `apt-packages` | string | (standard R system-deps list) | Space-separated apt packages to install before R setup. The default covers the system libraries a typical R package's dependencies need to build from source (Cairo, fonts, graphics, gettext, OpenMP). Pass your own list to override, or an empty string to skip the install step. |
+| `commit-message` | string | `'Update testthat snapshots [auto]'` | Commit message for the snapshot update commit. |
+| `committer-name` | string | `'github-actions[bot]'` | Git committer name. |
+| `committer-email` | string | `'41898282+github-actions[bot]@users.noreply.github.com'` | Git committer email. |
+
+## Permissions
+
+Grant `contents: write` so the job can push the snapshot commit back to the
+branch.
+
+## When are the updated snapshots checked?
+
+The workflow itself checks only **consistency**, never **correctness**.
+Its test-and-accept step:
+
+1. runs the test suite once, catching the expected failure
+   (stale snapshots make the suite fail; the run still writes the pending
+   new snapshot files);
+2. calls
+   [`testthat::snapshot_accept()`](https://testthat.r-lib.org/reference/snapshot_accept.html),
+   which accepts whatever the new output is, unconditionally;
+3. runs `devtools::test()` a second time, failing the job if the suite
+   still fails.
+
+That second test run proves the suite passes against the freshly accepted
+snapshots.
+It cannot judge whether the new output is *right*:
+code that produces wrong-but-stable output passes it.
+
+The semantic check, "do the updated snapshots make sense?", is left to
+**pull request review**.
+When the workflow runs against a PR's head branch
+(`pr-mode: true` from an `issue_comment` trigger, or a `workflow_dispatch`
+with `ref` set to the PR's branch),
+the snapshot commit lands on the PR,
+and the reviewer inspects the `tests/testthat/_snaps/` diff before merge.
+That review is the only point where snapshot *content* is judged;
+nothing re-checks it after merge.
+
+Two consequences worth planning around:
+
+- **Dispatching against a plain branch skips review entirely.**
+  The [example caller stub](#example) defaults to `main`, where the snapshot
+  commit lands directly, with no reviewable diff in between.
+  Prefer running against a PR branch when the snapshot changes deserve eyes.
+- **The snapshot commit does not re-trigger CI by itself.**
+  The push uses the workflow's own `GITHUB_TOKEN`, and
+  [events triggered by `GITHUB_TOKEN` do not create new workflow runs](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#using-the-github_token-in-a-workflow)
+  (the same behavior the `WORKFLOW_TOKEN` note on
+  [Permissions](../permissions.qmd) describes).
+  If branch protection requires checks on the new head commit,
+  re-trigger them yourself, e.g. by pushing an empty commit.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/update-snapshots.yml in your repo.
+name: Update snapshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to update snapshots on
+        required: true
+        default: main
+
+jobs:
+  update-snapshots:
+    uses: d-morrison/gha/.github/workflows/update-snapshots.yml@v2
+    permissions:
+      contents: write
+    with:
+      ref: ${{ inputs.branch }}
+      # julia: true
+      # julia-version: '1'
+      # julia-project: inst/julia
+      # apt-packages: ''   # default installs the standard R system-deps list; set '' to skip, or pass your own
+      # extra-packages: any::testthat
+      # needs: check
+      # commit-message: 'Update testthat snapshots [auto]'
+      # committer-name: github-actions[bot]
+      # committer-email: 41898282+github-actions[bot]@users.noreply.github.com
+```
+
+See [`examples/update-snapshots.yml`](https://github.com/d-morrison/gha/blob/main/examples/update-snapshots.yml)
+for the full caller stub.
