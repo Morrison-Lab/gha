@@ -160,6 +160,20 @@ runs:
         # available — granting the tool without that leaves the prompt saying
         # "no fetch tools; don't fetch", which would defeat the grant.
         #
+        # `WebSearch` gives the reviewer full web-search access for
+        # fact-checking (gha#266). The review guidelines ask it to verify
+        # prose claims, citations/DOIs/URLs, and code/math against external
+        # sources, and the prompt's hallucination watch asks it to confirm
+        # references actually exist — but `WebFetch`/`curl` only retrieve a
+        # URL the reviewer already has; search is what locates the
+        # authoritative source in the first place. No new egress
+        # capability: search queries are served through the Anthropic API,
+        # not the runner's own network, and `Bash(python3:*)` /
+        # `Bash(curl:*)` above already permit arbitrary direct requests
+        # (gha#240 tracks that standing tradeoff). As with the fetch tools,
+        # the `--append-system-prompt` below is updated in lockstep to say
+        # search is available.
+        #
         # `ScheduleWakeup,SendMessage,Monitor` are interactive-session-only
         # orchestration tools (schedule a future turn, message another agent,
         # stream a background process) that make no sense in a one-shot
@@ -177,7 +191,7 @@ runs:
         # different tool than these three.
         claude_args: >-
           --allowedTools
-          "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
+          "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,WebSearch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
           --disallowedTools
           "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
@@ -189,10 +203,13 @@ runs:
           commit. If you would have fixed something, describe the fix in
           your review instead.
 
-          WebFetch and curl are available so you can verify a computed
-          value or figure against rendered output (for example a
-          PR-preview site) when a repo's review guidance asks you to;
-          use them for that purpose. More generally: a denied tool call
+          WebFetch, WebSearch, and curl are available. Use WebFetch and
+          curl to verify a computed value or figure against rendered
+          output (for example a PR-preview site) when a repo's review
+          guidance asks you to. Use WebSearch to fact-check: locate the
+          authoritative source (official docs, a spec, a paper) for a
+          claim, citation, or API you need to verify, then fetch and
+          check it. More generally: a denied tool call
           is never a reason to stop the review early. If any tool call is
           denied for any reason, continue with the information you already
           have and still finish by posting your findings and the explicit
