@@ -715,6 +715,6 @@ one-liner), and ask for a note in the PR description or a code comment
 — "checked existing options, nothing fit" — when it's missing. This is a global standing rule from the
 [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
 (`shared/coding/prefer-packaged-functions.md` states the R-function
-case); its umbrella statement is
+case); its umbrella statement lives at
 `shared/principles/dont-reinvent-wheel.md` there, added in
 [ai-config#603](https://github.com/d-morrison/ai-config/pull/603).
