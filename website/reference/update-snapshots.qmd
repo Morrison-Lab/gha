@@ -57,8 +57,9 @@ code that produces wrong-but-stable output passes it.
 The semantic check, "do the updated snapshots make sense?", is left to
 **pull request review**.
 When the workflow runs against a PR's head branch
-(`pr-mode: true` from an `issue_comment` trigger, or a `workflow_dispatch`
-with `ref` set to the PR's branch),
+(`pr-mode: true` from an `issue_comment` trigger, a `workflow_dispatch`
+with `ref` set to the PR's branch, or a `pull_request`-triggered caller
+passing `ref: github.head_ref`),
 the snapshot commit lands on the PR,
 and the reviewer inspects the `tests/testthat/_snaps/` diff before merge.
 That review is the only point where snapshot *content* is judged;
