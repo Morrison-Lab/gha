@@ -12,7 +12,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
-`request-dependabot-review`, and `sync-upstream` — see the Versioning section
+`lint-changed-lines`, `request-dependabot-review`, and `sync-upstream` — see
+the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`.
