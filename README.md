@@ -49,6 +49,7 @@ not reference `@main` from consumers.
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
+| `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `extra-packages`, `install-package`, `fail` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
@@ -271,8 +272,8 @@ no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all. Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
-`lint-yaml.yml`, and `lint-markdown.yml` only ever shipped at `@v2` (too new
-to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+`lint-yaml.yml`, `lint-markdown.yml`, and `lint-changed-lines.yml` only ever
+shipped at `@v2` (too new to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
 `@v2` deploys to the `gh-pages` branch instead — required alongside the
 PR-preview family (`preview.yml` / `preview-deploy.yml`), since Pages can only
@@ -340,7 +341,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
-`request-dependabot-review.yml`, and `sync-upstream.yml` at `@v2` — see the
+`lint-changed-lines.yml`, `request-dependabot-review.yml`, and
+`sync-upstream.yml` at `@v2` — see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies

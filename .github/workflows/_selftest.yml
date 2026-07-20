@@ -39,6 +39,24 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - name: Lint Markdown
         uses: ./lint-markdown
+  # lint-changed-lines' composite can't be exercised end-to-end here: it needs
+  # a live pull_request event plus an installable R package to lint against
+  # (this repo is neither). Run the offline unit test for its diff-hunk parser
+  # instead; the composite itself is validated by real PR usage once released
+  # (the same rationale as run-claude-review-attempt).
+  lint-changed-lines-parser:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Set up R
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          use-public-rspm: true
+      - name: Run added-lines parser tests
+        run: Rscript lint-changed-lines/tests/test-added-lines.R
   bib:
     permissions:
       contents: read

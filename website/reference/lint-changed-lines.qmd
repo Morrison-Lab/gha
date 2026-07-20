@@ -1,0 +1,51 @@
+---
+title: "lint-changed-lines.yml"
+---
+
+Run [`lintr`](https://lintr.r-lib.org/) over the R files a pull request changes, but report **only** the lints on lines the PR actually added or modified — not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.
+
+Contrast with a whole-file "lint changed files" gate, which fails on function definitions a PR never touched — forcing either a repo-wide reformat or disabling the linter. `lint-changed-lines` is the incremental alternative.
+
+## How it works
+
+The workflow checks out the **PR head commit** (not the default `refs/pull/N/merge` ref), sets up R, installs the package (so `object_usage_linter` can resolve the package's own functions), then runs `lintr` on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub "list PR files" API `patch`, whose line numbers are relative to the PR head — which is why the checkout is pinned to the head commit, so on-disk line numbers match.
+
+Must be triggered by `pull_request` (the changed-line set comes from the PR).
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
+| `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
+| `extra-packages` | string | `''` | Extra R packages to install (`gh` and `lintr` are always installed). |
+| `install-package` | boolean | `true` | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
+| `fail` | boolean | `true` | Fail the workflow when a lint is found on a changed line (rather than warn only). |
+
+## Permissions
+
+`contents: read` and `pull-requests: read` (to read the PR's changed-file patches).
+
+## Example
+
+```yaml
+# Copy to .github/workflows/lint-changed-lines.yml in your repo.
+# Lints only the lines a pull request adds or modifies (not whole changed
+# files), so lint rules can be adopted or tightened incrementally.
+name: lint-changed-lines
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    uses: d-morrison/gha/.github/workflows/lint-changed-lines.yml@v2
+    # with:
+    #   path: '.'               # R package root (holding DESCRIPTION)
+    #   extra-packages: ''      # extra R deps (gh + lintr always installed)
+    #   install-package: false  # skip R CMD INSTALL for a non-package repo
+    #   fail: false             # warn instead of failing on lints
+```
+
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
+for the full caller stub (`lint-changed-lines.yml`).
