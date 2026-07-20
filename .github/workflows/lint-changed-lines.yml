@@ -1,0 +1,54 @@
+name: Lint changed lines (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Path to the R package root (holding DESCRIPTION).
+        type: string
+        default: '.'
+      install-quarto:
+        description: Install Quarto when setting up R dependencies.
+        type: boolean
+        default: false
+      extra-packages:
+        description: >-
+          Extra R packages to install (gh and lintr are always installed).
+        type: string
+        default: ''
+      install-package:
+        description: >-
+          Run `R CMD INSTALL` before linting so object_usage_linter can
+          resolve the package's own functions. Set false for a non-package repo.
+        type: boolean
+        default: true
+      fail:
+        description: Fail the workflow when a lint is found on a changed line.
+        type: boolean
+        default: true
+
+jobs:
+  lint-changed-lines:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # Check out the PR head, not the default refs/pull/N/merge ref: the
+          # changed-line set comes from the PR "files" patch, whose line
+          # numbers are relative to the PR head. The merge ref's line numbers
+          # can drift from those if the base branch has advanced in the same
+          # file region, which would silently drop real lints on changed lines.
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Lint changed lines
+        uses: d-morrison/gha/lint-changed-lines@v2
+        with:
+          path: ${{ inputs.path }}
+          install-quarto: ${{ inputs.install-quarto }}
+          extra-packages: ${{ inputs.extra-packages }}
+          install-package: ${{ inputs.install-package }}
+          fail: ${{ inputs.fail }}

@@ -14,6 +14,7 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`check-links.yml`](reference/check-links.qmd) | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | [`lint-yaml.yml`](reference/lint-yaml.qmd) | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | [`lint-markdown.yml`](reference/lint-markdown.qmd) | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
+| [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd) | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `extra-packages`, `install-package`, `fail` |
 | [`check-news.yml`](reference/check-news.qmd) | Enforce a `NEWS.md` changelog entry on PRs | `changelog`, `no-changelog-label` |
 | [`test-coverage.yml`](reference/test-coverage.qmd) | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
 | [`update-snapshots.yml`](reference/update-snapshots.qmd) | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
@@ -38,8 +39,8 @@ including non-breaking ones, like `cleanup-pr-previews`'s `compact-history`
 input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to
 `@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
-and `lint-markdown.yml` only ever shipped at `@v2` (too new to exist at the
-frozen `@v1` tag). `quarto-publish.yml`
+`lint-markdown.yml`, and `lint-changed-lines.yml` only ever shipped at `@v2`
+(too new to exist at the frozen `@v1` tag). `quarto-publish.yml`
 additionally has a genuine behavioral fork: `@v1` stays frozen on the older
 GitHub Actions Pages-artifact deploy, while `@v2` deploys to the `gh-pages`
 branch instead - required if the same repo also uses the PR-preview family,
@@ -75,6 +76,9 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
 - `lint-markdown.yml` runs [markdownlint-cli2](https://github.com/DavidAnson/markdownlint-cli2)
   over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks
   as decomposition candidates.
+- `lint-changed-lines.yml` runs [lintr](https://lintr.r-lib.org/) over only the lines a pull
+  request adds or modifies (not whole changed files), so lint rules can be adopted or tightened
+  incrementally: new and edited code must comply while untouched legacy code is left alone.
 - `check-phi.yml` scans for content that looks like protected health information; see [below](#phi-scanning).
 - `test-coverage.yml` measures R-package test coverage with `covr` and uploads the
   Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the caller's
