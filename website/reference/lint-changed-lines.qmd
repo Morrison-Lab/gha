@@ -2,13 +2,13 @@
 title: "lint-changed-lines.yml"
 ---
 
-Run [`lintr`](https://lintr.r-lib.org/) over the R files a pull request changes, but report **only** the lints on lines the PR actually added or modified — not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.
+Run [`lintr`](https://lintr.r-lib.org/) over the R files a pull request changes, but report **only** the lints on lines the PR actually added or modified -- not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.
 
-Contrast with a whole-file "lint changed files" gate, which fails on function definitions a PR never touched — forcing either a repo-wide reformat or disabling the linter. `lint-changed-lines` is the incremental alternative.
+Contrast with a whole-file "lint changed files" gate, which fails on function definitions a PR never touched -- forcing either a repo-wide reformat or disabling the linter. `lint-changed-lines` is the incremental alternative.
 
 ## How it works
 
-The workflow checks out the **PR head commit** (not the default `refs/pull/N/merge` ref), sets up R, installs the package (so `object_usage_linter` can resolve the package's own functions), then runs `lintr` on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub "list PR files" API `patch`, whose line numbers are relative to the PR head — which is why the checkout is pinned to the head commit, so on-disk line numbers match.
+The workflow checks out the **PR head commit** (not the default `refs/pull/N/merge` ref), sets up R, installs the package (so `object_usage_linter` can resolve the package's own functions), then runs `lintr` on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub "list PR files" API `patch`, whose line numbers are relative to the PR head -- which is why the checkout is pinned to the head commit, so on-disk line numbers match.
 
 Must be triggered by `pull_request` (the changed-line set comes from the PR).
 
