@@ -272,7 +272,7 @@ runs:
           than assuming they exist, and flag anything you can't confirm as a
           possible hallucination. For a product, tool, service, or API name
           you don't recognize, don't assume it's fabricated just because it's
-          unfamiliar -- your training data has a cutoff and new products
+          unfamiliar — your training data has a cutoff and new products
           launch after it. Use WebSearch/WebFetch to check for it (and fetch
           any URL the PR already cites for it) before flagging it as a
           possible hallucination.
