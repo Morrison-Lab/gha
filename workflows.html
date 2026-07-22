@@ -582,7 +582,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
-<td>Read-only Claude PR review</td>
+<td>Read-only Claude PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>report-cost</code>, <code>model</code></td>
 </tr>
 <tr class="odd">
@@ -662,9 +662,9 @@ ul.task-list li input[type="checkbox"] {
 <p>The two Claude workflows are a pair.</p>
 <ul>
 <li><code>claude.yml</code> runs the agent-mode Claude Code bot: it responds to <code>@claude</code> mentions, edits files, and opens or updates PRs.</li>
-<li><code>claude-code-review.yml</code> runs a read-only Claude review: inline findings on <code>pull_request</code> runs, a consolidated summary on dispatched runs.</li>
+<li><code>claude-code-review.yml</code> runs a read-only Claude review: a consolidated summary on dispatched runs by default; add a <code>pull_request</code> trigger in the caller if you also want automatic reviews on PR updates.</li>
 </ul>
-<p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves.</p>
+<p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. If you also want the direct <code>/review</code> path, enable <code>issue_comment</code> in the review stub too.</p>
 </section>
 <section id="content-sync" class="level2">
 <h2 class="anchored" data-anchor-id="content-sync">Content sync</h2>
