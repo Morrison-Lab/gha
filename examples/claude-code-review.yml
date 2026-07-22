@@ -101,7 +101,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
-      # a review on Claude's commits; empty (and ignored) unless pull_request is enabled.
+      # a review on Claude's commits; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules

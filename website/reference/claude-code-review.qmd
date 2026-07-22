@@ -15,7 +15,7 @@ keep the stub named `claude-code-review.yml` (or set `claude.yml`'s `review-work
 
 | Input | Type | Default | Description |
 |---|---|---|---|
-| `pr-number` | string | `''` | PR number to review (set by `claude.yml`'s `workflow_dispatch`; empty unless the caller also enables `pull_request` runs). |
+| `pr-number` | string | `''` | PR number to review (set by `claude.yml`'s `workflow_dispatch`; empty on `pull_request` runs). |
 | `prompt-addendum` | string | `''` | Repo-specific review guidance appended to the plugin prompt. |
 | `checkout-submodules` | boolean | `false` | Check out submodules so the reviewer can read their contents. Private submodules require the `SUBMODULES_TOKEN` secret. |
 | `allowed-bots` | string | `'github-actions[bot]'` | Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human. |
@@ -87,7 +87,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
-      # a review on Claude's commits; empty (and ignored) unless pull_request is enabled.
+      # a review on Claude's commits; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
