@@ -535,7 +535,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>pr-number</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>PR number to review (set by <code>claude.yml</code>’s <code>workflow_dispatch</code>; empty unless the caller also enables <code>pull_request</code> runs).</td>
+<td>PR number to review (set by <code>claude.yml</code>’s <code>workflow_dispatch</code>; empty on <code>pull_request</code> runs).</td>
 </tr>
 <tr class="even">
 <td><code>prompt-addendum</code></td>
@@ -689,7 +689,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">SUBMODULES_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.SUBMODULES_TOKEN }}</span><span class="co">   # optional; empty when unset</span></span>
 <span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">      # Wires the workflow_dispatch input through so claude.yml can re-dispatch</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">      # a review on Claude's commits; empty (and ignored) unless pull_request is enabled.</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">      # a review on Claude's commits; empty (and ignored) on pull_request runs.</span></span>
 <span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
 <span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
