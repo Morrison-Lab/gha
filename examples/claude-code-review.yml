@@ -5,18 +5,21 @@
 # inherits secrets into a reusable workflow owned by the same org/user, so a
 # cross-owner caller (e.g. a UCD-SERG-org repo calling this d-morrison
 # user-owned workflow) inherits an empty token and the run fails env-validation.
-# The workflow_dispatch path lets claude.yml re-dispatch a review after an
-# @claude run pushes commits — keep the file named claude-code-review.yml (or
-# set claude.yml's review-workflow-file to match).
-# The issue_comment path lets a trusted collaborator start a review on demand by
-# commenting `/review` on a PR, without going through claude.yml's @claude agent.
+# Default: mention-triggered only. claude.yml re-dispatches this workflow on an
+# `@claude review` mention (and after an @claude run pushes commits) via
+# workflow_dispatch. Keep the file named claude-code-review.yml (or set
+# claude.yml's review-workflow-file to match) so the dispatch resolves.
+# Optional: uncomment pull_request for automatic review, and uncomment
+# issue_comment to allow trusted collaborators to trigger `/review` directly.
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-  issue_comment:
-    types: [created]
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  # Optional: direct on-demand `/review` path (independent of @claude).
+  # issue_comment:
+  #   types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -31,6 +34,7 @@ jobs:
   # wakes claude.yml. This re-enters the workflow_dispatch path below via
   # `gh workflow run` (the reusable workflow's jobs skip a raw issue_comment
   # run), so `gh workflow run` needs this file on the default branch first.
+  # Enable the issue_comment trigger above to activate this path.
   dispatch-on-comment:
     if: >-
       github.event_name == 'issue_comment' &&
@@ -97,7 +101,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
-      # a review on Claude's commits; empty (and ignored) for pull_request runs.
+      # a review on Claude's commits; empty (and ignored) unless pull_request is enabled.
       pr-number: ${{ inputs.pr_number }}
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules

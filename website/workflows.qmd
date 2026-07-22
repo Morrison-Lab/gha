@@ -25,7 +25,7 @@ each workflow links to its reference page, with full input tables and a copy-pas
 | [`check-equation-renders.yml`](reference/check-equation-renders.qmd) | Crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | [`cleanup-pr-previews.yml`](reference/cleanup-pr-previews.qmd) | Housekeeping: delete preview directories for closed PRs | `preview-dir`, `compact-history` |
 | [`claude.yml`](reference/claude.qmd) | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `reviewer`, `report-cost` |
-| [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
+| [`claude-code-review.yml`](reference/claude-code-review.qmd) | Read-only Claude PR review (default stub is mention-triggered via `workflow_dispatch`; add `pull_request` for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd) | Update a submodule to upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd) | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 | [`sync-upstream.yml`](reference/sync-upstream.qmd) | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
@@ -152,12 +152,15 @@ The two Claude workflows are a pair.
 - `claude.yml` runs the agent-mode Claude Code bot: it responds to `@claude` mentions,
   edits files, and opens or updates PRs.
 - `claude-code-review.yml` runs a read-only Claude review:
-  inline findings on `pull_request` runs, a consolidated summary on dispatched runs.
+  a consolidated summary on dispatched runs by default; add a `pull_request`
+  trigger in the caller if you also want automatic reviews on PR updates.
 
 An `@claude review` mention (or any commit Claude pushes) routes through `claude.yml`,
 which dispatches `claude-code-review.yml` via `workflow_dispatch`.
 Install both, and keep the review stub named `claude-code-review.yml`
 (or set `claude.yml`'s `review-workflow-file` input to match) so the dispatch resolves.
+If you also want the direct `/review` path, enable `issue_comment` in the
+review stub too.
 
 ## Content sync {#content-sync}
 

@@ -1,0 +1,1 @@
+- **`claude-code-review` caller docs/stubs now default to mention-triggered reviews only** (`@claude review` via `workflow_dispatch`). Automatic `pull_request` review remains supported as an explicit opt-in by adding the trigger in the caller stub.

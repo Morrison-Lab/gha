@@ -3,7 +3,11 @@ title: "claude-code-review.yml"
 ---
 
 Run a read-only Claude review of a pull request (the `code-review` plugin).
-It posts inline findings on `pull_request` runs and a consolidated summary on dispatched runs.
+By default, callers run it only on dispatched runs (for `@claude review` via
+`claude.yml`), which posts a consolidated summary. If the caller also enables a
+`pull_request` trigger, it can run automatically on PR updates. A direct
+`/review` path is available too, but only if the caller also enables
+`issue_comment`.
 `claude.yml` dispatches it via `workflow_dispatch`;
 keep the stub named `claude-code-review.yml` (or set `claude.yml`'s `review-workflow-file` to match) so the dispatch resolves.
 
@@ -11,7 +15,7 @@ keep the stub named `claude-code-review.yml` (or set `claude.yml`'s `review-work
 
 | Input | Type | Default | Description |
 |---|---|---|---|
-| `pr-number` | string | `''` | PR number to review (set by `claude.yml`'s `workflow_dispatch`; empty for `pull_request` runs). |
+| `pr-number` | string | `''` | PR number to review (set by `claude.yml`'s `workflow_dispatch`; empty unless the caller also enables `pull_request` runs). |
 | `prompt-addendum` | string | `''` | Repo-specific review guidance appended to the plugin prompt. |
 | `checkout-submodules` | boolean | `false` | Check out submodules so the reviewer can read their contents. Private submodules require the `SUBMODULES_TOKEN` secret. |
 | `allowed-bots` | string | `'github-actions[bot]'` | Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human. |
@@ -47,14 +51,21 @@ and add either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 # inherits secrets into a reusable workflow owned by the same org/user, so a
 # cross-owner caller (e.g. a UCD-SERG-org repo calling this d-morrison
 # user-owned workflow) inherits an empty token and the run fails env-validation.
-# The workflow_dispatch path lets claude.yml re-dispatch a review after an
-# @claude run pushes commits --- keep the file named claude-code-review.yml (or
-# set claude.yml's review-workflow-file to match).
+# Default: mention-triggered only. claude.yml re-dispatches this workflow on an
+# `@claude review` mention (and after an @claude run pushes commits) via
+# workflow_dispatch. Keep the file named claude-code-review.yml (or set
+# claude.yml's review-workflow-file to match) so the dispatch resolves.
+# Optional: uncomment pull_request for automatic review, and uncomment
+# issue_comment to allow trusted collaborators to trigger `/review` directly.
 name: Claude Code Review
 
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+  # Optional: enable automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  # Optional: direct on-demand `/review` path (independent of @claude).
+  # issue_comment:
+  #   types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -76,7 +87,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
-      # a review on Claude's commits; empty (and ignored) for pull_request runs.
+      # a review on Claude's commits; empty (and ignored) unless pull_request is enabled.
       pr-number: ${{ inputs.pr_number }}
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
