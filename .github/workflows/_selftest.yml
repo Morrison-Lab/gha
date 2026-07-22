@@ -50,7 +50,7 @@ jobs:
         uses: ./lint-qmd
         with:
           globs: '*.qmd'
-          fail: false
+          fail: true
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser

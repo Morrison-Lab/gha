@@ -2,19 +2,20 @@
 title: "cleanup-pr-previews.yml"
 ---
 
-The housekeeping half of the PR-preview family.
-On a schedule, it deletes `gh-pages` preview directories for pull requests that are no longer open.
+The housekeeping half of the PR-preview family. On a schedule, it deletes
+`gh-pages` preview directories for pull requests that are no longer open.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `preview-dir` | string | `'pr-preview'` | Directory on `gh-pages` that holds the per-PR preview subdirectories. |
-| `compact-history` | boolean | `false` | Orphan-squash the `gh-pages` branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses). |
+| Input             | Type    | Default        | Description                                                                                                                                                                                                                           |
+| ----------------- | ------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preview-dir`     | string  | `'pr-preview'` | Directory on `gh-pages` that holds the per-PR preview subdirectories.                                                                                                                                                                 |
+| `compact-history` | boolean | `false`        | Orphan-squash the `gh-pages` branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses). |
 
 ## Permissions
 
-Grant `contents: write` (commit the deletions to `gh-pages`) and `pull-requests: read`.
+Grant `contents: write` (commit the deletions to `gh-pages`) and
+`pull-requests: read`.
 
 ## Example
 
@@ -28,7 +29,7 @@ name: Clean up PR Previews
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 0 * * 0' # Weekly on Sunday at midnight UTC
+    - cron: "0 0 * * 0" # Weekly on Sunday at midnight UTC
 
 jobs:
   cleanup:
@@ -43,5 +44,6 @@ jobs:
     #                               # the repo. Branch-based Pages only.
 ```
 
-See [`examples/cleanup-pr-previews.yml`](https://github.com/d-morrison/gha/blob/main/examples/cleanup-pr-previews.yml)
+See
+[`examples/cleanup-pr-previews.yml`](https://github.com/d-morrison/gha/blob/main/examples/cleanup-pr-previews.yml)
 for the full caller stub.

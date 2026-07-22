@@ -1,32 +1,33 @@
 ---
 title: "d-morrison/gha"
-subtitle: "Central, reusable GitHub Actions for R-package and Quarto repositories"
+subtitle:
+  "Central, reusable GitHub Actions for R-package and Quarto repositories"
 ---
 
-This site documents [`d-morrison/gha`](https://github.com/d-morrison/gha),
-a set of reusable GitHub Actions shared across the
-`d-morrison`, `UCD-SERG`, `ucdavis`, `UCLA-PHP`, and `UCD-IDDRC` owners.
-It is modeled on
+This site documents [`d-morrison/gha`](https://github.com/d-morrison/gha), a set
+of reusable GitHub Actions shared across the `d-morrison`, `UCD-SERG`,
+`ucdavis`, `UCLA-PHP`, and `UCD-IDDRC` owners. It is modeled on
 [`r-lib/actions`](https://github.com/r-lib/actions) and
-[`easystats/workflows`](https://github.com/easystats/workflows):
-a repo calls a shared workflow with a tiny stub instead of carrying its own copy.
+[`easystats/workflows`](https://github.com/easystats/workflows): a repo calls a
+shared workflow with a tiny stub instead of carrying its own copy.
 
-The repo is **public** so it can be referenced from repositories across those owners.
+The repo is **public** so it can be referenced from repositories across those
+owners.
 
 ## How it works
 
 Each capability ships as two layers:
 
 - A **composite action** (for example `check-bibliography-dois/action.yml`)
-  bundles the real steps and any helper script.
-  It is referenced as `d-morrison/gha/<name>@vN` (the major tag that
-  capability currently recommends - see [Versioning](versioning.qmd)).
+  bundles the real steps and any helper script. It is referenced as
+  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  recommends - see [Versioning](versioning.qmd)).
 - A **reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`)
   wraps the composite, declares permissions, and checks out the caller's repo.
   This is what consumer repos target.
 
-A consumer repo adds a small caller stub
-(see the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory):
+A consumer repo adds a small caller stub (see the
+[`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory):
 
 ```yaml
 name: Check Bibliography DOIs
@@ -39,19 +40,22 @@ jobs:
     uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v2
 ```
 
-Pin to the major tag that capability currently recommends (`@v2` in the
-example above) - it varies per capability rather than defaulting uniformly to
-`@v1`; see [Versioning](versioning.qmd) for the full breakdown.
-Do not reference `@main` from consumers.
+Pin to the major tag that capability currently recommends (`@v2` in the example
+above) - it varies per capability rather than defaulting uniformly to `@v1`; see
+[Versioning](versioning.qmd) for the full breakdown. Do not reference `@main`
+from consumers.
 
 {{< include _actions-vs-workflows.qmd >}}
 
 ## Where to go next
 
 - [Workflows](workflows.qmd) catalogs every reusable workflow and what it does.
-- [Permissions](permissions.qmd) lists the `GITHUB_TOKEN` permissions and secrets each one needs.
-- [Versioning](versioning.qmd) explains the moving major tags (`@v1`/`@v2`, per capability) and how third-party actions are pinned.
+- [Permissions](permissions.qmd) lists the `GITHUB_TOKEN` permissions and
+  secrets each one needs.
+- [Versioning](versioning.qmd) explains the moving major tags (`@v1`/`@v2`, per
+  capability) and how third-party actions are pinned.
 
 This very site is built and shipped by the workflows it documents:
-[`quarto-publish`](workflows.qmd#quarto-sites) deploys it to GitHub Pages,
-and the [`preview`](workflows.qmd#quarto-sites) family renders a preview for each pull request.
+[`quarto-publish`](workflows.qmd#quarto-sites) deploys it to GitHub Pages, and
+the [`preview`](workflows.qmd#quarto-sites) family renders a preview for each
+pull request.

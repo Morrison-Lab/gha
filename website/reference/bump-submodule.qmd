@@ -2,29 +2,31 @@
 title: "bump-submodule.yml"
 ---
 
-Update a named submodule to its upstream HEAD and open a PR when the pointer moves.
-Used by the side that vendors another repo as a git submodule (for example the lab manual tracking `.ai-config`).
+Update a named submodule to its upstream HEAD and open a PR when the pointer
+moves. Used by the side that vendors another repo as a git submodule (for
+example the lab manual tracking `.ai-config`).
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `submodule-path` | string | required | Path of the submodule to bump (for example `.ai-config`). |
-| `remote-branch` | string | `''` | Upstream branch to track. Empty follows the submodule's configured branch, or its remote default branch. |
-| `base-branch` | string | `main` | Base branch to open the PR against. |
-| `pr-branch` | string | `automated/bump-submodule` | Head branch for the automation PR. |
+| Input            | Type   | Default                    | Description                                                                                              |
+| ---------------- | ------ | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `submodule-path` | string | required                   | Path of the submodule to bump (for example `.ai-config`).                                                |
+| `remote-branch`  | string | `''`                       | Upstream branch to track. Empty follows the submodule's configured branch, or its remote default branch. |
+| `base-branch`    | string | `main`                     | Base branch to open the PR against.                                                                      |
+| `pr-branch`      | string | `automated/bump-submodule` | Head branch for the automation PR.                                                                       |
 
 ## Secrets
 
-| Secret | Required | Description |
-|---|---|---|
-| `SUBMODULES_TOKEN` | no | Read access to a private submodule. |
-| `WORKFLOW_TOKEN` | no | PAT or App token; needed only to push to a protected branch. |
+| Secret             | Required | Description                                                  |
+| ------------------ | -------- | ------------------------------------------------------------ |
+| `SUBMODULES_TOKEN` | no       | Read access to a private submodule.                          |
+| `WORKFLOW_TOKEN`   | no       | PAT or App token; needed only to push to a protected branch. |
 
 ## Permissions
 
-Grant `contents: write` and `pull-requests: write`,
-and enable Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
+Grant `contents: write` and `pull-requests: write`, and enable Settings ->
+Actions -> General -> "Allow GitHub Actions to create and approve pull
+requests".
 
 ## Example
 
@@ -38,7 +40,7 @@ name: Bump submodule
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+    - cron: "0 6 * * 1" # Weekly on Monday at 06:00 UTC
 
 jobs:
   bump:
@@ -57,5 +59,6 @@ jobs:
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```
 
-See [`examples/bump-submodule.yml`](https://github.com/d-morrison/gha/blob/main/examples/bump-submodule.yml)
+See
+[`examples/bump-submodule.yml`](https://github.com/d-morrison/gha/blob/main/examples/bump-submodule.yml)
 for the full caller stub.

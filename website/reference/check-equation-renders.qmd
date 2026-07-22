@@ -2,43 +2,47 @@
 title: "check-equation-renders.yml"
 ---
 
-Fourth leg of the PR-preview family, alongside `preview.yml` and `preview-deploy.yml`.
-Triggered on the build workflow's `workflow_run` completion, it downloads the same
-`pr-preview-site` artifact `preview-deploy.yml` uses, crawls the extracted site with a
-headless browser, and fails when any equation fails to render.
+Fourth leg of the PR-preview family, alongside `preview.yml` and
+`preview-deploy.yml`. Triggered on the build workflow's `workflow_run`
+completion, it downloads the same `pr-preview-site` artifact
+`preview-deploy.yml` uses, crawls the extracted site with a headless browser,
+and fails when any equation fails to render.
 
-Quarto's `html-math-method: mathjax` embeds raw TeX (`\(...\)`, `$$...$$`) unchanged in
-the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad
-equation therefore produces no warning in the Quarto/pandoc build log -- the static HTML
-is "valid" pandoc output even when the embedded TeX can't be typeset. This workflow is
-what actually runs MathJax (via a headless Chromium) and checks for three ways a page
-can fail to render its equations:
+Quarto's `html-math-method: mathjax` embeds raw TeX (`\(...\)`, `$$...$$`)
+unchanged in the static HTML; MathJax only parses and typesets it client-side,
+in the browser. A bad equation therefore produces no warning in the
+Quarto/pandoc build log -- the static HTML is "valid" pandoc output even when
+the embedded TeX can't be typeset. This workflow is what actually runs MathJax
+(via a headless Chromium) and checks for three ways a page can fail to render
+its equations:
 
 - A hard parse error (unmatched braces, wrong argument count, ...) inserts a
   `[data-mjx-error]` node carrying the message.
-- An undefined macro (e.g. a custom command from a macro file that didn't load) is *not*
-  a hard error by default -- MathJax falls back to rendering the raw, unresolved command
-  name (`\foo`) as literal text, so there's no error node to find. The check instead
-  looks for a rendered `\command`-shaped token surviving into the typeset output, since
-  resolved math never leaves its own TeX source behind.
-- MathJax itself failing to load or initialize (a CDN hiccup, a blocked host, a broken
-  script path) on a page that references it -- caught separately from the two cases
-  above, since a page where MathJax never ran would otherwise show zero error nodes and
-  read as a false pass.
+- An undefined macro (e.g. a custom command from a macro file that didn't load)
+  is _not_ a hard error by default -- MathJax falls back to rendering the raw,
+  unresolved command name (`\foo`) as literal text, so there's no error node to
+  find. The check instead looks for a rendered `\command`-shaped token surviving
+  into the typeset output, since resolved math never leaves its own TeX source
+  behind.
+- MathJax itself failing to load or initialize (a CDN hiccup, a blocked host, a
+  broken script path) on a page that references it -- caught separately from the
+  two cases above, since a page where MathJax never ran would otherwise show
+  zero error nodes and read as a false pass.
 
 It runs independently of `preview-deploy.yml` -- both trigger on the same build
-completion, but this one downloads the artifact directly rather than depending on the
-deploy, so it needs no `gh-pages` write access and no live preview URL.
+completion, but this one downloads the artifact directly rather than depending
+on the deploy, so it needs no `gh-pages` write access and no live preview URL.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `fail` | boolean | `true` | Fail the workflow run when equation render errors are found. |
+| Input  | Type    | Default | Description                                                  |
+| ------ | ------- | ------- | ------------------------------------------------------------ |
+| `fail` | boolean | `true`  | Fail the workflow run when equation render errors are found. |
 
 ## Permissions
 
-Grant `contents: read` (the default) and `actions: read` (download the build artifact).
+Grant `contents: read` (the default) and `actions: read` (download the build
+artifact).
 
 ## Example
 
@@ -64,11 +68,11 @@ jobs:
   check:
     permissions:
       contents: read
-      actions: read  # needed to download the build artifact
+      actions: read # needed to download the build artifact
     uses: d-morrison/gha/.github/workflows/check-equation-renders.yml@v2
     # with:
     #   fail: false   # report equation render errors without failing the run
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
-for the full caller stub (`check-equation-renders.yml`).
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+directory for the full caller stub (`check-equation-renders.yml`).

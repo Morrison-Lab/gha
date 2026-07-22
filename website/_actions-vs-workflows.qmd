@@ -1,13 +1,12 @@
 ## Actions vs. workflows
 
 :::{.callout-note}
+
 ## Composite action
 
-A **composite action** is a list of steps.
-It runs *inside* a job that already exists -
-the caller's runner and permissions are already in place.
-An action has no concept of jobs or triggers;
-it is just a named bundle of commands.
+A **composite action** is a list of steps. It runs _inside_ a job that already
+exists - the caller's runner and permissions are already in place. An action has
+no concept of jobs or triggers; it is just a named bundle of commands.
 
 ```yaml
 # <name>/action.yml
@@ -22,15 +21,16 @@ runs:
     - run: echo "hello"
       shell: bash
 ```
+
 :::
 
 :::{.callout-note}
+
 ## Reusable workflow
 
-A **reusable workflow** is a complete pipeline.
-It defines its own jobs, each with its own runner (`runs-on:`),
-permissions (`permissions:`), and steps.
-A consumer calls it as a job, not as a step.
+A **reusable workflow** is a complete pipeline. It defines its own jobs, each
+with its own runner (`runs-on:`), permissions (`permissions:`), and steps. A
+consumer calls it as a job, not as a step.
 
 ```yaml
 # .github/workflows/<name>.yml
@@ -44,25 +44,25 @@ jobs:
       - uses: actions/checkout@v4
       - run: echo "hello"
 ```
+
 :::
 
 :::{.callout-warning}
+
 ## `shell:` is required in composite actions
 
-Every `run:` step in a composite action must declare `shell:`.
-Workflows have a default shell; composite actions do not.
-:::
+Every `run:` step in a composite action must declare `shell:`. Workflows have a
+default shell; composite actions do not. :::
 
-|  | Composite action | Reusable workflow |
-|---|---|---|
-| Key top-level keys | `name`, `description`, `inputs`, `outputs`, `runs` | `on`, `jobs` |
-| Jobs | No - only `steps` under `runs` | Yes - one or more `jobs` blocks |
-| `runs-on` | Absent - inherits the caller's runner | Per job |
-| `permissions` | Absent | Yes (caller must also grant them) |
-| Called from | A job's `steps` (via `uses`) | A workflow's `jobs` (via `uses`) |
+|                    | Composite action                                   | Reusable workflow                 |
+| ------------------ | -------------------------------------------------- | --------------------------------- |
+| Key top-level keys | `name`, `description`, `inputs`, `outputs`, `runs` | `on`, `jobs`                      |
+| Jobs               | No - only `steps` under `runs`                     | Yes - one or more `jobs` blocks   |
+| `runs-on`          | Absent - inherits the caller's runner              | Per job                           |
+| `permissions`      | Absent                                             | Yes (caller must also grant them) |
+| Called from        | A job's `steps` (via `uses`)                       | A workflow's `jobs` (via `uses`)  |
 
-Because an action cannot declare permissions or choose its runner,
-this repo uses the two-layer design:
-the composite action holds the real logic,
-and the reusable workflow wraps it to handle the runner, permissions, and checkout.
+Because an action cannot declare permissions or choose its runner, this repo
+uses the two-layer design: the composite action holds the real logic, and the
+reusable workflow wraps it to handle the runner, permissions, and checkout.
 Consumer repos reference only the workflow layer.
