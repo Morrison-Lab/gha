@@ -55,7 +55,7 @@ not reference `@main` from consumers.
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push — the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `reviewer`, `report-cost` |
-| `claude-code-review.yml` | Read-only Claude PR review (runs the `code-review` plugin; inline findings when `track-progress: true`, consolidated summary otherwise) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
+| `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `report-cost`, `model` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
@@ -134,14 +134,19 @@ via `workflow_dispatch`. Install both, and keep the review stub named
 `claude-code-review.yml` (or set `claude.yml`'s `review-workflow-file` input to
 match) so the dispatch resolves.
 
+The `examples/claude-code-review.yml` stub defaults to this mention-triggered
+path only (no automatic `pull_request` trigger). Add `pull_request` in that
+stub if you want automatic review on each PR update.
+
 You can also start a review **directly**, without waking the `@claude` agent, by
-commenting `/review` at the start of a PR comment. `claude-code-review.yml`
-listens for that comment itself and re-dispatches its own `workflow_dispatch`
-review of the PR — so `/review` needs only `claude-code-review.yml` installed
-(no `claude.yml`), and it works for `OWNER`/`MEMBER`/`COLLABORATOR` commenters
-once the workflow is on your default branch. It's a slash command rather than an
-`@claude review` mention on purpose: any `@claude` substring would also trigger
-`claude.yml`, so the slash command keeps the direct path independent.
+commenting `/review` at the start of a PR comment — but that path is opt-in:
+enable the `issue_comment` trigger in `examples/claude-code-review.yml` first.
+Then `claude-code-review.yml` listens for that comment and re-dispatches its own
+`workflow_dispatch` review of the PR, and it works for
+`OWNER`/`MEMBER`/`COLLABORATOR` commenters once the workflow is on your default
+branch. It's a slash command rather than an `@claude review` mention on
+purpose: any `@claude` substring would also trigger `claude.yml`, so the slash
+command keeps the direct path independent.
 
 ## Claude session visibility
 
