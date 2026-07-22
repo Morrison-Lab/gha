@@ -1,0 +1,49 @@
+name: Lint QMD Prose (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      config-file:
+        description: >-
+          Path (in the caller repo) to a markdownlint config file. Falls
+          back to the bundled default when empty or the file does not exist.
+        type: string
+        default: ''
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to lint (recursive
+          by default).
+        type: string
+        default: '*.qmd'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: Fail the workflow when markdownlint reports an error.
+        type: boolean
+        default: true
+      max-line-length:
+        description: >-
+          Maximum prose line length. Set 0 to disable the line-length check.
+        type: string
+        default: '80'
+
+jobs:
+  lint-qmd:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Lint QMD prose
+        uses: d-morrison/gha/lint-qmd@v2
+        with:
+          config-file: ${{ inputs.config-file }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          max-line-length: ${{ inputs.max-line-length }}

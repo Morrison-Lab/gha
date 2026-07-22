@@ -1,0 +1,31 @@
+// Default markdownlint config for lint-qmd prose sections.
+// "default": true starts from the full built-in ruleset
+// (https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md),
+// with the overrides below. A caller-supplied config-file input takes
+// precedence over this file (see run_lint_qmd.mjs).
+{
+  "default": true,
+
+  // Line length: the primary prose-quality check. Semantic line breaks (one
+  // sentence or clause per source line) keep lines short naturally; this
+  // catches prose that was never broken at clause boundaries. Code blocks and
+  // tables are excluded -- the pre-processor has already replaced Quarto code
+  // chunks with blank lines, but display code blocks (```lang, no braces) in
+  // prose remain and should not be flagged.
+  // max-line-length input overrides line_length at runtime.
+  "MD013": { "line_length": 80, "code_blocks": false, "tables": false },
+
+  // Raw HTML is legitimate in .qmd prose (badges, <details>, etc.).
+  "MD033": false,
+
+  // .qmd files routinely open with YAML front matter, not an H1.
+  "MD041": false,
+
+  // Repeated section headings across parent sections are expected in
+  // multi-chapter Quarto books (e.g. "## Introduction" per chapter).
+  "MD024": { "siblings_only": true },
+
+  // Table pipe-padding style consistency (added in markdownlint 0.39) is
+  // stricter than the mixed padded-content/compact-divider style in common use.
+  "MD060": false
+}
