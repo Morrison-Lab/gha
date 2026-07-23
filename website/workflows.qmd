@@ -105,8 +105,8 @@ delimited data files (`.csv`/`.tsv`/`.psv`), so a human reviews before the data
 merges. It is tuned for high precision, so it misses free-text PHI such as
 patient names.
 
-- **Diff-scoped on PRs.** Only lines _added_ by the PR are scanned; `push` runs
-  scan the whole tracked tree.
+- **Diff-scoped on PRs.** Only lines _added_ by the PR are scanned; `push`
+  scans the whole tracked tree.
 - **Values are never printed.** Findings report only `file:line:col` and the
   detector name, never the matched text, because a leaked identifier in a CI log
   is still a leak.

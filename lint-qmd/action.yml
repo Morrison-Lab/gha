@@ -30,7 +30,7 @@ inputs:
   config-file:
     description: >-
       Path (relative to the caller repo) to a markdownlint config file
-      (.jsonc/.json/.yaml/.cjs). If empty or the file does not exist, the
+      (.jsonc/.json/.yml/.yaml). If empty or the file does not exist, the
       bundled default config is used. max-line-length is applied on top of
       whichever config is resolved.
     default: ''
