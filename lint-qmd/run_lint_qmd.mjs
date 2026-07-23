@@ -76,7 +76,13 @@ function resolveConfig() {
 // "0" disables MD013; any positive integer sets line_length, merging with
 // any other sub-options the config already carries.
 export function applyMaxLineLength(config, raw) {
-  const val = parseInt(raw || '80', 10);
+  const candidate = (raw || '80').trim();
+  if (!/^\d+$/.test(candidate)) {
+    throw new Error(
+      `Invalid max-line-length value "${candidate}". Expected a non-negative integer (0 disables MD013).`
+    );
+  }
+  const val = Number(candidate);
   if (val === 0) {
     return { ...config, MD013: false };
   }
