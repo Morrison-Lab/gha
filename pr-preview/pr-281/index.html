@@ -489,6 +489,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#how-it-works" id="toc-how-it-works" class="nav-link active" data-scroll-target="#how-it-works">How it works</a></li>
   <li><a href="#actions-vs.-workflows" id="toc-actions-vs.-workflows" class="nav-link" data-scroll-target="#actions-vs.-workflows">Actions vs.&nbsp;workflows</a></li>
+  <li><a href="#where-to-go-next" id="toc-where-to-go-next" class="nav-link" data-scroll-target="#where-to-go-next">Where to go next</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/index.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
@@ -595,7 +596,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>Every <code>run:</code> step in a composite action must declare <code>shell:</code>. Workflows have a default shell; composite actions do not. :::</p>
+<p>Every <code>run:</code> step in a composite action must declare <code>shell:</code>. Workflows have a default shell; composite actions do not.</p>
+</div>
+</div>
 <table class="caption-top table">
 <colgroup>
 <col style="width: 17%">
@@ -638,6 +641,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>Because an action cannot declare permissions or choose its runner, this repo uses the two-layer design: the composite action holds the real logic, and the reusable workflow wraps it to handle the runner, permissions, and checkout. Consumer repos reference only the workflow layer.</p>
+</section>
 <section id="where-to-go-next" class="level2">
 <h2 class="anchored" data-anchor-id="where-to-go-next">Where to go next</h2>
 <ul>
@@ -648,9 +652,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This very site is built and shipped by the workflows it documents: <a href="./workflows.html#quarto-sites"><code>quarto-publish</code></a> deploys it to GitHub Pages, and the <a href="./workflows.html#quarto-sites"><code>preview</code></a> family renders a preview for each pull request.</p>
 
 
-</section>
-</div>
-</div>
 </section>
 
 </main> <!-- /main -->
