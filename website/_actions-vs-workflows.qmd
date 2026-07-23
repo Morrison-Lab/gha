@@ -52,7 +52,9 @@ jobs:
 ## `shell:` is required in composite actions
 
 Every `run:` step in a composite action must declare `shell:`. Workflows have a
-default shell; composite actions do not. :::
+default shell; composite actions do not.
+
+:::
 
 |                    | Composite action                                   | Reusable workflow                 |
 | ------------------ | -------------------------------------------------- | --------------------------------- |
