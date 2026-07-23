@@ -1,7 +1,8 @@
 # Copy to .github/workflows/lint-qmd.yml in your repo.
 # Lints the prose sections of tracked .qmd Quarto files with markdownlint.
-# YAML front matter and code chunks are stripped before linting; only prose
-# is checked. Semantic line breaks are encouraged via an 80-char ceiling.
+# Code chunks are stripped before linting; only prose is checked. YAML front
+# matter is left intact and skipped natively by markdownlint. Semantic line
+# breaks are encouraged via an 80-char ceiling.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Lint QMD Prose
 
