@@ -2,31 +2,32 @@
 title: "quarto-publish.yml"
 ---
 
-Render a Quarto project and deploy it to the `gh-pages` branch, which GitHub Pages serves.
-One-time setup: set Settings -> Pages -> Source to "Deploy from a branch", branch `gh-pages` / `(root)`.
-Render-only callers (`deploy: false`) skip the deploy.
+Render a Quarto project and deploy it to the `gh-pages` branch, which GitHub
+Pages serves. One-time setup: set Settings -> Pages -> Source to "Deploy from a
+branch", branch `gh-pages` / `(root)`. Render-only callers (`deploy: false`)
+skip the deploy.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `path` | string | `'.'` | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`). |
-| `setup-r` | boolean | `false` | Install R and project R dependencies before rendering (for R/knitr Quarto projects). |
-| `r-packages` | string | `(long; see workflow file)` | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`. |
-| `use-renv` | boolean | `false` | Restore R dependencies with renv instead of `r-packages` (requires `setup-r`). |
-| `tinytex` | boolean | `false` | Install TinyTeX (needed to render PDF outputs). |
-| `apt-packages` | string | `''` | Extra apt packages to install before rendering (space-separated). |
-| `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`; forwarded to `quarto render --output-dir` and overrides any `_quarto.yml` setting. |
-| `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules before rendering. |
-| `pre-render-artifact` | string | `''` | Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip. |
-| `pre-render-artifact-path` | string | `''` | Directory in the caller repo to extract `pre-render-artifact` into. Defaults to the workspace root. |
-| `deploy` | boolean | `true` | Deploy the rendered site to the `gh-pages` branch. Set false to render only. |
+| Input                      | Type    | Default                     | Description                                                                                                                                       |
+| -------------------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                     | string  | `'.'`                       | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`).                                                       |
+| `setup-r`                  | boolean | `false`                     | Install R and project R dependencies before rendering (for R/knitr Quarto projects).                                                              |
+| `r-packages`               | string  | `(long; see workflow file)` | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`.              |
+| `use-renv`                 | boolean | `false`                     | Restore R dependencies with renv instead of `r-packages` (requires `setup-r`).                                                                    |
+| `tinytex`                  | boolean | `false`                     | Install TinyTeX (needed to render PDF outputs).                                                                                                   |
+| `apt-packages`             | string  | `''`                        | Extra apt packages to install before rendering (space-separated).                                                                                 |
+| `output-dir`               | string  | `'_site'`                   | Directory the rendered site is written to, relative to `path`; forwarded to `quarto render --output-dir` and overrides any `_quarto.yml` setting. |
+| `checkout-submodules`      | boolean | `false`                     | Initialize the caller's git submodules before rendering.                                                                                          |
+| `pre-render-artifact`      | string  | `''`                        | Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.     |
+| `pre-render-artifact-path` | string  | `''`                        | Directory in the caller repo to extract `pre-render-artifact` into. Defaults to the workspace root.                                               |
+| `deploy`                   | boolean | `true`                      | Deploy the rendered site to the `gh-pages` branch. Set false to render only.                                                                      |
 
 ## Secrets
 
-| Secret | Required | Description |
-|---|---|---|
-| `SUBMODULES_TOKEN` | no | Token with read access to private submodules (only needed when `checkout-submodules` is true). |
+| Secret             | Required | Description                                                                                    |
+| ------------------ | -------- | ---------------------------------------------------------------------------------------------- |
+| `SUBMODULES_TOKEN` | no       | Token with read access to private submodules (only needed when `checkout-submodules` is true). |
 
 ## Permissions
 
@@ -84,5 +85,6 @@ jobs:
     #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
 ```
 
-See [`examples/quarto-publish.yml`](https://github.com/d-morrison/gha/blob/main/examples/quarto-publish.yml)
+See
+[`examples/quarto-publish.yml`](https://github.com/d-morrison/gha/blob/main/examples/quarto-publish.yml)
 for the full caller stub.

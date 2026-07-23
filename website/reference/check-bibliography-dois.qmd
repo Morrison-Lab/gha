@@ -2,15 +2,16 @@
 title: "check-bibliography-dois.yml"
 ---
 
-Validate that book and article BibTeX entries have DOIs that resolve and match CrossRef metadata.
+Validate that book and article BibTeX entries have DOIs that resolve and match
+CrossRef metadata.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
-| `no-metadata-check` | boolean | `false` | Skip the CrossRef metadata comparison. |
-| `exclude-keys` | string | `''` | Space- or comma-separated BibTeX keys to skip. |
+| Input               | Type    | Default | Description                                    |
+| ------------------- | ------- | ------- | ---------------------------------------------- |
+| `install-quarto`    | boolean | `false` | Install Quarto when setting up R dependencies. |
+| `no-metadata-check` | boolean | `false` | Skip the CrossRef metadata comparison.         |
+| `exclude-keys`      | string  | `''`    | Space- or comma-separated BibTeX keys to skip. |
 
 ## Permissions
 
@@ -38,5 +39,6 @@ jobs:
     #   no-metadata-check: false
 ```
 
-See [`examples/check-bibliography-dois.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-bibliography-dois.yml)
+See
+[`examples/check-bibliography-dois.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-bibliography-dois.yml)
 for the full caller stub.

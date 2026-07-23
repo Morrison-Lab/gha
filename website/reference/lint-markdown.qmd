@@ -2,18 +2,22 @@
 title: "lint-markdown.yml"
 ---
 
-Lint tracked Markdown files with [`markdownlint-cli2`](https://github.com/DavidAnson/markdownlint-cli2) using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates.
+Lint tracked Markdown files with
+[`markdownlint-cli2`](https://github.com/DavidAnson/markdownlint-cli2) using a
+bundled default config (overridable), plus a companion check that flags fenced
+code blocks longer than a configurable line threshold as decomposition
+candidates.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `config-file` | string | `''` | Path (in the caller repo) to a markdownlint config file (`.jsonc`/`.json`/`.yaml`/`.cjs`). Falls back to the bundled default when empty or the file does not exist. |
-| `globs` | string | `'*.md'` | Space-separated git pathspecs of tracked files to lint (recursive by default). |
-| `paths-ignore` | string | `''` | Comma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports `*`, `?`, and recursive `**`. |
-| `fail` | boolean | `true` | Fail the workflow when markdownlint reports an error. |
-| `max-code-block-lines` | string | `'150'` | Flag a fenced code block longer than this many lines. Matches the [lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html) `<150`-line function-length heuristic. |
-| `fail-on-long-code-blocks` | boolean | `false` | Fail when a code block exceeds `max-code-block-lines`. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint. |
+| Input                      | Type    | Default  | Description                                                                                                                                                                                                      |
+| -------------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `config-file`              | string  | `''`     | Path (in the caller repo) to a markdownlint config file (`.jsonc`/`.json`/`.yaml`/`.cjs`). Falls back to the bundled default when empty or the file does not exist.                                              |
+| `globs`                    | string  | `'*.md'` | Space-separated git pathspecs of tracked files to lint (recursive by default).                                                                                                                                   |
+| `paths-ignore`             | string  | `''`     | Comma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports `*`, `?`, and recursive `**`.                                                                                          |
+| `fail`                     | boolean | `true`   | Fail the workflow when markdownlint reports an error.                                                                                                                                                            |
+| `max-code-block-lines`     | string  | `'150'`  | Flag a fenced code block longer than this many lines. Matches the [lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html) `<150`-line function-length heuristic.                             |
+| `fail-on-long-code-blocks` | boolean | `false`  | Fail when a code block exceeds `max-code-block-lines`. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint. |
 
 ## Permissions
 
@@ -45,5 +49,5 @@ jobs:
     #   fail: false                         # warn instead of failing on markdownlint errors
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
-for the full caller stub (`lint-markdown.yml`).
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+directory for the full caller stub (`lint-markdown.yml`).

@@ -2,20 +2,22 @@
 title: "check-phi.yml"
 ---
 
-Scan pull requests (added lines only; the whole tracked tree on `push`) for content that looks like protected health information:
-US Social Security numbers, medical record numbers, dates of birth, and PHI-suggestive column headers in delimited data files.
-It is a heuristic tripwire, not a HIPAA compliance tool.
-Matched values are never printed to the log; findings report only `file:line:col` and the detector name.
+Scan pull requests (added lines only; the whole tracked tree on `push`) for
+content that looks like protected health information: US Social Security
+numbers, medical record numbers, dates of birth, and PHI-suggestive column
+headers in delimited data files. It is a heuristic tripwire, not a HIPAA
+compliance tool. Matched values are never printed to the log; findings report
+only `file:line:col` and the detector name.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `python-version` | string | `'3.x'` | Python version to set up. |
-| `detectors` | string | `''` | Comma-separated detector set, overriding the default (`ssn`, `mrn`, `dob`, `csv_phi_header`). Also available: `phone`, `email`. |
-| `paths-ignore` | string | `''` | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
-| `allowlist-file` | string | `''` | Path in the caller repo to a regex allowlist file. |
-| `fail` | boolean | `true` | Fail the workflow when possible PHI is found; otherwise warn only. |
+| Input            | Type    | Default | Description                                                                                                                     |
+| ---------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `python-version` | string  | `'3.x'` | Python version to set up.                                                                                                       |
+| `detectors`      | string  | `''`    | Comma-separated detector set, overriding the default (`ssn`, `mrn`, `dob`, `csv_phi_header`). Also available: `phone`, `email`. |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`.                      |
+| `allowlist-file` | string  | `''`    | Path in the caller repo to a regex allowlist file.                                                                              |
+| `fail`           | boolean | `true`  | Fail the workflow when possible PHI is found; otherwise warn only.                                                              |
 
 ## Permissions
 
@@ -53,5 +55,6 @@ jobs:
 #     (defaults to .github/phi-allowlist.txt when present).
 ```
 
-See [`examples/check-phi.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-phi.yml)
+See
+[`examples/check-phi.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-phi.yml)
 for the full caller stub.

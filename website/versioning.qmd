@@ -2,21 +2,22 @@
 title: "Versioning"
 ---
 
-Releases are tagged `vX.Y.Z`, and the `vX` major tag moves to the latest compatible release,
-following the [`r-lib/actions`](https://github.com/r-lib/actions) convention.
-`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking `quarto-publish`
-change cut `@v2`, so it has picked up no fixes since - not even non-breaking
-ones. Pin `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
+Releases are tagged `vX.Y.Z`, and the `vX` major tag moves to the latest
+compatible release, following the
+[`r-lib/actions`](https://github.com/r-lib/actions) convention. `@v1` was frozen
+at the pre-`2.0.0` snapshot when the breaking `quarto-publish` change cut `@v2`,
+so it has picked up no fixes since - not even non-breaking ones. Pin
+`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `quarto-publish.yml`, `check-bibliography-dois.yml`, `check-phi.yml`,
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` to `@v2`;
 `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
-`lint-markdown.yml`, `lint-changed-lines.yml`,
-`request-dependabot-review.yml`, and `sync-upstream.yml`
-only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag). See
+`lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`request-dependabot-review.yml`, and `sync-upstream.yml` only ever shipped at
+`@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
-capabilities still pin `@v1` and why. Breaking changes bump the major tag
-(`v2`, and so on) with migration steps.
+capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,
+and so on) with migration steps.
 
 ## Advancing a major tag
 
@@ -27,9 +28,9 @@ step, so a change can be validated on one or a few consumer repos before
 everyone else has to deal with it:
 
 1. Merge the change to `main`.
-2. Optionally, point a consumer's `uses:` line at `@main`, at a specific
-   commit SHA, or temporarily at a feature branch of this repo, and let that
-   consumer's own CI run against the unreleased change.
+2. Optionally, point a consumer's `uses:` line at `@main`, at a specific commit
+   SHA, or temporarily at a feature branch of this repo, and let that consumer's
+   own CI run against the unreleased change.
 3. Once confident, advance the shared major tag to `main`'s current tip by
    running
    [`slide-major-tag.yml`](https://github.com/d-morrison/gha/blob/main/.github/workflows/slide-major-tag.yml)
@@ -41,16 +42,16 @@ See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
 for what changes as a major tag moves.
 
 Changelog entries are added as fragment files under
-[`changelog.d/`](https://github.com/d-morrison/gha/tree/main/changelog.d)
-(one per PR, so parallel PRs never conflict on the shared changelog) and
-collated into `CHANGELOG.md` at release time; see
+[`changelog.d/`](https://github.com/d-morrison/gha/tree/main/changelog.d) (one
+per PR, so parallel PRs never conflict on the shared changelog) and collated
+into `CHANGELOG.md` at release time; see
 [`changelog.d/README.md`](https://github.com/d-morrison/gha/blob/main/changelog.d/README.md)
 for the fragment format and release flow.
 
 ## Pinning third-party actions
 
-Every **third-party** action is pinned to a full commit SHA,
-with the human-readable version in a trailing comment:
+Every **third-party** action is pinned to a full commit SHA, with the
+human-readable version in a trailing comment:
 
 ```yaml
 uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -58,27 +59,27 @@ uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
 This follows GitHub's
 [recommended hardening posture](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions):
-a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs.
-That matters here because jobs like the preview deploy run with
-`contents: write` and `pull-requests: write`.
+a SHA is immutable, so a re-pointed tag or a compromised upstream cannot
+silently change what runs. That matters here because jobs like the preview
+deploy run with `contents: write` and `pull-requests: write`.
 [`.github/dependabot.yml`](https://github.com/d-morrison/gha/blob/main/.github/dependabot.yml)
-bumps these pins as upstreams publish releases, so they stay current instead of freezing.
-When adding a new third-party action, pin it the same way.
+bumps these pins as upstreams publish releases, so they stay current instead of
+freezing. When adding a new third-party action, pin it the same way.
 
 First-party `d-morrison/gha/*` self-references and most
 [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) templates
-intentionally track the moving major tag (currently `@v1`, except
-`preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
-`quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
+intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
+`preview-deploy.yml`, `cleanup-pr-previews.yml`, `quarto-publish.yml`,
+`test-coverage.yml`, `check-equation-renders.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
-`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
+`update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`,
 `lint-changed-lines.yml`, `request-dependabot-review.yml`, and
-`sync-upstream.yml` at `@v2` - see the
-versioning note above), so they are **not** SHA-pinned.
+`sync-upstream.yml` at `@v2` - see the versioning note above), so they are
+**not** SHA-pinned.
 
 ## Reverse dependencies
 
-[`REVDEPS.md`](https://github.com/d-morrison/gha/blob/main/REVDEPS.md)
-tracks repos that call these workflows, so consumers can be notified before a breaking change.
-If your repo uses `gha`, please add it there.
+[`REVDEPS.md`](https://github.com/d-morrison/gha/blob/main/REVDEPS.md) tracks
+repos that call these workflows, so consumers can be notified before a breaking
+change. If your repo uses `gha`, please add it there.

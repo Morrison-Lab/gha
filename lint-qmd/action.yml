@@ -1,0 +1,52 @@
+name: Lint QMD Prose
+description: >-
+  Lint the prose sections of .qmd Quarto files with markdownlint. Quarto
+  code chunks (```{lang} / ```{=fmt}) are replaced with blank lines before
+  linting, so only prose is checked and line numbers in reported errors match
+  the original file. YAML front matter is left intact — markdownlint skips it
+  natively. Semantic line breaks (one sentence or clause per source line) are
+  encouraged by the default 80-char line-length ceiling.
+inputs:
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to lint. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  fail:
+    description: Fail the action when markdownlint reports an error.
+    default: 'true'
+  max-line-length:
+    description: >-
+      Maximum prose line length. Semantic line breaks (one sentence/clause
+      per source line) naturally keep lines short; this ceiling enforces the
+      convention. Applied on top of whichever config is resolved. Set 0 to
+      disable the line-length check entirely.
+    default: '80'
+  config-file:
+    description: >-
+      Path (relative to the caller repo) to a markdownlint config file
+      (.jsonc/.json/.yml/.yaml). If empty or the file does not exist, the
+      bundled default config is used. max-line-length is applied on top of
+      whichever config is resolved.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Install markdownlint
+      shell: bash
+      run: npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
+
+    - name: Lint QMD prose
+      shell: bash
+      env:
+        LINT_QMD_CONFIG_FILE: ${{ inputs.config-file }}
+        LINT_QMD_GLOBS: ${{ inputs.globs }}
+        LINT_QMD_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        LINT_QMD_FAIL: ${{ inputs.fail }}
+        LINT_QMD_MAX_LINE_LENGTH: ${{ inputs.max-line-length }}
+      run: node "$GITHUB_ACTION_PATH/run_lint_qmd.mjs"

@@ -2,14 +2,14 @@
 title: "check-non-standard-chars.yml"
 ---
 
-Detect curly quotes and en/em dashes in `.qmd` and `.R` files,
-which can break Quarto and R rendering.
-The check fails when it finds any, reporting each `file:line:col` so you can fix it.
+Detect curly quotes and en/em dashes in `.qmd` and `.R` files, which can break
+Quarto and R rendering. The check fails when it finds any, reporting each
+`file:line:col` so you can fix it.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
+| Input            | Type   | Default | Description               |
+| ---------------- | ------ | ------- | ------------------------- |
 | `python-version` | string | `'3.x'` | Python version to set up. |
 
 ## Permissions
@@ -29,5 +29,6 @@ jobs:
     uses: d-morrison/gha/.github/workflows/check-non-standard-chars.yml@v2
 ```
 
-See [`examples/check-non-standard-chars.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-non-standard-chars.yml)
+See
+[`examples/check-non-standard-chars.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-non-standard-chars.yml)
 for the full caller stub.

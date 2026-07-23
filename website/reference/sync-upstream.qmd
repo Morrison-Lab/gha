@@ -2,38 +2,40 @@
 title: "sync-upstream.yml"
 ---
 
-Merge an upstream repository's branch into this fork and open a PR when the merge brings changes.
-Used by a fork that tracks another project (for example `d-morrison/altdoc` tracking `etiennebacher/altdoc`):
-a scheduled run merges upstream into a fork-owned automation branch and opens a PR,
-so the fork's own changes are preserved while upstream's updates are reviewed before they land.
+Merge an upstream repository's branch into this fork and open a PR when the
+merge brings changes. Used by a fork that tracks another project (for example
+`d-morrison/altdoc` tracking `etiennebacher/altdoc`): a scheduled run merges
+upstream into a fork-owned automation branch and opens a PR, so the fork's own
+changes are preserved while upstream's updates are reviewed before they land.
 
-On a clean merge the PR is immediately mergeable.
-When upstream and the fork have both changed the same lines, the merge conflicts:
-by default the conflict markers are committed to the PR branch (every non-conflicting upstream change still merges cleanly),
-so the drift surfaces as a visible PR a human resolves.
+On a clean merge the PR is immediately mergeable. When upstream and the fork
+have both changed the same lines, the merge conflicts: by default the conflict
+markers are committed to the PR branch (every non-conflicting upstream change
+still merges cleanly), so the drift surfaces as a visible PR a human resolves.
 Set `fail-on-conflict` to fail the run instead.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `upstream-repo` | string | required | Upstream repository to sync from, in `owner/name` form (for example `etiennebacher/altdoc`). |
-| `upstream-branch` | string | `main` | Branch on the upstream repo to merge from. |
-| `base-branch` | string | `main` | Base branch in this fork to open the PR against; name the ref the workflow is triggered on (normally the default branch). |
-| `pr-branch` | string | `automated/sync-upstream` | Head branch for the automation PR. |
-| `fail-on-conflict` | boolean | `false` | Fail the run on a conflicting merge instead of opening a PR that carries the conflict markers. |
+| Input              | Type    | Default                   | Description                                                                                                               |
+| ------------------ | ------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `upstream-repo`    | string  | required                  | Upstream repository to sync from, in `owner/name` form (for example `etiennebacher/altdoc`).                              |
+| `upstream-branch`  | string  | `main`                    | Branch on the upstream repo to merge from.                                                                                |
+| `base-branch`      | string  | `main`                    | Base branch in this fork to open the PR against; name the ref the workflow is triggered on (normally the default branch). |
+| `pr-branch`        | string  | `automated/sync-upstream` | Head branch for the automation PR.                                                                                        |
+| `fail-on-conflict` | boolean | `false`                   | Fail the run on a conflicting merge instead of opening a PR that carries the conflict markers.                            |
 
 ## Secrets
 
-| Secret | Required | Description |
-|---|---|---|
-| `UPSTREAM_TOKEN` | no | Read access to a private upstream repo. Omit for public upstreams. |
-| `WORKFLOW_TOKEN` | no | PAT or App token; needed only to push to a protected branch. |
+| Secret           | Required | Description                                                        |
+| ---------------- | -------- | ------------------------------------------------------------------ |
+| `UPSTREAM_TOKEN` | no       | Read access to a private upstream repo. Omit for public upstreams. |
+| `WORKFLOW_TOKEN` | no       | PAT or App token; needed only to push to a protected branch.       |
 
 ## Permissions
 
-Grant `contents: write` and `pull-requests: write`,
-and enable Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
+Grant `contents: write` and `pull-requests: write`, and enable Settings ->
+Actions -> General -> "Allow GitHub Actions to create and approve pull
+requests".
 
 ## Example
 
@@ -49,7 +51,7 @@ name: Sync upstream fork
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+    - cron: "0 6 * * 1" # Weekly on Monday at 06:00 UTC
 
 jobs:
   sync:
@@ -69,5 +71,5 @@ jobs:
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
-for the full caller stub (`sync-upstream.yml`).
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+directory for the full caller stub (`sync-upstream.yml`).
