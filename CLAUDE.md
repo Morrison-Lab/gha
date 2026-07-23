@@ -2,6 +2,11 @@
 
 Guidance for Claude Code when working in this repository.
 
+## Memory storage policy
+
+- Persist standing notes and memories only in repo-tracked files
+  (via commits/PRs); do not save them to non-repo local paths.
+
 ## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
