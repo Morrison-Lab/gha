@@ -526,81 +526,86 @@ ul.task-list li input[type="checkbox"] {
 <td><code>config-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-code-block-lines</code>, <code>fail-on-long-code-blocks</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/lint-qmd.html"><code>lint-qmd.yml</code></a></td>
+<td>markdownlint over the prose sections of tracked <code>.qmd</code> Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks</td>
+<td><code>config-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-line-length</code></td>
+</tr>
+<tr class="even">
 <td><a href="./reference/lint-changed-lines.html"><code>lint-changed-lines.yml</code></a></td>
 <td>lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally</td>
 <td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/check-news.html"><code>check-news.yml</code></a></td>
 <td>Enforce a <code>NEWS.md</code> changelog entry on PRs</td>
 <td><code>changelog</code>, <code>no-changelog-label</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/test-coverage.html"><code>test-coverage.yml</code></a></td>
 <td>Measure R-package test coverage with <code>covr</code> and upload the Cobertura report to Codecov</td>
 <td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>fail-ci-if-error</code>, <code>upload-test-results</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/update-snapshots.html"><code>update-snapshots.yml</code></a></td>
 <td>Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit</td>
 <td><code>ref</code>, <code>pr-mode</code>, <code>julia</code>, <code>extra-packages</code>, <code>apt-packages</code>, <code>commit-message</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
 <td>AI summary comment on newly opened issues</td>
 <td>–</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto site and deploy it to GitHub Pages</td>
 <td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>tinytex</code>, <code>output-dir</code>, <code>checkout-submodules</code>, <code>deploy</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
 <td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
 <td>–</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a></td>
 <td>Crawl the build artifact with a headless browser and fail on equations MathJax can’t render</td>
 <td><code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
 <td>Housekeeping: delete preview directories for closed PRs</td>
 <td><code>preview-dir</code>, <code>compact-history</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>reviewer</code>, <code>report-cost</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Read-only Claude PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>report-cost</code>, <code>model</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
 <td>Update a submodule to upstream HEAD and open a PR when the pointer moves</td>
 <td><code>submodule-path</code>, <code>remote-branch</code>, <code>base-branch</code>, <code>pr-branch</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
 <td>Vendor files from an upstream repo (pinned to a commit) and open a PR when they change</td>
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/sync-upstream.html"><code>sync-upstream.yml</code></a></td>
 <td>Merge an upstream repo’s branch into a fork and open a PR when the merge brings changes</td>
 <td><code>upstream-repo</code>, <code>upstream-branch</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>fail-on-conflict</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/request-dependabot-review.html"><code>request-dependabot-review.yml</code></a></td>
 <td>Request review from configured reviewers when a PR’s author matches a bot actor (Dependabot by default)</td>
 <td><code>reviewers</code>, <code>bot-actor</code></td>
@@ -609,7 +614,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, and <code>lint-changed-lines.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/d-morrison/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/d-morrison/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/d-morrison/gha/issues/254">gha#254</a>). <code>check-news.yml</code>, <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, and <code>lint-changed-lines.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/d-morrison/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/d-morrison/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/d-morrison/gha/issues/254">gha#254</a>). <code>check-news.yml</code>, <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. The stubs in <a href="https://github.com/d-morrison/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
@@ -621,6 +626,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</li>
 <li><code>lint-yaml.yml</code> runs <a href="https://yamllint.readthedocs.io/">yamllint</a> over tracked YAML with a bundled config, plus a check that flags long <code>run:</code> script blocks as decomposition candidates.</li>
 <li><code>lint-markdown.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint-cli2">markdownlint-cli2</a> over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.</li>
+<li><code>lint-qmd.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint">markdownlint</a> over the prose sections of tracked <code>.qmd</code> Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.</li>
 <li><code>lint-changed-lines.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.</li>
 <li><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</li>
 <li><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</li>
@@ -630,7 +636,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="phi-scanning">PHI scanning</h2>
 <p><code>check-phi</code> is a <strong>heuristic tripwire, not a HIPAA compliance tool.</strong> It flags patterns that should almost never be committed: US Social Security numbers, medical record numbers, dates of birth, and PHI-suggestive column headers in delimited data files (<code>.csv</code>/<code>.tsv</code>/<code>.psv</code>), so a human reviews before the data merges. It is tuned for high precision, so it misses free-text PHI such as patient names.</p>
 <ul>
-<li><strong>Diff-scoped on PRs.</strong> Only lines <em>added</em> by the PR are scanned; <code>push</code> runs scan the whole tracked tree.</li>
+<li><strong>Diff-scoped on PRs.</strong> Only lines <em>added</em> by the PR are scanned; <code>push</code> scans the whole tracked tree.</li>
 <li><strong>Values are never printed.</strong> Findings report only <code>file:line:col</code> and the detector name, never the matched text, because a leaked identifier in a CI log is still a leak.</li>
 <li><strong>Suppressing false positives.</strong> Add a <code>phi-allow</code> comment on the line, or list a regex in an allowlist file (defaults to <code>.github/phi-allowlist.txt</code>). Use <code>fail: false</code> to downgrade findings to warnings.</li>
 </ul>
