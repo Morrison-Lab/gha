@@ -8,14 +8,14 @@ Quarto code chunks (`` ```{lang} `` / `` ```{=fmt} ``) are replaced with blank
 lines before linting so only prose is checked; YAML front matter is skipped
 natively by markdownlint.
 A default 80-character line-length ceiling (MD013) encourages semantic line
-breaks — one sentence or clause per source line — without requiring a separate
+breaks - one sentence or clause per source line - without requiring a separate
 rule for them.
 
 ## Inputs
 
 | Input | Type | Default | Description |
 |---|---|---|---|
-| `config-file` | string | `''` | Path (in the caller repo) to a markdownlint config file (`.jsonc`/`.json`/`.yaml`/`.cjs`). Falls back to the bundled default when empty or the file does not exist. |
+| `config-file` | string | `''` | Path (in the caller repo) to a markdownlint config file (`.jsonc`/`.json`/`.yml`/`.yaml`). Falls back to the bundled default when empty or the file does not exist. |
 | `globs` | string | `'*.qmd'` | Space-separated git pathspecs of tracked files to lint (recursive by default). |
 | `paths-ignore` | string | `''` | Comma/newline-separated glob patterns (relative paths) to skip. Supports `*`, `?`, and recursive `**`. |
 | `fail` | boolean | `true` | Fail the workflow when markdownlint reports an error. |

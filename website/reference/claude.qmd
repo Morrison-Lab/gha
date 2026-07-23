@@ -2,63 +2,62 @@
 title: "claude.yml"
 ---
 
-Run the agent-mode Claude Code bot.
-It responds to `@claude` mentions, edits files, and opens or updates pull requests.
-It pairs with `claude-code-review.yml`:
-when Claude pushes commits (or an `@claude review` mention fires),
-it dispatches the review workflow via `workflow_dispatch`.
+Run the agent-mode Claude Code bot. It responds to `@claude` mentions, edits
+files, and opens or updates pull requests. It pairs with
+`claude-code-review.yml`: when Claude pushes commits (or an `@claude review`
+mention fires), it dispatches the review workflow via `workflow_dispatch`.
 
 It also runs unattended on `workflow_dispatch`/`schedule` events (e.g. a
-periodic skill invocation with no human comment to react to). The caller's
-`on:` needs one of those triggers, and its job-level `if:` gate needs
-widening too, or the caller-side check itself skips the job before this
-reusable workflow ever runs (see the commented example in
-`examples/claude.yml`). Both events are trusted by construction:
-`workflow_dispatch` requires the dispatching actor to have repo write
-access, and a `schedule` trigger has no triggering actor at all, only
-existing because someone with write access committed its `cron:` config to
+periodic skill invocation with no human comment to react to). The caller's `on:`
+needs one of those triggers, and its job-level `if:` gate needs widening too, or
+the caller-side check itself skips the job before this reusable workflow ever
+runs (see the commented example in `examples/claude.yml`). Both events are
+trusted by construction: `workflow_dispatch` requires the dispatching actor to
+have repo write access, and a `schedule` trigger has no triggering actor at all,
+only existing because someone with write access committed its `cron:` config to
 the default branch. So the job's `@claude`-mention/author-association gate
-doesn't apply to either. These runs get no triggering issue/PR, so no
-branch or draft PR is set up and no reply comment is posted; use the
-`prompt-addendum` input to supply the actual task, and have it use whatever
-tools `claude-args` grants to persist output (e.g. `gh issue create`).
+doesn't apply to either. These runs get no triggering issue/PR, so no branch or
+draft PR is set up and no reply comment is posted; use the `prompt-addendum`
+input to supply the actual task, and have it use whatever tools `claude-args`
+grants to persist output (e.g. `gh issue create`).
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `setup-r` | boolean | `true` | Install R (pandoc plus setup-r) and the package's dependencies before running Claude. |
-| `install-quarto` | boolean | `false` | Install Quarto (with tinytex) so Claude can render `.qmd` files. |
-| `apt-packages` | string | `''` | Extra apt packages to install before R/Quarto setup. Empty to skip. |
-| `pip-packages` | string | `''` | Python packages to install with `pip3 --break-system-packages` before Claude runs. Empty to skip. |
-| `use-renv` | boolean | `false` | Restore dependencies with renv instead of DESCRIPTION-based `setup-r-dependencies`. |
-| `r-extra-packages` | string | `(long; see workflow file)` | Extra packages for `setup-r-dependencies` (ignored when `use-renv` is true). Defaults to a devtools/roxygen2/lintr/spelling/rcmdcheck set plus `local::.`. |
-| `renv-cache-version` | string | `'1'` | renv cache-version passed to setup-renv; bump to invalidate the cached library. |
-| `checkout-submodules` | boolean | `false` | Check out submodules. Private submodules require the `SUBMODULES_TOKEN` secret. |
-| `link-skills` | boolean | `false` | Expose the caller repo's top-level `skills/` directory to Claude as project skills. A no-op on PR-triggered runs; commit the symlink to the default branch instead. |
-| `eager-pr` | boolean | `false` | On an issue trigger, open the draft PR up front instead of only at the end. Empty PRs are closed automatically. |
-| `reviewer` | string | `'d-morrison'` | GitHub user re-requested as reviewer when Claude pushes commits to a PR. |
-| `review-workflow-file` | string | `'claude-code-review.yml'` | Workflow file in the caller repo dispatched to review Claude's commits. |
-| `mark-ready-for-review` | boolean | `true` | When Claude finishes with committed code, take its draft PR out of draft mode. Set false to leave PRs as drafts. |
-| `prompt-addendum` | string | `''` | Repo-specific instructions appended to Claude's prompt. |
-| `webfetch-allowlist-url` | string | `''` | URL of a newline-delimited hostname allowlist; each host becomes a `WebFetch(domain:<host>)` grant. Empty to disable WebFetch. |
-| `claude-args` | string | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied. |
-| `runs-on` | string | `'ubuntu-latest'` | Runner for the job. |
-| `report-cost` | boolean | `true` | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/d-morrison/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
+| Input                    | Type    | Default                     | Description                                                                                                                                                                                                                                                                                                                           |
+| ------------------------ | ------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setup-r`                | boolean | `true`                      | Install R (pandoc plus setup-r) and the package's dependencies before running Claude.                                                                                                                                                                                                                                                 |
+| `install-quarto`         | boolean | `false`                     | Install Quarto (with tinytex) so Claude can render `.qmd` files.                                                                                                                                                                                                                                                                      |
+| `apt-packages`           | string  | `''`                        | Extra apt packages to install before R/Quarto setup. Empty to skip.                                                                                                                                                                                                                                                                   |
+| `pip-packages`           | string  | `''`                        | Python packages to install with `pip3 --break-system-packages` before Claude runs. Empty to skip.                                                                                                                                                                                                                                     |
+| `use-renv`               | boolean | `false`                     | Restore dependencies with renv instead of DESCRIPTION-based `setup-r-dependencies`.                                                                                                                                                                                                                                                   |
+| `r-extra-packages`       | string  | `(long; see workflow file)` | Extra packages for `setup-r-dependencies` (ignored when `use-renv` is true). Defaults to a devtools/roxygen2/lintr/spelling/rcmdcheck set plus `local::.`.                                                                                                                                                                            |
+| `renv-cache-version`     | string  | `'1'`                       | renv cache-version passed to setup-renv; bump to invalidate the cached library.                                                                                                                                                                                                                                                       |
+| `checkout-submodules`    | boolean | `false`                     | Check out submodules. Private submodules require the `SUBMODULES_TOKEN` secret.                                                                                                                                                                                                                                                       |
+| `link-skills`            | boolean | `false`                     | Expose the caller repo's top-level `skills/` directory to Claude as project skills. A no-op on PR-triggered runs; commit the symlink to the default branch instead.                                                                                                                                                                   |
+| `eager-pr`               | boolean | `false`                     | On an issue trigger, open the draft PR up front instead of only at the end. Empty PRs are closed automatically.                                                                                                                                                                                                                       |
+| `reviewer`               | string  | `'d-morrison'`              | GitHub user re-requested as reviewer when Claude pushes commits to a PR.                                                                                                                                                                                                                                                              |
+| `review-workflow-file`   | string  | `'claude-code-review.yml'`  | Workflow file in the caller repo dispatched to review Claude's commits.                                                                                                                                                                                                                                                               |
+| `mark-ready-for-review`  | boolean | `true`                      | When Claude finishes with committed code, take its draft PR out of draft mode. Set false to leave PRs as drafts.                                                                                                                                                                                                                      |
+| `prompt-addendum`        | string  | `''`                        | Repo-specific instructions appended to Claude's prompt.                                                                                                                                                                                                                                                                               |
+| `webfetch-allowlist-url` | string  | `''`                        | URL of a newline-delimited hostname allowlist; each host becomes a `WebFetch(domain:<host>)` grant. Empty to disable WebFetch.                                                                                                                                                                                                        |
+| `claude-args`            | string  | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied.                                                                                                                                                                                   |
+| `runs-on`                | string  | `'ubuntu-latest'`           | Runner for the job.                                                                                                                                                                                                                                                                                                                   |
+| `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/d-morrison/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
 
 ## Secrets
 
-| Secret | Required | Description |
-|---|---|---|
-| `CLAUDE_CODE_OAUTH_TOKEN` | no | OAuth token for Claude Code (Claude Max plan). |
-| `ANTHROPIC_API_KEY` | no | Direct Anthropic API key (or GitHub App via `/install-github-app`), used instead of `CLAUDE_CODE_OAUTH_TOKEN`. |
-| `SUBMODULES_TOKEN` | no | Read access to private submodules. |
-| `WORKFLOW_TOKEN` | no | PAT or App token with `contents:write` plus `workflows:write`, needed only to push changes under `.github/workflows/`. Falls back to `GITHUB_TOKEN` when unset. |
+| Secret                    | Required | Description                                                                                                                                                     |
+| ------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLAUDE_CODE_OAUTH_TOKEN` | no       | OAuth token for Claude Code (Claude Max plan).                                                                                                                  |
+| `ANTHROPIC_API_KEY`       | no       | Direct Anthropic API key (or GitHub App via `/install-github-app`), used instead of `CLAUDE_CODE_OAUTH_TOKEN`.                                                  |
+| `SUBMODULES_TOKEN`        | no       | Read access to private submodules.                                                                                                                              |
+| `WORKFLOW_TOKEN`          | no       | PAT or App token with `contents:write` plus `workflows:write`, needed only to push changes under `.github/workflows/`. Falls back to `GITHUB_TOKEN` when unset. |
 
 ## Permissions
 
-Grant `contents: write`, `pull-requests: write`, `issues: write`, `id-token: write`, and `actions: write`,
-and add either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
+Grant `contents: write`, `pull-requests: write`, `issues: write`,
+`id-token: write`, and `actions: write`, and add either the
+`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 
 ## Example
 
@@ -103,13 +102,13 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-      actions: write       # dispatch the review workflow via `gh workflow run`
+      actions: write # dispatch the review workflow via `gh workflow run`
     uses: d-morrison/gha/.github/workflows/claude.yml@v2
     secrets:
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # Max-plan OAuth; empty when using API key
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}               # direct API key; empty when using OAuth
-      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
-      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}       # optional; for editing .github/workflows
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # direct API key; empty when using OAuth
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }} # optional; empty when unset
+      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }} # optional; for editing .github/workflows
     # with:
     #   setup-r: true               # default; set false for non-R repos
     #   install-quarto: true        # for Quarto books
@@ -129,5 +128,6 @@ jobs:
     #     devtools::test(); add a NEWS.md bullet for user-facing changes.
 ```
 
-See [`examples/claude.yml`](https://github.com/d-morrison/gha/blob/main/examples/claude.yml)
+See
+[`examples/claude.yml`](https://github.com/d-morrison/gha/blob/main/examples/claude.yml)
 for the full caller stub.

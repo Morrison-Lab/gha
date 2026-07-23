@@ -2,21 +2,23 @@
 title: "check-links.yml"
 ---
 
-Run a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when links break on `main`.
+Run a lychee link check with a bundled config, a PR skip-label, and an
+auto-filed issue when links break on `main`.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `lychee-config` | string | `''` | Path in the caller repo to a lychee config; falls back to the bundled default. |
-| `lychee-args` | string | `''` | Arguments and globs passed to lychee; a sensible default glob set is used when empty. |
-| `fail-if-empty` | boolean | `false` | Fail the run when no links are found. |
-| `create-issue-on-main` | boolean | `true` | File an issue when links break on the `main` branch. |
-| `skip-label` | string | `'links checked by hand'` | PR label that skips the link check. |
+| Input                  | Type    | Default                   | Description                                                                           |
+| ---------------------- | ------- | ------------------------- | ------------------------------------------------------------------------------------- |
+| `lychee-config`        | string  | `''`                      | Path in the caller repo to a lychee config; falls back to the bundled default.        |
+| `lychee-args`          | string  | `''`                      | Arguments and globs passed to lychee; a sensible default glob set is used when empty. |
+| `fail-if-empty`        | boolean | `false`                   | Fail the run when no links are found.                                                 |
+| `create-issue-on-main` | boolean | `true`                    | File an issue when links break on the `main` branch.                                  |
+| `skip-label`           | string  | `'links checked by hand'` | PR label that skips the link check.                                                   |
 
 ## Permissions
 
-Grant `issues: write`, `pull-requests: read`, and `contents: read` (it opens an issue on `main` failures).
+Grant `issues: write`, `pull-requests: read`, and `contents: read` (it opens an
+issue on `main` failures).
 
 ## Example
 
@@ -34,7 +36,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
   schedule:
     # Run weekly on Mondays at 9:00 UTC to catch link rot
-    - cron: '0 9 * * 1'
+    - cron: "0 9 * * 1"
   workflow_dispatch:
 
 jobs:
@@ -51,5 +53,6 @@ jobs:
     #   skip-label: 'links checked by hand'
 ```
 
-See [`examples/check-links.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-links.yml)
+See
+[`examples/check-links.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-links.yml)
 for the full caller stub.

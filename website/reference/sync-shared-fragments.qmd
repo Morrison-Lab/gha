@@ -2,32 +2,35 @@
 title: "sync-shared-fragments.yml"
 ---
 
-Vendor a set of files from an upstream repo, pinned to a commit and recorded in a JSON manifest, and open a PR when the copy changes.
-Used by the side that cannot add a submodule because the other repo already submodules it (a mutual submodule would recurse).
+Vendor a set of files from an upstream repo, pinned to a commit and recorded in
+a JSON manifest, and open a PR when the copy changes. Used by the side that
+cannot add a submodule because the other repo already submodules it (a mutual
+submodule would recurse).
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `source-repo` | string | required | Upstream repository in `owner/name` form. A private source needs a `SOURCE_TOKEN` secret with read access. |
-| `source-ref` | string | `main` | Upstream ref to track (branch, tag, or SHA). Each file is pinned to the last commit on this ref that touched it. |
-| `source-paths` | string | required | Newline-separated list of upstream file paths to vendor. Each is written to `dest-dir` under its basename; two paths sharing a basename are rejected. |
-| `dest-dir` | string | required | Directory in this repo to write the vendored copies into. |
-| `manifest-path` | string | `''` | Path to a JSON manifest recording the source repo, pinned commit, and file list. Empty to skip writing a manifest. |
-| `base-branch` | string | `main` | Base branch to open the PR against. |
-| `pr-branch` | string | `automated/sync-shared-fragments` | Head branch for the automation PR. |
+| Input           | Type   | Default                           | Description                                                                                                                                           |
+| --------------- | ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `source-repo`   | string | required                          | Upstream repository in `owner/name` form. A private source needs a `SOURCE_TOKEN` secret with read access.                                            |
+| `source-ref`    | string | `main`                            | Upstream ref to track (branch, tag, or SHA). Each file is pinned to the last commit on this ref that touched it.                                      |
+| `source-paths`  | string | required                          | Newline-separated list of upstream file paths to vendor. Each is written to `dest-dir` under its basename; two paths sharing a basename are rejected. |
+| `dest-dir`      | string | required                          | Directory in this repo to write the vendored copies into.                                                                                             |
+| `manifest-path` | string | `''`                              | Path to a JSON manifest recording the source repo, pinned commit, and file list. Empty to skip writing a manifest.                                    |
+| `base-branch`   | string | `main`                            | Base branch to open the PR against.                                                                                                                   |
+| `pr-branch`     | string | `automated/sync-shared-fragments` | Head branch for the automation PR.                                                                                                                    |
 
 ## Secrets
 
-| Secret | Required | Description |
-|---|---|---|
-| `SOURCE_TOKEN` | no | Read access to a private source repo. |
-| `WORKFLOW_TOKEN` | no | PAT or App token; needed only to push to a protected branch. |
+| Secret           | Required | Description                                                  |
+| ---------------- | -------- | ------------------------------------------------------------ |
+| `SOURCE_TOKEN`   | no       | Read access to a private source repo.                        |
+| `WORKFLOW_TOKEN` | no       | PAT or App token; needed only to push to a protected branch. |
 
 ## Permissions
 
-Grant `contents: write` and `pull-requests: write`,
-and enable Settings -> Actions -> General -> "Allow GitHub Actions to create and approve pull requests".
+Grant `contents: write` and `pull-requests: write`, and enable Settings ->
+Actions -> General -> "Allow GitHub Actions to create and approve pull
+requests".
 
 ## Example
 
@@ -43,7 +46,7 @@ name: Sync shared fragments
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 6 * * 1' # Weekly on Monday at 06:00 UTC
+    - cron: "0 6 * * 1" # Weekly on Monday at 06:00 UTC
 
 jobs:
   sync:
@@ -66,5 +69,6 @@ jobs:
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```
 
-See [`examples/sync-shared-fragments.yml`](https://github.com/d-morrison/gha/blob/main/examples/sync-shared-fragments.yml)
+See
+[`examples/sync-shared-fragments.yml`](https://github.com/d-morrison/gha/blob/main/examples/sync-shared-fragments.yml)
 for the full caller stub.

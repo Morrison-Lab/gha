@@ -2,13 +2,12 @@
 title: "preview-deploy.yml"
 ---
 
-The deploy half of the PR-preview family.
-Triggered on the build workflow's `workflow_run` completion,
-it downloads the artifact and publishes the preview to `gh-pages` in the base-repo context,
-then comments the preview link.
-Keeping it split from the read-only build half is the trust boundary,
-so untrusted fork code never holds write permissions.
-The deploy stub's `on: workflow_run: workflows:` value must match the build workflow's `name:`.
+The deploy half of the PR-preview family. Triggered on the build workflow's
+`workflow_run` completion, it downloads the artifact and publishes the preview
+to `gh-pages` in the base-repo context, then comments the preview link. Keeping
+it split from the read-only build half is the trust boundary, so untrusted fork
+code never holds write permissions. The deploy stub's
+`on: workflow_run: workflows:` value must match the build workflow's `name:`.
 
 ## Inputs
 
@@ -16,9 +15,8 @@ This workflow takes no inputs.
 
 ## Permissions
 
-Grant `contents: write` (push to `gh-pages`),
-`pull-requests: write` (post the preview-link comment),
-and `actions: read` (download the build artifact).
+Grant `contents: write` (push to `gh-pages`), `pull-requests: write` (post the
+preview-link comment), and `actions: read` (download the build artifact).
 
 ## Example
 
@@ -42,11 +40,12 @@ on:
 jobs:
   deploy:
     permissions:
-      contents: write        # push to gh-pages
-      pull-requests: write   # post the preview-link comment
-      actions: read          # download the build artifact
+      contents: write # push to gh-pages
+      pull-requests: write # post the preview-link comment
+      actions: read # download the build artifact
     uses: d-morrison/gha/.github/workflows/preview-deploy.yml@v2
 ```
 
-See [`examples/preview-deploy.yml`](https://github.com/d-morrison/gha/blob/main/examples/preview-deploy.yml)
+See
+[`examples/preview-deploy.yml`](https://github.com/d-morrison/gha/blob/main/examples/preview-deploy.yml)
 for the full caller stub.

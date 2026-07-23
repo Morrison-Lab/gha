@@ -2,24 +2,26 @@
 title: "test-coverage.yml"
 ---
 
-Measure R-package test coverage with [`{covr}`](https://covr.r-lib.org/) and upload the Cobertura report to [Codecov](https://about.codecov.io/).
-Adapts the [`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.yaml` example into the repo's composite-plus-wrapper shape.
+Measure R-package test coverage with [`{covr}`](https://covr.r-lib.org/) and
+upload the Cobertura report to [Codecov](https://about.codecov.io/). Adapts the
+[`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.yaml` example
+into the repo's composite-plus-wrapper shape.
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
-| `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
-| `extra-packages` | string | `''` | Extra R packages for the coverage run (`covr` and `xml2` are always installed). |
-| `fail-ci-if-error` | string | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it. |
-| `upload-test-results` | boolean | `true` | Also generate a JUnit test-results report (`testthat::JunitReporter`) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload. |
+| Input                 | Type    | Default  | Description                                                                                                                                                                                    |
+| --------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                | string  | `'.'`    | Path to the R package root (the directory holding `DESCRIPTION`).                                                                                                                              |
+| `install-quarto`      | boolean | `false`  | Install Quarto when setting up R dependencies.                                                                                                                                                 |
+| `extra-packages`      | string  | `''`     | Extra R packages for the coverage run (`covr` and `xml2` are always installed).                                                                                                                |
+| `fail-ci-if-error`    | string  | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it.     |
+| `upload-test-results` | boolean | `true`   | Also generate a JUnit test-results report (`testthat::JunitReporter`) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload. |
 
 ## Secrets
 
-| Secret | Required | Description |
-|---|---|---|
-| `CODECOV_TOKEN` | No | Codecov upload token. Optional for public repos, but recommended -- tokenless uploads are rate-limited and unreliable from pull requests. |
+| Secret          | Required | Description                                                                                                                               |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `CODECOV_TOKEN` | No       | Codecov upload token. Optional for public repos, but recommended -- tokenless uploads are rate-limited and unreliable from pull requests. |
 
 ## Permissions
 
@@ -50,5 +52,5 @@ jobs:
     #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory
-for the full caller stub (`test-coverage.yml`).
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+directory for the full caller stub (`test-coverage.yml`).
