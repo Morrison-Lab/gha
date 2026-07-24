@@ -76,10 +76,16 @@ jobs:
           # This workflow's filename, so the dispatch resolves whatever you
           # name the file — WF_PATH is the .github/workflows/<file> portion.
           WF_FILE=$(basename "$WF_PATH")
-          echo "Dispatching $WF_FILE to review PR #$PR_NUMBER (/review comment)."
+          # This job never checks out the repo, so the PR's head branch has to
+          # be looked up explicitly. --ref pins the dispatched run's check-runs
+          # to that branch instead of the default branch workflow_dispatch
+          # falls back to when no ref is given --- without it, a required
+          # review check-run can land on the wrong commit.
+          PR_BRANCH=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.ref')
+          echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) (/review comment)."
           # --repo is required: this job doesn't check out the repo, so gh has no
           # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).
-          gh workflow run "$WF_FILE" --repo "$REPO" -f pr_number="$PR_NUMBER"
+          gh workflow run "$WF_FILE" --repo "$REPO" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER"
           gh issue comment "$PR_NUMBER" --repo "$REPO" \
             --body ":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
             || echo "::warning::Could not acknowledge the /review comment."
