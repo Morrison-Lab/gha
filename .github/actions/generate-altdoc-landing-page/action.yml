@@ -27,13 +27,15 @@ runs:
       with:
         python-version: '3.x'
 
-    # Local path -- see generate-altdoc-version-dropdown/action.yml's
-    # identical step for why (avoids a same-PR self-reference bootstrap gap).
+    # See generate-altdoc-version-dropdown/action.yml's identical step for
+    # why this calls resolve_base_url.py directly via github.action_path
+    # instead of nesting a `uses: ./...` step.
     - name: Resolve base URL
       id: base-url
-      uses: ./.github/actions/resolve-altdoc-base-url
-      with:
-        override: ${{ inputs.base-url }}
+      shell: bash
+      env:
+        DOCS_BASE_URL: ${{ inputs.base-url }}
+      run: python3 "${{ github.action_path }}/../resolve-altdoc-base-url/resolve_base_url.py"
 
     - name: Generate landing page
       shell: bash

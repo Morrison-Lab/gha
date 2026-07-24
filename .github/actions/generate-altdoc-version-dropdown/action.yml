@@ -52,18 +52,20 @@ runs:
       with:
         python-version: '3.x'
 
-    # Local path, not a d-morrison/gha/...@v2 reference: resolve-altdoc-base-url
-    # lives in this same repo, and a remote @v2 reference wouldn't resolve
-    # until this PR itself merges and @v2 is advanced (the composite would be
-    # calling a version of itself that doesn't exist yet). A same-repo local
-    # path resolves against the repository this action was fetched from --
-    # whether that's this PR's branch (selftest) or the released @v2 tag
-    # (a consumer) -- so it works in both cases without a bootstrapping gap.
+    # Reach resolve_base_url.py directly via github.action_path rather than
+    # nesting a `uses: ./...` step: a relative local path inside a composite
+    # action always resolves against $GITHUB_WORKSPACE (the top-level
+    # workflow's own checkout), never against the repo this composite was
+    # itself fetched from (confirmed: actions/runner#1348). That breaks for
+    # every real consumer, who checks out their own repo, not d-morrison/gha.
+    # github.action_path doesn't have that failure mode -- this repo's
+    # established idiom for the same problem (see build-reviewer-args/action.yml).
     - name: Resolve base URL
       id: base-url
-      uses: ./.github/actions/resolve-altdoc-base-url
-      with:
-        override: ${{ inputs.base-url }}
+      shell: bash
+      env:
+        DOCS_BASE_URL: ${{ inputs.base-url }}
+      run: python3 "${{ github.action_path }}/../resolve-altdoc-base-url/resolve_base_url.py"
 
     - name: Generate version dropdown
       id: run
