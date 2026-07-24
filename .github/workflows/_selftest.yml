@@ -27,7 +27,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Lint YAML
         uses: ./lint-yaml
   lint-markdown:
@@ -36,7 +36,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Lint Markdown
         uses: ./lint-markdown
   lint-qmd:
@@ -45,7 +45,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Lint QMD prose
         uses: ./lint-qmd
         with:
@@ -62,7 +62,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up R
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
@@ -85,7 +85,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Check for PHI
@@ -112,12 +112,12 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Run the suite under actions/setup-python (pinned SHA, so Dependabot
       # tracks the action), matching the check-phi composite's '3.x' default.
       # Its env isn't externally-managed, so pip needs no --break-system-packages.
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.x'
       - name: Run check-phi detector unit tests
@@ -139,7 +139,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Run fail-check fixture tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-fixture-tests.sh
@@ -295,7 +295,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Run build-reviewer-args split/trim tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-build-reviewer-args-tests.sh
@@ -331,7 +331,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create a minimal altdoc fixture (separate git repo, two tags)
         shell: bash
         run: |
@@ -442,7 +442,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Create a minimal Quarto fixture
         shell: bash
         run: |
@@ -496,7 +496,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # Loads MathJax from cdn.jsdelivr.net rather than vendoring it: this runs
       # on a GitHub-hosted runner, which has outbound internet by default,
       # unlike the sandboxed environment used to validate the detection logic
@@ -581,7 +581,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: open-sync-pr no-ops on a clean tree
         id: nochange
         uses: ./open-sync-pr
@@ -614,7 +614,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Generate the R package fixture
         shell: bash
         run: bash test-coverage/tests/make-fixture.sh _ci-rpkg
@@ -654,7 +654,7 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Diff claude.yml's SENSITIVE_PATHS mirror against the pinned claude-code-action SHA
         shell: bash
         run: |

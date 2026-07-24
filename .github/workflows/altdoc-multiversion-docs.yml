@@ -134,7 +134,7 @@ jobs:
       # remove mode delegates to JamesIves/github-pages-deploy-action, which
       # runs git commands against the checkout). Gating this step the same
       # way as the build steps would make that step reachable but broken.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: ${{ inputs.checkout-submodules }}
           # Fetches all history and tags, which the version dropdown
@@ -202,7 +202,7 @@ jobs:
 
       - name: Set up Julia
         if: inputs.setup-julia && github.event.action != 'closed'
-        uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2
+        uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
 
       - name: Set up R
         if: github.event.action != 'closed'
