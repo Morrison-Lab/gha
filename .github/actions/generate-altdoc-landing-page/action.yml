@@ -27,10 +27,18 @@ runs:
       with:
         python-version: '3.x'
 
+    # Local path -- see generate-altdoc-version-dropdown/action.yml's
+    # identical step for why (avoids a same-PR self-reference bootstrap gap).
+    - name: Resolve base URL
+      id: base-url
+      uses: ./.github/actions/resolve-altdoc-base-url
+      with:
+        override: ${{ inputs.base-url }}
+
     - name: Generate landing page
       shell: bash
       env:
         LANDING_TARGET: ${{ inputs.target }}
         OUTPUT_DIR: ${{ inputs.output-dir }}
-        DOCS_BASE_URL: ${{ inputs.base-url }}
+        DOCS_BASE_URL: ${{ steps.base-url.outputs.base-url }}
       run: python3 "$GITHUB_ACTION_PATH/generate_multiversion_landing_page.py"

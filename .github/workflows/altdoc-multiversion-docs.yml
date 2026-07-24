@@ -128,8 +128,13 @@ jobs:
       pull-requests: write
       issues: write
     steps:
+      # Unconditional (unlike every step below it): the "Remove PR Preview"
+      # step at the end of this job runs ONLY on the closed event and needs a
+      # checked-out git working tree to operate (rossjrw/pr-preview-action's
+      # remove mode delegates to JamesIves/github-pages-deploy-action, which
+      # runs git commands against the checkout). Gating this step the same
+      # way as the build steps would make that step reachable but broken.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        if: github.event.action != 'closed'
         with:
           submodules: ${{ inputs.checkout-submodules }}
           # Fetches all history and tags, which the version dropdown
@@ -334,9 +339,21 @@ jobs:
         shell: bash
         env:
           LATEST_STABLE_TAG: ${{ steps.latest-stable-tag.outputs.latest_stable_tag }}
-          BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          DOCS_BASE_URL_OVERRIDE: ${{ inputs.docs-base-url }}
+          DEFAULT_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
           PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         run: |
+          # Honor docs-base-url the same way the Python composites do
+          # (override-first, trailing slash normalized) -- this step's own
+          # bootstrapped HTML was itself built with that same base URL, so
+          # the sed rewrite below must search for a matching one or it
+          # silently no-ops.
+          if [[ -n "$DOCS_BASE_URL_OVERRIDE" ]]; then
+            BASE_URL="${DOCS_BASE_URL_OVERRIDE%/}/"
+          else
+            BASE_URL="$DEFAULT_BASE_URL"
+          fi
+
           echo "bootstrap_latest_tag=false" >> "$GITHUB_ENV"
           if [[ -z "$LATEST_STABLE_TAG" ]]; then
             echo "No published stable release tag found; skipping /latest-tag/ bootstrap."

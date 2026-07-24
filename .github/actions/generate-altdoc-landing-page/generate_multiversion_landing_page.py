@@ -4,39 +4,16 @@ This mirrors the r-pkgdown-multiversion pattern: keep docs in versioned
 subdirectories and use the root page as a redirect entrypoint.
 
 Ported from d-morrison/rpt's `.github/scripts/generate_multiversion_landing_page.py`
-into a reusable composite action (d-morrison/gha#<pending>). Called by the
+into a reusable composite action (d-morrison/gha#284). Called by the
 `altdoc-multiversion-docs` reusable workflow after the docs subdirectory
-(dev / latest-tag / vX.Y.Z) for this build has been decided.
+(dev / latest-tag / vX.Y.Z) for this build has been decided, and after this
+action's own "Resolve base URL" step (the resolve-altdoc-base-url composite,
+shared with generate-altdoc-version-dropdown) has already set DOCS_BASE_URL.
 """
 
 import os
 import pathlib
 import sys
-
-
-def _base_url():
-    configured_url = os.environ.get("DOCS_BASE_URL", "").strip()
-    if configured_url:
-        return configured_url.rstrip("/") + "/"
-
-    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
-    if "/" in repository:
-        owner, repo = repository.split("/", 1)
-        if owner and repo:
-            return f"https://{owner}.github.io/{repo}/"
-
-    owner = os.environ.get("GITHUB_REPOSITORY_OWNER", "").strip()
-    repo = os.environ.get("GITHUB_EVENT_REPOSITORY_NAME", "").strip()
-    if owner and repo:
-        return f"https://{owner}.github.io/{repo}/"
-
-    print(
-        "Could not derive the docs base URL: set the base-url input, or run "
-        "this action where GITHUB_REPOSITORY (or "
-        "GITHUB_REPOSITORY_OWNER + GITHUB_EVENT_REPOSITORY_NAME) is set.",
-        file=sys.stderr,
-    )
-    sys.exit(1)
 
 
 def main():
@@ -48,7 +25,9 @@ def main():
     output_dir = pathlib.Path(os.environ.get("OUTPUT_DIR", "site-root"))
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    url = f"{_base_url()}{target}/"
+    # Resolved by this action's own preceding "Resolve base URL" step.
+    base_url = os.environ["DOCS_BASE_URL"]
+    url = f"{base_url}{target}/"
     repo_name = os.environ.get("GITHUB_EVENT_REPOSITORY_NAME") or os.environ.get(
         "GITHUB_REPOSITORY", ""
     ).split("/")[-1]

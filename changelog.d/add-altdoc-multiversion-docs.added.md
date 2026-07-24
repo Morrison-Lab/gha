@@ -9,4 +9,6 @@
   the preview directory was never actually removed); this version keeps the
   removal step reachable. Ships at `@v2` (postdates the `@v1` freeze). New
   internal composites: `.github/actions/generate-altdoc-version-dropdown`,
-  `.github/actions/generate-altdoc-landing-page`.
+  `.github/actions/generate-altdoc-landing-page`, and
+  `.github/actions/resolve-altdoc-base-url` (shared base-URL derivation used
+  by both).

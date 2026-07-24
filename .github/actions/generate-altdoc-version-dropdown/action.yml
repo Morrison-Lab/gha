@@ -52,6 +52,19 @@ runs:
       with:
         python-version: '3.x'
 
+    # Local path, not a d-morrison/gha/...@v2 reference: resolve-altdoc-base-url
+    # lives in this same repo, and a remote @v2 reference wouldn't resolve
+    # until this PR itself merges and @v2 is advanced (the composite would be
+    # calling a version of itself that doesn't exist yet). A same-repo local
+    # path resolves against the repository this action was fetched from --
+    # whether that's this PR's branch (selftest) or the released @v2 tag
+    # (a consumer) -- so it works in both cases without a bootstrapping gap.
+    - name: Resolve base URL
+      id: base-url
+      uses: ./.github/actions/resolve-altdoc-base-url
+      with:
+        override: ${{ inputs.base-url }}
+
     - name: Generate version dropdown
       id: run
       shell: bash
@@ -59,6 +72,6 @@ runs:
         DOCS_SOURCE_DIR: ${{ inputs.docs-source-dir }}
         QUARTO_CONFIG_PATH: ${{ inputs.quarto-config-path }}
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
-        DOCS_BASE_URL: ${{ inputs.base-url }}
+        DOCS_BASE_URL: ${{ steps.base-url.outputs.base-url }}
         GH_TOKEN: ${{ inputs.github-token }}
       run: python3 "$GITHUB_ACTION_PATH/generate_version_dropdown.py"

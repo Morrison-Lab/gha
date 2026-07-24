@@ -1,0 +1,31 @@
+name: Resolve altdoc docs base URL
+description: >-
+  Derive the GitHub Pages base URL used for altdoc multiversion docs links
+  (e.g. "https://owner.github.io/repo/"), from an explicit override or the
+  calling repository's own context. Shared by generate-altdoc-version-dropdown
+  and generate-altdoc-landing-page so the derivation has one source of truth
+  instead of two copies that can drift apart.
+inputs:
+  override:
+    description: >-
+      Explicit base URL override. Leave empty to derive from GITHUB_REPOSITORY
+      (or GITHUB_REPOSITORY_OWNER + GITHUB_EVENT_REPOSITORY_NAME).
+    default: ''
+outputs:
+  base-url:
+    description: The resolved base URL, always ending in exactly one trailing slash.
+    value: ${{ steps.run.outputs.base-url }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.x'
+
+    - name: Resolve base URL
+      id: run
+      shell: bash
+      env:
+        DOCS_BASE_URL: ${{ inputs.override }}
+      run: python3 "$GITHUB_ACTION_PATH/resolve_base_url.py"

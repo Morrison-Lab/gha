@@ -138,7 +138,11 @@ which is why the capabilities above moved to `@v2`.
   "Versions" dropdown; generate the root redirect landing page). Ported from
   `d-morrison/rpt`'s bespoke `.github/scripts/` copies, generalized to derive
   the docs base URL and default branch from the caller's own context instead
-  of a hard-coded repo (see `UCD-SERG/serocalculator#504`).
+  of a hard-coded repo (see `UCD-SERG/serocalculator#504`). Both call
+  `.github/actions/resolve-altdoc-base-url/` (a `./`-local reference, not
+  `d-morrison/gha/...@v2` -- see that composite's own step comment for why) to
+  share the base-URL derivation instead of each carrying its own copy
+  (gha#284 review).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that

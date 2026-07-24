@@ -316,7 +316,7 @@ jobs:
           fi
           echo "build-reviewer-args correctly surfaced reviewers-json=$REVIEWERS_JSON"
   # altdoc-multiversion-docs is brand new, so its internal composites aren't at
-  # a released tag yet either. Exercise both directly against a throwaway
+  # a released tag yet either. Exercise all three directly against a throwaway
   # fixture repo -- a separate git init, not this checkout -- which is also why
   # generate_version_dropdown.py's git calls need an explicit cwd (see that
   # script's _run_git docstring); without it they'd silently read this repo's
@@ -357,6 +357,33 @@ jobs:
           git -C _ci-altdoc-pkg commit -q -m "fixture"
           git -C _ci-altdoc-pkg tag v0.0.9
           git -C _ci-altdoc-pkg tag v0.1.0
+      - name: Exercise resolve-altdoc-base-url composite end-to-end (derived)
+        id: base-url-derived
+        uses: ./.github/actions/resolve-altdoc-base-url
+      - name: Assert resolve-altdoc-base-url derived the expected URL
+        shell: bash
+        env:
+          BASE_URL: ${{ steps.base-url-derived.outputs.base-url }}
+        run: |
+          set -euo pipefail
+          expected="https://${GITHUB_REPOSITORY_OWNER}.github.io/$(basename "$GITHUB_REPOSITORY")/"
+          if [[ "$BASE_URL" != "$expected" ]]; then
+            echo "::error::expected base-url='$expected', got '$BASE_URL'"; exit 1
+          fi
+      - name: Exercise resolve-altdoc-base-url composite end-to-end (override)
+        id: base-url-override
+        uses: ./.github/actions/resolve-altdoc-base-url
+        with:
+          override: 'https://example.com/docs'
+      - name: Assert resolve-altdoc-base-url normalized the override's trailing slash
+        shell: bash
+        env:
+          BASE_URL: ${{ steps.base-url-override.outputs.base-url }}
+        run: |
+          set -euo pipefail
+          if [[ "$BASE_URL" != "https://example.com/docs/" ]]; then
+            echo "::error::expected base-url='https://example.com/docs/', got '$BASE_URL'"; exit 1
+          fi
       - name: Exercise generate-altdoc-version-dropdown composite end-to-end
         id: dropdown
         uses: ./.github/actions/generate-altdoc-version-dropdown

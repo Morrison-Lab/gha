@@ -8,9 +8,11 @@ that:
   - A separator followed by each older tag links to /vX.Y.Z/ (previous versions)
 
 Ported from d-morrison/rpt's `.github/scripts/generate_version_dropdown.py`
-into a reusable composite action (d-morrison/gha#<pending>) so altdoc-based R
+into a reusable composite action (d-morrison/gha#284) so altdoc-based R
 packages don't each carry their own copy. Called by the
-`altdoc-multiversion-docs` reusable workflow before `render_docs()`.
+`altdoc-multiversion-docs` reusable workflow before `render_docs()`, after
+this action's own "Resolve base URL" step (the resolve-altdoc-base-url
+composite) has already set DOCS_BASE_URL.
 """
 
 import subprocess
@@ -60,40 +62,10 @@ def _run_git(*args):
         sys.exit(1)
 
 
-def _docs_base_url():
-    """Return the GitHub Pages base URL used for docs links.
-
-    Fails fast (rather than falling back to a hard-coded repo) when none of
-    the usual GitHub Actions context is available -- see
-    avoid-hardcoding-external-data / fail-fast in the d-morrison/ai-config
-    corpus: a reusable action must derive this from the caller's own
-    context, not from whichever repo the action happened to be written for.
-    """
-    configured_url = os.environ.get("DOCS_BASE_URL", "").strip()
-    if configured_url:
-        return configured_url.rstrip("/") + "/"
-
-    repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
-    if "/" in repository:
-        owner, repo = repository.split("/", 1)
-        if owner and repo:
-            return f"https://{owner}.github.io/{repo}/"
-
-    owner = os.environ.get("GITHUB_REPOSITORY_OWNER", "").strip()
-    repo = os.environ.get("GITHUB_EVENT_REPOSITORY_NAME", "").strip()
-    if owner and repo:
-        return f"https://{owner}.github.io/{repo}/"
-
-    print(
-        "Could not derive the docs base URL: set the base-url input, or run "
-        "this action where GITHUB_REPOSITORY (or "
-        "GITHUB_REPOSITORY_OWNER + GITHUB_EVENT_REPOSITORY_NAME) is set.",
-        file=sys.stderr,
-    )
-    sys.exit(1)
-
-
-BASE_URL = _docs_base_url()
+# Resolved by this action's own preceding "Resolve base URL" step
+# (resolve-altdoc-base-url), shared with generate-altdoc-landing-page so the
+# override/derivation/fail-fast logic has one source of truth.
+BASE_URL = os.environ["DOCS_BASE_URL"]
 
 # --- Gather version information ---
 
