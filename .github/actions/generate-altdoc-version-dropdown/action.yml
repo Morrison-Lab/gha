@@ -1,0 +1,64 @@
+name: Generate altdoc version dropdown
+description: >-
+  Rewrite the "Versions" navbar menu block in an altdoc `quarto_website.yml`
+  with the current stable release, the dev version, and previous release
+  tags, each linking to its deployed docs subdirectory
+  (/latest-tag/, /dev/, /vX.Y.Z/). Shared internal helper for the
+  altdoc-multiversion-docs reusable workflow -- ported from d-morrison/rpt's
+  bespoke docs.yaml script so altdoc-based R packages don't each carry their
+  own copy.
+inputs:
+  docs-source-dir:
+    description: >-
+      Directory (relative to the workspace) containing the checked-out
+      package -- the one with DESCRIPTION and altdoc/. Set this when
+      rendering from a worktree (e.g. a stable-tag checkout) rather than the
+      primary checkout.
+    default: '.'
+  quarto-config-path:
+    description: >-
+      Path to the altdoc Quarto config file, relative to docs-source-dir.
+    default: 'altdoc/quarto_website.yml'
+  default-branch:
+    description: >-
+      Branch to read DESCRIPTION from for the dev-version label (via
+      `git show origin/<default-branch>:DESCRIPTION`), so release builds
+      still label /dev/ with the actual development version rather than the
+      release version. Falls back to the local DESCRIPTION file if this
+      lookup fails (e.g. no such ref).
+    default: 'main'
+  base-url:
+    description: >-
+      Override the docs base URL (e.g. "https://owner.github.io/repo/").
+      Leave empty to derive it from GITHUB_REPOSITORY.
+    default: ''
+  github-token:
+    description: >-
+      Token used to query `gh api repos/<repo>/releases` for published
+      release tags. Falls back to `git tag` if empty or the API call fails.
+    default: ''
+outputs:
+  latest-tag:
+    description: The latest published stable release tag (e.g. "v1.2.3"), or empty if none.
+    value: ${{ steps.run.outputs.latest-tag }}
+  dev-version:
+    description: The development version read from DESCRIPTION.
+    value: ${{ steps.run.outputs.dev-version }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.x'
+
+    - name: Generate version dropdown
+      id: run
+      shell: bash
+      env:
+        DOCS_SOURCE_DIR: ${{ inputs.docs-source-dir }}
+        QUARTO_CONFIG_PATH: ${{ inputs.quarto-config-path }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        DOCS_BASE_URL: ${{ inputs.base-url }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: python3 "$GITHUB_ACTION_PATH/generate_version_dropdown.py"

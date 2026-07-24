@@ -315,6 +315,96 @@ jobs:
             exit 1
           fi
           echo "build-reviewer-args correctly surfaced reviewers-json=$REVIEWERS_JSON"
+  # altdoc-multiversion-docs is brand new, so its internal composites aren't at
+  # a released tag yet either. Exercise both directly against a throwaway
+  # fixture repo -- a separate git init, not this checkout -- which is also why
+  # generate_version_dropdown.py's git calls need an explicit cwd (see that
+  # script's _run_git docstring); without it they'd silently read this repo's
+  # own tags instead of the fixture's. The full reusable workflow's render +
+  # multi-target deploy sequence isn't exercised here (it pushes to gh-pages,
+  # a write side effect selftest can't run); it's validated by real consumer
+  # usage once merged and released, the same precedent `dependabot-review`'s
+  # reusable-workflow layer follows above (see this repo's own CLAUDE.md).
+  altdoc-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Create a minimal altdoc fixture (separate git repo, two tags)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-altdoc-pkg/altdoc
+          cat > _ci-altdoc-pkg/DESCRIPTION <<'EOF'
+          Package: cifixturepkg
+          Version: 0.1.0.9000
+          EOF
+          cat > _ci-altdoc-pkg/altdoc/quarto_website.yml <<'EOF'
+          website:
+            navbar:
+              right:
+                - text: Versions
+                  menu:
+                    - text: placeholder
+                      href: placeholder
+          EOF
+          git -C _ci-altdoc-pkg init -q
+          git -C _ci-altdoc-pkg config user.email "ci@example.com"
+          git -C _ci-altdoc-pkg config user.name "CI"
+          git -C _ci-altdoc-pkg add -A
+          git -C _ci-altdoc-pkg commit -q -m "fixture"
+          git -C _ci-altdoc-pkg tag v0.0.9
+          git -C _ci-altdoc-pkg tag v0.1.0
+      - name: Exercise generate-altdoc-version-dropdown composite end-to-end
+        id: dropdown
+        uses: ./.github/actions/generate-altdoc-version-dropdown
+        with:
+          docs-source-dir: _ci-altdoc-pkg
+      - name: Assert version dropdown was rewritten correctly
+        shell: bash
+        env:
+          LATEST_TAG: ${{ steps.dropdown.outputs.latest-tag }}
+          DEV_VERSION: ${{ steps.dropdown.outputs.dev-version }}
+        run: |
+          set -euo pipefail
+          if [[ "$LATEST_TAG" != "v0.1.0" ]]; then
+            echo "::error::expected latest-tag=v0.1.0, got '$LATEST_TAG'"; exit 1
+          fi
+          if [[ "$DEV_VERSION" != "0.1.0.9000" ]]; then
+            echo "::error::expected dev-version=0.1.0.9000, got '$DEV_VERSION'"; exit 1
+          fi
+          if ! grep -q 'v0.1.0 (stable)' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::rewritten quarto_website.yml missing the stable entry"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+          if ! grep -q 'v0.0.9' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::rewritten quarto_website.yml missing the previous-version entry"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+      - name: Exercise generate-altdoc-landing-page composite end-to-end
+        uses: ./.github/actions/generate-altdoc-landing-page
+        with:
+          target: dev
+          output-dir: _ci-landing-page
+      - name: Assert landing page redirect was generated correctly
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f _ci-landing-page/index.html ]; then
+            echo "::error::generate-altdoc-landing-page did not produce index.html"; exit 1
+          fi
+          if [ ! -f _ci-landing-page/.nojekyll ]; then
+            echo "::error::generate-altdoc-landing-page did not produce .nojekyll"; exit 1
+          fi
+          if ! grep -q '/dev/' _ci-landing-page/index.html; then
+            echo "::error::landing page redirect did not target /dev/"
+            cat _ci-landing-page/index.html
+            exit 1
+          fi
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest

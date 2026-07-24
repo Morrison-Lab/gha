@@ -1,0 +1,465 @@
+name: altdoc Multiversion Docs (reusable)
+
+# Renders an R package's altdoc/Quarto docs site and deploys multiple
+# versions side by side on gh-pages:
+#   - PRs                    -> /pr-preview/pr-<number>/
+#   - pushes to default branch -> /dev/          (development docs)
+#   - published releases     -> /latest-tag/ and /vX.Y.Z/ (stable + archive)
+#   - workflow_dispatch      -> /dev/ or /latest-tag/ (manual redeploy)
+# Root (/) is a redirect landing page into the default docs version.
+#
+# Ported from d-morrison/rpt's bespoke `.github/workflows/docs.yaml` (the
+# altdoc multiversion pattern UCD-SERG/serocalculator#504 asked to
+# incorporate) into a reusable workflow, so altdoc-based R packages don't
+# each carry their own copy of the version-dropdown/landing-page scripts and
+# deploy logic. See examples/altdoc-multiversion-docs.yml for the caller
+# stub, including the workflow_dispatch inputs this workflow expects the
+# caller to forward.
+#
+# Unlike the `preview` / `preview-deploy` family, this keeps rpt's original
+# single-job shape (one job handles build, deploy, and PR-preview cleanup)
+# rather than splitting into a fork-safe read-only build half and a
+# base-repo-context deploy half. That trust-boundary hardening is tracked as
+# a possible follow-up (see the capability's reference page) rather than
+# bundled into this port.
+#
+# One-time consumer repo setup: Settings -> Pages -> Build and deployment ->
+# Source = "Deploy from a branch", branch `gh-pages` / `(root)`.
+
+on:
+  workflow_call:
+    inputs:
+      r-packages:
+        description: >-
+          r-lib/actions package specs to install (newline- or
+          comma-separated). Must include the package being documented
+          (`local::.`) and altdoc itself.
+        type: string
+        default: |
+          any::altdoc
+          quarto-dev/quarto-r
+          any::sessioninfo
+          local::.
+      needs:
+        description: r-lib/actions/setup-r-dependencies `needs:` list.
+        type: string
+        default: |
+          connect
+          website
+      apt-packages:
+        description: Extra apt packages to install before rendering (space-separated).
+        type: string
+        default: ''
+      setup-julia:
+        description: Install Julia before rendering (for packages with a JuliaCall dependency).
+        type: boolean
+        default: false
+      checkout-submodules:
+        description: Passed to actions/checkout `submodules` ('recursive', 'true', or 'false').
+        type: string
+        default: 'true'
+      default-branch:
+        description: >-
+          The repo's default branch. Used to (a) decide when a push deploys
+          dev docs and (b) read DESCRIPTION's dev version for the version
+          dropdown even on release builds.
+        type: string
+        default: 'main'
+      quarto-config-path:
+        description: Path to the altdoc Quarto config file, relative to the repo root.
+        type: string
+        default: 'altdoc/quarto_website.yml'
+      docs-base-url:
+        description: >-
+          Override the docs base URL (e.g. "https://owner.github.io/repo/").
+          Leave empty to derive it from the calling repository.
+        type: string
+        default: ''
+      preview-branch:
+        description: Branch PR previews and version subdirectories are deployed to.
+        type: string
+        default: 'gh-pages'
+      timeout-minutes:
+        description: Timeout for the render step.
+        type: number
+        default: 30
+      rewrite-pr-preview-links:
+        description: >-
+          On PR builds, repoint Quarto's repo-action links ("Edit this
+          page" / "View source") and the navbar GitHub icon at the PR's head
+          branch and conversation page.
+        type: boolean
+        default: true
+      rewrite-issue-links:
+        description: >-
+          Repoint rendered "Report an issue" links at the base repository's
+          issues page (needed because rewrite-pr-preview-links, when
+          enabled, points repo-actions at the PR head repo/branch).
+        type: boolean
+        default: true
+      dispatch-version:
+        description: >-
+          Forward the caller's `workflow_dispatch` `version` input ('dev' or
+          'stable') here -- a reusable workflow only sees values passed
+          through `with:`, not the caller's own `on.workflow_dispatch.inputs`.
+        type: string
+        default: ''
+      dispatch-release-tag:
+        description: >-
+          Forward the caller's `workflow_dispatch` `release_tag` input here,
+          required when dispatch-version is 'stable'.
+        type: string
+        default: ''
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    # Only restrict concurrency for non-PR jobs; PR builds/previews are keyed
+    # by run id so concurrent PRs don't block each other.
+    concurrency:
+      group: altdoc-multiversion-docs-${{ github.event_name == 'pull_request' && github.run_id || github.ref }}
+      cancel-in-progress: true
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      DOCS_SOURCE_DIR: .
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        if: github.event.action != 'closed'
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+          # Fetches all history and tags, which the version dropdown
+          # composite needs to discover all release tags.
+          fetch-depth: 0
+
+      - name: Determine latest stable release tag
+        id: latest-stable-tag
+        if: github.event.action != 'closed'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_STABLE_TAG=$(
+            gh api repos/${{ github.repository }}/releases --paginate \
+              --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' \
+              | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/' \
+              | sort -V \
+              | tail -n 1
+          )
+          echo "latest_stable_tag=$LATEST_STABLE_TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Validate stable workflow_dispatch input
+        if: github.event_name == 'workflow_dispatch' && inputs.dispatch-version == 'stable'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.dispatch-release-tag }}
+          LATEST_STABLE_TAG: ${{ steps.latest-stable-tag.outputs.latest_stable_tag }}
+        run: |
+          if [[ -z "$RELEASE_TAG" ]]; then
+            echo "::error::workflow_dispatch version=stable requires dispatch-release-tag"
+            exit 1
+          fi
+
+          if [[ -z "$LATEST_STABLE_TAG" ]]; then
+            echo "::error::No stable release tag matching vX.Y.Z was found"
+            exit 1
+          fi
+
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::dispatch-release-tag must match vX.Y.Z"
+            exit 1
+          fi
+
+          if [[ "$RELEASE_TAG" != "$LATEST_STABLE_TAG" ]]; then
+            echo "::error::dispatch-release-tag must be the latest stable tag ($LATEST_STABLE_TAG) to update /latest-tag/ and the root landing page"
+            exit 1
+          fi
+
+      - name: Prepare stable source checkout for workflow_dispatch
+        if: github.event_name == 'workflow_dispatch' && inputs.dispatch-version == 'stable'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.dispatch-release-tag }}
+        run: |
+          git worktree add --detach stable-source "refs/tags/$RELEASE_TAG"
+          git -C stable-source submodule update --init --recursive
+          echo "DOCS_SOURCE_DIR=stable-source" >> "$GITHUB_ENV"
+
+      - name: Set up Quarto
+        if: github.event.action != 'closed'
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+        with:
+          tinytex: true
+
+      - name: Set up Julia
+        if: inputs.setup-julia && github.event.action != 'closed'
+        uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2
+
+      - name: Set up R
+        if: github.event.action != 'closed'
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          use-public-rspm: true
+
+      - name: Install system dependencies
+        if: github.event.action != 'closed' && inputs.apt-packages != ''
+        shell: bash
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # Intentional word-splitting: APT_PACKAGES is a space-separated list.
+          sudo apt-get install -y $APT_PACKAGES
+
+      - name: Install R dependencies
+        if: github.event.action != 'closed'
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          working-directory: ${{ env.DOCS_SOURCE_DIR }}
+          needs: ${{ inputs.needs }}
+          extra-packages: ${{ inputs.r-packages }}
+
+      - name: Generate version dropdown
+        if: github.event.action != 'closed'
+        uses: d-morrison/gha/.github/actions/generate-altdoc-version-dropdown@v2
+        with:
+          docs-source-dir: ${{ env.DOCS_SOURCE_DIR }}
+          quarto-config-path: ${{ inputs.quarto-config-path }}
+          default-branch: ${{ inputs.default-branch }}
+          base-url: ${{ inputs.docs-base-url }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # On PR-preview builds, redirect quarto's "Edit this page" / "View
+      # source" links to the PR head branch and the navbar GitHub icon to the
+      # PR conversation page, so reviewers can click straight to the right
+      # place. Must run AFTER "Generate version dropdown" -- that step
+      # rewrites the navbar Versions block in-place and, as of this port,
+      # doesn't touch the `icon: github` entry; if its scope ever expanded to
+      # the whole navbar, the assertions below would catch the regression.
+      - name: Rewrite quarto repo links for PR preview
+        if: inputs.rewrite-pr-preview-links && github.event_name == 'pull_request' && github.event.action != 'closed'
+        env:
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          QUARTO_CONFIG_PATH: ${{ env.DOCS_SOURCE_DIR }}/${{ inputs.quarto-config-path }}
+        run: |
+          # Preconditions: confirm the YAML still has the shape we're about
+          # to mutate, so a schema change fails loudly instead of silently
+          # creating a misplaced key or no-op'ing.
+          yq -e '.website | has("repo-url")' "$QUARTO_CONFIG_PATH" >/dev/null \
+            || { echo "::error::$QUARTO_CONFIG_PATH has no .website.repo-url — schema may have changed; rewrite would silently create a misplaced key"; exit 1; }
+          yq -e '.website.navbar.right[] | select(.icon == "github")' "$QUARTO_CONFIG_PATH" >/dev/null \
+            || { echo "::error::$QUARTO_CONFIG_PATH has no navbar entry with icon: github — rewrite would silently no-op"; exit 1; }
+
+          yq -i '.website."repo-url" = "https://github.com/" + strenv(HEAD_REPO)' "$QUARTO_CONFIG_PATH"
+          yq -i '.website."repo-branch" = strenv(HEAD_REF)' "$QUARTO_CONFIG_PATH"
+          yq -i '(.website.navbar.right[] | select(.icon == "github")).href = strenv(PR_URL)' "$QUARTO_CONFIG_PATH"
+
+          # Postcondition: confirm each rewrite produced the expected value.
+          ACTUAL_REPO_URL=$(yq '.website."repo-url"' "$QUARTO_CONFIG_PATH")
+          ACTUAL_BRANCH=$(yq '.website."repo-branch"' "$QUARTO_CONFIG_PATH")
+          ACTUAL_NAV_HREF=$(yq '.website.navbar.right[] | select(.icon == "github") | .href' "$QUARTO_CONFIG_PATH")
+          EXPECTED_REPO_URL="https://github.com/$HEAD_REPO"
+          if [[ "$ACTUAL_REPO_URL" != "$EXPECTED_REPO_URL" || "$ACTUAL_BRANCH" != "$HEAD_REF" || "$ACTUAL_NAV_HREF" != "$PR_URL" ]]; then
+            echo "::error::PR-preview link rewrite did not produce the expected values"
+            echo "  repo-url:    got '$ACTUAL_REPO_URL'    expected '$EXPECTED_REPO_URL'"
+            echo "  repo-branch: got '$ACTUAL_BRANCH'    expected '$HEAD_REF'"
+            echo "  nav href:    got '$ACTUAL_NAV_HREF' expected '$PR_URL'"
+            exit 1
+          fi
+
+      - name: Build site
+        if: github.event.action != 'closed'
+        timeout-minutes: ${{ inputs.timeout-minutes }}
+        env:
+          DOCS_SOURCE_DIR: ${{ env.DOCS_SOURCE_DIR }}
+        run: |
+          setwd(Sys.getenv("DOCS_SOURCE_DIR"))
+          altdoc::render_docs(verbose = TRUE, parallel = FALSE, freeze = FALSE)
+        shell: Rscript {0}
+
+      # Quarto's `issue` repo-action derives its URL from `repo-url`, which the
+      # PR-preview step above repoints at the PR head repo/branch when
+      # enabled -- so the rendered "Report an issue" link would otherwise
+      # land on the fork. Repoint it at the base repository's main issues
+      # page so it's stable across dev, release, and PR-preview builds.
+      - name: Point "Report an issue" links at the repo issues page
+        if: inputs.rewrite-issue-links && github.event.action != 'closed'
+        env:
+          ISSUES_URL: https://github.com/${{ github.repository }}/issues
+          DOCS_SOURCE_DIR: ${{ env.DOCS_SOURCE_DIR }}
+        run: |
+          find "$DOCS_SOURCE_DIR/docs" -name '*.html' -exec \
+            sed -i -E 's#href="https://github\.com/[^"]*/issues/new[^"]*"#href="'"$ISSUES_URL"'"#g' {} +
+          echo "Repointed 'Report an issue' links to $ISSUES_URL"
+
+      # If event is workflow_dispatch with stable selected, deploy to /latest-tag/
+      - name: '[dispatch stable] Set documentation subdirectory to /latest-tag/'
+        if: github.event_name == 'workflow_dispatch' && inputs.dispatch-version == 'stable'
+        run: |
+          echo "subdir=latest-tag" >> $GITHUB_ENV
+          echo "landing_target=latest-tag" >> $GITHUB_ENV
+
+      # If event is workflow_dispatch with dev selected, deploy to /dev/
+      - name: '[dispatch dev] Set documentation subdirectory to /dev/'
+        if: github.event_name == 'workflow_dispatch' && inputs.dispatch-version == 'dev'
+        run: |
+          echo "subdir=dev" >> $GITHUB_ENV
+          echo "landing_target=dev" >> $GITHUB_ENV
+
+      # If event is the latest non-prerelease release, deploy stable docs to /latest-tag/
+      - name: "[release] Set documentation subdirectory to /latest-tag/"
+        if: github.event_name == 'release' && !github.event.release.prerelease && github.ref_name == steps.latest-stable-tag.outputs.latest_stable_tag
+        run: |
+          echo "subdir=latest-tag" >> $GITHUB_ENV
+          echo "landing_target=latest-tag" >> $GITHUB_ENV
+
+      # If event is a push to the default branch, deploy development docs to /dev/
+      - name: "[default branch] Set documentation subdirectory to /dev/"
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)
+        run: |
+          echo "subdir=dev" >> $GITHUB_ENV
+          echo "landing_target=dev" >> $GITHUB_ENV
+
+      # On first rollout, /latest-tag/ may not exist yet on gh-pages.
+      # Bootstrap it once from the archived latest stable release directory.
+      - name: "[default branch] Prepare one-time /latest-tag/ bootstrap if missing"
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)
+        shell: bash
+        env:
+          LATEST_STABLE_TAG: ${{ steps.latest-stable-tag.outputs.latest_stable_tag }}
+          BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+        run: |
+          echo "bootstrap_latest_tag=false" >> "$GITHUB_ENV"
+          if [[ -z "$LATEST_STABLE_TAG" ]]; then
+            echo "No published stable release tag found; skipping /latest-tag/ bootstrap."
+            exit 0
+          fi
+
+          git fetch origin "$PREVIEW_BRANCH" --depth=1
+          if git ls-tree -d --name-only "origin/$PREVIEW_BRANCH" latest-tag | grep -qx latest-tag; then
+            echo "/latest-tag/ already exists; skipping bootstrap."
+            exit 0
+          fi
+
+          if ! git ls-tree -d --name-only "origin/$PREVIEW_BRANCH" "$LATEST_STABLE_TAG" | grep -qx "$LATEST_STABLE_TAG"; then
+            echo "No /$LATEST_STABLE_TAG/ directory exists on $PREVIEW_BRANCH; skipping bootstrap."
+            exit 0
+          fi
+
+          BOOTSTRAP_WORKTREE="$(mktemp -d)"
+          git worktree add --detach "$BOOTSTRAP_WORKTREE" "origin/$PREVIEW_BRANCH"
+          mkdir -p site-latest-tag-bootstrap
+          cp -R "$BOOTSTRAP_WORKTREE/$LATEST_STABLE_TAG"/. site-latest-tag-bootstrap/
+          find site-latest-tag-bootstrap -name '*.html' -exec \
+            sed -i -E 's#href="'"$BASE_URL"'"#href="'"$BASE_URL"'latest-tag/"#g' {} +
+          git worktree remove "$BOOTSTRAP_WORKTREE" --force
+          echo "bootstrap_latest_tag=true" >> "$GITHUB_ENV"
+
+      - name: Build root landing page redirect
+        if: github.event_name != 'pull_request' && env.landing_target != ''
+        uses: d-morrison/gha/.github/actions/generate-altdoc-landing-page@v2
+        with:
+          target: ${{ env.landing_target }}
+          output-dir: site-root
+          base-url: ${{ inputs.docs-base-url }}
+
+      - name: Deploy to GitHub pages
+        if: github.event_name != 'pull_request' && env.subdir != ''
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        with:
+          clean-exclude: |
+            pr-preview
+            dev
+            latest-tag
+            v[0-9]*
+          branch: ${{ inputs.preview-branch }}
+          folder: ${{ env.DOCS_SOURCE_DIR }}/docs
+          target-folder: ${{ env.subdir }}
+
+      - name: Deploy root landing page
+        if: github.event_name != 'pull_request' && env.landing_target != ''
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        with:
+          clean: true
+          clean-exclude: |
+            pr-preview
+            dev
+            latest-tag
+            v[0-9]*
+          branch: ${{ inputs.preview-branch }}
+          folder: site-root
+
+      - name: "[default branch] Bootstrap /latest-tag/ from latest stable archive"
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch) && env.bootstrap_latest_tag == 'true'
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        with:
+          clean: false
+          branch: ${{ inputs.preview-branch }}
+          folder: site-latest-tag-bootstrap
+          target-folder: latest-tag
+
+      # On release, also deploy docs to a versioned subdirectory (e.g. /v1.0.0/)
+      # so previous releases remain accessible and directly linkable.
+      - name: "[release] Deploy to version subdirectory"
+        if: github.event_name == 'release'
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        with:
+          clean: false
+          branch: ${{ inputs.preview-branch }}
+          folder: ${{ env.DOCS_SOURCE_DIR }}/docs
+          target-folder: ${{ github.ref_name }}
+
+      - name: Deploy PR Preview
+        id: preview-step
+        if: github.event_name == 'pull_request' && github.event.action != 'closed'
+        uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
+        with:
+          source-dir: ${{ env.DOCS_SOURCE_DIR }}/docs
+          preview-branch: ${{ inputs.preview-branch }}
+          action: deploy
+          comment: "false"
+          wait-for-pages-deployment: false
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.preview-step.outputs.deployment-action == 'deploy'
+        with:
+          header: pr-preview
+          recreate: true
+          message: |
+              [PR Preview Action](https://github.com/rossjrw/pr-preview-action) ${{ steps.preview-step.outputs.action-version }}
+              :---:
+              | <p><img src="https://qr.rossjrw.com/?url=${{ steps.preview-step.outputs.preview-url }}" height="100" align="right" alt="QR code for preview link"></p> :rocket: View preview at <br> ${{ steps.preview-step.outputs.preview-url }} <br><br>
+              | <h6>Built to branch [`${{ inputs.preview-branch }}`](${{ github.server_url }}/${{ github.repository }}/tree/${{ inputs.preview-branch }}) at ${{ steps.preview-step.outputs.action-start-time }}. <br> Preview will be ready when the [GitHub Pages deployment](${{ github.server_url }}/${{ github.repository }}/deployments) is complete. <br><br> </h6>
+
+      # Unlike the build steps above, the closed-PR cleanup below is the ONE
+      # thing that must run when github.event.action == 'closed' -- rpt's
+      # original docs.yaml skipped its whole job on close (via a job-level
+      # `if:`), which meant PR-preview directories were never actually
+      # removed. Gate every other step on `action != 'closed'` instead, so
+      # this step is reachable.
+      - name: Remove PR Preview
+        id: preview-remove-step
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
+        with:
+          preview-branch: ${{ inputs.preview-branch }}
+          action: remove
+          comment: "false"
+
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: steps.preview-remove-step.outputs.deployment-action == 'remove'
+        with:
+            header: pr-preview
+            message: |
+                [PR Preview Action](https://github.com/rossjrw/pr-preview-action) ${{ steps.preview-remove-step.outputs.action-version }}
+                :---:
+                Preview removed because the pull request was closed.
+                ${{ steps.preview-remove-step.outputs.action-start-time }}

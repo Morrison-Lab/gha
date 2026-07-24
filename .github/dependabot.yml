@@ -5,8 +5,9 @@
 # third-party actions"). Dependabot bumps those pins as upstreams publish new
 # releases, so the pins stay current instead of silently freezing.
 #
-# The `/` entry below scans `.github/workflows/`; the composite actions live in
-# their own folders, so each one with external `uses:` is listed explicitly. First-party
+# The `/` entry below scans `.github/workflows/`; the composite actions
+# (top-level and internal `.github/actions/*` alike) live in their own
+# folders, so each one with external `uses:` is listed explicitly. First-party
 # `d-morrison/gha/*@v1` self-references and the `examples/` templates intentionally
 # track the `@v1` major tag and are not SHA-pinned, so they need no Dependabot
 # coverage.
@@ -22,6 +23,10 @@ updates:
       - "/preview"
       - "/quarto-publish"
       - "/test-coverage"
+      - "/.github/actions/generate-altdoc-version-dropdown"
+      - "/.github/actions/generate-altdoc-landing-page"
+      - "/.github/actions/run-claude-review-attempt"
+      - "/.github/actions/upload-review-execution"
     schedule:
       interval: "weekly"
     # Batch all action bumps into one PR per run to keep review noise low.
