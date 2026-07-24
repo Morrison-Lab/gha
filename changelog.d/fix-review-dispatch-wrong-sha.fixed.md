@@ -3,7 +3,7 @@
   branch (#285). Without it, `workflow_dispatch` silently defaults the
   dispatched run's associated commit to the repository's default branch, so
   the resulting `require-review` check-run lands on the wrong SHA and never
-  supersedes a stale, cancelled run tied to the PR's real head commit — a PR
+  supersedes a stale, cancelled run tied to the PR's real head commit -- a PR
   could show a fully clean, current review comment while its actual head
   commit's required-status-check view stayed red. The consumer-facing
   `examples/claude-code-review.yml` `/review`-comment dispatcher gets the same
