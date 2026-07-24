@@ -493,23 +493,25 @@ triggered exactly this on `require-review`; confirmed via `actions_get`
 `get_workflow_run` that the failing check's conclusion was `cancelled` on
 the non-head SHA, matching this pattern.)
 
-## A PR fixing claude-code-review.yml itself can't self-verify before merge
+## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
 This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
 calls `d-morrison/gha/.github/workflows/claude-code-review.yml@v2` — the
 **released, floating tag**, not a local `./` ref (unlike `_selftest.yml`'s
 handling of brand-new pre-release capabilities; see "About this repo" above).
-`@v2` only advances to include a fix once that fix's PR merges to `main` and
-`slide-major-tag.yml` runs.
+`.github/workflows/claude-bot.yml` similarly calls
+`d-morrison/gha/.github/workflows/claude.yml@v2`. `@v2` only advances to
+include a fix once that fix's PR merges to `main` and `slide-major-tag.yml`
+runs.
 
-So a PR that fixes a bug **in** `claude-code-review.yml` itself cannot
-exercise its own fix via this repo's automatic review — every review of that
-PR runs the **pre-fix** version, and will keep hitting the exact bug being
-fixed until after merge. Seeing `review / claude-review` or
-`review / require-review` fail on such a PR with the bug's own signature is
-expected, not a regression in the diff; don't debug the new code as the
-cause. The current workaround is to re-trigger the review (push, or
-`@claude review` — see the race-avoidance note above) as many times as
+So a PR that fixes a bug **in** either reusable workflow cannot exercise its
+own fix via this repo's automatic review or agent dispatch — every review
+(or agent re-dispatch) of that PR runs the **pre-fix** version, and will keep
+hitting the exact bug being fixed until after merge. Seeing `review /
+claude-review` or `review / require-review` fail on such a PR with the bug's
+own signature is expected, not a regression in the diff; don't debug the new
+code as the cause. The current workaround is to re-trigger the review (push,
+or `@claude review` — see the race-avoidance note above) as many times as
 needed, or just proceed to merge on the strength of a manual/offline review
 once CI's other jobs and a careful read of the diff are clean. (Hit on
 gha#201, whose diff fixed `claude-code-review.yml`'s stub-review bug
@@ -521,7 +523,15 @@ hit the identical signature as a bystander while it still edited
 rebase onto #201 relocated that edit into the new `run-claude-review-attempt`
 composite action — confirmed via that run's own execution output:
 `permission_denials_count:1`, no verdict. Once `@v2` picked up #201's fix,
-both PRs' subsequent reviews went clean.)
+both PRs' subsequent reviews went clean.
+
+The `claude.yml` side of this hit on gha#286, fixing gha#285's
+`gh workflow run`-without-`--ref` bug: a plain `@claude review` comment on
+PR #286 dispatched through `claude-bot.yml`'s `claude.yml@v2` — the
+released, pre-fix tag — and reproduced the exact #285 symptom live
+(the re-dispatched review's check-run landed on `main`'s SHA, not the PR's
+head) even though the fix had already been pushed to the PR branch itself.
+Not a regression; the same "can't self-verify" gap, one layer up.)
 
 ## Code review guidelines
 
