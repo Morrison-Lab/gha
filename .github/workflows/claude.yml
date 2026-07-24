@@ -303,7 +303,7 @@ jobs:
 
       - name: Checkout repository
         if: steps.dedup.outputs.skip != 'true'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
           submodules: false
@@ -535,7 +535,7 @@ jobs:
       - name: Run Claude Code
         id: claude
         if: steps.dedup.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@3553f84341b92da26052e28acf1aa898f9511f32 # v1.0.177
+        uses: anthropics/claude-code-action@44423bdec74b97d67543eb16c110546762c110b2 # v1.0.181
         # GH_TOKEN authenticates the `gh` commands granted in claude-args
         # (gh pr view/diff/edit, gh issue view, gh api); without it `gh`
         # prompts and fails in CI.
