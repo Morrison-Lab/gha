@@ -36,7 +36,7 @@ boundary is a possible follow-up, not part of this port.
 | `timeout-minutes`            | number  | `30`                        | Timeout for the render step.                                                                                                          |
 | `rewrite-pr-preview-links`   | boolean | `true`                      | On PR builds, repoint Quarto's repo-action links and the navbar GitHub icon at the PR's head branch and conversation page.            |
 | `rewrite-issue-links`        | boolean | `true`                      | Repoint rendered "Report an issue" links at the base repository's issues page.                                                        |
-| `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`) — a reusable workflow only sees `with:`-passed values. |
+| `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`): a reusable workflow only sees `with:`-passed values. |
 | `dispatch-release-tag`       | string  | `''`                        | Forward the caller's `workflow_dispatch` `release_tag` input, required when `dispatch-version` is `'stable'`.                          |
 
 ## Permissions
@@ -95,6 +95,6 @@ website:
             href: https://<owner>.github.io/<repo>/dev/
 ```
 
-See
-[`examples/altdoc-multiversion-docs.yml`](https://github.com/d-morrison/gha/blob/main/examples/altdoc-multiversion-docs.yml)
-for the full caller stub with every optional input commented out.
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+directory for the full caller stub (`altdoc-multiversion-docs.yml`), with
+every optional input commented out.

@@ -18,7 +18,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `request-dependabot-review`, `sync-upstream`,
-and `altdoc-multiversion-docs` — see
+and `altdoc-multiversion-docs` - see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -46,7 +46,7 @@ which is why the capabilities above moved to `@v2`.
   that wrap external actions; `cleanup-pr-previews.yml` and
   `altdoc-multiversion-docs.yml` are self-contained `workflow_call` reusable
   workflows (inline shell logic plus the two internal composites above, no
-  top-level render/deploy composite of their own — the render+deploy sequence
+  top-level render/deploy composite of their own: the render+deploy sequence
   is inherently stateful/ordered, so splitting it into a separate composite
   the way `quarto-publish`/`preview` do would add indirection without reuse
   value, per the one-genuine-consumer-pattern reasoning in
@@ -133,7 +133,7 @@ which is why the capabilities above moved to `@v2`.
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
 - `.github/actions/generate-altdoc-version-dropdown/` and
-  `.github/actions/generate-altdoc-landing-page/` — Python composites wrapping
+  `.github/actions/generate-altdoc-landing-page/` - Python composites wrapping
   the two scripts `altdoc-multiversion-docs.yml` needs (rewrite the navbar
   "Versions" dropdown; generate the root redirect landing page). Ported from
   `d-morrison/rpt`'s bespoke `.github/scripts/` copies, generalized to derive

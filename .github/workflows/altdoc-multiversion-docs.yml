@@ -253,9 +253,9 @@ jobs:
           # to mutate, so a schema change fails loudly instead of silently
           # creating a misplaced key or no-op'ing.
           yq -e '.website | has("repo-url")' "$QUARTO_CONFIG_PATH" >/dev/null \
-            || { echo "::error::$QUARTO_CONFIG_PATH has no .website.repo-url — schema may have changed; rewrite would silently create a misplaced key"; exit 1; }
+            || { echo "::error::$QUARTO_CONFIG_PATH has no .website.repo-url; schema may have changed, rewrite would silently create a misplaced key"; exit 1; }
           yq -e '.website.navbar.right[] | select(.icon == "github")' "$QUARTO_CONFIG_PATH" >/dev/null \
-            || { echo "::error::$QUARTO_CONFIG_PATH has no navbar entry with icon: github — rewrite would silently no-op"; exit 1; }
+            || { echo "::error::$QUARTO_CONFIG_PATH has no navbar entry with icon: github; rewrite would silently no-op"; exit 1; }
 
           yq -i '.website."repo-url" = "https://github.com/" + strenv(HEAD_REPO)' "$QUARTO_CONFIG_PATH"
           yq -i '.website."repo-branch" = strenv(HEAD_REF)' "$QUARTO_CONFIG_PATH"
@@ -457,9 +457,9 @@ jobs:
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: steps.preview-remove-step.outputs.deployment-action == 'remove'
         with:
-            header: pr-preview
-            message: |
-                [PR Preview Action](https://github.com/rossjrw/pr-preview-action) ${{ steps.preview-remove-step.outputs.action-version }}
-                :---:
-                Preview removed because the pull request was closed.
-                ${{ steps.preview-remove-step.outputs.action-start-time }}
+          header: pr-preview
+          message: |
+            [PR Preview Action](https://github.com/rossjrw/pr-preview-action) ${{ steps.preview-remove-step.outputs.action-version }}
+            :---:
+            Preview removed because the pull request was closed.
+            ${{ steps.preview-remove-step.outputs.action-start-time }}

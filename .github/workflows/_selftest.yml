@@ -351,7 +351,7 @@ jobs:
                       href: placeholder
           EOF
           git -C _ci-altdoc-pkg init -q
-          git -C _ci-altdoc-pkg config user.email "ci@example.com"
+          git -C _ci-altdoc-pkg config user.email "ci@example.com" # phi-allow (synthetic fixture address, not real PHI)
           git -C _ci-altdoc-pkg config user.name "CI"
           git -C _ci-altdoc-pkg add -A
           git -C _ci-altdoc-pkg commit -q -m "fixture"
