@@ -229,6 +229,21 @@ jobs:
           needs: ${{ inputs.needs }}
           extra-packages: ${{ inputs.r-packages }}
 
+      # Fast, legible fail-fast diagnostic ported from d-morrison/rpt's
+      # docs.yaml: a broken R/Quarto environment still fails the build below,
+      # just later and with a less legible error inside altdoc::render_docs().
+      - name: Verify development environment
+        if: github.event.action != 'closed'
+        working-directory: ${{ env.DOCS_SOURCE_DIR }}
+        shell: bash
+        run: |
+          echo "=== Development Environment Status ==="
+          Rscript -e 'cat("R version:", R.version.string, "\n")'
+          echo ""
+          echo "=== Quarto Status ==="
+          quarto --version
+          quarto check
+
       - name: Generate version dropdown
         if: github.event.action != 'closed'
         uses: d-morrison/gha/.github/actions/generate-altdoc-version-dropdown@v2
@@ -424,7 +439,7 @@ jobs:
       # On release, also deploy docs to a versioned subdirectory (e.g. /v1.0.0/)
       # so previous releases remain accessible and directly linkable.
       - name: "[release] Deploy to version subdirectory"
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' && !github.event.release.prerelease
         uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
         with:
           clean: false

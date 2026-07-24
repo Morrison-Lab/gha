@@ -18,7 +18,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `request-dependabot-review`, `sync-upstream`,
-and `altdoc-multiversion-docs` - see
+and `altdoc-multiversion-docs` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -49,7 +49,7 @@ which is why the capabilities above moved to `@v2`.
   inline shell logic with the three internal composites below --
   `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
   `resolve-altdoc-base-url` -- no
-  top-level render/deploy composite of their own: the render+deploy sequence
+  top-level render/deploy composite of their own (the render+deploy sequence
   is inherently stateful/ordered, so splitting it into a separate composite
   the way `quarto-publish`/`preview` do would add indirection without reuse
   value, per the one-genuine-consumer-pattern reasoning in
