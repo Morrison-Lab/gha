@@ -398,6 +398,11 @@ jobs:
           gh pr checkout "$PR_NUMBER"
           echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> "$GITHUB_OUTPUT"
           echo "starting_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          # A fork PR's head branch only exists in the fork's own remote, not
+          # in this repo, so a later `gh workflow run --ref <branch>` dispatch
+          # would fail to resolve it (#289). Surface the head repo so dispatch
+          # steps below can fall back to no --ref for fork PRs.
+          echo "head_repo=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.repo.full_name')" >> "$GITHUB_OUTPUT"
 
       # Create a feature branch for issue triggers so Claude's commits land
       # somewhere durable (agent mode skips the action's built-in setup-branch
@@ -874,8 +879,10 @@ jobs:
           )
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
+          PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number || github.event.issue.number }}"
           echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER (@claude review comment)."
@@ -890,7 +897,16 @@ jobs:
           if [ -z "$PR_BRANCH" ]; then
             echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
           else
-            gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
+            # A fork PR's head branch only exists in the fork, not in $REPO,
+            # so --ref would fail to resolve there (#289). Fall back to no
+            # --ref for fork PRs; the resulting check-run mis-attributes to
+            # the default branch (the pre-#285 behavior), the lesser problem.
+            REF_ARGS=(--ref "$PR_BRANCH")
+            if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+              echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
+              REF_ARGS=()
+            fi
+            gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
               || echo "::warning::Could not dispatch $REVIEW_WF; review will not auto-run."
           fi
 
@@ -919,6 +935,7 @@ jobs:
           TRIGGER_TS: ${{ github.event.comment.created_at || github.event.review.submitted_at || github.event.issue.created_at }}
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
+          PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
         run: |
           # `|| late=0` keeps the default `-e` from aborting on a transient gh
           # api error, degrading to "no late review found" rather than failing.
@@ -935,7 +952,13 @@ jobs:
             if [ -z "$PR_BRANCH" ]; then
               echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
             else
-              gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
+              # Fork PRs: see the comment on the earlier dispatch step above (#289).
+              REF_ARGS=(--ref "$PR_BRANCH")
+              if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+                echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
+                REF_ARGS=()
+              fi
+              gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
                 || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
             fi
           else
@@ -957,6 +980,8 @@ jobs:
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           COST_USD: ${{ steps.cost.outputs.cost }}
           PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
+          PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
+          REPO: ${{ github.repository }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number || github.event.issue.number }}"
           echo "before=$SHA_BEFORE  after=$SHA_AFTER"
@@ -971,7 +996,13 @@ jobs:
             if [ -z "$PR_BRANCH" ]; then
               echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
             else
-              gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
+              # Fork PRs: see the comment on the earlier dispatch step above (#289).
+              REF_ARGS=(--ref "$PR_BRANCH")
+              if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+                echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
+                REF_ARGS=()
+              fi
+              gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
                 || echo "::warning::Could not dispatch $REVIEW_WF."
             fi
             # Claude finished successfully with new commits: take the PR out of
