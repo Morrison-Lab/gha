@@ -544,13 +544,27 @@ every step past the guard shows `skipped`, and no verdict comment is ever
 posted. This is deliberate (the action's own App-token exchange 401s on a
 workflow file that doesn't match the default branch's content until merge —
 see the guard's own comment), but a green `claude-review` check is easy to
-mistake for a real review. Check the job's step list, not just its
-conclusion, before trusting a green `claude-review` on a PR that touches
-`claude-review.yml`/`claude.yml`/`examples/claude-code-review.yml`: every
-step after the guard reading `skipped` means no review ran, regardless of
-what `@v2` currently points at. (gha#286: an `@claude review` comment
+mistake for a real review.
+
+**The guard checks exactly one path, so it doesn't trip for every file this
+section's title mentions.** `WF_PATH` comes from `github.workflow_ref` — in a
+`workflow_call` run that's the CALLER's own workflow file, which in this
+repo's dogfooding setup is `.github/workflows/claude-review.yml` (for a
+downstream consumer, their own copy of the caller stub). Only a PR that
+touches that one file trips `self_mod=true`. `claude.yml` is a separate
+reusable workflow (the agent, not the reviewer) with no analogous self-mod
+check — editing only `claude.yml` doesn't trip this guard at all (see the
+`@v2`-tag paragraph above for that file's own self-verify gap).
+`examples/claude-code-review.yml` lives under `examples/`, not
+`.github/workflows/`, so it never actually executes as a workflow in this
+repo and `github.workflow_ref` can never resolve to it either. Check the
+job's step list, not just its conclusion, before trusting a green
+`claude-review` on a PR that touches `.github/workflows/claude-review.yml`:
+every step after the guard reading `skipped` means no review ran, regardless
+of what `@v2` currently points at. (gha#286: an `@claude review` comment
 produced only a `$0.60` cost comment, no verdict — the guard had set
-`self_mod=true` and skipped straight through.)
+`self_mod=true` and skipped straight through, because the PR touched
+`claude-review.yml` itself.)
 
 ## Code review guidelines
 
