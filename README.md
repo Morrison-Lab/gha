@@ -63,6 +63,7 @@ not reference `@main` from consumers.
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
 | `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
+| `altdoc-multiversion-docs.yml` | Render an altdoc-based R package's Quarto docs and deploy multiple versions side by side on `gh-pages` (`/dev/`, `/latest-tag/`, `/vX.Y.Z/`, plus PR previews and a root redirect) | `r-packages`, `needs`, `apt-packages`, `setup-julia`, `checkout-submodules`, `default-branch`, `quarto-config-path`, `docs-base-url`, `preview-branch`, `timeout-minutes`, `rewrite-pr-preview-links`, `rewrite-issue-links`, `dispatch-version`, `dispatch-release-tag` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 | `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes — keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
@@ -88,6 +89,10 @@ that need to write must have the **caller** grant it on the calling job:
   branch", branch `gh-pages` / `(root)` once. Grant `contents: write` even with
   `deploy: false` — the deploy job is part of the workflow, so the caller must
   grant its permissions even when it is skipped.
+- `altdoc-multiversion-docs` (deploys to `gh-pages`, comments PR previews, and
+  rewrites rendered links) → grant `contents: write`, `pull-requests: write`,
+  and `issues: write`, and set Settings → Pages → Source = "Deploy from a
+  branch", branch `gh-pages` / `(root)` once.
 - `claude` (pushes branches, opens PRs, dispatches the review workflow) → grant
   `contents: write`, `pull-requests: write`, `issues: write`, `id-token: write`,
   `actions: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
@@ -292,7 +297,8 @@ a security fix) that a consumer still on `@v1` would miss (audited in
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
 the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
 does `sync-upstream.yml` (added after the freeze — see
-[gha#254](https://github.com/d-morrison/gha/issues/254)).
+[gha#254](https://github.com/d-morrison/gha/issues/254)) and
+`altdoc-multiversion-docs.yml` (added after the freeze).
 `summary.yml`,
 `check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
@@ -347,8 +353,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
-`lint-qmd.yml`, `lint-changed-lines.yml`, `request-dependabot-review.yml`, and
-`sync-upstream.yml` at `@v2` — see the
+`lint-qmd.yml`, `lint-changed-lines.yml`, `request-dependabot-review.yml`,
+`sync-upstream.yml`, and `altdoc-multiversion-docs.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies

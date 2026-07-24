@@ -17,7 +17,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
-`lint-qmd`, `lint-changed-lines`, `request-dependabot-review`, and `sync-upstream` — see
+`lint-qmd`, `lint-changed-lines`, `request-dependabot-review`, `sync-upstream`,
+and `altdoc-multiversion-docs` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -43,7 +44,17 @@ which is why the capabilities above moved to `@v2`.
 - Several workflows have no corresponding root composite: `check-news.yml`,
   `summary.yml`, and `preview-deploy.yml` are `workflow_call` reusable workflows
   that wrap external actions; `cleanup-pr-previews.yml` is a self-contained
-  `workflow_call` reusable workflow (inline shell logic, no external composite);
+  `workflow_call` reusable workflow (inline shell logic, no external
+  composite); `altdoc-multiversion-docs.yml` is also self-contained but pairs
+  inline shell logic with the three internal composites below --
+  `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
+  `resolve-altdoc-base-url` -- no
+  top-level render/deploy composite of their own (the render+deploy sequence
+  is inherently stateful/ordered, so splitting it into a separate composite
+  the way `quarto-publish`/`preview` do would add indirection without reuse
+  value, per the one-genuine-consumer-pattern reasoning in
+  `shared/principles/README.md`'s "How the principles relate" section of
+  `d-morrison/ai-config`);
   `bump-submodule.yml`, `sync-shared-fragments.yml`, and `sync-upstream.yml`
   are `workflow_call` reusable workflows that call the shared internal
   `open-sync-pr` composite (`sync-upstream` merges an upstream repo's branch
@@ -124,6 +135,22 @@ which is why the capabilities above moved to `@v2`.
   coverage instead of only being exercised by a live Dependabot PR (gha#253
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
+- `.github/actions/generate-altdoc-version-dropdown/` and
+  `.github/actions/generate-altdoc-landing-page/` - Python composites wrapping
+  the two scripts `altdoc-multiversion-docs.yml` needs (rewrite the navbar
+  "Versions" dropdown; generate the root redirect landing page). Ported from
+  `d-morrison/rpt`'s bespoke `.github/scripts/` copies, generalized to derive
+  the docs base URL and default branch from the caller's own context instead
+  of a hard-coded repo (see `UCD-SERG/serocalculator#504`). Both invoke
+  `.github/actions/resolve-altdoc-base-url/resolve_base_url.py` directly via a
+  `github.action_path`-relative path (the `build-reviewer-args` idiom
+  described above) rather than nesting a `uses: ./...` step -- a relative
+  local path inside a composite action resolves against the top-level
+  workflow's own checkout, not the repo the enclosing composite was fetched
+  from, so a nested `uses:` step would fail to find `action.yml` for any real
+  consumer (gha#284 review). Sharing the script this way still gives both
+  composites one source of truth for the base-URL derivation instead of each
+  carrying its own copy.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -315,6 +342,19 @@ directly, the same
 below uses for `test-coverage.yml` (gha#253 review: missing selftest coverage
 for a new workflow with real side effects, precedented by the `sync-pr` job's
 `open-sync-pr` no-op test).
+
+The `altdoc-docs` job in `_selftest.yml` exercises
+`generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
+`resolve-altdoc-base-url` (see Layout above) directly against a throwaway
+fixture: a separate git-init'd
+package directory (not this checkout) with two release tags, asserting the
+composite picks the correct latest/previous tags and dev version and rewrites
+the navbar "Versions" block and root-redirect HTML correctly. It does not
+exercise the full `altdoc-multiversion-docs.yml` reusable workflow end-to-end
+(the render + multi-target `gh-pages` deploy is a real write side effect
+selftest can't run); that layer is validated by real consumer usage once
+merged and released, the same precedent `dependabot-review`'s
+reusable-workflow layer follows just above.
 
 ## GitHub access in remote / web sessions
 
