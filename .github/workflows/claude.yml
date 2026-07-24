@@ -883,9 +883,16 @@ jobs:
           # branch instead of the default branch workflow_dispatch falls back
           # to when no ref is given (#285) --- without it, `require-review`'s
           # check-run lands on the wrong commit and never supersedes a stale
-          # cancelled run tied to the PR's real head SHA.
-          gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
-            || echo "::warning::Could not dispatch $REVIEW_WF; review will not auto-run."
+          # cancelled run tied to the PR's real head SHA. PR_BRANCH comes from
+          # the "Checkout PR branch" step above; if that step failed, this
+          # step still runs (always()), so skip rather than dispatch with an
+          # empty --ref.
+          if [ -z "$PR_BRANCH" ]; then
+            echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
+          else
+            gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
+              || echo "::warning::Could not dispatch $REVIEW_WF; review will not auto-run."
+          fi
 
       # If an `@claude review` arrived as a LATE comment (posted after the
       # trigger and absorbed by this session's polling), the dedup marks it so
@@ -924,8 +931,13 @@ jobs:
           if [ "${late:-0}" -gt 0 ]; then
             echo "Found $late late @claude review request(s) newer than $TRIGGER_TS; dispatching review."
             # --ref: see the comment on the earlier dispatch step above (#285).
-            gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
-              || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
+            # Skip rather than dispatch with an empty --ref if checkout failed.
+            if [ -z "$PR_BRANCH" ]; then
+              echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
+            else
+              gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
+                || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
+            fi
           else
             echo "No late @claude review requests."
           fi
@@ -955,8 +967,13 @@ jobs:
                 || echo "::warning::Could not re-request $REVIEWER as reviewer."
             fi
             # --ref: see the comment on the earlier dispatch step above (#285).
-            gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
-              || echo "::warning::Could not dispatch $REVIEW_WF."
+            # Skip rather than dispatch with an empty --ref if checkout failed.
+            if [ -z "$PR_BRANCH" ]; then
+              echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
+            else
+              gh workflow run "$REVIEW_WF" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER" \
+                || echo "::warning::Could not dispatch $REVIEW_WF."
+            fi
             # Claude finished successfully with new commits: take the PR out of
             # draft so a human knows it's ready to review. `gh pr ready` is a
             # no-op on an already-ready PR.
