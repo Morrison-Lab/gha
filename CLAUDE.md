@@ -43,9 +43,10 @@ which is why the capabilities above moved to `@v2`.
   the Claude bot in this repo, not `workflow_call` wrappers.
 - Several workflows have no corresponding root composite: `check-news.yml`,
   `summary.yml`, and `preview-deploy.yml` are `workflow_call` reusable workflows
-  that wrap external actions; `cleanup-pr-previews.yml` and
-  `altdoc-multiversion-docs.yml` are self-contained `workflow_call` reusable
-  workflows (inline shell logic plus the three internal composites below --
+  that wrap external actions; `cleanup-pr-previews.yml` is a self-contained
+  `workflow_call` reusable workflow (inline shell logic, no external
+  composite); `altdoc-multiversion-docs.yml` is also self-contained but pairs
+  inline shell logic with the three internal composites below --
   `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
   `resolve-altdoc-base-url` -- no
   top-level render/deploy composite of their own: the render+deploy sequence
@@ -343,8 +344,9 @@ for a new workflow with real side effects, precedented by the `sync-pr` job's
 `open-sync-pr` no-op test).
 
 The `altdoc-docs` job in `_selftest.yml` exercises
-`generate-altdoc-version-dropdown` and `generate-altdoc-landing-page` (see
-Layout above) directly against a throwaway fixture: a separate git-init'd
+`generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
+`resolve-altdoc-base-url` (see Layout above) directly against a throwaway
+fixture: a separate git-init'd
 package directory (not this checkout) with two release tags, asserting the
 composite picks the correct latest/previous tags and dev version and rewrites
 the navbar "Versions" block and root-redirect HTML correctly. It does not

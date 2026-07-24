@@ -57,7 +57,7 @@ on:
       checkout-submodules:
         description: Passed to actions/checkout `submodules` ('recursive', 'true', or 'false').
         type: string
-        default: 'true'
+        default: 'recursive'
       default-branch:
         description: >-
           The repo's default branch. Used to (a) decide when a push deploys

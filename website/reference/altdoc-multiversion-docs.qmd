@@ -28,7 +28,7 @@ boundary is a possible follow-up, not part of this port.
 | `needs`                      | string  | `"connect\nwebsite"`        | `r-lib/actions/setup-r-dependencies` `needs:` list.                                                                                    |
 | `apt-packages`               | string  | `''`                        | Extra apt packages to install before rendering (space-separated).                                                                      |
 | `setup-julia`                | boolean | `false`                     | Install Julia before rendering (for packages with a JuliaCall dependency).                                                            |
-| `checkout-submodules`        | string  | `'true'`                    | Passed to `actions/checkout`'s `submodules` (`'recursive'`, `'true'`, or `'false'`).                                                   |
+| `checkout-submodules`        | string  | `'recursive'`               | Passed to `actions/checkout`'s `submodules` (`'recursive'`, `'true'`, or `'false'`).                                                   |
 | `default-branch`             | string  | `'main'`                    | The repo's default branch, used for dev-docs deploys and to read the dev version from `DESCRIPTION` even on release builds.           |
 | `quarto-config-path`         | string  | `'altdoc/quarto_website.yml'` | Path to the altdoc Quarto config file, relative to the repo root.                                                                    |
 | `docs-base-url`              | string  | `''`                        | Override the docs base URL. Leave empty to derive it from the calling repository.                                                     |

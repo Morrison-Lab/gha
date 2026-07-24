@@ -62,7 +62,7 @@ jobs:
       #   website
       # apt-packages: ''             # extra apt packages before rendering
       # setup-julia: false           # set true for packages with a JuliaCall dependency
-      # checkout-submodules: 'true'  # 'recursive' | 'true' | 'false'
+      # checkout-submodules: 'recursive'  # 'recursive' | 'true' | 'false'
       # default-branch: main
       # quarto-config-path: altdoc/quarto_website.yml
       # docs-base-url: ''            # override; default derives from this repo
