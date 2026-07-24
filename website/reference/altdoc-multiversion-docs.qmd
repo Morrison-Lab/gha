@@ -1,0 +1,100 @@
+---
+title: "altdoc-multiversion-docs.yml"
+---
+
+Render an [altdoc](https://altdoc.etiennebacher.com/)-based R package's Quarto
+docs site and deploy multiple versions side by side on `gh-pages`: PRs to
+`/pr-preview/pr-<number>/`, pushes to the default branch to `/dev/`, published
+releases to `/latest-tag/` and `/vX.Y.Z/`, and a root `/` redirect landing page
+into the default docs version. Ported from
+[`d-morrison/rpt`](https://github.com/d-morrison/rpt)'s bespoke `docs.yaml`
+into a reusable workflow (see [`UCD-SERG/serocalculator#504`](https://github.com/UCD-SERG/serocalculator/issues/504)).
+
+One-time setup: set Settings -> Pages -> Source to "Deploy from a branch",
+branch `gh-pages` / `(root)`. Requires an `altdoc/quarto_website.yml` navbar
+with a "Versions" menu entry for the version-dropdown step to rewrite (see the
+[Example](#example) section).
+
+Unlike the `preview` / `preview-deploy` family, this keeps a single job for
+build, deploy, and PR-preview cleanup, rather than splitting into a fork-safe
+read-only build half and a base-repo-context deploy half. Hardening that trust
+boundary is a possible follow-up, not part of this port.
+
+## Inputs
+
+| Input                       | Type    | Default                     | Description                                                                                                                          |
+| ---------------------------- | ------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `r-packages`                 | string  | `(see workflow file)`       | r-lib/actions package specs to install. Must include `local::.` and `any::altdoc` (or a fork).                                        |
+| `needs`                      | string  | `"connect\nwebsite"`        | `r-lib/actions/setup-r-dependencies` `needs:` list.                                                                                    |
+| `apt-packages`               | string  | `''`                        | Extra apt packages to install before rendering (space-separated).                                                                      |
+| `setup-julia`                | boolean | `false`                     | Install Julia before rendering (for packages with a JuliaCall dependency).                                                            |
+| `checkout-submodules`        | string  | `'recursive'`               | Passed to `actions/checkout`'s `submodules` (`'recursive'`, `'true'`, or `'false'`).                                                   |
+| `default-branch`             | string  | `'main'`                    | The repo's default branch, used for dev-docs deploys and to read the dev version from `DESCRIPTION` even on release builds.           |
+| `quarto-config-path`         | string  | `'altdoc/quarto_website.yml'` | Path to the altdoc Quarto config file, relative to the repo root.                                                                    |
+| `docs-base-url`              | string  | `''`                        | Override the docs base URL. Leave empty to derive it from the calling repository.                                                     |
+| `preview-branch`             | string  | `'gh-pages'`                 | Branch PR previews and version subdirectories are deployed to.                                                                        |
+| `timeout-minutes`            | number  | `30`                        | Timeout for the render step.                                                                                                          |
+| `rewrite-pr-preview-links`   | boolean | `true`                      | On PR builds, repoint Quarto's repo-action links and the navbar GitHub icon at the PR's head branch and conversation page.            |
+| `rewrite-issue-links`        | boolean | `true`                      | Repoint rendered "Report an issue" links at the base repository's issues page.                                                        |
+| `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`): a reusable workflow only sees `with:`-passed values. |
+| `dispatch-release-tag`       | string  | `''`                        | Forward the caller's `workflow_dispatch` `release_tag` input, required when `dispatch-version` is `'stable'`.                          |
+
+## Permissions
+
+Grant `contents: write` (deploys push to `gh-pages`), `pull-requests: write`,
+and `issues: write` (the PR-preview sticky comment and link rewrites).
+
+## Example
+
+```yaml
+# Copy to .github/workflows/docs.yaml in your repo.
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Documentation version to deploy
+        required: true
+        default: dev
+        type: choice
+        options: [dev, stable]
+      release_tag:
+        description: Stable release tag to deploy when version=stable (e.g. v1.2.3)
+        required: false
+        type: string
+
+jobs:
+  docs:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    uses: d-morrison/gha/.github/workflows/altdoc-multiversion-docs.yml@v2
+    with:
+      dispatch-version: ${{ github.event.inputs.version }}
+      dispatch-release-tag: ${{ github.event.inputs.release_tag }}
+```
+
+Your `altdoc/quarto_website.yml` navbar needs a placeholder "Versions" entry
+for the version-dropdown step to find and rewrite:
+
+```yaml
+website:
+  navbar:
+    right:
+      - text: Versions
+        menu:
+          - text: "$ALTDOC_PACKAGE_VERSION (dev)"
+            href: https://<owner>.github.io/<repo>/dev/
+```
+
+See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+directory for the full caller stub (`altdoc-multiversion-docs.yml`), with
+every optional input commented out.

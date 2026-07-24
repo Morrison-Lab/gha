@@ -1,0 +1,46 @@
+name: Generate altdoc multiversion landing page
+description: >-
+  Generate a root `index.html` redirect (plus `.nojekyll`) pointing at a
+  docs subdirectory (e.g. dev/ or latest-tag/), for a gh-pages site that
+  keeps versioned docs in subdirectories rather than at the root. Shared
+  internal helper for the altdoc-multiversion-docs reusable workflow --
+  ported from d-morrison/rpt's bespoke docs.yaml script.
+inputs:
+  target:
+    description: >-
+      Docs subdirectory the root page should redirect to (e.g. "dev" or
+      "latest-tag"), without leading/trailing slashes.
+    required: true
+  output-dir:
+    description: Directory to write the generated index.html/.nojekyll into.
+    default: 'site-root'
+  base-url:
+    description: >-
+      Override the docs base URL (e.g. "https://owner.github.io/repo/").
+      Leave empty to derive it from GITHUB_REPOSITORY.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: '3.x'
+
+    # See generate-altdoc-version-dropdown/action.yml's identical step for
+    # why this calls resolve_base_url.py directly via github.action_path
+    # instead of nesting a `uses: ./...` step.
+    - name: Resolve base URL
+      id: base-url
+      shell: bash
+      env:
+        DOCS_BASE_URL: ${{ inputs.base-url }}
+      run: python3 "${{ github.action_path }}/../resolve-altdoc-base-url/resolve_base_url.py"
+
+    - name: Generate landing page
+      shell: bash
+      env:
+        LANDING_TARGET: ${{ inputs.target }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+        DOCS_BASE_URL: ${{ steps.base-url.outputs.base-url }}
+      run: python3 "$GITHUB_ACTION_PATH/generate_multiversion_landing_page.py"
