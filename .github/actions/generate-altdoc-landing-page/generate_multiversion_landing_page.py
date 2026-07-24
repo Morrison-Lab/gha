@@ -28,9 +28,7 @@ def main():
     # Resolved by this action's own preceding "Resolve base URL" step.
     base_url = os.environ["DOCS_BASE_URL"]
     url = f"{base_url}{target}/"
-    repo_name = os.environ.get("GITHUB_EVENT_REPOSITORY_NAME") or os.environ.get(
-        "GITHUB_REPOSITORY", ""
-    ).split("/")[-1]
+    repo_name = os.environ.get("GITHUB_REPOSITORY", "").split("/")[-1]
     html = (
         "<!DOCTYPE html>\n"
         '<meta charset="utf-8">\n'

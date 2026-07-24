@@ -8,8 +8,7 @@ description: >-
 inputs:
   override:
     description: >-
-      Explicit base URL override. Leave empty to derive from GITHUB_REPOSITORY
-      (or GITHUB_REPOSITORY_OWNER + GITHUB_EVENT_REPOSITORY_NAME).
+      Explicit base URL override. Leave empty to derive from GITHUB_REPOSITORY.
     default: ''
 outputs:
   base-url:

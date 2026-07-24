@@ -16,21 +16,18 @@ def resolve_base_url():
     if configured_url:
         return configured_url.rstrip("/") + "/"
 
+    # GITHUB_REPOSITORY is one of GitHub Actions' default environment
+    # variables and is always set in a real job -- this fallback only
+    # matters for local/manual runs outside CI.
     repository = os.environ.get("GITHUB_REPOSITORY", "").strip()
     if "/" in repository:
         owner, repo = repository.split("/", 1)
         if owner and repo:
             return f"https://{owner}.github.io/{repo}/"
 
-    owner = os.environ.get("GITHUB_REPOSITORY_OWNER", "").strip()
-    repo = os.environ.get("GITHUB_EVENT_REPOSITORY_NAME", "").strip()
-    if owner and repo:
-        return f"https://{owner}.github.io/{repo}/"
-
     print(
         "Could not derive the docs base URL: set the base-url input, or run "
-        "this action where GITHUB_REPOSITORY (or "
-        "GITHUB_REPOSITORY_OWNER + GITHUB_EVENT_REPOSITORY_NAME) is set.",
+        "this action where GITHUB_REPOSITORY is set.",
         file=sys.stderr,
     )
     sys.exit(1)

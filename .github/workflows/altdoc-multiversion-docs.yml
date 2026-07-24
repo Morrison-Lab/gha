@@ -334,33 +334,31 @@ jobs:
 
       # On first rollout, /latest-tag/ may not exist yet on gh-pages.
       # Bootstrap it once from the archived latest stable release directory.
+      - name: "[default branch] Resolve base URL for bootstrap"
+        id: bootstrap-base-url
+        if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)
+        uses: ./.github/actions/resolve-altdoc-base-url
+        with:
+          override: ${{ inputs.docs-base-url }}
+
       - name: "[default branch] Prepare one-time /latest-tag/ bootstrap if missing"
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)
         shell: bash
         env:
           LATEST_STABLE_TAG: ${{ steps.latest-stable-tag.outputs.latest_stable_tag }}
-          DOCS_BASE_URL_OVERRIDE: ${{ inputs.docs-base-url }}
-          DEFAULT_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+          BASE_URL: ${{ steps.bootstrap-base-url.outputs.base-url }}
           PREVIEW_BRANCH: ${{ inputs.preview-branch }}
         run: |
-          # Honor docs-base-url the same way the Python composites do
-          # (override-first, trailing slash normalized) -- this step's own
-          # bootstrapped HTML was itself built with that same base URL, so
-          # the sed rewrite below must search for a matching one or it
-          # silently no-ops.
-          if [[ -n "$DOCS_BASE_URL_OVERRIDE" ]]; then
-            BASE_URL="${DOCS_BASE_URL_OVERRIDE%/}/"
-          else
-            BASE_URL="$DEFAULT_BASE_URL"
-          fi
-
           echo "bootstrap_latest_tag=false" >> "$GITHUB_ENV"
           if [[ -z "$LATEST_STABLE_TAG" ]]; then
             echo "No published stable release tag found; skipping /latest-tag/ bootstrap."
             exit 0
           fi
 
-          git fetch origin "$PREVIEW_BRANCH" --depth=1
+          git fetch origin "$PREVIEW_BRANCH" --depth=1 || {
+            echo "No $PREVIEW_BRANCH branch yet; skipping /latest-tag/ bootstrap."
+            exit 0
+          }
           if git ls-tree -d --name-only "origin/$PREVIEW_BRANCH" latest-tag | grep -qx latest-tag; then
             echo "/latest-tag/ already exists; skipping bootstrap."
             exit 0

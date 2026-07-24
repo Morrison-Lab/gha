@@ -25,6 +25,7 @@ updates:
       - "/test-coverage"
       - "/.github/actions/generate-altdoc-version-dropdown"
       - "/.github/actions/generate-altdoc-landing-page"
+      - "/.github/actions/resolve-altdoc-base-url"
       - "/.github/actions/run-claude-review-attempt"
       - "/.github/actions/upload-review-execution"
     schedule:
