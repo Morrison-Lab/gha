@@ -533,6 +533,32 @@ released, pre-fix tag — and reproduced the exact #285 symptom live
 head) even though the fix had already been pushed to the PR branch itself.
 Not a regression; the same "can't self-verify" gap, one layer up.)
 
+## A push touching `.github/workflows/` can fail even though `WORKFLOW_TOKEN` is wired correctly in code
+
+If a push from `claude.yml` (or `claude-bot.yml`'s dispatch of it) fails with:
+
+```text
+! [remote rejected] ... (refusing to allow a GitHub App to create or
+  update workflow `.github/workflows/<file>` without `workflows` permission)
+```
+
+this means the `WORKFLOW_TOKEN` **repository secret** is unset or lacks
+`contents:write` + `workflows:write` scope for this repo — it is not a bug in
+`claude.yml`'s own token-resolution code. `claude.yml` already resolves
+`PUSH_TOKEN` as `${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}`, and
+`claude-bot.yml` already passes `WORKFLOW_TOKEN` through; `GITHUB_TOKEN` alone
+can never push a `.github/workflows/` change, so the fallback reproduces this
+exact rejection whenever `WORKFLOW_TOKEN` isn't configured with the right
+scope. Only someone with admin access to this repo's Settings -> Secrets and
+variables -> Actions can fix it (a classic PAT with `repo` + `workflow`
+scopes, or an equivalent GitHub App installation token) — an `@claude` session
+has no path to set repository secrets itself. If you hit this, don't debug
+`claude.yml`'s `PUSH_TOKEN` wiring; recover by pushing the already-committed
+local branch from a differently-credentialed session/human, and flag that
+`WORKFLOW_TOKEN` needs to be (re)configured. (Hit twice on 2026-07-24: PR #286
+fixing #285, and PR #290 fixing #289, both editing `.github/workflows/*.yml`
+— both required manual recovery; see gha#292.)
+
 **A third, more direct mechanism produces the identical symptom without
 `@v2` even entering the picture.** `claude-code-review.yml`'s own `Skip
 self-review when the PR edits this workflow` step compares the PR's changed
