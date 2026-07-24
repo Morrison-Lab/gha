@@ -13,7 +13,7 @@ into a reusable workflow (see [`UCD-SERG/serocalculator#504`](https://github.com
 One-time setup: set Settings -> Pages -> Source to "Deploy from a branch",
 branch `gh-pages` / `(root)`. Requires an `altdoc/quarto_website.yml` navbar
 with a "Versions" menu entry for the version-dropdown step to rewrite (see the
-Example below).
+[Example](#example) section).
 
 Unlike the `preview` / `preview-deploy` family, this keeps a single job for
 build, deploy, and PR-preview cleanup, rather than splitting into a fork-safe

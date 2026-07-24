@@ -337,7 +337,7 @@ jobs:
       - name: "[default branch] Resolve base URL for bootstrap"
         id: bootstrap-base-url
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)
-        uses: ./.github/actions/resolve-altdoc-base-url
+        uses: d-morrison/gha/.github/actions/resolve-altdoc-base-url@v2
         with:
           override: ${{ inputs.docs-base-url }}
 

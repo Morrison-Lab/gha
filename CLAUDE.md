@@ -45,7 +45,9 @@ which is why the capabilities above moved to `@v2`.
   `summary.yml`, and `preview-deploy.yml` are `workflow_call` reusable workflows
   that wrap external actions; `cleanup-pr-previews.yml` and
   `altdoc-multiversion-docs.yml` are self-contained `workflow_call` reusable
-  workflows (inline shell logic plus the two internal composites above, no
+  workflows (inline shell logic plus the three internal composites below --
+  `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
+  `resolve-altdoc-base-url` -- no
   top-level render/deploy composite of their own: the render+deploy sequence
   is inherently stateful/ordered, so splitting it into a separate composite
   the way `quarto-publish`/`preview` do would add indirection without reuse
