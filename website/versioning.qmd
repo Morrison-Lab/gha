@@ -13,6 +13,7 @@ so it has picked up no fixes since - not even non-breaking ones. Pin
 `claude-code-review.yml`, and `update-snapshots.yml` to `@v2`;
 `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`check-new-line-breaks.yml`,
 `request-dependabot-review.yml`, `sync-upstream.yml`, and
 `altdoc-multiversion-docs.yml` only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
@@ -75,7 +76,8 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`,
-`lint-changed-lines.yml`, `request-dependabot-review.yml`,
+`lint-changed-lines.yml`, `check-new-line-breaks.yml`,
+`request-dependabot-review.yml`,
 `sync-upstream.yml`, and `altdoc-multiversion-docs.yml` at `@v2` - see the
 versioning note above), so they are **not** SHA-pinned.
 

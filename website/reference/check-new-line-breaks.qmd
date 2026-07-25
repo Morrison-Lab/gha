@@ -1,0 +1,56 @@
+---
+title: "check-new-line-breaks.yml"
+---
+
+Advisory, diff-scoped check that flags newly-added Markdown lines packing
+more than one sentence/clause onto a single source line -- the "semantic
+line breaks" convention (one clause/sentence per line), which keeps a diff
+scoped to the changed sentence instead of a whole reflowed paragraph. Scoped
+to lines a diff adds, so it never reflags a corpus's pre-existing long
+lines. Pairs well with [`lint-markdown.yml`](lint-markdown.qmd) when
+markdownlint's MD013 (line-length) is disabled because the corpus already
+carries long-line drift from before the convention was adopted.
+
+## Inputs
+
+| Input            | Type    | Default | Description                                                                          |
+| ---------------- | ------- | ------- | ------------------------------------------------------------------------------------- |
+| `python-version` | string  | `'3.x'` | Python version to set up.                                                             |
+| `globs`          | string  | `'*.md'` | Space-separated git pathspecs of tracked files to check (recursive by default).      |
+| `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
+| `fail`           | boolean | `false` | Fail the workflow when a violation is found; otherwise warn only.                    |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-new-line-breaks.yml in your repo.
+# Advisory check: flags newly-added Markdown lines packing more than one
+# sentence/clause onto one source line. Diff-scoped, so it only ever flags
+# what a PR itself adds -- pairs well with lint-markdown when MD013
+# (line-length) is disabled because the corpus already has long-line drift.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check new markdown lines for missing semantic breaks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: d-morrison/gha/.github/workflows/check-new-line-breaks.yml@v2
+    # with:
+    #   globs: '*.md'                          # pathspecs to check (recursive)
+    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
+    #   fail: true                             # block the PR instead of warning
+```
+
+See
+[`examples/check-new-line-breaks.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-new-line-breaks.yml)
+for the full caller stub.

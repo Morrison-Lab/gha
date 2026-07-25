@@ -17,7 +17,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
-`lint-qmd`, `lint-changed-lines`, `request-dependabot-review`, `sync-upstream`,
+`lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`,
+`request-dependabot-review`, `sync-upstream`,
 and `altdoc-multiversion-docs` -- see
 the Versioning section
 of `README.md`).
@@ -28,8 +29,13 @@ which is why the capabilities above moved to `@v2`.
 
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
-  script — e.g. `check-bibliography-dois/` (R), `check-non-standard-chars/` and
-  `check-phi/` (Python). `check-links/` bundles `lychee.default.toml`;
+  script -- e.g. `check-bibliography-dois/` (R), `check-non-standard-chars/`,
+  `check-phi/`, and `check-new-line-breaks/` (Python; the last mirrors
+  `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
+  entirely rather than falling back to a whole-tree scan when the diff can't
+  be computed, since a whole-tree scan here would reflag a corpus's
+  pre-existing long-line drift, which is exactly what the diff-scoping
+  exists to avoid). `check-links/` bundles `lychee.default.toml`;
   `preview/`, `quarto-publish/`, and `open-sync-pr/` are action-only (the last
   is the shared push-and-open-PR helper used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`).
@@ -267,6 +273,19 @@ CI runs it as the `phi-tests` job in `_selftest.yml`. There's no broader unit-te
 harness — most capabilities are validated end-to-end by `_selftest.yml`, running
 against this repo itself or small throwaway fixtures (stable capabilities via
 `@v1`, pre-release ones from local source).
+
+`check-new-line-breaks/tests/test_check_new_line_breaks.py` is a pytest suite
+covering the sentence-splitter/block-detector functions directly and, via
+small throwaway git repos (`tmp_path` fixtures, generated at test time --
+nothing committed), the diff-scoping behavior itself: a newly-added
+multi-sentence line is flagged, a pre-existing one in an untouched line is
+not, and a diff that can't be computed skips rather than falling back to a
+whole-tree scan. Run it with
+`python3 -m pytest check-new-line-breaks/tests/ -q`; CI runs it as the
+`new-line-breaks-tests` job in `_selftest.yml`, alongside a `new-line-breaks`
+job that exercises the real composite (`base-ref` diff mode) against this
+repo's own tree, the same "local composite, not yet the `@v1`-pinned
+reusable-workflow chain" precedent `phi` uses above.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
