@@ -170,6 +170,8 @@ def set_navbar_title(lines, entry_index, badge_html):
     base = None
     title_index = _find_child_key(lines, navbar_index, navbar_indent, "title")
     if title_index is not None:
+        if _is_disabled_title(lines[title_index]):
+            return lines, None
         base = _scalar_value(lines[title_index])
     else:
         website = _find_ancestor_key(lines, navbar_index, "website")
@@ -242,6 +244,19 @@ def _child_indent(lines, parent_index, parent_indent):
         if indent > parent_indent:
             return indent
     return parent_indent + 2
+
+
+def _is_disabled_title(line):
+    """True when `title:` is the unquoted YAML boolean `false`.
+
+    Quarto renders `website.navbar.title: false` as no title at all -- what
+    a consumer uses when a logo stands in for the wordmark -- so there is no
+    title to hang a badge on. `title: "false"` is a quoted string, a
+    (if odd) genuine title, and must not be treated the same way.
+    """
+    raw = line.split(":", 1)[1].strip()
+    raw = raw.split(" #", 1)[0].strip()
+    return raw.lower() == "false"
 
 
 def _scalar_value(line):

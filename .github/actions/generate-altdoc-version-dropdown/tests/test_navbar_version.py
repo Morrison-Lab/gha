@@ -172,6 +172,27 @@ def test_rerunning_replaces_the_badge_rather_than_stacking_them():
     assert len(twice) == len(once)
 
 
+def test_navbar_title_is_skipped_when_disabled_with_the_boolean_false():
+    # `title: false` suppresses Quarto's navbar title entirely (used when a
+    # logo stands in for the wordmark); there is no title to hang a badge
+    # on, and rendering the literal word "false" next to the version badge
+    # would be worse than skipping it.
+    config = CONFIG[:3] + ['    title: false\n'] + CONFIG[3:]
+    _, entry_index, _ = find_versions_entry(config)
+    lines, title = set_navbar_title(config, entry_index, "<BADGE/>")
+    assert title is None
+    assert lines == config
+
+
+def test_navbar_title_quoted_string_false_is_a_real_title():
+    # Unlike the bare boolean above, a quoted "false" is a genuine (if odd)
+    # title string and must still get the badge appended.
+    config = CONFIG[:3] + ['    title: "false"\n'] + CONFIG[3:]
+    _, entry_index, _ = find_versions_entry(config)
+    lines, title = set_navbar_title(config, entry_index, "<BADGE/>")
+    assert title == "false <BADGE/>"
+
+
 def test_navbar_title_is_skipped_when_there_is_no_title_to_build_on():
     config = """\
 website:
