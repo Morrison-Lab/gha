@@ -38,6 +38,39 @@ boundary is a possible follow-up, not part of this port.
 | `rewrite-issue-links`        | boolean | `true`                      | Repoint rendered "Report an issue" links at the base repository's issues page.                                                        |
 | `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`): a reusable workflow only sees `with:`-passed values. |
 | `dispatch-release-tag`       | string  | `''`                        | Forward the caller's `workflow_dispatch` `release_tag` input, required when `dispatch-version` is `'stable'`.                          |
+| `legacy-paths`               | string  | `''`                        | Retired docs subdirectories to keep working, as `old=new` pairs (e.g. `main=dev`). See [Retired version directories](#retired-version-directories). |
+
+## Retired version directories
+
+A site that previously published the default branch's docs to `/<branch>/` --
+the [`insightsengineering/r-pkgdown-multiversion`](https://github.com/insightsengineering/r-pkgdown-multiversion)
+layout -- has every `/main/...` link broken by the move to `/dev/`, this
+workflow's layout and [pkgdown's own development-mode convention](https://pkgdown.r-lib.org/reference/build_site.html).
+
+Set `legacy-paths` to a comma- or newline-separated list of `old=new` pairs to
+keep the old links alive:
+
+```yaml
+legacy-paths: main=dev
+```
+
+That generates a site-root `404.html` rewriting any request under `/main/` to
+the same path under `/dev/`, so `/main/reference/index.html` lands on
+`/dev/reference/index.html`. GitHub Pages serves no server-side redirects but
+does serve a site-root `404.html` for unresolved paths, which is what makes
+deep links work -- a per-directory `index.html` meta-refresh only catches the
+directory root.
+
+Two consequences worth knowing:
+
+- **Redirection needs JavaScript.** Without it the page renders as a plain
+  not-found notice linking to the docs root.
+- **The redirect replaces the site's 404 page.** Any path the site cannot
+  resolve renders this page, not GitHub's default one.
+
+The pairs are explicit rather than derived from whichever version this build
+deployed, so `/main/` resolves to the same place after a release build as
+after a default-branch build.
 
 ## Permissions
 
@@ -80,6 +113,7 @@ jobs:
     with:
       dispatch-version: ${{ github.event.inputs.version }}
       dispatch-release-tag: ${{ github.event.inputs.release_tag }}
+      # legacy-paths: main=dev     # keep pre-migration /main/ links working
 ```
 
 Your `altdoc/quarto_website.yml` navbar needs a placeholder "Versions" entry

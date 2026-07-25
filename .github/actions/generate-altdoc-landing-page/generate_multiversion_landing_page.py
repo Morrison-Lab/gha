@@ -12,8 +12,9 @@ shared with generate-altdoc-version-dropdown) has already set DOCS_BASE_URL.
 """
 
 import os
-import pathlib
 import sys
+
+from _site_output import docs_base_url, site_output_dir
 
 
 def main():
@@ -22,12 +23,8 @@ def main():
         print("LANDING_TARGET must not be empty", file=sys.stderr)
         sys.exit(1)
 
-    output_dir = pathlib.Path(os.environ.get("OUTPUT_DIR", "site-root"))
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Resolved by this action's own preceding "Resolve base URL" step.
-    base_url = os.environ["DOCS_BASE_URL"]
-    url = f"{base_url}{target}/"
+    output_dir = site_output_dir()
+    url = f"{docs_base_url()}{target}/"
     repo_name = os.environ.get("GITHUB_REPOSITORY", "").split("/")[-1]
     html = (
         "<!DOCTYPE html>\n"

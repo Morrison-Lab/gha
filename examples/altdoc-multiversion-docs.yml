@@ -70,3 +70,6 @@ jobs:
       # timeout-minutes: 30
       # rewrite-pr-preview-links: true
       # rewrite-issue-links: true
+      # legacy-paths: main=dev      # redirect retired version dirs, e.g. a
+      #                             # site that used to publish the default
+      #                             # branch's docs to /main/ instead of /dev/

@@ -7,6 +7,9 @@ name: altdoc Multiversion Docs (reusable)
 #   - published releases     -> /latest-tag/ and /vX.Y.Z/ (stable + archive)
 #   - workflow_dispatch      -> /dev/ or /latest-tag/ (manual redeploy)
 # Root (/) is a redirect landing page into the default docs version.
+# The `legacy-paths` input additionally generates a root 404.html that
+# redirects retired version directories (e.g. a site that used to publish the
+# default branch's docs to /main/) to their replacements.
 #
 # Ported from d-morrison/rpt's bespoke `.github/workflows/docs.yaml` (the
 # altdoc multiversion pattern UCD-SERG/serocalculator#504 asked to
@@ -79,6 +82,17 @@ on:
         description: Branch PR previews and version subdirectories are deployed to.
         type: string
         default: 'gh-pages'
+      legacy-paths:
+        description: >-
+          Retired docs subdirectories to keep working, as comma- or
+          newline-separated `old=new` pairs (e.g. "main=dev"). Useful when a
+          site migrates from a naming scheme that published the default
+          branch's docs to `/<branch>/`, which this workflow publishes to
+          `/dev/`. Generates a site-root `404.html` redirecting any request
+          under `old/` to the same path under `new/`, deep links included.
+          Empty (the default) generates no `404.html`.
+        type: string
+        default: ''
       timeout-minutes:
         description: Timeout for the render step.
         type: number
@@ -400,6 +414,7 @@ jobs:
           target: ${{ env.landing_target }}
           output-dir: site-root
           base-url: ${{ inputs.docs-base-url }}
+          legacy-paths: ${{ inputs.legacy-paths }}
 
       - name: Deploy to GitHub pages
         if: github.event_name != 'pull_request' && env.subdir != ''
