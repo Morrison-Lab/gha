@@ -3,10 +3,12 @@ description: >-
   Rewrite the "Versions" navbar menu block in an altdoc `quarto_website.yml`
   with the current stable release, the dev version, and previous release
   tags, each linking to its deployed docs subdirectory
-  (/latest-tag/, /dev/, /vX.Y.Z/). Shared internal helper for the
-  altdoc-multiversion-docs reusable workflow -- ported from d-morrison/rpt's
-  bespoke docs.yaml script so altdoc-based R packages don't each carry their
-  own copy.
+  (/latest-tag/, /dev/, /vX.Y.Z/). Labels the menu itself with the version
+  the build renders, and gives the navbar title a pkgdown-style version
+  badge, so a reader can tell which version's docs they are on. Shared
+  internal helper for the altdoc-multiversion-docs reusable workflow --
+  ported from d-morrison/rpt's bespoke docs.yaml script so altdoc-based R
+  packages don't each carry their own copy.
 inputs:
   docs-source-dir:
     description: >-
@@ -37,6 +39,28 @@ inputs:
       Token used to query `gh api repos/<repo>/releases` for published
       release tags. Falls back to `git tag` if empty or the API call fails.
     default: ''
+  current-version:
+    description: >-
+      The docs version this build renders: a release tag (e.g. "v1.2.3"), or
+      "dev". Determines the menu label and the navbar badge. Leave empty to
+      infer it from the rendered checkout's DESCRIPTION version, which
+      matches a release tag on a release build and nothing on a dev or PR
+      build.
+    default: ''
+  dropdown-title-template:
+    description: >-
+      Template for the Versions menu's own label. "{version}" is replaced
+      with the current version's label (e.g. "v1.2.3 (stable)"). Set it to
+      something like "Version: {version}" to keep a word alongside the
+      number.
+    default: '{version}'
+  version-in-navbar-title:
+    description: >-
+      Show the current version next to the navbar title, the way pkgdown
+      shows a package's version beside its brand. Sets
+      `website.navbar.title`, leaving `website.title` -- and so the page
+      `<title>`, feed, and social cards -- unchanged.
+    default: 'true'
 outputs:
   latest-tag:
     description: The latest published stable release tag (e.g. "v1.2.3"), or empty if none.
@@ -44,6 +68,11 @@ outputs:
   dev-version:
     description: The development version read from DESCRIPTION.
     value: ${{ steps.run.outputs.dev-version }}
+  current-version:
+    description: >-
+      Label of the version this build renders, as shown on the Versions menu
+      (e.g. "v1.2.3 (stable)" or "0.1.0.9000 (dev)").
+    value: ${{ steps.run.outputs.current-version }}
 runs:
   using: composite
   steps:
@@ -76,4 +105,7 @@ runs:
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         DOCS_BASE_URL: ${{ steps.base-url.outputs.base-url }}
         GH_TOKEN: ${{ inputs.github-token }}
+        CURRENT_VERSION: ${{ inputs.current-version }}
+        DROPDOWN_TITLE_TEMPLATE: ${{ inputs.dropdown-title-template }}
+        VERSION_IN_NAVBAR_TITLE: ${{ inputs.version-in-navbar-title }}
       run: python3 "$GITHUB_ACTION_PATH/generate_version_dropdown.py"

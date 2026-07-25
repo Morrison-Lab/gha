@@ -163,7 +163,21 @@ which is why the capabilities above moved to `@v2`.
   share `_site_output.py` for the `OUTPUT_DIR`/`DOCS_BASE_URL` plumbing they
   both need -- including the `site-root` default, which has to agree with
   `action.yml`'s own `output-dir` default and is asserted to by a test rather
-  than left to a comment (gha#303 review).
+  than left to a comment (gha#303 review). `generate-altdoc-version-dropdown`
+  likewise splits its version-labeling and navbar-rewriting helpers into
+  `navbar_version.py` (gha#307): those are pure functions, so they get unit
+  tests, while importing the script itself would run its whole top-level flow
+  (git lookups, a required `DOCS_BASE_URL`). That module also owns the two
+  label suffixes (`" (stable)"`, `" (dev)"`), so the menu's own label is
+  built in the same shape as the entries it sits above rather than drifting
+  into a second format. The *version* in that label can still differ from
+  the `(dev)` entry's, and deliberately does on a PR preview: the label
+  comes from the rendered checkout's own `DESCRIPTION` (`local_version`),
+  while the `/dev/` entry always names the default branch's version
+  (`dev_version`, read from `origin/<default-branch>`). A PR that bumps
+  `DESCRIPTION` therefore shows its own version in the navbar while the
+  menu still points `/dev/` at what is actually deployed there -- both
+  correct, since the reader is looking at the PR's build, not `/dev/`.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -376,6 +390,27 @@ fixture: a separate git-init'd
 package directory (not this checkout) with two release tags, asserting the
 composite picks the correct latest/previous tags and dev version and rewrites
 the navbar "Versions" block and root-redirect HTML correctly.
+
+It calls `generate-altdoc-version-dropdown` three times, over two fixtures.
+Twice over the one above: first with no `current-version`, covering the
+inference path and the dev-build labeling, then with
+`current-version: v0.1.0`, covering an explicit release build. That second
+call also proves two things only a re-run can: that the generated-by marker
+keeps the block findable after the first run replaced its
+`- text: Versions` anchor, and that the navbar badge is replaced rather than
+stacked.
+
+The third call uses a **clone** of that fixture, whose own `DESCRIPTION`
+is bumped to `0.2.0.9000` while `origin/main` still holds `0.1.0.9000`. That
+is the only way to pin the PR-preview divergence described in the Layout
+section above -- the menu's label and badge naming the branch's version while
+the `/dev/` entry names the default branch's. A unit test cannot reach it:
+`resolve_current_version()` takes one version, and the split between
+`local_version` and `dev_version` lives in `generate_version_dropdown.py`
+itself (gha#308 review). `navbar_version.py`'s own pytest suite
+(`generate-altdoc-version-dropdown/tests/test_navbar_version.py`) covers the
+label resolution and YAML rewriting offline; the job runs it alongside
+`generate-altdoc-landing-page`'s.
 
 The same job also covers the `legacy-paths` 404 redirect at three levels:
 `generate-altdoc-landing-page/tests/test_legacy_redirects.py` (pytest, the

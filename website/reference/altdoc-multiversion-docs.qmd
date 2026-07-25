@@ -39,6 +39,33 @@ boundary is a possible follow-up, not part of this port.
 | `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`): a reusable workflow only sees `with:`-passed values. |
 | `dispatch-release-tag`       | string  | `''`                        | Forward the caller's `workflow_dispatch` `release_tag` input, required when `dispatch-version` is `'stable'`.                          |
 | `legacy-paths`               | string  | `''`                        | Retired docs subdirectories to keep working, as `old=new` pairs (e.g. `main=dev`). See [Retired version directories](#retired-version-directories). |
+| `version-dropdown-title-template` | string | `'{version}'`          | Label for the navbar "Versions" menu, where `{version}` is the version being rendered. See [Showing which version a reader is on](#showing-which-version-a-reader-is-on). |
+| `version-in-navbar-title`    | boolean | `true`                      | Show that version next to the navbar title, the way pkgdown does.                                                                     |
+
+## Showing which version a reader is on
+
+A reader who arrives at `/v1.1.0/reference/index.html` from a search result
+should be able to tell they are on an archived release without reading the
+URL. Two places say so, each switchable:
+
+- The navbar "Versions" menu is labeled with the version this build renders --
+  `v1.2.3 (stable)`, `0.1.0.9000 (dev)`, or an archived `v1.1.0` -- matching
+  the entry it corresponds to, rather than a static "Versions". Set
+  `version-dropdown-title-template` to change the format, e.g.
+  `'Version: {version}'`.
+- The navbar title carries that version beside the package name, after
+  [pkgdown](https://pkgdown.r-lib.org/), muted for a release and red for a
+  development build. Set `version-in-navbar-title: false` to leave the title
+  alone.
+
+The badge is written to Quarto's `website.navbar.title`, not `website.title`,
+so the page `<title>`, the feed, and social-card metadata keep the plain site
+title.
+
+Which version a build renders comes from the event: a release build renders
+its own tag, a `workflow_dispatch` with `version: stable` renders the tag it
+was given, and everything else -- default-branch pushes and PR previews --
+renders the branch, so it is labeled as the development version.
 
 ## Retired version directories
 
@@ -114,6 +141,8 @@ jobs:
       dispatch-version: ${{ github.event.inputs.version }}
       dispatch-release-tag: ${{ github.event.inputs.release_tag }}
       # legacy-paths: main=dev     # keep pre-migration /main/ links working
+      # version-dropdown-title-template: 'Version: {version}'
+      # version-in-navbar-title: false
 ```
 
 Your `altdoc/quarto_website.yml` navbar needs a placeholder "Versions" entry
