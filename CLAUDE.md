@@ -391,13 +391,23 @@ package directory (not this checkout) with two release tags, asserting the
 composite picks the correct latest/previous tags and dev version and rewrites
 the navbar "Versions" block and root-redirect HTML correctly.
 
-It calls `generate-altdoc-version-dropdown` twice over that one fixture: first
-with no `current-version`, covering the inference path and the dev-build
-labeling, then with `current-version: v0.1.0`, covering an explicit release
-build. The second call also proves two things only a re-run can: that the
-generated-by marker keeps the block findable after the first run replaced its
+It calls `generate-altdoc-version-dropdown` three times, over two fixtures.
+Twice over the one above: first with no `current-version`, covering the
+inference path and the dev-build labeling, then with
+`current-version: v0.1.0`, covering an explicit release build. That second
+call also proves two things only a re-run can: that the generated-by marker
+keeps the block findable after the first run replaced its
 `- text: Versions` anchor, and that the navbar badge is replaced rather than
-stacked. `navbar_version.py`'s own pytest suite
+stacked.
+
+The third call uses a **clone** of that fixture, whose own `DESCRIPTION`
+is bumped to `0.2.0.9000` while `origin/main` still holds `0.1.0.9000`. That
+is the only way to pin the PR-preview divergence described in the Layout
+section above -- the menu's label and badge naming the branch's version while
+the `/dev/` entry names the default branch's. A unit test cannot reach it:
+`resolve_current_version()` takes one version, and the split between
+`local_version` and `dev_version` lives in `generate_version_dropdown.py`
+itself (gha#308 review). `navbar_version.py`'s own pytest suite
 (`generate-altdoc-version-dropdown/tests/test_navbar_version.py`) covers the
 label resolution and YAML rewriting offline; the job runs it alongside
 `generate-altdoc-landing-page`'s.
