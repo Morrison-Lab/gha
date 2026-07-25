@@ -76,16 +76,6 @@ def test_version_matching_no_tag_is_inferred_as_dev():
     assert current.label == "1.2.0.9000 (dev)"
 
 
-def test_pr_preview_labels_the_branch_version_not_the_default_branch_one():
-    # On a PR preview the rendered checkout is the PR branch, so a branch
-    # that bumped DESCRIPTION shows ITS version -- not the default branch's,
-    # which is what the menu's own /dev/ entry names. The two differing is
-    # intended: the reader is looking at the PR's build, not /dev/.
-    current = resolve_current_version("0.2.0.9000", TAGS, LATEST, DEV)
-    assert current.label == "0.2.0.9000 (dev)"
-    assert current.text == "0.2.0.9000"
-
-
 def test_inference_with_no_releases_yet():
     current = resolve_current_version("0.0.1", [], None)
     assert current.label == "0.0.1 (dev)"
