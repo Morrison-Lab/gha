@@ -94,12 +94,15 @@ jobs:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
           # test fixtures that carry synthetic PHI-shaped strings by design (the
-          # detector unit tests, and the coverage fixture generator's synthetic
-          # maintainer email), which are skipped via paths-ignore below.
+          # detector unit tests, the coverage fixture generator's synthetic
+          # maintainer email, and check-new-line-breaks' throwaway git-repo
+          # test fixtures' placeholder git config email), which are skipped
+          # via paths-ignore below.
           detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'
           paths-ignore: |
             check-phi/tests/**
             test-coverage/tests/**
+            check-new-line-breaks/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
