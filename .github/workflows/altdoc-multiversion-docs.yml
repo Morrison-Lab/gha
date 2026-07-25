@@ -93,6 +93,22 @@ on:
           Empty (the default) generates no `404.html`.
         type: string
         default: ''
+      version-dropdown-title-template:
+        description: >-
+          Template for the navbar "Versions" menu's own label, where
+          "{version}" stands for the version being rendered (e.g.
+          "v1.2.3 (stable)" or "0.1.0.9000 (dev)"). The default shows that
+          label alone; use "Version: {version}" to keep a word beside it.
+        type: string
+        default: '{version}'
+      version-in-navbar-title:
+        description: >-
+          Show the version being rendered next to the navbar title, the way
+          pkgdown shows a package's version beside its brand. Sets Quarto's
+          `website.navbar.title`, so the page `<title>`, feed, and
+          social-card metadata keep the plain site title.
+        type: boolean
+        default: true
       timeout-minutes:
         description: Timeout for the render step.
         type: number
@@ -267,6 +283,21 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           base-url: ${{ inputs.docs-base-url }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Which version this build renders, for the dropdown label and the
+          # navbar badge. A release build renders its tag; a dispatched
+          # stable build renders the tag it validated above; everything else
+          # (default-branch pushes, PR previews) renders the branch, i.e.
+          # dev. Passing it beats leaving the composite to infer it from
+          # DESCRIPTION, which cannot tell a default branch that has not been
+          # version-bumped since its last release apart from that release.
+          current-version: >-
+            ${{ (github.event_name == 'release' && github.ref_name)
+            || (github.event_name == 'workflow_dispatch'
+                && inputs.dispatch-version == 'stable'
+                && inputs.dispatch-release-tag)
+            || 'dev' }}
+          dropdown-title-template: ${{ inputs.version-dropdown-title-template }}
+          version-in-navbar-title: ${{ inputs.version-in-navbar-title }}
 
       # On PR-preview builds, redirect quarto's "Edit this page" / "View
       # source" links to the PR head branch and the navbar GitHub icon to the

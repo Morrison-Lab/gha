@@ -73,3 +73,9 @@ jobs:
       # legacy-paths: main=dev      # redirect retired version dirs, e.g. a
       #                             # site that used to publish the default
       #                             # branch's docs to /main/ instead of /dev/
+      # version-dropdown-title-template: '{version}'  # navbar Versions menu
+      #                             # label; "{version}" is the version being
+      #                             # rendered, e.g. "v1.2.3 (stable)". Try
+      #                             # 'Version: {version}' to keep a word.
+      # version-in-navbar-title: true  # show that version next to the navbar
+      #                             # title, the way pkgdown does

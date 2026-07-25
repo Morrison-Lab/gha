@@ -388,6 +388,7 @@ jobs:
           EOF
           cat > _ci-altdoc-pkg/altdoc/quarto_website.yml <<'EOF'
           website:
+            title: "cifixturepkg"
             navbar:
               right:
                 - text: Versions
@@ -457,6 +458,75 @@ jobs:
             cat _ci-altdoc-pkg/altdoc/quarto_website.yml
             exit 1
           fi
+      - name: Assert the dev build labels the menu and navbar with its own version
+        shell: bash
+        env:
+          CURRENT_VERSION: ${{ steps.dropdown.outputs.current-version }}
+        run: |
+          set -euo pipefail
+          # No current-version was passed above, so this also covers the
+          # composite inferring "dev" from a DESCRIPTION no tag matches.
+          if [[ "$CURRENT_VERSION" != "0.1.0.9000 (dev)" ]]; then
+            echo "::error::expected current-version='0.1.0.9000 (dev)', got '$CURRENT_VERSION'"; exit 1
+          fi
+          if ! grep -q '^      - text: "0.1.0.9000 (dev)"$' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::Versions menu is not labeled with the current version"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+          # pkgdown-style badge, on the navbar title rather than the site
+          # title, and red because this is a development build.
+          if ! grep -q '^    title: "cifixturepkg <small .*text-danger.*>0.1.0.9000</small>"$' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::navbar title is missing the dev version badge"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+          if ! grep -q '^  title: "cifixturepkg"$' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::website.title should be untouched, so the page <title> stays clean"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+      # Re-run over the file the previous run rewrote: the "- text: Versions"
+      # anchor is gone by now, so this proves the generated marker keeps the
+      # block findable, and that a second badge is not stacked onto the first.
+      - name: Exercise generate-altdoc-version-dropdown again, as a release build
+        id: dropdown-stable
+        uses: ./.github/actions/generate-altdoc-version-dropdown
+        with:
+          docs-source-dir: _ci-altdoc-pkg
+          current-version: v0.1.0
+          dropdown-title-template: 'Version: {version}'
+      - name: Assert the release build relabels rather than duplicating
+        shell: bash
+        env:
+          CURRENT_VERSION: ${{ steps.dropdown-stable.outputs.current-version }}
+        run: |
+          set -euo pipefail
+          if [[ "$CURRENT_VERSION" != "v0.1.0 (stable)" ]]; then
+            echo "::error::expected current-version='v0.1.0 (stable)', got '$CURRENT_VERSION'"; exit 1
+          fi
+          if ! grep -q '^      - text: "Version: v0.1.0 (stable)"$' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::dropdown-title-template was not applied"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+          badges=$(grep -c 'navbar-version' _ci-altdoc-pkg/altdoc/quarto_website.yml)
+          if [[ "$badges" != 1 ]]; then
+            echo "::error::expected exactly 1 navbar version badge, found $badges"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+          if ! grep -q 'text-muted.*>v0.1.0</small>' _ci-altdoc-pkg/altdoc/quarto_website.yml; then
+            echo "::error::a release build's badge should be muted, not red"
+            cat _ci-altdoc-pkg/altdoc/quarto_website.yml
+            exit 1
+          fi
+      - name: Test navbar_version.py version labeling and YAML rewriting
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest
+          python3 -m pytest .github/actions/generate-altdoc-version-dropdown/tests -q
       - name: Exercise generate-altdoc-landing-page composite end-to-end
         uses: ./.github/actions/generate-altdoc-landing-page
         with:
