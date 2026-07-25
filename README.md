@@ -330,6 +330,17 @@ be tried out before every consumer has to deal with it:
    `ai-config` repo's `slide-tag` skill automates this). Every consumer pinned
    to that tag picks up the change the next time its CI runs.
 
+**A brand-new capability's own PR merging to `main` does not make it usable
+at `@v2` yet.** If a consumer repo's PR needs to reference
+`d-morrison/gha/.github/workflows/<new-workflow>.yml@v2` right after that
+workflow's own PR merged here, check whether `@v2` has actually been
+advanced past that merge first (`git log -1 refs/tags/v2` vs. `main`) --- a
+consumer referencing `@v2` before the slide gets a workflow-not-found error,
+not a stale-but-working reference. ([gha#300](https://github.com/d-morrison/gha/pull/300)/[ai-config#703](https://github.com/d-morrison/ai-config/pull/703), 2026-07-25:
+`check-new-line-breaks` merged here, but `@v2` was still 11 commits behind;
+the tag had to be slid via step 3 above before ai-config's own migration PR
+could actually resolve it.)
+
 Changelog entries are added as fragment files under
 [`changelog.d/`](changelog.d) (one per PR, so parallel PRs never conflict on the
 shared changelog) and collated into `CHANGELOG.md` at release time — see
