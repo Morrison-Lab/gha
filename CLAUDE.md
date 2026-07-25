@@ -168,9 +168,16 @@ which is why the capabilities above moved to `@v2`.
   `navbar_version.py` (gha#307): those are pure functions, so they get unit
   tests, while importing the script itself would run its whole top-level flow
   (git lookups, a required `DOCS_BASE_URL`). That module also owns the two
-  label suffixes (`" (stable)"`, `" (dev)"`), which the menu entries and the
-  menu's own label must agree on exactly for the label to read as the
-  selected entry.
+  label suffixes (`" (stable)"`, `" (dev)"`), so the menu's own label is
+  built in the same shape as the entries it sits above rather than drifting
+  into a second format. The *version* in that label can still differ from
+  the `(dev)` entry's, and deliberately does on a PR preview: the label
+  comes from the rendered checkout's own `DESCRIPTION` (`local_version`),
+  while the `/dev/` entry always names the default branch's version
+  (`dev_version`, read from `origin/<default-branch>`). A PR that bumps
+  `DESCRIPTION` therefore shows its own version in the navbar while the
+  menu still points `/dev/` at what is actually deployed there -- both
+  correct, since the reader is looking at the PR's build, not `/dev/`.
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
