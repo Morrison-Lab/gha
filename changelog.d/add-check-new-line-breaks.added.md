@@ -5,5 +5,6 @@
   breaks" convention. Only checks lines a PR's diff actually adds, so it
   never reflags a corpus's pre-existing long-line drift; pairs well with
   `lint-markdown` when markdownlint's MD013 (line-length) is disabled for
-  exactly that reason. Non-blocking by default (`fail: false`). Ported from
-  `d-morrison/ai-config`'s `scripts/check-new-line-breaks.py`.
+  exactly that reason.
+  Non-blocking by default (`fail: false`).
+  Ported from `d-morrison/ai-config`'s `scripts/check-new-line-breaks.py`.

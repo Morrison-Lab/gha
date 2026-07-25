@@ -136,8 +136,8 @@ def test_diff_scope_flags_newly_added_violation(tmp_path):
     )
     _commit(tmp_path, "add violation")
 
-    violations, diff_unavailable = _find(tmp_path, base_ref="HEAD~1")
-    assert not diff_unavailable
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
     assert [(f, ln) for f, ln, _ in violations] == [("notes.md", 4)]
 
 
@@ -150,29 +150,32 @@ def test_diff_scope_does_not_reflag_pre_existing_drift(tmp_path):
     )
     _commit(tmp_path, "unrelated addition")
 
-    violations, diff_unavailable = _find(tmp_path, base_ref="HEAD~1")
-    assert not diff_unavailable
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
     assert violations == []
 
 
-def test_missing_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
+def test_unresolvable_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("- Long-standing violation. Two sentences.\n")
     _commit(tmp_path, "only commit")
 
-    violations, diff_unavailable = _find(tmp_path, base_ref="deadbeefdeadbeef")
-    assert diff_unavailable
+    violations, skipped = _find(tmp_path, base_ref="deadbeefdeadbeef")
+    assert skipped
     assert violations == []
 
 
-def test_whole_tree_mode_when_no_base_ref_given(tmp_path):
+def test_empty_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
+    # No base to diff against (e.g. a push run) must never fall back to a
+    # whole-tree scan -- that would defeat the entire point of diff-scoping,
+    # reflagging every pre-existing long line the corpus already carries.
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("- A violation. Right here.\n")
     _commit(tmp_path, "only commit")
 
-    violations, diff_unavailable = _find(tmp_path, base_ref="")
-    assert not diff_unavailable
-    assert [(f, ln) for f, ln, _ in violations] == [("notes.md", 1)]
+    violations, skipped = _find(tmp_path, base_ref="")
+    assert skipped
+    assert violations == []
 
 
 if __name__ == "__main__":

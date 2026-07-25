@@ -5,23 +5,22 @@ a single source line -- an advisory nudge toward semantic line breaks (one
 clause/sentence per line), not a hard style gate.
 
 Design notes:
-- **Diff-scoped by default.** When ``NLB_BASE_REF`` is set (a PR's base SHA),
-  only lines *added* by the PR are checked, so a corpus that has already
-  accumulated long lines (commonly because markdownlint's MD013 is disabled
-  for exactly this reason) doesn't get reflagged on every unrelated edit.
-  Otherwise the whole tracked tree is checked, which is what runs on
-  ``push``.
-- **If the diff can't be computed** (e.g. a shallow clone missing the base
-  commit), the check is *skipped* with a warning rather than falling back to
-  a whole-tree scan -- unlike ``check-phi``'s fallback, scanning the whole
-  tree here would defeat the entire point (reflagging every pre-existing
-  long line the corpus already carries).
+- **Diff-scoped, always.** Only lines *added* since ``NLB_BASE_REF`` (a PR's
+  base SHA) are checked, so a corpus that has already accumulated long lines
+  (commonly because markdownlint's MD013 is disabled for exactly this
+  reason) never gets reflagged on every unrelated edit.
+- **No base_ref to diff against, or the diff can't be computed** (e.g. an
+  unset base-ref on a push run, or a shallow clone missing the base commit):
+  the check is *skipped* with a warning. There is no whole-tree fallback,
+  unlike ``check-phi`` -- unlike PHI scanning, this check's entire purpose is
+  to avoid ever reflagging pre-existing drift, so a whole-tree scan here
+  would defeat the point, not just be less precise.
 - **Non-blocking by default** (``NLB_FAIL`` defaults to false): a long line
   can legitimately be un-splittable (a URL, a citation, a single genuinely
   long clause), so this is a nudge to consider a semantic break, not a gate.
 
 Configuration (all via environment variables, set by the composite action):
-  NLB_BASE_REF      Git ref/SHA to diff against. Empty => scan whole tree.
+  NLB_BASE_REF      Git ref/SHA to diff against. Empty => skip the check.
   NLB_GLOBS         Space-separated git pathspecs to check (default: '*.md').
   NLB_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
   NLB_FAIL          "true" => exit 1 on findings; default "false" => warn only.
@@ -88,10 +87,14 @@ _HTML_COMMENT_RE = re.compile(r"^\s*<!--")
 def prose_line_numbers(text: str) -> Set[int]:
     """1-indexed lines eligible for a sentence-count check.
 
-    Excludes frontmatter, fenced code, tables, headings, horizontal rules,
-    HTML comments, and @-import directives. Blockquote *prose* is included
-    (checked), with only a bullet/blank/fenced-code line nested inside a
-    blockquote excluded -- the same as at the top level.
+    Excludes frontmatter, fenced code, tables, headings, and horizontal
+    rules, and HTML comments. (Ported from d-morrison/ai-config's
+    semantic-line-breaks.py, which also excludes ai-config's own
+    ``@shared/foo.md``-style include directives -- not carried over here,
+    since that convention has no equivalent in this repo's own consumers.)
+    Blockquote *prose* is included (checked), with only a bullet/blank/
+    fenced-code line nested inside a blockquote excluded -- the same as at
+    the top level.
     """
     lines = text.split("\n")
     prose: Set[int] = set()
@@ -220,11 +223,6 @@ def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
     return any(r.match(rel) for r in ignores)
 
 
-def _tracked_files(pathspecs: List[str]) -> List[str]:
-    out = _run_git(["ls-files", "--", *pathspecs])
-    return [p for p in (out or "").splitlines() if p]
-
-
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
@@ -258,15 +256,19 @@ def _added_line_numbers(base_ref: str, pathspecs: List[str]) -> Optional[dict]:
 def find_violations(
     base_ref: str, globs: List[str], ignores: List["re.Pattern[str]"]
 ) -> Tuple[List[Tuple[str, int, str]], bool]:
-    """Return (violations, diff_unavailable). violations is empty and
-    diff_unavailable is True when base_ref was set but the diff failed."""
-    if base_ref:
-        added = _added_line_numbers(base_ref, globs)
-        if added is None:
-            return [], True
-        scope = added
-    else:
-        scope = {f: None for f in _tracked_files(globs)}  # None => whole file
+    """Return (violations, skipped). violations is empty and skipped is True
+    whenever there's no diff to check against -- either base_ref was never
+    given (e.g. a push run with no PR to diff against), or a base_ref was
+    given but the diff could not be computed (e.g. a shallow clone). Unlike
+    check-phi, there is no whole-tree fallback: this check's entire purpose
+    is to avoid ever reflagging a corpus's pre-existing long lines, so a
+    whole-tree scan here would defeat the point, not just be less precise.
+    """
+    if not base_ref:
+        return [], True
+    scope = _added_line_numbers(base_ref, globs)
+    if scope is None:
+        return [], True
 
     violations: List[Tuple[str, int, str]] = []
     for rel_path in sorted(scope):
@@ -281,8 +283,7 @@ def find_violations(
             continue
         lines = text.split("\n")
         prose = prose_line_numbers(text)
-        added_lines = scope[rel_path]
-        target_lines = prose if added_lines is None else (added_lines & prose)
+        target_lines = scope[rel_path] & prose
 
         for line_no in sorted(target_lines):
             if line_no < 1 or line_no > len(lines):
@@ -306,18 +307,18 @@ def main() -> int:
     ignore = _compile_ignores(_split_list(os.environ.get("NLB_PATHS_IGNORE", "")))
     fail = os.environ.get("NLB_FAIL", "false").strip().lower() == "true"
 
-    violations, diff_unavailable = find_violations(base_ref, globs, ignore)
+    violations, skipped = find_violations(base_ref, globs, ignore)
 
-    if diff_unavailable:
+    if skipped:
+        reason = f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
         print(
-            f"::warning::Could not diff against '{base_ref}'; skipping the "
-            f"new-line-breaks check for this run (not falling back to a "
-            f"whole-tree scan, which would reflag pre-existing long lines)."
+            f"::warning::Skipping the new-line-breaks check for this run "
+            f"({reason}; not falling back to a whole-tree scan, which would "
+            f"reflag pre-existing long lines)."
         )
         return 0
 
-    mode = f"lines added since {base_ref[:12]}" if base_ref else "whole tree"
-    print(f"Checking for missing semantic line breaks ({mode})\n")
+    print(f"Checking for missing semantic line breaks (lines added since {base_ref[:12]})\n")
 
     if not violations:
         print("No lines missing semantic breaks.")
