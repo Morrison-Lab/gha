@@ -40,6 +40,12 @@ everyone else has to deal with it:
    `git push --force` directly. Every consumer pinned to that tag picks up the
    change the next time its CI runs.
 
+A brand-new capability's own PR merging to `main` does not make it usable at
+`@v2` yet - if a consumer repo's PR needs to reference a just-merged
+workflow at `@v2` right away, check whether `@v2` has actually been advanced
+past that merge first (step 3 above), or the consumer's reference resolves
+to a workflow-not-found error rather than a stale-but-working one.
+
 See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
 for what changes as a major tag moves.
 

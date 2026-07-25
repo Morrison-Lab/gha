@@ -21,6 +21,16 @@ If your repo calls a `gha` workflow, please open a PR adding it below (or file
 an issue asking to be added). Similarly, if you stop using `gha`, open a PR or
 issue to be removed.
 
+**Only list a workflow in `Workflows used` once the consumer is actually
+calling it** -- i.e. once the migrating PR in the consumer repo has *merged*,
+not just opened. A workflow the consumer plans to adopt but hasn't yet is
+still worth noting, but belongs in the Notes column as pending (citing the
+tracking issue/PR), matching the `qwt` row's `summary`/Claude-workflows
+precedent below -- not in `Workflows used`, which should read as present-tense
+fact. (gha#302: registered `d-morrison/ai-config` as a `check-new-line-breaks`
+consumer while the migrating PR, ai-config#703, was still open; caught by
+review and fixed to match the `qwt` pattern before merge.)
+
 ## Consumer list
 
 | Repo | Workflows used | Notes |
