@@ -11,11 +11,21 @@ import sys
 
 import pytest
 
-_SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "generate_legacy_redirects.py"
+_ACTION_DIR = pathlib.Path(__file__).resolve().parents[1]
+
+# The action runs these scripts as `python3 <action-dir>/<script>.py`, which
+# puts the action directory on sys.path and lets them import `_site_output`.
+# Loading a script by file path here does not, so add it explicitly.
+if str(_ACTION_DIR) not in sys.path:
+    sys.path.insert(0, str(_ACTION_DIR))
+
+_SCRIPT = _ACTION_DIR / "generate_legacy_redirects.py"
 _spec = importlib.util.spec_from_file_location("generate_legacy_redirects", _SCRIPT)
 mod = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = mod
 _spec.loader.exec_module(mod)
+
+import _site_output  # noqa: E402  (needs the sys.path insert above)
 
 
 class TestParseLegacyPaths:
@@ -120,3 +130,31 @@ class TestMain:
         with pytest.raises(SystemExit) as excinfo:
             mod.main()
         assert excinfo.value.code == 1
+
+
+class TestSiteOutput:
+    """The plumbing both generator scripts share (`_site_output.py`)."""
+
+    def test_output_dir_default_matches_action_yml(self):
+        action = (_ACTION_DIR / "action.yml").read_text(encoding="utf-8")
+        assert f"default: '{_site_output.DEFAULT_OUTPUT_DIR}'" in action
+
+    def test_output_dir_is_created(self, tmp_path, monkeypatch):
+        target = tmp_path / "nested" / "out"
+        monkeypatch.setenv("OUTPUT_DIR", str(target))
+        assert _site_output.site_output_dir() == target
+        assert target.is_dir()
+
+    def test_output_dir_falls_back_to_the_default(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("OUTPUT_DIR", raising=False)
+        monkeypatch.chdir(tmp_path)
+        assert _site_output.site_output_dir().name == _site_output.DEFAULT_OUTPUT_DIR
+
+    def test_base_url_is_read_from_the_environment(self, monkeypatch):
+        monkeypatch.setenv("DOCS_BASE_URL", "https://owner.github.io/repo/")
+        assert _site_output.docs_base_url() == "https://owner.github.io/repo/"
+
+    def test_missing_base_url_raises_rather_than_defaulting(self, monkeypatch):
+        monkeypatch.delenv("DOCS_BASE_URL", raising=False)
+        with pytest.raises(KeyError):
+            _site_output.docs_base_url()

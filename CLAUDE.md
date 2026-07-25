@@ -158,7 +158,12 @@ which is why the capabilities above moved to `@v2`.
   from, so a nested `uses:` step would fail to find `action.yml` for any real
   consumer (gha#284 review). Sharing the script this way still gives both
   composites one source of truth for the base-URL derivation instead of each
-  carrying its own copy.
+  carrying its own copy. Within `generate-altdoc-landing-page`, its two
+  generator scripts (the landing page and the gha#301 legacy-path `404.html`)
+  share `_site_output.py` for the `OUTPUT_DIR`/`DOCS_BASE_URL` plumbing they
+  both need -- including the `site-root` default, which has to agree with
+  `action.yml`'s own `output-dir` default and is asserted to by a test rather
+  than left to a comment (gha#303 review).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that

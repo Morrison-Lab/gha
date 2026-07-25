@@ -25,9 +25,10 @@ not-found notice linking to the docs root.
 import html
 import json
 import os
-import pathlib
 import sys
 from urllib.parse import urlsplit
+
+from _site_output import docs_base_url, site_output_dir
 
 
 def parse_legacy_paths(raw):
@@ -141,10 +142,8 @@ def main():
         print("No legacy paths configured; not generating 404.html.")
         return
 
-    # Resolved by this action's own preceding "Resolve base URL" step.
-    base_url = os.environ["DOCS_BASE_URL"]
-    output_dir = pathlib.Path(os.environ.get("OUTPUT_DIR", "site-root"))
-    output_dir.mkdir(parents=True, exist_ok=True)
+    base_url = docs_base_url()
+    output_dir = site_output_dir()
 
     page = render(base_path_of(base_url), pairs, base_url)
     (output_dir / "404.html").write_text(page, encoding="utf-8")
