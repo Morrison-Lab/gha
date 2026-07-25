@@ -302,10 +302,12 @@ the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
 does `sync-upstream.yml` (added after the freeze — see
 [gha#254](https://github.com/d-morrison/gha/issues/254)) and
 `altdoc-multiversion-docs.yml` (added after the freeze).
-`summary.yml`,
-`check-news.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+`summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
-remains current for them. See [`CHANGELOG.md`](CHANGELOG.md) for
+remains current for them. `check-news.yml` was initially grouped with them,
+but later gained the configurable `no-changelog-label` input at
+[gha#143](https://github.com/d-morrison/gha/issues/143) -- pin it to `@v2`
+too. See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
 ### Advancing a major tag
@@ -358,7 +360,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
 `request-dependabot-review.yml`,
-`sync-upstream.yml`, and `altdoc-multiversion-docs.yml` at `@v2` -- see the
+`sync-upstream.yml`, `check-news.yml`, and `altdoc-multiversion-docs.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies

@@ -20,6 +20,6 @@
   reworded the `README.md` / `website/workflows.qmd` / `website/versioning.qmd`
   / `CLAUDE.md` versioning prose to describe the per-capability `@v1`/`@v2`
   split instead of a blanket `@v1` default.
-  `summary.yml`, `check-news.yml`, `bump-submodule.yml`, and
-  `sync-shared-fragments.yml` were audited in the same pass and found
-  unchanged since the freeze, so their `@v1` pin stays correct.
+  `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
+  audited in the same pass and found unchanged since the freeze, so their
+  `@v1` pin stays correct.

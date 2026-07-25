@@ -18,7 +18,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`,
-`request-dependabot-review`, `sync-upstream`,
+`request-dependabot-review`, `sync-upstream`, `check-news`,
 and `altdoc-multiversion-docs` -- see
 the Versioning section
 of `README.md`).

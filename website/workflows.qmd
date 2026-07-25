@@ -59,10 +59,13 @@ still on `@v1` would miss (audited in
 freeze - see [gha#252](https://github.com/d-morrison/gha/issues/252)), as does
 `sync-upstream.yml` (added after the freeze - see
 [gha#254](https://github.com/d-morrison/gha/issues/254)) and
-`altdoc-multiversion-docs.yml` (added after the freeze). `check-news.yml`,
+`altdoc-multiversion-docs.yml` (added after the freeze).
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1` remains
-current for them. The stubs in
+current for them. `check-news.yml` was initially grouped with them, but later
+gained the configurable `no-changelog-label` input at
+[gha#143](https://github.com/d-morrison/gha/issues/143) - pin it to `@v2` too.
+The stubs in
 [`examples/`](https://github.com/d-morrison/gha/tree/main/examples) carry the
 tag and `permissions:` block documented on each workflow's own reference page;
 copy the specific stub you need as-is.
