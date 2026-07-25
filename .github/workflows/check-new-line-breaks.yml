@@ -1,0 +1,47 @@
+name: Check new markdown lines for missing semantic breaks (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check (recursive
+          by default).
+        type: string
+        default: '*.md'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: Fail the workflow when a violation is found (else warn only).
+        type: boolean
+        default: false
+
+jobs:
+  check-new-line-breaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check new markdown lines for missing semantic breaks
+        uses: d-morrison/gha/check-new-line-breaks@v2
+        with:
+          python-version: ${{ inputs.python-version }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          # On PRs, check only lines added relative to the base; otherwise
+          # (push) there's no base to diff against, so the check is skipped.
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

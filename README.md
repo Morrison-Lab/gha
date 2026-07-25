@@ -49,6 +49,7 @@ not reference `@main` from consumers.
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
+| `check-new-line-breaks.yml` | Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `extra-packages`, `install-package`, `fail` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
@@ -79,9 +80,10 @@ that need to write must have the **caller** grant it on the calling job:
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
 - `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
-  `test-coverage` → only `contents: read` (the default), so no `permissions:`
-  block is needed. `test-coverage` additionally takes an optional
-  `CODECOV_TOKEN` secret, passed through the caller's `secrets:` block.
+  `check-new-line-breaks`, `test-coverage` → only `contents: read` (the
+  default), so no `permissions:` block is needed. `test-coverage`
+  additionally takes an optional `CODECOV_TOKEN` secret, passed through the
+  caller's `secrets:` block.
 - `update-snapshots` (pushes the snapshot-update commit back to the branch) →
   grant `contents: write`.
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
@@ -283,7 +285,8 @@ no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all. Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
-`lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, and `lint-changed-lines.yml` only ever
+`lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`, and
+`check-new-line-breaks.yml` only ever
 shipped at `@v2` (too new to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
 `@v2` deploys to the `gh-pages` branch instead — required alongside the
