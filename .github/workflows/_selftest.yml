@@ -477,6 +477,47 @@ jobs:
             cat _ci-landing-page/index.html
             exit 1
           fi
+          if [ -f _ci-landing-page/404.html ]; then
+            echo "::error::generate-altdoc-landing-page produced 404.html with no legacy-paths input"
+            exit 1
+          fi
+      - name: Test generate_legacy_redirects.py parsing and validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest
+          python3 -m pytest .github/actions/generate-altdoc-landing-page/tests -q
+      - name: Exercise generate-altdoc-landing-page composite with legacy paths
+        uses: ./.github/actions/generate-altdoc-landing-page
+        with:
+          target: dev
+          output-dir: _ci-landing-page-legacy
+          base-url: 'https://ucd-serg.github.io/serocalculator/'
+          legacy-paths: 'main=dev,master=dev'
+      - name: Assert the legacy-path 404 page redirects where it should
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f _ci-landing-page-legacy/404.html ]; then
+            echo "::error::generate-altdoc-landing-page did not produce 404.html"; exit 1
+          fi
+          # Runs the page's real redirect script against a table of request
+          # paths -- deep links, query/fragment preservation, and the paths
+          # that must NOT redirect (a missing page under /dev/ would otherwise
+          # bounce forever).
+          node .github/actions/generate-altdoc-landing-page/tests/run-redirect-js-tests.mjs \
+            _ci-landing-page-legacy/404.html
+      - name: Assert an invalid legacy-paths value fails the step
+        shell: bash
+        env:
+          LEGACY_PATHS: 'dev=dev'
+          OUTPUT_DIR: _ci-landing-page-invalid
+          DOCS_BASE_URL: 'https://ucd-serg.github.io/serocalculator/'
+        run: |
+          set -euo pipefail
+          if python3 .github/actions/generate-altdoc-landing-page/generate_legacy_redirects.py; then
+            echo "::error::a self-redirecting legacy path should have failed the step"; exit 1
+          fi
   # quarto-publish is brand new, so (like check-phi above) it isn't at the
   # released `@v1` tag the reusable workflow pins yet. Exercise the local
   # composite directly against a throwaway fixture, render-only, so the selftest

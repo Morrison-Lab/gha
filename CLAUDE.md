@@ -143,8 +143,10 @@ which is why the capabilities above moved to `@v2`.
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
 - `.github/actions/generate-altdoc-version-dropdown/` and
   `.github/actions/generate-altdoc-landing-page/` - Python composites wrapping
-  the two scripts `altdoc-multiversion-docs.yml` needs (rewrite the navbar
-  "Versions" dropdown; generate the root redirect landing page). Ported from
+  the scripts `altdoc-multiversion-docs.yml` needs (rewrite the navbar
+  "Versions" dropdown; generate the root redirect landing page, and -- when
+  the `legacy-paths` input is set -- a root `404.html` redirecting retired
+  version directories to their replacements, gha#301). Ported from
   `d-morrison/rpt`'s bespoke `.github/scripts/` copies, generalized to derive
   the docs base URL and default branch from the caller's own context instead
   of a hard-coded repo (see `UCD-SERG/serocalculator#504`). Both invoke
@@ -368,7 +370,22 @@ The `altdoc-docs` job in `_selftest.yml` exercises
 fixture: a separate git-init'd
 package directory (not this checkout) with two release tags, asserting the
 composite picks the correct latest/previous tags and dev version and rewrites
-the navbar "Versions" block and root-redirect HTML correctly. It does not
+the navbar "Versions" block and root-redirect HTML correctly.
+
+The same job also covers the `legacy-paths` 404 redirect at three levels:
+`generate-altdoc-landing-page/tests/test_legacy_redirects.py` (pytest, the
+`old=new` parsing and its fail-fast validation), a real `uses:` call to the
+composite with `legacy-paths` set, and
+`generate-altdoc-landing-page/tests/run-redirect-js-tests.mjs`, which
+*executes* the generated page's redirect script under node with a stubbed
+`window` against a table of request paths. That last one exists because the
+Python tests can only assert the mapping reaches the page as text -- whether
+a given request then lands in the right place is a separate question, and
+getting it wrong is silent (a bad redirect still renders a plausible
+not-found page). Its table includes the paths that must *not* redirect: a
+genuinely missing page under `/dev/` would otherwise bounce forever.
+
+It does not
 exercise the full `altdoc-multiversion-docs.yml` reusable workflow end-to-end
 (the render + multi-target `gh-pages` deploy is a real write side effect
 selftest can't run); that layer is validated by real consumer usage once
