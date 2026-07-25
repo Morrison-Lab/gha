@@ -360,7 +360,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
 `request-dependabot-review.yml`,
-`sync-upstream.yml`, and `altdoc-multiversion-docs.yml` at `@v2` -- see the
+`sync-upstream.yml`, `check-news.yml`, and `altdoc-multiversion-docs.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies
