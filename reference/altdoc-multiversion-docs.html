@@ -490,6 +490,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#showing-which-version-a-reader-is-on" id="toc-showing-which-version-a-reader-is-on" class="nav-link" data-scroll-target="#showing-which-version-a-reader-is-on">Showing which version a reader is on</a></li>
   <li><a href="#retired-version-directories" id="toc-retired-version-directories" class="nav-link" data-scroll-target="#retired-version-directories">Retired version directories</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
@@ -624,8 +625,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>''</code></td>
 <td>Retired docs subdirectories to keep working, as <code>old=new</code> pairs (e.g.&nbsp;<code>main=dev</code>). See <a href="#retired-version-directories">Retired version directories</a>.</td>
 </tr>
+<tr class="even">
+<td><code>version-dropdown-title-template</code></td>
+<td>string</td>
+<td><code>'{version}'</code></td>
+<td>Label for the navbar “Versions” menu, where <code>{version}</code> is the version being rendered. See <a href="#showing-which-version-a-reader-is-on">Showing which version a reader is on</a>.</td>
+</tr>
+<tr class="odd">
+<td><code>version-in-navbar-title</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Show that version next to the navbar title, the way pkgdown does.</td>
+</tr>
 </tbody>
 </table>
+</section>
+<section id="showing-which-version-a-reader-is-on" class="level2">
+<h2 class="anchored" data-anchor-id="showing-which-version-a-reader-is-on">Showing which version a reader is on</h2>
+<p>A reader who arrives at <code>/v1.1.0/reference/index.html</code> from a search result should be able to tell they are on an archived release without reading the URL. Two places say so, each switchable:</p>
+<ul>
+<li>The navbar “Versions” menu is labeled with the version this build renders – <code>v1.2.3 (stable)</code>, <code>0.1.0.9000 (dev)</code>, or an archived <code>v1.1.0</code> – matching the entry it corresponds to, rather than a static “Versions”. Set <code>version-dropdown-title-template</code> to change the format, e.g. <code>'Version: {version}'</code>.</li>
+<li>The navbar title carries that version beside the package name, after <a href="https://pkgdown.r-lib.org/">pkgdown</a>, muted for a release and red for a development build. Set <code>version-in-navbar-title: false</code> to leave the title alone.</li>
+</ul>
+<p>The badge is written to Quarto’s <code>website.navbar.title</code>, not <code>website.title</code>, so the page <code>&lt;title&gt;</code>, the feed, and social-card metadata keep the plain site title.</p>
+<p>Which version a build renders comes from the event: a release build renders its own tag, a <code>workflow_dispatch</code> with <code>version: stable</code> renders the tag it was given, and everything else – default-branch pushes and PR previews – renders the branch, so it is labeled as the development version.</p>
 </section>
 <section id="retired-version-directories" class="level2">
 <h2 class="anchored" data-anchor-id="retired-version-directories">Retired version directories</h2>
@@ -679,7 +702,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">dispatch-version</span><span class="kw">:</span><span class="at"> ${{ github.event.inputs.version }}</span></span>
 <span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">dispatch-release-tag</span><span class="kw">:</span><span class="at"> ${{ github.event.inputs.release_tag }}</span></span>
-<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="co">      # legacy-paths: main=dev     # keep pre-migration /main/ links working</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a><span class="co">      # legacy-paths: main=dev     # keep pre-migration /main/ links working</span></span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a><span class="co">      # version-dropdown-title-template: 'Version: {version}'</span></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a><span class="co">      # version-in-navbar-title: false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Your <code>altdoc/quarto_website.yml</code> navbar needs a placeholder “Versions” entry for the version-dropdown step to find and rewrite:</p>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">website</span><span class="kw">:</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">navbar</span><span class="kw">:</span></span>
