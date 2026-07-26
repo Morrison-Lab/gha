@@ -1,0 +1,37 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "\tgh pr comment 8 --repo o/r --body \"$(cat <<-'EOF'\n\t## Code review\n\t\n\tNo findings.\n\t\n\t### Verdict\n\t\n\t**Ready for merge**\n\tEOF\n\t)\""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Posted my review as a summary comment."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 6,
+    "duration_ms": 47000,
+    "total_cost_usd": 0.83,
+    "permission_denials_count": 0
+  }
+]

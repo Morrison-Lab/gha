@@ -140,10 +140,31 @@ jq -s --argjson denials "$denials" '
   # an array and take first. review_text_file and all_text_file both derive
   # from this same unwrapped block, preserving the gha#218 (finding 2)
   # invariant that the posted text and the scanned text never diverge.
+  #
+  # The regex finds only the *opener*; the terminator is then located
+  # line-by-line, because bash ends a heredoc on a line equal to the tag and
+  # nothing else. A regex terminator loose enough to be written inline (a
+  # word-boundary or leading-whitespace-tolerant \k<tag>) also matches body
+  # lines that merely start with the tag, and a lazy body then stops at the
+  # first of those -- silently truncating the review that gets posted (gha#318
+  # review, finding 1). Comparing whole lines removes that failure mode
+  # outright rather than patching anchors onto it. <<- strips leading TABS
+  # from the body and terminator, so mirror that too; without the dash, the
+  # terminator must sit at column 0.
   def unwrap_posted_body:
     . as $c
-    | ( [ $c | capture("<<-?\\x27?(?<tag>[A-Za-z0-9_]+)\\x27?[^\n]*\n(?<body>[\\s\\S]*?)\n[ \t]*\\k<tag>\\b"; "m") ] | first ) as $h
-    | if $h == null then $c else $h.body end;
+    | ( [ $c | capture("<<(?<dash>-?)\\x27?(?<tag>[A-Za-z0-9_]+)\\x27?[^\n]*\n(?<body>[\\s\\S]*)") ] | first ) as $h
+    | if $h == null then $c
+      else
+        ( $h.body | split("\n")
+          | map(if $h.dash == "-" then sub("^\t+"; "") else . end) ) as $lines
+        | ( $lines | map(rtrimstr("\r")) | index($h.tag) ) as $end
+        # No terminator (a transcript truncated mid-command): fall back to the
+        # raw command rather than guess where the body ended. Posting a
+        # shell-looking comment is the bug this unwrapping fixes, but dropping
+        # review text is worse.
+        | if $end == null then $c else $lines[0:$end] | join("\n") end
+      end;
   flatten
   | [ .[] | select(.type == "assistant") | .message.content[]?
       | if .type == "text" then .text

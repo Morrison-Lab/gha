@@ -1,0 +1,37 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr comment 7 --repo o/r --body \"$(cat <<'EOF'\n## Code review\n\nEOF markers must stand alone on their own line, e.g.:\n\n    cat <<EOF\n    body\n    EOF\n\n### Verdict\n\n**Ready for merge**\nEOF\n)\""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Posted my review as a summary comment."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 6,
+    "duration_ms": 47000,
+    "total_cost_usd": 0.72,
+    "permission_denials_count": 0
+  }
+]
