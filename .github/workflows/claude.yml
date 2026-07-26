@@ -301,6 +301,28 @@ jobs:
           gh issue comment "$NUM" --repo "${{ github.repository }}" \
             --body ":eyes: Picked up by [workflow run #${{ github.run_id }}]($RUN_URL). Setup runs first; Claude itself responds after that."
 
+      # `contains()` in an `if:` expression does a literal substring match, so
+      # a trigger comment/review with more than one space between `@claude`
+      # and `review` (an easy typo, e.g. via autocomplete) silently fails to
+      # match every step below gated on "is this a review request" — the
+      # request is picked up (the acknowledgment above still posts) but the
+      # review is never dispatched, with no signal to the user (#315).
+      # Expressions have no regex support, so resolve the whitespace-tolerant
+      # match once here and let the gated steps below reference a plain
+      # boolean output instead of repeating the fragile `contains()` check.
+      - name: Detect @claude review request
+        id: review_request
+        if: steps.dedup.outputs.skip != 'true'
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          if [[ "$COMMENT_BODY" =~ @claude[[:space:]]+review ]] || [[ "$REVIEW_BODY" =~ @claude[[:space:]]+review ]]; then
+            echo "match=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "match=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
         if: steps.dedup.outputs.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -768,10 +790,7 @@ jobs:
           (github.event.issue.number || github.event.pull_request.number) &&
           steps.claude.outcome == 'success' &&
           !(
-            (
-              contains(github.event.comment.body, '@claude review') ||
-              contains(github.event.review.body, '@claude review')
-            ) &&
+            steps.review_request.outputs.match == 'true' &&
             (github.event.pull_request.number || github.event.issue.pull_request)
           )
         env:
@@ -873,10 +892,7 @@ jobs:
           always() &&
           steps.dedup.outputs.skip != 'true' &&
           (github.event.pull_request.number || github.event.issue.pull_request) &&
-          (
-            contains(github.event.comment.body, '@claude review') ||
-            contains(github.event.review.body, '@claude review')
-          )
+          steps.review_request.outputs.match == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -944,7 +960,7 @@ jobs:
               gh api "repos/$REPO/pulls/$PR_NUMBER/comments"  --paginate --jq '.[]' 2>/dev/null
               gh api "repos/$REPO/pulls/$PR_NUMBER/reviews"   --paginate --jq '.[]' 2>/dev/null
             } | jq -s --arg ts "$TRIGGER_TS" \
-                  '[.[] | select((((.created_at // .submitted_at) // "") > $ts) and ((.body // "") | test("@claude review")) and ((.user.type // "") != "Bot"))] | length' ) || late=0
+                  '[.[] | select((((.created_at // .submitted_at) // "") > $ts) and ((.body // "") | test("@claude\\s+review")) and ((.user.type // "") != "Bot"))] | length' ) || late=0
           if [ "${late:-0}" -gt 0 ]; then
             echo "Found $late late @claude review request(s) newer than $TRIGGER_TS; dispatching review."
             # --ref: see the comment on the earlier dispatch step above (#285).
