@@ -37,6 +37,7 @@ declare -A expected=(
   [verdict-via-gh-comment-heredoc.json]=pass
   [verdict-via-gh-comment-heredoc-tag-in-body.json]=pass
   [verdict-via-gh-comment-heredoc-dash-tab.json]=pass
+  [verdict-via-gh-comment-heredoc-crlf.json]=pass
   [denied-bash-comment-not-trusted.json]=fail-stub
 )
 
@@ -63,6 +64,10 @@ declare -A must_contain=(
   # The <<- form strips leading TABS from the body, so the posted text must
   # come out de-indented -- tab-indented markdown renders as a code block.
   [verdict-via-gh-comment-heredoc-dash-tab.json]='### Verdict'
+  # A CRLF transcript: the terminator is still found, and the posted body
+  # comes out with the carriage returns stripped rather than carrying them
+  # into the PR comment (gha#318 review round 2).
+  [verdict-via-gh-comment-heredoc-crlf.json]='**Ready for merge**'
 )
 declare -A must_not_contain=(
   [verdict-not-last-block.json]="I've posted my findings"
@@ -70,6 +75,7 @@ declare -A must_not_contain=(
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
   [verdict-via-gh-comment-heredoc-tag-in-body.json]='gh pr comment'
   [verdict-via-gh-comment-heredoc-dash-tab.json]=$'\t### Verdict'
+  [verdict-via-gh-comment-heredoc-crlf.json]=$'\r'
 )
 
 # total_cost_usd is written unconditionally whenever a result object is
@@ -92,6 +98,7 @@ declare -A expected_cost=(
   [verdict-via-gh-comment-heredoc.json]=0.61
   [verdict-via-gh-comment-heredoc-tag-in-body.json]=0.72
   [verdict-via-gh-comment-heredoc-dash-tab.json]=0.83
+  [verdict-via-gh-comment-heredoc-crlf.json]=0.94
   [denied-bash-comment-not-trusted.json]=0.4
 )
 

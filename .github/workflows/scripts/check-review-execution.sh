@@ -156,9 +156,14 @@ jq -s --argjson denials "$denials" '
     | ( [ $c | capture("<<(?<dash>-?)\\x27?(?<tag>[A-Za-z0-9_]+)\\x27?[^\n]*\n(?<body>[\\s\\S]*)") ] | first ) as $h
     | if $h == null then $c
       else
+        # rtrimstr strips a CRLF transcript\x27s trailing \r before BOTH the
+        # terminator comparison and the slice that gets posted -- normalizing
+        # only for the comparison would still leave stray \r in the review
+        # body (gha#318 review round 2).
         ( $h.body | split("\n")
-          | map(if $h.dash == "-" then sub("^\t+"; "") else . end) ) as $lines
-        | ( $lines | map(rtrimstr("\r")) | index($h.tag) ) as $end
+          | map(rtrimstr("\r")
+                | if $h.dash == "-" then sub("^\t+"; "") else . end) ) as $lines
+        | ( $lines | index($h.tag) ) as $end
         # No terminator (a transcript truncated mid-command): fall back to the
         # raw command rather than guess where the body ended. Posting a
         # shell-looking comment is the bug this unwrapping fixes, but dropping

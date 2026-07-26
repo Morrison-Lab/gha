@@ -10,9 +10,12 @@
   The terminator is located by comparing whole lines against the tag, the way
   bash itself ends a heredoc, so a review body containing a line that merely
   *starts* with the tag cannot cut the posted review short; the `<<-` form's
-  leading-tab stripping is mirrored too. Both the posted text and the pass/fail
+  leading-tab stripping is mirrored too, and a CRLF transcript's carriage
+  returns are stripped from the posted body rather than carried into the PR
+  comment. Both the posted text and the pass/fail
   scan still draw from the same block, so the gha#218 same-source invariant
   holds. Regression fixtures `verdict-via-gh-comment-heredoc.json`,
-  `verdict-via-gh-comment-heredoc-tag-in-body.json`, and
-  `verdict-via-gh-comment-heredoc-dash-tab.json` added (seen on
+  `verdict-via-gh-comment-heredoc-tag-in-body.json`,
+  `verdict-via-gh-comment-heredoc-dash-tab.json`, and
+  `verdict-via-gh-comment-heredoc-crlf.json` added (seen on
   [`UCD-SERG/serocalculator#614`](https://github.com/UCD-SERG/serocalculator/pull/614)).
