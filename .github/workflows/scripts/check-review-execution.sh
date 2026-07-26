@@ -125,6 +125,25 @@ denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
 # something it read can't produce a false *pass* in the other direction.
 blocks_file="$(mktemp)"
 jq -s --argjson denials "$denials" '
+  # A gated Bash candidate is a POST command, e.g.
+  #   gh pr comment N --body "$(cat <<EOF ... EOF)"
+  # Its verdict-bearing text is the heredoc *body*, not the whole command
+  # string. This block feeds review_text_file below, which is POSTED verbatim
+  # to the PR, so using the raw command republishes a shell invocation instead
+  # of the review (the "Claude finished review" comment then shows a literal
+  # `gh pr comment ... <<EOF ...` block). Unwrap the heredoc body; fall back to
+  # the command unchanged when there is no heredoc (a --body/-f/--body-file
+  # form the pass/fail scan can still read a verdict out of). \x27 is a single
+  # quote, kept as a hex escape so this jq program carries no literal quote to
+  # collide with the surrounding shell single-quoting. capture yields *empty*
+  # (not null) on no match, which would annihilate the pipeline, so wrap it in
+  # an array and take first. review_text_file and all_text_file both derive
+  # from this same unwrapped block, preserving the gha#218 (finding 2)
+  # invariant that the posted text and the scanned text never diverge.
+  def unwrap_posted_body:
+    . as $c
+    | ( [ $c | capture("<<-?\\x27?(?<tag>[A-Za-z0-9_]+)\\x27?[^\n]*\n(?<body>[\\s\\S]*?)\n[ \t]*\\k<tag>\\b"; "m") ] | first ) as $h
+    | if $h == null then $c else $h.body end;
   flatten
   | [ .[] | select(.type == "assistant") | .message.content[]?
       | if .type == "text" then .text
@@ -132,7 +151,7 @@ jq -s --argjson denials "$denials" '
           then (.input.body // "")
         elif .type == "tool_use" and .name == "Bash" and ($denials == 0)
           and ((.input.command // "") | test("gh (pr comment|api [^\n]*(pulls|issues)/[^\n]*comments)"))
-          then (.input.command // "")
+          then ((.input.command // "") | unwrap_posted_body)
         else empty
         end ]
 ' "$EXECUTION_FILE" > "$blocks_file" 2>/dev/null || echo '[]' > "$blocks_file"

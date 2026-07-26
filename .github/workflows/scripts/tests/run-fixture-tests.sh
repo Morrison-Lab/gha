@@ -34,6 +34,7 @@ declare -A expected=(
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
+  [verdict-via-gh-comment-heredoc.json]=pass
   [denied-bash-comment-not-trusted.json]=fail-stub
 )
 
@@ -46,10 +47,15 @@ declare -A must_contain=(
   # just fall back to the narration text block that happens to satisfy
   # the pass/fail scan.
   [verdict-via-inline-comment-tool.json]='Ready for merge'
+  # The review lives inside a `gh pr comment ... <<EOF ... EOF` heredoc body.
+  # review_text_file must carry that unwrapped body, not the raw command
+  # string (which would post a literal `gh pr comment ...` block to the PR).
+  [verdict-via-gh-comment-heredoc.json]='One real finding on line 12'
 )
 declare -A must_not_contain=(
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
+  [verdict-via-gh-comment-heredoc.json]='gh pr comment'
 )
 
 # total_cost_usd is written unconditionally whenever a result object is
@@ -69,6 +75,7 @@ declare -A expected_cost=(
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
   [verdict-via-inline-comment-tool.json]=0.55
+  [verdict-via-gh-comment-heredoc.json]=0.61
   [denied-bash-comment-not-trusted.json]=0.4
 )
 

@@ -1,0 +1,37 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr comment 614 --repo o/r --body \"$(cat <<'EOF'\n## Code review\n\nOne real finding on line 12.\n\n### Verdict\n\n**Needs more work**\nEOF\n)\""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Posted my review as a summary comment."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 6,
+    "duration_ms": 47000,
+    "total_cost_usd": 0.61,
+    "permission_denials_count": 0
+  }
+]

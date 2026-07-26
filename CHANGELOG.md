@@ -138,6 +138,20 @@ below with migration steps.
   preserving the original intent of catching the silent-stub failure mode
   ([`Lacaedemon/sparta#590`](https://github.com/Lacaedemon/sparta/issues/590)).
 
+- **`claude-code-review` no longer republishes a raw `gh pr comment` command as
+  the review body.** When the agent posts its own review via a
+  `gh pr comment N --body "$(cat <<EOF ... EOF)"` Bash call (a trusted candidate
+  when `permission_denials_count` is 0), `check-review-execution.sh` took the
+  whole command string as the review text, so the "Claude finished review"
+  summary comment showed a literal `gh pr comment ... <<EOF ...` block next to
+  the correctly-posted review — the review appeared twice, once mangled. The
+  guard now unwraps the heredoc body from such a command before using it as the
+  posted text, falling back to the command unchanged when there is no heredoc.
+  Both the posted text and the pass/fail scan still draw from the same block, so
+  the gha#218 same-source invariant holds. Regression fixture
+  `verdict-via-gh-comment-heredoc.json` added (seen on
+  [`UCD-SERG/serocalculator#614`](https://github.com/UCD-SERG/serocalculator/pull/614)).
+
 - **`claude-code-review`'s pass/fail check now catches stub reviews, not just
   API errors** (#171). The reusable workflow's `fail-check` step previously
   only inspected `is_error`/`subtype` on the SDK result, so a run that
