@@ -34,6 +34,10 @@ declare -A expected=(
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
+  [verdict-via-gh-comment-heredoc.json]=pass
+  [verdict-via-gh-comment-heredoc-tag-in-body.json]=pass
+  [verdict-via-gh-comment-heredoc-dash-tab.json]=pass
+  [verdict-via-gh-comment-heredoc-crlf.json]=pass
   [denied-bash-comment-not-trusted.json]=fail-stub
 )
 
@@ -46,10 +50,32 @@ declare -A must_contain=(
   # just fall back to the narration text block that happens to satisfy
   # the pass/fail scan.
   [verdict-via-inline-comment-tool.json]='Ready for merge'
+  # The review lives inside a `gh pr comment ... <<EOF ... EOF` heredoc body.
+  # review_text_file must carry that unwrapped body, not the raw command
+  # string (which would post a literal `gh pr comment ...` block to the PR).
+  [verdict-via-gh-comment-heredoc.json]='One real finding on line 12'
+  # gha#318 review finding 1: the review body itself contains lines that start
+  # with the heredoc tag (`EOF markers must...`, and an indented `    EOF`
+  # inside a quoted shell example) before the real terminator. Only a
+  # whole-line terminator match reaches the verdict below them; a
+  # word-boundary or leading-whitespace-tolerant one stops at the first of
+  # those and posts a review truncated to its first heading.
+  [verdict-via-gh-comment-heredoc-tag-in-body.json]='Ready for merge'
+  # The <<- form strips leading TABS from the body, so the posted text must
+  # come out de-indented -- tab-indented markdown renders as a code block.
+  [verdict-via-gh-comment-heredoc-dash-tab.json]='### Verdict'
+  # A CRLF transcript: the terminator is still found, and the posted body
+  # comes out with the carriage returns stripped rather than carrying them
+  # into the PR comment (gha#318 review round 2).
+  [verdict-via-gh-comment-heredoc-crlf.json]='**Ready for merge**'
 )
 declare -A must_not_contain=(
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
+  [verdict-via-gh-comment-heredoc.json]='gh pr comment'
+  [verdict-via-gh-comment-heredoc-tag-in-body.json]='gh pr comment'
+  [verdict-via-gh-comment-heredoc-dash-tab.json]=$'\t### Verdict'
+  [verdict-via-gh-comment-heredoc-crlf.json]=$'\r'
 )
 
 # total_cost_usd is written unconditionally whenever a result object is
@@ -69,6 +95,10 @@ declare -A expected_cost=(
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
   [verdict-via-inline-comment-tool.json]=0.55
+  [verdict-via-gh-comment-heredoc.json]=0.61
+  [verdict-via-gh-comment-heredoc-tag-in-body.json]=0.72
+  [verdict-via-gh-comment-heredoc-dash-tab.json]=0.83
+  [verdict-via-gh-comment-heredoc-crlf.json]=0.94
   [denied-bash-comment-not-trusted.json]=0.4
 )
 

@@ -125,6 +125,51 @@ denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
 # something it read can't produce a false *pass* in the other direction.
 blocks_file="$(mktemp)"
 jq -s --argjson denials "$denials" '
+  # A gated Bash candidate is a POST command, e.g.
+  #   gh pr comment N --body "$(cat <<EOF ... EOF)"
+  # Its verdict-bearing text is the heredoc *body*, not the whole command
+  # string. This block feeds review_text_file below, which is POSTED verbatim
+  # to the PR, so using the raw command republishes a shell invocation instead
+  # of the review (the "Claude finished review" comment then shows a literal
+  # `gh pr comment ... <<EOF ...` block). Unwrap the heredoc body; fall back to
+  # the command unchanged when there is no heredoc (a --body/-f/--body-file
+  # form the pass/fail scan can still read a verdict out of). \x27 is a single
+  # quote, kept as a hex escape so this jq program carries no literal quote to
+  # collide with the surrounding shell single-quoting. capture yields *empty*
+  # (not null) on no match, which would annihilate the pipeline, so wrap it in
+  # an array and take first. review_text_file and all_text_file both derive
+  # from this same unwrapped block, preserving the gha#218 (finding 2)
+  # invariant that the posted text and the scanned text never diverge.
+  #
+  # The regex finds only the *opener*; the terminator is then located
+  # line-by-line, because bash ends a heredoc on a line equal to the tag and
+  # nothing else. A regex terminator loose enough to be written inline (a
+  # word-boundary or leading-whitespace-tolerant \k<tag>) also matches body
+  # lines that merely start with the tag, and a lazy body then stops at the
+  # first of those -- silently truncating the review that gets posted (gha#318
+  # review, finding 1). Comparing whole lines removes that failure mode
+  # outright rather than patching anchors onto it. <<- strips leading TABS
+  # from the body and terminator, so mirror that too; without the dash, the
+  # terminator must sit at column 0.
+  def unwrap_posted_body:
+    . as $c
+    | ( [ $c | capture("<<(?<dash>-?)\\x27?(?<tag>[A-Za-z0-9_]+)\\x27?[^\n]*\n(?<body>[\\s\\S]*)") ] | first ) as $h
+    | if $h == null then $c
+      else
+        # rtrimstr strips a CRLF transcript\x27s trailing \r before BOTH the
+        # terminator comparison and the slice that gets posted -- normalizing
+        # only for the comparison would still leave stray \r in the review
+        # body (gha#318 review round 2).
+        ( $h.body | split("\n")
+          | map(rtrimstr("\r")
+                | if $h.dash == "-" then sub("^\t+"; "") else . end) ) as $lines
+        | ( $lines | index($h.tag) ) as $end
+        # No terminator (a transcript truncated mid-command): fall back to the
+        # raw command rather than guess where the body ended. Posting a
+        # shell-looking comment is the bug this unwrapping fixes, but dropping
+        # review text is worse.
+        | if $end == null then $c else $lines[0:$end] | join("\n") end
+      end;
   flatten
   | [ .[] | select(.type == "assistant") | .message.content[]?
       | if .type == "text" then .text
@@ -132,7 +177,7 @@ jq -s --argjson denials "$denials" '
           then (.input.body // "")
         elif .type == "tool_use" and .name == "Bash" and ($denials == 0)
           and ((.input.command // "") | test("gh (pr comment|api [^\n]*(pulls|issues)/[^\n]*comments)"))
-          then (.input.command // "")
+          then ((.input.command // "") | unwrap_posted_body)
         else empty
         end ]
 ' "$EXECUTION_FILE" > "$blocks_file" 2>/dev/null || echo '[]' > "$blocks_file"
