@@ -146,9 +146,9 @@ which is why the capabilities above moved to `@v2`.
   failure report should be appended to (exact, case-sensitive title match;
   lowest number wins when duplicates already exist). The composite does the
   `gh` calls around it: list open issues, then either comment on the match or
-  file a new issue. `report-failure.yml` and `check-links.yml` both call it,
-  which is why the logic lives here rather than inline in either — the second
-  copy is exactly what this file's own DRY guidance rules out. Two behaviors
+  file a new issue. `report-failure.yml` calls it;
+  `check-links.yml`'s own inline `gh issue create` is its intended second
+  caller, deferred to gha#327 for the sequencing reason below. Two behaviors
   worth knowing before changing it: a label the calling repository does not
   define is dropped with a warning and the issue is filed anyway, since losing
   a failure report over a missing label is the worse outcome; and `dry-run`
@@ -229,6 +229,30 @@ JUnit-report upload to Codecov Test Analytics (`codecov/test-results-action`)
 the bespoke version also did; gha#234 tracks closing that gap, and the
 consumer left that one file unmigrated in the meantime rather than lose the
 feature.)
+
+**A new composite action cannot gain its first `@v2` caller in the same PR
+that introduces it, and whether that bites depends on whether the caller is
+dogfooded here.** A `uses:` ref is resolved when the job is *prepared*, before
+any step runs and before any step-level `if:` is evaluated, so a reference to
+`d-morrison/gha/.github/actions/<new-action>@v2` fails the whole job with
+`Can't find 'action.yml' ... @v2` until `@v2` is advanced past the merge --
+even when the step is gated on `failure()` and would never have run.
+
+The Layout section's `request-dependabot-review` note describes the same
+bootstrapping gap as merely "not exercised end-to-end yet", which is true
+there because that workflow only runs on Dependabot PRs. When the new caller
+is something `_selftest.yml` invokes through a local `./` ref on every PR
+(`check-links.yml` is the one that does), the gap stops being a coverage
+footnote and becomes a red check on every PR in the repo, with no way to fix
+it inside that PR: a relative local path is not a workaround either, since
+inside a reusable workflow it resolves against the *caller's* checkout
+(gha#284).
+
+So split the work: land the action plus its non-dogfooded callers first, and
+migrate a per-PR-dogfooded caller in a follow-up once the tag has moved.
+(gha#326: `check-links.yml`'s migration and `website-publish.yml`'s
+dogfood job were both cut from that PR for this reason and moved to gha#327,
+after `links / link-checker` went red on exactly this.)
 
 **A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
 was frozen before it existed — see `slide-major-tag.yml` / the Versioning
