@@ -246,9 +246,11 @@ any step runs and before any step-level `if:` is evaluated, so a reference to
 `Can't find 'action.yml' ... @v2` until `@v2` is advanced past the merge --
 even when the step is gated on `failure()` and would never have run.
 
-The Layout section's `request-dependabot-review` note describes the same
-bootstrapping gap as merely "not exercised end-to-end yet", which is true
-there because that workflow only runs on Dependabot PRs. When the new caller
+The Tests section's `build-reviewer-args` paragraph records the same
+bootstrapping gap, and treats it as a coverage limitation: that workflow's
+own reusable layer cannot be exercised end to end until the tag advances.
+That reading is right there, because `request-dependabot-review.yml` only
+runs on Dependabot PRs, so nothing goes red in the meantime. When the new caller
 is something `_selftest.yml` invokes through a local `./` ref on every PR
 (`check-links.yml` is the one that does), the gap stops being a coverage
 footnote and becomes a red check on every PR in the repo, with no way to fix
