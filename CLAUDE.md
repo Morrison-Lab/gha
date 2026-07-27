@@ -141,10 +141,17 @@ which is why the capabilities above moved to `@v2`.
   coverage instead of only being exercised by a live Dependabot PR (gha#253
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
-- `.github/actions/open-failure-issue/` — wraps
+- `.github/actions/open-failure-issue/` — wraps two scripts:
   `scripts/select-existing-issue.sh`, which picks the open issue an automated
   failure report should be appended to (exact, case-sensitive title match;
-  lowest number wins when duplicates already exist). The composite does the
+  lowest number wins when duplicates already exist), and
+  `scripts/split-csv-list.sh`, which splits and trims the comma-separated
+  `labels` input so each name is passed as its own `--label`. That second one
+  is the gha#253 bug class again: `gh issue create --label` is a Cobra
+  StringSlice, which splits on commas without trimming, so a natural
+  `bug, automated` yields a ` automated` matching no label and fails the whole
+  call. `build-reviewer-args.sh` delegates its own split/trim to the same
+  script, so the repo has one CSV splitter rather than two. The composite does the
   `gh` calls around it: list open issues, then either comment on the match or
   file a new issue. `report-failure.yml` calls it;
   `check-links.yml`'s own inline `gh issue create` is its intended second
