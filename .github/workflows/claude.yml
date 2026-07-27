@@ -134,6 +134,26 @@ on:
           gracefully to no WebFetch grants. Empty to disable WebFetch.
         type: string
         default: ''
+      plugin-marketplaces:
+        description: >-
+          Newline-separated Claude Code plugin marketplace Git URLs, passed
+          through to claude-code-action's plugin_marketplaces. Use to give
+          Claude access to a skills/commands source beyond this repo's own
+          (e.g. a personal or lab skills repo like
+          https://github.com/d-morrison/ai-config.git, which ships a
+          `d-morrison` marketplace). Pair with the plugins input below --
+          adding a marketplace alone installs nothing. Empty by default.
+        type: string
+        default: ''
+      plugins:
+        description: >-
+          Newline-separated Claude Code plugin refs to install
+          (<plugin>@<marketplace-name>, e.g. ai-config@d-morrison), passed
+          through to claude-code-action's plugins. Each marketplace name
+          must match one listed in plugin-marketplaces above. Empty by
+          default.
+        type: string
+        default: ''
       claude-args:
         description: Args passed to claude-code-action (allowed/disallowed tools, etc.).
         type: string
@@ -574,6 +594,12 @@ jobs:
           # Let Claude read CI results (check runs / job logs) on PRs.
           additional_permissions: |
             actions: read
+          # Empty by default (no-op): claude-code-action's own installPlugins()
+          # trims and filters blank/whitespace-only lines, so passing through
+          # an empty plugin-marketplaces/plugins input adds no marketplace and
+          # installs nothing.
+          plugin_marketplaces: ${{ inputs.plugin-marketplaces }}
+          plugins: ${{ inputs.plugins }}
           # Append the WebFetch grants (empty when webfetch-allowlist-url is
           # unset). Multiple --allowedTools flags accumulate in the CLI.
           claude_args: ${{ inputs.claude-args }} ${{ steps.webfetch.outputs.args }}

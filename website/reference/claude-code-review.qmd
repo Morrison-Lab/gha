@@ -27,6 +27,8 @@ stub named `claude-code-review.yml` (or set `claude.yml`'s
 | `check-latex-macros`  | boolean | `false`                 | Check PR diffs for LaTeX math simplifiable via an existing macro from the `d-morrison/macros` submodule, and for nontrivial expressions repeated 3+ times that are candidates for a new one. Off by default. The macro checks read definitions only from a locally checked-out submodule (the repo's pinned version is authoritative), so this only finds real macro definitions when the repo vendors the `d-morrison/macros` submodule **and** `checkout-submodules: true` is also set. |
 | `report-cost`         | boolean | `true`                  | Post a follow-up PR comment with the review's dollar cost (`total_cost_usd`, summed across the initial attempt and any stub-review retry). See [README.md](https://github.com/d-morrison/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it.                                                                                                                                                                                                   |
 | `model`               | string  | `''`                    | Model for the reviewer to run on, passed through as the Claude Code CLI's `--model` flag (e.g. `claude-opus-4-8`). Empty (default) falls through to `claude-code-action`'s own default. Unlike `claude.yml`, this workflow has no generic `claude-args` passthrough, so this is the only way to influence the model.                                                                                                                                                                      |
+| `plugin-marketplaces` | string  | `''`                    | Extra newline-separated plugin marketplace Git URLs, appended to the built-in `anthropics/claude-code.git` marketplace the `code-review` plugin ships from (e.g. `https://github.com/d-morrison/ai-config.git`). Pair with `plugins` below; empty to disable.                                                                                                                                                                                                                              |
+| `plugins`             | string  | `''`                    | Extra newline-separated plugin refs to install (`<plugin>@<marketplace-name>`, e.g. `ai-config@d-morrison`), appended to the built-in `code-review@claude-code-plugins`. Each marketplace name must match one listed in `plugin-marketplaces`.                                                                                                                                                                                                                                             |
 
 ## Secrets
 
@@ -100,6 +102,8 @@ jobs:
     #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true
     #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)
+    #   plugin-marketplaces: https://github.com/d-morrison/ai-config.git
+    #   plugins: ai-config@d-morrison
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).
 ```

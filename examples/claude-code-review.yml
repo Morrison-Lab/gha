@@ -129,5 +129,7 @@ jobs:
     #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true
     #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   model: claude-opus-4-8      # override the reviewer's model (default: claude-code-action's own default)
+    #   plugin-marketplaces: https://github.com/d-morrison/ai-config.git
+    #   plugins: ai-config@d-morrison
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).

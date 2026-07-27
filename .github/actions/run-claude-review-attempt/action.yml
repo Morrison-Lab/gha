@@ -63,6 +63,20 @@ inputs:
       flag entirely, falling through to claude-code-action's own default.
     required: false
     default: ''
+  extra-plugin-marketplaces:
+    description: >-
+      Extra newline-separated plugin marketplace Git URLs, appended to the
+      built-in anthropics/claude-code.git marketplace below
+      (claude-code-review.yml's plugin-marketplaces input). Empty by default.
+    required: false
+    default: ''
+  extra-plugins:
+    description: >-
+      Extra newline-separated plugin refs to install, appended to the
+      built-in code-review@claude-code-plugins below (claude-code-review.yml's
+      plugins input). Empty by default.
+    required: false
+    default: ''
 
 outputs:
   execution_file:
@@ -78,8 +92,16 @@ runs:
       with:
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         anthropic_api_key: ${{ inputs.anthropic-api-key }}
-        plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-        plugins: 'code-review@claude-code-plugins'
+        # Appending inputs.extra-plugin-marketplaces/-plugins as a trailing
+        # line is safe even when they're empty (the default): the upstream
+        # action's installPlugins() trims and filters blank lines before
+        # parsing, so an empty extra line adds no marketplace/plugin.
+        plugin_marketplaces: |
+          https://github.com/anthropics/claude-code.git
+          ${{ inputs.extra-plugin-marketplaces }}
+        plugins: |
+          code-review@claude-code-plugins
+          ${{ inputs.extra-plugins }}
         # Allowlist the inline-comment tool so line-specific findings can be
         # anchored to the diff. Without an explicit `claude_args`, the action's
         # computed `--allowedTools` covers only Read/Glob/Grep, the

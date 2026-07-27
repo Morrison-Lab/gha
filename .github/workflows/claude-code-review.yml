@@ -129,6 +129,26 @@ on:
           way a caller can influence which model reviews its PRs (gha#186).
         type: string
         default: ''
+      plugin-marketplaces:
+        description: >-
+          Extra newline-separated Claude Code plugin marketplace Git URLs,
+          appended to the built-in anthropics/claude-code.git marketplace the
+          code-review plugin ships from. Use to give the reviewer access to
+          another skills/commands source (e.g.
+          https://github.com/d-morrison/ai-config.git, which ships a
+          `d-morrison` marketplace). Pair with the plugins input below --
+          adding a marketplace alone installs nothing. Empty by default.
+        type: string
+        default: ''
+      plugins:
+        description: >-
+          Extra newline-separated Claude Code plugin refs to install
+          (<plugin>@<marketplace-name>, e.g. ai-config@d-morrison), appended
+          to the built-in code-review@claude-code-plugins. Each marketplace
+          name must match one listed in plugin-marketplaces above. Empty by
+          default.
+        type: string
+        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -564,6 +584,8 @@ jobs:
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
+          extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
+          extra-plugins: ${{ inputs.plugins }}
 
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
@@ -661,6 +683,8 @@ jobs:
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
+          extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
+          extra-plugins: ${{ inputs.plugins }}
           is-retry: 'true'
 
       - name: Resolve and upload execution file path (retry)
