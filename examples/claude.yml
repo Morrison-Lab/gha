@@ -73,6 +73,9 @@ jobs:
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
     #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
+    #   use-ai-config: false        # skip the d-morrison/ai-config plugin (installed by default)
+    #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources
+    #   plugins: <plugin>@<marketplace-name>
     #   prompt-addendum: |
     #     This is the <name> R package. Before committing, run
     #     lintr::lint_package(), spelling::spell_check_package(), and
