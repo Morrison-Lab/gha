@@ -582,7 +582,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>issues: write</code> on the calling job. Grant it on that job only – not on the job being watched, which usually needs a different set.</p>
+<p>Grant <code>issues: write</code> on the calling job, and nothing else. Grant it on that job only – not on the job being watched, which usually needs a different set.</p>
+<p><code>issues: write</code> alone is enough because the job performs no checkout: the action carries its own files and names the repository through <code>GH_REPO</code>. That matters more than it looks. Naming any scope in a <code>permissions:</code> block sets every unlisted scope to <code>none</code>, so a job that did check the repository out would also need <code>contents: read</code> – and without it the checkout fails on a private or internal repo, at the moment the job exists to report a failure.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
@@ -605,19 +606,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">report-failure</span><span class="kw">:</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">needs</span><span class="kw">:</span><span class="at"> publish</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    # `always()` is what lets this job run once `publish` failed; the result</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    # check is what decides. Excluding pull_request keeps it from filing</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    # issues for failures a PR's own checks already show.</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="fu">    if</span><span class="kw">: </span><span class="ch">&gt;-</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a>      always()</span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>      &amp;&amp; needs.publish.result == 'failure'</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>      &amp;&amp; github.event_name != 'pull_request'</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/report-failure.yml@v2</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">title</span><span class="kw">:</span><span class="at"> Publish workflow is failing</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">body</span><span class="kw">:</span><span class="at"> The documentation site did not deploy, so the published site may be stale.</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">      # labels: bug,automated    # must already exist in your repo to be applied</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    # check is what decides. The `pull_request` clause is inert as this stub</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    # stands (push and dispatch only); keep it if you add a `pull_request`</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    # trigger, since a PR already shows its own failure.</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="fu">    if</span><span class="kw">: </span><span class="ch">&gt;-</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>      always()</span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>      &amp;&amp; needs.publish.result == 'failure'</span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>      &amp;&amp; github.event_name != 'pull_request'</span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> d-morrison/gha/.github/workflows/report-failure.yml@v2</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">title</span><span class="kw">:</span><span class="at"> Publish workflow is failing</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">body</span><span class="kw">:</span><span class="at"> The documentation site did not deploy, so the published site may be stale.</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">      # labels: bug,automated    # must already exist in your repo to be applied</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag. See <a href="../versioning.html">Versioning</a>.</p>
 
 
