@@ -129,24 +129,35 @@ on:
           way a caller can influence which model reviews its PRs (gha#186).
         type: string
         default: ''
+      use-ai-config:
+        description: >-
+          Install the d-morrison/ai-config plugin (ai-config@d-morrison), so
+          the reviewer applies the lab's shared review conventions -- the
+          standing prose, math, and code-review rules the skills and shared
+          fragments in that repo encode -- rather than only the calling
+          repo's own CLAUDE.md. On by default; set false to opt out.
+          Installed alongside, not instead of, the built-in
+          code-review@claude-code-plugins.
+        type: boolean
+        default: true
       plugin-marketplaces:
         description: >-
           Extra newline-separated Claude Code plugin marketplace Git URLs,
-          appended to the built-in anthropics/claude-code.git marketplace the
-          code-review plugin ships from. Use to give the reviewer access to
-          another skills/commands source (e.g.
-          https://github.com/d-morrison/ai-config.git, which ships a
-          `d-morrison` marketplace). Pair with the plugins input below --
-          adding a marketplace alone installs nothing. Empty by default.
+          added on top of the two marketplaces this workflow already uses
+          (anthropics/claude-code.git for the code-review plugin, and
+          d-morrison/ai-config.git unless use-ai-config is false). Pair with
+          the plugins input below -- adding a marketplace alone installs
+          nothing. Empty by default.
         type: string
         default: ''
       plugins:
         description: >-
           Extra newline-separated Claude Code plugin refs to install
-          (<plugin>@<marketplace-name>, e.g. ai-config@d-morrison), appended
-          to the built-in code-review@claude-code-plugins. Each marketplace
-          name must match one listed in plugin-marketplaces above. Empty by
-          default.
+          (<plugin>@<marketplace-name>), added on top of the built-in
+          code-review@claude-code-plugins and ai-config@d-morrison. Each
+          marketplace name must match the name that marketplace declares in
+          its own .claude-plugin/marketplace.json -- it is not derived from
+          the URL written into plugin-marketplaces. Empty by default.
         type: string
         default: ''
     secrets:
@@ -584,6 +595,7 @@ jobs:
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
+          use-ai-config: ${{ inputs.use-ai-config }}
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
 
@@ -683,6 +695,7 @@ jobs:
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
+          use-ai-config: ${{ inputs.use-ai-config }}
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
           is-retry: 'true'

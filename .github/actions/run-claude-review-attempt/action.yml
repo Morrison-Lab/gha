@@ -63,18 +63,26 @@ inputs:
       flag entirely, falling through to claude-code-action's own default.
     required: false
     default: ''
+  use-ai-config:
+    description: >-
+      'true' (the default) to install the d-morrison/ai-config plugin
+      alongside the built-in code-review plugin below
+      (claude-code-review.yml's use-ai-config input). Any other value
+      skips it.
+    required: false
+    default: 'true'
   extra-plugin-marketplaces:
     description: >-
       Extra newline-separated plugin marketplace Git URLs, appended to the
-      built-in anthropics/claude-code.git marketplace below
-      (claude-code-review.yml's plugin-marketplaces input). Empty by default.
+      built-in marketplaces below (claude-code-review.yml's
+      plugin-marketplaces input). Empty by default.
     required: false
     default: ''
   extra-plugins:
     description: >-
       Extra newline-separated plugin refs to install, appended to the
-      built-in code-review@claude-code-plugins below (claude-code-review.yml's
-      plugins input). Empty by default.
+      built-in plugins below (claude-code-review.yml's plugins input).
+      Empty by default.
     required: false
     default: ''
 
@@ -92,15 +100,26 @@ runs:
       with:
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         anthropic_api_key: ${{ inputs.anthropic-api-key }}
-        # Appending inputs.extra-plugin-marketplaces/-plugins as a trailing
-        # line is safe even when they're empty (the default): the upstream
-        # action's installPlugins() trims and filters blank lines before
-        # parsing, so an empty extra line adds no marketplace/plugin.
+        # Leaving the ai-config and extra-* slots as blank lines is safe when
+        # they're unset: the upstream action's installPlugins() trims and
+        # filters blank lines before parsing, so a blank line adds no
+        # marketplace/plugin. (Verified against the pinned
+        # claude-code-action's base-action/src/install-plugins.ts:
+        # parseMarketplaces()/parsePlugins() both `.map(trim).filter(length)`.)
+        #
+        # The ai-config URL and plugin ref are spelled out here AND in
+        # claude.yml (the agent's copy) rather than shared from one place: a
+        # composite action cannot `uses:` a sibling local action, because a
+        # relative path resolves against the CALLER's checkout instead of this
+        # action's (gha#284), so a shared composite would break for every
+        # consumer. Update both sites together.
         plugin_marketplaces: |
           https://github.com/anthropics/claude-code.git
+          ${{ inputs.use-ai-config == 'true' && 'https://github.com/d-morrison/ai-config.git' || '' }}
           ${{ inputs.extra-plugin-marketplaces }}
         plugins: |
           code-review@claude-code-plugins
+          ${{ inputs.use-ai-config == 'true' && 'ai-config@d-morrison' || '' }}
           ${{ inputs.extra-plugins }}
         # Allowlist the inline-comment tool so line-specific findings can be
         # anchored to the diff. Without an explicit `claude_args`, the action's
