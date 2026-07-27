@@ -1,0 +1,52 @@
+# Copy the `report-failure` job below into a workflow whose failures you want
+# tracked as an issue -- it is a job to add to an existing caller stub, not a
+# workflow to install on its own.
+#
+# It exists for workflows that run where no pull request carries their result:
+# a push to the default branch, a schedule, a release. There, a failed run
+# shows up only in the Actions tab, so a broken deploy can go unnoticed while
+# the published site goes stale.
+#
+# Repeat failures comment on the issue already open for that title instead of
+# filing another, so leave `title` fixed and close the issue once the workflow
+# is green again.
+name: Quarto Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
+    with:
+      path: website
+
+  report-failure:
+    needs: publish
+    # `always()` is what lets this job run at all once `publish` failed; the
+    # result check is what decides. Excluding pull_request keeps it from
+    # filing issues for failures a PR's own checks already show.
+    if: >-
+      always()
+      && needs.publish.result == 'failure'
+      && github.event_name != 'pull_request'
+    permissions:
+      # Only this job needs it, which is why failure reporting is a separate
+      # workflow rather than a job inside quarto-publish.yml: a caller must
+      # grant a reusable workflow's permissions, so folding it in would make
+      # `issues: write` mandatory for everyone calling that workflow.
+      issues: write
+    uses: d-morrison/gha/.github/workflows/report-failure.yml@v2
+    with:
+      # Stable across runs -- this is the deduplication key.
+      title: Publish workflow is failing
+      body: The documentation site did not deploy, so the published site may be stale.
+      # labels: bug,automated      # must already exist in your repo to be applied

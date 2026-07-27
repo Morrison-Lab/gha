@@ -878,3 +878,45 @@ jobs:
             exit 1
           fi
           echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."
+
+  # Covers the open-failure-issue action shared by quarto-publish.yml and
+  # check-links.yml. The unit tests pin the matching rule; the end-to-end step
+  # proves the composite resolves select-existing-issue.sh through
+  # github.action_path, the wiring gha#196 showed a unit test alone does not
+  # cover. It runs with dry-run: true so a selftest run never files an issue,
+  # and consequently needs only `issues: read`.
+  failure-issue:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run select-existing-issue matching tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-select-existing-issue-tests.sh
+
+      # A title no issue in this repository carries, so the lookup runs for
+      # real against the live issue list and finds nothing.
+      - name: Exercise open-failure-issue end-to-end (no match)
+        id: no-match
+        uses: ./.github/actions/open-failure-issue
+        with:
+          title: 'selftest placeholder title that matches no open issue'
+          body: 'Selftest dry run; nothing is filed.'
+          dry-run: 'true'
+
+      - name: Assert the no-match case would file a new issue
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.no-match.outputs.outcome }}
+          NUMBER: ${{ steps.no-match.outputs.issue-number }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "created" || -n "$NUMBER" ]]; then
+            echo "::error::expected outcome=created with no issue number, got outcome='$OUTCOME' number='$NUMBER'"
+            exit 1
+          fi
+          echo "open-failure-issue correctly reported it would file a new issue."

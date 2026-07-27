@@ -1,0 +1,94 @@
+---
+title: "report-failure.yml"
+---
+
+File an issue when a workflow fails, or comment on the issue already open for
+that failure.
+
+It is for workflows that run where no pull request carries their result: a
+push to the default branch, a schedule, a release. There, a red run is visible
+only to whoever thinks to open the Actions tab, so a broken deploy can go
+unnoticed while the published site goes stale.
+
+Add it as a final job in an existing caller stub, gated on the job you want
+watched. It is not a workflow to install on its own.
+
+## Deduplication
+
+`title` is the deduplication key. Before filing, the workflow lists the
+repository's open issues and looks for an exact, case-sensitive title match:
+on a match it appends a comment to that issue, and only otherwise files a new
+one. So a workflow that fails on every run for a week produces one issue with
+a week of comments, not seven issues.
+
+Two consequences. Keep `title` fixed across runs -- a title carrying a run id,
+SHA, or timestamp defeats the matching and files a fresh issue each time. And
+close the issue once the workflow is green again, so the next failure opens a
+new one rather than reviving a resolved thread.
+
+The match is exact rather than fuzzy on purpose: two failures whose titles
+share a prefix (`Publish failed: website` and `Publish failed: website
+preview`) are different problems, and folding the second onto the first would
+bury its evidence under a report about the first.
+
+## Why this is its own workflow
+
+A reusable workflow's jobs can only hold permissions its caller already
+granted. Putting the failure-reporting job inside `quarto-publish.yml` would
+therefore make `issues: write` a requirement for every caller of that
+workflow, whether or not it wanted issues filed. Kept separate, the permission
+is granted only by callers that opt in -- and any workflow can be watched, not
+only publishing.
+
+## Inputs
+
+| Input    | Type   | Default  | Description                                                                                                                     |
+| -------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `title`  | string | required | Issue title, and the deduplication key. Must be stable across runs; see above.                                                  |
+| `body`   | string | `''`     | Extra context prepended to the report. The run URL, workflow name, ref, and commit are always appended, so this is for what those cannot say. |
+| `labels` | string | `''`     | Comma-separated labels for a newly filed issue. Labels the repository does not define are dropped with a warning rather than failing the report. Ignored when commenting on an existing issue. |
+
+## Permissions
+
+Grant `issues: write` on the calling job. Grant it on that job only -- not on
+the job being watched, which usually needs a different set.
+
+## Example
+
+```yaml
+# Copy the `report-failure` job into a workflow whose failures you want tracked.
+name: Quarto Publish
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
+    with:
+      path: website
+
+  report-failure:
+    needs: publish
+    # `always()` is what lets this job run once `publish` failed; the result
+    # check is what decides. Excluding pull_request keeps it from filing
+    # issues for failures a PR's own checks already show.
+    if: >-
+      always()
+      && needs.publish.result == 'failure'
+      && github.event_name != 'pull_request'
+    permissions:
+      issues: write
+    uses: d-morrison/gha/.github/workflows/report-failure.yml@v2
+    with:
+      title: Publish workflow is failing
+      body: The documentation site did not deploy, so the published site may be stale.
+      # labels: bug,automated    # must already exist in your repo to be applied
+```
+
+Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
+exist at that tag. See [Versioning](../versioning.qmd).

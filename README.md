@@ -60,6 +60,7 @@ not reference `@main` from consumers.
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
+| `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
 | `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
@@ -77,6 +78,9 @@ that need to write must have the **caller** grant it on the calling job:
 
 - `check-links` (opens an issue on `main` failures) → grant `issues: write`,
   `pull-requests: read`, `contents: read`.
+- `report-failure` (files or updates the issue tracking a failing workflow) →
+  grant `issues: write` on the reporting job only; the job it watches keeps
+  its own permissions.
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
 - `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
@@ -300,8 +304,10 @@ a security fix) that a consumer still on `@v1` would miss (audited in
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
 the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
 does `sync-upstream.yml` (added after the freeze — see
-[gha#254](https://github.com/d-morrison/gha/issues/254)) and
-`altdoc-multiversion-docs.yml` (added after the freeze).
+[gha#254](https://github.com/d-morrison/gha/issues/254)),
+`altdoc-multiversion-docs.yml` (added after the freeze), and
+`report-failure.yml` (added after the freeze — see
+[gha#325](https://github.com/d-morrison/gha/issues/325)).
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
@@ -371,7 +377,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
 `request-dependabot-review.yml`,
-`sync-upstream.yml`, `check-news.yml`, and `altdoc-multiversion-docs.yml` at `@v2` -- see the
+`sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`, and
+`report-failure.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ## Reverse dependencies

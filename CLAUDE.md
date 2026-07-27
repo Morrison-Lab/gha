@@ -19,7 +19,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
-and `altdoc-multiversion-docs` -- see
+`altdoc-multiversion-docs`, and `report-failure` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -141,6 +141,20 @@ which is why the capabilities above moved to `@v2`.
   coverage instead of only being exercised by a live Dependabot PR (gha#253
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
+- `.github/actions/open-failure-issue/` — wraps
+  `scripts/select-existing-issue.sh`, which picks the open issue an automated
+  failure report should be appended to (exact, case-sensitive title match;
+  lowest number wins when duplicates already exist). The composite does the
+  `gh` calls around it: list open issues, then either comment on the match or
+  file a new issue. `report-failure.yml` and `check-links.yml` both call it,
+  which is why the logic lives here rather than inline in either — the second
+  copy is exactly what this file's own DRY guidance rules out. Two behaviors
+  worth knowing before changing it: a label the calling repository does not
+  define is dropped with a warning and the issue is filed anyway, since losing
+  a failure report over a missing label is the worse outcome; and `dry-run`
+  exists so `_selftest.yml` can exercise the action for real without filing an
+  issue on every selftest run (the lookup still runs, so it needs only
+  `issues: read`).
 - `.github/actions/generate-altdoc-version-dropdown/` and
   `.github/actions/generate-altdoc-landing-page/` - Python composites wrapping
   the scripts `altdoc-multiversion-docs.yml` needs (rewrite the navbar
@@ -382,6 +396,22 @@ directly, the same
 below uses for `test-coverage.yml` (gha#253 review: missing selftest coverage
 for a new workflow with real side effects, precedented by the `sync-pr` job's
 `open-sync-pr` no-op test).
+
+`.github/workflows/scripts/tests/run-select-existing-issue-tests.sh` exercises
+`select-existing-issue.sh` (see Layout above) offline against a table of
+`(title, open-issues)` pairs, including the no-match, prefix-is-not-a-match,
+case-sensitivity, and already-duplicated cases; CI runs it in the
+`failure-issue` job of `_selftest.yml`. That job also calls
+`open-failure-issue` itself through a real `uses:` step with `dry-run: true`
+— the same `github.action_path`-resolution proof the `run-review-guard` /
+`build-reviewer-args` e2e steps give, and the reason `dry-run` exists at all:
+without it the only end-to-end call would file an issue on this repo every
+selftest run. As with `request-dependabot-review`, the `report-failure.yml`
+reusable-workflow layer above the composite is not covered — it calls the
+action via `d-morrison/gha/...@v2`, which does not resolve until `@v2` is
+advanced past this capability's merge — so the job tests the composite
+directly, the same "local composite, not the full reusable-workflow chain"
+precedent `coverage` and `dependabot-review` use.
 
 The `altdoc-docs` job in `_selftest.yml` exercises
 `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
