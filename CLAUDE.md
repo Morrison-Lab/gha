@@ -149,9 +149,10 @@ which is why the capabilities above moved to `@v2`.
   `labels` input so each name is passed as its own `--label`. That second one
   is the gha#253 bug class again: `gh issue create --label` is a Cobra
   StringSlice, which splits on commas without trimming, so a natural
-  `bug, automated` yields a ` automated` matching no label and fails the whole
-  call. `build-reviewer-args.sh` delegates its own split/trim to the same
-  script, so the repo has one CSV splitter rather than two. The composite does the
+  `bug, automated` yields a second item beginning with a space, which matches
+  no label and fails the whole call. `build-reviewer-args.sh` delegates its
+  own split/trim to the same script, so the repo has one CSV splitter rather
+  than two. The composite does the
   `gh` calls around it: list open issues, then either comment on the match or
   file a new issue. `report-failure.yml` calls it;
   `check-links.yml`'s own inline `gh issue create` is its intended second
