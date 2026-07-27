@@ -1,0 +1,80 @@
+name: Report failure (reusable)
+
+# File an issue when another workflow (or job) fails, or comment on the open
+# issue already reporting the same failure. Wraps the `open-failure-issue`
+# composite. Consumers add this as a final job in their caller stub, gated on
+# the job they want watched (see examples/report-failure.yml).
+#
+# Meant for workflows that run where no PR carries their result -- a push to
+# the default branch, a schedule, a release. There, a red run is visible only
+# to whoever opens the Actions tab, so a deploy can stay broken for days.
+#
+# It is a workflow of its own rather than a job inside `quarto-publish.yml`
+# for a permissions reason, not a stylistic one. A reusable workflow's jobs can
+# only hold permissions the caller already granted, so a failure-reporting job
+# living inside `quarto-publish.yml` would make `issues: write` a requirement
+# for every existing caller of that workflow, whether or not they wanted issues
+# filed. As its own workflow, the permission is granted only by the callers
+# that opt in, and any workflow can be watched -- not just publishing.
+
+on:
+  workflow_call:
+    inputs:
+      title:
+        description: >-
+          Issue title. Also the deduplication key: a run whose report carries a
+          title already used by an open issue comments on that issue instead of
+          filing another. It must therefore be stable across runs -- a title
+          holding a run id, SHA, or timestamp files a fresh issue every time.
+        type: string
+        required: true
+      body:
+        description: >-
+          Extra context prepended to the report. The run URL, commit, and
+          triggering ref are always appended, so this is for what those cannot
+          say (which site went stale, who to notify). Optional.
+        type: string
+        default: ''
+      labels:
+        description: >-
+          Comma-separated labels for a newly filed issue. Labels the calling
+          repository does not define are dropped with a warning rather than
+          failing the report. Ignored when commenting on an existing issue.
+        type: string
+        default: ''
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    # `issues: write` and nothing else. Naming any scope here sets every
+    # unlisted one to `none`, so a job that also checked the repository out
+    # would need `contents: read` too -- and on a private or internal repo,
+    # omitting it fails the checkout at the moment the job exists to report a
+    # failure. There is no checkout: the composite carries its own files via
+    # `github.action_path` and names the repository through `GH_REPO`, so
+    # nothing here needs the caller's tree.
+    permissions:
+      issues: write
+    steps:
+      - name: File or update the failure issue
+        uses: d-morrison/gha/.github/actions/open-failure-issue@v2
+        with:
+          title: ${{ inputs.title }}
+          labels: ${{ inputs.labels }}
+          body: |
+            ${{ inputs.body }}
+
+            - **Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            - **Workflow:** `${{ github.workflow }}`
+            - **Ref:** `${{ github.ref_name }}` &nbsp;&nbsp; **Commit:** `${{ github.sha }}`
+
+            Check the run's logs for the failing step. A run can fail for
+            reasons outside this repository -- an upstream package mirror or
+            action being unavailable -- in which case re-running the job is the
+            fix.
+
+            Later failures reporting the same title are added here as comments
+            rather than opening new issues, so close this once the workflow is
+            green again.
+
+            _Filed automatically by the `report-failure` reusable workflow._

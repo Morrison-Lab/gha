@@ -19,7 +19,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
-and `altdoc-multiversion-docs` -- see
+`altdoc-multiversion-docs`, and `report-failure` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -141,6 +141,28 @@ which is why the capabilities above moved to `@v2`.
   coverage instead of only being exercised by a live Dependabot PR (gha#253
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
+- `.github/actions/open-failure-issue/` — wraps two scripts:
+  `scripts/select-existing-issue.sh`, which picks the open issue an automated
+  failure report should be appended to (exact, case-sensitive title match;
+  lowest number wins when duplicates already exist), and
+  `scripts/split-csv-list.sh`, which splits and trims the comma-separated
+  `labels` input so each name is passed as its own `--label`. That second one
+  is the gha#253 bug class again: `gh issue create --label` is a Cobra
+  StringSlice, which splits on commas without trimming, so a natural
+  `bug, automated` yields a second item beginning with a space, which matches
+  no label and fails the whole call. `build-reviewer-args.sh` delegates its
+  own split/trim to the same script, so the repo has one CSV splitter rather
+  than two. The composite does the
+  `gh` calls around it: list open issues, then either comment on the match or
+  file a new issue. `report-failure.yml` calls it;
+  `check-links.yml`'s own inline `gh issue create` is its intended second
+  caller, deferred to gha#327 for the sequencing reason below. Two behaviors
+  worth knowing before changing it: a label the calling repository does not
+  define is dropped with a warning and the issue is filed anyway, since losing
+  a failure report over a missing label is the worse outcome; and `dry-run`
+  exists so `_selftest.yml` can exercise the action for real without filing an
+  issue on every selftest run (the lookup still runs, so it needs only
+  `issues: read`).
 - `.github/actions/generate-altdoc-version-dropdown/` and
   `.github/actions/generate-altdoc-landing-page/` - Python composites wrapping
   the scripts `altdoc-multiversion-docs.yml` needs (rewrite the navbar
@@ -215,6 +237,32 @@ JUnit-report upload to Codecov Test Analytics (`codecov/test-results-action`)
 the bespoke version also did; gha#234 tracks closing that gap, and the
 consumer left that one file unmigrated in the meantime rather than lose the
 feature.)
+
+**A new composite action cannot gain its first `@v2` caller in the same PR
+that introduces it, and whether that bites depends on whether the caller is
+dogfooded here.** A `uses:` ref is resolved when the job is *prepared*, before
+any step runs and before any step-level `if:` is evaluated, so a reference to
+`d-morrison/gha/.github/actions/<new-action>@v2` fails the whole job with
+`Can't find 'action.yml' ... @v2` until `@v2` is advanced past the merge --
+even when the step is gated on `failure()` and would never have run.
+
+The Tests section's `build-reviewer-args` paragraph records the same
+bootstrapping gap, and treats it as a coverage limitation: that workflow's
+own reusable layer cannot be exercised end to end until the tag advances.
+That reading is right there, because `request-dependabot-review.yml` only
+runs on Dependabot PRs, so nothing goes red in the meantime. When the new caller
+is something `_selftest.yml` invokes through a local `./` ref on every PR
+(`check-links.yml` is the one that does), the gap stops being a coverage
+footnote and becomes a red check on every PR in the repo, with no way to fix
+it inside that PR: a relative local path is not a workaround either, since
+inside a reusable workflow it resolves against the *caller's* checkout
+(gha#284).
+
+So split the work: land the action plus its non-dogfooded callers first, and
+migrate a per-PR-dogfooded caller in a follow-up once the tag has moved.
+(gha#326: `check-links.yml`'s migration and `website-publish.yml`'s
+dogfood job were both cut from that PR for this reason and moved to gha#327,
+after `links / link-checker` went red on exactly this.)
 
 **A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
 was frozen before it existed — see `slide-major-tag.yml` / the Versioning
@@ -382,6 +430,25 @@ directly, the same
 below uses for `test-coverage.yml` (gha#253 review: missing selftest coverage
 for a new workflow with real side effects, precedented by the `sync-pr` job's
 `open-sync-pr` no-op test).
+
+`.github/workflows/scripts/tests/run-select-existing-issue-tests.sh` exercises
+`select-existing-issue.sh` (see Layout above) offline against a table of
+`(title, open-issues)` pairs, including the no-match, prefix-is-not-a-match,
+case-sensitivity, and already-duplicated cases;
+`run-split-csv-list-tests.sh` does the same for `split-csv-list.sh`, covering
+the space-after-comma case that motivated it and asserting that a label's
+internal spaces survive trimming (`good first issue` is a real label). CI runs
+both in the `failure-issue` job of `_selftest.yml`. That job also calls
+`open-failure-issue` itself through a real `uses:` step with `dry-run: true`
+— the same `github.action_path`-resolution proof the `run-review-guard` /
+`build-reviewer-args` e2e steps give, and the reason `dry-run` exists at all:
+without it the only end-to-end call would file an issue on this repo every
+selftest run. As with `request-dependabot-review`, the `report-failure.yml`
+reusable-workflow layer above the composite is not covered — it calls the
+action via `d-morrison/gha/...@v2`, which does not resolve until `@v2` is
+advanced past this capability's merge — so the job tests the composite
+directly, the same "local composite, not the full reusable-workflow chain"
+precedent `coverage` and `dependabot-review` use.
 
 The `altdoc-docs` job in `_selftest.yml` exercises
 `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and

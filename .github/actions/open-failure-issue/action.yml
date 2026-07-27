@@ -1,0 +1,147 @@
+name: Open failure issue
+description: >-
+  File an issue reporting an automated failure, or append to the open issue
+  already reporting it. Meant to be called from a step gated on `failure()`,
+  so a red run on a branch nobody is watching leaves a tracked record instead
+  of only an entry in the Actions tab. Requires `issues: write` on the calling
+  job.
+
+inputs:
+  title:
+    description: >-
+      Issue title. Also the deduplication key, matched exactly against open
+      issues, so keep it stable across runs -- a title carrying the run id or
+      a timestamp opens a fresh issue every time.
+    required: true
+  body:
+    description: Issue body, used for the new issue or for the comment appended to an existing one.
+    required: true
+  labels:
+    description: >-
+      Comma-separated labels for a newly created issue. Labels the repository
+      does not define are dropped with a warning rather than failing the
+      report; see the action's own steps. Ignored when commenting on an
+      existing issue.
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used for the issue API calls. Needs `issues: write`.'
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: >-
+      Run the lookup and report what would happen, without creating or
+      commenting on anything. Only the read-only issue listing runs, so
+      `issues: write` is not needed. Exists so `_selftest.yml` can exercise
+      this action end to end -- proving it resolves its helper script through
+      `github.action_path` -- without filing an issue on every selftest run;
+      also useful for checking a title's deduplication behavior.
+    required: false
+    default: 'false'
+
+outputs:
+  issue-number:
+    description: The issue that was created or commented on.
+    value: ${{ steps.report.outputs.issue-number }}
+  outcome:
+    description: '`created` for a new issue, `commented` when an open issue already reported this.'
+    value: ${{ steps.report.outputs.outcome }}
+
+runs:
+  using: composite
+  steps:
+    - name: Create or update the failure issue
+      id: report
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        # Names the repository explicitly instead of letting `gh` infer it from
+        # a checked-out git remote. That removes the need for the calling job
+        # to check anything out at all -- so it can hold `issues: write` alone,
+        # rather than also granting `contents: read` for a checkout it only
+        # wanted in order to tell `gh` where it was. It also removes a silent
+        # dependency on the caller having checked out the repo being reported
+        # against, which need not be the same one.
+        GH_REPO: ${{ github.repository }}
+        TITLE: ${{ inputs.title }}
+        BODY: ${{ inputs.body }}
+        LABELS: ${{ inputs.labels }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        # Callers run against their own checkout, not d-morrison/gha's tree, so
+        # the helper is located through github.action_path -- the same
+        # resolution build-reviewer-args and sum-costs use.
+        SELECT_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/select-existing-issue.sh
+        SPLIT_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/split-csv-list.sh
+      run: |
+        set -euo pipefail
+
+        # Passed through a file rather than an argument: a body carries
+        # backticks, quotes and newlines from the run it reports.
+        body_file="$(mktemp)"
+        printf '%s\n' "$BODY" > "$body_file"
+
+        # A plain listing rather than `--search`: search results are drawn from
+        # an index that lags issue creation by seconds to minutes, which is
+        # exactly the window two runs of the same failing workflow land in, so
+        # a search-based lookup misses the duplicate it exists to catch. The
+        # limit bounds the listing; past it, dedup degrades to filing a second
+        # issue, which loses nothing (both carry the same evidence).
+        existing="$(
+          gh issue list --state open --limit 500 --json number,title \
+            | bash "$SELECT_SCRIPT" "$TITLE"
+        )"
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          if [[ -n "$existing" ]]; then
+            echo "::notice::[dry-run] Would comment on existing issue #$existing"
+            echo "issue-number=$existing" >> "$GITHUB_OUTPUT"
+            echo "outcome=commented" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::[dry-run] Would file a new issue titled '$TITLE'"
+            echo "issue-number=" >> "$GITHUB_OUTPUT"
+            echo "outcome=created" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+        fi
+
+        if [[ -n "$existing" ]]; then
+          gh issue comment "$existing" --body-file "$body_file"
+          echo "issue-number=$existing" >> "$GITHUB_OUTPUT"
+          echo "outcome=commented" >> "$GITHUB_OUTPUT"
+          echo "::notice::Appended this failure to existing issue #$existing"
+          exit 0
+        fi
+
+        # One `--label` per name, each trimmed. Handing the raw list to a
+        # single `--label` looks equivalent but is not: the flag is a Cobra
+        # StringSlice, which splits on commas without trimming, so a natural
+        # `bug, automated` yields a ` automated` that matches no label and
+        # fails the whole call -- taking the valid `bug` down with it through
+        # the fallback below. Passing them separately also keeps labels that
+        # contain spaces (`good first issue`) intact.
+        create_args=(--title "$TITLE" --body-file "$body_file")
+        labels=()
+        if [[ -n "$LABELS" ]]; then
+          mapfile -t labels < <(bash "$SPLIT_SCRIPT" "$LABELS")
+          for label in "${labels[@]}"; do
+            create_args+=(--label "$label")
+          done
+        fi
+
+        # `gh issue create --label` fails outright on a label the repository
+        # does not define, which would drop the failure report over a
+        # cosmetic detail. Retry once without labels: bounded, announced, and
+        # it still files the issue, which is the point of the step.
+        if ! url="$(gh issue create "${create_args[@]}" 2>&1)"; then
+          if [[ "${#labels[@]}" -eq 0 ]]; then
+            echo "::error::Could not create the failure issue: $url"
+            exit 1
+          fi
+          echo "::warning::Creating the failure issue with labels '${labels[*]}' failed; retrying without them. Define the labels in this repository to keep them. Error was: $url"
+          url="$(gh issue create --title "$TITLE" --body-file "$body_file")"
+        fi
+
+        number="${url##*/}"
+        echo "issue-number=$number" >> "$GITHUB_OUTPUT"
+        echo "outcome=created" >> "$GITHUB_OUTPUT"
+        echo "::notice::Filed failure issue #$number"

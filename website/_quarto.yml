@@ -44,6 +44,7 @@ website:
           - reference/update-snapshots.qmd
           - reference/summary.qmd
           - reference/quarto-publish.qmd
+          - reference/report-failure.qmd
           - reference/preview.qmd
           - reference/preview-deploy.qmd
           - reference/cleanup-pr-previews.qmd
