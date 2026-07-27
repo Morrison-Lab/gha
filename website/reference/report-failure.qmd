@@ -50,8 +50,15 @@ only publishing.
 
 ## Permissions
 
-Grant `issues: write` on the calling job. Grant it on that job only -- not on
-the job being watched, which usually needs a different set.
+Grant `issues: write` on the calling job, and nothing else. Grant it on that
+job only -- not on the job being watched, which usually needs a different set.
+
+`issues: write` alone is enough because the job performs no checkout: the
+action carries its own files and names the repository through `GH_REPO`. That
+matters more than it looks. Naming any scope in a `permissions:` block sets
+every unlisted scope to `none`, so a job that did check the repository out
+would also need `contents: read` -- and without it the checkout fails on a
+private or internal repo, at the moment the job exists to report a failure.
 
 ## Example
 
@@ -75,8 +82,9 @@ jobs:
   report-failure:
     needs: publish
     # `always()` is what lets this job run once `publish` failed; the result
-    # check is what decides. Excluding pull_request keeps it from filing
-    # issues for failures a PR's own checks already show.
+    # check is what decides. The `pull_request` clause is inert as this stub
+    # stands (push and dispatch only); keep it if you add a `pull_request`
+    # trigger, since a PR already shows its own failure.
     if: >-
       always()
       && needs.publish.result == 'failure'

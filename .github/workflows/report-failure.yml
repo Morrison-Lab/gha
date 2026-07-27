@@ -46,12 +46,16 @@ on:
 jobs:
   report:
     runs-on: ubuntu-latest
+    # `issues: write` and nothing else. Naming any scope here sets every
+    # unlisted one to `none`, so a job that also checked the repository out
+    # would need `contents: read` too -- and on a private or internal repo,
+    # omitting it fails the checkout at the moment the job exists to report a
+    # failure. There is no checkout: the composite carries its own files via
+    # `github.action_path` and names the repository through `GH_REPO`, so
+    # nothing here needs the caller's tree.
     permissions:
       issues: write
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
       - name: File or update the failure issue
         uses: d-morrison/gha/.github/actions/open-failure-issue@v2
         with:

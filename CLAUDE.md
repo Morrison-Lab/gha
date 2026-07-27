@@ -424,8 +424,11 @@ for a new workflow with real side effects, precedented by the `sync-pr` job's
 `.github/workflows/scripts/tests/run-select-existing-issue-tests.sh` exercises
 `select-existing-issue.sh` (see Layout above) offline against a table of
 `(title, open-issues)` pairs, including the no-match, prefix-is-not-a-match,
-case-sensitivity, and already-duplicated cases; CI runs it in the
-`failure-issue` job of `_selftest.yml`. That job also calls
+case-sensitivity, and already-duplicated cases;
+`run-split-csv-list-tests.sh` does the same for `split-csv-list.sh`, covering
+the space-after-comma case that motivated it and asserting that a label's
+internal spaces survive trimming (`good first issue` is a real label). CI runs
+both in the `failure-issue` job of `_selftest.yml`. That job also calls
 `open-failure-issue` itself through a real `uses:` step with `dry-run: true`
 — the same `github.action_path`-resolution proof the `run-review-guard` /
 `build-reviewer-args` e2e steps give, and the reason `dry-run` exists at all:

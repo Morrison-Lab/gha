@@ -32,8 +32,12 @@ jobs:
   report-failure:
     needs: publish
     # `always()` is what lets this job run at all once `publish` failed; the
-    # result check is what decides. Excluding pull_request keeps it from
-    # filing issues for failures a PR's own checks already show.
+    # result check is what decides.
+    #
+    # The `pull_request` clause is inert as this stub stands, since the
+    # triggers above are push and dispatch only. Keep it if you add a
+    # `pull_request` trigger (a render-only build check, say): a PR shows its
+    # own failure on the PR, so filing an issue for it is noise.
     if: >-
       always()
       && needs.publish.result == 'failure'

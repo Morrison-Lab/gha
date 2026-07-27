@@ -31,6 +31,10 @@ already include the right `permissions:` blocks; copy them as-is.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` open a PR, so grant
   `contents: write`, `pull-requests: write`, and enable Settings -> Actions ->
   General -> "Allow GitHub Actions to create and approve pull requests".
+- `report-failure` files or updates the issue tracking a failing workflow, so
+  grant `issues: write` on the reporting job -- and nothing else. It performs
+  no checkout, so it needs no `contents` grant; the job it watches keeps its
+  own permissions.
 - `claude` pushes branches, opens PRs, and dispatches the review workflow, so
   grant `contents: write`, `pull-requests: write`, `issues: write`,
   `id-token: write`, `actions: write`, and add either the

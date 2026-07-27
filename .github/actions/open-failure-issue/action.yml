@@ -55,6 +55,14 @@ runs:
       shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
+        # Names the repository explicitly instead of letting `gh` infer it from
+        # a checked-out git remote. That removes the need for the calling job
+        # to check anything out at all -- so it can hold `issues: write` alone,
+        # rather than also granting `contents: read` for a checkout it only
+        # wanted in order to tell `gh` where it was. It also removes a silent
+        # dependency on the caller having checked out the repo being reported
+        # against, which need not be the same one.
+        GH_REPO: ${{ github.repository }}
         TITLE: ${{ inputs.title }}
         BODY: ${{ inputs.body }}
         LABELS: ${{ inputs.labels }}
@@ -63,6 +71,7 @@ runs:
         # the helper is located through github.action_path -- the same
         # resolution build-reviewer-args and sum-costs use.
         SELECT_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/select-existing-issue.sh
+        SPLIT_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/split-csv-list.sh
       run: |
         set -euo pipefail
 
@@ -103,9 +112,20 @@ runs:
           exit 0
         fi
 
+        # One `--label` per name, each trimmed. Handing the raw list to a
+        # single `--label` looks equivalent but is not: the flag is a Cobra
+        # StringSlice, which splits on commas without trimming, so a natural
+        # `bug, automated` yields a ` automated` that matches no label and
+        # fails the whole call -- taking the valid `bug` down with it through
+        # the fallback below. Passing them separately also keeps labels that
+        # contain spaces (`good first issue`) intact.
         create_args=(--title "$TITLE" --body-file "$body_file")
+        labels=()
         if [[ -n "$LABELS" ]]; then
-          create_args+=(--label "$LABELS")
+          mapfile -t labels < <(bash "$SPLIT_SCRIPT" "$LABELS")
+          for label in "${labels[@]}"; do
+            create_args+=(--label "$label")
+          done
         fi
 
         # `gh issue create --label` fails outright on a label the repository
@@ -113,11 +133,11 @@ runs:
         # cosmetic detail. Retry once without labels: bounded, announced, and
         # it still files the issue, which is the point of the step.
         if ! url="$(gh issue create "${create_args[@]}" 2>&1)"; then
-          if [[ -z "$LABELS" ]]; then
+          if [[ "${#labels[@]}" -eq 0 ]]; then
             echo "::error::Could not create the failure issue: $url"
             exit 1
           fi
-          echo "::warning::Creating the failure issue with labels '$LABELS' failed; retrying without them. Define the labels in this repository to keep them. Error was: $url"
+          echo "::warning::Creating the failure issue with labels '${labels[*]}' failed; retrying without them. Define the labels in this repository to keep them. Error was: $url"
           url="$(gh issue create --title "$TITLE" --body-file "$body_file")"
         fi
 
