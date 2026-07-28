@@ -40,5 +40,5 @@ jobs:
 ```
 
 See
-[`examples/check-bibliography-dois.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-bibliography-dois.yml)
+[`examples/check-bibliography-dois.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-bibliography-dois.yml)
 for the full caller stub.

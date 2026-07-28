@@ -61,5 +61,5 @@ jobs:
     #   fail: false             # warn instead of failing on lints
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`lint-changed-lines.yml`).

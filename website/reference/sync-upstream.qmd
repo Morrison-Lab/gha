@@ -71,5 +71,5 @@ jobs:
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`sync-upstream.yml`).
