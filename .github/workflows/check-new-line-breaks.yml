@@ -31,7 +31,8 @@ on:
         default: true
       clause-min-length:
         description: >-
-          Minimum line length before `clause-breaks` applies. Ignored when
+          Minimum visible line length (inline code spans and link targets
+          removed) before `clause-breaks` applies; inclusive. Ignored when
           `clause-breaks` is false.
         type: number
         default: 80

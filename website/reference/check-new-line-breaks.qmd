@@ -16,10 +16,12 @@ Two checks run, both on by default. The first is the
 sentence. The second is a narrow slice of its rule 5, the SHOULD: break after
 an independent clause. That slice keys on a semicolon only, and only past a
 length gate, because a comma is overwhelmingly a list separator rather than a
-clause boundary. Keying on every mark the spec names flags half of
-already-conforming prose, against roughly one line in a hundred for the
-semicolon; see [gha#336](https://github.com/d-morrison/gha/issues/336) for the
-measurements. Set `clause-breaks: false` to check sentences only.
+clause boundary. Keying on every mark the spec names flags 50.6% of
+already-conforming prose, against 0.7% for this check; see
+[gha#336](https://github.com/d-morrison/gha/issues/336) for the measurements.
+The gate measures a line's *visible* length, so a line that is long only
+because of a link target or a code span does not qualify. Set
+`clause-breaks: false` to check sentences only.
 
 ## Inputs
 
@@ -30,7 +32,7 @@ measurements. Set `clause-breaks: false` to check sentences only.
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `fail`           | boolean | `false` | Fail the workflow when a violation is found; otherwise warn only.                    |
 | `clause-breaks`  | boolean | `true`  | Also flag a long line joining two independent clauses with a semicolon (SemBr rule 5), on top of the rule 4 sentence check that always runs. Set `false` to check sentences only. |
-| `clause-min-length` | number | `80` | Minimum line length before `clause-breaks` applies; ignored when it is `false`.   |
+| `clause-min-length` | number | `80` | Minimum line length before `clause-breaks` applies, inclusive. Measured on visible prose, with inline code spans and link targets removed, so a line long only because of a URL does not qualify. Ignored when `clause-breaks` is `false`. |
 
 ## Permissions
 

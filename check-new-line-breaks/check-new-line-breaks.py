@@ -113,22 +113,26 @@ def has_unbroken_clause(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH)
 
     - A **comma** is overwhelmingly a list separator, an appositive, or an
       introductory phrase -- rule 6's MAY at most. Measured over a
-      21,963-line semantic-line-break-conformant corpus, keying on any
-      mid-line ``, ; : --`` flags 50.5% of already-conforming lines, against
-      6.3% for the semicolon alone (d-morrison/gha#336).
+      22,820-line semantic-line-break-conformant corpus, keying on any
+      mid-line ``, ; : --`` flags 50.6% of already-conforming lines, against
+      6.1% for the semicolon alone, and 0.7% once the length gate below
+      applies (d-morrison/gha#336).
     - A **colon** usually introduces a list or an example, which rule 7
       already breaks before, since the list starts on the next line.
-    - A **double hyphen** is usually a paired parenthetical (``X --- Y ---
-      Z``), where breaking at the first dash but not the second is wrong. It
-      is also only an ASCII stand-in here: the spec names the em dash, which
-      this org's own style rules ban from source files.
+    - A **dash** is usually a paired parenthetical (``X --- Y --- Z``), where
+      breaking at the first dash but not the second is wrong.
 
     The length gate is what separates a genuinely overlong clause chain from
     an ordinary short line that merely contains a semicolon, and it degrades
     gracefully -- a long line with no break opportunity never flags.
+    It measures the *stripped* length, so a line that is only long because of
+    a link target or a code span does not qualify -- matching the
+    URL-inflation exception in ai-config's own semantic-line-breaks guidance.
+    ``min_length`` is inclusive: a line of exactly that many visible
+    characters is checked.
     """
     stripped = strip_inline_markup(text).rstrip()
-    if len(text) <= min_length:
+    if len(stripped) < min_length:
         return False
     semicolon = stripped.find(";")
     return semicolon != -1 and semicolon < len(stripped) - 1

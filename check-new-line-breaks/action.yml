@@ -47,15 +47,18 @@ inputs:
       check sentences only. Only the semicolon is used, because a comma is
       overwhelmingly a list separator rather than a clause boundary and a
       colon usually introduces a list -- keying on every mark the spec names
-      flags half of already-conforming prose, against roughly one line in a
+      flags half of already-conforming prose, against under one line in a
       hundred for this check (see d-morrison/gha#336 for the measurements).
     default: 'true'
   clause-min-length:
     description: >-
-      Minimum line length, in characters, before `clause-breaks` applies.
-      The gate is what separates a genuinely overlong clause chain from an
-      ordinary short line that happens to contain a semicolon. Ignored when
-      `clause-breaks` is 'false'.
+      Minimum line length, in characters, before `clause-breaks` applies;
+      inclusive, so a line of exactly this length is checked. Measured on the
+      line's visible prose, with inline code spans and link targets removed,
+      so a line that is long only because of a URL does not qualify. The gate
+      separates a genuinely overlong clause chain from an ordinary short line
+      that happens to contain a semicolon. Ignored when `clause-breaks` is
+      'false'.
     default: '80'
 runs:
   using: composite

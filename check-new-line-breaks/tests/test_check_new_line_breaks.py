@@ -225,6 +225,32 @@ def test_clause_min_length_is_configurable():
     assert nlb.has_unbroken_clause(text, min_length=5)
 
 
+def test_length_gate_measures_visible_prose_not_raw_markdown():
+    # Regression (#337 review): the gate used to read len(text) while the
+    # semicolon search read the stripped text, so a short line inflated past
+    # the gate by a long link target was flagged. That also contradicts the
+    # URL-inflation exception in ai-config's semantic-line-breaks guidance.
+    text = "See [x](https://example.com/" + "a" * 90 + "); ok now."
+    assert len(text) > 80, "raw line must clear the gate for this to test anything"
+    assert len(nlb.strip_inline_markup(text)) < 80
+    assert not nlb.has_unbroken_clause(text)
+
+
+def test_a_long_code_span_does_not_inflate_a_short_line_past_the_gate():
+    text = "Run `" + "x" * 90 + "` first; then stop."
+    assert len(text) > 80
+    assert not nlb.has_unbroken_clause(text)
+
+
+def test_min_length_is_inclusive():
+    # #337 review, third finding: the input is named a *minimum*, so a line of
+    # exactly that many visible characters is checked rather than skipped.
+    text = "a" * 68 + "; " + "b" * 10
+    assert len(text) == 80
+    assert nlb.has_unbroken_clause(text, min_length=80)
+    assert not nlb.has_unbroken_clause(text, min_length=81)
+
+
 def test_sentence_reason_wins_over_clause_reason():
     # A line that breaks both rules is reported once, against rule 4.
     text = _LONG_SEMICOLON + " And a second sentence follows it."
