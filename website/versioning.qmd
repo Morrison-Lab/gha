@@ -35,7 +35,7 @@ everyone else has to deal with it:
    own CI run against the unreleased change.
 3. Once confident, advance the shared major tag to `main`'s current tip by
    running
-   [`slide-major-tag.yml`](https://github.com/d-morrison/gha/blob/main/.github/workflows/slide-major-tag.yml)
+   [`slide-major-tag.yml`](https://github.com/Morrison-Lab/gha/blob/main/.github/workflows/slide-major-tag.yml)
    via `workflow_dispatch` (from `main`), or with `git tag -f` /
    `git push --force` directly. Every consumer pinned to that tag picks up the
    change the next time its CI runs.
@@ -46,14 +46,14 @@ workflow at `@v2` right away, check whether `@v2` has actually been advanced
 past that merge first (step 3 above), or the consumer's reference resolves
 to a workflow-not-found error rather than a stale-but-working one.
 
-See [`CHANGELOG.md`](https://github.com/d-morrison/gha/blob/main/CHANGELOG.md)
+See [`CHANGELOG.md`](https://github.com/Morrison-Lab/gha/blob/main/CHANGELOG.md)
 for what changes as a major tag moves.
 
 Changelog entries are added as fragment files under
-[`changelog.d/`](https://github.com/d-morrison/gha/tree/main/changelog.d) (one
+[`changelog.d/`](https://github.com/Morrison-Lab/gha/tree/main/changelog.d) (one
 per PR, so parallel PRs never conflict on the shared changelog) and collated
 into `CHANGELOG.md` at release time; see
-[`changelog.d/README.md`](https://github.com/d-morrison/gha/blob/main/changelog.d/README.md)
+[`changelog.d/README.md`](https://github.com/Morrison-Lab/gha/blob/main/changelog.d/README.md)
 for the fragment format and release flow.
 
 ## Pinning third-party actions
@@ -70,12 +70,12 @@ This follows GitHub's
 a SHA is immutable, so a re-pointed tag or a compromised upstream cannot
 silently change what runs. That matters here because jobs like the preview
 deploy run with `contents: write` and `pull-requests: write`.
-[`.github/dependabot.yml`](https://github.com/d-morrison/gha/blob/main/.github/dependabot.yml)
+[`.github/dependabot.yml`](https://github.com/Morrison-Lab/gha/blob/main/.github/dependabot.yml)
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*` self-references and most
-[`examples/`](https://github.com/d-morrison/gha/tree/main/examples) templates
+First-party `Morrison-Lab/gha/*` self-references and most
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) templates
 intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`, `quarto-publish.yml`,
 `test-coverage.yml`, `check-equation-renders.yml`,
@@ -90,6 +90,6 @@ they are **not** SHA-pinned.
 
 ## Reverse dependencies
 
-[`REVDEPS.md`](https://github.com/d-morrison/gha/blob/main/REVDEPS.md) tracks
+[`REVDEPS.md`](https://github.com/Morrison-Lab/gha/blob/main/REVDEPS.md) tracks
 repos that call these workflows, so consumers can be notified before a breaking
 change. If your repo uses `gha`, please add it there.

@@ -69,7 +69,7 @@ current for them. `check-news.yml` was initially grouped with them, but later
 gained the configurable `no-changelog-label` input at
 [gha#143](https://github.com/d-morrison/gha/issues/143) - pin it to `@v2` too.
 The stubs in
-[`examples/`](https://github.com/d-morrison/gha/tree/main/examples) carry the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) carry the
 tag and `permissions:` block documented on each workflow's own reference page;
 copy the specific stub you need as-is.
 
@@ -164,7 +164,7 @@ Two wiring requirements:
   stubs merge to `main`.
 
 This repo dogfoods all five. The caller stubs live in
-[`.github/workflows/`](https://github.com/d-morrison/gha/tree/main/.github/workflows):
+[`.github/workflows/`](https://github.com/Morrison-Lab/gha/tree/main/.github/workflows):
 `website-publish.yml`, `website-preview.yml`, `website-preview-deploy.yml`,
 `website-check-equation-renders.yml`, and `website-preview-cleanup.yml`. They
 render this pure-markdown site with the R machinery turned off (no renv, no

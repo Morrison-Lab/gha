@@ -54,7 +54,7 @@ grants to persist output (e.g. `gh issue create`).
 | `plugins`                | string  | `''`                        | Extra newline-separated plugin refs to install (`<plugin>@<marketplace-name>`), added on top of whatever `use-ai-config` installs. Each marketplace name must match the name that marketplace declares in its own `.claude-plugin/marketplace.json`, not the URL given in `plugin-marketplaces`.                                       |
 | `claude-args`            | string  | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied.                                                                                                                                                                                   |
 | `runs-on`                | string  | `'ubuntu-latest'`           | Runner for the job.                                                                                                                                                                                                                                                                                                                   |
-| `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/d-morrison/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
+| `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/Morrison-Lab/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
 
 ## Secrets
 
@@ -144,5 +144,5 @@ jobs:
 ```
 
 See
-[`examples/claude.yml`](https://github.com/d-morrison/gha/blob/main/examples/claude.yml)
+[`examples/claude.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/claude.yml)
 for the full caller stub.

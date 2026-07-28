@@ -3,12 +3,12 @@ project:
   output-dir: _site
 
 website:
-  title: "d-morrison/gha"
+  title: "Morrison-Lab/gha"
   description: >-
     Central, reusable GitHub Actions for d-morrison / UCD-SERG / ucdavis
     R-package and Quarto repositories.
   site-url: "https://d-morrison.github.io/gha/"
-  repo-url: "https://github.com/d-morrison/gha"
+  repo-url: "https://github.com/Morrison-Lab/gha"
   repo-subdir: website
   repo-actions: [issue, edit]
   page-navigation: true
@@ -24,7 +24,7 @@ website:
         href: versioning.qmd
     right:
       - icon: github
-        href: "https://github.com/d-morrison/gha"
+        href: "https://github.com/Morrison-Lab/gha"
         aria-label: "GitHub repository"
   sidebar:
     style: floating

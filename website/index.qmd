@@ -1,10 +1,10 @@
 ---
-title: "d-morrison/gha"
+title: "Morrison-Lab/gha"
 subtitle:
   "Central, reusable GitHub Actions for R-package and Quarto repositories"
 ---
 
-This site documents [`d-morrison/gha`](https://github.com/d-morrison/gha), a set
+This site documents [`Morrison-Lab/gha`](https://github.com/Morrison-Lab/gha), a set
 of reusable GitHub Actions shared across the `d-morrison`, `UCD-SERG`,
 `ucdavis`, `UCLA-PHP`, and `UCD-IDDRC` owners. It is modeled on
 [`r-lib/actions`](https://github.com/r-lib/actions) and
@@ -20,14 +20,14 @@ Each capability ships as two layers:
 
 - A **composite action** (for example `check-bibliography-dois/action.yml`)
   bundles the real steps and any helper script. It is referenced as
-  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  `Morrison-Lab/gha/<name>@vN` (the major tag that capability currently
   recommends - see [Versioning](versioning.qmd)).
 - A **reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`)
   wraps the composite, declares permissions, and checks out the caller's repo.
   This is what consumer repos target.
 
 A consumer repo adds a small caller stub (see the
-[`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory):
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory):
 
 ```yaml
 name: Check Bibliography DOIs

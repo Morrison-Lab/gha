@@ -1,4 +1,4 @@
-# d-morrison/gha
+# Morrison-Lab/gha
 
 Central, reusable GitHub Actions for d-morrison / UCD-SERG / ucdavis R-package
 and Quarto repositories. Modeled on
@@ -15,7 +15,7 @@ Each capability is shipped as two layers:
 
 - **Composite action** (e.g. `check-bibliography-dois/action.yml`) — bundles the
   real steps and any helper script. Referenced as
-  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  `Morrison-Lab/gha/<name>@vN` (the major tag that capability currently
   recommends — see [Versioning](#versioning) below).
 - **Reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`) —
   wraps the composite, declares permissions, and checks out the caller's repo.
@@ -338,7 +338,7 @@ be tried out before every consumer has to deal with it:
 
 **A brand-new capability's own PR merging to `main` does not make it usable
 at `@v2` yet.** If a consumer repo's PR needs to reference
-`d-morrison/gha/.github/workflows/<new-workflow>.yml@v2` right after that
+`Morrison-Lab/gha/.github/workflows/<new-workflow>.yml@v2` right after that
 workflow's own PR merged here, check whether `@v2` has actually been
 advanced past that merge first (`git log -1 refs/tags/v2` vs. `main`) --- a
 consumer referencing `@v2` before the slide gets a workflow-not-found error,
@@ -368,7 +368,7 @@ with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.git
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*` self-references and most [`examples/`](examples/)
+First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,
