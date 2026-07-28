@@ -60,7 +60,7 @@ which is why the capabilities above moved to `@v2`.
   the way `quarto-publish`/`preview` do would add indirection without reuse
   value, per the one-genuine-consumer-pattern reasoning in
   `shared/principles/README.md`'s "How the principles relate" section of
-  `d-morrison/ai-config`);
+  `Morrison-Lab/ai-config`);
   `bump-submodule.yml`, `sync-shared-fragments.yml`, and `sync-upstream.yml`
   are `workflow_call` reusable workflows that call the shared internal
   `open-sync-pr` composite (`sync-upstream` merges an upstream repo's branch
@@ -87,7 +87,7 @@ which is why the capabilities above moved to `@v2`.
   `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
   "Fail the check if the review did not complete (attempt 1)" step (and again
   from its retry counterpart — see `run-claude-review-attempt` below). #191
-  tried to locate that script by resolving d-morrison/gha's own repo/ref from
+  tried to locate that script by resolving Morrison-Lab/gha's own repo/ref from
   `github.job_workflow_ref` and checking it out into a side directory, but
   that context var came back empty at runtime on real consumer runs even
   though the calling step passed it correctly (gha#196) — the #191 fix was
@@ -274,7 +274,7 @@ feature.)
 that introduces it, and whether that bites depends on whether the caller is
 dogfooded here.** A `uses:` ref is resolved when the job is *prepared*, before
 any step runs and before any step-level `if:` is evaluated, so a reference to
-`d-morrison/gha/.github/actions/<new-action>@v2` fails the whole job with
+`Morrison-Lab/gha/.github/actions/<new-action>@v2` fails the whole job with
 `Can't find 'action.yml' ... @v2` until `@v2` is advanced past the merge --
 even when the step is gated on `failure()` and would never have run.
 
@@ -455,7 +455,7 @@ CI runs it as a step in the `review-fail-check` job, which also calls
 offline tests cannot reach: the base64 round-trip on the `bodies-file` path,
 built by that job with the same `jq ... | @base64` pipeline `claude.yml` uses.
 As with `request-dependabot-review` below, `claude.yml`'s own layer above the
-composite is not covered -- it calls the action via `d-morrison/gha/...@v2`,
+composite is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`,
 which does not resolve until `@v2` is advanced past this capability's merge.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
@@ -468,7 +468,7 @@ same `github.action_path`-resolution proof the `run-review-guard` /
 surfaces the correctly trimmed and split JSON array for a real call. Unlike
 those other e2e steps, this one can't also exercise
 `request-dependabot-review.yml`'s own reusable-workflow layer end-to-end yet:
-that workflow calls `build-reviewer-args` via `d-morrison/gha/...@v2`, which
+that workflow calls `build-reviewer-args` via `Morrison-Lab/gha/...@v2`, which
 won't resolve until `@v2` is advanced past this capability's merge (the same
 `test-coverage` bootstrapping gap the Layout section's `_selftest.yml`/
 local-ref paragraph describes) — so `dependabot-review` tests the composite
@@ -492,7 +492,7 @@ both in the `failure-issue` job of `_selftest.yml`. That job also calls
 without it the only end-to-end call would file an issue on this repo every
 selftest run. As with `request-dependabot-review`, the `report-failure.yml`
 reusable-workflow layer above the composite is not covered — it calls the
-action via `d-morrison/gha/...@v2`, which does not resolve until `@v2` is
+action via `Morrison-Lab/gha/...@v2`, which does not resolve until `@v2` is
 advanced past this capability's merge — so the job tests the composite
 directly, the same "local composite, not the full reusable-workflow chain"
 precedent `coverage` and `dependabot-review` use.
@@ -557,7 +557,26 @@ creation — only work if their GitHub steps are translated to the GitHub MCP to
 such a session, substitute the equivalent MCP tool below. (In a local session
 where `gh` is on `PATH`, use `gh` as the skill describes.)
 
-This repo is `d-morrison/gha`, so MCP calls use `owner: d-morrison`, `repo: gha`.
+This repo is `Morrison-Lab/gha` (moved there from `Morrison-Lab/gha`), so MCP
+calls use `owner: Morrison-Lab`, `repo: gha`.
+
+**Use whichever owner the session was scoped with, not whichever one is
+current.** A session's GitHub access is pinned to the repository name it was
+started with, and the two names are not interchangeable at the tool layer even
+though they are the same repository:
+
+- A session scoped to `Morrison-Lab/gha` keeps working, because the API follows
+  the transfer redirect server-side. Passing `owner: Morrison-Lab` to it fails
+  with `Access denied: repository "morrison-lab/gha" is not configured for this
+  session`, and `add_repo` cannot rescue it -- it refuses the cross-owner add
+  outright.
+- Some endpoints return `301 Moved Permanently` to the old name rather than
+  following it, so a call can fail on the redirect alone. If one does, the
+  answer is usually a different route to the same fact, not a different owner
+  string.
+
+So read the allowed-repositories list in the session's own context before
+assuming an owner, and if the scoped name is the old one, keep using it.
 
 **Some of these sessions have no local git checkout at all** (not just a missing
 `gh` CLI) — there is no working tree to run `git commit`/`git push` against, so
@@ -686,11 +705,11 @@ the non-head SHA, matching this pattern.)
 ## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
 This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
-calls `d-morrison/gha/.github/workflows/claude-code-review.yml@v2` — the
+calls `Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2` — the
 **released, floating tag**, not a local `./` ref (unlike `_selftest.yml`'s
 handling of brand-new pre-release capabilities; see "About this repo" above).
 `.github/workflows/claude-bot.yml` similarly calls
-`d-morrison/gha/.github/workflows/claude.yml@v2`. `@v2` only advances to
+`Morrison-Lab/gha/.github/workflows/claude.yml@v2`. `@v2` only advances to
 include a fix once that fix's PR merges to `main` and `slide-major-tag.yml`
 runs.
 

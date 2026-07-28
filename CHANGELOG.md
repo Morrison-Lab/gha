@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `d-morrison/gha` are documented here.
+All notable changes to `Morrison-Lab/gha` are documented here.
 
 This repo uses a **moving major tag** (`v1`) for consumers, following the
 [`r-lib/actions`](https://github.com/r-lib/actions) convention: the `v1` tag

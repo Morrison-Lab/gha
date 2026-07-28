@@ -74,7 +74,7 @@ deploy run with `contents: write` and `pull-requests: write`.
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*` self-references and most
+First-party `Morrison-Lab/gha/*` self-references and most
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) templates
 intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`, `quarto-publish.yml`,

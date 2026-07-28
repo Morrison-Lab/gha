@@ -1,5 +1,5 @@
 ---
-title: "d-morrison/gha"
+title: "Morrison-Lab/gha"
 subtitle:
   "Central, reusable GitHub Actions for R-package and Quarto repositories"
 ---
@@ -20,7 +20,7 @@ Each capability ships as two layers:
 
 - A **composite action** (for example `check-bibliography-dois/action.yml`)
   bundles the real steps and any helper script. It is referenced as
-  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  `Morrison-Lab/gha/<name>@vN` (the major tag that capability currently
   recommends - see [Versioning](versioning.qmd)).
 - A **reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`)
   wraps the composite, declares permissions, and checks out the caller's repo.
