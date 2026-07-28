@@ -40,15 +40,12 @@ inputs:
     default: 'false'
   clause-breaks:
     description: >-
-      Also flag a long line that joins two independent clauses with a
-      semicolon -- a narrow slice of the SemBr spec's rule 5 ("a semantic
-      line break SHOULD occur after an independent clause"), on top of the
-      rule 4 sentence check that always runs. On by default; set 'false' to
-      check sentences only. Only the semicolon is used, because a comma is
-      overwhelmingly a list separator rather than a clause boundary and a
-      colon usually introduces a list -- keying on every mark the spec names
-      flags half of already-conforming prose, against under one line in a
-      hundred for this check (see d-morrison/gha#336 for the measurements).
+      Also flag a long line carrying a mid-line semicolon -- a narrow slice of
+      the SemBr spec's rule 5 ("a semantic line break SHOULD occur after an
+      independent clause"), on top of the rule 4 sentence check that always
+      runs. On by default; set 'false' to check sentences only. See
+      d-morrison/gha#336 for why only the semicolon is used, and the
+      measurements behind it.
     default: 'true'
   clause-min-length:
     description: >-
@@ -56,9 +53,8 @@ inputs:
       inclusive, so a line of exactly this length is checked. Measured on the
       line's visible prose, after stripping inline markup such as code spans,
       link targets, bare URLs, and HTML entities, so a line that is long only
-      because of a URL does not qualify. The gate separates a genuinely
-      overlong clause chain from an ordinary short line that happens to
-      contain a semicolon. Ignored when `clause-breaks` is 'false'.
+      because of a URL does not qualify. Ignored when `clause-breaks` is
+      'false'.
     default: '80'
 runs:
   using: composite

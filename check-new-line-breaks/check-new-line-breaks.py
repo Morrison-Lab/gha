@@ -21,7 +21,7 @@ Design notes:
 - **Two checks, both on by default.** Rule 4 of the SemBr spec (the
   normative MUST: break after a sentence) always applies. A narrow slice of
   rule 5 (the SHOULD: break after an independent clause) applies too, and is
-  opt-*out* via ``NLB_CLAUSE_BREAKS=false`` -- see ``has_unbroken_clause``
+  opt-*out* via ``NLB_CLAUSE_BREAKS=false`` -- see ``has_late_semicolon``
   for why that slice is semicolons only, and why it is gated on line length.
   Defaulting it on is safe because the whole check is warn-only unless
   ``NLB_FAIL`` is set, so it adds annotations rather than build failures.
@@ -32,8 +32,7 @@ Configuration (all via environment variables, set by the composite action):
   NLB_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
   NLB_FAIL          "true" => exit 1 on findings; default "false" => warn only.
   NLB_CLAUSE_BREAKS "false" => skip the clause check; default "true" =>
-                    also flag long lines joining independent clauses with a
-                    semicolon.
+                    also flag long lines carrying a mid-line semicolon.
   NLB_CLAUSE_MIN_LENGTH
                     Minimum *visible* line length before the clause check
                     applies, inclusive (default: 80); markup is stripped
@@ -93,10 +92,21 @@ def split_sentences(text: str) -> List[str]:
 #
 # Order matters: link targets go before bare URLs, so `[text](url)` has
 # already become `[text]` and leaves no URL behind.
-_CODE_SPAN_RE = re.compile(r"`[^`]*`")
+#
+# The code-span pattern backreferences its opening run, so an N-backtick span
+# (CommonMark's form for a span that itself contains a backtick) closes on a
+# run of the same length rather than on the next backtick. A plain
+# `` `[^`]*` `` matches the empty span between the two opening backticks of a
+# doubled-backtick span, leaving its contents -- semicolons and all -- in the
+# prose.
+#
+# The bare-URL pattern stops before trailing sentence punctuation, so a `;`
+# that ends the clause a URL sits in survives the strip. `\S+` would eat it
+# along with the URL and silence a genuine rule 5 break.
+_CODE_SPAN_RE = re.compile(r"(`+)(?:(?!\1)[\s\S])*?\1")
 _LINK_TARGET_RE = re.compile(r"\]\([^)]*\)")
 _AUTOLINK_RE = re.compile(r"<https?://[^>\s]*>")
-_BARE_URL_RE = re.compile(r"https?://\S+")
+_BARE_URL_RE = re.compile(r"https?://\S*[^\s.,;:!?)\]]")
 _ENTITY_RE = re.compile(
     r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
 )
@@ -112,12 +122,20 @@ def strip_inline_markup(text: str) -> str:
     Removes inline code spans, link targets, autolinks, bare URLs, and HTML
     character entities -- every construct that can carry a ``;`` that is not a
     clause boundary, or inflate a line's length without adding visible text.
+    The spec sanctions the length half of this directly: rule 13 says a line
+    "MAY exceed the maximum line length if necessary, such as to accommodate
+    hyperlinks, code elements, or other markup".
 
     Stripping only ever *removes* characters, so the result is a conservative
     lower bound on a line's visible length: an entity renders as one glyph and
     a code span as its contents, and both are removed outright. Under-counting
     can only suppress a flag, never invent one, which is the safe direction for
     an advisory check.
+
+    Punctuation *adjacent* to a stripped construct is prose, and is kept -- the
+    bare-URL pattern deliberately stops short of it, so
+    ``see https://example.com/x; the rest`` keeps the ``;`` that a greedy
+    ``\\S+`` would have swallowed along with the URL.
     """
     # `]` keeps a bracketed link's visible text attached to its own sentence.
     text = _CODE_SPAN_RE.sub("", text)
@@ -127,43 +145,55 @@ def strip_inline_markup(text: str) -> str:
     return text
 
 
-def has_unbroken_clause(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) -> bool:
-    """True when ``text`` joins independent clauses that a break would separate.
+def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) -> bool:
+    """True when ``text`` is long enough and carries a mid-line semicolon.
 
-    The SemBr spec's rule 5 asks for a break "after an independent clause as
-    punctuated by a comma (,), semicolon (;), colon (:), or em dash". The
-    punctuation marks how such a clause ends; it is not itself the trigger,
-    and only the semicolon is a usable proxy without parsing:
+    That is a *proxy* for the SemBr spec's rule 5, not a test of it, which is
+    why the name says what is measured rather than what is inferred. Rule 5
+    asks for a break "after an independent clause as punctuated by a comma
+    (,), semicolon (;), colon (:), or em dash". The punctuation marks how such
+    a clause ends; it is not itself the trigger, and deciding whether a given
+    mark ends an *independent* clause needs a parser. Of the four, the
+    semicolon is the one whose unparsed hit rate is low enough to be useful:
 
     - A **comma** is overwhelmingly a list separator, an appositive, or an
-      introductory phrase -- rule 6's MAY at most. Measured over a
-      22,820-line semantic-line-break-conformant corpus, keying on any
-      mid-line ``, ; : --`` flags 50.5% of already-conforming lines, against
-      6.1% for the semicolon alone, and 0.7% once the length gate below
-      applies. These are a re-measurement taken against the shipped code;
-      d-morrison/gha#336 records the original pass, whose figures differ
-      because the corpus grew and because the stripping below was widened
+      introductory phrase -- rule 6's MAY at most. Measured over
+      d-morrison/ai-config's tracked Markdown (22,820 prose lines, already
+      conformant), keying on any mid-line ``, ; : --`` flags 50.5% of those
+      lines, against 6.1% for the semicolon alone, and 0.7% once the length
+      gate below applies. These are a re-measurement taken against the shipped
+      code; d-morrison/gha#336 records the original pass, whose figures differ
+      because the corpus grew and because the stripping above was widened
       after it was written.
     - A **colon** usually introduces a list or an example, which rule 7
       already breaks before, since the list starts on the next line.
     - A **dash** is usually a paired parenthetical (``X --- Y --- Z``), where
       breaking at the first dash but not the second is wrong.
 
+    The remaining 0.7% still includes hits rule 5 does not cover -- a
+    semicolon-delimited list whose items carry their own commas is rule 8's
+    MAY -- so what this returns is "worth a second look", which is what an
+    advisory check reports.
+
     The length gate is what separates a genuinely overlong clause chain from
     an ordinary short line that merely contains a semicolon, and it degrades
-    gracefully -- a long line with no break opportunity never flags.
-    It measures the *stripped* length, so a line that is only long because of
-    a code span, a link target, a bare URL, or an autolink does not qualify --
-    matching the URL-inflation exception in ai-config's own
-    semantic-line-breaks guidance.
+    gracefully -- a long line with no break opportunity never flags. Its
+    default of 80 is the spec's own rule 12, "a maximum line length of 80
+    characters is RECOMMENDED": under it, a line needs no break to conform.
+    The gate measures the *stripped* length (see ``strip_inline_markup``, and
+    rule 13 behind it), so a line that is only long because of a code span, a
+    link target, a bare URL, or an autolink does not qualify.
     ``min_length`` is inclusive: a line of exactly that many visible
     characters is checked.
+
+    The semicolon must be interior. One in the last position ends the line
+    where a break would go anyway, and one in the first ends nothing.
     """
     stripped = strip_inline_markup(text).rstrip()
     if len(stripped) < min_length:
         return False
     semicolon = stripped.find(";")
-    return semicolon != -1 and semicolon < len(stripped) - 1
+    return 0 < semicolon < len(stripped) - 1
 
 
 def classify_line(
@@ -178,7 +208,7 @@ def classify_line(
     """
     if len(split_sentences(content)) > 1:
         return "sentence"
-    if clause_breaks and has_unbroken_clause(content, clause_min_length):
+    if clause_breaks and has_late_semicolon(content, clause_min_length):
         return "clause"
     return None
 
@@ -372,12 +402,16 @@ class Violation(NamedTuple):
     path: str
     line: int
     preview: str
-    reason: str = "sentence"
+    reason: str
 
 
+# The clause message hedges on purpose: the check finds a mid-line semicolon
+# past the length gate, and infers a clause boundary from it without parsing
+# (see ``has_late_semicolon``). Stating the inference as fact would misreport
+# the cases it does not distinguish, such as a semicolon-delimited list.
 _REASON_MESSAGES = {
-    "sentence": "Line packs more than one sentence/clause",
-    "clause": "Line joins independent clauses with a semicolon",
+    "sentence": "Line packs more than one sentence",
+    "clause": "Long line with a mid-line semicolon; consider a break after the clause",
 }
 
 
@@ -435,18 +469,39 @@ def _split_list(value: str) -> List[str]:
 
 
 def _env_flag(name: str, default: bool) -> bool:
-    """Read a boolean env var, falling back to ``default`` when unset/empty."""
+    """Read a boolean env var, falling back to ``default`` when unset/empty.
+
+    An unrecognized value warns rather than failing silently. Treating it as
+    false is fail-safe for ``NLB_FAIL``, where the fallback is "don't block the
+    PR", but inverts for an input that defaults to *on*: ``clause-breaks: yes``
+    would quietly turn off the check the caller was trying to keep.
+    """
     raw = os.environ.get(name, "").strip().lower()
-    return default if not raw else raw == "true"
+    if not raw:
+        return default
+    if raw not in ("true", "false"):
+        print(
+            f"::warning::{name}={raw!r} is not 'true' or 'false'; "
+            "reading it as false."
+        )
+    return raw == "true"
 
 
 def _env_int(name: str, default: int) -> int:
-    """Read an int env var, falling back to ``default`` when unset or invalid."""
+    """Read an int env var, falling back to ``default`` when unset or invalid.
+
+    A negative length gate is invalid rather than merely unusual: it would
+    admit every line, so it is treated the same as unparseable input.
+    """
     raw = os.environ.get(name, "").strip()
     try:
-        return int(raw)
+        value = int(raw)
     except ValueError:
         return default
+    if value < 0:
+        print(f"::warning::{name}={raw!r} is negative; using {default} instead.")
+        return default
+    return value
 
 
 def main() -> int:

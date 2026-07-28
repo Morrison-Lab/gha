@@ -158,12 +158,14 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
       # The clause check (#336) is on by default, so the step above already
-      # covers it. This one exercises the opt-out through a real `uses:` call,
-      # which is worth having -- but note it cannot FAIL on findings, since
-      # neither step sets `fail:` and main() returns 0 on every path unless
-      # NLB_FAIL is set. What proves the input actually reaches the script is
-      # the env-var -> main() -> exit-code coverage in
-      # check-new-line-breaks/tests/ (gha#337 review).
+      # covers it. This one covers the opt-out, and covers exactly two things:
+      # that `action.yml` parses with the input declared, and that the
+      # clause_breaks=False path runs to completion. It cannot FAIL on
+      # findings -- neither step sets `fail:`, and main() returns 0 on every
+      # path unless NLB_FAIL is set -- so it says nothing about whether the
+      # value reaches the script. That is pinned instead by the env-var ->
+      # main() -> exit-code cases in check-new-line-breaks/tests/, which make
+      # the exit code depend on it (gha#337 review).
       - name: Check again with the clause check opted out
         uses: ./check-new-line-breaks
         with:

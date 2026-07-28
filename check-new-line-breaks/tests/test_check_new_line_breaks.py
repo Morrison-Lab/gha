@@ -195,34 +195,60 @@ def test_strip_inline_markup_drops_code_spans_and_link_targets():
 
 def test_long_line_with_midline_semicolon_is_a_clause_break():
     assert len(_LONG_SEMICOLON) > 80
-    assert nlb.has_unbroken_clause(_LONG_SEMICOLON)
+    assert nlb.has_late_semicolon(_LONG_SEMICOLON)
 
 
 def test_short_line_with_semicolon_is_not_flagged():
     # Same construction, under the length gate: a semicolon alone is not
     # enough, which is the whole point of gating on length.
-    assert not nlb.has_unbroken_clause("Do this; then that.")
+    assert not nlb.has_late_semicolon("Do this; then that.")
 
 
 def test_trailing_semicolon_is_not_a_clause_break():
     text = "A clause that is quite long indeed and already ends where it should;"
-    assert not nlb.has_unbroken_clause(text, min_length=10)
+    assert not nlb.has_late_semicolon(text, min_length=10)
 
 
 def test_semicolon_only_inside_code_span_is_not_a_clause_break():
     text = "Invoke the helper with `for x in xs; do thing; done` and read its output."
-    assert not nlb.has_unbroken_clause(text, min_length=10)
+    assert not nlb.has_late_semicolon(text, min_length=10)
+
+
+def test_semicolon_inside_a_multi_backtick_code_span_is_not_a_clause_break():
+    # #337 review round 3: `[^`]*` matched the empty span formed by the two
+    # opening backticks of a ``...``, so an N-backtick span -- CommonMark's
+    # form for a span containing a backtick -- kept its contents, semicolons
+    # and all. That is the exact construct the stripping exists to remove.
+    text = (
+        "Invoke the helper with ``for x in xs; do thing; done`` "
+        "and then read all of its output carefully."
+    )
+    assert len(text) > 80
+    assert ";" not in nlb.strip_inline_markup(text)
+    assert not nlb.has_late_semicolon(text)
+
+
+def test_a_backtick_inside_a_multi_backtick_span_does_not_end_it():
+    assert nlb.strip_inline_markup("use ``a `b` c`` here") == "use  here"
+
+
+def test_leading_semicolon_is_not_a_clause_break():
+    # A semicolon in the first position ends nothing, so there is no clause to
+    # break after. Reachable once stripping removes what preceded it.
+    text = "`configure`; " + "the remaining prose runs on for a while and is long indeed."
+    assert nlb.strip_inline_markup(text).lstrip().startswith(";")
+    assert not nlb.has_late_semicolon(text, min_length=10)
 
 
 def test_long_line_without_semicolon_is_not_flagged():
     text = "A single long clause that simply runs on for a good while without any break."
-    assert not nlb.has_unbroken_clause(text, min_length=10)
+    assert not nlb.has_late_semicolon(text, min_length=10)
 
 
 def test_clause_min_length_is_configurable():
     text = "Short; line."
-    assert not nlb.has_unbroken_clause(text)
-    assert nlb.has_unbroken_clause(text, min_length=5)
+    assert not nlb.has_late_semicolon(text)
+    assert nlb.has_late_semicolon(text, min_length=5)
 
 
 def test_length_gate_measures_visible_prose_not_raw_markdown():
@@ -233,13 +259,13 @@ def test_length_gate_measures_visible_prose_not_raw_markdown():
     text = "See [x](https://example.com/" + "a" * 90 + "); ok now."
     assert len(text) > 80, "raw line must clear the gate for this to test anything"
     assert len(nlb.strip_inline_markup(text)) < 80
-    assert not nlb.has_unbroken_clause(text)
+    assert not nlb.has_late_semicolon(text)
 
 
 def test_a_long_code_span_does_not_inflate_a_short_line_past_the_gate():
     text = "Run `" + "x" * 90 + "` first; then stop."
     assert len(text) > 80
-    assert not nlb.has_unbroken_clause(text)
+    assert not nlb.has_late_semicolon(text)
 
 
 @pytest.mark.parametrize(
@@ -260,7 +286,23 @@ def test_a_long_code_span_does_not_inflate_a_short_line_past_the_gate():
     ],
 )
 def test_markup_carrying_a_semicolon_is_not_a_clause_break(label, text):
-    assert not nlb.has_unbroken_clause(text), label
+    assert not nlb.has_late_semicolon(text), label
+
+
+def test_clause_boundary_after_a_bare_url_survives_stripping():
+    # #337 review round 3: `https?://\S+` ran to the next whitespace, so a `;`
+    # sitting immediately after a URL was eaten along with it and a genuine
+    # rule 5 break went unreported. Stripping must remove the URL and keep the
+    # punctuation next to it.
+    text = (
+        "The full derivation is written up at https://example.com/paper.pdf; "
+        "the second clause stands entirely on its own."
+    )
+    assert nlb.strip_inline_markup(text).rstrip() == (
+        "The full derivation is written up at ; "
+        "the second clause stands entirely on its own."
+    )
+    assert nlb.has_late_semicolon(text)
 
 
 def test_identical_prose_does_not_flip_verdict_on_link_syntax():
@@ -271,7 +313,7 @@ def test_identical_prose_does_not_flip_verdict_on_link_syntax():
         "Open [the search page](https://example.com/search?a=1;b=2) in a browser "
         "for details, please, and read on"
     )
-    assert nlb.has_unbroken_clause(bare) == nlb.has_unbroken_clause(bracketed)
+    assert nlb.has_late_semicolon(bare) == nlb.has_late_semicolon(bracketed)
 
 
 def test_min_length_is_inclusive():
@@ -279,8 +321,8 @@ def test_min_length_is_inclusive():
     # exactly that many visible characters is checked rather than skipped.
     text = "a" * 68 + "; " + "b" * 10
     assert len(text) == 80
-    assert nlb.has_unbroken_clause(text, min_length=80)
-    assert not nlb.has_unbroken_clause(text, min_length=81)
+    assert nlb.has_late_semicolon(text, min_length=80)
+    assert not nlb.has_late_semicolon(text, min_length=81)
 
 
 def test_sentence_reason_wins_over_clause_reason():
@@ -398,6 +440,40 @@ def test_clause_min_length_env_var_reaches_main(tmp_path, monkeypatch):
     # Raising the gate above the line's length silences it, which proves the
     # second env var is read too, not just the boolean.
     assert _main_exit_code(tmp_path, monkeypatch, NLB_CLAUSE_MIN_LENGTH="500") == 0
+
+
+# ── malformed env values ─────────────────────────────────────────────────────
+
+# #337 review round 3: both readers fell back silently. Falling back is right;
+# doing it without a word is what hides a caller's typo.
+
+def test_unrecognized_flag_value_reads_as_false_and_warns(monkeypatch, capsys):
+    monkeypatch.setenv("NLB_CLAUSE_BREAKS", "yes")
+    assert nlb._env_flag("NLB_CLAUSE_BREAKS", True) is False
+    assert "::warning::" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("value", ["true", "TRUE", "false", ""])
+def test_recognized_flag_values_do_not_warn(monkeypatch, capsys, value):
+    monkeypatch.setenv("NLB_CLAUSE_BREAKS", value)
+    nlb._env_flag("NLB_CLAUSE_BREAKS", True)
+    assert capsys.readouterr().out == ""
+
+
+def test_negative_min_length_falls_back_to_the_default_and_warns(monkeypatch, capsys):
+    # A negative gate admits every line, so it is invalid rather than merely
+    # unusual -- and turning an advisory check into a firehose is exactly the
+    # failure a silent fallback would hide.
+    monkeypatch.setenv("NLB_CLAUSE_MIN_LENGTH", "-5")
+    assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80
+    assert "::warning::" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("value", ["0", "80", "500"])
+def test_non_negative_min_lengths_are_taken_as_given(monkeypatch, capsys, value):
+    monkeypatch.setenv("NLB_CLAUSE_MIN_LENGTH", value)
+    assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == int(value)
+    assert capsys.readouterr().out == ""
 
 
 if __name__ == "__main__":

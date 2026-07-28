@@ -356,8 +356,8 @@ job that exercises the real composite (`base-ref` diff mode) against this
 repo's own tree, the same "local composite, not yet the `@v1`-pinned
 reusable-workflow chain" precedent `phi` uses above.
 
-The suite also covers the gha#336 clause check (SemBr rule 5: a long line
-joining two independent clauses with a semicolon), including that it is
+The suite also covers the gha#336 clause check (a long line carrying a
+mid-line semicolon, as a proxy for SemBr rule 5), including that it is
 **on by default** -- and pins the two defaults that are declared in three
 places at once.
 `_DEFAULT_CLAUSE_BREAKS`/`_DEFAULT_CLAUSE_MIN_LENGTH` in the script are the
@@ -387,6 +387,28 @@ with `NLB_CLAUSE_BREAKS=false` and with the length gate raised past the line.
 Each was confirmed to fail when the corresponding env read is stubbed out.
 (gha#337 review round 2: the step's original comment, and this paragraph,
 both claimed the step proved the plumbing; neither could.)
+Round 3 added the converse caveat, since "cannot prove the input arrived" is
+not "proves nothing": the step still pins that `action.yml` parses with the
+input declared and that the opt-out code path runs to completion, which is
+why it stayed rather than being deleted as dead weight.
+
+**Markup stripping is where this check's false verdicts come from, in both
+directions.**
+The clause check keys on a semicolon in the *stripped* line, so every pattern
+in `strip_inline_markup` decides two things at once: whether a `;` is prose,
+and whether the line is long enough to look at.
+Both of gha#337's round-3 findings were one pattern each.
+A code-span pattern of `` `[^`]*` `` matches the empty span between the two
+opening backticks of a ```` ``...`` ```` span, so an N-backtick span kept its
+contents and a `;`-separated shell command read as prose -- the exact case
+the stripping exists to remove.
+And a bare-URL pattern of `https?://\S+` runs to the next whitespace, so a
+`;` immediately after a URL was deleted along with it, silencing a genuine
+break.
+The rule that catches both: a pattern must remove the construct and nothing
+adjacent to it, so backreference a delimiter's opening run rather than
+matching to the next one, and stop a URL before trailing sentence
+punctuation.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

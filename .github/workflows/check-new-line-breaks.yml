@@ -24,9 +24,9 @@ on:
         default: false
       clause-breaks:
         description: >-
-          Also flag a long line joining two independent clauses with a
-          semicolon (SemBr rule 5), on top of the rule 4 sentence check that
-          always runs. On by default; set false to check sentences only.
+          Also flag a long line carrying a mid-line semicolon (a narrow slice
+          of SemBr rule 5), on top of the rule 4 sentence check that always
+          runs. On by default; set false to check sentences only.
         type: boolean
         default: true
       clause-min-length:
