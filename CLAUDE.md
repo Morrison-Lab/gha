@@ -767,6 +767,39 @@ produced only a `$0.60` cost comment, no verdict — the guard had set
 `self_mod=true` and skipped straight through, because the PR touched
 `claude-review.yml` itself.)
 
+**This section's title says "a PR fixing" the review workflow, but the guard
+does not check intent -- it checks whether `claude-review.yml` is in the
+changed-file list.** So it also fires on a PR that has nothing to do with the
+review system and touches that file only incidentally: a repo-wide sweep, a
+lint fix, a formatting pass, a dependency bump.
+That case is the dangerous one, because the two cases above at least give you
+a reason to be suspicious of a green `claude-review`.
+Here nothing prompts the thought -- the PR is "about" something else
+entirely, `claude-review.yml` is one file among dozens, and the check is
+green.
+
+Before trusting a green `claude-review`, run
+`git diff --name-only origin/main | grep claude-review.yml` rather than
+asking yourself whether the PR is *about* the review workflow.
+A hit means no review ran, whatever the check says, and the fallback is to
+self-review and say so on the PR (see the "Do the review yourself when the
+@claude workflow doesn't produce a verdict" section of
+[`d-morrison/ai-config`'s own `CLAUDE.md`](https://github.com/d-morrison/ai-config/blob/main/CLAUDE.md)
+-- the root file, not one of the `shared/` fragments).
+Note the guard cannot clear before merge, since it keys on the PR's own diff
+-- re-triggering is not a workaround, so don't spend rounds on it.
+
+Splitting the offending line into a follow-up PR *would* clear the guard, at
+the cost of leaving the sweep incomplete and its own docs overclaiming for a
+release cycle.
+Whether that trade is worth it depends on how much the review is worth for
+the rest of the diff; for a mechanically uniform change it usually is not.
+(gha#329: a `timeout-minutes` hardening sweep across all 36 workflows touched
+`claude-review.yml` for exactly one inserted line, and its review was
+silently skipped -- caught only by noticing the job finished in 4 seconds.
+Copilot, requested as a fallback, refused separately for quota, so the PR
+merged on CI plus a self-review with no external verdict at all.)
+
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
