@@ -133,6 +133,29 @@ which is why the capabilities above moved to `@v2`.
   arithmetic has offline test coverage instead of being an inline `awk`
   one-liner only exercised by a live two-attempt review run (gha#219 review
   finding 5).
+- `.github/actions/detect-review-request/` -- wraps
+  `scripts/detect-review-request.sh`, which decides whether a comment/review
+  body is an explicit `@claude review` request.
+  `claude.yml` calls it twice: once on the trigger comment, and once (via its
+  `bodies-file` input) on every comment posted after the trigger, for the
+  late-arrival rescan.
+  Those two paths previously each carried their own copy of the pattern -- one a bash
+  regex, one a `jq` `test()` -- which is how they drifted apart, and how a
+  consumer ended up adding a local dispatch job that double-dispatched every
+  plain `@claude review`
+  ([UCD-SERG/serodynamics#277](https://github.com/UCD-SERG/serodynamics/issues/277)).
+  Two things to know before widening the pattern: a **false positive is the
+  expensive error**, because `match == 'true'` suppresses `claude.yml`'s "Post
+  Claude's response if no code was committed" step, so a misfire swallows the
+  answer to a question the user actually asked -- which is why the lead-ins
+  between `@claude` and `review` are a closed set of function words
+  (`please`, `can/could/would/will you`, `kindly`, `pls`) rather than "any few
+  words".
+  And `bodies-file` takes **base64-encoded lines**, not raw or
+  NUL-separated ones: comment bodies are multi-line, and `jq --raw-output0`
+  needs jq 1.7 while `runs-on` is a consumer-settable input, so a runner with
+  jq 1.6 would have failed into the `|| :` fallback and silently reported "no
+  late review".
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -410,6 +433,21 @@ same `github.action_path`-resolution proof the `run-review-guard` e2e steps
 give), asserting `extract-total-cost` surfaces the right cost for a real
 fixture and stays silent for a missing file, and `sum-costs` surfaces the
 right total for a real `uses:` call (gha#219 review finding 5).
+
+`.github/workflows/scripts/tests/run-detect-review-request-tests.sh` exercises
+`detect-review-request.sh` (see Layout above) offline against a table of
+comment bodies: the phrasings that must dispatch a review, the ones that must
+not (a quote-reply, an `@claude` request that merely contains the word
+"review", `reviewer` as a whole different word), and a multi-body call.
+CI runs it as a step in the `review-fail-check` job, which also calls
+`detect-review-request` itself through two real `uses:` steps -- the same
+`github.action_path`-resolution proof the `run-review-guard` /
+`extract-total-cost` / `sum-costs` e2e steps give, plus the one thing the
+offline tests cannot reach: the base64 round-trip on the `bodies-file` path,
+built by that job with the same `jq ... | @base64` pipeline `claude.yml` uses.
+As with `request-dependabot-review` below, `claude.yml`'s own layer above the
+composite is not covered -- it calls the action via `d-morrison/gha/...@v2`,
+which does not resolve until `@v2` is advanced past this capability's merge.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of

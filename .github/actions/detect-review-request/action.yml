@@ -1,0 +1,63 @@
+name: Detect an @claude review request
+description: >-
+  Decides whether a comment/review body is an explicit "@claude review"
+  request, so claude.yml can route it to the dedicated code-review workflow
+  instead of letting the agent answer it itself. Wraps
+  .github/workflows/scripts/detect-review-request.sh, located via
+  github.action_path, for the same reason run-review-guard wraps
+  check-review-execution.sh: claude.yml's steps run against the CALLER's
+  checkout, not d-morrison/gha's own tree, and this one runs before any
+  checkout has happened at all.
+
+inputs:
+  comment-body:
+    description: Body of the triggering comment, if the event carried one.
+    required: false
+    default: ''
+  review-body:
+    description: Body of the triggering PR review, if the event carried one.
+    required: false
+    default: ''
+  bodies-file:
+    description: >-
+      Optional path to a file of additional bodies to test alongside the two
+      inputs above, one base64-encoded body per line (a comment body is
+      multi-line, so it cannot be line-delimited as-is). claude.yml's
+      late-comment rescue scan uses it to test every comment posted after the
+      trigger against the same matcher, rather than reimplementing the pattern
+      in jq where it would drift out of sync.
+
+outputs:
+  match:
+    description: >-
+      `true` when any body supplied is an explicit review request, else
+      `false`.
+    value: ${{ steps.run.outputs.match }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run detect-review-request.sh
+      id: run
+      shell: bash
+      env:
+        COMMENT_BODY: ${{ inputs.comment-body }}
+        REVIEW_BODY: ${{ inputs.review-body }}
+        BODIES_FILE: ${{ inputs.bodies-file }}
+      # The script lives in ../../workflows/scripts/ relative to this action's
+      # own directory, mirroring sum-costs' and run-review-guard's resolution.
+      run: |
+        set -euo pipefail
+        SCRIPT="${{ github.action_path }}/../../workflows/scripts/detect-review-request.sh"
+        bodies=("$COMMENT_BODY" "$REVIEW_BODY")
+        if [ -n "$BODIES_FILE" ]; then
+          # No `|| true` on either the redirect or the decode: an unreadable
+          # or malformed bodies-file is a caller bug, and degrading to "no
+          # review requested" would hide it.
+          while IFS= read -r encoded; do
+            [ -n "$encoded" ] || continue
+            bodies+=("$(printf '%s' "$encoded" | base64 -d)")
+          done < "$BODIES_FILE"
+        fi
+        MATCH="$(bash "$SCRIPT" "${bodies[@]}")"
+        echo "match=$MATCH" >> "$GITHUB_OUTPUT"

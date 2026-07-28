@@ -338,21 +338,22 @@ jobs:
       # match every step below gated on "is this a review request" — the
       # request is picked up (the acknowledgment above still posts) but the
       # review is never dispatched, with no signal to the user (#315).
-      # Expressions have no regex support, so resolve the whitespace-tolerant
-      # match once here and let the gated steps below reference a plain
-      # boolean output instead of repeating the fragile `contains()` check.
+      # Expressions have no regex support, so resolve the match once here and
+      # let the gated steps below reference a plain boolean output instead of
+      # repeating the fragile `contains()` check.
+      #
+      # The matcher itself lives in a script (see the action's own docs) so it
+      # can be tested offline and shared with the late-comment rescue scan
+      # below -- the two paths drifting apart is how `@claude, please review`
+      # ended up dispatching twice in one repo and not at all in another
+      # (serodynamics#277).
       - name: Detect @claude review request
         id: review_request
         if: steps.dedup.outputs.skip != 'true'
-        env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
-          REVIEW_BODY: ${{ github.event.review.body }}
-        run: |
-          if [[ "$COMMENT_BODY" =~ @claude[[:space:]]+review ]] || [[ "$REVIEW_BODY" =~ @claude[[:space:]]+review ]]; then
-            echo "match=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "match=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: d-morrison/gha/.github/actions/detect-review-request@v2
+        with:
+          comment-body: ${{ github.event.comment.body }}
+          review-body: ${{ github.event.review.body }}
 
       - name: Checkout repository
         if: steps.dedup.outputs.skip != 'true'
@@ -985,7 +986,8 @@ jobs:
       # step): a review dispatch is independent of the agent's run, so a late
       # `@claude review` is honored even if the agent failed/was cancelled — the
       # review just runs against the PR's current state.
-      - name: Dispatch review for a late @claude review comment
+      - name: Collect comments posted after the trigger
+        id: late_bodies
         if: |
           always() &&
           steps.dedup.outputs.skip != 'true' &&
@@ -995,36 +997,57 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           TRIGGER_TS: ${{ github.event.comment.created_at || github.event.review.submitted_at || github.event.issue.created_at }}
+        run: |
+          # One base64-encoded body per line, so multi-line comment bodies
+          # survive intact without relying on jq's NUL output (--raw-output0
+          # needs jq 1.7, and `runs-on` is a consumer-settable input). The
+          # matcher is applied by the step below, not here, so the two dispatch
+          # paths can't drift apart.
+          BODIES="$RUNNER_TEMP/late-bodies.b64"
+          # `|| :` keeps the default `-e` from aborting on a transient gh api
+          # error, degrading to "no late review found" rather than failing the
+          # run -- the same trade the previous `|| late=0` made.
+          { gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq '.[]' 2>/dev/null
+            gh api "repos/$REPO/pulls/$PR_NUMBER/comments"  --paginate --jq '.[]' 2>/dev/null
+            gh api "repos/$REPO/pulls/$PR_NUMBER/reviews"   --paginate --jq '.[]' 2>/dev/null
+          } | jq -r -s --arg ts "$TRIGGER_TS" \
+                '.[] | select((((.created_at // .submitted_at) // "") > $ts) and ((.user.type // "") != "Bot")) | (.body // "") | @base64' \
+                > "$BODIES" || :
+          touch "$BODIES"
+          echo "path=$BODIES" >> "$GITHUB_OUTPUT"
+
+      - name: Detect a late @claude review request
+        id: late_review_request
+        if: always() && steps.late_bodies.outcome == 'success'
+        uses: d-morrison/gha/.github/actions/detect-review-request@v2
+        with:
+          bodies-file: ${{ steps.late_bodies.outputs.path }}
+
+      - name: Dispatch review for a late @claude review comment
+        if: always() && steps.late_review_request.outputs.match == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          TRIGGER_TS: ${{ github.event.comment.created_at || github.event.review.submitted_at || github.event.issue.created_at }}
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
           PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
         run: |
-          # `|| late=0` keeps the default `-e` from aborting on a transient gh
-          # api error, degrading to "no late review found" rather than failing.
-          late=$(
-            { gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --jq '.[]' 2>/dev/null
-              gh api "repos/$REPO/pulls/$PR_NUMBER/comments"  --paginate --jq '.[]' 2>/dev/null
-              gh api "repos/$REPO/pulls/$PR_NUMBER/reviews"   --paginate --jq '.[]' 2>/dev/null
-            } | jq -s --arg ts "$TRIGGER_TS" \
-                  '[.[] | select((((.created_at // .submitted_at) // "") > $ts) and ((.body // "") | test("@claude\\s+review")) and ((.user.type // "") != "Bot"))] | length' ) || late=0
-          if [ "${late:-0}" -gt 0 ]; then
-            echo "Found $late late @claude review request(s) newer than $TRIGGER_TS; dispatching review."
-            # --ref: see the comment on the earlier dispatch step above (#285).
-            # Skip rather than dispatch with an empty --ref if checkout failed.
-            if [ -z "$PR_BRANCH" ]; then
-              echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
-            else
-              # Fork PRs: see the comment on the earlier dispatch step above (#289).
-              REF_ARGS=(--ref "$PR_BRANCH")
-              if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-                echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
-                REF_ARGS=()
-              fi
-              gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
-                || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
-            fi
+          echo "Found a late @claude review request newer than $TRIGGER_TS; dispatching review."
+          # --ref: see the comment on the earlier dispatch step above (#285).
+          # Skip rather than dispatch with an empty --ref if checkout failed.
+          if [ -z "$PR_BRANCH" ]; then
+            echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
           else
-            echo "No late @claude review requests."
+            # Fork PRs: see the comment on the earlier dispatch step above (#289).
+            REF_ARGS=(--ref "$PR_BRANCH")
+            if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+              echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
+              REF_ARGS=()
+            fi
+            gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
+              || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
           fi
 
       # When Claude pushed new commits to a PR, re-request the standing
