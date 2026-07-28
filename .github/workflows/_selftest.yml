@@ -23,6 +23,7 @@ jobs:
   # bypassing the wrapper the way check-phi/quarto-publish/test-coverage do.
   lint-yaml:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -32,6 +33,7 @@ jobs:
         uses: ./lint-yaml
   lint-markdown:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -41,6 +43,7 @@ jobs:
         uses: ./lint-markdown
   lint-qmd:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -58,6 +61,7 @@ jobs:
   # (the same rationale as run-claude-review-attempt).
   lint-changed-lines-parser:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -81,6 +85,7 @@ jobs:
   # use the reusable workflow once `@v1` includes the action.
   phi:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -111,6 +116,7 @@ jobs:
   # tree wouldn't trip it.
   phi-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -139,6 +145,7 @@ jobs:
   # this PR itself adds, the same pattern the phi job above uses.
   new-line-breaks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -157,6 +164,7 @@ jobs:
   # tree wouldn't trip it.
   new-line-breaks-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -180,6 +188,7 @@ jobs:
   # against canned execution-output fixtures instead (#174).
   review-fail-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -336,6 +345,7 @@ jobs:
   # side effects, precedented by the sync-pr job's open-sync-pr no-op test).
   dependabot-review:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -372,6 +382,7 @@ jobs:
   # reusable-workflow layer follows above (see this repo's own CLAUDE.md).
   altdoc-docs:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -641,6 +652,7 @@ jobs:
   # covers the PR code without touching this repo's gh-pages branch.
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -695,6 +707,7 @@ jobs:
   # which has nothing to do with any individual equation's TeX.
   equation-renders:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -780,6 +793,7 @@ jobs:
   # local `./` ref since the action isn't at `@v1` until release.
   sync-pr:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -813,6 +827,7 @@ jobs:
   # jobs' repo-wide R dependency scanning (which can't resolve `covfixture`).
   coverage:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -853,6 +868,7 @@ jobs:
   # SENSITIVE_PATHS against the local list here on every PR (gha#152).
   sensitive-paths:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -890,6 +906,7 @@ jobs:
   # and consequently needs only `issues: read`.
   failure-issue:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       issues: read

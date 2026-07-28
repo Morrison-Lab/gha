@@ -24,6 +24,7 @@ jobs:
   # download.
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       actions: read
     if: github.event.workflow_run.conclusion == 'success'
@@ -46,6 +47,7 @@ jobs:
     needs: gate
     if: needs.gate.outputs.has-artifact == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
       actions: read  # needed to download artifacts from the triggering run

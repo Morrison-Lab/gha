@@ -77,6 +77,7 @@ jobs:
   # job actually uses the write token.
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
     steps:
@@ -128,6 +129,7 @@ jobs:
     needs: build
     if: inputs.deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: write
     steps:

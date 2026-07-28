@@ -47,6 +47,7 @@ jobs:
   request-review:
     if: github.event.pull_request.user.login == inputs.bot-actor
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       pull-requests: write
     steps:
