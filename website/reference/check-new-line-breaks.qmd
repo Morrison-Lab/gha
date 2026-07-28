@@ -23,7 +23,7 @@ Of the four marks rule 5 names, only the semicolon has a low enough unparsed
 hit rate to be useful:
 keying on all four flags 50.5% of already-conforming prose,
 against 0.7% for this check;
-see [gha#336](https://github.com/d-morrison/gha/issues/336) for the
+see [gha#336](https://github.com/Morrison-Lab/gha/issues/336) for the
 measurements.
 
 The gate's default of 80 is the spec's own rule 12,

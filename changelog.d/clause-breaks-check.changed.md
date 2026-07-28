@@ -15,7 +15,7 @@
   length gate.
 
   Of the four marks rule 5 names, only the semicolon is used, and only past
-  that gate: see [#336](https://github.com/d-morrison/gha/issues/336) for the
+  that gate: see [#336](https://github.com/Morrison-Lab/gha/issues/336) for the
   hit rates behind that choice.
   The gate measures a line's visible length, after stripping inline markup
   such as code spans, link targets, bare URLs, and HTML entities, so a line
