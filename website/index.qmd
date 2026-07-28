@@ -4,7 +4,7 @@ subtitle:
   "Central, reusable GitHub Actions for R-package and Quarto repositories"
 ---
 
-This site documents [`d-morrison/gha`](https://github.com/d-morrison/gha), a set
+This site documents [`Morrison-Lab/gha`](https://github.com/Morrison-Lab/gha), a set
 of reusable GitHub Actions shared across the `d-morrison`, `UCD-SERG`,
 `ucdavis`, `UCLA-PHP`, and `UCD-IDDRC` owners. It is modeled on
 [`r-lib/actions`](https://github.com/r-lib/actions) and
@@ -27,7 +27,7 @@ Each capability ships as two layers:
   This is what consumer repos target.
 
 A consumer repo adds a small caller stub (see the
-[`examples/`](https://github.com/d-morrison/gha/tree/main/examples) directory):
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory):
 
 ```yaml
 name: Check Bibliography DOIs

@@ -35,5 +35,5 @@ jobs:
     #   no-changelog-label: no-changelog
 ```
 
-See [`examples/check-news.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-news.yml)
+See [`examples/check-news.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-news.yml)
 for the full caller stub.

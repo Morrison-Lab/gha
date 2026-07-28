@@ -799,7 +799,7 @@ asking yourself whether the PR is *about* the review workflow.
 A hit means no review ran, whatever the check says, and the fallback is to
 self-review and say so on the PR (see the "Do the review yourself when the
 @claude workflow doesn't produce a verdict" section of
-[`d-morrison/ai-config`'s own `CLAUDE.md`](https://github.com/d-morrison/ai-config/blob/main/CLAUDE.md)
+[`Morrison-Lab/ai-config`'s own `CLAUDE.md`](https://github.com/Morrison-Lab/ai-config/blob/main/CLAUDE.md)
 -- the root file, not one of the `shared/` fragments).
 Note the guard cannot clear before merge, since it keys on the PR's own diff
 -- re-triggering is not a workaround, so don't spend rounds on it.
@@ -864,7 +864,7 @@ Flag ambiguous terms and phrasing rather than accepting a plausible-sounding
 reading — a name that could mean more than one thing, a claim that cites a
 value or construct without confirming it exists in the actual code. This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus.
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus.
 Ambiguity accepted at face value is how a factually wrong claim (e.g.
 documentation citing a nonexistent enum value) slips through review
 unchallenged.
@@ -883,7 +883,7 @@ neither is a finding even when it turns out to be true. State which claims
 are inaccurate or undefended, cite the specific source checked for each
 judgment, and proactively suggest additional citations where they'd help.
 This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
 
 ### 5. Check for AI-generated prose tells
@@ -896,7 +896,7 @@ rule-of-three lists, hedging stacks, signposting filler, em-dash overuse,
 bold-leading bullets, emoji headers, and promotional register. Flag each
 tell found with its location and a de-slopped suggested revision — weigh
 clustering, not an isolated instance. This is a global standing rule from
-the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+the [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/ai-tells.md`).
 
 ### 6. Hyperlink technical terms/results; no forward references
@@ -910,7 +910,7 @@ reading order — a link to a definition the reader hasn't reached yet is a
 forward reference. This scope is per rendered file: cross-chapter ordering
 in a multi-file Quarto book is out of scope, check it manually. This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/definition-crossrefs.md`).
 
 The same problem also shows up as plain-text signposting — "as discussed
@@ -920,9 +920,9 @@ with crossref divs. Flag these too: confirm each hit is a genuine reference
 (not an idiom like "values below the threshold") and that the target really
 comes later, then suggest reordering the content earlier or rewording the
 pointer into a working link. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/forward-references.md`, added in
-[ai-config#507](https://github.com/d-morrison/ai-config/pull/507)), with a
+[ai-config#507](https://github.com/Morrison-Lab/ai-config/pull/507)), with a
 dedicated `fix-forward-references` (`ffr`) skill there that applies
 the fix directly rather than only flagging it in review.
 
@@ -934,7 +934,7 @@ descriptions), check that lines break at clause/sentence boundaries (roughly
 break keeps a diff scoped to the changed sentence. Raise violations as a
 suggestion, not a blocking requirement, and don't re-raise it if the author
 declines. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/semantic-line-breaks.md`).
 
 ### 8. Check code and math for strategic and tactical correctness
@@ -959,9 +959,9 @@ embedded in it — is *right*, not just correctly styled:
 Distinguish a strategic finding (needs a different approach) from a
 tactical one (needs a correction within the existing approach) — the fix
 differs. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/fact-check-code-logic.md`, added in
-[ai-config#455](https://github.com/d-morrison/ai-config/pull/455)).
+[ai-config#455](https://github.com/Morrison-Lab/ai-config/pull/455)).
 
 ### 9. Challenge unnecessary complexity
 
@@ -974,7 +974,7 @@ that restates a point through more clauses or jargon than a plain rewrite
 needs. For each finding, propose the concrete simplification rather than
 just naming the complexity, and confirm it doesn't drop a feature, an edge
 case, or a meaning the original carried. This is a global standing rule
-from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+from the [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config)
 corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
 
 ### 10. Question redundant content
@@ -986,7 +986,7 @@ the general form already covers, duplicated logic across functions/files.
 Flag it only when nothing would be lost by merging; genuinely distinct
 content that merely looks similar should stay separate. This is a global
 standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/workflow/challenge-redundant-content.md`).
 
 ### 11. Write and recommend tidy, concise code
@@ -999,7 +999,7 @@ the `{{ }}` embrace) does the same job more clearly, unless the tidyverse
 form would pull in a heavy dependency for a one-liner, the surrounding file
 is consistently base-R, or a hot loop needs base R's performance. This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/tidy-code.md`).
 
 ### 12. Reuse function documentation and argument lists
@@ -1014,9 +1014,9 @@ arguments it never touches itself instead of forwarding
 [`...`](https://adv-r.hadley.nz/functions.html?q=dot-dot#fun-dot-dot-dot)
 straight to the subfunction (documented via `@inheritDotParams`). This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/reuse-docs-and-args.md`, added in
-[ai-config#474](https://github.com/d-morrison/ai-config/pull/474)).
+[ai-config#474](https://github.com/Morrison-Lab/ai-config/pull/474)).
 
 ### 13. Flag skipped steps in math derivations
 
@@ -1030,7 +1030,7 @@ line(s) where feasible rather than only flagging "skipped steps" in general.
 This is distinct from item 8's derivation-validity check (whether each
 *stated* step follows correctly) — this one catches a step that isn't
 stated at all. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/math-derivation-steps.md`).
 
 ### 14. Don't reinvent the wheel
@@ -1051,8 +1051,8 @@ version when the existing option is genuinely unfit (wrong API,
 unmaintained, license-incompatible, or a heavy dependency for a
 one-liner), and ask for a note in the PR description or a code comment
 — "checked existing options, nothing fit" — when it's missing. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/prefer-packaged-functions.md` states the R-function
 case); its umbrella statement lives at
 `shared/principles/dont-reinvent-wheel.md` there, added in
-[ai-config#603](https://github.com/d-morrison/ai-config/pull/603).
+[ai-config#603](https://github.com/Morrison-Lab/ai-config/pull/603).

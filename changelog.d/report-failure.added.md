@@ -8,4 +8,4 @@
   inside `quarto-publish.yml` because a reusable workflow's jobs can only hold
   permissions the caller granted, so folding it in would have made
   `issues: write` mandatory for every existing caller of that workflow
-  ([#325](https://github.com/d-morrison/gha/issues/325)).
+  ([#325](https://github.com/Morrison-Lab/gha/issues/325)).

@@ -342,5 +342,5 @@ Reusable workflows + composite actions:
   `UCD-SERG/changelog-check-action`).
 - `summary` — AI summary comment on newly opened issues.
 
-[Unreleased]: https://github.com/d-morrison/gha/compare/v1...main
-[v1]: https://github.com/d-morrison/gha/releases/tag/v1
+[Unreleased]: https://github.com/Morrison-Lab/gha/compare/v1...main
+[v1]: https://github.com/Morrison-Lab/gha/releases/tag/v1

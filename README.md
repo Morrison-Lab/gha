@@ -300,19 +300,19 @@ have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
-[gha#182](https://github.com/d-morrison/gha/issues/182)).
+[gha#182](https://github.com/Morrison-Lab/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
-the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
+the freeze — see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as
 does `sync-upstream.yml` (added after the freeze — see
-[gha#254](https://github.com/d-morrison/gha/issues/254)),
+[gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
 `altdoc-multiversion-docs.yml` (added after the freeze), and
 `report-failure.yml` (added after the freeze — see
-[gha#325](https://github.com/d-morrison/gha/issues/325)).
+[gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
 but later gained the configurable `no-changelog-label` input at
-[gha#143](https://github.com/d-morrison/gha/issues/143) -- pin it to `@v2`
+[gha#143](https://github.com/Morrison-Lab/gha/issues/143) -- pin it to `@v2`
 too. See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
@@ -342,7 +342,7 @@ at `@v2` yet.** If a consumer repo's PR needs to reference
 workflow's own PR merged here, check whether `@v2` has actually been
 advanced past that merge first (`git log -1 refs/tags/v2` vs. `main`) --- a
 consumer referencing `@v2` before the slide gets a workflow-not-found error,
-not a stale-but-working reference. ([gha#300](https://github.com/d-morrison/gha/pull/300)/[ai-config#703](https://github.com/d-morrison/ai-config/pull/703), 2026-07-25:
+not a stale-but-working reference. ([gha#300](https://github.com/Morrison-Lab/gha/pull/300)/[ai-config#703](https://github.com/Morrison-Lab/ai-config/pull/703), 2026-07-25:
 `check-new-line-breaks` merged here, but `@v2` was still 11 commits behind;
 the tag had to be slid via step 3 above before ai-config's own migration PR
 could actually resolve it.)
