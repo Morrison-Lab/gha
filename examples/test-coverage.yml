@@ -10,7 +10,7 @@ on:
 
 jobs:
   test-coverage:
-    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/test-coverage.yml@v2
     secrets:
       # Add CODECOV_TOKEN as a repository secret. Optional for public repos, but
       # recommended -- tokenless uploads are rate-limited and flaky on PRs.

@@ -58,7 +58,7 @@ jobs:
       issues: write
     steps:
       - name: File or update the failure issue
-        uses: d-morrison/gha/.github/actions/open-failure-issue@v2
+        uses: Morrison-Lab/gha/.github/actions/open-failure-issue@v2
         with:
           title: ${{ inputs.title }}
           labels: ${{ inputs.labels }}

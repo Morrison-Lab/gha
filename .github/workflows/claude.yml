@@ -354,7 +354,7 @@ jobs:
       - name: Detect @claude review request
         id: review_request
         if: steps.dedup.outputs.skip != 'true'
-        uses: d-morrison/gha/.github/actions/detect-review-request@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           comment-body: ${{ github.event.comment.body }}
           review-body: ${{ github.event.review.body }}
@@ -371,7 +371,7 @@ jobs:
       # anonymous fallback; see .github/actions/checkout-submodules.
       - name: Checkout submodules
         if: steps.dedup.outputs.skip != 'true' && inputs.checkout-submodules
-        uses: d-morrison/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -380,7 +380,7 @@ jobs:
       # setup-r-dependencies can build against them.
       - name: Install packages
         if: steps.dedup.outputs.skip != 'true'
-        uses: d-morrison/gha/.github/actions/install-packages@v2
+        uses: Morrison-Lab/gha/.github/actions/install-packages@v2
         with:
           apt-packages: ${{ inputs.apt-packages }}
           pip-packages: ${{ inputs.pip-packages }}
@@ -708,7 +708,7 @@ jobs:
       - name: Extract run cost
         id: cost
         if: always() && steps.dedup.outputs.skip != 'true' && inputs.report-cost
-        uses: d-morrison/gha/.github/actions/extract-total-cost@v2
+        uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v2
         with:
           execution-file: ${{ steps.claude.outputs.execution_file || '/home/runner/work/_temp/claude-execution-output.json' }}
 
@@ -1023,7 +1023,7 @@ jobs:
       - name: Detect a late @claude review request
         id: late_review_request
         if: always() && steps.late_bodies.outcome == 'success'
-        uses: d-morrison/gha/.github/actions/detect-review-request@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           bodies-file: ${{ steps.late_bodies.outputs.path }}
 

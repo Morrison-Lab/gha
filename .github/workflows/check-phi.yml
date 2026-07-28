@@ -42,7 +42,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check for PHI
-        uses: d-morrison/gha/check-phi@v2
+        uses: Morrison-Lab/gha/check-phi@v2
         with:
           python-version: ${{ inputs.python-version }}
           detectors: ${{ inputs.detectors }}

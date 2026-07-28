@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-    uses: d-morrison/gha/.github/workflows/cleanup-pr-previews.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v2
     # with:
     #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews
     #   compact-history: true       # orphan-squash gh-pages to one commit after

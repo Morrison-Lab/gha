@@ -43,7 +43,7 @@ on:
 
 jobs:
   lint:
-    uses: d-morrison/gha/.github/workflows/lint-qmd.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/lint-qmd.yml@v2
     # with:
     #   config-file: '.markdownlint.jsonc'  # override the bundled default config
     #   globs: '*.qmd'                      # git pathspecs to lint (recursive)

@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/check-non-standard-chars.yml
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
-  # `uses: d-morrison/gha/lint-*@v2` step resolves against yet. Exercise the
+  # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the
   # local composites directly against this repo's own tracked YAML/Markdown,
   # bypassing the wrapper the way check-phi/quarto-publish/test-coverage do.
   lint-yaml:
@@ -138,7 +138,7 @@ jobs:
           python3 -m pytest check-phi/tests/ -q
   # check-new-line-breaks is brand new, so (like check-phi/lint-yaml/lint-markdown
   # above) it doesn't exist at the released `@v2` tag its reusable workflow's
-  # internal `uses: d-morrison/gha/check-new-line-breaks@v2` step resolves
+  # internal `uses: Morrison-Lab/gha/check-new-line-breaks@v2` step resolves
   # against yet. Exercise the local composite directly so the selftest covers
   # the actual PR code; consumers use the reusable workflow once `@v2` includes
   # the action. base-ref makes this a real diff-scoped run against whatever
