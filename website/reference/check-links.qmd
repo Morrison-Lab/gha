@@ -54,5 +54,5 @@ jobs:
 ```
 
 See
-[`examples/check-links.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-links.yml)
+[`examples/check-links.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-links.yml)
 for the full caller stub.

@@ -158,6 +158,6 @@ website:
             href: https://<owner>.github.io/<repo>/dev/
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`altdoc-multiversion-docs.yml`), with
 every optional input commented out.

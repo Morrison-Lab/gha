@@ -55,21 +55,21 @@ PR-preview family, since Pages can only have one Source.
 `update-snapshots.yml` also pin `@v2`: each picked up a real fix since the
 freeze (a dependency-pin bump, a new input, or a security fix) that a consumer
 still on `@v1` would miss (audited in
-[gha#182](https://github.com/d-morrison/gha/issues/182)).
+[gha#182](https://github.com/Morrison-Lab/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates the
-freeze - see [gha#252](https://github.com/d-morrison/gha/issues/252)), as does
+freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `sync-upstream.yml` (added after the freeze - see
-[gha#254](https://github.com/d-morrison/gha/issues/254)),
+[gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
 `altdoc-multiversion-docs.yml` (added after the freeze), and
 `report-failure.yml` (added after the freeze - see
-[gha#325](https://github.com/d-morrison/gha/issues/325)).
+[gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1` remains
 current for them. `check-news.yml` was initially grouped with them, but later
 gained the configurable `no-changelog-label` input at
-[gha#143](https://github.com/d-morrison/gha/issues/143) - pin it to `@v2` too.
+[gha#143](https://github.com/Morrison-Lab/gha/issues/143) - pin it to `@v2` too.
 The stubs in
-[`examples/`](https://github.com/d-morrison/gha/tree/main/examples) carry the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) carry the
 tag and `permissions:` block documented on each workflow's own reference page;
 copy the specific stub you need as-is.
 
@@ -164,7 +164,7 @@ Two wiring requirements:
   stubs merge to `main`.
 
 This repo dogfoods all five. The caller stubs live in
-[`.github/workflows/`](https://github.com/d-morrison/gha/tree/main/.github/workflows):
+[`.github/workflows/`](https://github.com/Morrison-Lab/gha/tree/main/.github/workflows):
 `website-publish.yml`, `website-preview.yml`, `website-preview-deploy.yml`,
 `website-check-equation-renders.yml`, and `website-preview-cleanup.yml`. They
 render this pure-markdown site with the R machinery turned off (no renv, no

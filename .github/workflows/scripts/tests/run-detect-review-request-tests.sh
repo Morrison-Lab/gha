@@ -33,6 +33,32 @@ cases=(
   "true|@claude plz review"
   "true|@claude re-review please"
   "true|@CLAUDE Review"
+  # An object pointing back at the PR is fine, and so is prose on later lines.
+  "true|@claude review this"
+  "true|@claude review again"
+  "true|@claude please review the latest changes"
+  $'true|@claude review\n\nI pushed a fix for the flaky test.'
+  $'true|@claude, please review\n\nthanks!'
+  # ... but an object naming something to go look at is a request to the
+  # agent, not a dispatch keyword. Accepting these was the cost of admitting
+  # the polite lead-ins above: they route a question to the read-only reviewer
+  # and suppress the agent's own reply to it (gha#346).
+  "false|@claude can you review this and also fix the failing test?"
+  "false|@claude please review my reasoning in the issue description above"
+  "false|@claude, can you review why the coverage job is flaky and patch it?"
+  "false|@claude could you review the docs and update them if wrong"
+  # Known false negatives, pinned so the contract is explicit rather than
+  # discovered. Both are pure review requests carrying no instruction to the
+  # agent, and both dispatched before the tail was constrained. Widening
+  # TAIL_WORD would recover them; these cases make that a deliberate decision
+  # instead of a drift (gha#346).
+  "false|@claude review the changes I just pushed"
+  "false|@claude please review when you get a chance"
+  # CRLF is what GitHub actually delivers, and the pattern anchors on a bare
+  # newline, so the normalizer has to strip the CRs for any of the above to
+  # hold in production (gha#346).
+  $'true|@claude review\r\nI pushed a fix.'
+  $'false|> @claude review\r\n> yes\r'
   # Quote-replies cite somebody else's request; they are not a fresh one.
   "false|> @claude review"
   $'false|> @claude review\n>\n> ...as I said above'

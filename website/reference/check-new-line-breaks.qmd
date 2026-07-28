@@ -79,5 +79,5 @@ jobs:
 ```
 
 See
-[`examples/check-new-line-breaks.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-new-line-breaks.yml)
+[`examples/check-new-line-breaks.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-new-line-breaks.yml)
 for the full caller stub.

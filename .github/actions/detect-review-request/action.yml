@@ -49,6 +49,17 @@ runs:
       run: |
         set -euo pipefail
         SCRIPT="${{ github.action_path }}/../../workflows/scripts/detect-review-request.sh"
+        # GNU coreutils spells decode `-d`; BSD/macOS base64 spells it `-D`.
+        # `runs-on` is a consumer-settable input, and this decode is on the
+        # live path for the late-comment rescan, so it cannot assume GNU the
+        # way the jq-version reasoning below declines to (gha#346). Probing
+        # once beats guessing: an unsupported flag would abort the step under
+        # `set -e` with only a usage message to go on.
+        if printf '' | base64 -d >/dev/null 2>&1; then
+          B64_DECODE=(base64 -d)
+        else
+          B64_DECODE=(base64 -D)
+        fi
         # Bodies go down a pipe, NUL-separated, never through argv: a single
         # comment can exceed Linux's per-argument MAX_ARG_STRLEN and fail
         # `execve`, which under `set -euo pipefail` would fail this step and
@@ -62,10 +73,14 @@ runs:
               # degrading to "no review requested" would hide it.
               while IFS= read -r encoded; do
                 [ -n "$encoded" ] || continue
-                base64 -d <<<"$encoded"
+                "${B64_DECODE[@]}" <<<"$encoded"
                 printf '\0'
               done < "$BODIES_FILE"
             fi
           } | bash "$SCRIPT"
         )"
+        # A `false` result is otherwise invisible: the steps gated on this
+        # output simply render as skipped, and the dispatch step's old "No
+        # late @claude review requests." line went away with it (gha#346).
+        echo "detect-review-request: match=$MATCH"
         echo "match=$MATCH" >> "$GITHUB_OUTPUT"

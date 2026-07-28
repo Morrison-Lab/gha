@@ -1018,11 +1018,19 @@ jobs:
                 '.[] | select((((.created_at // .submitted_at) // "") > $ts) and ((.user.type // "") != "Bot")) | (.body // "") | @base64' \
                 > "$BODIES" || :
           touch "$BODIES"
+          echo "Collected $(wc -l < "$BODIES") comment body/bodies posted after $TRIGGER_TS."
           echo "path=$BODIES" >> "$GITHUB_OUTPUT"
 
+      # `continue-on-error`: the step above degrades a transient `gh api`
+      # failure to "no late review" rather than failing the run, and this one
+      # has to make the same trade or the pair contradicts itself -- an
+      # unreadable bodies-file would otherwise redden the whole job over an
+      # optional late-dispatch nicety (gha#346). The step still goes red in
+      # the log, and an empty `match` leaves the dispatch below skipped.
       - name: Detect a late @claude review request
         id: late_review_request
         if: always() && steps.late_bodies.outcome == 'success'
+        continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           bodies-file: ${{ steps.late_bodies.outputs.path }}

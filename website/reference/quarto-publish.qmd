@@ -86,5 +86,5 @@ jobs:
 ```
 
 See
-[`examples/quarto-publish.yml`](https://github.com/d-morrison/gha/blob/main/examples/quarto-publish.yml)
+[`examples/quarto-publish.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/quarto-publish.yml)
 for the full caller stub.

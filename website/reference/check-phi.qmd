@@ -56,5 +56,5 @@ jobs:
 ```
 
 See
-[`examples/check-phi.yml`](https://github.com/d-morrison/gha/blob/main/examples/check-phi.yml)
+[`examples/check-phi.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-phi.yml)
 for the full caller stub.

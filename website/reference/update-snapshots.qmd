@@ -116,5 +116,5 @@ jobs:
       # committer-email: 41898282+github-actions[bot]@users.noreply.github.com
 ```
 
-See [`examples/update-snapshots.yml`](https://github.com/d-morrison/gha/blob/main/examples/update-snapshots.yml)
+See [`examples/update-snapshots.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/update-snapshots.yml)
 for the full caller stub.
