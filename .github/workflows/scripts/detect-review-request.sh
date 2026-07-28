@@ -33,7 +33,7 @@ POLITE='please|pls|plz|kindly|(can|could|would|will)[[:space:]]+you'
 
 # `[[:space:][:punct:]]+` (rather than the `[[:space:]]+` this replaced) is
 # what admits `@claude, please review` -- the phrasing that went unanswered in
-# serodynamics#230 and prompted this. The trailing `[^[:alnum:]]|$` keeps
+# serodynamics#277 and prompted this. The trailing `[^[:alnum:]]|$` keeps
 # `review` a whole word, so `@claude reviewer` is not a request.
 PATTERN="@claude[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review([^[:alnum:]]|$)"
 

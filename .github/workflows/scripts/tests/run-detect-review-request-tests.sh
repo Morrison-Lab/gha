@@ -21,7 +21,7 @@ cases=(
   "true|@claude review"
   "true|@claude  review"
   $'true|Thanks for the fix.\n\n@claude review'
-  # Punctuated and polite phrasings it missed (serodynamics#230, #276, #277).
+  # Punctuated and polite phrasings it missed (serodynamics#276, #277).
   "true|@claude, please review"
   "true|@claude, review"
   "true|@claude please review this PR"
