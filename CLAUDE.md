@@ -151,6 +151,28 @@ which is why the capabilities above moved to `@v2`.
   between `@claude` and `review` are a closed set of function words
   (`please`, `can/could/would/will you`, `kindly`, `pls`/`plz`) rather than "any few
   words".
+  **Both sides of `review` need that closed set, not just the lead-in.**
+  gha#341 constrained only what may precede the keyword, which left
+  `@claude can you review this and fix the failing test?` matching: the object
+  of `review` names a topic to examine, so the comment is a question for the
+  agent, and dispatching it suppressed the answer.
+  So a second closed set governs what may follow -- deictic references to the
+  PR under discussion (`this`, `the latest changes`, `again`) and trailing
+  politeness -- and the request must then end its line (gha#346).
+  That is also what keeps `review` a whole word, so the older
+  `[^[:alnum:]]|$` guard against `@claude reviewer` is gone rather than
+  duplicated.
+  The trade is that a pure review request with an unlisted object
+  (`@claude review the changes I just pushed`) now self-reviews instead of
+  dispatching, which is the cheap error by the same asymmetry.
+  Both known cases are pinned in the test table, so widening `TAIL_WORD` to
+  recover them stays a deliberate decision.
+  A third portability note sits alongside the jq one below: the script
+  normalizes CRLF with `tr -d '\r'` because GitHub delivers comment bodies
+  with CRLF and the pattern anchors on a bare newline.
+  The `sed 's/\r$//'` it replaced only worked under GNU sed -- BSD/macOS sed
+  reads `\r` as a literal `r` -- and the composite probes `base64 -d` vs `-D`
+  for the same reason.
   And `bodies-file` takes **base64-encoded lines**, not raw or
   NUL-separated ones: comment bodies are multi-line, and `jq --raw-output0`
   needs jq 1.7 while `runs-on` is a consumer-settable input, so a runner with
