@@ -750,8 +750,10 @@ Before trusting a green `claude-review`, run
 `git diff --name-only origin/main | grep claude-review.yml` rather than
 asking yourself whether the PR is *about* the review workflow.
 A hit means no review ran, whatever the check says, and the fallback is to
-self-review and say so on the PR (see `d-morrison/ai-config`'s "Do the review
-yourself when the @claude workflow doesn't produce a verdict").
+self-review and say so on the PR (see the "Do the review yourself when the
+@claude workflow doesn't produce a verdict" section of
+[`d-morrison/ai-config`'s own `CLAUDE.md`](https://github.com/d-morrison/ai-config/blob/main/CLAUDE.md)
+-- the root file, not one of the `shared/` fragments).
 Note the guard cannot clear before merge, since it keys on the PR's own diff
 -- re-triggering is not a workaround, so don't spend rounds on it.
 
