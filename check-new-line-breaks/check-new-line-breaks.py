@@ -187,12 +187,15 @@ def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) 
     characters is checked.
 
     The semicolon must be interior. One in the last position ends the line
-    where a break would go anyway, and one in the first ends nothing.
+    where a break would go anyway, and one in the first ends nothing. The
+    search therefore starts at index 1 rather than filtering afterwards: a
+    leading semicolon is skipped over, not treated as the line's answer, so
+    it cannot mask a real boundary further along.
     """
     stripped = strip_inline_markup(text).rstrip()
     if len(stripped) < min_length:
         return False
-    semicolon = stripped.find(";")
+    semicolon = stripped.find(";", 1)
     return 0 < semicolon < len(stripped) - 1
 
 

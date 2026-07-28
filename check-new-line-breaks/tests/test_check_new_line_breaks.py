@@ -232,6 +232,18 @@ def test_a_backtick_inside_a_multi_backtick_span_does_not_end_it():
     assert nlb.strip_inline_markup("use ``a `b` c`` here") == "use  here"
 
 
+def test_a_leading_semicolon_does_not_mask_a_later_interior_one():
+    # Self-caught while reviewing the fix above: rejecting index 0 after a
+    # plain find(';') threw away the whole line, so a leading semicolon hid a
+    # genuine boundary further along. The search skips position 0 instead.
+    text = (
+        "`cfg`; a first clause that runs on for quite a while here; "
+        "and a second one after it."
+    )
+    assert nlb.strip_inline_markup(text).lstrip().startswith(";")
+    assert nlb.has_late_semicolon(text, min_length=10)
+
+
 def test_leading_semicolon_is_not_a_clause_break():
     # A semicolon in the first position ends nothing, so there is no clause to
     # break after. Reachable once stripping removes what preceded it.
