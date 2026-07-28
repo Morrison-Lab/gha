@@ -619,9 +619,9 @@ jobs:
       # it can be exercised offline against canned fixtures (see
       # scripts/tests/), without a live Claude API call — see the
       # `review-fail-check` job in _selftest.yml (#174). That script lives in
-      # THIS reusable workflow's own repo (d-morrison/gha), not the caller's
+      # THIS reusable workflow's own repo (Morrison-Lab/gha), not the caller's
       # — the "Checkout repository" step above checks out the CALLER, not
-      # d-morrison/gha. #191 tried resolving d-morrison/gha's own ref via
+      # Morrison-Lab/gha. #191 tried resolving Morrison-Lab/gha's own ref via
       # github.job_workflow_ref and checking it out into a side directory, but
       # that context var came back EMPTY at this call site on real consumer
       # runs even though the calling step passed it correctly (gha#196) — the

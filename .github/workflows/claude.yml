@@ -703,7 +703,7 @@ jobs:
       # trigger" read the SAME steps.claude.outputs.execution_file — one
       # extraction covers both call sites (gha#219 review finding 1). Wrapped
       # in a composite action because this workflow's steps run against the
-      # CALLER's checkout, not d-morrison/gha's own tree (see the action's
+      # CALLER's checkout, not Morrison-Lab/gha's own tree (see the action's
       # own header comment).
       - name: Extract run cost
         id: cost

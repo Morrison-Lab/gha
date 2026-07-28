@@ -382,7 +382,7 @@ jobs:
           echo "detect-review-request correctly surfaced match=true / match=false"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
-  # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't
+  # yet: it calls build-reviewer-args via `Morrison-Lab/gha/...@v2`, which won't
   # resolve until @v2 is advanced past this PR's merge. Test the local
   # build-reviewer-args composite directly instead -- the same "test-coverage"
   # precedent used below, and the same offline-unit-test-plus-real-`uses:`-e2e

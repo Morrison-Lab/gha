@@ -7,7 +7,7 @@ name: Request Dependabot PR Review
 # `_selftest.yml` uses for pre-release capabilities.
 #
 # Note: request-dependabot-review.yml's own internal step still references
-# its build-reviewer-args composite via `d-morrison/gha/...@v2` (matching
+# its build-reviewer-args composite via `Morrison-Lab/gha/...@v2` (matching
 # test-coverage.yml/bump-submodule.yml's precedent for internal composite
 # refs), so this dogfood workflow won't fully succeed on a real Dependabot
 # PR here until @v2 is advanced past this PR's merge.
