@@ -48,7 +48,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-    uses: d-morrison/gha/.github/workflows/altdoc-multiversion-docs.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/altdoc-multiversion-docs.yml@v2
     with:
       dispatch-version: ${{ github.event.inputs.version }}
       dispatch-release-tag: ${{ github.event.inputs.release_tag }}

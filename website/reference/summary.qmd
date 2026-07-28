@@ -29,8 +29,8 @@ jobs:
       issues: write
       models: read
       contents: read
-    uses: d-morrison/gha/.github/workflows/summary.yml@v1
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1
 ```
 
-See [`examples/summary.yml`](https://github.com/d-morrison/gha/blob/main/examples/summary.yml)
+See [`examples/summary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/summary.yml)
 for the full caller stub.

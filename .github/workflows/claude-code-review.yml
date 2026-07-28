@@ -376,7 +376,7 @@ jobs:
       # claude-code-review.yml convention. (Ported from qwt — gha #45.)
       - name: Parse caller workflow ref
         id: caller-wf
-        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
@@ -410,7 +410,7 @@ jobs:
       # .github/actions/checkout-submodules.
       - name: Checkout submodules
         if: steps.selfmod.outputs.self_mod != 'true' && inputs.checkout-submodules
-        uses: d-morrison/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -420,7 +420,7 @@ jobs:
       # instead of eyeballing it. Empty by default; most repos need neither.
       - name: Install packages
         if: steps.selfmod.outputs.self_mod != 'true'
-        uses: d-morrison/gha/.github/actions/install-packages@v2
+        uses: Morrison-Lab/gha/.github/actions/install-packages@v2
         with:
           apt-packages: ${{ inputs.apt-packages }}
           pip-packages: ${{ inputs.pip-packages }}
@@ -584,7 +584,7 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         if: steps.selfmod.outputs.self_mod != 'true'
-        uses: d-morrison/gha/.github/actions/run-claude-review-attempt@v2
+        uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -640,7 +640,7 @@ jobs:
       - name: Resolve and upload execution file path
         id: exec-file
         if: steps.claude-review.outcome == 'success'
-        uses: d-morrison/gha/.github/actions/upload-review-execution@v2
+        uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
         with:
           execution-file: ${{ steps.claude-review.outputs.execution_file }}
           attempt-label: attempt1
@@ -653,7 +653,7 @@ jobs:
         id: fail-check
         if: steps.claude-review.outcome == 'success'
         continue-on-error: true
-        uses: d-morrison/gha/.github/actions/run-review-guard@v2
+        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
         with:
           execution-file: ${{ steps.exec-file.outputs.path }}
 
@@ -684,7 +684,7 @@ jobs:
           steps.fail-check.outcome == 'failure' &&
           steps.fail-check.outputs.stub_review == 'true'
         continue-on-error: true
-        uses: d-morrison/gha/.github/actions/run-claude-review-attempt@v2
+        uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -706,7 +706,7 @@ jobs:
         id: exec-file-retry
         if: steps.claude-review-retry.outcome == 'success'
         continue-on-error: true
-        uses: d-morrison/gha/.github/actions/upload-review-execution@v2
+        uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
         with:
           execution-file: ${{ steps.claude-review-retry.outputs.execution_file }}
           attempt-label: attempt2
@@ -715,7 +715,7 @@ jobs:
         id: fail-check-retry
         if: steps.exec-file-retry.outcome == 'success'
         continue-on-error: true
-        uses: d-morrison/gha/.github/actions/run-review-guard@v2
+        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
         with:
           execution-file: ${{ steps.exec-file-retry.outputs.path }}
 
@@ -729,7 +729,7 @@ jobs:
       - name: Sum attempt costs
         id: sum-cost
         if: always() && steps.selfmod.outputs.self_mod != 'true'
-        uses: d-morrison/gha/.github/actions/sum-costs@v2
+        uses: Morrison-Lab/gha/.github/actions/sum-costs@v2
         with:
           cost-a: ${{ steps.fail-check.outputs.total_cost_usd }}
           cost-b: ${{ steps.fail-check-retry.outputs.total_cost_usd }}

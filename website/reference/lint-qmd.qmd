@@ -43,7 +43,7 @@ on:
 
 jobs:
   lint:
-    uses: d-morrison/gha/.github/workflows/lint-qmd.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/lint-qmd.yml@v2
     # with:
     #   config-file: '.markdownlint.jsonc'  # override the bundled default config
     #   globs: '*.qmd'                      # git pathspecs to lint (recursive)
@@ -52,5 +52,5 @@ jobs:
     #   max-line-length: '100'              # override the default 80-char ceiling
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`lint-qmd.yml`).

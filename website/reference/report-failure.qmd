@@ -75,7 +75,7 @@ jobs:
   publish:
     permissions:
       contents: write
-    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
     with:
       path: website
 
@@ -91,7 +91,7 @@ jobs:
       && github.event_name != 'pull_request'
     permissions:
       issues: write
-    uses: d-morrison/gha/.github/workflows/report-failure.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/report-failure.yml@v2
     with:
       title: Publish workflow is failing
       body: The documentation site did not deploy, so the published site may be stale.

@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/check-non-standard-chars.yml
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
-  # `uses: d-morrison/gha/lint-*@v2` step resolves against yet. Exercise the
+  # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the
   # local composites directly against this repo's own tracked YAML/Markdown,
   # bypassing the wrapper the way check-phi/quarto-publish/test-coverage do.
   lint-yaml:
@@ -138,7 +138,7 @@ jobs:
           python3 -m pytest check-phi/tests/ -q
   # check-new-line-breaks is brand new, so (like check-phi/lint-yaml/lint-markdown
   # above) it doesn't exist at the released `@v2` tag its reusable workflow's
-  # internal `uses: d-morrison/gha/check-new-line-breaks@v2` step resolves
+  # internal `uses: Morrison-Lab/gha/check-new-line-breaks@v2` step resolves
   # against yet. Exercise the local composite directly so the selftest covers
   # the actual PR code; consumers use the reusable workflow once `@v2` includes
   # the action. base-ref makes this a real diff-scoped run against whatever
@@ -157,6 +157,24 @@ jobs:
         uses: ./check-new-line-breaks
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+      # The clause check (#336) is on by default, so the step above already
+      # covers it. This one covers the opt-out, and covers exactly two things:
+      # that `action.yml` parses, and that the clause_breaks=False path runs
+      # to completion. It does NOT pin that the input is declared: an
+      # undeclared composite input is only an Actions warning, so this step
+      # stays green either way. Declaration is pinned by the
+      # defaults-agreement test, which fails outright when the input has no
+      # `default:`. It cannot FAIL on
+      # findings -- neither step sets `fail:`, and main() returns 0 on every
+      # path unless NLB_FAIL is set -- so it says nothing about whether the
+      # value reaches the script. That is pinned instead by the env-var ->
+      # main() -> exit-code cases in check-new-line-breaks/tests/, which make
+      # the exit code depend on it (gha#337 review).
+      - name: Check again with the clause check opted out
+        uses: ./check-new-line-breaks
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          clause-breaks: 'false'
   # The new-line-breaks job above proves the action runs against this repo's
   # own tree; this job unit-tests the sentence-splitter/block-detector
   # functions and the diff-scoping behavior directly (small throwaway git

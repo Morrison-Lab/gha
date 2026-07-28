@@ -12,4 +12,4 @@ jobs:
       issues: write
       models: read
       contents: read
-    uses: d-morrison/gha/.github/workflows/summary.yml@v1
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1

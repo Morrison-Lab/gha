@@ -8,13 +8,19 @@ files, and opens or updates pull requests. It pairs with
 mention fires), it dispatches the review workflow via `workflow_dispatch`.
 
 A mention counts as a review request when `review` follows `@claude` directly,
-after punctuation, or after a polite lead-in -- `@claude review`,
-`@claude, review`, `@claude please review`, `@claude can you review this?`,
-`@claude re-review`. Anything else is treated as an ordinary request for the
-agent, including a mention that merely contains the word (`@claude the review
-workflow is broken, can you fix it?`), because a misfire routes the comment to
-the reviewer and suppresses the agent's own reply. Quoted lines are skipped, so
-quote-replying to a past request does not dispatch a fresh review.
+after punctuation, or after a polite lead-in, and the request then ends its
+line -- `@claude review`, `@claude, review`, `@claude please review`,
+`@claude can you review this?`, `@claude re-review`. The keyword may take an
+object, but only one pointing back at the pull request itself
+(`@claude review this PR`, `@claude please review the latest changes`).
+
+Anything else is treated as an ordinary request for the agent: a mention that
+merely contains the word (`@claude the review workflow is broken, can you fix
+it?`), and equally one that asks for something to be examined
+(`@claude can you review this and fix the failing test?`). A misfire routes the
+comment to the read-only reviewer and suppresses the agent's own reply, so the
+matcher errs toward answering rather than dispatching. Quoted lines are
+skipped, so quote-replying to a past request does not dispatch a fresh review.
 
 It also runs unattended on `workflow_dispatch`/`schedule` events (e.g. a
 periodic skill invocation with no human comment to react to). The caller's `on:`
@@ -49,12 +55,12 @@ grants to persist output (e.g. `gh issue create`).
 | `mark-ready-for-review`  | boolean | `true`                      | When Claude finishes with committed code, take its draft PR out of draft mode. Set false to leave PRs as drafts.                                                                                                                                                                                                                      |
 | `prompt-addendum`        | string  | `''`                        | Repo-specific instructions appended to Claude's prompt.                                                                                                                                                                                                                                                                               |
 | `webfetch-allowlist-url` | string  | `''`                        | URL of a newline-delimited hostname allowlist; each host becomes a `WebFetch(domain:<host>)` grant. Empty to disable WebFetch.                                                                                                                                                                                                        |
-| `use-ai-config`          | boolean | `true`                      | Install the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) plugin (`ai-config@d-morrison`), giving the agent the lab's shared skills, slash commands, and standing workflow conventions. Set false to opt out. Distinct from `link-skills`, which exposes the calling repo's own `skills/` directory; the two compose.  |
+| `use-ai-config`          | boolean | `true`                      | Install the [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) plugin (`ai-config@d-morrison`), giving the agent the lab's shared skills, slash commands, and standing workflow conventions. Set false to opt out. Distinct from `link-skills`, which exposes the calling repo's own `skills/` directory; the two compose.  |
 | `plugin-marketplaces`    | string  | `''`                        | Extra newline-separated Claude Code plugin marketplace Git URLs, added on top of the `d-morrison/ai-config.git` marketplace `use-ai-config` adds. Pair with `plugins` below; empty adds none.                                                                                                                                        |
 | `plugins`                | string  | `''`                        | Extra newline-separated plugin refs to install (`<plugin>@<marketplace-name>`), added on top of whatever `use-ai-config` installs. Each marketplace name must match the name that marketplace declares in its own `.claude-plugin/marketplace.json`, not the URL given in `plugin-marketplaces`.                                       |
 | `claude-args`            | string  | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied.                                                                                                                                                                                   |
 | `runs-on`                | string  | `'ubuntu-latest'`           | Runner for the job.                                                                                                                                                                                                                                                                                                                   |
-| `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/d-morrison/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
+| `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/Morrison-Lab/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
 
 ## Secrets
 
@@ -115,7 +121,7 @@ jobs:
       issues: write
       id-token: write
       actions: write # dispatch the review workflow via `gh workflow run`
-    uses: d-morrison/gha/.github/workflows/claude.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # direct API key; empty when using OAuth
@@ -144,5 +150,5 @@ jobs:
 ```
 
 See
-[`examples/claude.yml`](https://github.com/d-morrison/gha/blob/main/examples/claude.yml)
+[`examples/claude.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/claude.yml)
 for the full caller stub.

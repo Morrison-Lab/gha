@@ -20,7 +20,7 @@
   `test-coverage`/`check-equation-renders` exceptions, rather than claiming
   `@v1` (or `@v2`) as the default for every workflow. The remaining
   capabilities' stubs stay at `@v1`, tracked for a future audit in
-  [gha#182](https://github.com/d-morrison/gha/issues/182).
+  [gha#182](https://github.com/Morrison-Lab/gha/issues/182).
 - **Registered `d-morrison/ai-config` in `REVDEPS.md`** as a consumer of
   `quarto-publish`, `preview`, `preview-deploy`, and `cleanup-pr-previews`
-  ([ai-config#401](https://github.com/d-morrison/ai-config/issues/401)).
+  ([ai-config#401](https://github.com/Morrison-Lab/ai-config/issues/401)).

@@ -60,7 +60,7 @@ which is why the capabilities above moved to `@v2`.
   the way `quarto-publish`/`preview` do would add indirection without reuse
   value, per the one-genuine-consumer-pattern reasoning in
   `shared/principles/README.md`'s "How the principles relate" section of
-  `d-morrison/ai-config`);
+  `Morrison-Lab/ai-config`);
   `bump-submodule.yml`, `sync-shared-fragments.yml`, and `sync-upstream.yml`
   are `workflow_call` reusable workflows that call the shared internal
   `open-sync-pr` composite (`sync-upstream` merges an upstream repo's branch
@@ -87,7 +87,7 @@ which is why the capabilities above moved to `@v2`.
   `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
   "Fail the check if the review did not complete (attempt 1)" step (and again
   from its retry counterpart — see `run-claude-review-attempt` below). #191
-  tried to locate that script by resolving d-morrison/gha's own repo/ref from
+  tried to locate that script by resolving Morrison-Lab/gha's own repo/ref from
   `github.job_workflow_ref` and checking it out into a side directory, but
   that context var came back empty at runtime on real consumer runs even
   though the calling step passed it correctly (gha#196) — the #191 fix was
@@ -151,6 +151,28 @@ which is why the capabilities above moved to `@v2`.
   between `@claude` and `review` are a closed set of function words
   (`please`, `can/could/would/will you`, `kindly`, `pls`/`plz`) rather than "any few
   words".
+  **Both sides of `review` need that closed set, not just the lead-in.**
+  gha#341 constrained only what may precede the keyword, which left
+  `@claude can you review this and fix the failing test?` matching: the object
+  of `review` names a topic to examine, so the comment is a question for the
+  agent, and dispatching it suppressed the answer.
+  So a second closed set governs what may follow -- deictic references to the
+  PR under discussion (`this`, `the latest changes`, `again`) and trailing
+  politeness -- and the request must then end its line (gha#346).
+  That is also what keeps `review` a whole word, so the older
+  `[^[:alnum:]]|$` guard against `@claude reviewer` is gone rather than
+  duplicated.
+  The trade is that a pure review request with an unlisted object
+  (`@claude review the changes I just pushed`) now self-reviews instead of
+  dispatching, which is the cheap error by the same asymmetry.
+  Both known cases are pinned in the test table, so widening `TAIL_WORD` to
+  recover them stays a deliberate decision.
+  A third portability note sits alongside the jq one below: the script
+  normalizes CRLF with `tr -d '\r'` because GitHub delivers comment bodies
+  with CRLF and the pattern anchors on a bare newline.
+  The `sed 's/\r$//'` it replaced only worked under GNU sed -- BSD/macOS sed
+  reads `\r` as a literal `r` -- and the composite probes `base64 -d` vs `-D`
+  for the same reason.
   And `bodies-file` takes **base64-encoded lines**, not raw or
   NUL-separated ones: comment bodies are multi-line, and `jq --raw-output0`
   needs jq 1.7 while `runs-on` is a consumer-settable input, so a runner with
@@ -274,7 +296,7 @@ feature.)
 that introduces it, and whether that bites depends on whether the caller is
 dogfooded here.** A `uses:` ref is resolved when the job is *prepared*, before
 any step runs and before any step-level `if:` is evaluated, so a reference to
-`d-morrison/gha/.github/actions/<new-action>@v2` fails the whole job with
+`Morrison-Lab/gha/.github/actions/<new-action>@v2` fails the whole job with
 `Can't find 'action.yml' ... @v2` until `@v2` is advanced past the merge --
 even when the step is gated on `failure()` and would never have run.
 
@@ -388,6 +410,66 @@ job that exercises the real composite (`base-ref` diff mode) against this
 repo's own tree, the same "local composite, not yet the `@v1`-pinned
 reusable-workflow chain" precedent `phi` uses above.
 
+The suite also covers the gha#336 clause check (a long line carrying a
+mid-line semicolon, as a proxy for SemBr rule 5), including that it is
+**on by default** -- and pins the two defaults that are declared in three
+places at once.
+`_DEFAULT_CLAUSE_BREAKS`/`_DEFAULT_CLAUSE_MIN_LENGTH` in the script are the
+single source, but `action.yml` and
+`.github/workflows/check-new-line-breaks.yml` each re-declare them for their
+own inputs, so a parametrized test reads both YAML files and asserts they
+agree with the script -- the same gha#303 precedent that pinned
+`generate-altdoc-landing-page`'s `site-root` default rather than leaving it
+to a comment.
+The first draft of #336 proved why: `find_violations()` kept a stale `False`
+default while `classify_line()` and `main()` had moved to `True`, and only
+the test caught the drift.
+That test parses the YAML with a line scan rather than a YAML library,
+because the `new-line-breaks-tests` job installs only pytest.
+
+**A selftest step that sets no `fail:` cannot prove the input reached the
+script, however it is worded.**
+`_selftest.yml`'s `new-line-breaks` job does call the composite a second time
+with `clause-breaks: 'false'`, and that is worth having as a real `uses:`
+exercise -- but `main()` returns 0 on every path unless `NLB_FAIL` is set, so
+the step stays green whether the input arrives, is dropped, or was never
+declared at all (an undeclared composite input is only an Actions warning).
+What actually pins the `env var -> main() -> exit code` path is a set of
+pytest cases that set `NLB_FAIL=true` around a real `main()` call on a
+throwaway git repo, asserting exit 1 with the clause check on and exit 0 both
+with `NLB_CLAUSE_BREAKS=false` and with the length gate raised past the line.
+Each was confirmed to fail when the corresponding env read is stubbed out.
+(gha#337 review round 2: the step's original comment, and this paragraph,
+both claimed the step proved the plumbing; neither could.)
+Round 3 added the converse caveat, since "cannot prove the input arrived" is
+not "proves nothing": the step still pins that `action.yml` parses and that
+the opt-out code path runs to completion, which is why it stayed rather than
+being deleted as dead weight.
+Round 5 narrowed that caveat in turn -- it had also claimed the step pins
+that the input is *declared*, contradicting this paragraph's own point two
+sentences earlier that an undeclared input is only a warning.
+Declaration is pinned by the defaults-agreement test instead, which reads
+each YAML file for the input's `default:` and fails outright when there is
+none (gha#337 review round 5).
+
+**Markup stripping is where this check's false verdicts come from, in both
+directions.**
+The clause check keys on a semicolon in the *stripped* line, so every pattern
+in `strip_inline_markup` decides two things at once: whether a `;` is prose,
+and whether the line is long enough to look at.
+Both of gha#337's round-3 findings were one pattern each.
+A code-span pattern of `` `[^`]*` `` matches the empty span between the two
+opening backticks of a ```` ``...`` ```` span, so an N-backtick span kept its
+contents and a `;`-separated shell command read as prose -- the exact case
+the stripping exists to remove.
+And a bare-URL pattern of `https?://\S+` runs to the next whitespace, so a
+`;` immediately after a URL was deleted along with it, silencing a genuine
+break.
+The rule that catches both: a pattern must remove the construct and nothing
+adjacent to it, so backreference a delimiter's opening run rather than
+matching to the next one, and stop a URL before trailing sentence
+punctuation.
+
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
 `test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the
@@ -455,7 +537,7 @@ CI runs it as a step in the `review-fail-check` job, which also calls
 offline tests cannot reach: the base64 round-trip on the `bodies-file` path,
 built by that job with the same `jq ... | @base64` pipeline `claude.yml` uses.
 As with `request-dependabot-review` below, `claude.yml`'s own layer above the
-composite is not covered -- it calls the action via `d-morrison/gha/...@v2`,
+composite is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`,
 which does not resolve until `@v2` is advanced past this capability's merge.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
@@ -468,7 +550,7 @@ same `github.action_path`-resolution proof the `run-review-guard` /
 surfaces the correctly trimmed and split JSON array for a real call. Unlike
 those other e2e steps, this one can't also exercise
 `request-dependabot-review.yml`'s own reusable-workflow layer end-to-end yet:
-that workflow calls `build-reviewer-args` via `d-morrison/gha/...@v2`, which
+that workflow calls `build-reviewer-args` via `Morrison-Lab/gha/...@v2`, which
 won't resolve until `@v2` is advanced past this capability's merge (the same
 `test-coverage` bootstrapping gap the Layout section's `_selftest.yml`/
 local-ref paragraph describes) — so `dependabot-review` tests the composite
@@ -492,7 +574,7 @@ both in the `failure-issue` job of `_selftest.yml`. That job also calls
 without it the only end-to-end call would file an issue on this repo every
 selftest run. As with `request-dependabot-review`, the `report-failure.yml`
 reusable-workflow layer above the composite is not covered — it calls the
-action via `d-morrison/gha/...@v2`, which does not resolve until `@v2` is
+action via `Morrison-Lab/gha/...@v2`, which does not resolve until `@v2` is
 advanced past this capability's merge — so the job tests the composite
 directly, the same "local composite, not the full reusable-workflow chain"
 precedent `coverage` and `dependabot-review` use.
@@ -557,7 +639,26 @@ creation — only work if their GitHub steps are translated to the GitHub MCP to
 such a session, substitute the equivalent MCP tool below. (In a local session
 where `gh` is on `PATH`, use `gh` as the skill describes.)
 
-This repo is `d-morrison/gha`, so MCP calls use `owner: d-morrison`, `repo: gha`.
+This repo is `Morrison-Lab/gha` (moved there from `d-morrison/gha`), so MCP
+calls use `owner: Morrison-Lab`, `repo: gha`.
+
+**Use whichever owner the session was scoped with, not whichever one is
+current.** A session's GitHub access is pinned to the repository name it was
+started with, and the two names are not interchangeable at the tool layer even
+though they are the same repository:
+
+- A session scoped to the old `d-morrison/gha` keeps working, because the API
+  follows the transfer redirect server-side. Passing `owner: Morrison-Lab` to
+  that session fails with `Access denied: repository "morrison-lab/gha" is not
+  configured for this session`, and `add_repo` cannot rescue it -- it refuses
+  the cross-owner add outright.
+- Some endpoints return `301 Moved Permanently` to the old name rather than
+  following it, so a call can fail on the redirect alone. If one does, the
+  answer is usually a different route to the same fact, not a different owner
+  string.
+
+So read the allowed-repositories list in the session's own context before
+assuming an owner, and if the scoped name is the old one, keep using it.
 
 **Some of these sessions have no local git checkout at all** (not just a missing
 `gh` CLI) — there is no working tree to run `git commit`/`git push` against, so
@@ -686,11 +787,11 @@ the non-head SHA, matching this pattern.)
 ## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
 This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
-calls `d-morrison/gha/.github/workflows/claude-code-review.yml@v2` — the
+calls `Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2` — the
 **released, floating tag**, not a local `./` ref (unlike `_selftest.yml`'s
 handling of brand-new pre-release capabilities; see "About this repo" above).
 `.github/workflows/claude-bot.yml` similarly calls
-`d-morrison/gha/.github/workflows/claude.yml@v2`. `@v2` only advances to
+`Morrison-Lab/gha/.github/workflows/claude.yml@v2`. `@v2` only advances to
 include a fix once that fix's PR merges to `main` and `slide-major-tag.yml`
 runs.
 
@@ -799,7 +900,7 @@ asking yourself whether the PR is *about* the review workflow.
 A hit means no review ran, whatever the check says, and the fallback is to
 self-review and say so on the PR (see the "Do the review yourself when the
 @claude workflow doesn't produce a verdict" section of
-[`d-morrison/ai-config`'s own `CLAUDE.md`](https://github.com/d-morrison/ai-config/blob/main/CLAUDE.md)
+[`Morrison-Lab/ai-config`'s own `CLAUDE.md`](https://github.com/Morrison-Lab/ai-config/blob/main/CLAUDE.md)
 -- the root file, not one of the `shared/` fragments).
 Note the guard cannot clear before merge, since it keys on the PR's own diff
 -- re-triggering is not a workaround, so don't spend rounds on it.
@@ -864,7 +965,7 @@ Flag ambiguous terms and phrasing rather than accepting a plausible-sounding
 reading — a name that could mean more than one thing, a claim that cites a
 value or construct without confirming it exists in the actual code. This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus.
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus.
 Ambiguity accepted at face value is how a factually wrong claim (e.g.
 documentation citing a nonexistent enum value) slips through review
 unchallenged.
@@ -883,7 +984,7 @@ neither is a finding even when it turns out to be true. State which claims
 are inaccurate or undefended, cite the specific source checked for each
 judgment, and proactively suggest additional citations where they'd help.
 This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/fact-check-prose.md`).
 
 ### 5. Check for AI-generated prose tells
@@ -896,7 +997,7 @@ rule-of-three lists, hedging stacks, signposting filler, em-dash overuse,
 bold-leading bullets, emoji headers, and promotional register. Flag each
 tell found with its location and a de-slopped suggested revision — weigh
 clustering, not an isolated instance. This is a global standing rule from
-the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+the [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/ai-tells.md`).
 
 ### 6. Hyperlink technical terms/results; no forward references
@@ -910,7 +1011,7 @@ reading order — a link to a definition the reader hasn't reached yet is a
 forward reference. This scope is per rendered file: cross-chapter ordering
 in a multi-file Quarto book is out of scope, check it manually. This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/definition-crossrefs.md`).
 
 The same problem also shows up as plain-text signposting — "as discussed
@@ -920,9 +1021,9 @@ with crossref divs. Flag these too: confirm each hit is a genuine reference
 (not an idiom like "values below the threshold") and that the target really
 comes later, then suggest reordering the content earlier or rewording the
 pointer into a working link. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/forward-references.md`, added in
-[ai-config#507](https://github.com/d-morrison/ai-config/pull/507)), with a
+[ai-config#507](https://github.com/Morrison-Lab/ai-config/pull/507)), with a
 dedicated `fix-forward-references` (`ffr`) skill there that applies
 the fix directly rather than only flagging it in review.
 
@@ -934,7 +1035,7 @@ descriptions), check that lines break at clause/sentence boundaries (roughly
 break keeps a diff scoped to the changed sentence. Raise violations as a
 suggestion, not a blocking requirement, and don't re-raise it if the author
 declines. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/semantic-line-breaks.md`).
 
 ### 8. Check code and math for strategic and tactical correctness
@@ -959,9 +1060,9 @@ embedded in it — is *right*, not just correctly styled:
 Distinguish a strategic finding (needs a different approach) from a
 tactical one (needs a correction within the existing approach) — the fix
 differs. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/fact-check-code-logic.md`, added in
-[ai-config#455](https://github.com/d-morrison/ai-config/pull/455)).
+[ai-config#455](https://github.com/Morrison-Lab/ai-config/pull/455)).
 
 ### 9. Challenge unnecessary complexity
 
@@ -974,7 +1075,7 @@ that restates a point through more clauses or jargon than a plain rewrite
 needs. For each finding, propose the concrete simplification rather than
 just naming the complexity, and confirm it doesn't drop a feature, an edge
 case, or a meaning the original carried. This is a global standing rule
-from the [`d-morrison/ai-config`](https://github.com/d-morrison/ai-config)
+from the [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config)
 corpus (`shared/workflow/challenge-unnecessary-complexity.md`).
 
 ### 10. Question redundant content
@@ -986,7 +1087,7 @@ the general form already covers, duplicated logic across functions/files.
 Flag it only when nothing would be lost by merging; genuinely distinct
 content that merely looks similar should stay separate. This is a global
 standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/workflow/challenge-redundant-content.md`).
 
 ### 11. Write and recommend tidy, concise code
@@ -999,7 +1100,7 @@ the `{{ }}` embrace) does the same job more clearly, unless the tidyverse
 form would pull in a heavy dependency for a one-liner, the surrounding file
 is consistently base-R, or a hot loop needs base R's performance. This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/tidy-code.md`).
 
 ### 12. Reuse function documentation and argument lists
@@ -1014,9 +1115,9 @@ arguments it never touches itself instead of forwarding
 [`...`](https://adv-r.hadley.nz/functions.html?q=dot-dot#fun-dot-dot-dot)
 straight to the subfunction (documented via `@inheritDotParams`). This is a
 global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/reuse-docs-and-args.md`, added in
-[ai-config#474](https://github.com/d-morrison/ai-config/pull/474)).
+[ai-config#474](https://github.com/Morrison-Lab/ai-config/pull/474)).
 
 ### 13. Flag skipped steps in math derivations
 
@@ -1030,7 +1131,7 @@ line(s) where feasible rather than only flagging "skipped steps" in general.
 This is distinct from item 8's derivation-validity check (whether each
 *stated* step follows correctly) — this one catches a step that isn't
 stated at all. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/writing/math-derivation-steps.md`).
 
 ### 14. Don't reinvent the wheel
@@ -1051,8 +1152,8 @@ version when the existing option is genuinely unfit (wrong API,
 unmaintained, license-incompatible, or a heavy dependency for a
 one-liner), and ask for a note in the PR description or a code comment
 — "checked existing options, nothing fit" — when it's missing. This is a global standing rule from the
-[`d-morrison/ai-config`](https://github.com/d-morrison/ai-config) corpus
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/prefer-packaged-functions.md` states the R-function
 case); its umbrella statement lives at
 `shared/principles/dont-reinvent-wheel.md` there, added in
-[ai-config#603](https://github.com/d-morrison/ai-config/pull/603).
+[ai-config#603](https://github.com/Morrison-Lab/ai-config/pull/603).
