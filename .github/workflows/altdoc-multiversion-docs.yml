@@ -110,7 +110,9 @@ on:
         type: boolean
         default: true
       timeout-minutes:
-        description: Timeout for the render step.
+        description: >-
+          Timeout for the docs job as a whole, and for the render step within
+          it. Both are set from this one value.
         type: number
         default: 30
       rewrite-pr-preview-links:

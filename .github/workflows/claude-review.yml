@@ -43,6 +43,7 @@ jobs:
       startsWith(github.event.comment.body, '/review') &&
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       actions: write        # dispatch this workflow via `gh workflow run`
       issues: write         # acknowledge the /review comment
