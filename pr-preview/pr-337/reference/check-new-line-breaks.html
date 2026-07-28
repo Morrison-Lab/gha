@@ -525,7 +525,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines. Pairs well with <a href="../reference/lint-markdown.html"><code>lint-markdown.yml</code></a> when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.</p>
-<p>Two checks run, both on by default. The first is the <a href="https://sembr.org">SemBr spec</a>’s rule 4, the normative MUST: break after a sentence. The second is a narrow slice of its rule 5, the SHOULD: break after an independent clause. That slice keys on a semicolon only, and only past a length gate, because a comma is overwhelmingly a list separator rather than a clause boundary. Keying on every mark the spec names flags half of already-conforming prose, against roughly one line in a hundred for the semicolon; see <a href="https://github.com/d-morrison/gha/issues/336">gha#336</a> for the measurements. Set <code>clause-breaks: false</code> to check sentences only.</p>
+<p>Two checks run, both on by default. The first is the <a href="https://sembr.org">SemBr spec</a>’s rule 4, the normative MUST: break after a sentence. The second is a narrow slice of its rule 5, the SHOULD: break after an independent clause. That slice keys on a semicolon only, and only past a length gate, because a comma is overwhelmingly a list separator rather than a clause boundary. Keying on every mark the spec names flags 50.6% of already-conforming prose, against 0.7% for this check; see <a href="https://github.com/d-morrison/gha/issues/336">gha#336</a> for the measurements. The gate measures a line’s <em>visible</em> length, so a line that is long only because of a link target or a code span does not qualify. Set <code>clause-breaks: false</code> to check sentences only.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -578,7 +578,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>clause-min-length</code></td>
 <td>number</td>
 <td><code>80</code></td>
-<td>Minimum line length before <code>clause-breaks</code> applies; ignored when it is <code>false</code>.</td>
+<td>Minimum line length before <code>clause-breaks</code> applies, inclusive. Measured on visible prose, with inline code spans and link targets removed, so a line long only because of a URL does not qualify. Ignored when <code>clause-breaks</code> is <code>false</code>.</td>
 </tr>
 </tbody>
 </table>
