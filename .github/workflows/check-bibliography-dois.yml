@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check bibliography DOIs
-        uses: d-morrison/gha/check-bibliography-dois@v2
+        uses: Morrison-Lab/gha/check-bibliography-dois@v2
         with:
           install-quarto: ${{ inputs.install-quarto }}
           no-metadata-check: ${{ inputs.no-metadata-check }}

@@ -11,7 +11,7 @@ jobs:
   request-review:
     permissions:
       pull-requests: write
-    uses: d-morrison/gha/.github/workflows/request-dependabot-review.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/request-dependabot-review.yml@v2
     with:
       reviewers: your-github-username
       # bot-actor: renovate[bot]   # override the default (dependabot[bot])

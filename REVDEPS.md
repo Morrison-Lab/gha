@@ -1,18 +1,22 @@
 # Reverse Dependencies (Consumer Repos)
 
-Repos that call `d-morrison/gha` reusable workflows from their
+Repos that call `Morrison-Lab/gha` reusable workflows from their
 `.github/workflows/`.
 
 > **Note:** This list helps us notify consumers before moving the `@v1` tag in
 > a breaking way (or cutting `@v2`). It is **not** authoritative — always
 > verify with a code search across the consuming orgs (`d-morrison`,
 > `ucdavis`, `UCD-SERG`, `UCLA-PHP`, `UCD-IDDRC`) when releasing a breaking
-> change. A GitHub code search for `d-morrison/gha/.github/workflows` across
-> those owners is the quickest way to find current callers:
+> change. A GitHub code search across those owners is the quickest way to find
+> current callers. Search **both** paths: a repo still on the old
+> `d-morrison/gha` path has not migrated yet, and is currently broken rather
+> than merely stale, since that path no longer resolves.
 >
 > ```bash
 > # Requires an authenticated gh (run `gh auth login`, or set GH_TOKEN).
-> gh search code 'uses: d-morrison/gha/.github/workflows' --owner d-morrison --owner ucdavis --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC
+> OWNERS=(--owner d-morrison --owner ucdavis --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC)
+> gh search code 'uses: Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}"
+> gh search code 'uses: d-morrison/gha/.github/workflows' "${OWNERS[@]}"  # not yet migrated
 > ```
 
 ## How to register
