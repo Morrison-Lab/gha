@@ -36,6 +36,7 @@ jobs:
   Check-Changelog:
     name: Check Changelog Action
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
       - uses: UCD-SERG/changelog-check-action@0189fc7eedec3ef3e9648c713908f6f2a6e99057 # v2 (major-only tag; no vX.Y.Z published)

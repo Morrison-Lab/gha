@@ -20,6 +20,7 @@ concurrency:
 jobs:
   slide:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     # workflow_dispatch can be launched from any ref; only ever slide for main.
     if: github.ref == 'refs/heads/main'
     permissions:
