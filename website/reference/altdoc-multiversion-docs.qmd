@@ -33,7 +33,7 @@ boundary is a possible follow-up, not part of this port.
 | `quarto-config-path`         | string  | `'altdoc/quarto_website.yml'` | Path to the altdoc Quarto config file, relative to the repo root.                                                                    |
 | `docs-base-url`              | string  | `''`                        | Override the docs base URL. Leave empty to derive it from the calling repository.                                                     |
 | `preview-branch`             | string  | `'gh-pages'`                 | Branch PR previews and version subdirectories are deployed to.                                                                        |
-| `timeout-minutes`            | number  | `30`                        | Timeout for the render step.                                                                                                          |
+| `timeout-minutes`            | number  | `30`                        | Timeout for the docs job as a whole, and for the render step within it. Both are set from this one value.                              |
 | `rewrite-pr-preview-links`   | boolean | `true`                      | On PR builds, repoint Quarto's repo-action links and the navbar GitHub icon at the PR's head branch and conversation page.            |
 | `rewrite-issue-links`        | boolean | `true`                      | Repoint rendered "Report an issue" links at the base repository's issues page.                                                        |
 | `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`): a reusable workflow only sees `with:`-passed values. |

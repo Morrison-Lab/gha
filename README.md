@@ -383,8 +383,8 @@ Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
 
-Every job sets `timeout-minutes`, so a hung step fails in minutes instead of
-occupying a runner until GitHub's six-hour default expires.
+Every job that runs steps sets `timeout-minutes`, so a hung step fails in
+minutes instead of occupying a runner until GitHub's six-hour default expires.
 The values are deliberately generous -- roughly 10 minutes for gate and
 dispatch jobs, 20 for checks and lints, 45 for builds and deploys, 60 for the
 agent workflows -- because the goal is catching a hang, not budgeting a normal
