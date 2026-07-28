@@ -410,6 +410,66 @@ job that exercises the real composite (`base-ref` diff mode) against this
 repo's own tree, the same "local composite, not yet the `@v1`-pinned
 reusable-workflow chain" precedent `phi` uses above.
 
+The suite also covers the gha#336 clause check (a long line carrying a
+mid-line semicolon, as a proxy for SemBr rule 5), including that it is
+**on by default** -- and pins the two defaults that are declared in three
+places at once.
+`_DEFAULT_CLAUSE_BREAKS`/`_DEFAULT_CLAUSE_MIN_LENGTH` in the script are the
+single source, but `action.yml` and
+`.github/workflows/check-new-line-breaks.yml` each re-declare them for their
+own inputs, so a parametrized test reads both YAML files and asserts they
+agree with the script -- the same gha#303 precedent that pinned
+`generate-altdoc-landing-page`'s `site-root` default rather than leaving it
+to a comment.
+The first draft of #336 proved why: `find_violations()` kept a stale `False`
+default while `classify_line()` and `main()` had moved to `True`, and only
+the test caught the drift.
+That test parses the YAML with a line scan rather than a YAML library,
+because the `new-line-breaks-tests` job installs only pytest.
+
+**A selftest step that sets no `fail:` cannot prove the input reached the
+script, however it is worded.**
+`_selftest.yml`'s `new-line-breaks` job does call the composite a second time
+with `clause-breaks: 'false'`, and that is worth having as a real `uses:`
+exercise -- but `main()` returns 0 on every path unless `NLB_FAIL` is set, so
+the step stays green whether the input arrives, is dropped, or was never
+declared at all (an undeclared composite input is only an Actions warning).
+What actually pins the `env var -> main() -> exit code` path is a set of
+pytest cases that set `NLB_FAIL=true` around a real `main()` call on a
+throwaway git repo, asserting exit 1 with the clause check on and exit 0 both
+with `NLB_CLAUSE_BREAKS=false` and with the length gate raised past the line.
+Each was confirmed to fail when the corresponding env read is stubbed out.
+(gha#337 review round 2: the step's original comment, and this paragraph,
+both claimed the step proved the plumbing; neither could.)
+Round 3 added the converse caveat, since "cannot prove the input arrived" is
+not "proves nothing": the step still pins that `action.yml` parses and that
+the opt-out code path runs to completion, which is why it stayed rather than
+being deleted as dead weight.
+Round 5 narrowed that caveat in turn -- it had also claimed the step pins
+that the input is *declared*, contradicting this paragraph's own point two
+sentences earlier that an undeclared input is only a warning.
+Declaration is pinned by the defaults-agreement test instead, which reads
+each YAML file for the input's `default:` and fails outright when there is
+none (gha#337 review round 5).
+
+**Markup stripping is where this check's false verdicts come from, in both
+directions.**
+The clause check keys on a semicolon in the *stripped* line, so every pattern
+in `strip_inline_markup` decides two things at once: whether a `;` is prose,
+and whether the line is long enough to look at.
+Both of gha#337's round-3 findings were one pattern each.
+A code-span pattern of `` `[^`]*` `` matches the empty span between the two
+opening backticks of a ```` ``...`` ```` span, so an N-backtick span kept its
+contents and a `;`-separated shell command read as prose -- the exact case
+the stripping exists to remove.
+And a bare-URL pattern of `https?://\S+` runs to the next whitespace, so a
+`;` immediately after a URL was deleted along with it, silencing a genuine
+break.
+The rule that catches both: a pattern must remove the construct and nothing
+adjacent to it, so backreference a delimiter's opening run rather than
+matching to the next one, and stop a URL before trailing sentence
+punctuation.
+
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
 `test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the

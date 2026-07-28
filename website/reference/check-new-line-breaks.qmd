@@ -11,6 +11,28 @@ lines. Pairs well with [`lint-markdown.yml`](lint-markdown.qmd) when
 markdownlint's MD013 (line-length) is disabled because the corpus already
 carries long-line drift from before the convention was adopted.
 
+Two checks run, both on by default.
+The first is the [SemBr spec](https://sembr.org)'s rule 4,
+the normative MUST: break after a sentence.
+The second flags a long line carrying a mid-line semicolon,
+as a proxy for its rule 5, the SHOULD: break after an independent clause.
+It is a proxy rather than a test of the rule,
+since deciding whether a mark ends an *independent* clause needs a parser --
+so a semicolon-delimited list can be flagged too.
+Of the four marks rule 5 names, only the semicolon has a low enough unparsed
+hit rate to be useful:
+keying on all four flags 50.5% of already-conforming prose,
+against 0.7% for this check;
+see [gha#336](https://github.com/Morrison-Lab/gha/issues/336) for the
+measurements.
+
+The gate's default of 80 is the spec's own rule 12,
+"a maximum line length of 80 characters is RECOMMENDED".
+It measures a line's *visible* length -- rule 13 exempts a line that is long
+to accommodate a hyperlink or a code element -- so a line that is long only
+because of a link target or a code span does not qualify.
+Set `clause-breaks: false` to check sentences only.
+
 ## Inputs
 
 | Input            | Type    | Default | Description                                                                          |
@@ -19,6 +41,8 @@ carries long-line drift from before the convention was adopted.
 | `globs`          | string  | `'*.md'` | Space-separated git pathspecs of tracked files to check (recursive by default).      |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `fail`           | boolean | `false` | Fail the workflow when a violation is found; otherwise warn only.                    |
+| `clause-breaks`  | boolean | `true`  | Also flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set `false` to check sentences only. |
+| `clause-min-length` | string | `'80'` | Minimum line length before `clause-breaks` applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when `clause-breaks` is `false`. |
 
 ## Permissions
 
@@ -49,6 +73,9 @@ jobs:
     #   globs: '*.md'                          # pathspecs to check (recursive)
     #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
     #   fail: true                             # block the PR instead of warning
+    #   clause-breaks: false                   # sentences only; skip the
+    #                                          # semicolon clause check (on by default)
+    #   clause-min-length: 100                 # raise the clause check's length gate
 ```
 
 See
