@@ -916,6 +916,52 @@ silently skipped -- caught only by noticing the job finished in 4 seconds.
 Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
+## Never just theorize -- investigate empirically
+
+A hypothesis that is cheap to test must be tested before it is asserted, and
+certainly before it is acted on or reported to anyone.
+Naming a plausible cause is the start of the work, not the end of it.
+The failure mode is not being wrong; it is being wrong *and* confident,
+because a stated hypothesis reads to everyone else like a finding.
+
+This matters most when diagnosing CI, where the authoritative answer is
+almost always one call away and the plausible answer is almost always
+slightly wrong:
+
+- **Read the failure's own output before theorizing about its cause.**
+  A job that fails with no logs still has an error banner on its job page,
+  reachable with `WebFetch` on the run URL even when the API will not serve
+  it. gha#351/#352: an org-wide job failure was attributed to an Actions
+  spending limit, then -- after that was disproved -- to anything but
+  billing, when the banner said
+  `The job was not started because your account is locked due to a billing
+  issue` all along.
+- **Read the tool's config before modelling its behavior.**
+  A guess at lychee's redirect handling was wrong because `301` is in
+  `check-links/lychee.default.toml`'s `accept` list; two successive guesses
+  at markdownlint's MD013 flagged 269 and then 31 lines against the
+  linter's actual 1, because
+  `lint-qmd/.markdownlint.qmd.jsonc` sets
+  `{ line_length: 80, code_blocks: false, tables: false }` and markdownlint
+  ignores a line with no space past the limit.
+  A model of a checker is only worth using once it reproduces that checker's
+  known result on a known input.
+- **Prefer the run's own artifacts to your inference about them.**
+  Which repositories moved in the org transfer was answerable from the lychee
+  run's redirect and error lists -- `qwt`, `rme`, and `rpt` appeared in
+  neither, so they resolved cleanly -- rather than from reasoning about
+  which ones "probably" moved.
+
+**A wall of access failures is not evidence that something cannot be
+investigated.** In the same work, `get_check_run` returned `301`, the
+MCP tools refused the new owner as out of scope, and the agent proxy
+returned `403` for `api.github.com` -- three failures in a row, after which
+a plain public `https://github.com/...` URL answered the question
+immediately. Exhausting the authenticated routes is a reason to try an
+unauthenticated one, not a reason to report the question as unanswerable.
+The same principle already appears above for reading files out of
+repositories this session is not scoped to.
+
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
