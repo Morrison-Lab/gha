@@ -18,5 +18,6 @@
   Measured over a 22,820-line conformant corpus, keying on every mark the
   spec names flags 50.5% of already-conforming lines, against 0.7% for this
   check.
-  The gate measures a line's visible length, so a line that is long only
-  because of a link target or a code span does not qualify.
+  The gate measures a line's visible length, after stripping inline markup
+  such as code spans, link targets, bare URLs, and HTML entities, so a line
+  that is long only because of a URL does not qualify.

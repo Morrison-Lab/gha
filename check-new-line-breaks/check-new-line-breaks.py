@@ -140,7 +140,10 @@ def has_unbroken_clause(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH)
       22,820-line semantic-line-break-conformant corpus, keying on any
       mid-line ``, ; : --`` flags 50.5% of already-conforming lines, against
       6.1% for the semicolon alone, and 0.7% once the length gate below
-      applies (d-morrison/gha#336).
+      applies. These are a re-measurement taken against the shipped code;
+      d-morrison/gha#336 records the original pass, whose figures differ
+      because the corpus grew and because the stripping below was widened
+      after it was written.
     - A **colon** usually introduces a list or an example, which rule 7
       already breaks before, since the list starts on the next line.
     - A **dash** is usually a paired parenthetical (``X --- Y --- Z``), where

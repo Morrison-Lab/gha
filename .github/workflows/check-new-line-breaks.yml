@@ -31,8 +31,9 @@ on:
         default: true
       clause-min-length:
         description: >-
-          Minimum visible line length (inline code spans and link targets
-          removed) before `clause-breaks` applies; inclusive. Ignored when
+          Minimum visible line length before `clause-breaks` applies;
+          inclusive. Measured after stripping inline markup such as code
+          spans, link targets, bare URLs, and HTML entities. Ignored when
           `clause-breaks` is false.
         type: string
         default: '80'

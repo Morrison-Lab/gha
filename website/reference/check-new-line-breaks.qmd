@@ -32,7 +32,7 @@ because of a link target or a code span does not qualify. Set
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `fail`           | boolean | `false` | Fail the workflow when a violation is found; otherwise warn only.                    |
 | `clause-breaks`  | boolean | `true`  | Also flag a long line joining two independent clauses with a semicolon (SemBr rule 5), on top of the rule 4 sentence check that always runs. Set `false` to check sentences only. |
-| `clause-min-length` | string | `'80'` | Minimum line length before `clause-breaks` applies, inclusive. Measured on visible prose, with inline code spans and link targets removed, so a line long only because of a URL does not qualify. Ignored when `clause-breaks` is `false`. |
+| `clause-min-length` | string | `'80'` | Minimum line length before `clause-breaks` applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when `clause-breaks` is `false`. |
 
 ## Permissions
 

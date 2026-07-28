@@ -54,11 +54,11 @@ inputs:
     description: >-
       Minimum line length, in characters, before `clause-breaks` applies;
       inclusive, so a line of exactly this length is checked. Measured on the
-      line's visible prose, with inline code spans and link targets removed,
-      so a line that is long only because of a URL does not qualify. The gate
-      separates a genuinely overlong clause chain from an ordinary short line
-      that happens to contain a semicolon. Ignored when `clause-breaks` is
-      'false'.
+      line's visible prose, after stripping inline markup such as code spans,
+      link targets, bare URLs, and HTML entities, so a line that is long only
+      because of a URL does not qualify. The gate separates a genuinely
+      overlong clause chain from an ordinary short line that happens to
+      contain a semicolon. Ignored when `clause-breaks` is 'false'.
     default: '80'
 runs:
   using: composite
