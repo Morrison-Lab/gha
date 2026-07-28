@@ -192,7 +192,7 @@ def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) 
     leading semicolon is skipped over, not treated as the line's answer, so
     it cannot mask a real boundary further along.
     """
-    stripped = strip_inline_markup(text).rstrip()
+    stripped = strip_inline_markup(text).strip()
     if len(stripped) < min_length:
         return False
     semicolon = stripped.find(";", 1)
@@ -497,9 +497,12 @@ def _env_int(name: str, default: int) -> int:
     admit every line, so it is treated the same as unparseable input.
     """
     raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
     try:
         value = int(raw)
     except ValueError:
+        print(f"::warning::{name}={raw!r} is not an integer; using {default} instead.")
         return default
     if value < 0:
         print(f"::warning::{name}={raw!r} is negative; using {default} instead.")

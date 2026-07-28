@@ -472,6 +472,30 @@ def test_recognized_flag_values_do_not_warn(monkeypatch, capsys, value):
     assert capsys.readouterr().out == ""
 
 
+def test_non_numeric_min_length_falls_back_to_the_default_and_warns(monkeypatch, capsys):
+    """Round 3 fixed the negative branch but not this one.
+
+    The section comment above says "both readers fell back silently", which
+    was only made true for `_env_flag` and for `_env_int`'s *negative* input.
+    An unparseable value -- the likelier typo, since `8o` and `80` differ by
+    one keystroke -- still took the silent path (#337 review round 5).
+    """
+    monkeypatch.setenv("NLB_CLAUSE_MIN_LENGTH", "8o")
+    assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80
+    assert "::warning::" in capsys.readouterr().out
+
+
+def test_unset_min_length_falls_back_silently(monkeypatch, capsys):
+    """The warning must not fire when the caller simply did not set it.
+
+    Guards the fix above from over-correcting: an unset variable is the
+    normal case, and warning on it would make every default run noisy.
+    """
+    monkeypatch.delenv("NLB_CLAUSE_MIN_LENGTH", raising=False)
+    assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80
+    assert capsys.readouterr().out == ""
+
+
 def test_negative_min_length_falls_back_to_the_default_and_warns(monkeypatch, capsys):
     # A negative gate admits every line, so it is invalid rather than merely
     # unusual -- and turning an advisory check into a firehose is exactly the
@@ -490,3 +514,26 @@ def test_non_negative_min_lengths_are_taken_as_given(monkeypatch, capsys, value)
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))
+
+
+# ── stripping must not manufacture an interior semicolon ─────────────────────
+
+# #337 review round 5: `strip_inline_markup(...).rstrip()` never left-trimmed,
+# so whitespace left behind by a stripped construct could sit between the line
+# start and a semicolon -- turning a semicolon that ends nothing into an
+# "interior" one. The two cases below differ only by that space, so they are
+# asserted together: either both are clause breaks or neither is, and the
+# no-space form was already correctly ignored.
+
+_PADDING = "word " * 20
+
+
+def test_leading_semicolon_after_a_stripped_span_is_not_a_clause_break():
+    text = "`code` ; " + _PADDING
+    assert nlb.has_late_semicolon(text) is False
+
+
+def test_leading_semicolon_with_and_without_a_space_agree():
+    spaced = "`code` ; " + _PADDING
+    tight = "`code`; " + _PADDING
+    assert nlb.has_late_semicolon(spaced) == nlb.has_late_semicolon(tight)

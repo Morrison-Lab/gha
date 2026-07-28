@@ -420,9 +420,15 @@ Each was confirmed to fail when the corresponding env read is stubbed out.
 (gha#337 review round 2: the step's original comment, and this paragraph,
 both claimed the step proved the plumbing; neither could.)
 Round 3 added the converse caveat, since "cannot prove the input arrived" is
-not "proves nothing": the step still pins that `action.yml` parses with the
-input declared and that the opt-out code path runs to completion, which is
-why it stayed rather than being deleted as dead weight.
+not "proves nothing": the step still pins that `action.yml` parses and that
+the opt-out code path runs to completion, which is why it stayed rather than
+being deleted as dead weight.
+Round 5 narrowed that caveat in turn -- it had also claimed the step pins
+that the input is *declared*, contradicting this paragraph's own point two
+sentences earlier that an undeclared input is only a warning.
+Declaration is pinned by the defaults-agreement test instead, which reads
+each YAML file for the input's `default:` and fails outright when there is
+none (gha#337 review round 5).
 
 **Markup stripping is where this check's false verdicts come from, in both
 directions.**
