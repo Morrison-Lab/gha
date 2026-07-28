@@ -381,6 +381,22 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `report-failure.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
+### Job timeouts
+
+Every job that runs steps sets `timeout-minutes`, so a hung step fails in
+minutes instead of occupying a runner until GitHub's six-hour default expires.
+The values are deliberately generous -- roughly 10 minutes for gate and
+dispatch jobs, 20 for checks and lints, 45 for builds and deploys, 60 for the
+agent workflows -- because the goal is catching a hang, not budgeting a normal
+run.
+
+A job that calls a reusable workflow cannot set `timeout-minutes` itself
+(GitHub rejects the key on a `uses:` job), so such a job inherits whatever
+timeout the called workflow's own job declares.
+`altdoc-multiversion-docs.yml` additionally exposes its timeout as a
+`workflow_call` input, which is the pattern to follow if a consumer ever needs
+to raise one.
+
 ## Reverse dependencies
 
 [`REVDEPS.md`](REVDEPS.md) tracks repos that call these workflows, so consumers

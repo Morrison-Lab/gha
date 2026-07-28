@@ -252,6 +252,7 @@ jobs:
       cancel-in-progress: false
 
     runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 60
     permissions:
       contents: write       # push branches / commits
       pull-requests: write  # open / edit PRs
