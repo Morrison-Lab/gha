@@ -3,9 +3,22 @@
 # request -- i.e. whether claude.yml should route it to the dedicated
 # code-review workflow instead of letting the agent answer it itself.
 #
-# Usage: detect-review-request.sh <body> [<body> ...]
-# Prints `true` if ANY argument is a review request, else `false`. Exits 0
-# either way, so a caller running under `set -e` can branch on the output.
+# Usage: printf '%s\0' <body> [<body> ...] | detect-review-request.sh
+# Reads NUL-separated bodies on stdin and prints `true` if ANY of them is a
+# review request, else `false`. Exits 0 either way, so a caller running under
+# `set -e` can branch on the output; exits 2 if stdin carried no bodies at
+# all, which can only mean the caller is miswired.
+#
+# Bodies arrive on stdin rather than as arguments because argv is size-capped
+# and comment bodies are attacker-influenced. Linux caps a SINGLE argument at
+# MAX_ARG_STRLEN (32 pages = 131072 bytes), independent of the much larger
+# aggregate ARG_MAX, and GitHub allows comment bodies of 65536 CHARACTERS --
+# which in mostly-4-byte UTF-8 is 256 KiB, twice the per-argument cap. One
+# ordinary emoji-heavy comment from any non-bot commenter would therefore
+# fail `execve` with E2BIG, and since the caller runs under `set -euo
+# pipefail` with no `continue-on-error`, that reddened the whole claude job
+# over an optional late-review-dispatch nicety (gha#341 review). A pipe has
+# no such limit.
 #
 # Why a script rather than an inline `[[ ... =~ ... ]]` in claude.yml: the
 # pattern below is no longer a one-liner, it is consulted from two separate
@@ -14,11 +27,6 @@
 # unanswered. Offline tests live in
 # tests/run-detect-review-request-tests.sh (gha#339).
 set -euo pipefail
-
-if [ "$#" -eq 0 ]; then
-  echo "usage: detect-review-request.sh <body> [<body> ...]" >&2
-  exit 2
-fi
 
 # Only these lead-ins are accepted between `@claude` and `review`, and they
 # are all function words, never content words. A wider rule -- "any few words
@@ -47,12 +55,22 @@ strip_quotes() {
 
 shopt -s nocasematch
 
-for body in "$@"; do
+count=0
+match=false
+# No `break` on a match: stopping early would close the pipe under the
+# writer, and `pipefail` in the caller would turn that SIGPIPE into a step
+# failure -- the very outcome this stdin rewrite exists to avoid.
+while IFS= read -r -d '' body; do
+  count=$((count + 1))
   [ -n "$body" ] || continue
   if [[ "$(strip_quotes "$body")" =~ $PATTERN ]]; then
-    echo "true"
-    exit 0
+    match=true
   fi
 done
 
-echo "false"
+if [ "$count" -eq 0 ]; then
+  echo "usage: printf '%s\\0' <body> [<body> ...] | detect-review-request.sh" >&2
+  exit 2
+fi
+
+echo "$match"

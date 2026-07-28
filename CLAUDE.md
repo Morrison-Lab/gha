@@ -156,6 +156,15 @@ which is why the capabilities above moved to `@v2`.
   needs jq 1.7 while `runs-on` is a consumer-settable input, so a runner with
   jq 1.6 would have failed into the `|| :` fallback and silently reported "no
   late review".
+  The composite decodes those lines into a **pipe**, NUL-separated, and the
+  script reads stdin -- never argv.
+  Linux caps a single argument at `MAX_ARG_STRLEN` (131072 bytes)
+  independently of the far larger aggregate `ARG_MAX`, while GitHub allows
+  65536-*character* comments, which in mostly-4-byte UTF-8 is 256 KiB.
+  So one emoji-heavy comment from any non-bot commenter fails `execve` with
+  E2BIG, and under the composite's `set -euo pipefail` that reddens the whole
+  calling job over an optional late-dispatch nicety (caught in gha#341's
+  review; the test table's oversized-body case is the regression guard).
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.

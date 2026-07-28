@@ -54,7 +54,7 @@ failures=0
 for case in "${cases[@]}"; do
   want="${case%%|*}"
   body="${case#*|}"
-  got="$(bash "$detect_script" "$body")"
+  got="$(printf '%s\0' "$body" | bash "$detect_script")"
   if [[ "$got" == "$want" ]]; then
     echo "OK   detect-review-request.sh ${body@Q} -> $got"
   else
@@ -64,16 +64,40 @@ for case in "${cases[@]}"; do
 done
 
 # Multiple bodies: claude.yml passes the comment and review bodies together,
-# and its late-comment scan feeds them in one at a time, so `any of` matters.
-if [[ "$(bash "$detect_script" "not a request" "@claude please review")" != "true" ]]; then
-  echo "::error::detect-review-request.sh did not match a review request in a later argument"
+# and its late-comment scan appends every comment posted after the trigger,
+# so `any of` matters.
+if [[ "$(printf '%s\0' "not a request" "@claude please review" | bash "$detect_script")" != "true" ]]; then
+  echo "::error::detect-review-request.sh did not match a review request in a later body"
   failures=$((failures + 1))
 else
-  echo "OK   detect-review-request.sh matches a request in any argument"
+  echo "OK   detect-review-request.sh matches a request in any body"
+fi
+
+# A body larger than Linux's per-argument MAX_ARG_STRLEN (131072 bytes). The
+# first implementation passed bodies as positional arguments, so a single
+# emoji-heavy comment -- well inside GitHub's 65536-character cap, but up to
+# 256 KiB in 4-byte UTF-8 -- failed `execve` with E2BIG and reddened the whole
+# claude job (gha#341 review). Reverting the stdin rewrite makes this case
+# fail; nothing else in the table reaches the limit.
+huge="$(head -c 200000 /dev/zero | tr '\0' 'x')"
+if [[ "$(printf '%s\0' "$huge" "@claude please review" | bash "$detect_script")" != "true" ]]; then
+  echo "::error::detect-review-request.sh failed on a body larger than MAX_ARG_STRLEN"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-review-request.sh handles a body larger than MAX_ARG_STRLEN"
+fi
+
+# No bodies at all can only mean a miswired caller, so fail loudly rather
+# than reporting a confident "false".
+if bash "$detect_script" </dev/null >/dev/null 2>&1; then
+  echo "::error::detect-review-request.sh should exit non-zero on empty stdin"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-review-request.sh rejects empty stdin"
 fi
 
 if [[ "$failures" -gt 0 ]]; then
-  echo "::error::$failures of $(( ${#cases[@]} + 1 )) detect-review-request case(s) did not behave as expected"
+  echo "::error::$failures of $(( ${#cases[@]} + 3 )) detect-review-request case(s) did not behave as expected"
   exit 1
 fi
-echo "All $(( ${#cases[@]} + 1 )) detect-review-request cases behaved as expected."
+echo "All $(( ${#cases[@]} + 3 )) detect-review-request cases behaved as expected."

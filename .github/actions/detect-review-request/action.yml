@@ -49,15 +49,23 @@ runs:
       run: |
         set -euo pipefail
         SCRIPT="${{ github.action_path }}/../../workflows/scripts/detect-review-request.sh"
-        bodies=("$COMMENT_BODY" "$REVIEW_BODY")
-        if [ -n "$BODIES_FILE" ]; then
-          # No `|| true` on either the redirect or the decode: an unreadable
-          # or malformed bodies-file is a caller bug, and degrading to "no
-          # review requested" would hide it.
-          while IFS= read -r encoded; do
-            [ -n "$encoded" ] || continue
-            bodies+=("$(printf '%s' "$encoded" | base64 -d)")
-          done < "$BODIES_FILE"
-        fi
-        MATCH="$(bash "$SCRIPT" "${bodies[@]}")"
+        # Bodies go down a pipe, NUL-separated, never through argv: a single
+        # comment can exceed Linux's per-argument MAX_ARG_STRLEN and fail
+        # `execve`, which under `set -euo pipefail` would fail this step and
+        # redden the whole calling job. See the script's own header.
+        MATCH="$(
+          {
+            printf '%s\0' "$COMMENT_BODY" "$REVIEW_BODY"
+            if [ -n "$BODIES_FILE" ]; then
+              # No `|| true` on either the redirect or the decode: an
+              # unreadable or malformed bodies-file is a caller bug, and
+              # degrading to "no review requested" would hide it.
+              while IFS= read -r encoded; do
+                [ -n "$encoded" ] || continue
+                base64 -d <<<"$encoded"
+                printf '\0'
+              done < "$BODIES_FILE"
+            fi
+          } | bash "$SCRIPT"
+        )"
         echo "match=$MATCH" >> "$GITHUB_OUTPUT"
