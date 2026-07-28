@@ -78,7 +78,7 @@ jobs:
 
       - name: Check equation renders
         if: steps.meta.outputs.action == 'deploy'
-        uses: d-morrison/gha/check-equation-renders@v2
+        uses: Morrison-Lab/gha/check-equation-renders@v2
         with:
           site-dir: _preview_download/site/
           fail: ${{ inputs.fail }}

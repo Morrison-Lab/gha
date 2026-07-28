@@ -25,7 +25,7 @@ jobs:
   publish:
     permissions:
       contents: write
-    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
     with:
       path: website
 
@@ -48,7 +48,7 @@ jobs:
       # grant a reusable workflow's permissions, so folding it in would make
       # `issues: write` mandatory for everyone calling that workflow.
       issues: write
-    uses: d-morrison/gha/.github/workflows/report-failure.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/report-failure.yml@v2
     with:
       # Stable across runs -- this is the deduplication key.
       title: Publish workflow is failing

@@ -50,7 +50,7 @@ jobs:
     steps:
       - name: Parse this workflow's ref
         id: this-wf
-        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
@@ -119,7 +119,7 @@ jobs:
       issues: write
       id-token: write
       actions: read   # lets the reviewer read CI status (github_ci MCP server)
-    uses: d-morrison/gha/.github/workflows/claude-code-review.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     # Pass secrets explicitly (not `secrets: inherit`) for parity with
     # examples/claude-code-review.yml; inherit only works for same-owner callers.
     secrets:

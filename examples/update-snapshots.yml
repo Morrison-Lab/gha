@@ -15,7 +15,7 @@ on:
 
 jobs:
   update-snapshots:
-    uses: d-morrison/gha/.github/workflows/update-snapshots.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2
     permissions:
       contents: write
     with:

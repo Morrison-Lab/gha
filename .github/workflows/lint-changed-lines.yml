@@ -46,7 +46,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Lint changed lines
-        uses: d-morrison/gha/lint-changed-lines@v2
+        uses: Morrison-Lab/gha/lint-changed-lines@v2
         with:
           path: ${{ inputs.path }}
           install-quarto: ${{ inputs.install-quarto }}

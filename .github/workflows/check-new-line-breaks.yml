@@ -52,7 +52,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check new markdown lines for missing semantic breaks
-        uses: d-morrison/gha/check-new-line-breaks@v2
+        uses: Morrison-Lab/gha/check-new-line-breaks@v2
         with:
           python-version: ${{ inputs.python-version }}
           globs: ${{ inputs.globs }}

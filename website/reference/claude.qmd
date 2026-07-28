@@ -7,6 +7,15 @@ files, and opens or updates pull requests. It pairs with
 `claude-code-review.yml`: when Claude pushes commits (or an `@claude review`
 mention fires), it dispatches the review workflow via `workflow_dispatch`.
 
+A mention counts as a review request when `review` follows `@claude` directly,
+after punctuation, or after a polite lead-in -- `@claude review`,
+`@claude, review`, `@claude please review`, `@claude can you review this?`,
+`@claude re-review`. Anything else is treated as an ordinary request for the
+agent, including a mention that merely contains the word (`@claude the review
+workflow is broken, can you fix it?`), because a misfire routes the comment to
+the reviewer and suppresses the agent's own reply. Quoted lines are skipped, so
+quote-replying to a past request does not dispatch a fresh review.
+
 It also runs unattended on `workflow_dispatch`/`schedule` events (e.g. a
 periodic skill invocation with no human comment to react to). The caller's `on:`
 needs one of those triggers, and its job-level `if:` gate needs widening too, or
@@ -106,7 +115,7 @@ jobs:
       issues: write
       id-token: write
       actions: write # dispatch the review workflow via `gh workflow run`
-    uses: d-morrison/gha/.github/workflows/claude.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # direct API key; empty when using OAuth

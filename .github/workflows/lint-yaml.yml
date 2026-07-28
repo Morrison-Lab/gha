@@ -44,7 +44,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Lint YAML
-        uses: d-morrison/gha/lint-yaml@v2
+        uses: Morrison-Lab/gha/lint-yaml@v2
         with:
           python-version: ${{ inputs.python-version }}
           config-file: ${{ inputs.config-file }}

@@ -69,7 +69,7 @@ jobs:
     permissions:
       contents: read
       actions: read # needed to download the build artifact
-    uses: d-morrison/gha/.github/workflows/check-equation-renders.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v2
     # with:
     #   fail: false   # report equation render errors without failing the run
 ```

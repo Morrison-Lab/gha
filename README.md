@@ -31,7 +31,7 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2
 ```
 
 Pin to the major tag that capability currently recommends (`@v2` in the

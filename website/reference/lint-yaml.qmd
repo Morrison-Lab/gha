@@ -42,7 +42,7 @@ on:
 
 jobs:
   lint:
-    uses: d-morrison/gha/.github/workflows/lint-yaml.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/lint-yaml.yml@v2
     # with:
     #   config-file: '.yamllint.yml'   # override the bundled default config
     #   paths-ignore: 'renv/**'        # skip known-vendored paths

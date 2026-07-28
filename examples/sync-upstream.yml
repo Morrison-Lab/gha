@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: d-morrison/gha/.github/workflows/sync-upstream.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/sync-upstream.yml@v2
     with:
       upstream-repo: etiennebacher/altdoc
       # upstream-branch: main    # branch on the upstream repo to merge from

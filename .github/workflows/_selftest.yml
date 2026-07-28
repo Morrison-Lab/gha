@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/check-non-standard-chars.yml
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
-  # `uses: d-morrison/gha/lint-*@v2` step resolves against yet. Exercise the
+  # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the
   # local composites directly against this repo's own tracked YAML/Markdown,
   # bypassing the wrapper the way check-phi/quarto-publish/test-coverage do.
   lint-yaml:
@@ -138,7 +138,7 @@ jobs:
           python3 -m pytest check-phi/tests/ -q
   # check-new-line-breaks is brand new, so (like check-phi/lint-yaml/lint-markdown
   # above) it doesn't exist at the released `@v2` tag its reusable workflow's
-  # internal `uses: d-morrison/gha/check-new-line-breaks@v2` step resolves
+  # internal `uses: Morrison-Lab/gha/check-new-line-breaks@v2` step resolves
   # against yet. Exercise the local composite directly so the selftest covers
   # the actual PR code; consumers use the reusable workflow once `@v2` includes
   # the action. base-ref makes this a real diff-scoped run against whatever
@@ -217,6 +217,9 @@ jobs:
       - name: Run sum-costs arithmetic tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-sum-costs-tests.sh
+      - name: Run detect-review-request matcher tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-detect-review-request-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -348,6 +351,49 @@ jobs:
             exit 1
           fi
           echo "sum-costs correctly surfaced total=$TOTAL"
+      # Proves claude.yml's detect-review-request composite action end-to-end.
+      # The pattern itself is unit-tested above; what only a real `uses:` step
+      # can prove is the github.action_path resolution, the output
+      # passthrough, and -- the part no unit test reaches -- the base64
+      # round-trip on the bodies-file path, which is how the late-comment
+      # rescue scan feeds multi-line comment bodies through the same matcher.
+      - name: Build a bodies-file for detect-review-request
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Two multi-line bodies, only the second a review request, encoded
+          # exactly as claude.yml's "Collect comments posted after the
+          # trigger" step encodes them.
+          printf '%s\n' \
+            '{"body":"looks good to me\nshipping it"}' \
+            '{"body":"@claude, please review\n\nthanks!"}' \
+            | jq -r '.body | @base64' > "$RUNNER_TEMP/late-bodies.b64"
+      - name: Exercise detect-review-request composite action end-to-end
+        id: detect-e2e
+        uses: ./.github/actions/detect-review-request
+        with:
+          bodies-file: ${{ runner.temp }}/late-bodies.b64
+      - name: Exercise detect-review-request on a non-request comment
+        id: detect-e2e-negative
+        uses: ./.github/actions/detect-review-request
+        with:
+          comment-body: "@claude the review workflow is broken, can you fix it?"
+      - name: Assert detect-review-request surfaced the correct matches
+        shell: bash
+        env:
+          MATCH: ${{ steps.detect-e2e.outputs.match }}
+          MATCH_NEGATIVE: ${{ steps.detect-e2e-negative.outputs.match }}
+        run: |
+          set -euo pipefail
+          if [[ "$MATCH" != "true" ]]; then
+            echo "::error::detect-review-request did not match the base64-encoded '@claude, please review' body (got '$MATCH')"
+            exit 1
+          fi
+          if [[ "$MATCH_NEGATIVE" != "false" ]]; then
+            echo "::error::detect-review-request matched a comment that only mentions the word review (got '$MATCH_NEGATIVE')"
+            exit 1
+          fi
+          echo "detect-review-request correctly surfaced match=true / match=false"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't
