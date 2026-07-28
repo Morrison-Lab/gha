@@ -7,7 +7,7 @@
   job that then double-dispatched every plain `@claude review`.
   The matcher now also accepts punctuation and a closed set of polite lead-ins
   (`please`, `can/could/would/will you`, `kindly`, `pls`), and ignores quoted
-  (`> `) lines so a quote-reply no longer re-dispatches a review.
+  blockquote lines so a quote-reply no longer re-dispatches a review.
   It deliberately still does not match arbitrary words between the mention and
   `review`: a
   false positive suppresses the agent's own reply, so `@claude the review
