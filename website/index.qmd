@@ -4,8 +4,8 @@ subtitle:
   "Central, reusable GitHub Actions for R-package and Quarto repositories"
 ---
 
-This site documents [`Morrison-Lab/gha`](https://github.com/Morrison-Lab/gha), a set
-of reusable GitHub Actions shared across the `d-morrison`, `UCD-SERG`,
+This site documents [`Morrison-Lab/gha`](https://github.com/Morrison-Lab/gha),
+a set of reusable GitHub Actions shared across the `d-morrison`, `UCD-SERG`,
 `ucdavis`, `UCLA-PHP`, and `UCD-IDDRC` owners. It is modeled on
 [`r-lib/actions`](https://github.com/r-lib/actions) and
 [`easystats/workflows`](https://github.com/easystats/workflows): a repo calls a
