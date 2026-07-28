@@ -242,6 +242,38 @@ def test_a_long_code_span_does_not_inflate_a_short_line_past_the_gate():
     assert not nlb.has_unbroken_clause(text)
 
 
+@pytest.mark.parametrize(
+    "label,text",
+    [
+        # #337 round 2: a bare URL has no `](` to anchor on, so it used to
+        # bypass stripping entirely -- reintroducing the round-1 bug for
+        # unbracketed links, and treating a `;` in a query string as a clause.
+        ("bare URL with a semicolon in its query string",
+         "Open https://example.com/search?a=1;b=2 in a browser for details, please, and read on"),
+        ("bare URL inflating an otherwise short line",
+         "See https://example.com/docs/some/quite/long/path/page.html; it explains the rest."),
+        ("autolink",
+         "See <https://example.com/docs/some/quite/long/path/page.html>; it explains the rest."),
+        # An HTML entity also ends in `;`, and renders as a single glyph.
+        ("HTML entity",
+         "This sentence uses fish &amp; chips as an example of a common food pairing today"),
+    ],
+)
+def test_markup_carrying_a_semicolon_is_not_a_clause_break(label, text):
+    assert not nlb.has_unbroken_clause(text), label
+
+
+def test_identical_prose_does_not_flip_verdict_on_link_syntax():
+    # The sharpest form of the round-2 finding: the same sentence, written two
+    # ways, must get the same answer.
+    bare = "Open https://example.com/search?a=1;b=2 in a browser for details, please, and read on"
+    bracketed = (
+        "Open [the search page](https://example.com/search?a=1;b=2) in a browser "
+        "for details, please, and read on"
+    )
+    assert nlb.has_unbroken_clause(bare) == nlb.has_unbroken_clause(bracketed)
+
+
 def test_min_length_is_inclusive():
     # #337 review, third finding: the input is named a *minimum*, so a line of
     # exactly that many visible characters is checked rather than skipped.
@@ -324,12 +356,48 @@ def test_declared_clause_min_length_default_matches_script_default(path):
     )
 
 
-def test_find_violations_default_matches_the_shared_constant():
-    # find_violations(), classify_line(), and main() must not drift apart:
-    # the first draft of this PR left find_violations() defaulting to False
-    # while everything else defaulted to True, and only a test caught it.
-    text = _LONG_SEMICOLON
-    assert nlb.classify_line(text) == ("clause" if nlb._DEFAULT_CLAUSE_BREAKS else None)
+# ── the env var -> main() -> exit code path ──────────────────────────────────
+
+# #337 round 2: `_selftest.yml` calls the composite with `clause-breaks:
+# 'false'`, but that step sets no `fail:`, and main() returns 0 on every path
+# unless NLB_FAIL is true -- so it stays green whether the input reaches the
+# script, is dropped, or was never declared. These two cases are what actually
+# prove the plumbing, by making the exit code depend on it.
+
+def _main_exit_code(tmp_path, monkeypatch, **env) -> int:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("NLB_BASE_REF", "HEAD~1")
+    monkeypatch.setenv("NLB_FAIL", "true")
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    return nlb.main()
+
+
+def _repo_with_added_clause_line(tmp_path) -> None:
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        f"# Notes\n\n- A short bullet.\n- {_LONG_SEMICOLON}\n"
+    )
+    _commit(tmp_path, "add clause-joined line")
+
+
+def test_clause_check_on_by_default_reaches_main_and_fails(tmp_path, monkeypatch):
+    _repo_with_added_clause_line(tmp_path)
+    assert _main_exit_code(tmp_path, monkeypatch) == 1
+
+
+def test_clause_breaks_false_reaches_main_and_passes(tmp_path, monkeypatch):
+    _repo_with_added_clause_line(tmp_path)
+    assert _main_exit_code(tmp_path, monkeypatch, NLB_CLAUSE_BREAKS="false") == 0
+
+
+def test_clause_min_length_env_var_reaches_main(tmp_path, monkeypatch):
+    _repo_with_added_clause_line(tmp_path)
+    # Raising the gate above the line's length silences it, which proves the
+    # second env var is read too, not just the boolean.
+    assert _main_exit_code(tmp_path, monkeypatch, NLB_CLAUSE_MIN_LENGTH="500") == 0
 
 
 if __name__ == "__main__":

@@ -35,8 +35,9 @@ Configuration (all via environment variables, set by the composite action):
                     also flag long lines joining independent clauses with a
                     semicolon.
   NLB_CLAUSE_MIN_LENGTH
-                    Minimum line length before the clause check applies
-                    (default: 80). Ignored when NLB_CLAUSE_BREAKS is false.
+                    Minimum *visible* line length before the clause check
+                    applies, inclusive (default: 80); markup is stripped
+                    first. Ignored when NLB_CLAUSE_BREAKS is false.
 """
 
 import os
@@ -85,13 +86,20 @@ def split_sentences(text: str) -> List[str]:
 
 # ── Clause breaks (on by default; SemBr rule 5) ─────────────────────────────
 
-# Inline code spans and link targets carry punctuation that is not prose:
-# `python3 -m`, a `;`-separated shell command, a URL's `https://`. Strip both
-# before looking for a clause boundary, or CLI flags and URLs dominate the
-# hits.
+# Markup carries punctuation that is not prose: `python3 -m`, a `;`-separated
+# shell command, a URL's query string, an HTML entity's own trailing `;`.
+# Strip all of it before looking for a clause boundary, or CLI flags and URLs
+# dominate the hits.
+#
+# Order matters: link targets go before bare URLs, so `[text](url)` has
+# already become `[text]` and leaves no URL behind.
 _CODE_SPAN_RE = re.compile(r"`[^`]*`")
 _LINK_TARGET_RE = re.compile(r"\]\([^)]*\)")
-
+_AUTOLINK_RE = re.compile(r"<https?://[^>\s]*>")
+_BARE_URL_RE = re.compile(r"https?://\S+")
+_ENTITY_RE = re.compile(
+    r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
+)
 # One home for each default; action.yml and the reusable workflow declare
 # the same two values, and a test pins all of them together.
 _DEFAULT_CLAUSE_BREAKS = True
@@ -99,8 +107,24 @@ _DEFAULT_CLAUSE_MIN_LENGTH = 80
 
 
 def strip_inline_markup(text: str) -> str:
-    """Drop inline code spans and link targets, leaving the prose around them."""
-    return _LINK_TARGET_RE.sub("]", _CODE_SPAN_RE.sub("", text))
+    """Drop non-prose markup, leaving the prose around it.
+
+    Removes inline code spans, link targets, autolinks, bare URLs, and HTML
+    character entities -- every construct that can carry a ``;`` that is not a
+    clause boundary, or inflate a line's length without adding visible text.
+
+    Stripping only ever *removes* characters, so the result is a conservative
+    lower bound on a line's visible length: an entity renders as one glyph and
+    a code span as its contents, and both are removed outright. Under-counting
+    can only suppress a flag, never invent one, which is the safe direction for
+    an advisory check.
+    """
+    # `]` keeps a bracketed link's visible text attached to its own sentence.
+    text = _CODE_SPAN_RE.sub("", text)
+    text = _LINK_TARGET_RE.sub("]", text)
+    for pattern in (_AUTOLINK_RE, _BARE_URL_RE, _ENTITY_RE):
+        text = pattern.sub("", text)
+    return text
 
 
 def has_unbroken_clause(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) -> bool:
@@ -114,7 +138,7 @@ def has_unbroken_clause(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH)
     - A **comma** is overwhelmingly a list separator, an appositive, or an
       introductory phrase -- rule 6's MAY at most. Measured over a
       22,820-line semantic-line-break-conformant corpus, keying on any
-      mid-line ``, ; : --`` flags 50.6% of already-conforming lines, against
+      mid-line ``, ; : --`` flags 50.5% of already-conforming lines, against
       6.1% for the semicolon alone, and 0.7% once the length gate below
       applies (d-morrison/gha#336).
     - A **colon** usually introduces a list or an example, which rule 7
@@ -126,8 +150,9 @@ def has_unbroken_clause(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH)
     an ordinary short line that merely contains a semicolon, and it degrades
     gracefully -- a long line with no break opportunity never flags.
     It measures the *stripped* length, so a line that is only long because of
-    a link target or a code span does not qualify -- matching the
-    URL-inflation exception in ai-config's own semantic-line-breaks guidance.
+    a code span, a link target, a bare URL, or an autolink does not qualify --
+    matching the URL-inflation exception in ai-config's own
+    semantic-line-breaks guidance.
     ``min_length`` is inclusive: a line of exactly that many visible
     characters is checked.
     """

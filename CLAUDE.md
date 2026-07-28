@@ -372,9 +372,21 @@ default while `classify_line()` and `main()` had moved to `True`, and only
 the test caught the drift.
 That test parses the YAML with a line scan rather than a YAML library,
 because the `new-line-breaks-tests` job installs only pytest.
-`_selftest.yml`'s `new-line-breaks` job also calls the composite a second
-time with `clause-breaks: 'false'`, since a default-on toggle whose opt-out
-never reached the script would look identical in every other test.
+
+**A selftest step that sets no `fail:` cannot prove the input reached the
+script, however it is worded.**
+`_selftest.yml`'s `new-line-breaks` job does call the composite a second time
+with `clause-breaks: 'false'`, and that is worth having as a real `uses:`
+exercise -- but `main()` returns 0 on every path unless `NLB_FAIL` is set, so
+the step stays green whether the input arrives, is dropped, or was never
+declared at all (an undeclared composite input is only an Actions warning).
+What actually pins the `env var -> main() -> exit code` path is a set of
+pytest cases that set `NLB_FAIL=true` around a real `main()` call on a
+throwaway git repo, asserting exit 1 with the clause check on and exit 0 both
+with `NLB_CLAUSE_BREAKS=false` and with the length gate raised past the line.
+Each was confirmed to fail when the corresponding env read is stubbed out.
+(gha#337 review round 2: the step's original comment, and this paragraph,
+both claimed the step proved the plumbing; neither could.)
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

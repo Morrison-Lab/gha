@@ -34,8 +34,8 @@ on:
           Minimum visible line length (inline code spans and link targets
           removed) before `clause-breaks` applies; inclusive. Ignored when
           `clause-breaks` is false.
-        type: number
-        default: 80
+        type: string
+        default: '80'
 
 jobs:
   check-new-line-breaks:
