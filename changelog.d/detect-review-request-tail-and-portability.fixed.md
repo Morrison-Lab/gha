@@ -9,9 +9,11 @@
   the request has to end its line.
   Phrasings that name something to go look at are treated as ordinary agent
   requests again.
-  The trade is deliberate: an unlisted-but-genuine object such as
-  `@claude review the test-coverage changes` now gets a self-review rather
-  than a dispatched one, which is the cheaper of the two errors.
+  The trade is deliberate: a pure review request whose object is not on the
+  list -- `@claude review the changes I just pushed` -- now gets a
+  self-review rather than a dispatched one, which is the cheaper of the two
+  errors.
+  Both known cases are pinned in the test suite.
 - **CRLF comment bodies are normalized portably.**
   GitHub delivers bodies with CRLF line endings, and the matcher now anchors
   on a bare newline.

@@ -45,10 +45,16 @@ POLITE='please|pls|plz|kindly|(can|could|would|will)[[:space:]]+you'
 # topic the requester wants examined. Constraining the lead-in alone left the
 # expensive error wide open at the other end -- `@claude can you review this
 # and fix the failing test?` dispatched a read-only review and suppressed the
-# agent's reply to the question actually asked (gha#346). The cost of the
-# closed set is that some genuine phrasings now self-review instead of
-# dispatching (`@claude review the test-coverage changes`), which is the
-# cheap error by the same asymmetry.
+# agent's reply to the question actually asked (gha#346).
+#
+# The cost is real and worth stating plainly: a pure review request whose
+# object happens to be an unlisted noun phrase now self-reviews instead of
+# dispatching. `@claude review the changes I just pushed` is the one that
+# stings, because it carries no instruction to the agent at all. That is
+# still the cheap error by the same asymmetry -- a self-review instead of a
+# dispatched one, rather than an unanswered question -- but the two cases
+# are pinned in the test table so widening the set stays a deliberate
+# decision rather than a drift.
 TAIL_WORD='this|these|those|that|it|again|now|the|my|our|latest|new|pr|prs'
 TAIL_WORD="$TAIL_WORD|diff|change|changes|commit|commits|push|branch|code"
 TAIL_WORD="$TAIL_WORD|please|pls|plz|kindly|thanks"

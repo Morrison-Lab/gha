@@ -162,9 +162,11 @@ which is why the capabilities above moved to `@v2`.
   That is also what keeps `review` a whole word, so the older
   `[^[:alnum:]]|$` guard against `@claude reviewer` is gone rather than
   duplicated.
-  The trade is that genuine-but-unlisted objects
-  (`@claude review the test-coverage changes`) now self-review instead of
+  The trade is that a pure review request with an unlisted object
+  (`@claude review the changes I just pushed`) now self-reviews instead of
   dispatching, which is the cheap error by the same asymmetry.
+  Both known cases are pinned in the test table, so widening `TAIL_WORD` to
+  recover them stays a deliberate decision.
   A third portability note sits alongside the jq one below: the script
   normalizes CRLF with `tr -d '\r'` because GitHub delivers comment bodies
   with CRLF and the pattern anchors on a bare newline.

@@ -47,6 +47,13 @@ cases=(
   "false|@claude please review my reasoning in the issue description above"
   "false|@claude, can you review why the coverage job is flaky and patch it?"
   "false|@claude could you review the docs and update them if wrong"
+  # Known false negatives, pinned so the contract is explicit rather than
+  # discovered. Both are pure review requests carrying no instruction to the
+  # agent, and both dispatched before the tail was constrained. Widening
+  # TAIL_WORD would recover them; these cases make that a deliberate decision
+  # instead of a drift (gha#346).
+  "false|@claude review the changes I just pushed"
+  "false|@claude please review when you get a chance"
   # CRLF is what GitHub actually delivers, and the pattern anchors on a bare
   # newline, so the normalizer has to strip the CRs for any of the above to
   # hold in production (gha#346).
