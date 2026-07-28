@@ -22,6 +22,19 @@ on:
         description: Fail the workflow when a violation is found (else warn only).
         type: boolean
         default: false
+      clause-breaks:
+        description: >-
+          Also flag a long line joining two independent clauses with a
+          semicolon (SemBr rule 5), on top of the rule 4 sentence check that
+          always runs. On by default; set false to check sentences only.
+        type: boolean
+        default: true
+      clause-min-length:
+        description: >-
+          Minimum line length before `clause-breaks` applies. Ignored when
+          `clause-breaks` is false.
+        type: number
+        default: 80
 
 jobs:
   check-new-line-breaks:
@@ -42,6 +55,8 @@ jobs:
           globs: ${{ inputs.globs }}
           paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
+          clause-breaks: ${{ inputs.clause-breaks }}
+          clause-min-length: ${{ inputs.clause-min-length }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there's no base to diff against, so the check is skipped.
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

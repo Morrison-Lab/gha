@@ -138,7 +138,8 @@ def test_diff_scope_flags_newly_added_violation(tmp_path):
 
     violations, skipped = _find(tmp_path, base_ref="HEAD~1")
     assert not skipped
-    assert [(f, ln) for f, ln, _ in violations] == [("notes.md", 4)]
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+    assert [v.reason for v in violations] == ["sentence"]
 
 
 def test_diff_scope_does_not_reflag_pre_existing_drift(tmp_path):
@@ -176,6 +177,133 @@ def test_empty_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
     violations, skipped = _find(tmp_path, base_ref="")
     assert skipped
     assert violations == []
+
+
+# ── clause breaks (SemBr rule 5) ─────────────────────────────────────────────
+
+# Long enough to clear the 80-char gate, with the semicolon mid-line.
+_LONG_SEMICOLON = (
+    "The first clause carries the main point of the sentence; "
+    "the second one stands entirely on its own."
+)
+
+
+def test_strip_inline_markup_drops_code_spans_and_link_targets():
+    assert nlb.strip_inline_markup("run `a; b` now") == "run  now"
+    assert nlb.strip_inline_markup("see [docs](http://x.com/a;b)") == "see [docs]"
+
+
+def test_long_line_with_midline_semicolon_is_a_clause_break():
+    assert len(_LONG_SEMICOLON) > 80
+    assert nlb.has_unbroken_clause(_LONG_SEMICOLON)
+
+
+def test_short_line_with_semicolon_is_not_flagged():
+    # Same construction, under the length gate: a semicolon alone is not
+    # enough, which is the whole point of gating on length.
+    assert not nlb.has_unbroken_clause("Do this; then that.")
+
+
+def test_trailing_semicolon_is_not_a_clause_break():
+    text = "A clause that is quite long indeed and already ends where it should;"
+    assert not nlb.has_unbroken_clause(text, min_length=10)
+
+
+def test_semicolon_only_inside_code_span_is_not_a_clause_break():
+    text = "Invoke the helper with `for x in xs; do thing; done` and read its output."
+    assert not nlb.has_unbroken_clause(text, min_length=10)
+
+
+def test_long_line_without_semicolon_is_not_flagged():
+    text = "A single long clause that simply runs on for a good while without any break."
+    assert not nlb.has_unbroken_clause(text, min_length=10)
+
+
+def test_clause_min_length_is_configurable():
+    text = "Short; line."
+    assert not nlb.has_unbroken_clause(text)
+    assert nlb.has_unbroken_clause(text, min_length=5)
+
+
+def test_sentence_reason_wins_over_clause_reason():
+    # A line that breaks both rules is reported once, against rule 4.
+    text = _LONG_SEMICOLON + " And a second sentence follows it."
+    assert nlb.classify_line(text) == "sentence"
+
+
+def test_clause_check_can_be_disabled():
+    assert nlb.classify_line(_LONG_SEMICOLON) == "clause"
+    assert nlb.classify_line(_LONG_SEMICOLON, clause_breaks=False) is None
+
+
+def test_clause_break_is_on_by_default_in_diff_scope(tmp_path):
+    # The opt-out half of #336: a newly-added clause-joined long line is
+    # flagged without any caller opting in.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        f"# Notes\n\n- A short bullet.\n- {_LONG_SEMICOLON}\n"
+    )
+    _commit(tmp_path, "add clause-joined line")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line, v.reason) for v in violations] == [
+        ("notes.md", 4, "clause")
+    ]
+
+
+# ── defaults declared in two places must agree ───────────────────────────────
+
+# The script's fallbacks and action.yml's declared defaults are independent
+# copies of the same two values, so a test pins them together rather than a
+# comment asking the next editor to remember (the gha#303 precedent).
+
+# Parsed with a regex rather than a YAML library on purpose: the selftest job
+# installs only pytest, so importing yaml here would fail in CI.
+_ACTION_YML = _MOD_PATH.parent / "action.yml"
+_WORKFLOW_YML = (
+    _MOD_PATH.parent.parent / ".github" / "workflows" / "check-new-line-breaks.yml"
+)
+
+
+def _declared_default(path: Path, input_name: str) -> str:
+    """Read an input's declared `default:` out of a YAML file, textually.
+
+    Scans forward from the input's own key to the first `default:` line,
+    which is how both files are laid out.
+    """
+    lines = path.read_text().split("\n")
+    starts = [i for i, line in enumerate(lines) if line.strip() == f"{input_name}:"]
+    assert starts, f"input {input_name!r} not found in {path.name}"
+    for line in lines[starts[0] + 1:]:
+        stripped = line.strip()
+        if stripped.startswith("default:"):
+            return stripped.split(":", 1)[1].strip().strip("'\"")
+    raise AssertionError(f"no default declared for {input_name!r} in {path.name}")
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_clause_breaks_default_matches_script_default(path):
+    assert (_declared_default(path, "clause-breaks") == "true") is (
+        nlb._DEFAULT_CLAUSE_BREAKS
+    )
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_clause_min_length_default_matches_script_default(path):
+    assert int(_declared_default(path, "clause-min-length")) == (
+        nlb._DEFAULT_CLAUSE_MIN_LENGTH
+    )
+
+
+def test_find_violations_default_matches_the_shared_constant():
+    # find_violations(), classify_line(), and main() must not drift apart:
+    # the first draft of this PR left find_violations() defaulting to False
+    # while everything else defaulted to True, and only a test caught it.
+    text = _LONG_SEMICOLON
+    assert nlb.classify_line(text) == ("clause" if nlb._DEFAULT_CLAUSE_BREAKS else None)
 
 
 if __name__ == "__main__":

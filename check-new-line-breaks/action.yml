@@ -38,6 +38,25 @@ inputs:
       to warn-only: a long line can legitimately be un-splittable (a URL, a
       citation, a single long clause), so this is a nudge, not a gate.
     default: 'false'
+  clause-breaks:
+    description: >-
+      Also flag a long line that joins two independent clauses with a
+      semicolon -- a narrow slice of the SemBr spec's rule 5 ("a semantic
+      line break SHOULD occur after an independent clause"), on top of the
+      rule 4 sentence check that always runs. On by default; set 'false' to
+      check sentences only. Only the semicolon is used, because a comma is
+      overwhelmingly a list separator rather than a clause boundary and a
+      colon usually introduces a list -- keying on every mark the spec names
+      flags half of already-conforming prose, against roughly one line in a
+      hundred for this check (see d-morrison/gha#336 for the measurements).
+    default: 'true'
+  clause-min-length:
+    description: >-
+      Minimum line length, in characters, before `clause-breaks` applies.
+      The gate is what separates a genuinely overlong clause chain from an
+      ordinary short line that happens to contain a semicolon. Ignored when
+      `clause-breaks` is 'false'.
+    default: '80'
 runs:
   using: composite
   steps:
@@ -53,4 +72,6 @@ runs:
         NLB_GLOBS: ${{ inputs.globs }}
         NLB_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         NLB_FAIL: ${{ inputs.fail }}
+        NLB_CLAUSE_BREAKS: ${{ inputs.clause-breaks }}
+        NLB_CLAUSE_MIN_LENGTH: ${{ inputs.clause-min-length }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-new-line-breaks.py"

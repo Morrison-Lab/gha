@@ -356,6 +356,26 @@ job that exercises the real composite (`base-ref` diff mode) against this
 repo's own tree, the same "local composite, not yet the `@v1`-pinned
 reusable-workflow chain" precedent `phi` uses above.
 
+The suite also covers the gha#336 clause check (SemBr rule 5: a long line
+joining two independent clauses with a semicolon), including that it is
+**on by default** -- and pins the two defaults that are declared in three
+places at once.
+`_DEFAULT_CLAUSE_BREAKS`/`_DEFAULT_CLAUSE_MIN_LENGTH` in the script are the
+single source, but `action.yml` and
+`.github/workflows/check-new-line-breaks.yml` each re-declare them for their
+own inputs, so a parametrized test reads both YAML files and asserts they
+agree with the script -- the same gha#303 precedent that pinned
+`generate-altdoc-landing-page`'s `site-root` default rather than leaving it
+to a comment.
+The first draft of #336 proved why: `find_violations()` kept a stale `False`
+default while `classify_line()` and `main()` had moved to `True`, and only
+the test caught the drift.
+That test parses the YAML with a line scan rather than a YAML library,
+because the `new-line-breaks-tests` job installs only pytest.
+`_selftest.yml`'s `new-line-breaks` job also calls the composite a second
+time with `clause-breaks: 'false'`, since a default-on toggle whose opt-out
+never reached the script would look identical in every other test.
+
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
 `test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the

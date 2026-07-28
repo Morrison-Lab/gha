@@ -150,6 +150,15 @@ jobs:
         uses: ./check-new-line-breaks
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+      # The clause check (#336) is on by default, so the step above already
+      # covers it. This one proves the opt-out actually reaches the script --
+      # a default-on toggle whose 'false' never got wired through would look
+      # identical in every other test.
+      - name: Check again with the clause check opted out
+        uses: ./check-new-line-breaks
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          clause-breaks: 'false'
   # The new-line-breaks job above proves the action runs against this repo's
   # own tree; this job unit-tests the sentence-splitter/block-detector
   # functions and the diff-scoping behavior directly (small throwaway git
