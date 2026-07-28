@@ -525,6 +525,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines. Pairs well with <a href="../reference/lint-markdown.html"><code>lint-markdown.yml</code></a> when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.</p>
+<p>Two checks run, both on by default. The first is the <a href="https://sembr.org">SemBr spec</a>’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an <em>independent</em> clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see <a href="https://github.com/Morrison-Lab/gha/issues/336">gha#336</a> for the measurements.</p>
+<p>The gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s <em>visible</em> length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set <code>clause-breaks: false</code> to check sentences only.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -567,6 +569,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>false</code></td>
 <td>Fail the workflow when a violation is found; otherwise warn only.</td>
 </tr>
+<tr class="odd">
+<td><code>clause-breaks</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Also flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set <code>false</code> to check sentences only.</td>
+</tr>
+<tr class="even">
+<td><code>clause-min-length</code></td>
+<td>string</td>
+<td><code>'80'</code></td>
+<td>Minimum line length before <code>clause-breaks</code> applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when <code>clause-breaks</code> is <code>false</code>.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -597,7 +611,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.md'                          # pathspecs to check (recursive)</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block the PR instead of warning</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block the PR instead of warning</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   clause-breaks: false                   # sentences only; skip the</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                          # semicolon clause check (on by default)</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   clause-min-length: 100                 # raise the clause check's length gate</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-new-line-breaks.yml"><code>examples/check-new-line-breaks.yml</code></a> for the full caller stub.</p>
 
 
