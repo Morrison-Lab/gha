@@ -557,7 +557,7 @@ creation — only work if their GitHub steps are translated to the GitHub MCP to
 such a session, substitute the equivalent MCP tool below. (In a local session
 where `gh` is on `PATH`, use `gh` as the skill describes.)
 
-This repo is `Morrison-Lab/gha` (moved there from `Morrison-Lab/gha`), so MCP
+This repo is `Morrison-Lab/gha` (moved there from `d-morrison/gha`), so MCP
 calls use `owner: Morrison-Lab`, `repo: gha`.
 
 **Use whichever owner the session was scoped with, not whichever one is
@@ -565,11 +565,11 @@ current.** A session's GitHub access is pinned to the repository name it was
 started with, and the two names are not interchangeable at the tool layer even
 though they are the same repository:
 
-- A session scoped to `Morrison-Lab/gha` keeps working, because the API follows
-  the transfer redirect server-side. Passing `owner: Morrison-Lab` to it fails
-  with `Access denied: repository "morrison-lab/gha" is not configured for this
-  session`, and `add_repo` cannot rescue it -- it refuses the cross-owner add
-  outright.
+- A session scoped to the old `d-morrison/gha` keeps working, because the API
+  follows the transfer redirect server-side. Passing `owner: Morrison-Lab` to
+  that session fails with `Access denied: repository "morrison-lab/gha" is not
+  configured for this session`, and `add_repo` cannot rescue it -- it refuses
+  the cross-owner add outright.
 - Some endpoints return `301 Moved Permanently` to the old name rather than
   following it, so a call can fail on the redirect alone. If one does, the
   answer is usually a different route to the same fact, not a different owner
