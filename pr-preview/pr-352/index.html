@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>d-morrison/gha</title>
+<title>Morrison-Lab/gha – d-morrison/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -331,7 +331,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">d-morrison/gha</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Morrison-Lab/gha</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -346,7 +346,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
   <a href="./index.html" class="sidebar-item-text sidebar-link active">
- <span class="menu-text">d-morrison/gha</span></a>
+ <span class="menu-text">Morrison-Lab/gha</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -508,7 +508,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">d-morrison/gha</h1>
+<h1 class="title">Morrison-Lab/gha</h1>
 <p class="subtitle lead">Central, reusable GitHub Actions for R-package and Quarto repositories</p>
 </div>
 
@@ -532,7 +532,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="how-it-works">How it works</h2>
 <p>Each capability ships as two layers:</p>
 <ul>
-<li>A <strong>composite action</strong> (for example <code>check-bibliography-dois/action.yml</code>) bundles the real steps and any helper script. It is referenced as <code>d-morrison/gha/&lt;name&gt;@vN</code> (the major tag that capability currently recommends - see <a href="./versioning.html">Versioning</a>).</li>
+<li>A <strong>composite action</strong> (for example <code>check-bibliography-dois/action.yml</code>) bundles the real steps and any helper script. It is referenced as <code>Morrison-Lab/gha/&lt;name&gt;@vN</code> (the major tag that capability currently recommends - see <a href="./versioning.html">Versioning</a>).</li>
 <li>A <strong>reusable workflow</strong> (<code>.github/workflows/&lt;name&gt;.yml</code>, <code>on: workflow_call</code>) wraps the composite, declares permissions, and checks out the caller’s repo. This is what consumer repos target.</li>
 </ul>
 <p>A consumer repo adds a small caller stub (see the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory):</p>

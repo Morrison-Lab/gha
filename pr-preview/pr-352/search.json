@@ -344,7 +344,7 @@
     "href": "reference/claude.html",
     "title": "claude.yml",
     "section": "",
-    "text": "Run the agent-mode Claude Code bot. It responds to @claude mentions, edits files, and opens or updates pull requests. It pairs with claude-code-review.yml: when Claude pushes commits (or an @claude review mention fires), it dispatches the review workflow via workflow_dispatch.\nA mention counts as a review request when review follows @claude directly, after punctuation, or after a polite lead-in – @claude review, @claude, review, @claude please review, @claude can you review this?, @claude re-review. Anything else is treated as an ordinary request for the agent, including a mention that merely contains the word (@claude the review workflow is broken, can you fix it?), because a misfire routes the comment to the reviewer and suppresses the agent’s own reply. Quoted lines are skipped, so quote-replying to a past request does not dispatch a fresh review.\nIt also runs unattended on workflow_dispatch/schedule events (e.g. a periodic skill invocation with no human comment to react to). The caller’s on: needs one of those triggers, and its job-level if: gate needs widening too, or the caller-side check itself skips the job before this reusable workflow ever runs (see the commented example in examples/claude.yml). Both events are trusted by construction: workflow_dispatch requires the dispatching actor to have repo write access, and a schedule trigger has no triggering actor at all, only existing because someone with write access committed its cron: config to the default branch. So the job’s @claude-mention/author-association gate doesn’t apply to either. These runs get no triggering issue/PR, so no branch or draft PR is set up and no reply comment is posted; use the prompt-addendum input to supply the actual task, and have it use whatever tools claude-args grants to persist output (e.g. gh issue create).",
+    "text": "Run the agent-mode Claude Code bot. It responds to @claude mentions, edits files, and opens or updates pull requests. It pairs with claude-code-review.yml: when Claude pushes commits (or an @claude review mention fires), it dispatches the review workflow via workflow_dispatch.\nA mention counts as a review request when review follows @claude directly, after punctuation, or after a polite lead-in, and the request then ends its line – @claude review, @claude, review, @claude please review, @claude can you review this?, @claude re-review. The keyword may take an object, but only one pointing back at the pull request itself (@claude review this PR, @claude please review the latest changes).\nAnything else is treated as an ordinary request for the agent: a mention that merely contains the word (@claude the review workflow is broken, can you fix it?), and equally one that asks for something to be examined (@claude can you review this and fix the failing test?). A misfire routes the comment to the read-only reviewer and suppresses the agent’s own reply, so the matcher errs toward answering rather than dispatching. Quoted lines are skipped, so quote-replying to a past request does not dispatch a fresh review.\nIt also runs unattended on workflow_dispatch/schedule events (e.g. a periodic skill invocation with no human comment to react to). The caller’s on: needs one of those triggers, and its job-level if: gate needs widening too, or the caller-side check itself skips the job before this reusable workflow ever runs (see the commented example in examples/claude.yml). Both events are trusted by construction: workflow_dispatch requires the dispatching actor to have repo write access, and a schedule trigger has no triggering actor at all, only existing because someone with write access committed its cron: config to the default branch. So the job’s @claude-mention/author-association gate doesn’t apply to either. These runs get no triggering issue/PR, so no branch or draft PR is set up and no reply comment is posted; use the prompt-addendum input to supply the actual task, and have it use whatever tools claude-args grants to persist output (e.g. gh issue create).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -646,45 +646,45 @@
   {
     "objectID": "index.html",
     "href": "index.html",
-    "title": "d-morrison/gha",
+    "title": "Morrison-Lab/gha",
     "section": "",
     "text": "This site documents Morrison-Lab/gha, a set of reusable GitHub Actions shared across the d-morrison, UCD-SERG, ucdavis, UCLA-PHP, and UCD-IDDRC owners. It is modeled on r-lib/actions and easystats/workflows: a repo calls a shared workflow with a tiny stub instead of carrying its own copy.\nThe repo is public so it can be referenced from repositories across those owners.",
     "crumbs": [
       "Overview",
-      "d-morrison/gha"
+      "Morrison-Lab/gha"
     ]
   },
   {
     "objectID": "index.html#how-it-works",
     "href": "index.html#how-it-works",
-    "title": "d-morrison/gha",
+    "title": "Morrison-Lab/gha",
     "section": "How it works",
-    "text": "How it works\nEach capability ships as two layers:\n\nA composite action (for example check-bibliography-dois/action.yml) bundles the real steps and any helper script. It is referenced as d-morrison/gha/&lt;name&gt;@vN (the major tag that capability currently recommends - see Versioning).\nA reusable workflow (.github/workflows/&lt;name&gt;.yml, on: workflow_call) wraps the composite, declares permissions, and checks out the caller’s repo. This is what consumer repos target.\n\nA consumer repo adds a small caller stub (see the examples/ directory):\nname: Check Bibliography DOIs\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\nPin to the major tag that capability currently recommends (@v2 in the example above) - it varies per capability rather than defaulting uniformly to @v1; see Versioning for the full breakdown. Do not reference @main from consumers.",
+    "text": "How it works\nEach capability ships as two layers:\n\nA composite action (for example check-bibliography-dois/action.yml) bundles the real steps and any helper script. It is referenced as Morrison-Lab/gha/&lt;name&gt;@vN (the major tag that capability currently recommends - see Versioning).\nA reusable workflow (.github/workflows/&lt;name&gt;.yml, on: workflow_call) wraps the composite, declares permissions, and checks out the caller’s repo. This is what consumer repos target.\n\nA consumer repo adds a small caller stub (see the examples/ directory):\nname: Check Bibliography DOIs\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\nPin to the major tag that capability currently recommends (@v2 in the example above) - it varies per capability rather than defaulting uniformly to @v1; see Versioning for the full breakdown. Do not reference @main from consumers.",
     "crumbs": [
       "Overview",
-      "d-morrison/gha"
+      "Morrison-Lab/gha"
     ]
   },
   {
     "objectID": "index.html#actions-vs.-workflows",
     "href": "index.html#actions-vs.-workflows",
-    "title": "d-morrison/gha",
+    "title": "Morrison-Lab/gha",
     "section": "Actions vs. workflows",
     "text": "Actions vs. workflows\n\n\n\n\n\n\nNoteComposite action\n\n\n\nA composite action is a list of steps. It runs inside a job that already exists - the caller’s runner and permissions are already in place. An action has no concept of jobs or triggers; it is just a named bundle of commands.\n# &lt;name&gt;/action.yml\nname: My Action\ndescription: Does a thing\ninputs:\n  my-input:\n    description: ...\nruns:\n  using: composite\n  steps:\n    - run: echo \"hello\"\n      shell: bash\n\n\n\n\n\n\n\n\nNoteReusable workflow\n\n\n\nA reusable workflow is a complete pipeline. It defines its own jobs, each with its own runner (runs-on:), permissions (permissions:), and steps. A consumer calls it as a job, not as a step.\n# .github/workflows/&lt;name&gt;.yml\non: workflow_call\njobs:\n  my-job:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: read\n    steps:\n      - uses: actions/checkout@v4\n      - run: echo \"hello\"\n\n\n\n\n\n\n\n\nWarningshell: is required in composite actions\n\n\n\nEvery run: step in a composite action must declare shell:. Workflows have a default shell; composite actions do not.\n\n\n\n\n\n\n\n\n\n\n\nComposite action\nReusable workflow\n\n\n\n\nKey top-level keys\nname, description, inputs, outputs, runs\non, jobs\n\n\nJobs\nNo - only steps under runs\nYes - one or more jobs blocks\n\n\nruns-on\nAbsent - inherits the caller’s runner\nPer job\n\n\npermissions\nAbsent\nYes (caller must also grant them)\n\n\nCalled from\nA job’s steps (via uses)\nA workflow’s jobs (via uses)\n\n\n\nBecause an action cannot declare permissions or choose its runner, this repo uses the two-layer design: the composite action holds the real logic, and the reusable workflow wraps it to handle the runner, permissions, and checkout. Consumer repos reference only the workflow layer.",
     "crumbs": [
       "Overview",
-      "d-morrison/gha"
+      "Morrison-Lab/gha"
     ]
   },
   {
     "objectID": "index.html#where-to-go-next",
     "href": "index.html#where-to-go-next",
-    "title": "d-morrison/gha",
+    "title": "Morrison-Lab/gha",
     "section": "Where to go next",
     "text": "Where to go next\n\nWorkflows catalogs every reusable workflow and what it does.\nPermissions lists the GITHUB_TOKEN permissions and secrets each one needs.\nVersioning explains the moving major tags (@v1/@v2, per capability) and how third-party actions are pinned.\n\nThis very site is built and shipped by the workflows it documents: quarto-publish deploys it to GitHub Pages, and the preview family renders a preview for each pull request.",
     "crumbs": [
       "Overview",
-      "d-morrison/gha"
+      "Morrison-Lab/gha"
     ]
   },
   {
@@ -835,7 +835,7 @@
     "href": "versioning.html#pinning-third-party-actions",
     "title": "Versioning",
     "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party d-morrison/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, and report-failure.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, and report-failure.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
     "crumbs": [
       "Overview",
       "Versioning"
