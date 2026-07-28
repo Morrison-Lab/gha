@@ -344,9 +344,12 @@ jobs:
       #
       # The matcher itself lives in a script (see the action's own docs) so it
       # can be tested offline and shared with the late-comment rescue scan
-      # below -- the two paths drifting apart is how `@claude, please review`
-      # ended up dispatching twice in one repo and not at all in another
-      # (serodynamics#277).
+      # below, which used to re-test each body against its own `jq` copy of
+      # the pattern. Both problems showed up downstream: this matcher missing
+      # `@claude, please review` is why a consumer added a second, local
+      # dispatch job, and that job then made the plain `@claude review` case
+      # -- the one phrasing both matchers accept -- spend two paid review
+      # runs (serodynamics#277).
       - name: Detect @claude review request
         id: review_request
         if: steps.dedup.outputs.skip != 'true'

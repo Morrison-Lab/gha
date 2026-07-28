@@ -6,11 +6,11 @@
   and consumers that noticed worked around it with a second, local dispatch
   job that then double-dispatched every plain `@claude review`.
   The matcher now also accepts punctuation and a closed set of polite lead-ins
-  (`please`, `can/could/would/will you`, `kindly`, `pls`), and ignores quoted
+  (`please`, `can/could/would/will you`, `kindly`, `pls`/`plz`), and ignores
   blockquote lines so a quote-reply no longer re-dispatches a review.
   It deliberately still does not match arbitrary words between the mention and
-  `review`: a
-  false positive suppresses the agent's own reply, so `@claude the review
+  `review`.
+  A false positive suppresses the agent's own reply, so `@claude the review
   workflow is broken, can you fix it?` must stay a question rather than become
   a review request.
 - **The matcher moved into a tested script** shared by both dispatch paths.

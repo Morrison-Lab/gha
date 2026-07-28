@@ -12,7 +12,7 @@
 # dispatch paths (the trigger comment and the late-comment rescue scan), and
 # a silent regression in it is invisible until a real review request goes
 # unanswered. Offline tests live in
-# tests/run-detect-review-request-tests.sh (gha#328).
+# tests/run-detect-review-request-tests.sh (gha#339).
 set -euo pipefail
 
 if [ "$#" -eq 0 ]; then

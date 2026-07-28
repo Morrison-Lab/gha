@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Exercises detect-review-request.sh offline, mirroring
 # run-sum-costs-tests.sh's pattern. Wired into _selftest.yml's
-# `review-fail-check` job (gha#328).
+# `review-fail-check` job (gha#339).
 #
 # The cases below are the contract, not a sample: claude.yml suppresses the
 # agent's own prose reply whenever this script returns true, so both a missed
@@ -30,6 +30,7 @@ cases=(
   "true|@claude would you review the latest push"
   "true|@claude kindly review"
   "true|@claude pls review"
+  "true|@claude plz review"
   "true|@claude re-review please"
   "true|@CLAUDE Review"
   # Quote-replies cite somebody else's request; they are not a fresh one.

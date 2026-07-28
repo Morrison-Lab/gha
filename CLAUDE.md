@@ -149,7 +149,7 @@ which is why the capabilities above moved to `@v2`.
   Claude's response if no code was committed" step, so a misfire swallows the
   answer to a question the user actually asked -- which is why the lead-ins
   between `@claude` and `review` are a closed set of function words
-  (`please`, `can/could/would/will you`, `kindly`, `pls`) rather than "any few
+  (`please`, `can/could/would/will you`, `kindly`, `pls`/`plz`) rather than "any few
   words".
   And `bodies-file` takes **base64-encoded lines**, not raw or
   NUL-separated ones: comment bodies are multi-line, and `jq --raw-output0`
