@@ -124,7 +124,7 @@ which is why the capabilities above moved to `@v2`.
   claude-code-action execution-output file's last `result` event. `claude.yml`
   calls it once, right after "Run Claude Code", and both its
   comment-posting steps ("Post Claude's response if no code was committed"
-  and "Push branch and finalize PR for issue trigger") read the shared
+  and "Finalize PR for issue trigger") read the shared
   `steps.cost.outputs.cost` — a single extraction instead of duplicating the
   jq filter at both call sites (gha#219 review finding 1).
 - `.github/actions/sum-costs/` — wraps `scripts/sum-costs.sh`, which sums two
@@ -247,6 +247,76 @@ which is why the capabilities above moved to `@v2`.
   the job still starts and the runner still spins up.
   What is avoided is the billed agent run and the review re-dispatch, which
   are the two costs gha#342 actually names.
+- `.github/actions/report-push-failure/` -- wraps
+  `scripts/classify-push-failure.sh`, which reads a failed `git push`'s output
+  and names the failure kind (`workflows-permission`, `push-protection`,
+  `non-fast-forward`, `other`, plus `no-push-attempt` which the composite
+  assigns when no log exists) plus advice for it.
+  The composite adds what the script deliberately leaves out: it redacts any
+  credential git echoed back in the remote URL, emits the `::error::`,
+  generates a `git format-patch` of the commits that could not be pushed, and
+  comments all of it on the issue or PR.
+  `claude.yml` calls it from two steps, one per push site -- "Push PR branch
+  if Claude committed" and "Push branch for issue trigger".
+  That second one is a step this PR split out of the old combined push-and-
+  finalize step, so the push's own outcome can gate the finalize that follows
+  it.
+  Three things to know before changing it.
+  The redaction is not belt-and-braces: Actions masks secrets in a **run log**
+  and not in a **comment body**, so without it the push token would be
+  published rather than starred out -- which is also why `dry-run` exists, so
+  `_selftest.yml` can assert the redaction holds against a real call.
+  The classifier keys on the `refusing to allow ... to create or update
+  workflow` clause rather than on the trailing scope name, because GitHub
+  words that tail differently per credential: a GitHub App is rejected for
+  lacking the `workflows` **permission**, a PAT for lacking the `workflow`
+  **scope**.
+  And the fenced blocks in the comment body measure the longest backtick run
+  in their content and open with one more, the same reasoning
+  `strip-non-invoking-markup.sh` uses -- a patch that touches a Markdown file
+  carries ``` lines of its own, which a fixed three-backtick fence would let
+  close the block early.
+  Two further behaviours are load-bearing rather than incidental, both found
+  by gha#361's review.
+  A **missing** push log is reported as the `no-push-attempt` kind rather
+  than skipped: the calling step can die before its push (the auto-commit
+  sweep, the fork lookup), and since `claude.yml` gates its response-post
+  step off on that same failure, standing down here would leave the thread
+  with no comment at all -- the exact outcome gha#360 exists to prevent.
+  And the patch is truncated by reading a **file**, never a pipe:
+  `printf ... | head -c` leaves printf writing to a closed pipe once head has
+  its bytes, so any patch past the ~64 KiB pipe buffer raised SIGPIPE, which
+  `pipefail` promotes to the pipeline's status and `set -e` turns into an
+  aborted report -- losing the comment precisely for the large patches that
+  most need preserving.
+  Two more, from gha#361's second round.
+  A rejection carrying GitHub secret-scanning markers (`GH013` and friends)
+  gets its patch **suppressed** rather than posted: those commits carry the
+  secret the push was blocked to contain, so rendering them into a public
+  comment -- or the run log -- would republish it, and Actions' masking does
+  not apply because a scanned secret is commit content rather than a
+  configured `secrets.*` value.
+  **That suppression is a second output, `withhold-patch`, decided
+  independently of `kind` -- do not re-key it on `kind`.**
+  `kind` is a first-match chain, so it answers "which explanation does the
+  reader get", one rejection and one story.
+  Whether the commits may be published is a different question, and tying it
+  to `kind` made it answerable only for whichever clause happened to win: a
+  push that both edits a workflow file *and* carries a secret matches the
+  workflows-permission clause first, so a kind-keyed gate never fired and
+  the patch went out with the live credential in it (round 5).
+  The markers are therefore tested on their own, before the chain, and the
+  composite gates publication on that -- erring toward withholding, since a
+  needless withhold costs a re-run while a published credential cannot be
+  recalled.
+  When the markers fire but another kind wins, the classifier appends the
+  no-patch explanation to that kind's advice, so the omission is never
+  silent.
+  And the byte budget bounds the **whole body**, not just the patch: the log
+  gets a fixed slice and the patch takes the remainder, because capping only
+  the patch let a verbose rejection carry the total past GitHub's comment
+  limit on its own, which 422s the post and drops the report entirely -- the
+  silent-thread outcome gha#360 exists to prevent.
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -640,6 +710,36 @@ the first draft of the double-backtick case passed pre-fix for an unrelated
 reason (trailing prose after the keyword already blocked the match), so it
 was rewritten to end the line and re-checked.
 
+`.github/workflows/scripts/tests/run-classify-push-failure-tests.sh` exercises
+`classify-push-failure.sh` (see Layout above) offline against a table of push
+outputs: the verbatim GitHub App rejection gha#360 was filed over, its PAT and
+OAuth App wordings, two non-fast-forward phrasings, and cases that must fall
+through to `other` (a protected-branch decline, an auth failure, an empty
+log).
+It also pins the four-part output contract the composite parses -- `kind=`,
+`withhold-patch=`, `headline=`, blank line, advice -- and that the headline
+stays a single line, since it reaches an `::error::` annotation.
+The composite reads each field by fixed line offset, so a reordering breaks
+it silently; that is why the shape is asserted rather than only the values.
+The one assertion worth reading as a guard rail rather than filler is that a
+generic failure's advice does **not** name `WORKFLOW_TOKEN`: the value of
+naming the secret comes entirely from naming it only when it is the cause.
+CI runs the suite as a step in the `review-fail-check` job, which also calls
+`report-push-failure` itself through four real `uses:` steps with
+`dry-run: true` -- one per classified `kind` (`workflows-permission`, a
+backtick-free `other` case, `no-push-attempt`, and the `push-protection`
+case, whose assertion is that no patch is rendered) -- the same
+`github.action_path`-resolution proof the other
+e2e steps give, plus the two things the offline table cannot reach: the patch
+generated from a live checkout, and the credential redaction.
+Those steps run **last** in that job because they commit a throwaway file to
+the checkout, which is what gives `git format-patch` a real one-commit range
+to render (a merge commit would render as nothing, since `format-patch` skips
+merges).
+As with `detect-review-request`, `claude.yml`'s own layer above the composite
+is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`, which does
+not resolve until `@v2` is advanced past this capability's merge.
+
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of
 reviewer-list inputs, including comma-only, whitespace-padded, and
@@ -1024,6 +1124,27 @@ local branch from a differently-credentialed session/human, and flag that
 `WORKFLOW_TOKEN` needs to be (re)configured. (Hit twice on 2026-07-24: PR #286
 fixing #285, and PR #290 fixing #289, both editing `.github/workflows/*.yml`
 — both required manual recovery; see gha#292.)
+
+**Recovery is cheaper than that paragraph implies once `@v2` carries gha#360:
+the run now posts the commits back as a patch.** `claude.yml` captures the
+push output, hands it to `report-push-failure` (see Layout above), and
+comments the explanation plus a `git format-patch` on the thread, so the work
+comes back with `git am` instead of being redone from scratch.
+Read the comment before re-doing the work; the diagnosis of the *cause* above
+is unchanged, and still needs a human with admin access.
+
+The same change closed a second, worse defect.
+The rejection left the PR head SHA where it started, which is
+indistinguishable from "Claude committed nothing" -- so the "Post Claude's
+response if no code was committed" step ran and posted Claude's prose
+describing the fixes it had just made, onto a branch carrying none of them
+(gha#360, seen on
+[Morrison-Lab/ai-config#805](https://github.com/Morrison-Lab/ai-config/pull/805)).
+That step is now gated on the push not having failed.
+When reading an older thread, treat a "here is what I did" comment as a claim
+about the branch to verify rather than as a record of it, per the
+SHA-comparison rule in
+[`Morrison-Lab/ai-config`'s `shared/workflow/ardi.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/ardi.md).
 
 **A third, more direct mechanism produces the identical symptom without
 `@v2` even entering the picture.** `claude-code-review.yml`'s own `Skip
