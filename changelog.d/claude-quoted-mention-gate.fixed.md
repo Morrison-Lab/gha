@@ -11,6 +11,12 @@
   job stands down when no mention survives.
   An `if:` expression cannot strip markup, so the raw `contains()` stays as a
   cheap pre-filter and the real decision now happens inside the job.
+- **Only the body that actually triggered the run is examined.**
+  An issue's title and description are consulted for the `issues` event, where
+  they are the trigger, and not for a comment on that issue, where they are the
+  enclosing thread's own older text.
+  Otherwise one unquoted mention in an issue title would keep the gate open for
+  every later comment on the thread, including the ones that merely quote it.
 - **The gate errs toward running.**
   It stands down only when *every* occurrence sat inside markup; anything else
   proceeds, including an empty or missing result from the check itself.

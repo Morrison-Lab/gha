@@ -189,11 +189,15 @@ which is why the capabilities above moved to `@v2`.
   review; the test table's oversized-body case is the regression guard).
   Finally, the script does not match the raw body: it pipes each one through
   `scripts/strip-non-invoking-markup.sh` first, which removes blockquote
-  lines, fenced code blocks, and inline code spans.
-  All three are standard Markdown for "this is a literal string, not
+  lines, fenced code blocks, indented code blocks, and inline code spans.
+  All four are standard Markdown for "this is a literal string, not
   something I mean", and treating them as text meant a comment *documenting*
   the accepted phrasings dispatched a review by quoting them (gha#344).
-  Two things constrain any change to that stripper.
+  It tracks CommonMark closely rather than approximately, because the two
+  directions of error land on different callers: under-stripping dispatches a
+  review off quoted text, while over-stripping drops a genuine request in the
+  mention gate that shares the script (gha#342).
+  Three things constrain any change to that stripper.
   A code span becomes the placeholder word `elided` rather than being
   deleted, because deleting it lets its neighbours close up into a request
   the author never wrote: a span sitting between the mention and the keyword
@@ -206,8 +210,19 @@ which is why the capabilities above moved to `@v2`.
   empty span between the two opening backticks of a ```` ``...`` ```` span
   and leaks the contents through, the same bug the Tests section records for
   `check-new-line-breaks`'s `strip_inline_markup`.
-  It lives in its own script rather than inline because the same three
-  constructs gate whether the agent runs at all (gha#342).
+  Third, the span scan runs over the **whole body at once**, not per line,
+  because a span may contain a line break -- CommonMark closes it on the next
+  run of matching length wherever that appears.
+  That is also why indentation limits matter rather than being tidied away:
+  a fence is capped at three spaces of indentation at both ends, so trimming
+  indentation wholesale before the close test let a 4-space-indented
+  delimiter (which is fence *content*) close the block early, and four
+  columns after a blank line opens an indented code block in the first place.
+  The blank-line precondition on that last one is load-bearing: without it an
+  indented list continuation would be stripped, which drops a genuine
+  request.
+  It lives in its own script rather than inline because the same constructs
+  gate whether the agent runs at all (gha#342).
 - `.github/actions/detect-bot-mention/` -- wraps
   `scripts/detect-bot-mention.sh`, which decides whether a body carries an
   `@claude` mention that is actually addressed to the bot rather than quoted
@@ -596,6 +611,7 @@ Read its `true` rows as the guard rails rather than as filler.
 `.github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh`
 covers the stripper that matcher now pipes its bodies through, as a table of
 `(input, expected output)` pairs rather than of verdicts.
+CI runs it as a step in the same `review-fail-check` job in `_selftest.yml`.
 It is a separate suite because the stripper has a second consumer coming
 (`claude.yml`'s mention gate, gha#342) and because its failure modes run in
 both directions: under-stripping dispatches on quoted text, over-stripping
@@ -604,6 +620,17 @@ So the table pins both, and the cases that matter most are the ones a
 verdict-level test cannot distinguish -- an unclosed backtick run left alone,
 a shorter run failing to close a longer fence, a dropped block *not* joining
 its neighbouring lines.
+Three of its cases exist because gha#345's first review round found the
+corresponding gaps by hand-tracing the awk against CommonMark: a span whose
+delimiters sit on different lines, a 4-space-indented delimiter that must not
+close a fence, and an indented code block, which the first draft did not
+handle at all.
+Each was reproduced end to end through `detect-review-request.sh` before the
+fix and again after, since all three were under-stripping -- the direction
+that dispatches a review off quoted text.
+Their counterweight is the pair of cases asserting that an indented list
+continuation and an indented line with no blank line before it are *kept*:
+that is the over-stripping direction, which drops a genuine request.
 Two of the new cases in the matcher's own table were checked against
 `main`'s pre-fix script to confirm they fail there, per the regression-test
 rule in

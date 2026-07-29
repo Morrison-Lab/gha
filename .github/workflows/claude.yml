@@ -340,6 +340,16 @@ jobs:
       # have no body to quote a mention in.
       - name: Detect a genuine @claude mention
         id: mention
+        # Fail open, for the same reason the dedup step above does: a
+        # shell-level error here must not fail the job. Without this the job
+        # fails closed -- `gate` never runs (Actions implicitly ANDs
+        # `success()` onto a step with no status-check function), its output
+        # stays empty, and every downstream step including "Run Claude Code"
+        # is skipped, silently dropping a genuine request. That is the exact
+        # outcome the empty-value contract below is written to prevent, so
+        # without this line the step contradicts its own documentation
+        # (gha#343 review).
+        continue-on-error: true
         if: >-
           github.event_name == 'issue_comment' ||
           github.event_name == 'pull_request_review_comment' ||
@@ -349,8 +359,16 @@ jobs:
         with:
           comment-body: ${{ github.event.comment.body }}
           review-body: ${{ github.event.review.body }}
-          issue-body: ${{ github.event.issue.body }}
-          issue-title: ${{ github.event.issue.title }}
+          # Scoped to the `issues` event, because only there are these the
+          # trigger. On an `issue_comment` event `github.event.issue` is the
+          # ENCLOSING issue or PR, so passing them unconditionally means an
+          # old unquoted mention in the thread's own title or description
+          # makes every later comment match -- including one that merely
+          # quotes the mention, which is precisely the case this gate exists
+          # to stand down on (gha#343 review). The job's own `if:` above
+          # already scopes the issue fields this way.
+          issue-body: ${{ github.event_name == 'issues' && github.event.issue.body || '' }}
+          issue-title: ${{ github.event_name == 'issues' && github.event.issue.title || '' }}
 
       # One decision point for "should this run do anything?", so each of the
       # ~27 downstream steps keeps a single condition instead of repeating a
@@ -726,7 +744,8 @@ jobs:
                Space-separate the ids; emit the marker only if you absorbed at
                least one. A post-step reacts 🚀 to each id with GITHUB_TOKEN
                (which can reliably write the reaction), and the dedup pre-step
-               in each duplicate run then sees the 🚀 and skips itself. Do NOT
+               in each duplicate run then sees the 🚀, which makes the gate
+               step below it stand the run down. Do NOT
                try to add the reaction yourself — just emit the marker; the
                post-step is what makes it reliable. (Review submissions have no
                reactions endpoint, so a late review submission can't be marked
@@ -853,8 +872,9 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
       # Mark the comments Claude absorbed via polling with a 🚀 reaction so the
-      # duplicate run each of them queued skips itself (the dedup pre-step looks
-      # for this reaction). Claude emits the absorbed ids in a
+      # duplicate run each of them queued stands itself down (the dedup
+      # pre-step looks for this reaction and feeds the gate step, which is
+      # what the downstream steps are gated on). Claude emits the absorbed ids in a
       # `<!-- claude-absorbed: id ... -->` marker; we react here with
       # GITHUB_TOKEN, which — unlike Claude's sandboxed `gh` calls — can reliably
       # POST the reaction. Fail-open: if the marker is absent or a reaction
