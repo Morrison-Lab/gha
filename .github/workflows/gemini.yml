@@ -192,6 +192,12 @@ jobs:
           # dedicated reviewer would give, but an answer rather than an error.
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
             echo "::warning::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); $REVIEW_WF refuses fork PRs, so answering with the agent instead."
+            # Record WHY before exiting, so the gate can tell this deliberate
+            # non-dispatch apart from a real breakage. A step's outputs are
+            # captured even when it exits non-zero, which is what makes this
+            # work; without it the gate sees only `outcome: failure` and tells
+            # the reader to go check a workflow file that is perfectly fine.
+            echo "reason=fork" >> "$GITHUB_OUTPUT"
             exit 1
           fi
           # --ref pins the dispatched run's check-runs to the PR's head branch
@@ -221,6 +227,10 @@ jobs:
           MENTION_MATCH: ${{ steps.detect-mention.outputs.match }}
           REVIEW_MATCH: ${{ steps.detect-review.outputs.match }}
           DISPATCH_OUTCOME: ${{ steps.dispatch-review.outcome }}
+          # Empty unless the dispatch step failed deliberately. Distinguishes
+          # "did not dispatch on purpose" from "could not dispatch", which
+          # `outcome` alone reports identically.
+          DISPATCH_REASON: ${{ steps.dispatch-review.outputs.reason }}
           # Named in the dispatch-failure warning below. Required here, not
           # optional: this step runs under `set -u`, so referencing it without
           # declaring it would fail the step on the very path the warning
@@ -243,6 +253,11 @@ jobs:
           elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "success" ]; then
             echo "Review dispatched to the dedicated reviewer; skipping the agent."
             skip=true
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_REASON" = "fork" ]; then
+            # The dispatch step failed ON PURPOSE: the PR is from a fork, which
+            # the reviewer refuses. It has already warned, naming the fork, so
+            # do not warn again here about a workflow file that is fine.
+            echo "Fork PR not sent to the dedicated reviewer; answering with the agent instead."
           elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "failure" ]; then
             # A genuine breakage, not a routing decision: the review workflow
             # file is probably missing or disabled in the caller repo. Warn
