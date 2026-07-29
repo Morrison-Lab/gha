@@ -60,12 +60,37 @@ on:
 
 jobs:
   gemini:
-    if: >-
+    # Only trigger for trusted authors (OWNER / MEMBER / COLLABORATOR) on the
+    # four reactive events. Each association check is scoped to the event it
+    # belongs to, which is load-bearing rather than tidiness: an
+    # `issue_comment` payload carries BOTH `comment.author_association` (the
+    # commenter) and `issue.author_association` (whoever opened the issue), so
+    # an un-scoped `||` chain passes whenever the *thread* was opened by a
+    # trusted author, regardless of who is commenting. Any untrusted user
+    # commenting `@gemini` on an OWNER-opened issue would then start a
+    # write-scoped LLM run. Same gate, and same reasoning, as claude.yml.
+    #
+    # workflow_dispatch/schedule have no body or author_association to gate
+    # on and need none: workflow_dispatch requires repo write access, and a
+    # cron trigger has no actor at all --- it exists only because someone with
+    # write access committed its config to the default branch (gha#245).
+    if: |
+      (github.event_name == 'issue_comment' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'schedule' ||
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) ||
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+      github.event_name == 'schedule'
+
+    # Serialize sessions per issue/PR so rapid mentions don't fire competing
+    # runs racing to push the same branch. `cancel-in-progress: false` queues
+    # a new mention behind the running session rather than killing it, and
+    # `|| github.run_id` keeps an unexpected event with no issue/PR number
+    # from collapsing the group and serializing every session globally.
+    concurrency:
+      group: gemini-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: false
+
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -98,8 +123,16 @@ jobs:
       # An `@gemini review` routes to the dedicated reviewer rather than being
       # answered by the agent, so this step and the gate below are ordered:
       # dispatch first, then skip the agent for the rest of the job.
+      # `github.event.issue.pull_request` is present only when the issue IS a
+      # PR, so it is what separates an `@gemini review` on a pull request from
+      # the same words on a plain issue. Without it the `gh api .../pulls/N`
+      # below 404s on a normal issue and, under `set -euo pipefail`, fails the
+      # whole job over a request that was simply not about a PR.
       - name: Dispatch review workflow if @gemini review was requested
-        if: steps.detect-mention.outputs.match != 'false' && steps.detect-review.outputs.match == 'true'
+        if: >-
+          steps.detect-mention.outputs.match != 'false' &&
+          steps.detect-review.outputs.match == 'true' &&
+          (github.event.issue.pull_request || github.event.pull_request.number)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -111,11 +144,16 @@ jobs:
             echo "::warning::No PR number on this event; skipping $REVIEW_WF dispatch."
             exit 0
           fi
-          # This job hasn't checked out the repo yet, so the PR's head branch
-          # has to be looked up explicitly. --ref pins the dispatched run's
-          # check-runs to that branch instead of the default branch that
-          # workflow_dispatch falls back to when no ref is given (#285).
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          # Belt and braces: the step `if:` above already establishes this is a
+          # PR, but a lookup failure here should degrade to a warning rather
+          # than redden the job, since the mention itself was legitimate.
+          if ! PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null); then
+            echo "::warning::Could not read PR #$PR_NUMBER; skipping $REVIEW_WF dispatch."
+            exit 0
+          fi
+          # PR_JSON came from the lookup above. --ref pins the dispatched run's
+          # check-runs to the PR's head branch instead of the default branch
+          # that workflow_dispatch falls back to when no ref is given (#285).
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
           # A fork PR's head branch only exists in the fork, not in $REPO, so

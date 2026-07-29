@@ -84,6 +84,14 @@ jobs:
             echo "::error::No PR number available for AI review."
             exit 1
           fi
+          # Same digits-only guard gemini-code-review.yml applies. The value is
+          # quoted at every use below, so this is not the last line of defence
+          # --- it is so a malformed workflow_dispatch input fails here, with a
+          # message naming the problem, rather than as a puzzling `gh api` 404.
+          if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::PR number must be digits only; got '$PR_NUMBER'."
+            exit 1
+          fi
 
           mapfile -t AGENTS < <(tr ',' '\n' <<< "$RAW_AGENTS" \
             | tr '[:upper:]' '[:lower:]' \
