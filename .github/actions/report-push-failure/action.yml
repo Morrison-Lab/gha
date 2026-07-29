@@ -93,9 +93,18 @@ runs:
         # contains and open with one more, since a fence is closed by a run of
         # equal length. A patch that touches a Markdown file carries ``` lines
         # of its own, which a fixed three-backtick fence would end early.
+        #
+        # `|| true` is load-bearing under the `pipefail` above: grep exits 1
+        # when the text holds no backticks at all -- the ordinary case for a
+        # network or auth failure -- which makes the pipeline fail and, under
+        # `set -e`, would abort the whole report. It survives today only
+        # because every call site wraps this in `x="$(fence_for ...)"`, and
+        # bash suppresses errexit inside a command substitution that is part
+        # of an assignment; calling it as a plain statement aborts. Don't rely
+        # on that: state the tolerance here.
         fence_for() {
           local longest
-          longest="$(grep -oE '`+' <<<"$1" | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')"
+          longest="$( { grep -oE '`+' <<<"$1" || true; } | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')"
           if [[ "$longest" -lt 3 ]]; then longest=2; fi
           printf '`%.0s' $(seq $((longest + 1)))
         }

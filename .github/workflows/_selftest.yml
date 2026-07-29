@@ -512,6 +512,44 @@ jobs:
             exit 1
           fi
           echo "report-push-failure classified, explained, patched, and redacted correctly"
+      # A second real call, on a log holding no backticks at all -- the
+      # ordinary shape of a network or auth failure, and the one that falls
+      # through to `other`. It is here because the body builder counts
+      # backtick runs to size its fences, and `grep` exits non-zero when there
+      # are none: under the composite's own `pipefail` that can abort the
+      # whole report. The first fixture cannot catch it, since a
+      # workflows-permission rejection always carries backticks.
+      - name: Write a backtick-free push log
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'fatal: unable to access https://github.com/o/r.git/: Could not resolve host' \
+            > "$RUNNER_TEMP/push-failure-plain.log"
+      - name: Exercise report-push-failure on a backtick-free log
+        id: push-failure-plain
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/push-failure-plain.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          dry-run: 'true'
+      - name: Assert the backtick-free log still produced a report
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-plain.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-plain.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "other" ]]; then
+            echo "::error::an unrecognized failure classified as '$KIND', expected 'other'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::a backtick-free push log produced no report body"
+            exit 1
+          fi
+          echo "report-push-failure handled a backtick-free log correctly"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't

@@ -30,9 +30,9 @@ fi
 
 # Match the whole "refusing to allow X to create or update workflow" clause
 # rather than the trailing scope name. GitHub words the tail differently
-# depending on which credential was used -- a GitHub App is rejected `without
-# \`workflows\` permission`, a Personal Access Token `without \`workflow\`
-# scope` -- while this clause is common to every variant.
+# depending on which credential was used: a GitHub App is rejected for
+# lacking the "workflows" permission, a Personal Access Token for lacking the
+# "workflow" scope. This clause is common to every variant.
 if grep -qE 'refusing to allow .* to create or update workflow' <<<"$log"; then
   kind=workflows-permission
   headline='Push rejected: the token cannot write .github/workflows/ -- set the WORKFLOW_TOKEN secret.'
@@ -67,14 +67,16 @@ the remote after this run checked it out. Pushing anyway would discard
 them, so the push fails rather than forcing.
 
 This usually means another session, another workflow run, or a person
-pushed to the same branch concurrently. Re-running `@claude` on the
-up-to-date branch is the normal recovery; the patch below is only needed if
-the work should be preserved rather than redone.
+pushed to the same branch concurrently. Re-running the agent against the
+up-to-date branch is the normal recovery; any patch included in this
+comment is only needed if the work should be preserved rather than redone.
 EOF
   )
 else
   kind=other
-  headline="Push rejected: the agent's commits could not be pushed."
+  # "failed", not "rejected": this branch also covers a push the remote never
+  # got to reject -- a DNS failure, a timeout, a bad credential.
+  headline="Push failed: the agent's commits could not be pushed."
   advice=$(
     cat <<'EOF'
 The push failed for a reason this workflow does not recognize. The raw git
