@@ -715,9 +715,11 @@ outputs: the verbatim GitHub App rejection gha#360 was filed over, its PAT and
 OAuth App wordings, two non-fast-forward phrasings, and cases that must fall
 through to `other` (a protected-branch decline, an auth failure, an empty
 log).
-It also pins the three-part output contract the composite parses -- `kind=`,
-`headline=`, blank line, advice -- and that the headline stays a single line,
-since it reaches an `::error::` annotation.
+It also pins the four-part output contract the composite parses -- `kind=`,
+`withhold-patch=`, `headline=`, blank line, advice -- and that the headline
+stays a single line, since it reaches an `::error::` annotation.
+The composite reads each field by fixed line offset, so a reordering breaks
+it silently; that is why the shape is asserted rather than only the values.
 The one assertion worth reading as a guard rail rather than filler is that a
 generic failure's advice does **not** name `WORKFLOW_TOKEN`: the value of
 naming the secret comes entirely from naming it only when it is the cause.
