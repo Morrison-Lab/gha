@@ -136,7 +136,7 @@ on:
         default: ''
       use-ai-config:
         description: >-
-          Install the d-morrison/ai-config plugin (ai-config@d-morrison), so
+          Install the Morrison-Lab/ai-config plugin (ai-config@Morrison-Lab), so
           the agent has the lab's shared skills, slash commands, and standing
           workflow conventions available rather than only the calling repo's
           own CLAUDE.md. On by default; set false to opt out. Distinct from
@@ -148,7 +148,7 @@ on:
         description: >-
           Extra newline-separated Claude Code plugin marketplace Git URLs,
           passed through to claude-code-action's plugin_marketplaces and
-          added on top of the d-morrison/ai-config.git marketplace
+          added on top of the Morrison-Lab/ai-config.git marketplace
           use-ai-config adds by default. Use to give Claude a further
           skills/commands source. Pair with the plugins input below --
           adding a marketplace alone installs nothing. Empty by default.
@@ -700,10 +700,10 @@ jobs:
           # reviewer's copy); see the comment there for why they aren't shared
           # from one place. Update both sites together.
           plugin_marketplaces: |
-            ${{ inputs.use-ai-config && 'https://github.com/d-morrison/ai-config.git' || '' }}
+            ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
             ${{ inputs.plugin-marketplaces }}
           plugins: |
-            ${{ inputs.use-ai-config && 'ai-config@d-morrison' || '' }}
+            ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
             ${{ inputs.plugins }}
           # Append the WebFetch grants (empty when webfetch-allowlist-url is
           # unset). Multiple --allowedTools flags accumulate in the CLI.

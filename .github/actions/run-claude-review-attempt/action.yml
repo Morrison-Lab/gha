@@ -65,7 +65,7 @@ inputs:
     default: ''
   use-ai-config:
     description: >-
-      'true' (the default) to install the d-morrison/ai-config plugin
+      'true' (the default) to install the Morrison-Lab/ai-config plugin
       alongside the built-in code-review plugin below
       (claude-code-review.yml's use-ai-config input). Any other value
       skips it.
@@ -115,11 +115,11 @@ runs:
         # consumer. Update both sites together.
         plugin_marketplaces: |
           https://github.com/anthropics/claude-code.git
-          ${{ inputs.use-ai-config == 'true' && 'https://github.com/d-morrison/ai-config.git' || '' }}
+          ${{ inputs.use-ai-config == 'true' && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
           ${{ inputs.extra-plugin-marketplaces }}
         plugins: |
           code-review@claude-code-plugins
-          ${{ inputs.use-ai-config == 'true' && 'ai-config@d-morrison' || '' }}
+          ${{ inputs.use-ai-config == 'true' && 'ai-config@Morrison-Lab' || '' }}
           ${{ inputs.extra-plugins }}
         # Allowlist the inline-comment tool so line-specific findings can be
         # anchored to the diff. Without an explicit `claude_args`, the action's
