@@ -231,6 +231,9 @@ jobs:
       - name: Run strip-non-invoking-markup tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh
+      - name: Run detect-bot-mention tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-detect-bot-mention-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -405,6 +408,38 @@ jobs:
             exit 1
           fi
           echo "detect-review-request correctly surfaced match=true / match=false"
+      # Proves claude.yml's detect-bot-mention composite action end-to-end
+      # (gha#342) -- the same github.action_path-resolution proof the steps
+      # above give, which is the one thing the offline table cannot reach.
+      # Both directions are asserted, because the only behaviour this gate can
+      # cause is a skip: the negative case is the bug being fixed, and the
+      # positive case is what stops the fix from silencing real requests.
+      - name: Exercise detect-bot-mention on a quoted mention
+        id: mention-e2e-quoted
+        uses: ./.github/actions/detect-bot-mention
+        with:
+          comment-body: "the trigger is `@claude` and it has no notion of Markdown"
+      - name: Exercise detect-bot-mention on a genuine mention
+        id: mention-e2e-genuine
+        uses: ./.github/actions/detect-bot-mention
+        with:
+          issue-title: "@claude fix the failing test"
+      - name: Assert detect-bot-mention surfaced the correct matches
+        shell: bash
+        env:
+          MATCH_QUOTED: ${{ steps.mention-e2e-quoted.outputs.match }}
+          MATCH_GENUINE: ${{ steps.mention-e2e-genuine.outputs.match }}
+        run: |
+          set -euo pipefail
+          if [[ "$MATCH_QUOTED" != "false" ]]; then
+            echo "::error::detect-bot-mention treated a code-span mention as an invocation (got '$MATCH_QUOTED')"
+            exit 1
+          fi
+          if [[ "$MATCH_GENUINE" != "true" ]]; then
+            echo "::error::detect-bot-mention missed a genuine mention in an issue title (got '$MATCH_GENUINE')"
+            exit 1
+          fi
+          echo "detect-bot-mention correctly surfaced match=false / match=true"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't

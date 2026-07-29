@@ -107,7 +107,9 @@ while IFS= read -r -d '' body; do
 done
 
 if [ "$count" -eq 0 ]; then
-  echo "usage: printf '%s\\0' <body> [<body> ...] | detect-review-request.sh" >&2
+  # `printf '%s\n'` rather than `echo`: the usage text itself contains a
+  # backslash escape, which `echo` may expand depending on the shell.
+  printf '%s\n' "usage: printf '%s\\0' <body> [<body> ...] | detect-review-request.sh" >&2
   exit 2
 fi
 
