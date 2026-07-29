@@ -20,7 +20,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: read
-    uses: d-morrison/gha/.github/workflows/check-links.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-links.yml@v2
     # with:
     #   lychee-config: lychee.toml       # use a repo-local config instead of the bundled default
     #   fail: false                      # don't fail the run on broken links (default: true)

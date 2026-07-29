@@ -1,4 +1,4 @@
-# d-morrison/gha
+# Morrison-Lab/gha
 
 Central, reusable GitHub Actions for d-morrison / UCD-SERG / ucdavis R-package
 and Quarto repositories. Modeled on
@@ -15,7 +15,7 @@ Each capability is shipped as two layers:
 
 - **Composite action** (e.g. `check-bibliography-dois/action.yml`) — bundles the
   real steps and any helper script. Referenced as
-  `d-morrison/gha/<name>@vN` (the major tag that capability currently
+  `Morrison-Lab/gha/<name>@vN` (the major tag that capability currently
   recommends — see [Versioning](#versioning) below).
 - **Reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`) —
   wraps the composite, declares permissions, and checks out the caller's repo.
@@ -31,7 +31,7 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    uses: d-morrison/gha/.github/workflows/check-bibliography-dois.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2
 ```
 
 Pin to the major tag that capability currently recommends (`@v2` in the
@@ -49,7 +49,7 @@ not reference `@main` from consumers.
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
-| `check-new-line-breaks.yml` | Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail` |
+| `check-new-line-breaks.yml` | Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `extra-packages`, `install-package`, `fail` |
 | `summary.yml` | AI summary comment on newly opened issues | — |
@@ -256,12 +256,12 @@ cut from.
 - **`bump-submodule`** — for the side that vendors the other repo as a git
   submodule. A scheduled run advances the submodule to its upstream HEAD and
   opens a PR when it moved. (Used by `UCD-SERG/lab-manual`, which carries
-  `d-morrison/ai-config` as `.ai-config`.)
+  `Morrison-Lab/ai-config` as `.ai-config`.)
 - **`sync-shared-fragments`** — for the side that can't add a submodule because
   the other repo already submodules *it* (a mutual submodule would recurse).
   Instead it vendors a pinned **copy** of the named files into a `dest-dir`,
   records the source repo and commit in a JSON manifest, and opens a PR when the
-  copy changes. (Used by `d-morrison/ai-config` to vendor the lab manual's
+  copy changes. (Used by `Morrison-Lab/ai-config` to vendor the lab manual's
   authored fragments.) Don't hand-edit the vendored copies — edit them upstream
   and let the workflow refresh them; a consumer-side drift check can assert the
   copy matches the pinned commit.
@@ -300,19 +300,19 @@ have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
-[gha#182](https://github.com/d-morrison/gha/issues/182)).
+[gha#182](https://github.com/Morrison-Lab/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
-the freeze — see [gha#252](https://github.com/d-morrison/gha/issues/252)), as
+the freeze — see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as
 does `sync-upstream.yml` (added after the freeze — see
-[gha#254](https://github.com/d-morrison/gha/issues/254)),
+[gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
 `altdoc-multiversion-docs.yml` (added after the freeze), and
 `report-failure.yml` (added after the freeze — see
-[gha#325](https://github.com/d-morrison/gha/issues/325)).
+[gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
 but later gained the configurable `no-changelog-label` input at
-[gha#143](https://github.com/d-morrison/gha/issues/143) -- pin it to `@v2`
+[gha#143](https://github.com/Morrison-Lab/gha/issues/143) -- pin it to `@v2`
 too. See [`CHANGELOG.md`](CHANGELOG.md) for
 what changes as a major tag moves and for any breaking-change migration steps.
 
@@ -338,11 +338,11 @@ be tried out before every consumer has to deal with it:
 
 **A brand-new capability's own PR merging to `main` does not make it usable
 at `@v2` yet.** If a consumer repo's PR needs to reference
-`d-morrison/gha/.github/workflows/<new-workflow>.yml@v2` right after that
+`Morrison-Lab/gha/.github/workflows/<new-workflow>.yml@v2` right after that
 workflow's own PR merged here, check whether `@v2` has actually been
 advanced past that merge first (`git log -1 refs/tags/v2` vs. `main`) --- a
 consumer referencing `@v2` before the slide gets a workflow-not-found error,
-not a stale-but-working reference. ([gha#300](https://github.com/d-morrison/gha/pull/300)/[ai-config#703](https://github.com/d-morrison/ai-config/pull/703), 2026-07-25:
+not a stale-but-working reference. ([gha#300](https://github.com/Morrison-Lab/gha/pull/300)/[ai-config#703](https://github.com/Morrison-Lab/ai-config/pull/703), 2026-07-25:
 `check-new-line-breaks` merged here, but `@v2` was still 11 commits behind;
 the tag had to be slid via step 3 above before ai-config's own migration PR
 could actually resolve it.)
@@ -368,7 +368,7 @@ with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.git
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
 
-First-party `d-morrison/gha/*` self-references and most [`examples/`](examples/)
+First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `quarto-publish.yml`, `test-coverage.yml`, `check-equation-renders.yml`,

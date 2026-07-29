@@ -19,6 +19,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check for non-standard characters
-        uses: d-morrison/gha/check-non-standard-chars@v2
+        uses: Morrison-Lab/gha/check-non-standard-chars@v2
         with:
           python-version: ${{ inputs.python-version }}

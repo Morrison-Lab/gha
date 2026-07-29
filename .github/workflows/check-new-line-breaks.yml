@@ -22,6 +22,21 @@ on:
         description: Fail the workflow when a violation is found (else warn only).
         type: boolean
         default: false
+      clause-breaks:
+        description: >-
+          Also flag a long line carrying a mid-line semicolon (a narrow slice
+          of SemBr rule 5), on top of the rule 4 sentence check that always
+          runs. On by default; set false to check sentences only.
+        type: boolean
+        default: true
+      clause-min-length:
+        description: >-
+          Minimum visible line length before `clause-breaks` applies;
+          inclusive. Measured after stripping inline markup such as code
+          spans, link targets, bare URLs, and HTML entities. Ignored when
+          `clause-breaks` is false.
+        type: string
+        default: '80'
 
 jobs:
   check-new-line-breaks:
@@ -37,12 +52,14 @@ jobs:
           fetch-depth: 0
 
       - name: Check new markdown lines for missing semantic breaks
-        uses: d-morrison/gha/check-new-line-breaks@v2
+        uses: Morrison-Lab/gha/check-new-line-breaks@v2
         with:
           python-version: ${{ inputs.python-version }}
           globs: ${{ inputs.globs }}
           paths-ignore: ${{ inputs.paths-ignore }}
           fail: ${{ inputs.fail }}
+          clause-breaks: ${{ inputs.clause-breaks }}
+          clause-min-length: ${{ inputs.clause-min-length }}
           # On PRs, check only lines added relative to the base; otherwise
           # (push) there's no base to diff against, so the check is skipped.
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

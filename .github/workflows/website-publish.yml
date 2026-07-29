@@ -22,7 +22,7 @@ jobs:
     permissions:
       # Push the rendered site to gh-pages.
       contents: write
-    uses: d-morrison/gha/.github/workflows/quarto-publish.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
     with:
       # The Quarto project lives in website/; it is pure markdown, so the other
       # defaults (setup-r: false, output-dir: _site, deploy: true) are correct.

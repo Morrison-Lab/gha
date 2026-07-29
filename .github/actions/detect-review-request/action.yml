@@ -1,0 +1,86 @@
+name: Detect an @claude review request
+description: >-
+  Decides whether a comment/review body is an explicit "@claude review"
+  request, so claude.yml can route it to the dedicated code-review workflow
+  instead of letting the agent answer it itself. Wraps
+  .github/workflows/scripts/detect-review-request.sh, located via
+  github.action_path, for the same reason run-review-guard wraps
+  check-review-execution.sh: claude.yml's steps run against the CALLER's
+  checkout, not d-morrison/gha's own tree, and this one runs before any
+  checkout has happened at all.
+
+inputs:
+  comment-body:
+    description: Body of the triggering comment, if the event carried one.
+    required: false
+    default: ''
+  review-body:
+    description: Body of the triggering PR review, if the event carried one.
+    required: false
+    default: ''
+  bodies-file:
+    description: >-
+      Optional path to a file of additional bodies to test alongside the two
+      inputs above, one base64-encoded body per line (a comment body is
+      multi-line, so it cannot be line-delimited as-is). claude.yml's
+      late-comment rescue scan uses it to test every comment posted after the
+      trigger against the same matcher, rather than reimplementing the pattern
+      in jq where it would drift out of sync.
+
+outputs:
+  match:
+    description: >-
+      `true` when any body supplied is an explicit review request, else
+      `false`.
+    value: ${{ steps.run.outputs.match }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run detect-review-request.sh
+      id: run
+      shell: bash
+      env:
+        COMMENT_BODY: ${{ inputs.comment-body }}
+        REVIEW_BODY: ${{ inputs.review-body }}
+        BODIES_FILE: ${{ inputs.bodies-file }}
+      # The script lives in ../../workflows/scripts/ relative to this action's
+      # own directory, mirroring sum-costs' and run-review-guard's resolution.
+      run: |
+        set -euo pipefail
+        SCRIPT="${{ github.action_path }}/../../workflows/scripts/detect-review-request.sh"
+        # GNU coreutils spells decode `-d`; BSD/macOS base64 spells it `-D`.
+        # `runs-on` is a consumer-settable input, and this decode is on the
+        # live path for the late-comment rescan, so it cannot assume GNU the
+        # way the jq-version reasoning below declines to (gha#346). Probing
+        # once beats guessing: an unsupported flag would abort the step under
+        # `set -e` with only a usage message to go on.
+        if printf '' | base64 -d >/dev/null 2>&1; then
+          B64_DECODE=(base64 -d)
+        else
+          B64_DECODE=(base64 -D)
+        fi
+        # Bodies go down a pipe, NUL-separated, never through argv: a single
+        # comment can exceed Linux's per-argument MAX_ARG_STRLEN and fail
+        # `execve`, which under `set -euo pipefail` would fail this step and
+        # redden the whole calling job. See the script's own header.
+        MATCH="$(
+          {
+            printf '%s\0' "$COMMENT_BODY" "$REVIEW_BODY"
+            if [ -n "$BODIES_FILE" ]; then
+              # No `|| true` on either the redirect or the decode: an
+              # unreadable or malformed bodies-file is a caller bug, and
+              # degrading to "no review requested" would hide it.
+              while IFS= read -r encoded; do
+                [ -n "$encoded" ] || continue
+                "${B64_DECODE[@]}" <<<"$encoded"
+                printf '\0'
+              done < "$BODIES_FILE"
+            fi
+          } | bash "$SCRIPT"
+        )"
+        # A `false` result is otherwise invisible: the steps gated on this
+        # output simply render as skipped, and the dispatch step's old "No
+        # late @claude review requests." line went away with it (gha#346).
+        echo "detect-review-request: match=$MATCH"
+        echo "match=$MATCH" >> "$GITHUB_OUTPUT"

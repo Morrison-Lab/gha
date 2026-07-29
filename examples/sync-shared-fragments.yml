@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: d-morrison/gha/.github/workflows/sync-shared-fragments.yml@v1
+    uses: Morrison-Lab/gha/.github/workflows/sync-shared-fragments.yml@v1
     with:
       source-repo: UCD-SERG/lab-manual
       source-paths: |

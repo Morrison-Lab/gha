@@ -47,7 +47,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: d-morrison/gha/.github/workflows/bump-submodule.yml@v1
+    uses: Morrison-Lab/gha/.github/workflows/bump-submodule.yml@v1
     with:
       submodule-path: .ai-config
       # remote-branch: main        # defaults to the submodule's configured branch
@@ -60,5 +60,5 @@ jobs:
 ```
 
 See
-[`examples/bump-submodule.yml`](https://github.com/d-morrison/gha/blob/main/examples/bump-submodule.yml)
+[`examples/bump-submodule.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/bump-submodule.yml)
 for the full caller stub.

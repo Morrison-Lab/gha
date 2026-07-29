@@ -5,7 +5,7 @@ title: "Permissions"
 A called reusable workflow cannot hold more `GITHUB_TOKEN` permissions than the
 caller grants, and most repos default to a **read-only** token. So workflows
 that need to write must have the **caller** grant it on the calling job. The
-stubs in [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+stubs in [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 already include the right `permissions:` blocks; copy them as-is.
 
 ## Per-workflow grants

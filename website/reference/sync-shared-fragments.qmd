@@ -53,7 +53,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: d-morrison/gha/.github/workflows/sync-shared-fragments.yml@v1
+    uses: Morrison-Lab/gha/.github/workflows/sync-shared-fragments.yml@v1
     with:
       source-repo: UCD-SERG/lab-manual
       source-paths: |
@@ -70,5 +70,5 @@ jobs:
 ```
 
 See
-[`examples/sync-shared-fragments.yml`](https://github.com/d-morrison/gha/blob/main/examples/sync-shared-fragments.yml)
+[`examples/sync-shared-fragments.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/sync-shared-fragments.yml)
 for the full caller stub.

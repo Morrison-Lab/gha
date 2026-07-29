@@ -278,7 +278,7 @@ jobs:
 
       - name: Generate version dropdown
         if: github.event.action != 'closed'
-        uses: d-morrison/gha/.github/actions/generate-altdoc-version-dropdown@v2
+        uses: Morrison-Lab/gha/.github/actions/generate-altdoc-version-dropdown@v2
         with:
           docs-source-dir: ${{ env.DOCS_SOURCE_DIR }}
           quarto-config-path: ${{ inputs.quarto-config-path }}
@@ -399,7 +399,7 @@ jobs:
       - name: "[default branch] Resolve base URL for bootstrap"
         id: bootstrap-base-url
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)
-        uses: d-morrison/gha/.github/actions/resolve-altdoc-base-url@v2
+        uses: Morrison-Lab/gha/.github/actions/resolve-altdoc-base-url@v2
         with:
           override: ${{ inputs.docs-base-url }}
 
@@ -442,7 +442,7 @@ jobs:
 
       - name: Build root landing page redirect
         if: github.event_name != 'pull_request' && env.landing_target != ''
-        uses: d-morrison/gha/.github/actions/generate-altdoc-landing-page@v2
+        uses: Morrison-Lab/gha/.github/actions/generate-altdoc-landing-page@v2
         with:
           target: ${{ env.landing_target }}
           output-dir: site-root
