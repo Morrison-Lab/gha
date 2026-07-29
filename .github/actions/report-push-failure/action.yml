@@ -60,8 +60,10 @@ inputs:
 outputs:
   kind:
     description: >-
-      `workflows-permission`, `non-fast-forward`, `other`, or
-      `no-push-attempt` when the calling step failed before pushing.
+      `workflows-permission`, `push-protection` (a repository-rule rejection,
+      commonly secret scanning -- the one kind whose patch is withheld),
+      `non-fast-forward`, `other`, or `no-push-attempt` when the calling step
+      failed before pushing.
     value: ${{ steps.report.outputs.kind }}
   body-file:
     description: Path to the composed comment body.

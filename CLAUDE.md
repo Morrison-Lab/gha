@@ -248,8 +248,9 @@ which is why the capabilities above moved to `@v2`.
   are the two costs gha#342 actually names.
 - `.github/actions/report-push-failure/` -- wraps
   `scripts/classify-push-failure.sh`, which reads a failed `git push`'s output
-  and names the failure kind (`workflows-permission`, `non-fast-forward`,
-  `other`) plus advice for it.
+  and names the failure kind (`workflows-permission`, `push-protection`,
+  `non-fast-forward`, `other`, plus `no-push-attempt` which the composite
+  assigns when no log exists) plus advice for it.
   The composite adds what the script deliberately leaves out: it redacts any
   credential git echoed back in the remote URL, emits the `::error::`,
   generates a `git format-patch` of the commits that could not be pushed, and

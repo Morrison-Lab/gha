@@ -13,7 +13,7 @@
 #
 # Output (stdout), in this exact shape so the caller can split it:
 #
-#   line 1  kind=<workflows-permission|non-fast-forward|other>
+#   line 1  kind=<workflows-permission|push-protection|non-fast-forward|other>
 #   line 2  headline=<single-line summary, safe for ::error::>
 #   line 3  (blank)
 #   line 4+ Markdown advice
