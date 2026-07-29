@@ -72,12 +72,12 @@ NEWLINE=$'\n'
 PATTERN="@claude[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review"
 PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
 
-# Blockquotes, fenced code blocks, and inline code spans all mark text as
-# quoted rather than meant, so they are removed before matching. That work
-# lives in a sibling script because the same three constructs gate whether the
-# agent runs at all -- `contains(body, '@claude')` has no notion of Markdown
-# either (gha#342), and two copies of a stripper is how this file's own
-# pattern came to disagree with the jq copy it replaced.
+# Blockquotes, fenced code blocks, indented code blocks, and inline code spans
+# all mark text as quoted rather than meant, so they are removed before
+# matching. That work lives in a sibling script because the same constructs
+# gate whether the agent runs at all -- `contains(body, '@claude')` has no
+# notion of Markdown either (gha#342), and two copies of a stripper is how
+# this file's own pattern came to disagree with the jq copy it replaced.
 #
 # Code spans are the case that prompted the split: a reply on gha#341 quoting
 # the accepted phrasings as inline code dispatched a review by describing the

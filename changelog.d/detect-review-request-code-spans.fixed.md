@@ -6,8 +6,12 @@
   That cost compounds: discussing the matcher spends a review run, and the
   dispatched review cancels whichever one was already in flight for that pull
   request.
-  Code spans, fenced blocks, and blockquotes are now all removed before
-  matching, so quoting a request cites it rather than re-issuing it.
+  Code spans, fenced blocks, indented code blocks, and blockquotes are now all
+  removed before matching, so quoting a request cites it rather than
+  re-issuing it.
+  The stripping follows CommonMark rather than approximating it: a span may
+  contain a line break, a fence is capped at three spaces of indentation at
+  both ends, and four columns after a blank line opens a code block.
 - **The stripping moved into its own script,**
   `.github/workflows/scripts/strip-non-invoking-markup.sh`, with its own
   offline test table.

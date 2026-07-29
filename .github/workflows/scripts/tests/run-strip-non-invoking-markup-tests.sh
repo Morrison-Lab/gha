@@ -120,6 +120,53 @@ check "dropping a block does not join its neighbours" \
   $'@claude\n```\nx\n```\nreview' \
   $'@claude\nreview'
 
+# A span may contain a line break: CommonMark closes on the next run of
+# matching length wherever it appears, not at end of line. A per-line scan
+# left these unrecognized and leaked the contents.
+check "code span spanning two lines" \
+  $'Trigger phrase: `foo\n@claude review\nbar`' \
+  'Trigger phrase: elided'
+
+check "code span spanning three lines" \
+  $'a ``x\ny\nz`` b' \
+  'a elided b'
+
+# CommonMark caps a closing fence at three spaces of indentation, so a
+# 4-space-indented delimiter is content and must not terminate the block.
+check "deeply indented delimiter does not close a fence" \
+  $'```\n    ```\n@claude review\n```\nafter' \
+  'after'
+
+check "closing fence may be indented up to three spaces" \
+  $'```\nx\n   ```\nafter' \
+  'after'
+
+# Four columns after a blank line is an indented code block -- the same
+# "quoted, not meant" construct written without a fence.
+check "indented code block is dropped" \
+  $'The accepted phrasing is:\n\n    @claude review' \
+  'The accepted phrasing is:'
+
+check "indented code block runs until it dedents" \
+  $'intro:\n\n    line one\n    line two\n\nafter' \
+  $'intro:\n\nafter'
+
+# A tab indents to the next multiple of four, so one tab opens a block.
+check "tab-indented code block is dropped" \
+  $'intro:\n\n\t@claude review' \
+  'intro:'
+
+# The blank-line precondition is what keeps list continuations out of the
+# branch above. Over-stripping here would drop a genuine request, which is the
+# expensive error for the mention gate that shares this script.
+check "list continuation is not an indented code block" \
+  $'- a point\n      @claude review' \
+  $'- a point\n      @claude review'
+
+check "indentation without a preceding blank line is not code" \
+  $'some prose\n    @claude review' \
+  $'some prose\n    @claude review'
+
 check "CRLF endings are normalized" \
   $'@claude review\r\nthanks\r' \
   $'@claude review\nthanks'
