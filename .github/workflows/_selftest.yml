@@ -224,6 +224,13 @@ jobs:
       - name: Run detect-review-request matcher tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-review-request-tests.sh
+      # Separate from the matcher tests above because the stripper has its own
+      # consumer coming (claude.yml's mention gate, gha#342) and its failure
+      # modes run in both directions -- under-stripping dispatches on quoted
+      # text, over-stripping swallows a real request.
+      - name: Run strip-non-invoking-markup tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually

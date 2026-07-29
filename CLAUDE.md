@@ -187,6 +187,27 @@ which is why the capabilities above moved to `@v2`.
   E2BIG, and under the composite's `set -euo pipefail` that reddens the whole
   calling job over an optional late-dispatch nicety (caught in gha#341's
   review; the test table's oversized-body case is the regression guard).
+  Finally, the script does not match the raw body: it pipes each one through
+  `scripts/strip-non-invoking-markup.sh` first, which removes blockquote
+  lines, fenced code blocks, and inline code spans.
+  All three are standard Markdown for "this is a literal string, not
+  something I mean", and treating them as text meant a comment *documenting*
+  the accepted phrasings dispatched a review by quoting them (gha#344).
+  Two things constrain any change to that stripper.
+  A code span becomes the placeholder word `elided` rather than being
+  deleted, because deleting it lets its neighbours close up into a request
+  the author never wrote: a span sitting between the mention and the keyword
+  would collapse into a dispatch.
+  The placeholder also has to be letters that no caller's pattern accepts,
+  which rules out the obvious `[code]` -- `code` is one of the `TAIL_WORD`
+  alternatives, so the placeholder itself would have completed a match.
+  And a code span is closed by a backtick run of *equal* length, so the scan
+  measures runs rather than matching `` `[^`]*` `` -- that pattern matches the
+  empty span between the two opening backticks of a ```` ``...`` ```` span
+  and leaks the contents through, the same bug the Tests section records for
+  `check-new-line-breaks`'s `strip_inline_markup`.
+  It lives in its own script rather than inline because the same three
+  constructs gate whether the agent runs at all (gha#342).
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -539,6 +560,25 @@ built by that job with the same `jq ... | @base64` pipeline `claude.yml` uses.
 As with `request-dependabot-review` below, `claude.yml`'s own layer above the
 composite is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`,
 which does not resolve until `@v2` is advanced past this capability's merge.
+
+`.github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh`
+covers the stripper that matcher now pipes its bodies through, as a table of
+`(input, expected output)` pairs rather than of verdicts.
+It is a separate suite because the stripper has a second consumer coming
+(`claude.yml`'s mention gate, gha#342) and because its failure modes run in
+both directions: under-stripping dispatches on quoted text, over-stripping
+swallows a real request.
+So the table pins both, and the cases that matter most are the ones a
+verdict-level test cannot distinguish -- an unclosed backtick run left alone,
+a shorter run failing to close a longer fence, a dropped block *not* joining
+its neighbouring lines.
+Two of the new cases in the matcher's own table were checked against
+`main`'s pre-fix script to confirm they fail there, per the regression-test
+rule in
+[`Morrison-Lab/ai-config`'s `shared/workflow/ardi.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/ardi.md);
+the first draft of the double-backtick case passed pre-fix for an unrelated
+reason (trailing prose after the keyword already blocked the match), so it
+was rewritten to end the line and re-checked.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of
