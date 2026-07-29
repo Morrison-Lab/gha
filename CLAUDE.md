@@ -955,10 +955,15 @@ Whether a re-run reuses that record depends on the mode, per
 > - Re-running failed jobs or a specific job in a workflow will use the
 >   reusable workflow from the same commit SHA of the first attempt.
 
-So **Re-run failed jobs**, **Re-run this job**, and the API's
-`rerun_failed_jobs` all replay the pre-slide workflow, however long ago the
-tag moved.
+So **Re-run failed jobs**, **Re-run this job**, and their programmatic
+equivalents all replay the pre-slide workflow, however long ago the tag
+moved.
 **Re-run all jobs** re-resolves the reference and does pick the slide up.
+The failed-jobs call is spelled differently on every surface, so none of
+these is *the* name for it: REST is
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs`, the CLI
+is `gh run rerun --failed`, and the GitHub MCP server's
+`actions_run_trigger` takes `method: rerun_failed_jobs`.
 Note the docs' own precondition: this only applies where the reference is a
 tag or branch rather than a SHA, which is exactly how consumers pin `@v2`.
 
@@ -984,8 +989,8 @@ reasoning about which re-run mode you are in.
 "Re-run all jobs" works too; "Re-run failed jobs" never does.
 
 (`UCD-SERG/serodynamics` run 30471653690, 2026-07-29: after `v2` was slid to
-c50e847 to pick up #359's `ai-config@Morrison-Lab` retarget, an API
-`rerun_failed_jobs` failed with the identical
+c50e847 to pick up #359's `ai-config@Morrison-Lab` retarget, a failed-jobs
+re-run failed with the identical
 `Failed to install plugin 'ai-config@d-morrison'`.
 The job log showed both layers at once -- `INPUT_PLUGINS:
 ai-config@d-morrison` from the old reusable workflow, alongside a
