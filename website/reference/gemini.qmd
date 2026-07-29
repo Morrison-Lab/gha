@@ -2,13 +2,29 @@
 title: "gemini.yml"
 ---
 
-Agent-mode Gemini CLI bot.
-Responds to `@gemini` and `@gemini-cli` mentions in issues, issue comments, PR
+Gemini CLI question-answering bot.
+Replies to `@gemini` and `@gemini-cli` mentions in issues, issue comments, PR
 review comments, and PR reviews, and also runs unattended on
 `workflow_dispatch` and `schedule` events.
 
-This is the Gemini counterpart to [`claude.yml`](claude.qmd), and it borrows
-that workflow's shape where the two overlap.
+## Scope: it answers, it does not edit
+
+Read this before treating it as the Gemini counterpart to
+[`claude.yml`](claude.qmd).
+This workflow reads a thread and posts a reply.
+It does **not** edit files, commit, push, or open pull requests: there is no
+PR-branch checkout, no issue-branch creation, and no push step, so anything
+written to the runner's working tree is discarded at cleanup.
+Its permissions say the same thing --- `contents: read`, not write --- and the
+GitHub tools it is given are scoped to reading the thread and commenting.
+
+When a request needs a code change, it replies with the change rather than
+making it.
+Bringing it to `claude.yml`'s agent parity is tracked in
+[gha#367](https://github.com/Morrison-Lab/gha/issues/367); a half-built version
+that silently strands commits would be worse than an honest answerer.
+
+It does borrow `claude.yml`'s shape where the two genuinely overlap.
 A mention that appears inside a code block or a blockquote does not wake the
 agent, because the body is re-tested with `detect-bot-mention` rather than
 trusted from the caller's `contains()` pre-filter.
@@ -40,9 +56,10 @@ Requires a `GEMINI_API_KEY` secret.
 
 ## Permissions
 
-Grant `contents: write`, `pull-requests: write`, `issues: write`,
+Grant `contents: read`, `pull-requests: write`, `issues: write`,
 `id-token: write`, and `actions: write` (the last so an `@gemini review`
 mention can dispatch the review workflow).
+`contents` stays read-only deliberately --- see the scope note above.
 
 ## Example
 
@@ -65,7 +82,7 @@ jobs:
     if: |
       (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write

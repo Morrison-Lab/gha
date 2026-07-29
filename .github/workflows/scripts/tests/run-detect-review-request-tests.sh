@@ -181,13 +181,38 @@ else
   echo "OK   detect-review-request.sh rejects an empty BOT_NAME list"
 fi
 
+# Tokens are spliced into an ERE, so a token that is not a plain @mention is
+# rejected up front. Both directions matter and neither is cosmetic: a
+# metacharacter silently widens what matches, and an unbalanced bracket makes
+# the regex fail to compile inside an `if` --- which `set -e` exempts, so it
+# would return false for every comment forever with nothing in the log. The
+# hyphen case is the guard rail: `@gemini-cli` is legitimate and must survive.
+invalid_bots=(
+  '@bot.name'      # `.` would match any character
+  '@bot+'          # `+` would quantify
+  '@bot*'          # `*` would quantify
+  '@bot['          # unbalanced bracket: regex fails to compile
+  '@bot('          # unbalanced paren: same
+  'claude'         # no leading @
+  '@-bot'          # a login cannot start with a hyphen
+  '@'              # bare @
+)
+for bad in "${invalid_bots[@]}"; do
+  if printf '%s\0' "@claude review" | BOT_NAME="$bad" bash "$detect_script" >/dev/null 2>&1; then
+    echo "::error::detect-review-request.sh should reject BOT_NAME token ${bad@Q}"
+    failures=$((failures + 1))
+  else
+    echo "OK   detect-review-request.sh rejects BOT_NAME token ${bad@Q}"
+  fi
+done
+
 # The script's own BOT_NAME fallback and the action's `bot-name` default are
 # declared in two files, so assert they agree rather than trusting a comment
 # (the gha#303 precedent for defaults declared more than once). Parsed with a
 # line scan because this job installs no YAML library.
 action_yml="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../actions/detect-review-request" && pwd)/action.yml"
 action_default="$(awk '/^  bot-name:/ {found=1} found && /^    default:/ {gsub(/^    default:[[:space:]]*/, ""); gsub(/^['"'"'"]|['"'"'"]$/, ""); print; exit}' "$action_yml")"
-script_default="$(awk -F'-' '/^BOT_NAME_INPUT=/ {sub(/}"$/, "", $0); sub(/^BOT_NAME_INPUT="\$\{BOT_NAME:-/, ""); sub(/\}"$/, ""); print; exit}' "$detect_script")"
+script_default="$(awk '/^BOT_NAME_INPUT=/ {sub(/}"$/, "", $0); sub(/^BOT_NAME_INPUT="\$\{BOT_NAME:-/, ""); sub(/\}"$/, ""); print; exit}' "$detect_script")"
 if [[ -z "$action_default" ]]; then
   echo "::error::detect-review-request/action.yml declares no default for bot-name"
   failures=$((failures + 1))
@@ -198,7 +223,7 @@ else
   echo "OK   detect-review-request bot-name default agrees across action.yml and the script"
 fi
 
-total=$(( ${#cases[@]} + ${#bot_cases[@]} + 5 ))
+total=$(( ${#cases[@]} + ${#bot_cases[@]} + ${#invalid_bots[@]} + 5 ))
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of $total detect-review-request case(s) did not behave as expected"
   exit 1

@@ -58,7 +58,7 @@ not reference `@main` from consumers.
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push — the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model` |
-| `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions; routes `@gemini review` to `gemini-code-review.yml` | `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
+| `gemini.yml` | Gemini CLI question-answering bot: replies to `@gemini` and `@gemini-cli` mentions on issues and PRs; routes `@gemini review` to `gemini-code-review.yml`. Read-only --- it does not edit files, push, or open PRs (see [#367](https://github.com/Morrison-Lab/gha/issues/367)) | `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model` |
 | `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through to the next candidate when one can't be dispatched | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
@@ -380,8 +380,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
 `request-dependabot-review.yml`,
-`sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`, and
-`report-failure.yml` at `@v2` -- see the
+`sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
+`report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`, and
+`ai-code-review.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

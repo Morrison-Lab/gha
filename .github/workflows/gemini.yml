@@ -1,18 +1,29 @@
 name: Gemini CLI (reusable)
 
-# Agent-mode Gemini CLI workflow. Responds to "@gemini" or "@gemini-cli"
-# mentions in issues, issue comments, PR review comments, and PR reviews. Also
-# runs unattended on workflow_dispatch/schedule events.
+# Gemini CLI question-answering bot. Responds to "@gemini" or "@gemini-cli"
+# mentions in issues, issue comments, PR review comments, and PR reviews by
+# reading the thread and replying to it. Also runs unattended on
+# workflow_dispatch/schedule events.
+#
+# SCOPE --- read this before comparing it to claude.yml. This workflow answers;
+# it does NOT edit files, commit, push, or open PRs. There is deliberately no
+# PR-branch checkout, no issue-branch creation, and no push step, so anything
+# Gemini writes to the runner's working tree is discarded at cleanup. Its
+# permissions are scoped to match: `contents: read`, not write. Bringing it to
+# claude.yml's agent parity is tracked in #367, not attempted here --- claude.yml
+# carries a large amount of branch/commit/push/PR machinery for that, and a
+# half-built version that silently strands commits is worse than an honest
+# question-answerer.
 #
 # The caller stub (see examples/gemini.yml) holds the `on:` triggers; this
 # reusable workflow inherits the caller's event context. Requires the
 # GEMINI_API_KEY secret.
 #
-# Mirrors claude.yml's shape where the two overlap: the same detect-bot-mention
-# gate (so a mention quoted in a code block or blockquote doesn't spend a run),
-# the same detect-review-request routing (an `@gemini review` dispatches the
-# dedicated reviewer instead of self-reviewing), and the same `--ref` handling
-# on that dispatch (#285).
+# Mirrors claude.yml where the two genuinely overlap: the same
+# detect-bot-mention gate (so a mention quoted in a code block or blockquote
+# doesn't spend a run), the same detect-review-request routing (an
+# `@gemini review` dispatches the dedicated reviewer instead of self-reviewing),
+# and the same `--ref` handling on that dispatch (#285).
 
 on:
   workflow_call:
@@ -93,8 +104,11 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # `contents: read`, not write: this workflow has no push step, so write
+    # would be a permission it cannot use. `actions: write` is needed only so
+    # an `@gemini review` can dispatch the reviewer.
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write
@@ -129,6 +143,7 @@ jobs:
       # below 404s on a normal issue and, under `set -euo pipefail`, fails the
       # whole job over a request that was simply not about a PR.
       - name: Dispatch review workflow if @gemini review was requested
+        id: dispatch-review
         if: >-
           steps.detect-mention.outputs.match != 'false' &&
           steps.detect-review.outputs.match == 'true' &&
@@ -172,20 +187,33 @@ jobs:
       # that just echoes and exits leaves every later step running anyway.
       # Compute the decision once here and gate each later step on it, the same
       # way claude.yml gates on its own `steps.gate.outputs.skip`.
+      #
+      # The review branch has to carry the SAME PR-context condition the
+      # dispatch step above does, not just `REVIEW_MATCH`. The matcher is
+      # text-only, so `@gemini review` on a plain (non-PR) issue matches while
+      # the dispatch step's `if:` correctly does not fire --- and suppressing
+      # the agent on the match alone would then drop the request entirely: no
+      # dispatch, no answer, job green. Suppress only when a dispatch actually
+      # happened; otherwise fall through and let the agent reply, which is what
+      # claude.yml's equivalent gate does by attaching the PR-context guard to
+      # both sides symmetrically.
       - name: Decide whether the agent should run
         id: gate
         env:
           MENTION_MATCH: ${{ steps.detect-mention.outputs.match }}
           REVIEW_MATCH: ${{ steps.detect-review.outputs.match }}
+          DISPATCH_OUTCOME: ${{ steps.dispatch-review.outcome }}
         run: |
           set -euo pipefail
           skip=false
           if [ "$MENTION_MATCH" = "false" ]; then
             echo "No genuine @gemini mention outside code blocks or quotes; skipping the agent."
             skip=true
-          elif [ "$REVIEW_MATCH" = "true" ]; then
-            echo "Handled as a review dispatch; skipping the agent."
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "success" ]; then
+            echo "Review dispatched to the dedicated reviewer; skipping the agent."
             skip=true
+          elif [ "$REVIEW_MATCH" = "true" ]; then
+            echo "::notice::A review was requested but could not be dispatched (no PR context, or the dispatch failed); answering with the agent instead of going silent."
           fi
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
@@ -231,12 +259,62 @@ jobs:
       # Pinned to a release SHA per README's "Pinning third-party actions".
       # Note the tag: run-gemini-cli publishes v0 / v0.1.x, with no v1 tag at
       # all, so a `@v1` ref fails to resolve and the step never runs.
+      #
+      # GITHUB_TOKEN and `settings:` are both required for this to do anything
+      # visible: run-gemini-cli has no `github_token` input, and it writes
+      # `.gemini/settings.json` only when `settings:` is non-empty, so without
+      # them the run bills the API and posts nothing. `includeTools` is scoped
+      # to reading the thread and commenting --- no write-side PR tools, matching
+      # this workflow's read-only scope described in the header.
       - name: Run Gemini CLI
         if: steps.gate.outputs.skip != 'true'
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_model: ${{ inputs.gemini-model }}
+          github_pr_number: ${{ github.event.pull_request.number }}
+          github_issue_number: ${{ github.event.issue.number }}
+          settings: |-
+            {
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run",
+                    "-i",
+                    "--rm",
+                    "-e",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "add_issue_comment",
+                    "issue_read",
+                    "pull_request_read"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)"
+                ]
+              }
+            }
           prompt: |
             ${{ inputs.prompt-addendum }}
-            Address the requested changes or instructions for this issue or PR.
+            You were mentioned on an issue or pull request in
+            ${{ github.repository }}. Read the thread with `issue_read` or
+            `pull_request_read`, answer what was asked, and post your answer as
+            a comment with `add_issue_comment`.
+            You cannot commit, push, or open pull requests from this workflow,
+            so when the request needs a code change, reply with the change as a
+            diff or a description rather than claiming to have made it.

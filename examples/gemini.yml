@@ -3,8 +3,9 @@
 # explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
 # secrets into a reusable workflow owned by the same org/user, so a
 # cross-owner caller inherits an empty token and the run fails.
-# The calling job grants write permissions so Gemini CLI can push branches and
-# open PRs.
+# This bot ANSWERS mentions; it does not edit files, push, or open PRs, so the
+# calling job grants no `contents: write`. Agent parity with claude.yml is
+# tracked in Morrison-Lab/gha#367.
 # An `@gemini review` mention dispatches gemini-code-review.yml instead of
 # being answered here, so copy examples/gemini-code-review.yml too (or set
 # review-workflow-file below to whatever you name it).
@@ -31,7 +32,7 @@ jobs:
       (github.event_name == 'pull_request_review' && (contains(github.event.review.body, '@gemini') || contains(github.event.review.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@gemini') || contains(github.event.issue.body, '@gemini-cli') || contains(github.event.issue.title, '@gemini') || contains(github.event.issue.title, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write

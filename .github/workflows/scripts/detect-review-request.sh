@@ -87,6 +87,20 @@ for bot_token in "${RAW_BOT_TOKENS[@]}"; do
   bot_token="${bot_token#"${bot_token%%[![:space:]]*}"}"
   bot_token="${bot_token%"${bot_token##*[![:space:]]}"}"
   [ -n "$bot_token" ] || continue
+  # Each token is spliced into an ERE below, so it is validated rather than
+  # escaped: a mention is a GitHub login preceded by `@`, and that shape has no
+  # regex metacharacters in it. Validating is the safer of the two, because the
+  # failure mode of getting escaping wrong is silent. A metacharacter would
+  # quietly widen what matches (`@bot.` matching `@botx`), and an unbalanced
+  # `(` or `[` would make the regex fail to compile --- and since the match runs
+  # inside an `if`, which `set -e` exempts, that failure returns false for every
+  # comment and permanently disables review dispatch with nothing in the log.
+  # detect-bot-mention.sh needs no equivalent: it uses a quoted glob match, so
+  # its tokens are literal strings.
+  if [[ ! "$bot_token" =~ ^@[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+    echo "detect-review-request.sh: BOT_NAME token is not a valid @mention: '$bot_token'" >&2
+    exit 2
+  fi
   BOT_TOKENS+=("$bot_token")
 done
 
