@@ -142,8 +142,18 @@ jobs:
       # the same words on a plain issue. Without it the `gh api .../pulls/N`
       # below 404s on a normal issue and, under `set -euo pipefail`, fails the
       # whole job over a request that was simply not about a PR.
+      #
+      # `continue-on-error: true` is what makes the gate step's fallback
+      # reachable at all. Without it a failing `gh workflow run` --- a review
+      # workflow file the caller never copied, or one that is disabled ---
+      # fails this step, and a failed step skips every later step, including
+      # the gate. The gate's own "could not be dispatched, answer instead"
+      # branch would then be dead code, so the request would be lost and the
+      # job would go red. With it, the step's `outcome` is still `failure` (only
+      # `conclusion` is masked), which is exactly what the gate reads.
       - name: Dispatch review workflow if @gemini review was requested
         id: dispatch-review
+        continue-on-error: true
         if: >-
           steps.detect-mention.outputs.match != 'false' &&
           steps.detect-review.outputs.match == 'true' &&
@@ -203,6 +213,11 @@ jobs:
           MENTION_MATCH: ${{ steps.detect-mention.outputs.match }}
           REVIEW_MATCH: ${{ steps.detect-review.outputs.match }}
           DISPATCH_OUTCOME: ${{ steps.dispatch-review.outcome }}
+          # Named in the dispatch-failure warning below. Required here, not
+          # optional: this step runs under `set -u`, so referencing it without
+          # declaring it would fail the step on the very path the warning
+          # exists to report.
+          REVIEW_WF: ${{ inputs.review-workflow-file }}
         run: |
           set -euo pipefail
           skip=false
@@ -212,8 +227,16 @@ jobs:
           elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "success" ]; then
             echo "Review dispatched to the dedicated reviewer; skipping the agent."
             skip=true
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "failure" ]; then
+            # A genuine breakage, not a routing decision: the review workflow
+            # file is probably missing or disabled in the caller repo. Warn
+            # rather than notice, since somebody has to fix it --- but still
+            # answer, so the request is not lost while it goes unfixed.
+            echo "::warning::Could not dispatch the review workflow; check that '${REVIEW_WF}' exists and is enabled in this repo. Answering with the agent instead."
           elif [ "$REVIEW_MATCH" = "true" ]; then
-            echo "::notice::A review was requested but could not be dispatched (no PR context, or the dispatch failed); answering with the agent instead of going silent."
+            # The dispatch step was skipped: the request was not on a PR, so
+            # there was nothing to review. Ordinary, hence a notice.
+            echo "::notice::A review was requested outside a pull request; answering with the agent instead of going silent."
           fi
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
