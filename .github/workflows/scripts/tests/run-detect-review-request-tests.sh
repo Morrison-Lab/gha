@@ -89,6 +89,11 @@ cases=(
   "false|Please review this."
   "false|@claude what does this function do?"
   "false|"
+  # Gemini and AI review trigger variants
+  'true|@ai review'
+  'true|@ai-review'
+  'true|@gemini review'
+  'true|@gemini-cli review'
 )
 
 failures=0

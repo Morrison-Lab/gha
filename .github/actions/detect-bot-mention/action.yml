@@ -27,6 +27,11 @@ inputs:
       event gates on the title as well as the body, so both are tested.
     required: false
     default: ''
+  bot-name:
+    description: >-
+      Bot mention token or comma-separated list of tokens to look for (e.g. '@claude', '@gemini', '@gemini-cli', '@ai').
+    required: false
+    default: '@claude'
 
 outputs:
   match:
@@ -48,6 +53,7 @@ runs:
         REVIEW_BODY: ${{ inputs.review-body }}
         ISSUE_BODY: ${{ inputs.issue-body }}
         ISSUE_TITLE: ${{ inputs.issue-title }}
+        BOT_NAME: ${{ inputs.bot-name }}
       # The script lives in ../../workflows/scripts/ relative to this action's
       # own directory, mirroring detect-review-request's resolution.
       run: |
@@ -62,3 +68,4 @@ runs:
         )"
         echo "detect-bot-mention: match=$MATCH"
         echo "match=$MATCH" >> "$GITHUB_OUTPUT"
+

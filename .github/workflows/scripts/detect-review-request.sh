@@ -69,8 +69,17 @@ TAIL="([[:space:][:punct:]]+($TAIL_WORD))*"
 # escape and bash's `=~` has no multiline flag, so "end of line" is spelled
 # out as "a literal newline, or end of string".
 NEWLINE=$'\n'
-PATTERN="@claude[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review"
+
+BOT_NAME_INPUT="${BOT_NAME:-@claude,@gemini,@gemini-cli,@ai}"
+# Format comma-separated BOT_NAME into regex alternatives
+BOT_ALT="$(echo "$BOT_NAME_INPUT" | tr ',' '\n' | tr ' ' '\n' | grep -v '^$' | tr '\n' '|' | sed 's/|$//')"
+BOT_PATTERN="(${BOT_ALT})"
+
+PATTERN="${BOT_PATTERN}[[:space:][:punct:]-]+(($POLITE)[[:space:][:punct:]-]+)*(re-?)?review"
 PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
+
+
+
 
 # Blockquotes, fenced code blocks, indented code blocks, and inline code spans
 # all mark text as quoted rather than meant, so they are removed before

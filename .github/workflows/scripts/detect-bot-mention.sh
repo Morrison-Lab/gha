@@ -39,7 +39,7 @@
 # Offline tests live in tests/run-detect-bot-mention-tests.sh.
 set -euo pipefail
 
-MENTION='@claude'
+MENTION_LIST="${BOT_NAME:-@claude}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
@@ -53,10 +53,18 @@ match=false
 while IFS= read -r -d '' body; do
   count=$((count + 1))
   [ -n "$body" ] || continue
-  if [[ "$(bash "$STRIP_MARKUP" <<<"$body")" == *"$MENTION"* ]]; then
-    match=true
-  fi
+  stripped="$(bash "$STRIP_MARKUP" <<<"$body")"
+  IFS=',' read -ra TOKENS <<< "$MENTION_LIST"
+  for token in "${TOKENS[@]}"; do
+    token_trimmed="$(echo "$token" | xargs)"
+    [ -n "$token_trimmed" ] || continue
+    if [[ "$stripped" == *"$token_trimmed"* ]]; then
+      match=true
+      break
+    fi
+  done
 done
+
 
 if [ "$count" -eq 0 ]; then
   # `printf '%s\n'` rather than `echo`: the usage text itself contains a

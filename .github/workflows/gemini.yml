@@ -1,0 +1,166 @@
+name: Gemini CLI (reusable)
+
+# Agent-mode Gemini CLI workflow. Responds to "@gemini" or "@gemini-cli" mentions in issues,
+# issue comments, PR review comments, and PR reviews, and can edit files and
+# open/update PRs in response. Also runs unattended on workflow_dispatch/
+# schedule events.
+#
+# The caller stub (see examples/gemini.yml) holds the `on:` triggers; this
+# reusable workflow inherits the caller's event context. Requires the
+# GEMINI_API_KEY secret (or Google Cloud auth secrets).
+
+on:
+  workflow_call:
+    inputs:
+      setup-r:
+        description: Install R and dependencies before running Gemini CLI.
+        type: boolean
+        default: true
+      install-quarto:
+        description: Install Quarto so Gemini CLI can render .qmd files.
+        type: boolean
+        default: false
+      apt-packages:
+        description: Extra apt packages to install before setup.
+        type: string
+        default: ''
+      pip-packages:
+        description: Python packages to install with pip3.
+        type: string
+        default: ''
+      use-renv:
+        description: Restore dependencies with renv instead of DESCRIPTION.
+        type: boolean
+        default: false
+      checkout-submodules:
+        description: Check out git submodules.
+        type: boolean
+        default: false
+      eager-pr:
+        description: Open draft PR up front for issue triggers.
+        type: boolean
+        default: false
+      prompt-addendum:
+        description: Extra prompt instructions appended to Gemini CLI prompt.
+        type: string
+        default: ''
+      gemini-model:
+        description: Model override passed to run-gemini-cli (e.g. gemini-2.5-flash).
+        type: string
+        default: ''
+      review-workflow-file:
+        description: Review workflow file dispatched on `@gemini review` mentions.
+        type: string
+        default: 'gemini-review.yml'
+      use-ai-config:
+        description: Expose ai-config instructions if present.
+        type: boolean
+        default: true
+    secrets:
+      GEMINI_API_KEY:
+        required: false
+      SUBMODULES_TOKEN:
+        required: false
+      WORKFLOW_TOKEN:
+        required: false
+      GCP_PROJECT_ID:
+        required: false
+      GCP_SERVICE_ACCOUNT:
+        required: false
+      GCP_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
+
+jobs:
+  gemini:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) ||
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: write
+    steps:
+      - name: Detect genuine @gemini or @gemini-cli mention
+        id: detect-mention
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+        uses: d-morrison/gha/.github/actions/detect-bot-mention@v2
+        with:
+          comment-body: ${{ github.event.comment.body || '' }}
+          review-body: ${{ github.event.review.body || '' }}
+          issue-body: ${{ github.event.issue.body || '' }}
+          issue-title: ${{ github.event.issue.title || '' }}
+          bot-name: '@gemini,@gemini-cli'
+
+      - name: Skip if mention was inside code or blockquote
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' && steps.detect-mention.outputs.match == 'false'
+        run: |
+          echo "No genuine @gemini mention found outside code blocks or quotes. Skipping run."
+          exit 0
+
+      - name: Detect @gemini review request
+        id: detect-review
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+        uses: d-morrison/gha/.github/actions/detect-review-request@v2
+        with:
+          comment-body: ${{ github.event.comment.body || '' }}
+          review-body: ${{ github.event.review.body || '' }}
+          bot-name: '@gemini,@gemini-cli'
+
+      - name: Parse workflow ref
+        id: this-wf
+        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
+      - name: Dispatch review workflow if @gemini review was requested
+        if: steps.detect-review.outputs.match == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          REVIEW_WF: ${{ inputs.review-workflow-file }}
+        run: |
+          set -euo pipefail
+          echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER..."
+          gh workflow run "$REVIEW_WF" --repo "$REPO" -f pr_number="$PR_NUMBER"
+          exit 0
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
+
+      - name: Install system apt packages
+        if: inputs.apt-packages != ''
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ inputs.apt-packages }}
+
+      - name: Set up Python pip packages
+        if: inputs.pip-packages != ''
+        run: |
+          pip3 install --break-system-packages ${{ inputs.pip-packages }}
+
+      - name: Set up R environment
+        if: inputs.setup-r
+        uses: r-lib/actions/setup-r@v2
+
+      - name: Set up Quarto
+        if: inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Run Gemini CLI
+        uses: google-github-actions/run-gemini-cli@v1
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ inputs.gemini-model || 'gemini-2.5-flash' }}
+          prompt: |
+            ${{ inputs.prompt-addendum }}
+            Please review the requested changes or instructions for this issue or PR.

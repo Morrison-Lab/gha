@@ -48,6 +48,19 @@ cases=(
 )
 
 failures=0
+
+# Test BOT_NAME overriding / multi-token matching
+if [[ "$(printf '%s\0' '@gemini fix this' | BOT_NAME='@gemini,@gemini-cli' bash "$detect_script")" != "true" ]]; then
+  echo "::error::detect-bot-mention.sh failed on BOT_NAME=@gemini"
+  failures=$((failures + 1))
+fi
+
+if [[ "$(printf '%s\0' '@ai review' | BOT_NAME='@ai' bash "$detect_script")" != "true" ]]; then
+  echo "::error::detect-bot-mention.sh failed on BOT_NAME=@ai"
+  failures=$((failures + 1))
+fi
+
+
 for case in "${cases[@]}"; do
   want="${case%%|*}"
   body="${case#*|}"

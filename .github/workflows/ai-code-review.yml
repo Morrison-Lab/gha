@@ -1,0 +1,143 @@
+name: AI Code Review (reusable)
+
+# Reusable multi-agent PR review workflow.
+# Triggered by `@ai review`, `@ai-review`, `/review`, or automatic `pull_request` events.
+# Requests a review from one of the configured AI agents in the repo by choosing randomly,
+# and automatically failing over to another agent if the chosen one is temporarily unavailable.
+
+on:
+  workflow_call:
+    inputs:
+      agents:
+        description: Comma-separated list of configured AI agents to select from (e.g. 'claude, gemini').
+        type: string
+        default: 'claude, gemini'
+      pr-number:
+        description: Pull request number to review (required for workflow_dispatch).
+        type: string
+        default: ''
+      claude-review-workflow-file:
+        description: Caller workflow file for Claude PR reviews.
+        type: string
+        default: 'claude-review.yml'
+      gemini-review-workflow-file:
+        description: Caller workflow file for Gemini PR reviews.
+        type: string
+        default: 'gemini-review.yml'
+      checkout-submodules:
+        description: Check out git submodules.
+        type: boolean
+        default: false
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+      GEMINI_API_KEY:
+        required: false
+      SUBMODULES_TOKEN:
+        required: false
+      WORKFLOW_TOKEN:
+        required: false
+
+jobs:
+  select-and-review:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      actions: write
+      id-token: write
+
+    steps:
+      - name: Parse workflow ref
+        id: this-wf
+        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
+      - name: Select agent randomly and execute review with fallback
+        env:
+          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
+          RAW_AGENTS: ${{ inputs.agents }}
+          CLAUDE_WF: ${{ inputs.claude-review-workflow-file }}
+          GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
+          HAS_CLAUDE_SECRET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_GEMINI_SECRET: ${{ secrets.GEMINI_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::error::No PR number available for AI review."
+            exit 1
+          fi
+
+          # Clean and shuffle the configured agents list
+          AGENTS_ARRAY=$(echo "$RAW_AGENTS" | tr ',' '\n' | xargs -n1 | grep -v '^$' | shuf || true)
+
+          if [ -z "$AGENTS_ARRAY" ]; then
+            echo "::error::No valid agents configured in 'agents' input: $RAW_AGENTS"
+            exit 1
+          fi
+
+          echo "Configured candidate agents (randomly ordered):"
+          echo "$AGENTS_ARRAY"
+
+          SUCCEEDED=false
+
+          for agent in $AGENTS_ARRAY; do
+            agent_clean=$(echo "$agent" | tr '[:upper:]' '[:lower:]' | xargs)
+            echo "--------------------------------------------------------"
+            echo "Attempting review with agent: $agent_clean"
+
+            case "$agent_clean" in
+              claude)
+                if [ "$HAS_CLAUDE_SECRET" != "true" ]; then
+                  echo "::notice::Agent 'claude' has no API key/token secret configured; skipping."
+                  continue
+                fi
+                echo "Dispatching Claude review workflow ($CLAUDE_WF) for PR #$PR_NUMBER..."
+                if gh workflow run "$CLAUDE_WF" --repo "$REPO" -f pr_number="$PR_NUMBER"; then
+                  echo "Successfully dispatched review to Claude ($CLAUDE_WF)."
+                  SUCCEEDED=true
+                  break
+                else
+                  echo "::warning::Failed to dispatch Claude review ($CLAUDE_WF); trying next agent..."
+                fi
+                ;;
+
+              gemini)
+                if [ "$HAS_GEMINI_SECRET" != "true" ]; then
+                  echo "::notice::Agent 'gemini' has no API key secret configured; skipping."
+                  continue
+                fi
+                echo "Dispatching Gemini review workflow ($GEMINI_WF) for PR #$PR_NUMBER..."
+                if gh workflow run "$GEMINI_WF" --repo "$REPO" -f pr_number="$PR_NUMBER"; then
+                  echo "Successfully dispatched review to Gemini ($GEMINI_WF)."
+                  SUCCEEDED=true
+                  break
+                else
+                  echo "::warning::Failed to dispatch Gemini review ($GEMINI_WF); trying next agent..."
+                fi
+                ;;
+
+              *)
+                echo "::warning::Unknown or unsupported agent '$agent_clean'; trying next candidate..."
+                ;;
+            esac
+          done
+
+          if [ "$SUCCEEDED" != "true" ]; then
+            echo "::error::All configured AI agents were attempted and failed or were unavailable."
+            exit 1
+          fi

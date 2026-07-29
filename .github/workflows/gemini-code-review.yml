@@ -1,0 +1,76 @@
+name: Gemini Code Review (reusable)
+
+# Reusable Gemini PR review workflow. Per-PR reviews using Gemini CLI.
+# Supports workflow_dispatch, pull_request, and issue_comment triggers.
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        description: Pull request number to review (required for workflow_dispatch).
+        type: string
+        default: ''
+      prompt-addendum:
+        description: Extra prompt instructions appended to the review prompt.
+        type: string
+        default: ''
+      checkout-submodules:
+        description: Check out git submodules.
+        type: boolean
+        default: false
+      gemini-model:
+        description: Model override passed to run-gemini-cli (e.g. gemini-2.5-flash).
+        type: string
+        default: ''
+    secrets:
+      GEMINI_API_KEY:
+        required: false
+      SUBMODULES_TOKEN:
+        required: false
+
+jobs:
+  gather-context:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    runs-on: ubuntu-latest
+    permissions:
+      issues: read
+      pull-requests: read
+    outputs:
+      pr-num: ${{ steps.resolve-pr.outputs.pr-num }}
+    steps:
+      - name: Resolve PR number
+        id: resolve-pr
+        run: |
+          PR_NUM="${{ inputs.pr-number || github.event.pull_request.number }}"
+          echo "pr-num=$PR_NUM" >> "$GITHUB_OUTPUT"
+
+  review:
+    needs: gather-context
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
+
+      - name: Run Gemini CLI for PR Review
+        uses: google-github-actions/run-gemini-cli@v1
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ inputs.gemini-model || 'gemini-2.5-flash' }}
+          prompt: |
+            ${{ inputs.prompt-addendum }}
+            Please perform a comprehensive code review of PR #${{ needs.gather-context.outputs.pr-num }}.
+            Highlight potential bugs, security concerns, performance issues, code style improvements, and test coverage gaps.
