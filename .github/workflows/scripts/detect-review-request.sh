@@ -72,18 +72,23 @@ NEWLINE=$'\n'
 PATTERN="@claude[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review"
 PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
 
-# Quoted lines are somebody else's words being cited, not a fresh request:
-# replying to a comment via GitHub's "Quote reply" button reproduces its whole
-# body prefixed with `> `, which would otherwise re-dispatch a review on every
-# such reply.
+# Blockquotes, fenced code blocks, indented code blocks, and inline code spans
+# all mark text as quoted rather than meant, so they are removed before
+# matching. That work lives in a sibling script because the same constructs
+# gate whether the agent runs at all -- `contains(body, '@claude')` has no
+# notion of Markdown either (gha#342), and two copies of a stripper is how
+# this file's own pattern came to disagree with the jq copy it replaced.
 #
-# CRs go too, because GitHub delivers comment bodies with CRLF line endings
-# and the pattern above anchors on a bare newline. This used to be
-# `sed 's/\r$//'`, but `\r` is a GNU sed extension: BSD/macOS sed reads it as
-# a literal `r` and strips trailing `r`s instead, and `runs-on` is a
-# consumer-settable input (gha#346). `tr -d '\r'` is POSIX.
+# Code spans are the case that prompted the split: a reply on gha#341 quoting
+# the accepted phrasings as inline code dispatched a review by describing the
+# feature (gha#344). Blockquote stripping predates it -- GitHub's "Quote
+# reply" button reproduces a whole body prefixed with `> ` -- as does the CR
+# removal the CRLF-anchored pattern above needs.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
+
 normalize_body() {
-  tr -d '\r' <<<"$1" | sed '/^[[:space:]]*>/d'
+  bash "$STRIP_MARKUP" <<<"$1"
 }
 
 shopt -s nocasematch
@@ -102,7 +107,9 @@ while IFS= read -r -d '' body; do
 done
 
 if [ "$count" -eq 0 ]; then
-  echo "usage: printf '%s\\0' <body> [<body> ...] | detect-review-request.sh" >&2
+  # `printf '%s\n'` rather than `echo`: the usage text itself contains a
+  # backslash escape, which `echo` may expand depending on the shell.
+  printf '%s\n' "usage: printf '%s\\0' <body> [<body> ...] | detect-review-request.sh" >&2
   exit 2
 fi
 

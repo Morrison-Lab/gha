@@ -187,6 +187,65 @@ which is why the capabilities above moved to `@v2`.
   E2BIG, and under the composite's `set -euo pipefail` that reddens the whole
   calling job over an optional late-dispatch nicety (caught in gha#341's
   review; the test table's oversized-body case is the regression guard).
+  Finally, the script does not match the raw body: it pipes each one through
+  `scripts/strip-non-invoking-markup.sh` first, which removes blockquote
+  lines, fenced code blocks, indented code blocks, and inline code spans.
+  All four are standard Markdown for "this is a literal string, not
+  something I mean", and treating them as text meant a comment *documenting*
+  the accepted phrasings dispatched a review by quoting them (gha#344).
+  It tracks CommonMark closely rather than approximately, because the two
+  directions of error land on different callers: under-stripping dispatches a
+  review off quoted text, while over-stripping drops a genuine request in the
+  mention gate that shares the script (gha#342).
+  Three things constrain any change to that stripper.
+  A code span becomes the placeholder word `elided` rather than being
+  deleted, because deleting it lets its neighbours close up into a request
+  the author never wrote: a span sitting between the mention and the keyword
+  would collapse into a dispatch.
+  The placeholder also has to be letters that no caller's pattern accepts,
+  which rules out the obvious `[code]` -- `code` is one of the `TAIL_WORD`
+  alternatives, so the placeholder itself would have completed a match.
+  And a code span is closed by a backtick run of *equal* length, so the scan
+  measures runs rather than matching `` `[^`]*` `` -- that pattern matches the
+  empty span between the two opening backticks of a ```` ``...`` ```` span
+  and leaks the contents through, the same bug the Tests section records for
+  `check-new-line-breaks`'s `strip_inline_markup`.
+  Third, the span scan runs over the **whole body at once**, not per line,
+  because a span may contain a line break -- CommonMark closes it on the next
+  run of matching length wherever that appears.
+  That is also why indentation limits matter rather than being tidied away:
+  a fence is capped at three spaces of indentation at both ends, so trimming
+  indentation wholesale before the close test let a 4-space-indented
+  delimiter (which is fence *content*) close the block early, and four
+  columns after a blank line opens an indented code block in the first place.
+  The blank-line precondition on that last one is load-bearing: without it an
+  indented list continuation would be stripped, which drops a genuine
+  request.
+  It lives in its own script rather than inline because the same constructs
+  gate whether the agent runs at all (gha#342).
+- `.github/actions/detect-bot-mention/` -- wraps
+  `scripts/detect-bot-mention.sh`, which decides whether a body carries an
+  `@claude` mention that is actually addressed to the bot rather than quoted
+  while writing about it.
+  `claude.yml` calls it once, early, for all four reactive events, and feeds
+  the result into its "Decide whether this run should proceed" step.
+  It shares `strip-non-invoking-markup.sh` with `detect-review-request`
+  (gha#342).
+  **Its bias is the opposite of that script's, and the two must not be
+  harmonized on this point.**
+  There a false positive suppresses the agent's reply to a real question, so
+  the matcher is deliberately narrow; here a false negative means a genuine
+  request is silently ignored, so the gate answers "run" whenever *any*
+  mention survives stripping, and treats an empty result (the step did not
+  run, or failed) as "run" too.
+  That is also why the matching stays plain-substring and case-insensitive,
+  mirroring the `contains()` call it backs: a word-boundary rule would buy
+  very little and risk exactly the false negative this bias rules out.
+  Note what it does **not** fix: `claude-bot.yml`'s job-level `if:` still
+  tests the raw body, because a GitHub expression cannot strip Markdown, so
+  the job still starts and the runner still spins up.
+  What is avoided is the billed agent run and the review re-dispatch, which
+  are the two costs gha#342 actually names.
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -540,6 +599,46 @@ As with `request-dependabot-review` below, `claude.yml`'s own layer above the
 composite is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`,
 which does not resolve until `@v2` is advanced past this capability's merge.
 
+`.github/workflows/scripts/tests/run-detect-bot-mention-tests.sh` covers the
+quoted-mention gate the same way, and `review-fail-check` also calls
+`detect-bot-mention` through two real `uses:` steps -- one quoted mention, one
+genuine -- for the same `github.action_path`-resolution proof.
+Both directions are asserted deliberately: the only behaviour this gate can
+cause is a skip, so the negative case is the bug and the positive case is what
+stops the fix from silencing real requests.
+Read its `true` rows as the guard rails rather than as filler.
+
+`.github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh`
+covers the stripper that matcher now pipes its bodies through, as a table of
+`(input, expected output)` pairs rather than of verdicts.
+CI runs it as a step in the same `review-fail-check` job in `_selftest.yml`.
+It is a separate suite because the stripper has a second consumer coming
+(`claude.yml`'s mention gate, gha#342) and because its failure modes run in
+both directions: under-stripping dispatches on quoted text, over-stripping
+swallows a real request.
+So the table pins both, and the cases that matter most are the ones a
+verdict-level test cannot distinguish -- an unclosed backtick run left alone,
+a shorter run failing to close a longer fence, a dropped block *not* joining
+its neighbouring lines.
+Three of its cases exist because gha#345's first review round found the
+corresponding gaps by hand-tracing the awk against CommonMark: a span whose
+delimiters sit on different lines, a 4-space-indented delimiter that must not
+close a fence, and an indented code block, which the first draft did not
+handle at all.
+Each was reproduced end to end through `detect-review-request.sh` before the
+fix and again after, since all three were under-stripping -- the direction
+that dispatches a review off quoted text.
+Their counterweight is the pair of cases asserting that an indented list
+continuation and an indented line with no blank line before it are *kept*:
+that is the over-stripping direction, which drops a genuine request.
+Two of the new cases in the matcher's own table were checked against
+`main`'s pre-fix script to confirm they fail there, per the regression-test
+rule in
+[`Morrison-Lab/ai-config`'s `shared/workflow/ardi.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/ardi.md);
+the first draft of the double-backtick case passed pre-fix for an unrelated
+reason (trailing prose after the keyword already blocked the match), so it
+was rewritten to end the line and re-checked.
+
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of
 reviewer-list inputs, including comma-only, whitespace-padded, and
@@ -766,6 +865,19 @@ coalesce rapid pushes would trade away review latency on every normal
 single-push PR just to suppress a cosmetic, self-resolving non-issue on the
 rare double-push. The fix is behavioral: batch closely-related changes into
 one commit/push instead of two in quick succession.
+
+**Until `@v2` picks up gha#342's gate, you cannot even *quote* the mention
+safely, and that interacts badly with the paragraph above.**
+`claude-bot.yml` gates on `contains(body, '@claude')`, so a comment writing
+the mention inside backticks -- exactly what explaining any of this requires
+-- spawns an agent run, which re-dispatches a review, which cancels the review
+already in flight.
+The natural response to a red `require-review` is a comment explaining why it
+is red, and that comment fires it again.
+So while writing about the bot on an issue or PR, defang the string the way
+gha#342's own body does.
+Once the gate ships and the tag advances, a quoted mention stands down on its
+own and the mitigation can be dropped.
 
 **Cheap self-check before investigating a post-push `require-review`/`claude-review` failure:**
 compare the failing check's commit SHA against the PR's *current* head SHA

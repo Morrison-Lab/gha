@@ -63,6 +63,21 @@ cases=(
   "false|> @claude review"
   $'false|> @claude review\n>\n> ...as I said above'
   $'true|> @claude review\n\n@claude review'
+  # Code spans and fences are the same idea as a blockquote, one and two
+  # constructs down: standard Markdown for "this is a literal string, not
+  # something I mean". Documenting the accepted phrasings used to dispatch a
+  # review, so writing this very table down cost a run (gha#344).
+  'false|the accepted phrasings are `@claude review` and `@claude, review`'
+  # The span has to end the line, or the trailing prose alone makes this
+  # false and the case proves nothing about run-length matching.
+  'false|the double-backtick form is ``@claude review``'
+  $'false|An example caller comment:\n\n```\n@claude review\n```'
+  $'false|~~~\n@claude, please review\n~~~'
+  # ... but a genuine request in the prose still dispatches, even when the
+  # same comment also quotes the phrasing. Stripping must not become a way to
+  # suppress a real request that happens to sit near an example.
+  $'true|@claude review\n\nFor reference the other accepted form is `@claude, review`.'
+  $'true|Here is the failing config:\n\n```yaml\nreview: true\n```\n\n@claude please review'
   # An @claude request that merely contains the word "review". Matching these
   # would swallow the agent's reply to the question actually being asked.
   "false|@claude the review workflow is broken, can you fix it?"
