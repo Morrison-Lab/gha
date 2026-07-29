@@ -1,6 +1,13 @@
 # Copy to .github/workflows/gemini.yml in your repo.
-# NOTE: requires GEMINI_API_KEY stored as a GitHub secret.
-# The calling job grants write permissions so Gemini CLI can push branches and open PRs.
+# NOTE: requires GEMINI_API_KEY stored as a GitHub secret. Pass secrets
+# explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
+# secrets into a reusable workflow owned by the same org/user, so a
+# cross-owner caller inherits an empty token and the run fails.
+# The calling job grants write permissions so Gemini CLI can push branches and
+# open PRs.
+# An `@gemini review` mention dispatches gemini-code-review.yml instead of
+# being answered here, so copy examples/gemini-code-review.yml too (or set
+# review-workflow-file below to whatever you name it).
 name: Gemini CLI
 
 on:
@@ -15,6 +22,9 @@ on:
 
 jobs:
   gemini:
+    # A cheap pre-filter only: the reusable workflow re-tests the body with
+    # detect-bot-mention, which ignores a mention inside a code block or
+    # blockquote the way a `contains()` expression cannot.
     if: |
       (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
@@ -26,13 +36,17 @@ jobs:
       issues: write
       id-token: write
       actions: write
-    uses: d-morrison/gha/.github/workflows/gemini.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
-      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     # with:
-    #   setup-r: false
-    #   install-quarto: false
+    #   setup-r: false               # skip R setup for non-R repos (default true)
+    #   install-quarto: true         # install Quarto so .qmd files can be rendered
+    #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
+    #   apt-packages: libglpk-dev    # system packages installed before setup
+    #   pip-packages: sympy          # pip packages installed before setup
     #   gemini-model: gemini-2.5-flash
-    #   review-workflow-file: gemini-code-review.yml
+    #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`
+    #   prompt-addendum: |
+    #     Repo-specific guidance (e.g. Quarto/R conventions to follow).

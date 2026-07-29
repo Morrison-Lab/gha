@@ -50,6 +50,9 @@ website:
           - reference/cleanup-pr-previews.qmd
           - reference/claude.qmd
           - reference/claude-code-review.qmd
+          - reference/gemini.qmd
+          - reference/gemini-code-review.qmd
+          - reference/ai-code-review.qmd
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd
           - reference/sync-upstream.qmd

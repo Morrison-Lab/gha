@@ -13,4 +13,3 @@ gha-creds-*.json
 **/*.quarto_ipynb
 
 node_modules/
-

@@ -1,0 +1,80 @@
+---
+title: "gemini-code-review.yml"
+---
+
+Read-only Gemini PR code review.
+The default caller stub is dispatch-triggered: [`gemini.yml`](gemini.qmd)
+re-dispatches this workflow on an `@gemini review` mention, so keep the stub
+named `gemini-code-review.yml` (or set `gemini.yml`'s `review-workflow-file`
+input to match) so the dispatch resolves.
+Add a `pull_request` trigger in the caller if you also want automatic reviews
+on PR updates.
+
+The stub deliberately has no `issue_comment` path.
+`gemini.yml` already owns the `@gemini review` mention, so a second
+comment-triggered dispatch job would review the same PR twice on the one
+phrasing both matchers accept --- the double-dispatch
+[UCD-SERG/serodynamics#277](https://github.com/UCD-SERG/serodynamics/issues/277)
+ran into.
+
+Requires a `GEMINI_API_KEY` secret.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `pr-number` | string | `''` | Pull request number to review. Required on `workflow_dispatch`; taken from the event on `pull_request`. |
+| `prompt-addendum` | string | `''` | Extra prompt instructions appended to the review prompt. |
+| `checkout-submodules` | boolean | `false` | Check out git submodules. |
+| `gemini-model` | string | `'gemini-2.5-flash'` | Model passed to `run-gemini-cli`. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | no | Gemini API key. Without it the run reaches Gemini CLI and fails there. |
+| `SUBMODULES_TOKEN` | no | Token used to check out private submodules. |
+
+## Permissions
+
+Grant `contents: read`, `pull-requests: write`, `issues: write`, and
+`id-token: write`.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/gemini-code-review.yml in your repo.
+name: Gemini Code Review
+
+on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: Morrison-Lab/gha/.github/workflows/gemini-code-review.yml@v2
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    with:
+      pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   checkout-submodules: true
+    #   gemini-model: gemini-2.5-flash
+    #   prompt-addendum: |
+    #     Repo-specific review guidance.
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory
+for the full caller stub (`gemini-code-review.yml`).

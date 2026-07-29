@@ -39,10 +39,31 @@
 # Offline tests live in tests/run-detect-bot-mention-tests.sh.
 set -euo pipefail
 
+# The default has to stay in step with detect-bot-mention/action.yml's own
+# `bot-name` default; tests/run-detect-bot-mention-tests.sh asserts the two
+# agree rather than leaving it to a comment (the gha#303 precedent).
 MENTION_LIST="${BOT_NAME:-@claude}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
+
+# Split the token list once, not per body: it does not vary between bodies.
+# Trimming is parameter expansion rather than `echo | xargs` --- xargs also
+# applies its own quote and backslash processing, so a token carrying either
+# would come back altered, and an unbalanced quote fails the whole script.
+declare -a MENTIONS=()
+IFS=',' read -ra RAW_TOKENS <<< "$MENTION_LIST"
+for token in "${RAW_TOKENS[@]}"; do
+  token="${token#"${token%%[![:space:]]*}"}"
+  token="${token%"${token##*[![:space:]]}"}"
+  [ -n "$token" ] || continue
+  MENTIONS+=("$token")
+done
+
+if [ "${#MENTIONS[@]}" -eq 0 ]; then
+  echo "detect-bot-mention.sh: BOT_NAME held no non-empty tokens: '$MENTION_LIST'" >&2
+  exit 2
+fi
 
 shopt -s nocasematch
 
@@ -54,17 +75,13 @@ while IFS= read -r -d '' body; do
   count=$((count + 1))
   [ -n "$body" ] || continue
   stripped="$(bash "$STRIP_MARKUP" <<<"$body")"
-  IFS=',' read -ra TOKENS <<< "$MENTION_LIST"
-  for token in "${TOKENS[@]}"; do
-    token_trimmed="$(echo "$token" | xargs)"
-    [ -n "$token_trimmed" ] || continue
-    if [[ "$stripped" == *"$token_trimmed"* ]]; then
+  for token in "${MENTIONS[@]}"; do
+    if [[ "$stripped" == *"$token"* ]]; then
       match=true
       break
     fi
   done
 done
-
 
 if [ "$count" -eq 0 ]; then
   # `printf '%s\n'` rather than `echo`: the usage text itself contains a

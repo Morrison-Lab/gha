@@ -1,7 +1,12 @@
 name: Gemini Code Review (reusable)
 
-# Reusable Gemini PR review workflow. Per-PR reviews using Gemini CLI.
-# Supports workflow_dispatch, pull_request, and issue_comment triggers.
+# Reusable Gemini PR review workflow: a read-only per-PR review using Gemini
+# CLI. The caller stub (see examples/gemini-code-review.yml) holds the `on:`
+# triggers; this reusable workflow inherits the caller's event context and
+# supports workflow_dispatch and pull_request runs.
+#
+# gemini.yml re-dispatches this workflow on an `@gemini review` mention, so the
+# caller's file name has to match gemini.yml's review-workflow-file input.
 
 on:
   workflow_call:
@@ -21,7 +26,7 @@ on:
       gemini-model:
         description: Model override passed to run-gemini-cli (e.g. gemini-2.5-flash).
         type: string
-        default: ''
+        default: 'gemini-2.5-flash'
     secrets:
       GEMINI_API_KEY:
         required: false
@@ -29,7 +34,10 @@ on:
         required: false
 
 jobs:
-  gather-context:
+  # One job rather than a gather-context job feeding a review job: resolving
+  # the PR number is a single expression, so a separate job for it would add a
+  # runner and a job boundary without earning either.
+  review:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (
@@ -38,39 +46,53 @@ jobs:
         github.event.sender.type != 'Bot'
       )
     runs-on: ubuntu-latest
-    permissions:
-      issues: read
-      pull-requests: read
-    outputs:
-      pr-num: ${{ steps.resolve-pr.outputs.pr-num }}
-    steps:
-      - name: Resolve PR number
-        id: resolve-pr
-        run: |
-          PR_NUM="${{ inputs.pr-number || github.event.pull_request.number }}"
-          echo "pr-num=$PR_NUM" >> "$GITHUB_OUTPUT"
-
-  review:
-    needs: gather-context
-    runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
       issues: write
       id-token: write
     steps:
+      # Passed via env rather than interpolated into the script body: an
+      # `${{ }}` expression is substituted before bash parses the line, so a
+      # workflow_dispatch input could otherwise close the quoting and run as
+      # script on the runner.
+      - name: Resolve PR number
+        id: resolve-pr
+        env:
+          INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+          EVENT_PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          PR_NUM="${INPUT_PR_NUMBER:-$EVENT_PR_NUMBER}"
+          if [ -z "$PR_NUM" ]; then
+            echo "::error::No PR number available to review."
+            exit 1
+          fi
+          # A stray non-digit would reach the prompt, so fail loudly rather
+          # than reviewing whatever the caller happened to pass.
+          if [[ ! "$PR_NUM" =~ ^[0-9]+$ ]]; then
+            echo "::error::PR number must be digits only; got '$PR_NUM'."
+            exit 1
+          fi
+          echo "pr-num=$PR_NUM" >> "$GITHUB_OUTPUT"
+
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: ${{ inputs.checkout-submodules }}
           token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
 
-      - name: Run Gemini CLI for PR Review
-        uses: google-github-actions/run-gemini-cli@v1
+      # Pinned to a release SHA per README's "Pinning third-party actions".
+      # run-gemini-cli publishes v0 / v0.1.x and has no v1 tag, so a `@v1` ref
+      # fails to resolve.
+      - name: Run Gemini CLI for PR review
+        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ inputs.gemini-model || 'gemini-2.5-flash' }}
+          gemini_model: ${{ inputs.gemini-model }}
           prompt: |
             ${{ inputs.prompt-addendum }}
-            Please perform a comprehensive code review of PR #${{ needs.gather-context.outputs.pr-num }}.
-            Highlight potential bugs, security concerns, performance issues, code style improvements, and test coverage gaps.
+            Review pull request #${{ steps.resolve-pr.outputs.pr-num }}.
+            Report bugs, security concerns, performance problems, style
+            departures from the surrounding code, and gaps in test coverage.

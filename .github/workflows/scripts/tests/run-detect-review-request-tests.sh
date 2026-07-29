@@ -89,11 +89,9 @@ cases=(
   "false|Please review this."
   "false|@claude what does this function do?"
   "false|"
-  # Gemini and AI review trigger variants
-  'true|@ai review'
-  'true|@ai-review'
-  'true|@gemini review'
-  'true|@gemini-cli review'
+  # BOT_NAME defaults to @claude alone, so another bot's mention is not a
+  # request until a caller passes it (the BOT_NAME table below).
+  "false|@gemini review"
 )
 
 failures=0
@@ -142,8 +140,67 @@ else
   echo "OK   detect-review-request.sh rejects empty stdin"
 fi
 
+# BOT_NAME lets a caller point the same matcher at another bot's mention;
+# gemini.yml passes '@gemini,@gemini-cli'. The table covers both tokens of a
+# multi-token list, the hyphenated token (which relies on `[:punct:]` already
+# containing `-` in the separator class), and the negative that keeps the list
+# from being a superset: @claude is NOT a request once BOT_NAME names another
+# bot, or a `@gemini review` and a `@claude review` on the same PR would both
+# wake the same agent.
+bot_cases=(
+  "@gemini,@gemini-cli|true|@gemini review"
+  "@gemini,@gemini-cli|true|@gemini-cli review"
+  "@gemini,@gemini-cli|true|@gemini, please review this"
+  "@gemini,@gemini-cli|false|@claude review"
+  "@gemini,@gemini-cli|false|@gemini what does this do?"
+  # Whitespace around a token is trimmed rather than split on: ' @ai ' is one
+  # alternative, not two.
+  "@ai , @ai-review|true|@ai review"
+  "@ai|true|@ai-review"
+)
+for case in "${bot_cases[@]}"; do
+  bot="${case%%|*}"
+  rest="${case#*|}"
+  want="${rest%%|*}"
+  body="${rest#*|}"
+  got="$(printf '%s\0' "$body" | BOT_NAME="$bot" bash "$detect_script")"
+  if [[ "$got" == "$want" ]]; then
+    echo "OK   detect-review-request.sh BOT_NAME=${bot@Q} ${body@Q} -> $got"
+  else
+    echo "::error::detect-review-request.sh BOT_NAME=${bot@Q} ${body@Q}: expected $want but got $got"
+    failures=$((failures + 1))
+  fi
+done
+
+# A BOT_NAME holding no usable token is a miswired caller, not a body that
+# fails to match, so it exits non-zero rather than reporting "false".
+if printf '%s\0' "@claude review" | BOT_NAME=" , " bash "$detect_script" >/dev/null 2>&1; then
+  echo "::error::detect-review-request.sh should exit non-zero on an empty BOT_NAME list"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-review-request.sh rejects an empty BOT_NAME list"
+fi
+
+# The script's own BOT_NAME fallback and the action's `bot-name` default are
+# declared in two files, so assert they agree rather than trusting a comment
+# (the gha#303 precedent for defaults declared more than once). Parsed with a
+# line scan because this job installs no YAML library.
+action_yml="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../actions/detect-review-request" && pwd)/action.yml"
+action_default="$(awk '/^  bot-name:/ {found=1} found && /^    default:/ {gsub(/^    default:[[:space:]]*/, ""); gsub(/^['"'"'"]|['"'"'"]$/, ""); print; exit}' "$action_yml")"
+script_default="$(awk -F'-' '/^BOT_NAME_INPUT=/ {sub(/}"$/, "", $0); sub(/^BOT_NAME_INPUT="\$\{BOT_NAME:-/, ""); sub(/\}"$/, ""); print; exit}' "$detect_script")"
+if [[ -z "$action_default" ]]; then
+  echo "::error::detect-review-request/action.yml declares no default for bot-name"
+  failures=$((failures + 1))
+elif [[ "$action_default" != "$script_default" ]]; then
+  echo "::error::bot-name default drift: action.yml has ${action_default@Q}, script has ${script_default@Q}"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-review-request bot-name default agrees across action.yml and the script"
+fi
+
+total=$(( ${#cases[@]} + ${#bot_cases[@]} + 5 ))
 if [[ "$failures" -gt 0 ]]; then
-  echo "::error::$failures of $(( ${#cases[@]} + 3 )) detect-review-request case(s) did not behave as expected"
+  echo "::error::$failures of $total detect-review-request case(s) did not behave as expected"
   exit 1
 fi
-echo "All $(( ${#cases[@]} + 3 )) detect-review-request cases behaved as expected."
+echo "All $total detect-review-request cases behaved as expected."

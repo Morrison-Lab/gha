@@ -70,16 +70,39 @@ TAIL="([[:space:][:punct:]]+($TAIL_WORD))*"
 # out as "a literal newline, or end of string".
 NEWLINE=$'\n'
 
-BOT_NAME_INPUT="${BOT_NAME:-@claude,@gemini,@gemini-cli,@ai}"
-# Format comma-separated BOT_NAME into regex alternatives
-BOT_ALT="$(echo "$BOT_NAME_INPUT" | tr ',' '\n' | tr ' ' '\n' | grep -v '^$' | tr '\n' '|' | sed 's/|$//')"
+# The default stays `@claude` alone, matching detect-review-request/action.yml's
+# own `bot-name` default; a caller wanting another bot passes it explicitly, the
+# way gemini.yml passes '@gemini,@gemini-cli'. Declaring a wider default here
+# than the action declares would mean a direct script caller and a workflow
+# caller silently matched different token sets, so
+# tests/run-detect-review-request-tests.sh asserts the two agree (the gha#303
+# precedent).
+BOT_NAME_INPUT="${BOT_NAME:-@claude}"
+# Comma-separated tokens become regex alternatives. Trimming is parameter
+# expansion rather than a `tr ' ' '\n'` pass, which would also split a token
+# containing a space into two alternatives instead of trimming around it.
+declare -a BOT_TOKENS=()
+IFS=',' read -ra RAW_BOT_TOKENS <<< "$BOT_NAME_INPUT"
+for bot_token in "${RAW_BOT_TOKENS[@]}"; do
+  bot_token="${bot_token#"${bot_token%%[![:space:]]*}"}"
+  bot_token="${bot_token%"${bot_token##*[![:space:]]}"}"
+  [ -n "$bot_token" ] || continue
+  BOT_TOKENS+=("$bot_token")
+done
+
+if [ "${#BOT_TOKENS[@]}" -eq 0 ]; then
+  echo "detect-review-request.sh: BOT_NAME held no non-empty tokens: '$BOT_NAME_INPUT'" >&2
+  exit 2
+fi
+
+BOT_ALT="$(IFS='|'; printf '%s' "${BOT_TOKENS[*]}")"
 BOT_PATTERN="(${BOT_ALT})"
 
-PATTERN="${BOT_PATTERN}[[:space:][:punct:]-]+(($POLITE)[[:space:][:punct:]-]+)*(re-?)?review"
+# The separator class is `[[:space:][:punct:]]` unchanged: `[:punct:]` already
+# contains `-`, so `@gemini-cli review` matches through the `@gemini-cli`
+# alternative (and `@gemini` plus a `-` separator) without a separate `-` term.
+PATTERN="${BOT_PATTERN}[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review"
 PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
-
-
-
 
 # Blockquotes, fenced code blocks, indented code blocks, and inline code spans
 # all mark text as quoted rather than meant, so they are removed before

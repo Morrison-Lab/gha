@@ -1,14 +1,25 @@
 # Copy to .github/workflows/gemini-code-review.yml in your repo.
-# NOTE: requires GEMINI_API_KEY stored as a GitHub secret.
+# NOTE: requires GEMINI_API_KEY stored as a GitHub secret. Pass secrets
+# explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
+# secrets into a reusable workflow owned by the same org/user, so a
+# cross-owner caller inherits an empty token and the run fails.
+# Default: dispatch-triggered only. gemini.yml re-dispatches this workflow on
+# an `@gemini review` mention via workflow_dispatch, so keep the file named
+# gemini-code-review.yml (or set gemini.yml's review-workflow-file to match)
+# so that dispatch resolves.
+# Optional: uncomment pull_request for automatic review on every PR.
+#
+# There is deliberately no issue_comment path here: gemini.yml already owns
+# the `@gemini review` mention and dispatches this workflow, so a second
+# comment-triggered dispatch job would review the same PR twice on the one
+# phrasing both matchers accept (the double-dispatch UCD-SERG/serodynamics#277
+# ran into).
 name: Gemini Code Review
 
 on:
   # Optional: automatic review on PR activity.
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
-  # Optional: direct on-demand trigger via comment.
-  # issue_comment:
-  #   types: [created]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -17,39 +28,22 @@ on:
         type: string
 
 jobs:
-  dispatch-on-comment:
-    if: >-
-      github.event_name == 'issue_comment' &&
-      github.event.issue.pull_request &&
-      (startsWith(github.event.comment.body, '@gemini review') || startsWith(github.event.comment.body, '@gemini-cli review') || startsWith(github.event.comment.body, '/review')) &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      issues: write
-    steps:
-      - name: Parse this workflow's ref
-        id: this-wf
-        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
-        with:
-          workflow-ref: ${{ github.workflow_ref }}
-
-      - name: Dispatch review for commented PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.issue.number }}
-          WF_PATH: ${{ steps.this-wf.outputs.path }}
-        run: |
-          set -euo pipefail
-          WF_FILE=$(basename "$WF_PATH")
-          gh workflow run "$WF_FILE" --repo "$REPO" -f pr_number="$PR_NUMBER"
-
   review:
-    needs: []
-    uses: d-morrison/gha/.github/workflows/gemini-code-review.yml@v2
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: Morrison-Lab/gha/.github/workflows/gemini-code-review.yml@v2
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     with:
+      # Wires the workflow_dispatch input through so gemini.yml can dispatch a
+      # review; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
+    #   gemini-model: gemini-2.5-flash
+    #   prompt-addendum: |
+    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).

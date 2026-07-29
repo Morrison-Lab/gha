@@ -1,19 +1,24 @@
 name: Gemini CLI (reusable)
 
-# Agent-mode Gemini CLI workflow. Responds to "@gemini" or "@gemini-cli" mentions in issues,
-# issue comments, PR review comments, and PR reviews, and can edit files and
-# open/update PRs in response. Also runs unattended on workflow_dispatch/
-# schedule events.
+# Agent-mode Gemini CLI workflow. Responds to "@gemini" or "@gemini-cli"
+# mentions in issues, issue comments, PR review comments, and PR reviews. Also
+# runs unattended on workflow_dispatch/schedule events.
 #
 # The caller stub (see examples/gemini.yml) holds the `on:` triggers; this
 # reusable workflow inherits the caller's event context. Requires the
-# GEMINI_API_KEY secret (or Google Cloud auth secrets).
+# GEMINI_API_KEY secret.
+#
+# Mirrors claude.yml's shape where the two overlap: the same detect-bot-mention
+# gate (so a mention quoted in a code block or blockquote doesn't spend a run),
+# the same detect-review-request routing (an `@gemini review` dispatches the
+# dedicated reviewer instead of self-reviewing), and the same `--ref` handling
+# on that dispatch (#285).
 
 on:
   workflow_call:
     inputs:
       setup-r:
-        description: Install R and dependencies before running Gemini CLI.
+        description: Install R before running Gemini CLI.
         type: boolean
         default: true
       install-quarto:
@@ -28,16 +33,8 @@ on:
         description: Python packages to install with pip3.
         type: string
         default: ''
-      use-renv:
-        description: Restore dependencies with renv instead of DESCRIPTION.
-        type: boolean
-        default: false
       checkout-submodules:
         description: Check out git submodules.
-        type: boolean
-        default: false
-      eager-pr:
-        description: Open draft PR up front for issue triggers.
         type: boolean
         default: false
       prompt-addendum:
@@ -47,27 +44,18 @@ on:
       gemini-model:
         description: Model override passed to run-gemini-cli (e.g. gemini-2.5-flash).
         type: string
-        default: ''
+        default: 'gemini-2.5-flash'
       review-workflow-file:
-        description: Review workflow file dispatched on `@gemini review` mentions.
+        description: >-
+          Workflow file (in the caller repo) dispatched on `@gemini review`
+          mentions. Defaults to the name examples/gemini-code-review.yml is
+          copied to, mirroring claude.yml's own review-workflow-file default.
         type: string
-        default: 'gemini-review.yml'
-      use-ai-config:
-        description: Expose ai-config instructions if present.
-        type: boolean
-        default: true
+        default: 'gemini-code-review.yml'
     secrets:
       GEMINI_API_KEY:
         required: false
       SUBMODULES_TOKEN:
-        required: false
-      WORKFLOW_TOKEN:
-        required: false
-      GCP_PROJECT_ID:
-        required: false
-      GCP_SERVICE_ACCOUNT:
-        required: false
-      GCP_WORKLOAD_IDENTITY_PROVIDER:
         required: false
 
 jobs:
@@ -79,6 +67,7 @@ jobs:
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) ||
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: write
       pull-requests: write
@@ -89,7 +78,7 @@ jobs:
       - name: Detect genuine @gemini or @gemini-cli mention
         id: detect-mention
         if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
-        uses: d-morrison/gha/.github/actions/detect-bot-mention@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
         with:
           comment-body: ${{ github.event.comment.body || '' }}
           review-body: ${{ github.event.review.body || '' }}
@@ -97,29 +86,20 @@ jobs:
           issue-title: ${{ github.event.issue.title || '' }}
           bot-name: '@gemini,@gemini-cli'
 
-      - name: Skip if mention was inside code or blockquote
-        if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' && steps.detect-mention.outputs.match == 'false'
-        run: |
-          echo "No genuine @gemini mention found outside code blocks or quotes. Skipping run."
-          exit 0
-
       - name: Detect @gemini review request
         id: detect-review
         if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
-        uses: d-morrison/gha/.github/actions/detect-review-request@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           comment-body: ${{ github.event.comment.body || '' }}
           review-body: ${{ github.event.review.body || '' }}
           bot-name: '@gemini,@gemini-cli'
 
-      - name: Parse workflow ref
-        id: this-wf
-        uses: d-morrison/gha/.github/actions/parse-workflow-ref@v2
-        with:
-          workflow-ref: ${{ github.workflow_ref }}
-
+      # An `@gemini review` routes to the dedicated reviewer rather than being
+      # answered by the agent, so this step and the gate below are ordered:
+      # dispatch first, then skip the agent for the rest of the job.
       - name: Dispatch review workflow if @gemini review was requested
-        if: steps.detect-review.outputs.match == 'true'
+        if: steps.detect-mention.outputs.match != 'false' && steps.detect-review.outputs.match == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -127,40 +107,98 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
         run: |
           set -euo pipefail
-          echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER..."
-          gh workflow run "$REVIEW_WF" --repo "$REPO" -f pr_number="$PR_NUMBER"
-          exit 0
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::No PR number on this event; skipping $REVIEW_WF dispatch."
+            exit 0
+          fi
+          # This job hasn't checked out the repo yet, so the PR's head branch
+          # has to be looked up explicitly. --ref pins the dispatched run's
+          # check-runs to that branch instead of the default branch that
+          # workflow_dispatch falls back to when no ref is given (#285).
+          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
+          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+          # A fork PR's head branch only exists in the fork, not in $REPO, so
+          # --ref would fail to resolve there (#289). Fall back to no --ref for
+          # fork PRs; the check-run then mis-attributes to the default branch,
+          # the lesser problem.
+          REF_ARGS=(--ref "$PR_BRANCH")
+          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+            echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
+            REF_ARGS=()
+          fi
+          echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER ($PR_BRANCH)."
+          gh workflow run "$REVIEW_WF" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
+
+      # A step's `exit 0` ends only that step, never the job, so a "skip" step
+      # that just echoes and exits leaves every later step running anyway.
+      # Compute the decision once here and gate each later step on it, the same
+      # way claude.yml gates on its own `steps.gate.outputs.skip`.
+      - name: Decide whether the agent should run
+        id: gate
+        env:
+          MENTION_MATCH: ${{ steps.detect-mention.outputs.match }}
+          REVIEW_MATCH: ${{ steps.detect-review.outputs.match }}
+        run: |
+          set -euo pipefail
+          skip=false
+          if [ "$MENTION_MATCH" = "false" ]; then
+            echo "No genuine @gemini mention outside code blocks or quotes; skipping the agent."
+            skip=true
+          elif [ "$REVIEW_MATCH" = "true" ]; then
+            echo "Handled as a review dispatch; skipping the agent."
+            skip=true
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: ${{ inputs.checkout-submodules }}
           token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
 
+      # Passed via env rather than inlined into the script, so a caller's value
+      # is a shell word list and never interpreted as script.
       - name: Install system apt packages
-        if: inputs.apt-packages != ''
+        if: steps.gate.outputs.skip != 'true' && inputs.apt-packages != ''
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
         run: |
+          set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y ${{ inputs.apt-packages }}
+          # Unquoted on purpose: the input is a space-separated package list.
+          # shellcheck disable=SC2086
+          sudo apt-get install -y $APT_PACKAGES
 
       - name: Set up Python pip packages
-        if: inputs.pip-packages != ''
+        if: steps.gate.outputs.skip != 'true' && inputs.pip-packages != ''
+        env:
+          PIP_PACKAGES: ${{ inputs.pip-packages }}
         run: |
-          pip3 install --break-system-packages ${{ inputs.pip-packages }}
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          pip3 install --break-system-packages $PIP_PACKAGES
 
-      - name: Set up R environment
-        if: inputs.setup-r
-        uses: r-lib/actions/setup-r@v2
+      - name: Set up R
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          use-public-rspm: true
 
       - name: Set up Quarto
-        if: inputs.install-quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+        if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
 
+      # Pinned to a release SHA per README's "Pinning third-party actions".
+      # Note the tag: run-gemini-cli publishes v0 / v0.1.x, with no v1 tag at
+      # all, so a `@v1` ref fails to resolve and the step never runs.
       - name: Run Gemini CLI
-        uses: google-github-actions/run-gemini-cli@v1
+        if: steps.gate.outputs.skip != 'true'
+        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          gemini_model: ${{ inputs.gemini-model || 'gemini-2.5-flash' }}
+          gemini_model: ${{ inputs.gemini-model }}
           prompt: |
             ${{ inputs.prompt-addendum }}
-            Please review the requested changes or instructions for this issue or PR.
+            Address the requested changes or instructions for this issue or PR.
