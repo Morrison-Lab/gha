@@ -950,9 +950,9 @@ Whether a re-run reuses that record depends on the mode, per
 [GitHub's own docs](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations)
 ("Behavior of reusable workflows when re-running jobs"):
 
-> * Re-running all jobs in a workflow will use the reusable workflow from the
+> - Re-running all jobs in a workflow will use the reusable workflow from the
 >   specified reference.
-> * Re-running failed jobs or a specific job in a workflow will use the
+> - Re-running failed jobs or a specific job in a workflow will use the
 >   reusable workflow from the same commit SHA of the first attempt.
 
 So **Re-run failed jobs**, **Re-run this job**, and the API's
