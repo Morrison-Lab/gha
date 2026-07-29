@@ -936,6 +936,47 @@ released, pre-fix tag — and reproduced the exact #285 symptom live
 head) even though the fix had already been pushed to the PR branch itself.
 Not a regression; the same "can't self-verify" gap, one layer up.)
 
+## A re-run cannot verify a tag slide -- only a fresh run resolves the new `@v2`
+
+The section above ends at the merge; this one covers the step after it.
+Once `slide-major-tag.yml` moves `v2`, the obvious way to confirm the fix
+reached consumers is to re-run the run that failed.
+That does not work, and it fails in a way that looks like the fix itself is
+broken.
+
+GitHub resolves each `uses:` reusable-workflow reference **once**, when the
+run is first created, and records the resolved commit in the run's
+`referenced_workflows`.
+A re-run (`rerun_failed_jobs`, or the UI's re-run button) replays that
+recorded SHA.
+So a re-run of any run created before the slide still executes the **old**
+reusable workflow, no matter how long ago the tag moved.
+
+What makes this genuinely deceptive is that the two layers behave
+differently.
+Composite actions nested *inside* the reusable workflow
+(`uses: Morrison-Lab/gha/.github/actions/...@v2`) resolve at
+job-preparation time, so those **do** come back at the new tag.
+A re-run therefore shows new-version behavior from the composites while the
+reusable workflow's own logic, inputs, and defaults are still the old ones
+-- which reads as "the fix is live and didn't work" rather than "the fix
+isn't live".
+
+Decide it mechanically instead of inferring it from step output: read
+`referenced_workflows[].sha` on the run (`actions_get` `get_workflow_run`)
+and compare it against the tag's current commit.
+To actually verify a slide, trigger a **fresh** run -- push a commit, open a
+PR, or `workflow_dispatch` -- never a re-run.
+
+(`UCD-SERG/serodynamics` run 30471653690, 2026-07-29: after `v2` was slid to
+c50e847 to pick up #359's `ai-config@Morrison-Lab` retarget, a re-run failed
+with the identical `Failed to install plugin 'ai-config@d-morrison'`.
+The job log showed both layers at once -- `INPUT_PLUGINS:
+ai-config@d-morrison` from the old reusable workflow, alongside a
+`detect-review-request: match=false` line that only exists at c50e847 --
+and `referenced_workflows` still read `sha: 6ee996b` on attempt 2.
+A dispatched run on a PR branch confirmed the fix immediately.)
+
 ## A push touching `.github/workflows/` can fail even though `WORKFLOW_TOKEN` is wired correctly in code
 
 If a push from `claude.yml` (or `claude-bot.yml`'s dispatch of it) fails with:
