@@ -119,11 +119,10 @@ jobs:
           set +e -uo pipefail
           PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author)
           if [[ $? -ne 0 ]]; then
-            # Fail CLOSED. Writing `blocked=true` before exiting matters even
-            # though a non-zero exit already skips the steps below: the output
-            # is what a reader (and any future gate) sees, and leaving it
-            # unset would make a failed guard indistinguishable from a guard
-            # that passed.
+            # Fail CLOSED, belt and braces. The `success()` in the steps below
+            # is what actually stops them, and this write is the second layer:
+            # an unset output would make a failed guard indistinguishable from
+            # a guard that passed, to a reader and to any future gate.
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository/author status via gh pr view; failing closed (treating as blocked)."
             exit 1
@@ -137,11 +136,20 @@ jobs:
             echo "blocked=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # `!= 'true'` rather than `== 'false'`: on the pull_request path the
-      # guard step is skipped, so the output is the empty string, and the
-      # job `if:` has already done the equivalent checks from the payload.
+      # Two conditions, and both are load-bearing.
+      #
+      # `success()` is not redundant: writing any explicit step-level `if:`
+      # REPLACES the default `success()` condition, so without it these steps
+      # would run even after the guard step failed --- a guard gated on the
+      # step that fails, which is the gha#350 shape. It is what makes a failed
+      # lookup fail closed.
+      #
+      # `!= 'true'` rather than `== 'false'` because on the pull_request path
+      # the guard step is skipped entirely, so its output is the empty string;
+      # there the job `if:` has already applied the equivalent checks from the
+      # event payload.
       - name: Checkout repository
-        if: steps.dispatch-guard.outputs.blocked != 'true'
+        if: success() && steps.dispatch-guard.outputs.blocked != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: ${{ inputs.checkout-submodules }}
@@ -164,7 +172,7 @@ jobs:
       # three tools a review actually needs, so the server cannot push or
       # merge; `run_shell_command` is likewise limited to read-only commands.
       - name: Run Gemini CLI for PR review
-        if: steps.dispatch-guard.outputs.blocked != 'true'
+        if: success() && steps.dispatch-guard.outputs.blocked != 'true'
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
           GITHUB_TOKEN: ${{ github.token }}
