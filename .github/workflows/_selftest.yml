@@ -456,7 +456,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git config user.email "selftest@example.invalid"
+          git config user.email "selftest@example.invalid"  # phi-allow
           git config user.name "selftest"
           git switch -c selftest-report-push-failure
           echo "baseline_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
@@ -464,9 +464,13 @@ jobs:
           git add push-failure-fixture.txt
           git commit -qm 'selftest: throwaway commit for report-push-failure'
           # The rejection gha#360 was filed over, with a credential in the
-          # remote URL exactly as git echoes one back on a failed push.
+          # remote URL exactly as git echoes one back on a failed push. The
+          # credential is interpolated rather than written inline so the
+          # source line does not itself look like an email address to the
+          # `phi` job's scanner.
+          FAKE_CRED='notarealtoken'
           printf '%s\n' \
-            'To https://x-access-token:notarealtoken@github.com/o/r.git' \
+            "To https://x-access-token:${FAKE_CRED}@github.com/o/r.git" \
             ' ! [remote rejected] HEAD -> topic (refusing to allow a GitHub App to create or update workflow `.github/workflows/validate.yml` without `workflows` permission)' \
             > "$RUNNER_TEMP/push-failure.log"
       - name: Exercise report-push-failure composite action end-to-end

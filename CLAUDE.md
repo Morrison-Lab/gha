@@ -263,8 +263,9 @@ which is why the capabilities above moved to `@v2`.
   `_selftest.yml` can assert the redaction holds against a real call.
   The classifier keys on the `refusing to allow ... to create or update
   workflow` clause rather than on the trailing scope name, because GitHub
-  words that tail differently per credential (a GitHub App is rejected
-  `without \`workflows\` permission`, a PAT `without \`workflow\` scope`).
+  words that tail differently per credential: a GitHub App is rejected for
+  lacking the `workflows` **permission**, a PAT for lacking the `workflow`
+  **scope**.
   And the fenced blocks in the comment body measure the longest backtick run
   in their content and open with one more, the same reasoning
   `strip-non-invoking-markup.sh` uses -- a patch that touches a Markdown file
