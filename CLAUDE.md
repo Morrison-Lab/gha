@@ -284,6 +284,18 @@ which is why the capabilities above moved to `@v2`.
   `pipefail` promotes to the pipeline's status and `set -e` turns into an
   aborted report -- losing the comment precisely for the large patches that
   most need preserving.
+  Two more, from gha#361's second round.
+  The `push-protection` kind (GitHub's `GH013` secret-scanning rejection) is
+  the one case where the patch is **suppressed** rather than posted: those
+  commits carry the secret the push was blocked to contain, so rendering them
+  into a public comment -- or the run log -- would republish it, and Actions'
+  masking does not apply because a scanned secret is commit content rather
+  than a configured `secrets.*` value.
+  And the byte budget bounds the **whole body**, not just the patch: the log
+  gets a fixed slice and the patch takes the remainder, because capping only
+  the patch let a verbose rejection carry the total past GitHub's comment
+  limit on its own, which 422s the post and drops the report entirely -- the
+  silent-thread outcome gha#360 exists to prevent.
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -690,10 +702,13 @@ The one assertion worth reading as a guard rail rather than filler is that a
 generic failure's advice does **not** name `WORKFLOW_TOKEN`: the value of
 naming the secret comes entirely from naming it only when it is the cause.
 CI runs the suite as a step in the `review-fail-check` job, which also calls
-`report-push-failure` itself through a real `uses:` step with `dry-run: true`
--- the same `github.action_path`-resolution proof the other e2e steps give,
-plus the two things the offline table cannot reach: the patch generated from a
-live checkout, and the credential redaction.
+`report-push-failure` itself through four real `uses:` steps with
+`dry-run: true` -- one per classified `kind` (`workflows-permission`, a
+backtick-free `other` case, `no-push-attempt`, and the `push-protection`
+case, whose assertion is that no patch is rendered) -- the same
+`github.action_path`-resolution proof the other
+e2e steps give, plus the two things the offline table cannot reach: the patch
+generated from a live checkout, and the credential redaction.
 Those steps run **last** in that job because they commit a throwaway file to
 the checkout, which is what gives `git format-patch` a real one-commit range
 to render (a merge commit would render as nothing, since `format-patch` skips

@@ -33,6 +33,13 @@ fi
 # depending on which credential was used: a GitHub App is rejected for
 # lacking the "workflows" permission, a Personal Access Token for lacking the
 # "workflow" scope. This clause is common to every variant.
+#
+# Checked BEFORE push protection, even though that one is the security case.
+# GitHub wraps a workflow-permission rejection in the same generic `GH013:
+# Repository rule violations` envelope that push protection uses, so leading
+# with the envelope misfiled the ordinary missing-WORKFLOW_TOKEN rejection as
+# a secret leak. This clause is unambiguous, so it decides first; the broader
+# rule-violation wording below then catches everything else.
 if grep -qE 'refusing to allow .* to create or update workflow' <<<"$log"; then
   kind=workflows-permission
   headline='Push rejected: the token cannot write .github/workflows/ -- set the WORKFLOW_TOKEN secret.'
@@ -55,6 +62,35 @@ workflow's `secrets:` block. See the
 
 Setting a repository secret needs admin access to this repository, so an
 `@claude` session cannot do it itself.
+EOF
+  )
+# The one kind whose caller must NOT publish the patch: these commits carry a
+# secret GitHub's scanning caught, so posting them back as a `git am`-able
+# patch would republish exactly what the block contained. Actions' own masking
+# cannot help -- a scanned secret is commit content, not a configured
+# `secrets.*` value (gha#361 review).
+#
+# The generic rule-violation wording is included deliberately, even though it
+# covers rules other than push protection. The asymmetry decides it:
+# withholding a patch from an unrelated rule violation costs a re-run, while
+# publishing one that carries a live credential cannot be undone.
+elif grep -qE 'GH013|GITHUB PUSH PROTECTION|push declined due to repository rule violations|secret scanning' <<<"$log"; then
+  kind=push-protection
+  headline='Push blocked by a repository rule, possibly a detected secret -- the patch is withheld.'
+  advice=$(
+    cat <<'EOF'
+GitHub refused the push for a repository rule violation. The commonest cause
+is secret scanning finding a credential in the commits themselves.
+
+**No patch is included in this comment, deliberately.** If a secret is what
+was caught, publishing the commits here would republish it in a public
+thread, which is exactly what the block prevented. The run log omits the
+patch for the same reason, so the commits exist only on the runner.
+
+To recover: read the rejection below for which rule fired. If it names a
+secret, treat that credential as compromised and rotate it, then remove it
+from the commits -- not just from the working tree, since a secret in an
+earlier commit stays in the history -- and re-run.
 EOF
   )
 elif grep -qE '\(non-fast-forward\)|\(fetch first\)|Updates were rejected because' <<<"$log"; then

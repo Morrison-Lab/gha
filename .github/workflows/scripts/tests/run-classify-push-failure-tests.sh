@@ -53,6 +53,25 @@ EOF
 
 auth_failure='fatal: Authentication failed for https://github.com/o/r.git/'
 
+# GitHub's secret-scanning push protection. This one must NOT fall through to
+# `other`: `other` publishes the patch, and here the commits are exactly what
+# must not be republished (gha#361 review).
+push_protection=$(cat <<'EOF'
+remote: error: GH013: Repository rule violations found for refs/heads/topic.
+remote:
+remote: - GITHUB PUSH PROTECTION
+remote:   Resolve the following secrets before pushing again.
+remote:      - Anthropic API Key
+remote:        locations:
+remote:          - commit: 1234567
+remote:            path: config.yml:3
+EOF
+)
+
+# The wording GitHub uses when the rule violation is reported without the
+# GH013 code, e.g. in some rule-set configurations.
+push_protection_alt='remote: error: push declined due to repository rule violations'
+
 # check_kind <name> <log> <expected kind>
 check_kind() {
   local name="$1" log="$2" want="$3" got
@@ -89,6 +108,15 @@ check_kind "non-fast-forward (plain)"       "$non_ff_plain"    non-fast-forward
 check_kind "protected branch"               "$protected"       other
 check_kind "authentication failure"         "$auth_failure"    other
 check_kind "empty log"                      ""                 other
+check_kind "push protection (GH013)"        "$push_protection"     push-protection
+check_kind "push protection (rule wording)" "$push_protection_alt" push-protection
+
+# The advice must say the patch is withheld, since the caller keys the
+# suppression off the kind while the reader learns it only from this text.
+check_advice "push protection says no patch" "$push_protection" "No patch is included" has
+# A secret-bearing rejection must never be classified as anything that would
+# publish the commits; this is the assertion guarding that.
+check_advice "push protection names rotation" "$push_protection" "rotate" has
 
 # The whole point of the workflows-permission branch is naming the secret that
 # is missing; a generic failure must NOT name it, or the advice sends a reader

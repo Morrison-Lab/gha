@@ -1254,13 +1254,18 @@ jobs:
             echo "No new commits on PR head; skipping review dispatch."
           fi
 
-      # Pair to "Set up branch for issue trigger": push Claude's commits and, in
-      # lazy mode, open the draft PR. In eager-pr mode (or when a PR was adopted
-      # for this issue) the PR already exists — push the new commits and dispatch
-      # a review, or close the empty up-front PR if Claude produced nothing.
+      # Pair to "Set up branch for issue trigger", split in two so this step's
+      # `outcome` means exactly "the push (or something before it) failed" --
+      # which is what the report step below is gated on. Folding the PR
+      # creation in here broke that: `gh pr create` runs unguarded under
+      # `bash -e`, so its failure (a PR already exists for the head, a rate
+      # limit, or the repo setting that forbids Actions from opening PRs)
+      # marked the step failed AFTER a successful push, and the report then
+      # announced commits as stranded that were already on the branch --
+      # the mirror of the bug this PR fixes (gha#361 review).
       # Runs on always() so partial work is preserved even if Claude failed.
-      - name: Push branch and finalize PR for issue trigger
-        id: finalize_issue
+      - name: Push branch for issue trigger
+        id: push_issue
         if: |
           always() &&
           steps.gate.outputs.skip != 'true' &&
@@ -1323,15 +1328,58 @@ jobs:
           echo "Pushing $BRANCH ($BASELINE -> $CURRENT_SHA)"
           # Captured, like the PR-trigger push above, so the rejection can be
           # explained and the commits preserved rather than dying with the
-          # runner (gha#360). Every "here is what I pushed" side effect below
-          # -- opening the PR, dispatching the review, the issue comment --
-          # sits after this exit, so a failed push cannot narrate a success.
+          # runner (gha#360). The push is this step's LAST action, so its
+          # outcome is an exact signal for the report step below.
           PUSH_LOG="$RUNNER_TEMP/push-issue-branch.log"
           push_status=0
           git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH" >"$PUSH_LOG" 2>&1 \
             || push_status=$?
           cat "$PUSH_LOG"
           [ "$push_status" -eq 0 ] || exit "$push_status"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # Turn the raw git rejection into an actionable error and post the
+      # commits back as a patch (gha#360). Gated on the push step's own
+      # `outcome`, which is now exact: nothing runs in that step after the
+      # push, so a failure there cannot mean "the push landed but a later
+      # command did not".
+      - name: Report a rejected issue-branch push
+        if: always() && steps.push_issue.outcome == 'failure'
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        with:
+          push-log: ${{ runner.temp }}/push-issue-branch.log
+          entity-number: ${{ github.event.issue.number }}
+          baseline-sha: ${{ steps.eager_pr.outputs.seed_sha || steps.issue_branch.outputs.starting_sha }}
+          ref: ${{ steps.issue_branch.outputs.branch }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Everything that happens once the commits are safely on the branch:
+      # open the PR in lazy mode, dispatch a review, mark ready, comment.
+      # Gated on the push having actually landed, so a failure in here is
+      # never mistaken for a push failure.
+      - name: Finalize PR for issue trigger
+        id: finalize_issue
+        if: |
+          always() &&
+          steps.gate.outputs.skip != 'true' &&
+          steps.push_issue.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.issue_branch.outputs.branch }}
+          EAGER_PR_URL: ${{ steps.eager_pr.outputs.pr_url }}
+          EXISTING_PR_URL: ${{ steps.issue_branch.outputs.existing_pr }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REVIEW_WF: ${{ inputs.review-workflow-file }}
+          MARK_READY: ${{ inputs.mark-ready-for-review }}
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          COST_USD: ${{ steps.cost.outputs.cost }}
+        run: |
+          # Recomputed rather than carried over: both values come from step
+          # env, so this is the same expression the push step evaluated.
+          PR_URL="${EAGER_PR_URL:-$EXISTING_PR_URL}"
 
           if [ -z "$PR_URL" ]; then
             # Lazy mode, first run: open the draft PR now that there are commits.
@@ -1377,18 +1425,3 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" \
             --body "Pushed Claude's commits to \`${BRANCH}\` and ${PR_VERB}: ${PR_URL}${COST_LINE}" \
             || echo "::warning::Could not post PR link as issue comment."
-
-      # Same treatment as the PR-trigger report above: on an issue trigger the
-      # branch is brand new, so a rejected push leaves NOTHING behind -- no PR,
-      # no branch, no comment naming the cause. The patch in this comment is
-      # the only copy of the work.
-      - name: Report a rejected issue-branch push
-        if: always() && steps.finalize_issue.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
-        with:
-          push-log: ${{ runner.temp }}/push-issue-branch.log
-          entity-number: ${{ github.event.issue.number }}
-          baseline-sha: ${{ steps.eager_pr.outputs.seed_sha || steps.issue_branch.outputs.starting_sha }}
-          ref: ${{ steps.issue_branch.outputs.branch }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}

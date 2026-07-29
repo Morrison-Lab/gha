@@ -85,6 +85,13 @@ runs:
         WORK_REF: ${{ inputs.ref }}
         RUN_URL: ${{ inputs.run-url }}
         DRY_RUN: ${{ inputs.dry-run }}
+        # Byte budgets for the comment body. GitHub caps a comment at 65,536
+        # CHARACTERS, so a byte budget below that is conservative for any
+        # multibyte content. The log gets a fixed slice and the patch takes
+        # the remainder, so the total is bounded rather than just the patch.
+        TOTAL_BODY_BYTES: '55000'
+        MAX_LOG_BYTES: '10000'
+        MIN_PATCH_BYTES: '4000'
         # Callers run against their own checkout, not Morrison-Lab/gha's tree,
         # so the helper is located through github.action_path -- the same
         # resolution open-failure-issue and build-reviewer-args use.
@@ -115,6 +122,24 @@ runs:
           printf '`%.0s' $(seq $((longest + 1)))
         }
 
+        # Cut a string to a byte budget without a pipe on the producer side.
+        # `head -c` stops reading once it has its bytes, so `printf ... |
+        # head -c` leaves printf writing to a closed pipe for any payload past
+        # the pipe buffer: SIGPIPE, which pipefail and set -e turn into an
+        # aborted report. Going through a file removes the producer entirely.
+        # `iconv -c` drops the partial multibyte character a byte-wise cut can
+        # leave at the end.
+        truncate_to_bytes() {
+          local text="$1" max="$2" tmp
+          tmp="$(mktemp)"
+          printf '%s' "$text" > "$tmp"
+          if [[ "$(wc -c < "$tmp")" -le "$max" ]]; then
+            printf '%s' "$text"
+          else
+            head -c "$max" "$tmp" | iconv -f UTF-8 -t UTF-8 -c
+          fi
+        }
+
         # No log means the calling step failed BEFORE its push ran -- the
         # auto-commit sweep, or the fork lookup. There is no rejection to
         # classify, but the commits may still exist locally and unpushed, and
@@ -137,10 +162,19 @@ runs:
         else
           kind=no-push-attempt
           headline='The push step failed before it could push; any commits it made are still on the runner.'
-          advice='The step that pushes the agent'"'"'s commits failed before reaching the push itself -- most likely while committing residual changes, or while looking up whether the PR came from a fork. No push was attempted, so there is no git rejection to explain; read the failing step in the run log for the cause. Any commits already made are included below.'
+          # No trailing promise of a patch: the likeliest cause named here is
+          # the auto-commit sweep failing, and then no commit exists to render
+          # -- the body would have said "included below" beside "No patch
+          # could be generated" (gha#361 review).
+          advice='The step that pushes the agent'"'"'s commits failed before reaching the push itself -- most likely while committing residual changes, or while looking up whether the PR came from a fork. No push was attempted, so there is no git rejection to explain; read the failing step in the run log for the cause.'
         fi
         echo "kind=$kind" >> "$GITHUB_OUTPUT"
-        echo "::error::$headline"
+        # Suppressed under dry-run: `_selftest.yml` exercises this action on
+        # every PR, and an unconditional annotation stamps red errors into the
+        # Checks tab of a job that is passing (gha#361 review).
+        if [[ "$DRY_RUN" != "true" ]]; then
+          echo "::error::$headline"
+        fi
 
         # The patch goes to the run log in full and to the comment truncated,
         # so the complete work is always recoverable even when the comment's
@@ -150,9 +184,20 @@ runs:
         # warn (safe.directory, line endings) while still exiting 0, and a
         # stray non-diff line spliced into the payload is exactly what makes
         # `git am` reject the patch this feature exists to make recoverable.
+        #
+        # Skipped entirely for `push-protection`. That rejection means the
+        # commits themselves carry a secret GitHub's scanning caught, so
+        # rendering them -- into the comment OR the run log -- would republish
+        # exactly what the block contained. Actions' masking does not cover
+        # it, since a scanned secret is commit content rather than a
+        # configured `secrets.*` value (gha#361 review). Losing the patch is
+        # the correct trade here: the commits must be rewritten to drop the
+        # secret before they can go anywhere anyway.
         patch=''
         patch_err="$(mktemp)"
-        if [[ -n "$BASELINE_SHA" ]]; then
+        if [[ "$kind" == "push-protection" ]]; then
+          echo "::notice::Patch suppressed: the push was blocked for containing a secret, so the commits are not republished here."
+        elif [[ -n "$BASELINE_SHA" ]]; then
           if patch="$(git format-patch --stdout "${BASELINE_SHA}..${WORK_REF}" 2>"$patch_err")"; then
             if [[ -s "$patch_err" ]]; then
               echo "::warning::git format-patch warned: $(cat "$patch_err")"
@@ -180,38 +225,49 @@ runs:
           fi
           # Omitted entirely when no push ran: an empty block would imply git
           # said nothing, rather than that it was never reached.
+          #
+          # Capped in its own right. A real rejection can be long -- push
+          # protection prints a block per offending location, a branch rule
+          # can enumerate every file -- and an unbounded log could exceed the
+          # comment limit on its own, which makes `gh issue comment` 422 and
+          # drops the whole report (gha#361 review).
           if [[ -n "$raw_log" ]]; then
-            log_fence="$(fence_for "$raw_log")"
+            log_body="$(truncate_to_bytes "$raw_log" "$MAX_LOG_BYTES")"
+            if [[ "$log_body" != "$raw_log" ]]; then
+              log_body="$log_body"$'\n\n... (truncated; full output in the workflow run)'
+            fi
+            log_fence="$(fence_for "$log_body")"
             printf '<details><summary>git output</summary>\n\n%stext\n%s\n%s\n\n</details>\n\n' \
-              "$log_fence" "$raw_log" "$log_fence"
+              "$log_fence" "$log_body" "$log_fence"
           fi
         } > "$body_file"
 
         if [[ -n "$patch" ]]; then
           # A comment body caps at 65,536 CHARACTERS (see the
           # detect-review-request paragraph in CLAUDE.md); this budget is in
-          # bytes, so it is conservative for any multibyte content. `iconv -c`
-          # drops a trailing partial multibyte character left by a byte-wise
-          # cut, matching claude.yml's own truncation.
+          # bytes, so it is conservative for any multibyte content.
           #
-          # The cut reads a FILE rather than a pipe. `head -c` stops reading
-          # once it has its bytes, so with a producer on the other end of a
-          # pipe (`printf ... | head -c`) a payload larger than the pipe
-          # buffer leaves printf writing to a closed pipe: SIGPIPE, exit 141,
-          # which `pipefail` promotes to the pipeline's status and `set -e`
-          # turns into an aborted report -- losing the comment precisely for
-          # the large patches that most need preserving (gha#361 review).
-          max_patch_bytes=40000
+          # The patch takes what the prose and the log left, rather than a
+          # fixed 40 KB: capping only the patch bounded the wrong thing, since
+          # a long rejection could carry the total past the limit by itself
+          # and 422 the post (gha#361 review). MIN_PATCH_BYTES keeps a useful
+          # excerpt even when the log ate most of the budget -- the total
+          # cannot overflow, because MAX_LOG_BYTES plus that floor plus the
+          # fixed prose stays well under TOTAL_BODY_BYTES.
+          used="$(wc -c < "$body_file")"
+          max_patch_bytes=$(( TOTAL_BODY_BYTES - used ))
+          if [[ "$max_patch_bytes" -lt "$MIN_PATCH_BYTES" ]]; then
+            max_patch_bytes="$MIN_PATCH_BYTES"
+          fi
           note=''
-          patch_file="$(mktemp)"
-          printf '%s' "$patch" > "$patch_file"
-          if [[ "$(wc -c < "$patch_file")" -gt "$max_patch_bytes" ]]; then
-            patch="$(head -c "$max_patch_bytes" "$patch_file" | iconv -f UTF-8 -t UTF-8 -c)"
+          truncated_patch="$(truncate_to_bytes "$patch" "$max_patch_bytes")"
+          if [[ "$truncated_patch" != "$patch" ]]; then
             note="(truncated at ${max_patch_bytes} bytes)"
             if [[ -n "$RUN_URL" ]]; then
               note="(truncated at ${max_patch_bytes} bytes; the full patch is in the [workflow run](${RUN_URL}))"
             fi
           fi
+          patch="$truncated_patch"
           patch_fence="$(fence_for "$patch")"
           {
             printf '<details><summary>Patch -- recover with `git am`</summary>\n\n'

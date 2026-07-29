@@ -583,6 +583,49 @@ jobs:
             exit 1
           fi
           echo "report-push-failure reported the no-push-attempt case correctly"
+      # A fourth call, on a secret-scanning rejection. This is the one kind
+      # that must NOT render the patch: those commits carry the secret the
+      # push was blocked to contain, so publishing them would undo the block
+      # (gha#361 review). The throwaway commit staged above is the payload.
+      - name: Write a push-protection rejection log
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'remote: error: GH013: Repository rule violations found for refs/heads/topic.' \
+            'remote: - GITHUB PUSH PROTECTION' \
+            'remote:   Resolve the following secrets before pushing again.' \
+            > "$RUNNER_TEMP/push-failure-secret.log"
+      - name: Exercise report-push-failure on a secret-scanning rejection
+        id: push-failure-secret
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/push-failure-secret.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          dry-run: 'true'
+      - name: Assert the secret-scanning case withholds the patch
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-secret.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-secret.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "push-protection" ]]; then
+            echo "::error::a GH013 secret-scanning rejection classified as '$KIND'"
+            exit 1
+          fi
+          # The assertion that matters: no patch, because a patch here would
+          # republish whatever push protection caught.
+          if grep -q '^diff --git' "$BODY_FILE"; then
+            echo "::error::the report rendered a patch for a secret-scanning rejection"
+            exit 1
+          fi
+          if ! grep -q 'No patch is included' "$BODY_FILE"; then
+            echo "::error::the report does not tell the reader why the patch is missing"
+            exit 1
+          fi
+          echo "report-push-failure withheld the patch for a secret-scanning rejection"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't
