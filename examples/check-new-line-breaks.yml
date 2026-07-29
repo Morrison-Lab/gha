@@ -15,8 +15,11 @@ on:
 
 jobs:
   check:
-    uses: d-morrison/gha/.github/workflows/check-new-line-breaks.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2
     # with:
     #   globs: '*.md'                          # pathspecs to check (recursive)
     #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
     #   fail: true                             # block the PR instead of warning
+    #   clause-breaks: false                   # sentences only; skip the
+    #                                          # semicolon clause check (on by default)
+    #   clause-min-length: 100                 # raise the clause check's length gate

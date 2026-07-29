@@ -42,7 +42,7 @@ on:
 
 jobs:
   test-coverage:
-    uses: d-morrison/gha/.github/workflows/test-coverage.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/test-coverage.yml@v2
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     # with:
@@ -52,5 +52,5 @@ jobs:
     #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`test-coverage.yml`).

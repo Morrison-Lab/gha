@@ -59,7 +59,7 @@ jobs:
   build:
     permissions:
       contents: read
-    uses: d-morrison/gha/.github/workflows/preview.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/preview.yml@v2
     # with:
     #   path: website                      # Quarto project lives in a subdir (default: repo root)
     #   r-version: '4.6.0'
@@ -71,5 +71,5 @@ jobs:
     #   render-profile: website
 ```
 
-See [`examples/preview.yml`](https://github.com/d-morrison/gha/blob/main/examples/preview.yml)
+See [`examples/preview.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml)
 for the full caller stub.

@@ -43,9 +43,9 @@ jobs:
       contents: write # push to gh-pages
       pull-requests: write # post the preview-link comment
       actions: read # download the build artifact
-    uses: d-morrison/gha/.github/workflows/preview-deploy.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2
 ```
 
 See
-[`examples/preview-deploy.yml`](https://github.com/d-morrison/gha/blob/main/examples/preview-deploy.yml)
+[`examples/preview-deploy.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/preview-deploy.yml)
 for the full caller stub.

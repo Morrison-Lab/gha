@@ -53,7 +53,7 @@ on:
 
 jobs:
   lint:
-    uses: d-morrison/gha/.github/workflows/lint-changed-lines.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2
     # with:
     #   path: '.'               # R package root (holding DESCRIPTION)
     #   extra-packages: ''      # extra R deps (gh + lintr always installed)
@@ -61,5 +61,5 @@ jobs:
     #   fail: false             # warn instead of failing on lints
 ```
 
-See the [`examples/`](https://github.com/d-morrison/gha/tree/main/examples)
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`lint-changed-lines.yml`).

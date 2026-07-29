@@ -53,7 +53,7 @@ jobs:
     steps:
       - name: Build reviewer args
         id: reviewers
-        uses: d-morrison/gha/.github/actions/build-reviewer-args@v2
+        uses: Morrison-Lab/gha/.github/actions/build-reviewer-args@v2
         with:
           reviewers: ${{ inputs.reviewers }}
 
