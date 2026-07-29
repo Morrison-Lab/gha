@@ -936,6 +936,68 @@ released, pre-fix tag — and reproduced the exact #285 symptom live
 head) even though the fix had already been pushed to the PR branch itself.
 Not a regression; the same "can't self-verify" gap, one layer up.)
 
+## Re-running *failed jobs* cannot verify a tag slide
+
+The section above ends at the merge; this one covers the step after it.
+Once `slide-major-tag.yml` moves `v2`, the obvious way to confirm the fix
+reached consumers is to re-run the run that failed.
+Which re-run you pick decides whether that works, and the wrong one fails in
+a way that looks like the fix itself is broken.
+
+GitHub resolves a `uses:` reusable-workflow reference when the run is first
+created and records the resolved commit in the run's `referenced_workflows`.
+Whether a re-run reuses that record depends on the mode, per
+[GitHub's own docs](https://docs.github.com/en/actions/reference/workflows-and-actions/reusing-workflow-configurations)
+("Behavior of reusable workflows when re-running jobs"):
+
+> - Re-running all jobs in a workflow will use the reusable workflow from the
+>   specified reference.
+> - Re-running failed jobs or a specific job in a workflow will use the
+>   reusable workflow from the same commit SHA of the first attempt.
+
+So **Re-run failed jobs**, **Re-run this job**, and their programmatic
+equivalents all replay the pre-slide workflow, however long ago the tag
+moved.
+**Re-run all jobs** re-resolves the reference and does pick the slide up.
+The failed-jobs call is spelled differently on every surface, so none of
+these is *the* name for it: REST is
+`POST /repos/{owner}/{repo}/actions/runs/{run_id}/rerun-failed-jobs`, the CLI
+is `gh run rerun --failed`, and the GitHub MCP server's
+`actions_run_trigger` takes `method: rerun_failed_jobs`.
+Note the docs' own precondition: this only applies where the reference is a
+tag or branch rather than a SHA, which is exactly how consumers pin `@v2`.
+
+What makes the stale mode deceptive is that the two layers behave
+differently within it.
+Composite actions nested *inside* the reusable workflow
+(`uses: Morrison-Lab/gha/.github/actions/...@v2`) resolve at
+job-preparation time, so those **do** come back at the new tag even on a
+failed-jobs re-run.
+That mixes new-version composites with the old reusable workflow's logic,
+inputs, and defaults -- which reads as "the fix is live and didn't work"
+rather than "the fix isn't live".
+It also means such a re-run *can* surface a slide whose only substantive
+change lives in a composite, so what a failed-jobs re-run cannot verify is
+specifically a change to the reusable workflow's own content.
+
+Decide it mechanically instead of inferring it from step output: read
+`referenced_workflows[].sha` on the run (`actions_get` `get_workflow_run`)
+and compare it against the tag's current commit.
+To verify a slide, prefer a **fresh** run -- push a commit, open a PR, or
+`workflow_dispatch` -- since it resolves the tag unambiguously and needs no
+reasoning about which re-run mode you are in.
+"Re-run all jobs" works too; "Re-run failed jobs" never does.
+
+(`UCD-SERG/serodynamics` run 30471653690, 2026-07-29: after `v2` was slid to
+c50e847 to pick up #359's `ai-config@Morrison-Lab` retarget, a failed-jobs
+re-run failed with the identical
+`Failed to install plugin 'ai-config@d-morrison'`.
+The job log showed both layers at once -- `INPUT_PLUGINS:
+ai-config@d-morrison` from the old reusable workflow, alongside a
+`detect-review-request: match=false` line that only exists at c50e847 --
+and `referenced_workflows` still read `sha: 6ee996b` on attempt 2.
+A dispatched run on a PR branch confirmed the fix immediately.)
+
 ## A push touching `.github/workflows/` can fail even though `WORKFLOW_TOKEN` is wired correctly in code
 
 If a push from `claude.yml` (or `claude-bot.yml`'s dispatch of it) fails with:
