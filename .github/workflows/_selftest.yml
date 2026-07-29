@@ -234,6 +234,9 @@ jobs:
       - name: Run detect-bot-mention tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-bot-mention-tests.sh
+      - name: Run classify-push-failure tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -440,6 +443,71 @@ jobs:
             exit 1
           fi
           echo "detect-bot-mention correctly surfaced match=false / match=true"
+      # Proves claude.yml's report-push-failure composite action end-to-end
+      # (gha#360). Three things no offline table can reach: the
+      # github.action_path resolution of classify-push-failure.sh, the patch
+      # generated from a live checkout, and the credential redaction. That
+      # last one is the reason `dry-run` exists here -- the body is destined
+      # for a PR comment, where Actions' own secret masking does not apply, so
+      # a leak would be published rather than starred out.
+      #
+      # These steps run LAST in this job because they commit to the checkout.
+      - name: Stage a throwaway commit and a rejected-push log
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.email "selftest@example.invalid"
+          git config user.name "selftest"
+          git switch -c selftest-report-push-failure
+          echo "baseline_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          printf 'throwaway\n' > push-failure-fixture.txt
+          git add push-failure-fixture.txt
+          git commit -qm 'selftest: throwaway commit for report-push-failure'
+          # The rejection gha#360 was filed over, with a credential in the
+          # remote URL exactly as git echoes one back on a failed push.
+          printf '%s\n' \
+            'To https://x-access-token:notarealtoken@github.com/o/r.git' \
+            ' ! [remote rejected] HEAD -> topic (refusing to allow a GitHub App to create or update workflow `.github/workflows/validate.yml` without `workflows` permission)' \
+            > "$RUNNER_TEMP/push-failure.log"
+      - name: Exercise report-push-failure composite action end-to-end
+        id: push-failure-e2e
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/push-failure.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert report-push-failure classified, explained, and redacted
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-e2e.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-e2e.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "workflows-permission" ]]; then
+            echo "::error::report-push-failure classified the gha#360 rejection as '$KIND'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-push-failure produced no comment body"
+            exit 1
+          fi
+          if ! grep -q 'WORKFLOW_TOKEN' "$BODY_FILE"; then
+            echo "::error::the report does not name the secret that is missing"
+            exit 1
+          fi
+          # The whole point of preserving the work: without a patch the
+          # commits are gone when the runner is reclaimed.
+          if ! grep -q '^diff --git' "$BODY_FILE"; then
+            echo "::error::the report carries no patch of the unpushed commits"
+            exit 1
+          fi
+          if grep -q 'notarealtoken' "$BODY_FILE"; then
+            echo "::error::the report would have published the push credential"
+            exit 1
+          fi
+          echo "report-push-failure classified, explained, patched, and redacted correctly"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't

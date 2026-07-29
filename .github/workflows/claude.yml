@@ -798,6 +798,7 @@ jobs:
       # commits, so let it fail loudly; a fork's branch lives elsewhere (this
       # token can't push there), which is an expected warning.
       - name: Push PR branch if Claude committed
+        id: push_pr
         if: always() && steps.gate.outputs.skip != 'true' && steps.pr_checkout.outputs.branch != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -859,7 +860,41 @@ jobs:
           # Explicit token URL: after `gh pr checkout` the persisted checkout
           # credential isn't reliably applied, so `git push origin` falls back
           # to unsupported password auth. The x-access-token URL always works.
-          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:$BRANCH"
+          #
+          # Captured rather than streamed so the next step can classify the
+          # rejection and preserve the commits (gha#360). The step still exits
+          # non-zero, so the job stays red. The log path is a literal both
+          # steps spell out rather than a step output, so the report step's
+          # inputs don't depend on anything the failing step had to write.
+          #
+          # `|| push_status=$?` rather than a bare call: this step runs under
+          # the default `bash -e`, which would exit on the failing push before
+          # the log could be echoed. A command in an `||` list is exempt.
+          PUSH_LOG="$RUNNER_TEMP/push-pr-branch.log"
+          push_status=0
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:$BRANCH" >"$PUSH_LOG" 2>&1 \
+            || push_status=$?
+          cat "$PUSH_LOG"
+          exit "$push_status"
+
+      # Turn the raw git rejection into an actionable error and post the
+      # commits back to the PR as a patch, so work the runner is about to
+      # discard is recoverable (gha#360). Gated on the step's `outcome` rather
+      # than on a flag it wrote: `outcome` is set by the runner, so it cannot
+      # itself be lost to whatever made the step fail. It is also the wider
+      # signal -- the step can fail before reaching the push at all (the
+      # auto-commit sweep, the fork lookup), and the action reports that state
+      # too rather than mistaking it for a clean run.
+      - name: Report a rejected PR-branch push
+        if: always() && steps.push_pr.outcome == 'failure'
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        with:
+          push-log: ${{ runner.temp }}/push-pr-branch.log
+          entity-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          baseline-sha: ${{ steps.pr_checkout.outputs.starting_sha }}
+          ref: HEAD
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Capture PR head SHA after Claude
         id: head_after
@@ -916,12 +951,26 @@ jobs:
       # Surface Claude's final prose reply when it didn't commit code (agent
       # mode discards it otherwise). Skipped on `@claude review` with PR
       # context, since the dispatch step below routes that to the reviewer.
+      #
+      # Also skipped when the push was REJECTED. That case reaches here looking
+      # exactly like "no code was committed" -- the PR head SHA never moved, so
+      # the check below reads false -- while Claude's prose describes the work
+      # it really did do, which is now stranded on the runner. Posting it makes
+      # the thread assert a state the branch does not have (gha#360); the
+      # report step above posts the truth, with the patch, instead.
+      #
+      # Only the PR path needs that gate. An issue trigger measures the local
+      # branch tip against its baseline, which a failed push does not change,
+      # so the check below already reads "committed" and this step stands
+      # down -- and the finalize step's own success-shaped comment sits after
+      # its push, so it never runs either.
       - name: Post Claude's response if no code was committed
         if: |
           always() &&
           steps.gate.outputs.skip != 'true' &&
           (github.event.issue.number || github.event.pull_request.number) &&
           steps.claude.outcome == 'success' &&
+          steps.push_pr.outcome != 'failure' &&
           !(
             steps.review_request.outputs.match == 'true' &&
             (github.event.pull_request.number || github.event.issue.pull_request)
@@ -1211,6 +1260,7 @@ jobs:
       # a review, or close the empty up-front PR if Claude produced nothing.
       # Runs on always() so partial work is preserved even if Claude failed.
       - name: Push branch and finalize PR for issue trigger
+        id: finalize_issue
         if: |
           always() &&
           steps.gate.outputs.skip != 'true' &&
@@ -1271,7 +1321,17 @@ jobs:
           fi
 
           echo "Pushing $BRANCH ($BASELINE -> $CURRENT_SHA)"
-          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH"
+          # Captured, like the PR-trigger push above, so the rejection can be
+          # explained and the commits preserved rather than dying with the
+          # runner (gha#360). Every "here is what I pushed" side effect below
+          # -- opening the PR, dispatching the review, the issue comment --
+          # sits after this exit, so a failed push cannot narrate a success.
+          PUSH_LOG="$RUNNER_TEMP/push-issue-branch.log"
+          push_status=0
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH" >"$PUSH_LOG" 2>&1 \
+            || push_status=$?
+          cat "$PUSH_LOG"
+          [ "$push_status" -eq 0 ] || exit "$push_status"
 
           if [ -z "$PR_URL" ]; then
             # Lazy mode, first run: open the draft PR now that there are commits.
@@ -1317,3 +1377,18 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" \
             --body "Pushed Claude's commits to \`${BRANCH}\` and ${PR_VERB}: ${PR_URL}${COST_LINE}" \
             || echo "::warning::Could not post PR link as issue comment."
+
+      # Same treatment as the PR-trigger report above: on an issue trigger the
+      # branch is brand new, so a rejected push leaves NOTHING behind -- no PR,
+      # no branch, no comment naming the cause. The patch in this comment is
+      # the only copy of the work.
+      - name: Report a rejected issue-branch push
+        if: always() && steps.finalize_issue.outcome == 'failure'
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        with:
+          push-log: ${{ runner.temp }}/push-issue-branch.log
+          entity-number: ${{ github.event.issue.number }}
+          baseline-sha: ${{ steps.eager_pr.outputs.seed_sha || steps.issue_branch.outputs.starting_sha }}
+          ref: ${{ steps.issue_branch.outputs.branch }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}

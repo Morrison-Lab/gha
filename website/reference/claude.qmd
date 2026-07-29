@@ -69,7 +69,7 @@ grants to persist output (e.g. `gh issue create`).
 | `CLAUDE_CODE_OAUTH_TOKEN` | no       | OAuth token for Claude Code (Claude Max plan).                                                                                                                  |
 | `ANTHROPIC_API_KEY`       | no       | Direct Anthropic API key (or GitHub App via `/install-github-app`), used instead of `CLAUDE_CODE_OAUTH_TOKEN`.                                                  |
 | `SUBMODULES_TOKEN`        | no       | Read access to private submodules.                                                                                                                              |
-| `WORKFLOW_TOKEN`          | no       | PAT or App token with `contents:write` plus `workflows:write`, needed only to push changes under `.github/workflows/`. Falls back to `GITHUB_TOKEN` when unset. |
+| `WORKFLOW_TOKEN`          | no       | PAT or App token with `contents:write` plus `workflows:write`, needed only to push changes under `.github/workflows/`. Falls back to `GITHUB_TOKEN` when unset -- and when that fallback is rejected, the run reports an error naming this secret and posts the unpushed commits to the thread as a `git format-patch`. |
 
 ## Permissions
 
