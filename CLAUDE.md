@@ -208,6 +208,29 @@ which is why the capabilities above moved to `@v2`.
   `check-new-line-breaks`'s `strip_inline_markup`.
   It lives in its own script rather than inline because the same three
   constructs gate whether the agent runs at all (gha#342).
+- `.github/actions/detect-bot-mention/` -- wraps
+  `scripts/detect-bot-mention.sh`, which decides whether a body carries an
+  `@claude` mention that is actually addressed to the bot rather than quoted
+  while writing about it.
+  `claude.yml` calls it once, early, for all four reactive events, and feeds
+  the result into its "Decide whether this run should proceed" step.
+  It shares `strip-non-invoking-markup.sh` with `detect-review-request`
+  (gha#342).
+  **Its bias is the opposite of that script's, and the two must not be
+  harmonized on this point.**
+  There a false positive suppresses the agent's reply to a real question, so
+  the matcher is deliberately narrow; here a false negative means a genuine
+  request is silently ignored, so the gate answers "run" whenever *any*
+  mention survives stripping, and treats an empty result (the step did not
+  run, or failed) as "run" too.
+  That is also why the matching stays plain-substring and case-insensitive,
+  mirroring the `contains()` call it backs: a word-boundary rule would buy
+  very little and risk exactly the false negative this bias rules out.
+  Note what it does **not** fix: `claude-bot.yml`'s job-level `if:` still
+  tests the raw body, because a GitHub expression cannot strip Markdown, so
+  the job still starts and the runner still spins up.
+  What is avoided is the billed agent run and the review re-dispatch, which
+  are the two costs gha#342 actually names.
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -561,6 +584,15 @@ As with `request-dependabot-review` below, `claude.yml`'s own layer above the
 composite is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`,
 which does not resolve until `@v2` is advanced past this capability's merge.
 
+`.github/workflows/scripts/tests/run-detect-bot-mention-tests.sh` covers the
+quoted-mention gate the same way, and `review-fail-check` also calls
+`detect-bot-mention` through two real `uses:` steps -- one quoted mention, one
+genuine -- for the same `github.action_path`-resolution proof.
+Both directions are asserted deliberately: the only behaviour this gate can
+cause is a skip, so the negative case is the bug and the positive case is what
+stops the fix from silencing real requests.
+Read its `true` rows as the guard rails rather than as filler.
+
 `.github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh`
 covers the stripper that matcher now pipes its bodies through, as a table of
 `(input, expected output)` pairs rather than of verdicts.
@@ -806,6 +838,19 @@ coalesce rapid pushes would trade away review latency on every normal
 single-push PR just to suppress a cosmetic, self-resolving non-issue on the
 rare double-push. The fix is behavioral: batch closely-related changes into
 one commit/push instead of two in quick succession.
+
+**Until `@v2` picks up gha#342's gate, you cannot even *quote* the mention
+safely, and that interacts badly with the paragraph above.**
+`claude-bot.yml` gates on `contains(body, '@claude')`, so a comment writing
+the mention inside backticks -- exactly what explaining any of this requires
+-- spawns an agent run, which re-dispatches a review, which cancels the review
+already in flight.
+The natural response to a red `require-review` is a comment explaining why it
+is red, and that comment fires it again.
+So while writing about the bot on an issue or PR, defang the string the way
+gha#342's own body does.
+Once the gate ships and the tag advances, a quoted mention stands down on its
+own and the mitigation can be dropped.
 
 **Cheap self-check before investigating a post-push `require-review`/`claude-review` failure:**
 compare the failing check's commit SHA against the PR's *current* head SHA
