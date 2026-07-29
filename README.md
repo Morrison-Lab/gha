@@ -110,6 +110,9 @@ that need to write must have the **caller** grant it on the calling job:
     touch `.github/workflows/` can omit it; pushes fall back to `GITHUB_TOKEN`.
     Note that, unlike `GITHUB_TOKEN`, a PAT/App-token push **does** trigger other
     `push`-based workflows, so enabling `WORKFLOW_TOKEN` can set off extra CI runs.
+    When the secret is absent and Claude does edit a workflow file, the rejected
+    push is reported as an error naming this secret, and Claude's commits are
+    posted to the thread as a `git format-patch` so they survive the run.
   - **Optional:** set `checkout-submodules: true` so Claude can read submodule
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.

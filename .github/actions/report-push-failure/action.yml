@@ -1,0 +1,308 @@
+name: Report push failure
+description: >-
+  Explain a rejected `git push` and preserve the commits it could not deliver.
+  Classifies the push output into a named failure kind, emits a `::error::`
+  naming the fix, and posts a comment on the issue or PR carrying that
+  explanation, the raw git output, and a `git format-patch` of the work --
+  so the commits are recoverable instead of dying with the runner (gha#360).
+  Meant to be called from a step gated on the push having actually failed.
+  Requires `issues: write` (which also covers PR conversation comments) on the
+  calling job.
+
+inputs:
+  push-log:
+    description: >-
+      Path to a file holding the failed push's combined output. Credentials of
+      the form `https://x-access-token:<token>@host` are redacted before the
+      contents reach a comment -- Actions masks secrets in run logs but not in
+      comment bodies, so the redaction happens here rather than at the caller.
+      A path that does not exist is not an error: it means the calling step
+      failed before its push ran, which the action reports as the
+      `no-push-attempt` kind -- still posting the comment and any patch,
+      since the commits are stranded either way.
+    required: true
+  entity-number:
+    description: >-
+      Issue or PR number to comment on. Both go through `gh issue comment`,
+      which accepts a PR number. Leave empty to skip the comment and report
+      only through the run log.
+    required: false
+    default: ''
+  baseline-sha:
+    description: >-
+      The commit the branch started at, before the agent's work. The patch is
+      generated over `<baseline-sha>..<ref>`. Leave empty to skip the patch.
+    required: false
+    default: ''
+  ref:
+    description: Local ref holding the commits that could not be pushed.
+    required: false
+    default: HEAD
+  run-url:
+    description: >-
+      Link to the workflow run, included in the comment so a reader can reach
+      the full patch when the comment's copy was truncated.
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used to post the comment. Needs `issues: write`.'
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: >-
+      Build the report and write it to `body-file` without posting it. Exists
+      so `_selftest.yml` can exercise this action end to end -- proving it
+      resolves its helper script through `github.action_path`, and that the
+      credential redaction holds -- without commenting on a real thread.
+    required: false
+    default: 'false'
+
+outputs:
+  kind:
+    description: >-
+      `workflows-permission`, `push-protection` (a repository-rule rejection,
+      commonly secret scanning -- the one kind whose patch is withheld),
+      `non-fast-forward`, `other`, or `no-push-attempt` when the calling step
+      failed before pushing.
+    value: ${{ steps.report.outputs.kind }}
+  body-file:
+    description: Path to the composed comment body.
+    value: ${{ steps.report.outputs.body-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Explain the rejected push and preserve its commits
+      id: report
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        # Named explicitly rather than inferred from a git remote, matching
+        # open-failure-issue: the caller's checkout need not be the repository
+        # being commented on.
+        GH_REPO: ${{ github.repository }}
+        PUSH_LOG: ${{ inputs.push-log }}
+        ENTITY_NUMBER: ${{ inputs.entity-number }}
+        BASELINE_SHA: ${{ inputs.baseline-sha }}
+        WORK_REF: ${{ inputs.ref }}
+        RUN_URL: ${{ inputs.run-url }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        # Byte budgets for the comment body. GitHub caps a comment at 65,536
+        # CHARACTERS, so a byte budget below that is conservative for any
+        # multibyte content. The log gets a fixed slice and the patch takes
+        # the remainder, so the total is bounded rather than just the patch.
+        TOTAL_BODY_BYTES: '55000'
+        MAX_LOG_BYTES: '10000'
+        MIN_PATCH_BYTES: '4000'
+        # Callers run against their own checkout, not Morrison-Lab/gha's tree,
+        # so the helper is located through github.action_path -- the same
+        # resolution open-failure-issue and build-reviewer-args use.
+        CLASSIFY_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/classify-push-failure.sh
+      run: |
+        set -euo pipefail
+
+        # Fence a block of arbitrary text: count the longest backtick run it
+        # contains and open with one more, since a fence is closed by a run of
+        # equal length. A patch that touches a Markdown file carries ``` lines
+        # of its own, which a fixed three-backtick fence would end early.
+        #
+        # `|| true` is load-bearing under the `pipefail` above: grep exits 1
+        # when the text holds no backticks at all -- the ordinary case for a
+        # network or auth failure -- which makes the pipeline fail and, under
+        # `set -e`, would abort the whole report.
+        #
+        # Without it, whether that happens depends on the call site: a
+        # command substitution's subshell does not inherit `errexit` by
+        # default, so `x="$(fence_for ...)"` swallows it while calling this as
+        # a plain statement aborts. That default is not a guarantee --
+        # `shopt -s inherit_errexit` makes even the substitution form abort --
+        # so state the tolerance here rather than relying on either.
+        fence_for() {
+          local longest
+          longest="$( { grep -oE '`+' <<<"$1" || true; } | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')"
+          if [[ "$longest" -lt 3 ]]; then longest=2; fi
+          printf '`%.0s' $(seq $((longest + 1)))
+        }
+
+        # Cut a string to a byte budget without a pipe on the producer side.
+        # `head -c` stops reading once it has its bytes, so `printf ... |
+        # head -c` leaves printf writing to a closed pipe for any payload past
+        # the pipe buffer: SIGPIPE, which pipefail and set -e turn into an
+        # aborted report. Going through a file removes the producer entirely.
+        # `iconv -c` drops the partial multibyte character a byte-wise cut can
+        # leave at the end.
+        truncate_to_bytes() {
+          local text="$1" max="$2" tmp
+          tmp="$(mktemp)"
+          printf '%s' "$text" > "$tmp"
+          if [[ "$(wc -c < "$tmp")" -le "$max" ]]; then
+            printf '%s' "$text"
+          else
+            head -c "$max" "$tmp" | iconv -f UTF-8 -t UTF-8 -c
+          fi
+        }
+
+        # No log means the calling step failed BEFORE its push ran -- the
+        # auto-commit sweep, or the fork lookup. There is no rejection to
+        # classify, but the commits may still exist locally and unpushed, and
+        # the caller's response-post step is gated off on this same failure.
+        # Standing down silently would therefore leave the thread with no
+        # comment at all, which is the outcome gha#360 exists to prevent, so
+        # report the state rather than skipping it.
+        raw_log=''
+        if [[ -f "$PUSH_LOG" ]]; then
+          # Redact any credential git echoed back in the remote URL. Actions
+          # masks secrets in the run log, but a comment body is not run-log
+          # output and is not masked -- so a raw copy would publish the token.
+          # One rule covers both `user:token@` and the userinfo-only
+          # `token@host` form, since git accepts either.
+          raw_log="$(sed -E 's#(https://)[^/@[:space:]]+@#\1***@#g' "$PUSH_LOG")"
+          classified="$(printf '%s\n' "$raw_log" | bash "$CLASSIFY_SCRIPT" -)"
+          kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
+          withhold_patch="$(sed -n '2s/^withhold-patch=//p' <<<"$classified")"
+          headline="$(sed -n '3s/^headline=//p' <<<"$classified")"
+          advice="$(tail -n +5 <<<"$classified")"
+        else
+          withhold_patch=false
+          kind=no-push-attempt
+          headline='The push step failed before it could push; any commits it made are still on the runner.'
+          # No trailing promise of a patch: the likeliest cause named here is
+          # the auto-commit sweep failing, and then no commit exists to render
+          # -- the body would have said "included below" beside "No patch
+          # could be generated" (gha#361 review).
+          advice='The step that pushes the agent'"'"'s commits failed before reaching the push itself -- most likely while committing residual changes, or while looking up whether the PR came from a fork. No push was attempted, so there is no git rejection to explain; read the failing step in the run log for the cause.'
+        fi
+        echo "kind=$kind" >> "$GITHUB_OUTPUT"
+        # Suppressed under dry-run: `_selftest.yml` exercises this action on
+        # every PR, and an unconditional annotation stamps red errors into the
+        # Checks tab of a job that is passing (gha#361 review).
+        if [[ "$DRY_RUN" != "true" ]]; then
+          echo "::error::$headline"
+        fi
+
+        # The patch goes to the run log in full and to the comment truncated,
+        # so the complete work is always recoverable even when the comment's
+        # copy was cut. `git format-patch` (not `git diff`) so the commits and
+        # their messages come back through `git am`.
+        # stderr is captured SEPARATELY, not folded in with `2>&1`: git can
+        # warn (safe.directory, line endings) while still exiting 0, and a
+        # stray non-diff line spliced into the payload is exactly what makes
+        # `git am` reject the patch this feature exists to make recoverable.
+        #
+        # Skipped entirely when the classifier set `withhold-patch`. That
+        # means the rejection carries GitHub secret-scanning markers, so the
+        # commits themselves may hold a credential, and rendering them --
+        # into the comment OR the run log -- would republish exactly what the
+        # block contained. Actions' masking does not cover it, since a
+        # scanned secret is commit content rather than a configured
+        # `secrets.*` value (gha#361 review). Losing the patch is the correct
+        # trade: the commits must be rewritten to drop the secret before they
+        # can go anywhere anyway.
+        #
+        # Gated on `withhold-patch` rather than on `kind` because `kind` is a
+        # first-match chain: a push that both edits a workflow file and
+        # carries a secret classifies as `workflows-permission`, and a
+        # kind-keyed gate would have published the secret (round 5).
+        patch=''
+        patch_err="$(mktemp)"
+        if [[ "$withhold_patch" == "true" ]]; then
+          echo "::notice::Patch suppressed: the rejection carries secret-scanning markers, so the commits are not republished here."
+        elif [[ -n "$BASELINE_SHA" ]]; then
+          if patch="$(git format-patch --stdout "${BASELINE_SHA}..${WORK_REF}" 2>"$patch_err")"; then
+            if [[ -s "$patch_err" ]]; then
+              echo "::warning::git format-patch warned: $(cat "$patch_err")"
+            fi
+            echo "::group::Patch of the commits that could not be pushed"
+            printf '%s\n' "$patch"
+            echo "::endgroup::"
+          else
+            echo "::warning::Could not generate a patch over ${BASELINE_SHA}..${WORK_REF}: $(cat "$patch_err")"
+            patch=''
+          fi
+        fi
+
+        body_file="$(mktemp)"
+        echo "body-file=$body_file" >> "$GITHUB_OUTPUT"
+        {
+          printf '## Could not push the changes\n\n'
+          printf '%s\n\n' "$headline"
+          printf '%s\n\n' "$advice"
+          # Only claimed when a patch actually follows -- the sentence points
+          # at the commits below it, and no patch means there is nothing to
+          # point at.
+          if [[ -n "$patch" ]]; then
+            printf 'The commits below were made during this run but are **not on the branch** -- they exist only on the runner, which is discarded when the job ends.\n\n'
+          fi
+          # Omitted entirely when no push ran: an empty block would imply git
+          # said nothing, rather than that it was never reached.
+          #
+          # Capped in its own right. A real rejection can be long -- push
+          # protection prints a block per offending location, a branch rule
+          # can enumerate every file -- and an unbounded log could exceed the
+          # comment limit on its own, which makes `gh issue comment` 422 and
+          # drops the whole report (gha#361 review).
+          if [[ -n "$raw_log" ]]; then
+            log_body="$(truncate_to_bytes "$raw_log" "$MAX_LOG_BYTES")"
+            if [[ "$log_body" != "$raw_log" ]]; then
+              log_body="$log_body"$'\n\n... (truncated; full output in the workflow run)'
+            fi
+            log_fence="$(fence_for "$log_body")"
+            printf '<details><summary>git output</summary>\n\n%stext\n%s\n%s\n\n</details>\n\n' \
+              "$log_fence" "$log_body" "$log_fence"
+          fi
+        } > "$body_file"
+
+        if [[ -n "$patch" ]]; then
+          # A comment body caps at 65,536 CHARACTERS (see the
+          # detect-review-request paragraph in CLAUDE.md); this budget is in
+          # bytes, so it is conservative for any multibyte content.
+          #
+          # The patch takes what the prose and the log left, rather than a
+          # fixed 40 KB: capping only the patch bounded the wrong thing, since
+          # a long rejection could carry the total past the limit by itself
+          # and 422 the post (gha#361 review). MIN_PATCH_BYTES keeps a useful
+          # excerpt even when the log ate most of the budget -- the total
+          # cannot overflow, because MAX_LOG_BYTES plus that floor plus the
+          # fixed prose stays well under TOTAL_BODY_BYTES.
+          used="$(wc -c < "$body_file")"
+          max_patch_bytes=$(( TOTAL_BODY_BYTES - used ))
+          if [[ "$max_patch_bytes" -lt "$MIN_PATCH_BYTES" ]]; then
+            max_patch_bytes="$MIN_PATCH_BYTES"
+          fi
+          note=''
+          truncated_patch="$(truncate_to_bytes "$patch" "$max_patch_bytes")"
+          if [[ "$truncated_patch" != "$patch" ]]; then
+            note="(truncated at ${max_patch_bytes} bytes)"
+            if [[ -n "$RUN_URL" ]]; then
+              note="(truncated at ${max_patch_bytes} bytes; the full patch is in the [workflow run](${RUN_URL}))"
+            fi
+          fi
+          patch="$truncated_patch"
+          patch_fence="$(fence_for "$patch")"
+          {
+            printf '<details><summary>Patch -- recover with `git am`</summary>\n\n'
+            if [[ -n "$note" ]]; then printf '%s\n\n' "$note"; fi
+            printf '%sdiff\n%s\n%s\n\n</details>\n' "$patch_fence" "$patch" "$patch_fence"
+          } >> "$body_file"
+        elif [[ "$withhold_patch" != "true" && -n "$RUN_URL" ]]; then
+          # Not emitted when the patch was withheld on purpose: the advice
+          # above has just said the omission is deliberate and that the run
+          # log omits it for the same reason, so pointing at that run for
+          # "the full log" contradicts both sentences and invites the reader
+          # to go looking for something that is not there (round 5).
+          printf 'No patch could be generated; see the [workflow run](%s) for the full log.\n' "$RUN_URL" >> "$body_file"
+        fi
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo "::notice::[dry-run] Would comment on #${ENTITY_NUMBER:-<none>}; body written to $body_file"
+          exit 0
+        fi
+        if [[ -z "$ENTITY_NUMBER" ]]; then
+          echo "::warning::No issue or PR number given; the push failure is reported only in this run log."
+          exit 0
+        fi
+        # A failed comment must not mask the push failure that prompted it --
+        # the job is already red from the push step, and the run log carries
+        # the same report either way.
+        gh issue comment "$ENTITY_NUMBER" --body-file "$body_file" \
+          || echo "::warning::Could not post the push-failure report to #${ENTITY_NUMBER}."
