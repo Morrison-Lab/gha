@@ -14,9 +14,10 @@
 # Output (stdout), in this exact shape so the caller can split it:
 #
 #   line 1  kind=<workflows-permission|push-protection|non-fast-forward|other>
-#   line 2  headline=<single-line summary, safe for ::error::>
-#   line 3  (blank)
-#   line 4+ Markdown advice
+#   line 2  withhold-patch=<true|false>
+#   line 3  headline=<single-line summary, safe for ::error::>
+#   line 4  (blank)
+#   line 5+ Markdown advice
 #
 # The advice is Markdown because its other destination is a PR/issue comment.
 set -euo pipefail
@@ -28,18 +29,34 @@ else
   log="$(cat "$source_arg")"
 fi
 
+# Decided INDEPENDENTLY of `kind`, and deliberately so.
+#
+# `kind` is a first-match chain, so it answers "what should we tell the
+# reader" -- one rejection, one explanation. Whether the commits may be
+# published is a different question, and tying it to `kind` made it
+# answerable only for the branch that happened to win: a single push that
+# both edits a workflow file AND carries a secret matches the
+# workflows-permission clause first, and the patch went out with the secret
+# in it (gha#361 review round 5).
+#
+# So the markers are tested on their own, and the caller gates publication on
+# this rather than on `kind`. Erring toward withholding costs a re-run;
+# publishing a live credential cannot be undone.
+withhold_patch=false
+if grep -qE 'GH013|GITHUB PUSH PROTECTION|push declined due to repository rule violations|secret scanning' <<<"$log"; then
+  withhold_patch=true
+fi
+
 # Match the whole "refusing to allow X to create or update workflow" clause
 # rather than the trailing scope name. GitHub words the tail differently
 # depending on which credential was used: a GitHub App is rejected for
 # lacking the "workflows" permission, a Personal Access Token for lacking the
 # "workflow" scope. This clause is common to every variant.
 #
-# Checked BEFORE push protection, even though that one is the security case.
-# GitHub wraps a workflow-permission rejection in the same generic `GH013:
-# Repository rule violations` envelope that push protection uses, so leading
-# with the envelope misfiled the ordinary missing-WORKFLOW_TOKEN rejection as
-# a secret leak. This clause is unambiguous, so it decides first; the broader
-# rule-violation wording below then catches everything else.
+# Checked before push protection so the more specific explanation wins when
+# both match. That ordering is now only about which advice the reader sees --
+# it no longer decides whether the patch is published, which is what made it
+# a security question before.
 if grep -qE 'refusing to allow .* to create or update workflow' <<<"$log"; then
   kind=workflows-permission
   headline='Push rejected: the token cannot write .github/workflows/ -- set the WORKFLOW_TOKEN secret.'
@@ -123,7 +140,22 @@ EOF
   )
 fi
 
+# When the markers fired but a more specific kind won the chain, the chosen
+# advice says nothing about a missing patch -- so say it here. Without this
+# the reader gets a report whose patch is silently absent, which is the
+# contradiction the no-push-attempt and push-protection texts were already
+# fixed for.
+if [[ "$withhold_patch" == "true" && "$kind" != "push-protection" ]]; then
+  advice="$advice"'
+
+**No patch is included in this comment, deliberately.** The rejection also
+carries GitHub secret-scanning markers, so the commits may contain a
+credential; publishing them here would republish it. Rotate anything the
+rejection names, remove it from the commits, and re-run.'
+fi
+
 printf 'kind=%s\n' "$kind"
+printf 'withhold-patch=%s\n' "$withhold_patch"
 printf 'headline=%s\n' "$headline"
 printf '\n'
 printf '%s\n' "$advice"

@@ -123,7 +123,7 @@ which is why the capabilities above moved to `@v2`.
   claude-code-action execution-output file's last `result` event. `claude.yml`
   calls it once, right after "Run Claude Code", and both its
   comment-posting steps ("Post Claude's response if no code was committed"
-  and "Push branch and finalize PR for issue trigger") read the shared
+  and "Finalize PR for issue trigger") read the shared
   `steps.cost.outputs.cost` — a single extraction instead of duplicating the
   jq filter at both call sites (gha#219 review finding 1).
 - `.github/actions/sum-costs/` — wraps `scripts/sum-costs.sh`, which sums two
@@ -255,8 +255,11 @@ which is why the capabilities above moved to `@v2`.
   credential git echoed back in the remote URL, emits the `::error::`,
   generates a `git format-patch` of the commits that could not be pushed, and
   comments all of it on the issue or PR.
-  `claude.yml` calls it from two steps, one per push site (the PR-trigger push
-  and the issue-trigger finalize).
+  `claude.yml` calls it from two steps, one per push site -- "Push PR branch
+  if Claude committed" and "Push branch for issue trigger".
+  That second one is a step this PR split out of the old combined push-and-
+  finalize step, so the push's own outcome can gate the finalize that follows
+  it.
   Three things to know before changing it.
   The redaction is not belt-and-braces: Actions masks secrets in a **run log**
   and not in a **comment body**, so without it the push token would be
@@ -286,12 +289,28 @@ which is why the capabilities above moved to `@v2`.
   aborted report -- losing the comment precisely for the large patches that
   most need preserving.
   Two more, from gha#361's second round.
-  The `push-protection` kind (GitHub's `GH013` secret-scanning rejection) is
-  the one case where the patch is **suppressed** rather than posted: those
-  commits carry the secret the push was blocked to contain, so rendering them
-  into a public comment -- or the run log -- would republish it, and Actions'
-  masking does not apply because a scanned secret is commit content rather
-  than a configured `secrets.*` value.
+  A rejection carrying GitHub secret-scanning markers (`GH013` and friends)
+  gets its patch **suppressed** rather than posted: those commits carry the
+  secret the push was blocked to contain, so rendering them into a public
+  comment -- or the run log -- would republish it, and Actions' masking does
+  not apply because a scanned secret is commit content rather than a
+  configured `secrets.*` value.
+  **That suppression is a second output, `withhold-patch`, decided
+  independently of `kind` -- do not re-key it on `kind`.**
+  `kind` is a first-match chain, so it answers "which explanation does the
+  reader get", one rejection and one story.
+  Whether the commits may be published is a different question, and tying it
+  to `kind` made it answerable only for whichever clause happened to win: a
+  push that both edits a workflow file *and* carries a secret matches the
+  workflows-permission clause first, so a kind-keyed gate never fired and
+  the patch went out with the live credential in it (round 5).
+  The markers are therefore tested on their own, before the chain, and the
+  composite gates publication on that -- erring toward withholding, since a
+  needless withhold costs a re-run while a published credential cannot be
+  recalled.
+  When the markers fire but another kind wins, the classifier appends the
+  no-patch explanation to that kind's advice, so the omission is never
+  silent.
   And the byte budget bounds the **whole body**, not just the patch: the log
   gets a fixed slice and the patch takes the remainder, because capping only
   the patch let a verbose rejection carry the total past GitHub's comment

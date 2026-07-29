@@ -15,8 +15,14 @@ total=0
 
 # The verbatim rejection from the run gha#360 was filed over: a GitHub App
 # (the integrated GITHUB_TOKEN) pushing a change under .github/workflows/.
+#
+# Note what is NOT here: a `GH013` line. An earlier revision of this fixture
+# carried one, and a review round then reasoned from it that GitHub wraps a
+# workflow-permission rejection in the generic rule-violation envelope. It
+# does not -- the line was invented here, and the claim was published on the
+# PR before anyone checked it against the issue. Keep this fixture verbatim;
+# the co-occurrence case below is where both markers belong.
 app_rejection=$(cat <<'EOF'
-remote: error: GH013: Repository rule violations found for refs/heads/topic.
 To https://github.com/Morrison-Lab/ai-config.git
  ! [remote rejected] HEAD -> topic (refusing to allow a GitHub App to create or update workflow `.github/workflows/validate.yml` without `workflows` permission)
 error: failed to push some refs to 'https://github.com/Morrison-Lab/ai-config.git'
@@ -72,6 +78,21 @@ EOF
 # GH013 code, e.g. in some rule-set configurations.
 push_protection_alt='remote: error: push declined due to repository rule violations'
 
+# The case that motivated splitting `withhold-patch` out of `kind`: one push
+# that both edits a workflow file AND carries a secret, so BOTH clauses match.
+# `kind` is a first-match chain, so workflows-permission wins and the reader
+# gets that explanation -- but the commits still hold the credential, so the
+# patch must be withheld anyway. A gate keyed on `kind` published it (gha#361
+# review round 5).
+both_markers=$(cat <<'EOF'
+remote: error: GH013: Repository rule violations found for refs/heads/topic.
+remote: - GITHUB PUSH PROTECTION
+remote:   Resolve the following secrets before pushing again.
+remote:      - Anthropic API Key
+ ! [remote rejected] HEAD -> topic (refusing to allow a GitHub App to create or update workflow `.github/workflows/validate.yml` without `workflows` permission)
+EOF
+)
+
 # check_kind <name> <log> <expected kind>
 check_kind() {
   local name="$1" log="$2" want="$3" got
@@ -81,6 +102,23 @@ check_kind() {
     echo "OK   $name"
   else
     echo "::error::$name: expected kind '$want' but got '$got'"
+    failures=$((failures + 1))
+  fi
+}
+
+# check_withhold <name> <log> <expected true|false>
+#
+# The security-relevant output, and the one that must be asserted separately
+# from `kind`: the composite gates publication of the patch on this line, not
+# on the kind.
+check_withhold() {
+  local name="$1" log="$2" want="$3" got
+  total=$((total + 1))
+  got="$(printf '%s\n' "$log" | bash "$classify" - | sed -n '2s/^withhold-patch=//p')"
+  if [[ "$got" == "$want" ]]; then
+    echo "OK   $name"
+  else
+    echo "::error::$name: expected withhold-patch '$want' but got '$got'"
     failures=$((failures + 1))
   fi
 }
@@ -110,10 +148,24 @@ check_kind "authentication failure"         "$auth_failure"    other
 check_kind "empty log"                      ""                 other
 check_kind "push protection (GH013)"        "$push_protection"     push-protection
 check_kind "push protection (rule wording)" "$push_protection_alt" push-protection
+# Both clauses match. The chain is first-match, so the reader gets the more
+# specific workflows-permission explanation...
+check_kind "co-occurring markers pick the specific kind" "$both_markers" workflows-permission
 
-# The advice must say the patch is withheld, since the caller keys the
-# suppression off the kind while the reader learns it only from this text.
+# ... but the patch is withheld regardless, because the commits still carry
+# whatever secret scanning caught. This pair is the whole reason the two
+# outputs are computed independently -- a gate keyed on `kind` publishes it.
+check_withhold "co-occurring markers still withhold"  "$both_markers"    true
+check_withhold "push protection withholds"            "$push_protection" true
+check_withhold "plain workflows rejection publishes"  "$app_rejection"   false
+check_withhold "unrecognized failure publishes"       "$auth_failure"    false
+
+# The advice must say the patch is withheld -- the suppression itself is keyed
+# on `withhold-patch`, but the reader learns of it only from this text.
 check_advice "push protection says no patch" "$push_protection" "No patch is included" has
+# ... including when another kind won the chain and supplied the advice, which
+# is the case where the omission would otherwise be silent.
+check_advice "co-occurring case explains the missing patch" "$both_markers" "No patch is included" has
 # A secret-bearing rejection must never be classified as anything that would
 # publish the commits; this is the assertion guarding that.
 check_advice "push protection names rotation" "$push_protection" "rotate" has
@@ -125,23 +177,25 @@ check_advice "names WORKFLOW_TOKEN"          "$app_rejection" "WORKFLOW_TOKEN"  
 check_advice "links the README permissions"  "$app_rejection" "gha#permissions"         has
 check_advice "generic case omits the secret" "$auth_failure"  "WORKFLOW_TOKEN"          lacks
 
-# The three-part output contract the composite action parses: `kind=` on line
-# 1, `headline=` on line 2, a blank line 3, advice from line 4.
+# The output contract the composite action parses, by line: `kind=`,
+# `withhold-patch=`, `headline=`, a blank, then advice. The composite reads
+# each by fixed offset, so a reordering here breaks it silently.
 total=$((total + 1))
 out="$(printf '%s\n' "$app_rejection" | bash "$classify" -)"
 if [[ "$(sed -n '1p' <<<"$out")" == kind=* ]] &&
-   [[ "$(sed -n '2p' <<<"$out")" == headline=* ]] &&
-   [[ -z "$(sed -n '3p' <<<"$out")" ]] &&
-   [[ -n "$(tail -n +4 <<<"$out")" ]]; then
-  echo "OK   output shape (kind / headline / blank / advice)"
+   [[ "$(sed -n '2p' <<<"$out")" == withhold-patch=* ]] &&
+   [[ "$(sed -n '3p' <<<"$out")" == headline=* ]] &&
+   [[ -z "$(sed -n '4p' <<<"$out")" ]] &&
+   [[ -n "$(tail -n +5 <<<"$out")" ]]; then
+  echo "OK   output shape (kind / withhold-patch / headline / blank / advice)"
 else
-  echo "::error::output shape: expected kind, headline, blank line, then advice"
+  echo "::error::output shape: expected kind, withhold-patch, headline, blank line, then advice"
   failures=$((failures + 1))
 fi
 
 # The headline reaches an `::error::` annotation, which is a single line.
 total=$((total + 1))
-if [[ "$(sed -n '2s/^headline=//p' <<<"$out" | wc -l)" -eq 1 ]]; then
+if [[ "$(sed -n '3s/^headline=//p' <<<"$out" | wc -l)" -eq 1 ]]; then
   echo "OK   headline is a single line"
 else
   echo "::error::headline must be a single line to be usable in ::error::"

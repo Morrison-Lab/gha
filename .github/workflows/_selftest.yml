@@ -603,6 +603,13 @@ jobs:
           push-log: ${{ runner.temp }}/push-failure-secret.log
           baseline-sha: ${{ env.baseline_sha }}
           ref: HEAD
+          # Passed deliberately, matching both production call sites. Omitting
+          # it here hid a real contradiction: the no-patch fallback fires on an
+          # empty patch, so a withheld patch used to append "see the workflow
+          # run for the full log" directly under advice saying the run log
+          # omits it too (round 5). Without this input that branch is
+          # unreachable and the assertion below cannot see it.
+          run-url: https://example.invalid/run
           dry-run: 'true'
       - name: Assert the secret-scanning case withholds the patch
         shell: bash
@@ -623,6 +630,12 @@ jobs:
           fi
           if ! grep -q 'No patch is included' "$BODY_FILE"; then
             echo "::error::the report does not tell the reader why the patch is missing"
+            exit 1
+          fi
+          # ... and does not then send the reader to the run log for it, which
+          # the advice two paragraphs up has just said omits it as well.
+          if grep -q 'No patch could be generated' "$BODY_FILE"; then
+            echo "::error::the report contradicts itself: patch withheld on purpose, then points at the run log for it"
             exit 1
           fi
           echo "report-push-failure withheld the patch for a secret-scanning rejection"

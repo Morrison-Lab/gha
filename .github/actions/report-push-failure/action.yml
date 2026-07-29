@@ -159,9 +159,11 @@ runs:
           raw_log="$(sed -E 's#(https://)[^/@[:space:]]+@#\1***@#g' "$PUSH_LOG")"
           classified="$(printf '%s\n' "$raw_log" | bash "$CLASSIFY_SCRIPT" -)"
           kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
-          headline="$(sed -n '2s/^headline=//p' <<<"$classified")"
-          advice="$(tail -n +4 <<<"$classified")"
+          withhold_patch="$(sed -n '2s/^withhold-patch=//p' <<<"$classified")"
+          headline="$(sed -n '3s/^headline=//p' <<<"$classified")"
+          advice="$(tail -n +5 <<<"$classified")"
         else
+          withhold_patch=false
           kind=no-push-attempt
           headline='The push step failed before it could push; any commits it made are still on the runner.'
           # No trailing promise of a patch: the likeliest cause named here is
@@ -187,18 +189,24 @@ runs:
         # stray non-diff line spliced into the payload is exactly what makes
         # `git am` reject the patch this feature exists to make recoverable.
         #
-        # Skipped entirely for `push-protection`. That rejection means the
-        # commits themselves carry a secret GitHub's scanning caught, so
-        # rendering them -- into the comment OR the run log -- would republish
-        # exactly what the block contained. Actions' masking does not cover
-        # it, since a scanned secret is commit content rather than a
-        # configured `secrets.*` value (gha#361 review). Losing the patch is
-        # the correct trade here: the commits must be rewritten to drop the
-        # secret before they can go anywhere anyway.
+        # Skipped entirely when the classifier set `withhold-patch`. That
+        # means the rejection carries GitHub secret-scanning markers, so the
+        # commits themselves may hold a credential, and rendering them --
+        # into the comment OR the run log -- would republish exactly what the
+        # block contained. Actions' masking does not cover it, since a
+        # scanned secret is commit content rather than a configured
+        # `secrets.*` value (gha#361 review). Losing the patch is the correct
+        # trade: the commits must be rewritten to drop the secret before they
+        # can go anywhere anyway.
+        #
+        # Gated on `withhold-patch` rather than on `kind` because `kind` is a
+        # first-match chain: a push that both edits a workflow file and
+        # carries a secret classifies as `workflows-permission`, and a
+        # kind-keyed gate would have published the secret (round 5).
         patch=''
         patch_err="$(mktemp)"
-        if [[ "$kind" == "push-protection" ]]; then
-          echo "::notice::Patch suppressed: the push was blocked for containing a secret, so the commits are not republished here."
+        if [[ "$withhold_patch" == "true" ]]; then
+          echo "::notice::Patch suppressed: the rejection carries secret-scanning markers, so the commits are not republished here."
         elif [[ -n "$BASELINE_SHA" ]]; then
           if patch="$(git format-patch --stdout "${BASELINE_SHA}..${WORK_REF}" 2>"$patch_err")"; then
             if [[ -s "$patch_err" ]]; then
@@ -276,7 +284,12 @@ runs:
             if [[ -n "$note" ]]; then printf '%s\n\n' "$note"; fi
             printf '%sdiff\n%s\n%s\n\n</details>\n' "$patch_fence" "$patch" "$patch_fence"
           } >> "$body_file"
-        elif [[ -n "$RUN_URL" ]]; then
+        elif [[ "$withhold_patch" != "true" && -n "$RUN_URL" ]]; then
+          # Not emitted when the patch was withheld on purpose: the advice
+          # above has just said the omission is deliberate and that the run
+          # log omits it for the same reason, so pointing at that run for
+          # "the full log" contradicts both sentences and invites the reader
+          # to go looking for something that is not there (round 5).
           printf 'No patch could be generated; see the [workflow run](%s) for the full log.\n' "$RUN_URL" >> "$body_file"
         fi
 

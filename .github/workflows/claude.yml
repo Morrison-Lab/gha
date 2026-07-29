@@ -19,8 +19,10 @@ name: Claude Code (reusable)
 # tag mode provides — so this workflow reproduces it with explicit pre/post
 # steps:
 #   - "Set up branch for issue trigger" creates claude/issue-N-<ts>.
-#   - "Push branch and finalize PR for issue trigger" pushes it + opens a
-#     draft PR, so an @claude mention on an *issue* yields a PR.
+#   - "Push branch for issue trigger" pushes it, and "Finalize PR for issue
+#     trigger" then marks the draft PR ready, so an @claude mention on an
+#     *issue* yields a PR. Two steps rather than one so the push's own
+#     outcome can gate what follows it (gha#360).
 #   - "Post Claude's response if no code was committed" surfaces prose replies
 #     (questions/reviews) that agent mode would otherwise discard.
 #   - "Dispatch <review-workflow-file> on @claude review" routes review
@@ -780,8 +782,8 @@ jobs:
 
       # Extracted into its own step (rather than duplicated inline in each
       # comment-posting step below) because both "Post Claude's response if
-      # no code was committed" and "Push branch and finalize PR for issue
-      # trigger" read the SAME steps.claude.outputs.execution_file — one
+      # no code was committed" and "Finalize PR for issue trigger" read the
+      # SAME steps.claude.outputs.execution_file — one
       # extraction covers both call sites (gha#219 review finding 1). Wrapped
       # in a composite action because this workflow's steps run against the
       # CALLER's checkout, not d-morrison/gha's own tree (see the action's
@@ -836,7 +838,7 @@ jobs:
           # Sweep changes Claude staged or left untracked but never committed so
           # they aren't dropped (uncommitted edits never advance HEAD, and the
           # push below only fires when HEAD moved). HEAD is the PR's checked-out
-          # head branch here. (The issue-trigger finalize step sweeps the same
+          # head branch here. ("Push branch for issue trigger" sweeps the same
           # way but does NOT revert config first: no base-restore runs there.)
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "claude[bot]"
@@ -959,11 +961,19 @@ jobs:
       # the thread assert a state the branch does not have (gha#360); the
       # report step above posts the truth, with the patch, instead.
       #
-      # Only the PR path needs that gate. An issue trigger measures the local
-      # branch tip against its baseline, which a failed push does not change,
-      # so the check below already reads "committed" and this step stands
-      # down -- and the finalize step's own success-shaped comment sits after
-      # its push, so it never runs either.
+      # Only the PR path CAN have that gate: "Push branch for issue trigger"
+      # runs several hundred lines below this step, so its outcome does not
+      # exist yet and an equivalent condition here would always be empty.
+      #
+      # The issue path is covered structurally instead, in two pieces. Where
+      # Claude committed, the check below measures the local branch tip
+      # against its baseline -- a failed push does not move that tip, so it
+      # reads "committed" and this step stands down. Where Claude left the
+      # work uncommitted, the tip has not moved either, so this step DOES
+      # post prose; but the push step's own auto-commit sweep, and therefore
+      # the push that could fail, are both still ahead of it, so there is no
+      # failure yet to misreport. Either way the finalize step's
+      # success-shaped comment sits after the push and is gated on it.
       - name: Post Claude's response if no code was committed
         if: |
           always() &&
