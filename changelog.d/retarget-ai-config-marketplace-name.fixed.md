@@ -8,7 +8,7 @@
   matched anything, so plugin installation aborted the run before it reviewed
   or answered anything:
 
-  ```
+  ```text
   Failed to install plugin 'ai-config@d-morrison' (exit code: 1)
   ```
 
