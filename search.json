@@ -368,7 +368,7 @@
     "href": "reference/claude.html#secrets",
     "title": "claude.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nOAuth token for Claude Code (Claude Max plan).\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key (or GitHub App via /install-github-app), used instead of CLAUDE_CODE_OAUTH_TOKEN.\n\n\nSUBMODULES_TOKEN\nno\nRead access to private submodules.\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token with contents:write plus workflows:write, needed only to push changes under .github/workflows/. Falls back to GITHUB_TOKEN when unset.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nOAuth token for Claude Code (Claude Max plan).\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key (or GitHub App via /install-github-app), used instead of CLAUDE_CODE_OAUTH_TOKEN.\n\n\nSUBMODULES_TOKEN\nno\nRead access to private submodules.\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token with contents:write plus workflows:write, needed only to push changes under .github/workflows/. Falls back to GITHUB_TOKEN when unset – and when that fallback is rejected, the run reports an error naming this secret and posts the unpushed commits to the thread as a git format-patch.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -791,7 +791,7 @@
     "href": "permissions.html#optional-secrets",
     "title": "Permissions",
     "section": "Optional secrets",
-    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
+    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
     "crumbs": [
       "Overview",
       "Permissions"
