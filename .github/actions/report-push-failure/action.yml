@@ -17,8 +17,9 @@ inputs:
       contents reach a comment -- Actions masks secrets in run logs but not in
       comment bodies, so the redaction happens here rather than at the caller.
       A path that does not exist is not an error: it means the calling step
-      failed before its push ran, so the action stands down instead of
-      reporting a rejection that never happened.
+      failed before its push ran, which the action reports as the
+      `no-push-attempt` kind -- still posting the comment and any patch,
+      since the commits are stranded either way.
     required: true
   entity-number:
     description: >-
@@ -58,7 +59,9 @@ inputs:
 
 outputs:
   kind:
-    description: '`workflows-permission`, `non-fast-forward`, or `other`.'
+    description: >-
+      `workflows-permission`, `non-fast-forward`, `other`, or
+      `no-push-attempt` when the calling step failed before pushing.
     value: ${{ steps.report.outputs.kind }}
   body-file:
     description: Path to the composed comment body.
@@ -97,11 +100,14 @@ runs:
         # `|| true` is load-bearing under the `pipefail` above: grep exits 1
         # when the text holds no backticks at all -- the ordinary case for a
         # network or auth failure -- which makes the pipeline fail and, under
-        # `set -e`, would abort the whole report. It survives today only
-        # because every call site wraps this in `x="$(fence_for ...)"`, and
-        # bash suppresses errexit inside a command substitution that is part
-        # of an assignment; calling it as a plain statement aborts. Don't rely
-        # on that: state the tolerance here.
+        # `set -e`, would abort the whole report.
+        #
+        # Without it, whether that happens depends on the call site: a
+        # command substitution's subshell does not inherit `errexit` by
+        # default, so `x="$(fence_for ...)"` swallows it while calling this as
+        # a plain statement aborts. That default is not a guarantee --
+        # `shopt -s inherit_errexit` makes even the substitution form abort --
+        # so state the tolerance here rather than relying on either.
         fence_for() {
           local longest
           longest="$( { grep -oE '`+' <<<"$1" || true; } | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')"
@@ -109,26 +115,30 @@ runs:
           printf '`%.0s' $(seq $((longest + 1)))
         }
 
-        # No log means the calling step failed BEFORE its push ran, so there
-        # is no rejection to explain. Say so and stand down rather than
-        # raising a second error: the caller is already red for its own
-        # reason, and a spurious error here would send a reader looking for a
-        # push problem that never happened.
-        if [[ ! -f "$PUSH_LOG" ]]; then
-          echo "::notice::No push log at '$PUSH_LOG' -- the calling step failed before pushing, so there is no rejection to report."
-          echo "kind=" >> "$GITHUB_OUTPUT"
-          exit 0
+        # No log means the calling step failed BEFORE its push ran -- the
+        # auto-commit sweep, or the fork lookup. There is no rejection to
+        # classify, but the commits may still exist locally and unpushed, and
+        # the caller's response-post step is gated off on this same failure.
+        # Standing down silently would therefore leave the thread with no
+        # comment at all, which is the outcome gha#360 exists to prevent, so
+        # report the state rather than skipping it.
+        raw_log=''
+        if [[ -f "$PUSH_LOG" ]]; then
+          # Redact any credential git echoed back in the remote URL. Actions
+          # masks secrets in the run log, but a comment body is not run-log
+          # output and is not masked -- so a raw copy would publish the token.
+          # One rule covers both `user:token@` and the userinfo-only
+          # `token@host` form, since git accepts either.
+          raw_log="$(sed -E 's#(https://)[^/@[:space:]]+@#\1***@#g' "$PUSH_LOG")"
+          classified="$(printf '%s\n' "$raw_log" | bash "$CLASSIFY_SCRIPT" -)"
+          kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
+          headline="$(sed -n '2s/^headline=//p' <<<"$classified")"
+          advice="$(tail -n +4 <<<"$classified")"
+        else
+          kind=no-push-attempt
+          headline='The push step failed before it could push; any commits it made are still on the runner.'
+          advice='The step that pushes the agent'"'"'s commits failed before reaching the push itself -- most likely while committing residual changes, or while looking up whether the PR came from a fork. No push was attempted, so there is no git rejection to explain; read the failing step in the run log for the cause. Any commits already made are included below.'
         fi
-
-        # Redact any credential git echoed back in the remote URL. Actions
-        # masks secrets in the run log, but a comment body is not run-log
-        # output and is not masked -- so a raw copy would publish the token.
-        raw_log="$(sed -E 's#(https://[^/@[:space:]]+):[^@[:space:]]+@#\1:***@#g' "$PUSH_LOG")"
-
-        classified="$(printf '%s\n' "$raw_log" | bash "$CLASSIFY_SCRIPT" -)"
-        kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
-        headline="$(sed -n '2s/^headline=//p' <<<"$classified")"
-        advice="$(tail -n +4 <<<"$classified")"
         echo "kind=$kind" >> "$GITHUB_OUTPUT"
         echo "::error::$headline"
 
@@ -136,38 +146,67 @@ runs:
         # so the complete work is always recoverable even when the comment's
         # copy was cut. `git format-patch` (not `git diff`) so the commits and
         # their messages come back through `git am`.
+        # stderr is captured SEPARATELY, not folded in with `2>&1`: git can
+        # warn (safe.directory, line endings) while still exiting 0, and a
+        # stray non-diff line spliced into the payload is exactly what makes
+        # `git am` reject the patch this feature exists to make recoverable.
         patch=''
+        patch_err="$(mktemp)"
         if [[ -n "$BASELINE_SHA" ]]; then
-          if patch="$(git format-patch --stdout "${BASELINE_SHA}..${WORK_REF}" 2>&1)"; then
+          if patch="$(git format-patch --stdout "${BASELINE_SHA}..${WORK_REF}" 2>"$patch_err")"; then
+            if [[ -s "$patch_err" ]]; then
+              echo "::warning::git format-patch warned: $(cat "$patch_err")"
+            fi
             echo "::group::Patch of the commits that could not be pushed"
             printf '%s\n' "$patch"
             echo "::endgroup::"
           else
-            echo "::warning::Could not generate a patch over ${BASELINE_SHA}..${WORK_REF}: $patch"
+            echo "::warning::Could not generate a patch over ${BASELINE_SHA}..${WORK_REF}: $(cat "$patch_err")"
             patch=''
           fi
         fi
 
         body_file="$(mktemp)"
         echo "body-file=$body_file" >> "$GITHUB_OUTPUT"
-        log_fence="$(fence_for "$raw_log")"
         {
           printf '## Could not push the changes\n\n'
           printf '%s\n\n' "$headline"
           printf '%s\n\n' "$advice"
-          printf 'The commits below were made during this run but are **not on the branch** -- they exist only on the runner, which is discarded when the job ends.\n\n'
-          printf '<details><summary>git output</summary>\n\n%stext\n%s\n%s\n\n</details>\n\n' \
-            "$log_fence" "$raw_log" "$log_fence"
+          # Only claimed when a patch actually follows -- the sentence points
+          # at the commits below it, and no patch means there is nothing to
+          # point at.
+          if [[ -n "$patch" ]]; then
+            printf 'The commits below were made during this run but are **not on the branch** -- they exist only on the runner, which is discarded when the job ends.\n\n'
+          fi
+          # Omitted entirely when no push ran: an empty block would imply git
+          # said nothing, rather than that it was never reached.
+          if [[ -n "$raw_log" ]]; then
+            log_fence="$(fence_for "$raw_log")"
+            printf '<details><summary>git output</summary>\n\n%stext\n%s\n%s\n\n</details>\n\n' \
+              "$log_fence" "$raw_log" "$log_fence"
+          fi
         } > "$body_file"
 
         if [[ -n "$patch" ]]; then
-          # Comment bodies cap at 65,536 bytes; leave room for the prose above.
-          # `iconv -c` drops a trailing partial multibyte character left by a
-          # byte-wise cut, matching claude.yml's own truncation.
+          # A comment body caps at 65,536 CHARACTERS (see the
+          # detect-review-request paragraph in CLAUDE.md); this budget is in
+          # bytes, so it is conservative for any multibyte content. `iconv -c`
+          # drops a trailing partial multibyte character left by a byte-wise
+          # cut, matching claude.yml's own truncation.
+          #
+          # The cut reads a FILE rather than a pipe. `head -c` stops reading
+          # once it has its bytes, so with a producer on the other end of a
+          # pipe (`printf ... | head -c`) a payload larger than the pipe
+          # buffer leaves printf writing to a closed pipe: SIGPIPE, exit 141,
+          # which `pipefail` promotes to the pipeline's status and `set -e`
+          # turns into an aborted report -- losing the comment precisely for
+          # the large patches that most need preserving (gha#361 review).
           max_patch_bytes=40000
           note=''
-          if [[ "$(printf '%s' "$patch" | wc -c)" -gt "$max_patch_bytes" ]]; then
-            patch="$(printf '%s' "$patch" | head -c "$max_patch_bytes" | iconv -f UTF-8 -t UTF-8 -c)"
+          patch_file="$(mktemp)"
+          printf '%s' "$patch" > "$patch_file"
+          if [[ "$(wc -c < "$patch_file")" -gt "$max_patch_bytes" ]]; then
+            patch="$(head -c "$max_patch_bytes" "$patch_file" | iconv -f UTF-8 -t UTF-8 -c)"
             note="(truncated at ${max_patch_bytes} bytes)"
             if [[ -n "$RUN_URL" ]]; then
               note="(truncated at ${max_patch_bytes} bytes; the full patch is in the [workflow run](${RUN_URL}))"

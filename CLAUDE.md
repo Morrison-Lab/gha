@@ -271,6 +271,19 @@ which is why the capabilities above moved to `@v2`.
   `strip-non-invoking-markup.sh` uses -- a patch that touches a Markdown file
   carries ``` lines of its own, which a fixed three-backtick fence would let
   close the block early.
+  Two further behaviours are load-bearing rather than incidental, both found
+  by gha#361's review.
+  A **missing** push log is reported as the `no-push-attempt` kind rather
+  than skipped: the calling step can die before its push (the auto-commit
+  sweep, the fork lookup), and since `claude.yml` gates its response-post
+  step off on that same failure, standing down here would leave the thread
+  with no comment at all -- the exact outcome gha#360 exists to prevent.
+  And the patch is truncated by reading a **file**, never a pipe:
+  `printf ... | head -c` leaves printf writing to a closed pipe once head has
+  its bytes, so any patch past the ~64 KiB pipe buffer raised SIGPIPE, which
+  `pipefail` promotes to the pipeline's status and `set -e` turns into an
+  aborted report -- losing the comment precisely for the large patches that
+  most need preserving.
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.

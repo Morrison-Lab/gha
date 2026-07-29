@@ -550,6 +550,39 @@ jobs:
             exit 1
           fi
           echo "report-push-failure handled a backtick-free log correctly"
+      # A third call, with no push log at all -- the calling step failed
+      # before it pushed. This must still post, because the caller's
+      # response-post step is gated off on the same failure, so standing down
+      # here would leave the thread with no comment at all (gha#361 review).
+      - name: Exercise report-push-failure with no push log
+        id: push-failure-none
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/no-such-push-log.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          dry-run: 'true'
+      - name: Assert the missing-log case still reports
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-none.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-none.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "no-push-attempt" ]]; then
+            echo "::error::a missing push log classified as '$KIND', expected 'no-push-attempt'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::a missing push log produced no report -- the thread would go silent"
+            exit 1
+          fi
+          # The commits are still stranded, so the patch is the point.
+          if ! grep -q '^diff --git' "$BODY_FILE"; then
+            echo "::error::the missing-log report carries no patch of the unpushed commits"
+            exit 1
+          fi
+          echo "report-push-failure reported the no-push-attempt case correctly"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't
