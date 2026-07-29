@@ -44,8 +44,6 @@ on:
         required: false
       GEMINI_API_KEY:
         required: false
-      WORKFLOW_TOKEN:
-        required: false
 
 jobs:
   select-and-review:
@@ -61,12 +59,25 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      # The one permission the dispatch needs: `gh workflow run` against the
+      # caller's own repo. `actions: write` on GITHUB_TOKEN covers it, so no
+      # PAT is involved --- and the picked agent's own review workflow
+      # declares whatever permissions it needs for itself.
       actions: write
+
+    # Two dispatches for the same PR would put two agents' reviews on it,
+    # which is the opposite of picking one. Grouped per PR so a later push
+    # cancels the pending selection rather than adding to it. Cancelling
+    # cannot un-dispatch an agent whose run already started; it only stops a
+    # second selection from being made, which is what this group is for.
+    concurrency:
+      group: ai-review-${{ inputs.pr-number || github.event.pull_request.number }}
+      cancel-in-progress: true
 
     steps:
       - name: Select an agent and dispatch its review workflow
         env:
-          GH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
           RAW_AGENTS: ${{ inputs.agents }}

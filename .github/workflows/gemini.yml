@@ -165,33 +165,41 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
         run: |
           set -euo pipefail
+          # Every failure path below exits NON-zero, deliberately. The step is
+          # `continue-on-error`, so a non-zero exit records `outcome: failure`
+          # without failing the job --- and that is exactly what the gate step
+          # reads to decide the agent should answer instead. An `exit 0` here
+          # would report `outcome: success`, so the gate would conclude a review
+          # had been dispatched, skip the agent, and swallow the request while
+          # reporting green: the same silent-swallow bug this gate exists to
+          # prevent, reintroduced through a second exit path.
           if [ -z "$PR_NUMBER" ]; then
-            echo "::warning::No PR number on this event; skipping $REVIEW_WF dispatch."
-            exit 0
+            echo "::warning::No PR number on this event; cannot dispatch $REVIEW_WF."
+            exit 1
           fi
-          # Belt and braces: the step `if:` above already establishes this is a
-          # PR, but a lookup failure here should degrade to a warning rather
-          # than redden the job, since the mention itself was legitimate.
           if ! PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null); then
-            echo "::warning::Could not read PR #$PR_NUMBER; skipping $REVIEW_WF dispatch."
-            exit 0
+            echo "::warning::Could not read PR #$PR_NUMBER; cannot dispatch $REVIEW_WF."
+            exit 1
           fi
-          # PR_JSON came from the lookup above. --ref pins the dispatched run's
-          # check-runs to the PR's head branch instead of the default branch
-          # that workflow_dispatch falls back to when no ref is given (#285).
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
-          # A fork PR's head branch only exists in the fork, not in $REPO, so
-          # --ref would fail to resolve there (#289). Fall back to no --ref for
-          # fork PRs; the check-run then mis-attributes to the default branch,
-          # the lesser problem.
-          REF_ARGS=(--ref "$PR_BRANCH")
+          # A fork PR is not dispatched at all, rather than dispatched without
+          # `--ref` as it was before. gemini-code-review.yml now refuses fork
+          # PRs outright (its own dispatch guard, mirroring
+          # claude-code-review.yml's), so dispatching one would only produce a
+          # red check nobody asked for. Failing here instead routes the request
+          # to the agent, which answers in place -- a worse review than the
+          # dedicated reviewer would give, but an answer rather than an error.
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-            echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
-            REF_ARGS=()
+            echo "::warning::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); $REVIEW_WF refuses fork PRs, so answering with the agent instead."
+            exit 1
           fi
+          # --ref pins the dispatched run's check-runs to the PR's head branch
+          # instead of the default branch that workflow_dispatch falls back to
+          # when no ref is given (#285). Safe unconditionally now that forks
+          # never reach this line, since the branch is always in $REPO (#289).
           echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER ($PR_BRANCH)."
-          gh workflow run "$REVIEW_WF" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
+          gh workflow run "$REVIEW_WF" --repo "$REPO" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER"
 
       # A step's `exit 0` ends only that step, never the job, so a "skip" step
       # that just echoes and exits leaves every later step running anyway.
@@ -218,6 +226,14 @@ jobs:
           # declaring it would fail the step on the very path the warning
           # exists to report.
           REVIEW_WF: ${{ inputs.review-workflow-file }}
+          # None of the granted MCP tools (issue_read, pull_request_read,
+          # add_issue_comment) can be called without an explicit number, and
+          # run-gemini-cli's own github_pr_number/github_issue_number inputs
+          # only set env vars on the CLI process --- they are never interpolated
+          # into the prompt text. So the number has to reach the prompt here or
+          # the agent has nothing to read or reply to.
+          THREAD_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           skip=false
@@ -239,6 +255,13 @@ jobs:
             echo "::notice::A review was requested outside a pull request; answering with the agent instead of going silent."
           fi
           echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+          # One line, so it is safe to write to GITHUB_OUTPUT unquoted.
+          if [ -n "$THREAD_NUMBER" ]; then
+            echo "thread_line=You were mentioned on $REPO issue or pull request number $THREAD_NUMBER. Use that number when calling issue_read, pull_request_read, or add_issue_comment." >> "$GITHUB_OUTPUT"
+          else
+            echo "thread_line=This is an unattended run in $REPO with no associated issue or pull request, so there is no thread to read or reply to." >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Checkout repository
         if: steps.gate.outputs.skip != 'true'
@@ -297,10 +320,16 @@ jobs:
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_model: ${{ inputs.gemini-model }}
+          # Pinned rather than left to install `@latest` on every run, which
+          # would undercut the SHA pin on the action right above it.
+          gemini_cli_version: '0.53.0'
           github_pr_number: ${{ github.event.pull_request.number }}
           github_issue_number: ${{ github.event.issue.number }}
           settings: |-
             {
+              "model": {
+                "maxSessionTurns": 25
+              },
               "mcpServers": {
                 "github": {
                   "command": "docker",
@@ -332,12 +361,13 @@ jobs:
                 ]
               }
             }
+          # prompt-addendum comes LAST, matching its documented "appended"
+          # contract and its name; it used to be prepended.
           prompt: |
-            ${{ inputs.prompt-addendum }}
-            You were mentioned on an issue or pull request in
-            ${{ github.repository }}. Read the thread with `issue_read` or
-            `pull_request_read`, answer what was asked, and post your answer as
-            a comment with `add_issue_comment`.
+            ${{ steps.gate.outputs.thread_line }}
+            Read the thread, answer what was asked, and post your answer as a
+            comment with `add_issue_comment`.
             You cannot commit, push, or open pull requests from this workflow,
             so when the request needs a code change, reply with the change as a
             diff or a description rather than claiming to have made it.
+            ${{ inputs.prompt-addendum }}

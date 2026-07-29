@@ -34,7 +34,6 @@ jobs:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # Max-plan OAuth; empty when using API key
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}               # direct API key; empty when using OAuth
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}                     # optional; falls back to GITHUB_TOKEN
     with:
       pr-number: ${{ inputs.pr_number }}
     # with:

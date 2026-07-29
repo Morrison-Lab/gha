@@ -16,6 +16,14 @@
 # Usage: bash .github/workflows/scripts/tests/run-detect-bot-mention-tests.sh
 set -euo pipefail
 
+# The suites below exercise the scripts' DEFAULT behavior, which reads
+# BOT_NAME from the environment -- so an ambient value silently changes what
+# is being tested. `anthropics/claude-code-action` exports BOT_NAME=claude[bot]
+# in its environment, and under it this suite reported 7 of 23 cases failing
+# instead of its real result. Clear it here so a hand run and a CI run agree;
+# the BOT_NAME-specific cases below set it inline per case.
+unset BOT_NAME
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../../../.." && pwd)"
 detect_script="$repo_root/.github/workflows/scripts/detect-bot-mention.sh"

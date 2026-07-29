@@ -42,12 +42,16 @@ dispatched run to be located and awaited, tracked in
 | `CLAUDE_CODE_OAUTH_TOKEN` | no | Max-plan OAuth token. Either this or `ANTHROPIC_API_KEY` makes `claude` an eligible candidate. |
 | `ANTHROPIC_API_KEY` | no | Direct Anthropic API key. |
 | `GEMINI_API_KEY` | no | Gemini API key. Makes `gemini` an eligible candidate. |
-| `WORKFLOW_TOKEN` | no | Token used for the dispatch; falls back to `GITHUB_TOKEN`. |
 
 ## Permissions
 
 Grant `contents: read`, `pull-requests: read`, and `actions: write` (the last
 so it can dispatch the selected agent's review workflow).
+
+The dispatch uses `GITHUB_TOKEN`, so no personal access token is needed:
+`actions: write` is enough to start a workflow in the caller's own repository.
+Each agent's own review workflow declares whatever permissions it needs for
+itself.
 
 ## Example
 

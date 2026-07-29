@@ -48,17 +48,15 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
 
 # Split the token list once, not per body: it does not vary between bodies.
-# Trimming is parameter expansion rather than `echo | xargs` --- xargs also
-# applies its own quote and backslash processing, so a token carrying either
-# would come back altered, and an unbalanced quote fails the whole script.
+# The split and trim itself is delegated to split-csv-list.sh rather than
+# hand-rolled here --- that script exists precisely so this repo has one CSV
+# splitter instead of several, after two independent hand-rolled copies each
+# shipped a trimming bug (gha#253).
 declare -a MENTIONS=()
-IFS=',' read -ra RAW_TOKENS <<< "$MENTION_LIST"
-for token in "${RAW_TOKENS[@]}"; do
-  token="${token#"${token%%[![:space:]]*}"}"
-  token="${token%"${token##*[![:space:]]}"}"
+while IFS= read -r token; do
   [ -n "$token" ] || continue
   MENTIONS+=("$token")
-done
+done < <(bash "$SCRIPT_DIR/split-csv-list.sh" "$MENTION_LIST")
 
 if [ "${#MENTIONS[@]}" -eq 0 ]; then
   echo "detect-bot-mention.sh: BOT_NAME held no non-empty tokens: '$MENTION_LIST'" >&2

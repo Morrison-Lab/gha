@@ -40,6 +40,20 @@ Requires a `GEMINI_API_KEY` secret.
 Grant `contents: read`, `pull-requests: write`, `issues: write`, and
 `id-token: write`.
 
+## What it refuses to review
+
+The automatic `pull_request` path skips draft PRs, PRs from forks, and PRs
+opened by a bot, using the event payload.
+
+A `workflow_dispatch` run carries none of that payload, only `pr-number`, so
+it re-checks the same two conditions over the API and skips a fork or
+Dependabot PR. A lookup that fails outright (rate limit, a bad `pr-number`)
+also skips, and fails the run rather than reviewing a PR whose provenance it
+could not establish.
+
+Only one review runs per PR at a time: a newer run cancels an older one, so a
+verdict on a superseded commit cannot land after the current one.
+
 ## Example
 
 ```yaml

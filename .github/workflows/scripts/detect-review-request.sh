@@ -77,15 +77,16 @@ NEWLINE=$'\n'
 # caller silently matched different token sets, so
 # tests/run-detect-review-request-tests.sh asserts the two agree (the gha#303
 # precedent).
+# Defined here rather than lower down: the token split below needs it.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 BOT_NAME_INPUT="${BOT_NAME:-@claude}"
-# Comma-separated tokens become regex alternatives. Trimming is parameter
-# expansion rather than a `tr ' ' '\n'` pass, which would also split a token
-# containing a space into two alternatives instead of trimming around it.
+# Comma-separated tokens become regex alternatives.
+# The split and trim is delegated to split-csv-list.sh rather than hand-rolled,
+# so this repo keeps one CSV splitter instead of several (gha#253). Validation
+# stays here, because it is specific to this script's regex use.
 declare -a BOT_TOKENS=()
-IFS=',' read -ra RAW_BOT_TOKENS <<< "$BOT_NAME_INPUT"
-for bot_token in "${RAW_BOT_TOKENS[@]}"; do
-  bot_token="${bot_token#"${bot_token%%[![:space:]]*}"}"
-  bot_token="${bot_token%"${bot_token##*[![:space:]]}"}"
+while IFS= read -r bot_token; do
   [ -n "$bot_token" ] || continue
   # Each token is spliced into an ERE below, so it is validated rather than
   # escaped: a mention is a GitHub login preceded by `@`, and that shape has no
@@ -102,7 +103,7 @@ for bot_token in "${RAW_BOT_TOKENS[@]}"; do
     exit 2
   fi
   BOT_TOKENS+=("$bot_token")
-done
+done < <(bash "$SCRIPT_DIR/split-csv-list.sh" "$BOT_NAME_INPUT")
 
 if [ "${#BOT_TOKENS[@]}" -eq 0 ]; then
   echo "detect-review-request.sh: BOT_NAME held no non-empty tokens: '$BOT_NAME_INPUT'" >&2
@@ -130,7 +131,6 @@ PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
 # feature (gha#344). Blockquote stripping predates it -- GitHub's "Quote
 # reply" button reproduces a whole body prefixed with `> ` -- as does the CR
 # removal the CRLF-anchored pattern above needs.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
 
 normalize_body() {
