@@ -1,9 +1,12 @@
-- **Documented why a re-run cannot verify a major-tag slide** in `CLAUDE.md`.
-  GitHub resolves a `uses:` reusable-workflow reference once, at run creation,
-  and records it in `referenced_workflows`; a re-run replays that SHA, so it
-  keeps executing the pre-slide workflow.
-  Composite actions nested inside the reusable workflow *do* re-resolve at
-  job-preparation time, so a re-run mixes new-version composites with the old
-  reusable workflow and reads as "the fix is live and didn't work".
-  The entry gives the mechanical check (`referenced_workflows[].sha`) and the
-  fix (trigger a fresh run, not a re-run).
+- **Documented which re-run modes can verify a major-tag slide** in `CLAUDE.md`.
+  GitHub records a `uses:` reusable-workflow reference in `referenced_workflows`
+  at run creation.
+  Per GitHub's docs, re-running *failed jobs* or a *specific job* replays that
+  SHA, so it keeps executing the pre-slide workflow, while re-running *all
+  jobs* re-resolves the reference.
+  Composite actions nested inside the reusable workflow re-resolve at
+  job-preparation time either way, so a failed-jobs re-run mixes new-version
+  composites with the old reusable workflow and reads as "the fix is live and
+  didn't work".
+  The entry gives the mechanical check (`referenced_workflows[].sha`) and
+  recommends a fresh run as the unambiguous way to verify a slide.
