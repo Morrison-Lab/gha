@@ -396,7 +396,7 @@
     "href": "reference/claude.html#secrets",
     "title": "claude.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nOAuth token for Claude Code (Claude Max plan).\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key (or GitHub App via /install-github-app), used instead of CLAUDE_CODE_OAUTH_TOKEN.\n\n\nSUBMODULES_TOKEN\nno\nRead access to private submodules.\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token with contents:write plus workflows:write, needed only to push changes under .github/workflows/. Falls back to GITHUB_TOKEN when unset.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nOAuth token for Claude Code (Claude Max plan).\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key (or GitHub App via /install-github-app), used instead of CLAUDE_CODE_OAUTH_TOKEN.\n\n\nSUBMODULES_TOKEN\nno\nRead access to private submodules.\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token with contents:write plus workflows:write, needed only to push changes under .github/workflows/. Falls back to GITHUB_TOKEN when unset – and when that fallback is rejected, the run reports an error naming this secret and posts the unpushed commits to the thread as a git format-patch.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -468,7 +468,7 @@
     "href": "reference/ai-code-review.html#secrets",
     "title": "ai-code-review.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nMax-plan OAuth token. Either this or ANTHROPIC_API_KEY makes claude an eligible candidate.\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key.\n\n\nGEMINI_API_KEY\nno\nGemini API key. Makes gemini an eligible candidate.\n\n\nWORKFLOW_TOKEN\nno\nToken used for the dispatch; falls back to GITHUB_TOKEN.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nMax-plan OAuth token. Either this or ANTHROPIC_API_KEY makes claude an eligible candidate.\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key.\n\n\nGEMINI_API_KEY\nno\nGemini API key. Makes gemini an eligible candidate.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -480,7 +480,7 @@
     "href": "reference/ai-code-review.html#permissions",
     "title": "ai-code-review.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: read, pull-requests: read, and actions: write (the last so it can dispatch the selected agent’s review workflow).",
+    "text": "Permissions\nGrant contents: read, pull-requests: read, and actions: write (the last so it can dispatch the selected agent’s review workflow).\nThe dispatch uses GITHUB_TOKEN, so no personal access token is needed: actions: write is enough to start a workflow in the caller’s own repository. Each agent’s own review workflow declares whatever permissions it needs for itself.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -795,7 +795,7 @@
     "href": "permissions.html#optional-secrets",
     "title": "Permissions",
     "section": "Optional secrets",
-    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
+    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
     "crumbs": [
       "Overview",
       "Permissions"
@@ -1427,6 +1427,18 @@
     "title": "gemini-code-review.yml",
     "section": "Permissions",
     "text": "Permissions\nGrant contents: read, pull-requests: write, issues: write, and id-token: write.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#what-it-refuses-to-review",
+    "href": "reference/gemini-code-review.html#what-it-refuses-to-review",
+    "title": "gemini-code-review.yml",
+    "section": "What it refuses to review",
+    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad pr-number) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.\nOnly one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.",
     "crumbs": [
       "Overview",
       "Reference",

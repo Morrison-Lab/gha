@@ -629,17 +629,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>no</td>
 <td>Gemini API key. Makes <code>gemini</code> an eligible candidate.</td>
 </tr>
-<tr class="even">
-<td><code>WORKFLOW_TOKEN</code></td>
-<td>no</td>
-<td>Token used for the dispatch; falls back to <code>GITHUB_TOKEN</code>.</td>
-</tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
 <p>Grant <code>contents: read</code>, <code>pull-requests: read</code>, and <code>actions: write</code> (the last so it can dispatch the selected agent’s review workflow).</p>
+<p>The dispatch uses <code>GITHUB_TOKEN</code>, so no personal access token is needed: <code>actions: write</code> is enough to start a workflow in the caller’s own repository. Each agent’s own review workflow declares whatever permissions it needs for itself.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>

@@ -724,7 +724,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td><code>WORKFLOW_TOKEN</code></td>
 <td>no</td>
-<td>PAT or App token with <code>contents:write</code> plus <code>workflows:write</code>, needed only to push changes under <code>.github/workflows/</code>. Falls back to <code>GITHUB_TOKEN</code> when unset.</td>
+<td>PAT or App token with <code>contents:write</code> plus <code>workflows:write</code>, needed only to push changes under <code>.github/workflows/</code>. Falls back to <code>GITHUB_TOKEN</code> when unset – and when that fallback is rejected, the run reports an error naming this secret and posts the unpushed commits to the thread as a <code>git format-patch</code>.</td>
 </tr>
 </tbody>
 </table>
