@@ -43,7 +43,7 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
     with:
-      agents: 'claude, gemini' # pool of configured AI agents
+      agents: 'claude, gemini'  # pool of configured AI agents
       pr-number: ${{ inputs.pr_number }}
       claude-review-workflow-file: claude-code-review.yml
       gemini-review-workflow-file: gemini-code-review.yml

@@ -68,4 +68,3 @@ runs:
         )"
         echo "detect-bot-mention: match=$MATCH"
         echo "match=$MATCH" >> "$GITHUB_OUTPUT"
-
