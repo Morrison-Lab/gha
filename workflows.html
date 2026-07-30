@@ -434,6 +434,24 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/gemini.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">gemini.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/gemini-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">gemini-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">ai-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/bump-submodule.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">bump-submodule.yml</span></a>
   </div>
@@ -610,26 +628,41 @@ ul.task-list li input[type="checkbox"] {
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>report-cost</code>, <code>model</code></td>
 </tr>
 <tr class="even">
+<td><a href="./reference/gemini.html"><code>gemini.yml</code></a></td>
+<td>Gemini CLI question-answering bot: replies to <code>@gemini</code> and <code>@gemini-cli</code> on issues and PRs; routes <code>@gemini review</code> to the reviewer. Read-only — no file edits, pushes, or PRs</td>
+<td><code>setup-r</code>, <code>install-quarto</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>prompt-addendum</code>, <code>gemini-model</code>, <code>review-workflow-file</code></td>
+</tr>
+<tr class="odd">
+<td><a href="./reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a></td>
+<td>Read-only Gemini PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
+<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>gemini-model</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/ai-code-review.html"><code>ai-code-review.yml</code></a></td>
+<td>Multi-agent PR review: picks one configured agent at random and dispatches its review workflow, falling through when one can’t be dispatched</td>
+<td><code>agents</code>, <code>pr-number</code>, <code>claude-review-workflow-file</code>, <code>gemini-review-workflow-file</code></td>
+</tr>
+<tr class="odd">
 <td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
 <td>Update a submodule to upstream HEAD and open a PR when the pointer moves</td>
 <td><code>submodule-path</code>, <code>remote-branch</code>, <code>base-branch</code>, <code>pr-branch</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
 <td>Vendor files from an upstream repo (pinned to a commit) and open a PR when they change</td>
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/sync-upstream.html"><code>sync-upstream.yml</code></a></td>
 <td>Merge an upstream repo’s branch into a fork and open a PR when the merge brings changes</td>
 <td><code>upstream-repo</code>, <code>upstream-branch</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>fail-on-conflict</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/request-dependabot-review.html"><code>request-dependabot-review.yml</code></a></td>
 <td>Request review from configured reviewers when a PR’s author matches a bot actor (Dependabot by default)</td>
 <td><code>reviewers</code>, <code>bot-actor</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/altdoc-multiversion-docs.html"><code>altdoc-multiversion-docs.yml</code></a></td>
 <td>Render an altdoc-based R package’s docs and deploy multiple versions side by side on <code>gh-pages</code> (<code>/dev/</code>, <code>/latest-tag/</code>, <code>/vX.Y.Z/</code>, plus PR previews and a root redirect)</td>
 <td><code>r-packages</code>, <code>needs</code>, <code>apt-packages</code>, <code>setup-julia</code>, <code>checkout-submodules</code>, <code>default-branch</code>, <code>quarto-config-path</code>, <code>docs-base-url</code>, <code>preview-branch</code>, <code>timeout-minutes</code>, <code>rewrite-pr-preview-links</code>, <code>rewrite-issue-links</code>, <code>dispatch-version</code>, <code>dispatch-release-tag</code>, <code>legacy-paths</code>, <code>version-dropdown-title-template</code>, <code>version-in-navbar-title</code></td>
@@ -638,7 +671,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, and <code>check-new-line-breaks.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, and <code>check-new-line-breaks.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>. <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
@@ -695,6 +728,8 @@ ul.task-list li input[type="checkbox"] {
 <li><code>claude-code-review.yml</code> runs a read-only Claude review: a consolidated summary on dispatched runs by default; add a <code>pull_request</code> trigger in the caller if you also want automatic reviews on PR updates.</li>
 </ul>
 <p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. If you also want the direct <code>/review</code> path, enable <code>issue_comment</code> in the review stub too.</p>
+<p><code>gemini.yml</code> and <code>gemini-code-review.yml</code> are the same pair for Gemini CLI, with the same division of labour: the agent answers <code>@gemini</code> and <code>@gemini-cli</code> mentions, and an <code>@gemini review</code> dispatches the reviewer rather than being answered in place. Keep the review stub named <code>gemini-code-review.yml</code> (or set <code>gemini.yml</code>’s <code>review-workflow-file</code> to match). Gemini needs a <code>GEMINI_API_KEY</code> secret; the two families are independent, so a repo can install either or both.</p>
+<p><code>ai-code-review.yml</code> sits above whichever review workflows a repo has installed: it picks one of the configured agents at random and dispatches that agent’s own review workflow. Its fallback covers an agent that can’t be dispatched — no API key secret configured, or its review workflow file missing or disabled — not one that dispatches and then fails mid-run, since <code>gh workflow run</code> returns as soon as the run is queued and reports no run id to wait on (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>).</p>
 </section>
 <section id="content-sync" class="level2">
 <h2 class="anchored" data-anchor-id="content-sync">Content sync</h2>

@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>quarto-publish.yml – d-morrison/gha</title>
+<title>ai-code-review.yml – d-morrison/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/report-failure.html" rel="next">
-<link href="../reference/summary.html" rel="prev">
+<link href="../reference/bump-submodule.html" rel="next">
+<link href="../reference/gemini-code-review.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/quarto-publish.html">quarto-publish.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/ai-code-review.html">ai-code-review.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -427,7 +427,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/quarto-publish.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/quarto-publish.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">quarto-publish.yml</span></a>
   </div>
 </li>
@@ -481,7 +481,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
 </li>
@@ -515,20 +515,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#what-the-fallback-covers" id="toc-what-the-fallback-covers" class="nav-link active" data-scroll-target="#what-the-fallback-covers">What the fallback covers</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/reference/quarto-publish.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/reference/ai-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/quarto-publish.html">quarto-publish.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/ai-code-review.html">ai-code-review.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">quarto-publish.yml</h1>
+<h1 class="title">ai-code-review.yml</h1>
 </div>
 
 
@@ -545,15 +546,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Render a Quarto project and deploy it to the <code>gh-pages</code> branch, which GitHub Pages serves. One-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch <code>gh-pages</code> / <code>(root)</code>. Render-only callers (<code>deploy: false</code>) skip the deploy.</p>
+<p>Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched.</p>
+<p>It sits above whichever per-agent review workflows a repo has installed — <a href="../reference/claude-code-review.html"><code>claude-code-review.yml</code></a> and <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a> — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the <code>*-review-workflow-file</code> inputs below.</p>
+<section id="what-the-fallback-covers" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-fallback-covers">What the fallback covers</h2>
+<p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong>: no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo.</p>
+<p>It does <strong>not</strong> cover an agent that dispatches successfully and then fails partway through its own run. <code>gh workflow run</code> returns as soon as the run is queued and reports no run id, so there is nothing to wait on; failing over on a runtime failure needs the dispatched run to be located and awaited, tracked in <a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 12%">
-<col style="width: 3%">
-<col style="width: 13%">
-<col style="width: 70%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -565,70 +572,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>path</code></td>
+<td><code>agents</code></td>
 <td>string</td>
-<td><code>'.'</code></td>
-<td>Path in the caller repo to the Quarto project to render (the directory with <code>_quarto.yml</code>).</td>
+<td><code>'claude, gemini'</code></td>
+<td>Comma-separated agents to select from. Unrecognized names are warned about and skipped.</td>
 </tr>
 <tr class="even">
-<td><code>setup-r</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Install R and project R dependencies before rendering (for R/knitr Quarto projects).</td>
-</tr>
-<tr class="odd">
-<td><code>r-packages</code></td>
-<td>string</td>
-<td><code>(long; see workflow file)</code></td>
-<td>r-lib/actions package specs installed when <code>setup-r</code> is true and <code>use-renv</code> is false. Defaults to <code>any::knitr</code> and <code>any::rmarkdown</code>.</td>
-</tr>
-<tr class="even">
-<td><code>use-renv</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Restore R dependencies with renv instead of <code>r-packages</code> (requires <code>setup-r</code>).</td>
-</tr>
-<tr class="odd">
-<td><code>tinytex</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Install TinyTeX (needed to render PDF outputs).</td>
-</tr>
-<tr class="even">
-<td><code>apt-packages</code></td>
+<td><code>pr-number</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Extra apt packages to install before rendering (space-separated).</td>
+<td>Pull request number to review. Required on <code>workflow_dispatch</code>; taken from the event on <code>pull_request</code>.</td>
 </tr>
 <tr class="odd">
-<td><code>output-dir</code></td>
+<td><code>claude-review-workflow-file</code></td>
 <td>string</td>
-<td><code>'_site'</code></td>
-<td>Directory the rendered site is written to, relative to <code>path</code>; forwarded to <code>quarto render --output-dir</code> and overrides any <code>_quarto.yml</code> setting.</td>
+<td><code>'claude-code-review.yml'</code></td>
+<td>Caller-repo workflow file dispatched for a Claude review.</td>
 </tr>
 <tr class="even">
-<td><code>checkout-submodules</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Initialize the caller’s git submodules before rendering.</td>
-</tr>
-<tr class="odd">
-<td><code>pre-render-artifact</code></td>
+<td><code>gemini-review-workflow-file</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.</td>
-</tr>
-<tr class="even">
-<td><code>pre-render-artifact-path</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Directory in the caller repo to extract <code>pre-render-artifact</code> into. Defaults to the workspace root.</td>
-</tr>
-<tr class="odd">
-<td><code>deploy</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Deploy the rendered site to the <code>gh-pages</code> branch. Set false to render only.</td>
+<td><code>'gemini-code-review.yml'</code></td>
+<td>Caller-repo workflow file dispatched for a Gemini review.</td>
 </tr>
 </tbody>
 </table>
@@ -637,9 +602,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 15%">
-<col style="width: 6%">
-<col style="width: 78%">
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -650,64 +615,62 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>SUBMODULES_TOKEN</code></td>
+<td><code>CLAUDE_CODE_OAUTH_TOKEN</code></td>
 <td>no</td>
-<td>Token with read access to private submodules (only needed when <code>checkout-submodules</code> is true).</td>
+<td>Max-plan OAuth token. Either this or <code>ANTHROPIC_API_KEY</code> makes <code>claude</code> an eligible candidate.</td>
+</tr>
+<tr class="even">
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td>no</td>
+<td>Direct Anthropic API key.</td>
+</tr>
+<tr class="odd">
+<td><code>GEMINI_API_KEY</code></td>
+<td>no</td>
+<td>Gemini API key. Makes <code>gemini</code> an eligible candidate.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code> (the deploy job pushes to <code>gh-pages</code>). Grant it even with <code>deploy: false</code>: a reusable workflow’s caller must grant a job’s permissions even when that job is skipped, and the deploy job is part of the workflow. The build job downscopes its own token to <code>contents: read</code>.</p>
+<p>Grant <code>contents: read</code>, <code>pull-requests: read</code>, and <code>actions: write</code> (the last so it can dispatch the selected agent’s review workflow).</p>
+<p>The dispatch uses <code>GITHUB_TOKEN</code>, so no personal access token is needed: <code>actions: write</code> is enough to start a workflow in the caller’s own repository. Each agent’s own review workflow declares whatever permissions it needs for itself.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/quarto-publish.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Renders a Quarto site and deploys it to the gh-pages branch (which GitHub</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Pages serves). The calling job must grant contents: write so the deploy step</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># can push to gh-pages (repos default to a read-only token).</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># One-time repo setup: Settings -&gt; Pages -&gt; Build and deployment -&gt; Source =</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># "Deploy from a branch", branch `gh-pages` / `(root)`.</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Quarto Publish</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">]</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">  # For a render-only build check (deploy: false below), also add:</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">  # pull_request:</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co"># Serialize deploys so two pushes don't race on the gh-pages branch.</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="fu">concurrency</span><span class="kw">:</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">group</span><span class="kw">:</span><span class="at"> gh-pages</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">cancel-in-progress</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">publish</span><span class="kw">:</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">      # Push the rendered site to gh-pages. Grant this even with deploy: false</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">      # (render only): the workflow's deploy job declares contents: write, and a</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">      # reusable workflow's caller must grant a job's permissions even when that</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">      # job is skipped. The build job downscopes its own token to read.</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: website          # Quarto project lives in a subdir (default: repo root)</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-r: true           # for R/knitr Quarto projects (default: false)</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-renv: true          # restore R deps with renv instead of r-packages</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   tinytex: true           # needed to render PDF outputs</span></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/quarto-publish.yml"><code>examples/quarto-publish.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/ai-code-review.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> AI Code Review</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">  # Optional: automatic review on PR activity.</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">  # pull_request:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">  #   types: [opened, synchronize, ready_for_review, reopened]</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">inputs</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr_number</span><span class="kw">:</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> </span><span class="st">'Pull request number to review'</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">required</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> string</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">ai-review</span><span class="kw">:</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ANTHROPIC_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.ANTHROPIC_API_KEY }}</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini'</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   claude-review-workflow-file: claude-code-review.yml</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>ai-code-review.yml</code>).</p>
 
 
 </section>
@@ -1128,13 +1091,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/summary.html" class="pagination-link" aria-label="summary.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">summary.yml</span>
+      <a href="../reference/gemini-code-review.html" class="pagination-link" aria-label="gemini-code-review.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">gemini-code-review.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/report-failure.html" class="pagination-link" aria-label="report-failure.yml">
-        <span class="nav-page-text">report-failure.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/bump-submodule.html" class="pagination-link" aria-label="bump-submodule.yml">
+        <span class="nav-page-text">bump-submodule.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1143,4 +1106,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/reference/quarto-publish.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/d-morrison/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/d-morrison/gha/edit/main/website/reference/ai-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
