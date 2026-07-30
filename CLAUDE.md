@@ -480,6 +480,34 @@ fix only searched the files already in the diff. Before considering a
 versioning-prose fix complete, `grep -rn "@v1\|@v2"` (or whatever pattern is
 narrowing) across the **entire** repo, not just the files already touched.
 
+**That rule is not about versioning, and its own wording is what hides
+that.**
+Every example above names `@v1`/`@v2`, and the closing sentence says
+"versioning-prose fix", so a sweep of some *other* repeated string does not
+read as covered -- and the identical failure then repeats verbatim.
+The `d-morrison/gha` -> `Morrison-Lab/gha` retarget hit it twice: one pass
+missed `website/_quarto.yml` entirely, and gha#374's own first pass left five
+more live sites, four of them the exact categories that PR was fixing
+elsewhere (the generated-consumer-PR-body link, the "not `d-morrison/gha`'s
+own tree" comment).
+Read it as applying to any repeated string being retargeted -- an owner, a
+URL, a tag, a renamed input -- and grep for that string rather than for
+`@v1`.
+
+**A completeness claim in a changelog fragment is the one claim neither a
+reviewer nor a check can verify from the diff, so it needs the grep before it
+ships.**
+"The last stale `X` references are gone" is an assertion about the *tree*
+rather than about the diff, so a reviewer reading the diff has nothing to
+check it against, and no CI job tests it either.
+It also reads as settled, which is what stops anyone from re-running the grep
+later.
+So when a fragment claims a sweep is complete, run the whole-repo grep and
+either make the claim true or enumerate the carve-outs explicitly.
+gha#374's review caught exactly this, citing the paragraph above as the
+governing principle -- which is the evidence that the rule was right and only
+its stated scope was too narrow.
+
 **Adding a new `workflow_call` input to an existing reusable workflow** needs
 its own doc sync at three sites beyond the workflow file itself, or the input
 is invisible to a consumer skimming the docs:
