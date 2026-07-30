@@ -1,0 +1,6 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.lintr$
+^\.lintr\.R$
+^ghatools.*\.tar\.gz$
+^ghatools\.Rcheck$

@@ -1,0 +1,27 @@
+Package: ghatools
+Title: Shared Helpers for the Reusable Checks in This Repository
+Version: 0.1.0
+Authors@R: c(
+    person("Douglas Ezra", "Morrison", , "demorrison@ucdavis.edu",
+           role = c("aut", "cre"))
+  )
+Description: Logic shared by the R-based checks in this repository: parsing a
+    unified diff into the lines it adds, extracting prose from Quarto and
+    Markdown sources, and detecting the AI tells catalogued in ai-config's
+    shared/writing/ai-tells.md. The check-* directories hold thin command-line
+    wrappers; the logic they share lives here so it is written, tested, and
+    fixed once rather than copied per check.
+License: MIT + file LICENSE
+URL: https://github.com/d-morrison/gha
+BugReports: https://github.com/d-morrison/gha/issues
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Language: en-US
+Depends:
+    R (>= 4.1.0)
+Imports:
+    rex
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

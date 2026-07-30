@@ -17,15 +17,12 @@
 #   PR_NUMBER          the pull request number
 #   GITHUB_PAT         a token for the GitHub API (gh::gh)
 #   LINT_FAIL          "false" to warn instead of failing (default: fail)
-#   GITHUB_ACTION_PATH the composite action's path (to source added-lines.R)
 
-action_path <- Sys.getenv("GITHUB_ACTION_PATH")
-if (nzchar(action_path)) {
-  source(file.path(action_path, "added-lines.R"))
-} else {
-  # Fallback for local runs: added-lines.R sits next to this script.
-  source("added-lines.R")
-}
+# added_lines() lives in the {ghatools} package in this repository rather than
+# in a script beside this one. It was previously sourced per consumer, which is
+# how a second copy came to ship with the context-line branch missing; see
+# ghatools/R/added_lines.R for what that omission does to line numbering.
+added_lines <- ghatools::added_lines
 
 repo <- Sys.getenv("GITHUB_REPOSITORY")
 pr <- Sys.getenv("PR_NUMBER")

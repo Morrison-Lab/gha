@@ -1,0 +1,65 @@
+name: Check new prose lines for AI tells
+description: >-
+  Advisory, diff-scoped check that flags newly-added prose carrying the AI
+  tells catalogued in ai-config's shared/writing/ai-tells.md -- overused
+  vocabulary, the "not just X, it's Y" antithesis, signposting filler, hollow
+  conclusions, promotional register, and vague universals. Reports density
+  (tells per 1000 added prose words) as well as individual hits, because the
+  catalog's own rule is that any single tell is innocent and clustering is the
+  signal. Scoped to lines a diff adds, so it never reflags a corpus's existing
+  prose. Non-blocking by default.
+inputs:
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are checked.
+      The reusable workflow passes the PR base SHA automatically. Needs the
+      base commit in history (checkout with fetch-depth: 0); when the diff
+      cannot be computed the check skips with a warning rather than falling
+      back to a whole-tree scan, which would reflag every existing paragraph.
+    default: ''
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '*.qmd *.md'
+  max-per-1k:
+    description: >-
+      Density threshold, in tells per 1000 added prose words, above which the
+      run adds a summary annotation. Individual hits are always reported; this
+      only controls the extra "this reads as clustered" note.
+    default: '3'
+  fail:
+    description: >-
+      Fail the action when a tell is found (else warn only). Defaults to
+      warn-only: every pattern here has legitimate uses in technical prose --
+      "robust" is a real statistical term, a paper can genuinely conclude --
+      so this is a nudge toward re-reading, not a gate.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up R
+      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        use-public-rspm: true
+
+    - name: Set up R dependencies
+      uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        working-directory: ${{ github.action_path }}/../ghatools
+        needs: check
+
+    - name: Install ghatools
+      # Installed from this action's own checkout, so a consumer pinned at @vN
+      # gets the ghatools that shipped with that tag rather than main's.
+      shell: bash
+      run: R CMD INSTALL "${{ github.action_path }}/../ghatools"
+
+    - name: Check added prose for AI tells
+      shell: bash
+      env:
+        AIT_BASE_REF: ${{ inputs.base-ref }}
+        AIT_GLOBS: ${{ inputs.globs }}
+        AIT_MAX_PER_1K: ${{ inputs.max-per-1k }}
+        AIT_FAIL: ${{ inputs.fail }}
+      run: Rscript "${{ github.action_path }}/check-ai-tells.R"

@@ -1,0 +1,53 @@
+name: Check new prose lines for AI tells (reusable)
+
+# Executes ai-config's shared/writing/ai-tells.md catalog. That document is the
+# rule; this is the check, mirroring the split between
+# shared/writing/semantic-line-breaks.md and check-new-line-breaks.
+
+on:
+  workflow_call:
+    inputs:
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check (recursive
+          by default).
+        type: string
+        default: '*.qmd *.md'
+      max-per-1k:
+        description: >-
+          Density threshold, in tells per 1000 added prose words, above which
+          the run adds a summary annotation. Individual hits are always
+          reported regardless.
+        type: string
+        default: '3'
+      fail:
+        description: >-
+          Fail the workflow when a tell is found (else warn only). Warn-only by
+          default: every pattern has legitimate uses in technical prose, so
+          this is a nudge to re-read rather than a gate.
+        type: boolean
+        default: false
+
+jobs:
+  check-ai-tells:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check added prose for AI tells
+        uses: Morrison-Lab/gha/check-ai-tells@v2
+        with:
+          globs: ${{ inputs.globs }}
+          max-per-1k: ${{ inputs.max-per-1k }}
+          fail: ${{ inputs.fail }}
+          # On PRs, check only lines added relative to the base; on push there
+          # is no base to diff against, so the check skips rather than
+          # scanning the whole tree.
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

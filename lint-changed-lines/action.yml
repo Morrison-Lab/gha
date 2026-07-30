@@ -49,6 +49,13 @@ runs:
           ${{ inputs.extra-packages }}
         needs: lint
 
+    - name: Install ghatools
+      # Supplies added_lines(), which this check previously carried as its own
+      # copy. Installed from the action's own checkout, so a consumer pinned at
+      # @vN gets the ghatools that shipped with that tag rather than main's.
+      shell: bash
+      run: R CMD INSTALL "${{ github.action_path }}/../ghatools"
+
     - name: Install package
       if: ${{ inputs.install-package == 'true' }}
       shell: bash
