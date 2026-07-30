@@ -32,11 +32,21 @@ jobs:
           # instructions (from workflow config)", because only someone who
           # can edit this workflow can set it.
           #
-          # Phrased as a limit on what the reviewer can know, rather than by
-          # naming the current year, so it needs no upkeep as time passes.
-          # This repo dates each `CLAUDE.md` entry and changelog fragment
-          # with the day it was written, so without this the reviewer reads
-          # every such entry as a future-dated typo (#366).
+          # Grounded in a limit on what the reviewer can know, rather than in
+          # the current year, so it needs no upkeep as time passes.
+          # `CLAUDE.md` cites an explicit date in a few incident write-ups,
+          # and the reviewer read one as a future-dated typo on three
+          # consecutive rounds, unmoved by rebuttal (#366).
+          #
+          # It bars more than the premise strictly requires: "never report a
+          # date as a typo" also covers a structurally invalid one
+          # (`2026-13-45`), which needs no knowledge of today to catch. That
+          # is deliberate. This is ai-config#817's wording verbatim, which
+          # #366 reports two clean runs behind; narrowing it would mean
+          # running an unproven variant, and the obvious narrowing has to
+          # reintroduce "implausible" to carve the exception out -- handing
+          # back the judgment this exists to stop. Little is given up: three
+          # dates in 1500 lines of `CLAUDE.md`, none in any fragment.
           extra_instructions: |
             You cannot reliably know today's date, so never report a date as a
             typo or as being in the future.
