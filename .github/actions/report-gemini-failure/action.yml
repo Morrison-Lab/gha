@@ -1,0 +1,172 @@
+name: Report Gemini CLI failure
+
+description: >-
+  Explain a failed `google-github-actions/run-gemini-cli` call. Classifies
+  the action's `error` output into a graceful "quota exhausted / unauthorized
+  / suspended" skip versus a genuine failure, emits a `::warning::`
+  (graceful) or `::error::` (genuine) naming the cause, and posts a comment
+  on the issue or PR carrying that explanation plus the raw error output.
+  Never retries -- retrying a quota/auth/suspension failure wastes CI time
+  and can look like continued automated abuse to Google, which is the
+  opposite of what should happen. Meant to be called from a step gated on
+  the run-gemini-cli step having actually failed (e.g.
+  `if: steps.gemini-run.outcome == 'failure'`). Requires `issues: write`
+  (which also covers PR conversation comments) on the calling job.
+
+inputs:
+  error-output:
+    description: >-
+      The failed run-gemini-cli step's `error` output. The action populates
+      this before it exits non-zero -- the same "a step's outputs are
+      captured even when it exits non-zero" mechanism gemini.yml's own
+      dispatch-review step already relies on -- so it's readable from a
+      later step gated on `steps.<id>.outcome == 'failure'` without any
+      extra plumbing.
+    required: true
+  entity-number:
+    description: >-
+      Issue or PR number to comment on. Both go through `gh issue comment`,
+      which accepts a PR number. Leave empty to skip the comment and report
+      only through the run log.
+    required: false
+    default: ''
+  run-url:
+    description: Link to the workflow run, included in the comment.
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used to post the comment. Needs `issues: write`.'
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: >-
+      Build the report and write it to `body-file` without posting it or
+      emitting an annotation. Exists so `_selftest.yml` can exercise this
+      action end to end -- proving it resolves classify-gemini-failure.sh
+      through `github.action_path` -- without commenting on a real thread
+      or stamping a red/yellow annotation onto a passing selftest job (the
+      same reasoning report-push-failure's own `dry-run` input gives).
+    required: false
+    default: 'false'
+
+outputs:
+  kind:
+    description: >-
+      `quota-or-auth` (a graceful skip -- never retried) or `other` (a
+      genuine failure; the caller should still fail the job for real).
+    value: ${{ steps.report.outputs.kind }}
+  body-file:
+    description: Path to the composed comment body.
+    value: ${{ steps.report.outputs.body-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify and report the Gemini CLI failure
+      id: report
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        # Named explicitly rather than inferred from a git remote, matching
+        # report-push-failure/open-failure-issue: the caller's checkout need
+        # not be the repository being commented on.
+        GH_REPO: ${{ github.repository }}
+        ERROR_OUTPUT: ${{ inputs.error-output }}
+        ENTITY_NUMBER: ${{ inputs.entity-number }}
+        RUN_URL: ${{ inputs.run-url }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        # Callers run against their own checkout, not Morrison-Lab/gha's tree,
+        # so the helper is located through github.action_path -- the same
+        # resolution run-review-guard/report-push-failure use.
+        CLASSIFY_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/classify-gemini-failure.sh
+        # A quota/auth error's JSON body is short; this is generous headroom
+        # while still keeping the comment well under GitHub's 65,536-CHARACTER
+        # cap (see the detect-review-request paragraph in CLAUDE.md).
+        MAX_ERROR_BYTES: '4000'
+      run: |
+        set -euo pipefail
+
+        # Fence a block of arbitrary text: count the longest backtick run it
+        # contains and open with one more, since a fence is closed by a run
+        # of equal length -- a JSON error blob can itself carry backticks.
+        # `|| true` is load-bearing under `pipefail`: grep exits 1 when the
+        # text holds no backticks at all, the ordinary case here, which
+        # would otherwise abort this step (see report-push-failure's own
+        # fence_for for the fuller explanation, including why this can't be
+        # relied on to happen automatically at every call site).
+        fence_for() {
+          local longest
+          longest="$( { grep -oE '`+' <<<"$1" || true; } | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')"
+          if [[ "$longest" -lt 3 ]]; then longest=2; fi
+          printf '`%.0s' $(seq $((longest + 1)))
+        }
+
+        # Cut a string to a byte budget without a pipe on the producer side,
+        # for the same SIGPIPE reason report-push-failure's own
+        # truncate_to_bytes documents.
+        truncate_to_bytes() {
+          local text="$1" max="$2" tmp
+          tmp="$(mktemp)"
+          printf '%s' "$text" > "$tmp"
+          if [[ "$(wc -c < "$tmp")" -le "$max" ]]; then
+            printf '%s' "$text"
+          else
+            head -c "$max" "$tmp" | iconv -f UTF-8 -t UTF-8 -c
+          fi
+        }
+
+        classified="$(printf '%s\n' "$ERROR_OUTPUT" | bash "$CLASSIFY_SCRIPT" -)"
+        kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
+        headline="$(sed -n '2s/^headline=//p' <<<"$classified")"
+        advice="$(tail -n +4 <<<"$classified")"
+        echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+        # Suppressed under dry-run for the same reason report-push-failure
+        # suppresses its own ::error:: there: _selftest.yml exercises this
+        # action on every PR, and an unconditional annotation stamps a
+        # red/yellow mark into the Checks tab of a job that is passing.
+        if [[ "$DRY_RUN" != "true" ]]; then
+          if [[ "$kind" == "quota-or-auth" ]]; then
+            echo "::warning::$headline"
+          else
+            echo "::error::$headline"
+          fi
+        fi
+
+        error_body="$(truncate_to_bytes "$ERROR_OUTPUT" "$MAX_ERROR_BYTES")"
+        if [[ "$error_body" != "$ERROR_OUTPUT" ]]; then
+          error_body="$error_body"$'\n\n... (truncated; full output in the workflow run)'
+        fi
+        error_fence="$(fence_for "$error_body")"
+
+        body_file="$(mktemp)"
+        echo "body-file=$body_file" >> "$GITHUB_OUTPUT"
+        {
+          if [[ "$kind" == "quota-or-auth" ]]; then
+            printf '> [!WARNING]\n> **%s**\n\n' "$headline"
+          else
+            printf '> [!CAUTION]\n> **%s**\n\n' "$headline"
+          fi
+          printf '%s\n\n' "$advice"
+          if [[ -n "$error_body" ]]; then
+            printf '<details><summary>Raw error output</summary>\n\n%stext\n%s\n%s\n\n</details>\n\n' \
+              "$error_fence" "$error_body" "$error_fence"
+          fi
+          if [[ -n "$RUN_URL" ]]; then
+            printf '[View run](%s)\n' "$RUN_URL"
+          fi
+        } > "$body_file"
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo "::notice::[dry-run] Would comment on #${ENTITY_NUMBER:-<none>} (kind=$kind); body written to $body_file"
+          exit 0
+        fi
+        if [[ -z "$ENTITY_NUMBER" ]]; then
+          echo "::warning::No issue or PR number given; the Gemini failure is reported only in this run log."
+          exit 0
+        fi
+        # A failed comment must not mask the underlying Gemini failure -- the
+        # caller's own step already reports it, and the run log carries the
+        # same report either way.
+        gh issue comment "$ENTITY_NUMBER" --body-file "$body_file" \
+          || echo "::warning::Could not post the Gemini failure report to #${ENTITY_NUMBER}."

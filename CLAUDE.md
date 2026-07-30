@@ -317,6 +317,34 @@ which is why the capabilities above moved to `@v2`.
   the patch let a verbose rejection carry the total past GitHub's comment
   limit on its own, which 422s the post and drops the report entirely -- the
   silent-thread outcome gha#360 exists to prevent.
+- `.github/actions/report-gemini-failure/` -- wraps
+  `scripts/classify-gemini-failure.sh`, which reads a failed
+  `google-github-actions/run-gemini-cli` call's `error` output and names the
+  failure kind (`quota-or-auth` -- rate-limit, auth rejection, or a suspended
+  project, all graceful-skip -- or `other`, a genuine failure) plus advice.
+  Deliberately simpler than `classify-push-failure.sh`: there is no patch to
+  withhold and no credential to redact, since the input is API error text
+  rather than a git push log, and the classifier itself does not embed the
+  raw error output -- that stays the composite's job, the same split
+  `classify-push-failure.sh`/`report-push-failure` already use, since safely
+  fencing arbitrary text needs the same longest-backtick-run logic either
+  way.
+  `gemini.yml` and `gemini-code-review.yml` both call it from a step gated on
+  `steps.gemini-run.outcome == 'failure'`: a `quota-or-auth` classification
+  posts a `> [!WARNING]` comment and stops there, deliberately never
+  retried -- retrying a suspended or rate-limited key wastes CI time and can
+  look like continued automated abuse to Google, which is the opposite of
+  what should happen. An `other` classification still posts (with a
+  `> [!CAUTION]` framing) but the calling workflow fails the check for real,
+  the same two-tier structure `report-push-failure`'s `kind` decides.
+  `gemini-code-review.yml` additionally gates a `require-review` job
+  (mirroring `claude-code-review.yml`'s own) on this: it skips gray rather
+  than red when the review was a graceful quota/auth skip, and consumers
+  gating merges on this workflow should use `review / require-review`, not
+  `review / review`, for the same reason `claude-code-review.yml`'s own
+  header documents. (Added after the "Default Gemini Project" API-key
+  suspension incident, 2026-07-30 -- see the Tests section below for the
+  offline coverage and the `_selftest.yml` end-to-end proof.)
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -767,6 +795,33 @@ merges).
 As with `detect-review-request`, `claude.yml`'s own layer above the composite
 is not covered -- it calls the action via `Morrison-Lab/gha/...@v2`, which does
 not resolve until `@v2` is advanced past this capability's merge.
+
+`.github/workflows/scripts/tests/run-classify-gemini-failure-tests.sh`
+exercises `classify-gemini-failure.sh` (see Layout above) offline against a
+table of `run-gemini-cli` `error` outputs: a 429/`RESOURCE_EXHAUSTED` quota
+blob, a 403/`PERMISSION_DENIED` auth rejection, plain suspended-project and
+rate-limit wording with no JSON envelope, and cases that must fall through to
+`other` (a malformed-request/`INVALID_ARGUMENT` blob, a network timeout, an
+empty error output) -- the last group matters as much as the first, since a
+genuine bug swallowed into the graceful-skip path would silently stop failing
+the check it should fail.
+It pins the three-part output contract (`kind=`, `headline=`, blank line,
+advice) by fixed line offset, the same reasoning
+`run-classify-push-failure-tests.sh` gives, and separately asserts the advice
+never embeds the raw error output itself -- that split is deliberate (see
+Layout above), so a test asserting the *opposite* would be asserting a
+regression.
+CI runs this suite as a step in the new `gemini-review-fail-check` job, which
+also calls `report-gemini-failure` itself through two real `uses:` steps with
+`dry-run: true` -- one quota-or-auth fixture, one genuine (`other`) fixture --
+proving `github.action_path` resolution end-to-end, the same proof
+`run-review-guard`'s/`report-push-failure`'s own e2e steps give.
+Kept as its own job rather than folded into `review-fail-check` above, so a
+failure here is attributable at a glance -- the same one-capability-per-job
+split `phi-tests`/`new-line-breaks-tests` already use.
+As with `report-push-failure`, `gemini.yml`'s/`gemini-code-review.yml`'s own
+consumption of this composite via `@v2` is not covered here -- it does not
+resolve until `@v2` is advanced past this capability's merge.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of

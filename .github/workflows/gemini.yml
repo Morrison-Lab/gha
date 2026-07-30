@@ -328,7 +328,9 @@ jobs:
       # to reading the thread and commenting --- no write-side PR tools, matching
       # this workflow's read-only scope described in the header.
       - name: Run Gemini CLI
+        id: gemini-run
         if: steps.gate.outputs.skip != 'true'
+        continue-on-error: true
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -386,3 +388,32 @@ jobs:
             so when the request needs a code change, reply with the change as a
             diff or a description rather than claiming to have made it.
             ${{ inputs.prompt-addendum }}
+
+      # run-gemini-cli had no error handling at all before this: a quota
+      # exhaustion, an auth rejection, or a suspended project just red-X'd the
+      # job with the raw error in the run log -- no PR-visible explanation,
+      # indistinguishable from a genuine bug, and (worse) nothing stopping a
+      # human from reflexively re-running it against a key that cannot
+      # currently be used. Classify the failure and report it distinctly
+      # instead. `error-output` is readable here because the action writes it
+      # before exiting non-zero -- the same "outputs captured even on
+      # failure" mechanism the dispatch-review step above already documents.
+      - name: Classify and report Gemini CLI failure
+        id: gemini-failure
+        if: steps.gate.outputs.skip != 'true' && steps.gemini-run.outcome == 'failure'
+        uses: Morrison-Lab/gha/.github/actions/report-gemini-failure@v2
+        with:
+          error-output: ${{ steps.gemini-run.outputs.error }}
+          entity-number: ${{ github.event.issue.number || github.event.pull_request.number }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      # Only a genuine failure re-raises the job as red. A quota/auth/
+      # suspension failure ends here with a comment already posted above --
+      # deliberately NOT retried (see report-gemini-failure's own header for
+      # why retrying a suspended/rate-limited key is actively harmful).
+      - name: Fail the check for a non-quota Gemini failure
+        if: >-
+          steps.gate.outputs.skip != 'true' &&
+          steps.gemini-run.outcome == 'failure' &&
+          steps.gemini-failure.outputs.kind != 'quota-or-auth'
+        run: exit 1
