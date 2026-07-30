@@ -69,7 +69,54 @@ TAIL="([[:space:][:punct:]]+($TAIL_WORD))*"
 # escape and bash's `=~` has no multiline flag, so "end of line" is spelled
 # out as "a literal newline, or end of string".
 NEWLINE=$'\n'
-PATTERN="@claude[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review"
+
+# The default stays `@claude` alone, matching detect-review-request/action.yml's
+# own `bot-name` default; a caller wanting another bot passes it explicitly, the
+# way gemini.yml passes '@gemini,@gemini-cli'. Declaring a wider default here
+# than the action declares would mean a direct script caller and a workflow
+# caller silently matched different token sets, so
+# tests/run-detect-review-request-tests.sh asserts the two agree (the gha#303
+# precedent).
+# Defined here rather than lower down: the token split below needs it.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+BOT_NAME_INPUT="${BOT_NAME:-@claude}"
+# Comma-separated tokens become regex alternatives.
+# The split and trim is delegated to split-csv-list.sh rather than hand-rolled,
+# so this repo keeps one CSV splitter instead of several (gha#253). Validation
+# stays here, because it is specific to this script's regex use.
+declare -a BOT_TOKENS=()
+while IFS= read -r bot_token; do
+  [ -n "$bot_token" ] || continue
+  # Each token is spliced into an ERE below, so it is validated rather than
+  # escaped: a mention is a GitHub login preceded by `@`, and that shape has no
+  # regex metacharacters in it. Validating is the safer of the two, because the
+  # failure mode of getting escaping wrong is silent. A metacharacter would
+  # quietly widen what matches (`@bot.` matching `@botx`), and an unbalanced
+  # `(` or `[` would make the regex fail to compile --- and since the match runs
+  # inside an `if`, which `set -e` exempts, that failure returns false for every
+  # comment and permanently disables review dispatch with nothing in the log.
+  # detect-bot-mention.sh needs no equivalent: it uses a quoted glob match, so
+  # its tokens are literal strings.
+  if [[ ! "$bot_token" =~ ^@[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+    echo "detect-review-request.sh: BOT_NAME token is not a valid @mention: '$bot_token'" >&2
+    exit 2
+  fi
+  BOT_TOKENS+=("$bot_token")
+done < <(bash "$SCRIPT_DIR/split-csv-list.sh" "$BOT_NAME_INPUT")
+
+if [ "${#BOT_TOKENS[@]}" -eq 0 ]; then
+  echo "detect-review-request.sh: BOT_NAME held no non-empty tokens: '$BOT_NAME_INPUT'" >&2
+  exit 2
+fi
+
+BOT_ALT="$(IFS='|'; printf '%s' "${BOT_TOKENS[*]}")"
+BOT_PATTERN="(${BOT_ALT})"
+
+# The separator class is `[[:space:][:punct:]]` unchanged: `[:punct:]` already
+# contains `-`, so `@gemini-cli review` matches through the `@gemini-cli`
+# alternative (and `@gemini` plus a `-` separator) without a separate `-` term.
+PATTERN="${BOT_PATTERN}[[:space:][:punct:]]+(($POLITE)[[:space:][:punct:]]+)*(re-?)?review"
 PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
 
 # Blockquotes, fenced code blocks, indented code blocks, and inline code spans
@@ -84,7 +131,6 @@ PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
 # feature (gha#344). Blockquote stripping predates it -- GitHub's "Quote
 # reply" button reproduces a whole body prefixed with `> ` -- as does the CR
 # removal the CRLF-anchored pattern above needs.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
 
 normalize_body() {

@@ -1,0 +1,388 @@
+name: Gemini CLI (reusable)
+
+# Gemini CLI question-answering bot. Responds to "@gemini" or "@gemini-cli"
+# mentions in issues, issue comments, PR review comments, and PR reviews by
+# reading the thread and replying to it. Also runs unattended on
+# workflow_dispatch/schedule events.
+#
+# SCOPE --- read this before comparing it to claude.yml. This workflow answers;
+# it does NOT edit files, commit, push, or open PRs. There is deliberately no
+# PR-branch checkout, no issue-branch creation, and no push step, so anything
+# Gemini writes to the runner's working tree is discarded at cleanup. Its
+# permissions are scoped to match: `contents: read`, not write. Bringing it to
+# claude.yml's agent parity is tracked in #367, not attempted here --- claude.yml
+# carries a large amount of branch/commit/push/PR machinery for that, and a
+# half-built version that silently strands commits is worse than an honest
+# question-answerer.
+#
+# The caller stub (see examples/gemini.yml) holds the `on:` triggers; this
+# reusable workflow inherits the caller's event context. Requires the
+# GEMINI_API_KEY secret.
+#
+# Mirrors claude.yml where the two genuinely overlap: the same
+# detect-bot-mention gate (so a mention quoted in a code block or blockquote
+# doesn't spend a run), the same detect-review-request routing (an
+# `@gemini review` dispatches the dedicated reviewer instead of self-reviewing),
+# and the same `--ref` handling on that dispatch (#285).
+
+on:
+  workflow_call:
+    inputs:
+      setup-r:
+        description: Install R before running Gemini CLI.
+        type: boolean
+        default: true
+      install-quarto:
+        description: Install Quarto so Gemini CLI can render .qmd files.
+        type: boolean
+        default: false
+      apt-packages:
+        description: Extra apt packages to install before setup.
+        type: string
+        default: ''
+      pip-packages:
+        description: Python packages to install with pip3.
+        type: string
+        default: ''
+      checkout-submodules:
+        description: Check out git submodules.
+        type: boolean
+        default: false
+      prompt-addendum:
+        description: Extra prompt instructions appended to Gemini CLI prompt.
+        type: string
+        default: ''
+      gemini-model:
+        description: Model override passed to run-gemini-cli (e.g. gemini-2.5-flash).
+        type: string
+        default: 'gemini-2.5-flash'
+      review-workflow-file:
+        description: >-
+          Workflow file (in the caller repo) dispatched on `@gemini review`
+          mentions. Defaults to the name examples/gemini-code-review.yml is
+          copied to, mirroring claude.yml's own review-workflow-file default.
+        type: string
+        default: 'gemini-code-review.yml'
+    secrets:
+      GEMINI_API_KEY:
+        required: false
+      SUBMODULES_TOKEN:
+        required: false
+
+jobs:
+  gemini:
+    # Only trigger for trusted authors (OWNER / MEMBER / COLLABORATOR) on the
+    # four reactive events. Each association check is scoped to the event it
+    # belongs to, which is load-bearing rather than tidiness: an
+    # `issue_comment` payload carries BOTH `comment.author_association` (the
+    # commenter) and `issue.author_association` (whoever opened the issue), so
+    # an un-scoped `||` chain passes whenever the *thread* was opened by a
+    # trusted author, regardless of who is commenting. Any untrusted user
+    # commenting `@gemini` on an OWNER-opened issue would then start a
+    # write-scoped LLM run. Same gate, and same reasoning, as claude.yml.
+    #
+    # workflow_dispatch/schedule have no body or author_association to gate
+    # on and need none: workflow_dispatch requires repo write access, and a
+    # cron trigger has no actor at all --- it exists only because someone with
+    # write access committed its config to the default branch (gha#245).
+    if: |
+      (github.event_name == 'issue_comment' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review_comment' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'pull_request_review' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
+      (github.event_name == 'issues' && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule'
+
+    # Serialize sessions per issue/PR so rapid mentions don't fire competing
+    # runs racing to push the same branch. `cancel-in-progress: false` queues
+    # a new mention behind the running session rather than killing it, and
+    # `|| github.run_id` keeps an unexpected event with no issue/PR number
+    # from collapsing the group and serializing every session globally.
+    concurrency:
+      group: gemini-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
+      cancel-in-progress: false
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # `contents: read`, not write: this workflow has no push step, so write
+    # would be a permission it cannot use. `actions: write` is needed only so
+    # an `@gemini review` can dispatch the reviewer.
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: write
+    steps:
+      - name: Detect genuine @gemini or @gemini-cli mention
+        id: detect-mention
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
+        with:
+          comment-body: ${{ github.event.comment.body || '' }}
+          review-body: ${{ github.event.review.body || '' }}
+          issue-body: ${{ github.event.issue.body || '' }}
+          issue-title: ${{ github.event.issue.title || '' }}
+          bot-name: '@gemini,@gemini-cli'
+
+      - name: Detect @gemini review request
+        id: detect-review
+        if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
+        with:
+          comment-body: ${{ github.event.comment.body || '' }}
+          review-body: ${{ github.event.review.body || '' }}
+          bot-name: '@gemini,@gemini-cli'
+
+      # An `@gemini review` routes to the dedicated reviewer rather than being
+      # answered by the agent, so this step and the gate below are ordered:
+      # dispatch first, then skip the agent for the rest of the job.
+      # `github.event.issue.pull_request` is present only when the issue IS a
+      # PR, so it is what separates an `@gemini review` on a pull request from
+      # the same words on a plain issue. Without it the `gh api .../pulls/N`
+      # below 404s on a normal issue and, under `set -euo pipefail`, fails the
+      # whole job over a request that was simply not about a PR.
+      #
+      # `continue-on-error: true` is what makes the gate step's fallback
+      # reachable at all. Without it a failing `gh workflow run` --- a review
+      # workflow file the caller never copied, or one that is disabled ---
+      # fails this step, and a failed step skips every later step, including
+      # the gate. The gate's own "could not be dispatched, answer instead"
+      # branch would then be dead code, so the request would be lost and the
+      # job would go red. With it, the step's `outcome` is still `failure` (only
+      # `conclusion` is masked), which is exactly what the gate reads.
+      - name: Dispatch review workflow if @gemini review was requested
+        id: dispatch-review
+        continue-on-error: true
+        if: >-
+          steps.detect-mention.outputs.match != 'false' &&
+          steps.detect-review.outputs.match == 'true' &&
+          (github.event.issue.pull_request || github.event.pull_request.number)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          REVIEW_WF: ${{ inputs.review-workflow-file }}
+        run: |
+          set -euo pipefail
+          # Every failure path below exits NON-zero, deliberately. The step is
+          # `continue-on-error`, so a non-zero exit records `outcome: failure`
+          # without failing the job --- and that is exactly what the gate step
+          # reads to decide the agent should answer instead. An `exit 0` here
+          # would report `outcome: success`, so the gate would conclude a review
+          # had been dispatched, skip the agent, and swallow the request while
+          # reporting green: the same silent-swallow bug this gate exists to
+          # prevent, reintroduced through a second exit path.
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::warning::No PR number on this event; cannot dispatch $REVIEW_WF."
+            exit 1
+          fi
+          if ! PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null); then
+            echo "::warning::Could not read PR #$PR_NUMBER; cannot dispatch $REVIEW_WF."
+            exit 1
+          fi
+          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
+          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+          # A fork PR is not dispatched at all, rather than dispatched without
+          # `--ref` as it was before. gemini-code-review.yml now refuses fork
+          # PRs outright (its own dispatch guard, mirroring
+          # claude-code-review.yml's), so dispatching one would only produce a
+          # red check nobody asked for. Failing here instead routes the request
+          # to the agent, which answers in place -- a worse review than the
+          # dedicated reviewer would give, but an answer rather than an error.
+          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+            echo "::warning::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); $REVIEW_WF refuses fork PRs, so answering with the agent instead."
+            # Record WHY before exiting, so the gate can tell this deliberate
+            # non-dispatch apart from a real breakage. A step's outputs are
+            # captured even when it exits non-zero, which is what makes this
+            # work; without it the gate sees only `outcome: failure` and tells
+            # the reader to go check a workflow file that is perfectly fine.
+            echo "reason=fork" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          # --ref pins the dispatched run's check-runs to the PR's head branch
+          # instead of the default branch that workflow_dispatch falls back to
+          # when no ref is given (#285). Safe unconditionally now that forks
+          # never reach this line, since the branch is always in $REPO (#289).
+          echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER ($PR_BRANCH)."
+          gh workflow run "$REVIEW_WF" --repo "$REPO" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER"
+
+      # A step's `exit 0` ends only that step, never the job, so a "skip" step
+      # that just echoes and exits leaves every later step running anyway.
+      # Compute the decision once here and gate each later step on it, the same
+      # way claude.yml gates on its own `steps.gate.outputs.skip`.
+      #
+      # The review branch has to carry the SAME PR-context condition the
+      # dispatch step above does, not just `REVIEW_MATCH`. The matcher is
+      # text-only, so `@gemini review` on a plain (non-PR) issue matches while
+      # the dispatch step's `if:` correctly does not fire --- and suppressing
+      # the agent on the match alone would then drop the request entirely: no
+      # dispatch, no answer, job green. Suppress only when a dispatch actually
+      # happened; otherwise fall through and let the agent reply, which is what
+      # claude.yml's equivalent gate does by attaching the PR-context guard to
+      # both sides symmetrically.
+      - name: Decide whether the agent should run
+        id: gate
+        env:
+          MENTION_MATCH: ${{ steps.detect-mention.outputs.match }}
+          REVIEW_MATCH: ${{ steps.detect-review.outputs.match }}
+          DISPATCH_OUTCOME: ${{ steps.dispatch-review.outcome }}
+          # Empty unless the dispatch step failed deliberately. Distinguishes
+          # "did not dispatch on purpose" from "could not dispatch", which
+          # `outcome` alone reports identically.
+          DISPATCH_REASON: ${{ steps.dispatch-review.outputs.reason }}
+          # Named in the dispatch-failure warning below. Required here, not
+          # optional: this step runs under `set -u`, so referencing it without
+          # declaring it would fail the step on the very path the warning
+          # exists to report.
+          REVIEW_WF: ${{ inputs.review-workflow-file }}
+          # None of the granted MCP tools (issue_read, pull_request_read,
+          # add_issue_comment) can be called without an explicit number, and
+          # run-gemini-cli's own github_pr_number/github_issue_number inputs
+          # only set env vars on the CLI process --- they are never interpolated
+          # into the prompt text. So the number has to reach the prompt here or
+          # the agent has nothing to read or reply to.
+          THREAD_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          skip=false
+          if [ "$MENTION_MATCH" = "false" ]; then
+            echo "No genuine @gemini mention outside code blocks or quotes; skipping the agent."
+            skip=true
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "success" ]; then
+            echo "Review dispatched to the dedicated reviewer; skipping the agent."
+            skip=true
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_REASON" = "fork" ]; then
+            # The dispatch step failed ON PURPOSE: the PR is from a fork, which
+            # the reviewer refuses. It has already warned, naming the fork, so
+            # do not warn again here about a workflow file that is fine.
+            echo "Fork PR not sent to the dedicated reviewer; answering with the agent instead."
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "failure" ]; then
+            # A genuine breakage, not a routing decision: the review workflow
+            # file is probably missing or disabled in the caller repo. Warn
+            # rather than notice, since somebody has to fix it --- but still
+            # answer, so the request is not lost while it goes unfixed.
+            echo "::warning::Could not dispatch the review workflow; check that '${REVIEW_WF}' exists and is enabled in this repo. Answering with the agent instead."
+          elif [ "$REVIEW_MATCH" = "true" ]; then
+            # The dispatch step was skipped: the request was not on a PR, so
+            # there was nothing to review. Ordinary, hence a notice.
+            echo "::notice::A review was requested outside a pull request; answering with the agent instead of going silent."
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+          # One line, so it is safe to write to GITHUB_OUTPUT unquoted.
+          if [ -n "$THREAD_NUMBER" ]; then
+            echo "thread_line=You were mentioned on $REPO issue or pull request number $THREAD_NUMBER. Use that number when calling issue_read, pull_request_read, or add_issue_comment." >> "$GITHUB_OUTPUT"
+          else
+            echo "thread_line=This is an unattended run in $REPO with no associated issue or pull request, so there is no thread to read or reply to." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: ${{ inputs.checkout-submodules }}
+          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
+
+      # Passed via env rather than inlined into the script, so a caller's value
+      # is a shell word list and never interpreted as script.
+      - name: Install system apt packages
+        if: steps.gate.outputs.skip != 'true' && inputs.apt-packages != ''
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # Unquoted on purpose: the input is a space-separated package list.
+          # shellcheck disable=SC2086
+          sudo apt-get install -y $APT_PACKAGES
+
+      - name: Set up Python pip packages
+        if: steps.gate.outputs.skip != 'true' && inputs.pip-packages != ''
+        env:
+          PIP_PACKAGES: ${{ inputs.pip-packages }}
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2086
+          pip3 install --break-system-packages $PIP_PACKAGES
+
+      - name: Set up R
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          use-public-rspm: true
+
+      - name: Set up Quarto
+        if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+
+      # Pinned to a release SHA per README's "Pinning third-party actions".
+      # Note the tag: run-gemini-cli publishes v0 / v0.1.x, with no v1 tag at
+      # all, so a `@v1` ref fails to resolve and the step never runs.
+      #
+      # GITHUB_TOKEN and `settings:` are both required for this to do anything
+      # visible: run-gemini-cli has no `github_token` input, and it writes
+      # `.gemini/settings.json` only when `settings:` is non-empty, so without
+      # them the run bills the API and posts nothing. `includeTools` is scoped
+      # to reading the thread and commenting --- no write-side PR tools, matching
+      # this workflow's read-only scope described in the header.
+      - name: Run Gemini CLI
+        if: steps.gate.outputs.skip != 'true'
+        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_model: ${{ inputs.gemini-model }}
+          # Pinned rather than left to install `@latest` on every run, which
+          # would undercut the SHA pin on the action right above it.
+          gemini_cli_version: '0.53.0'
+          github_pr_number: ${{ github.event.pull_request.number }}
+          github_issue_number: ${{ github.event.issue.number }}
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 25
+              },
+              "mcpServers": {
+                "github": {
+                  "command": "docker",
+                  "args": [
+                    "run",
+                    "-i",
+                    "--rm",
+                    "-e",
+                    "GITHUB_PERSONAL_ACCESS_TOKEN",
+                    "ghcr.io/github/github-mcp-server:v0.27.0"
+                  ],
+                  "includeTools": [
+                    "add_issue_comment",
+                    "issue_read",
+                    "pull_request_read"
+                  ],
+                  "env": {
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+                  }
+                }
+              },
+              "tools": {
+                "core": [
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)"
+                ]
+              }
+            }
+          # prompt-addendum comes LAST, matching its documented "appended"
+          # contract and its name; it used to be prepended.
+          prompt: |
+            ${{ steps.gate.outputs.thread_line }}
+            Read the thread, answer what was asked, and post your answer as a
+            comment with `add_issue_comment`.
+            You cannot commit, push, or open pull requests from this workflow,
+            so when the request needs a code change, reply with the change as a
+            diff or a description rather than claiming to have made it.
+            ${{ inputs.prompt-addendum }}

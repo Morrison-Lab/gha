@@ -1,0 +1,164 @@
+name: AI Code Review (reusable)
+
+# Reusable multi-agent PR review workflow. Picks one of the configured AI
+# agents at random and dispatches that agent's own review workflow for the PR,
+# falling through to the next candidate when one can't be dispatched.
+#
+# Scope of the fallback: it covers agents that are unavailable *at dispatch
+# time* --- no API key/token secret configured, or the agent's review workflow
+# file missing or disabled in the caller repo. It does NOT cover an agent that
+# dispatches fine and then fails partway through its own run, because
+# `gh workflow run` returns as soon as the run is queued and reports no run id
+# to wait on. Failing over on a runtime failure needs the dispatched run to be
+# located and awaited; tracked separately rather than papered over here.
+#
+# The caller stub (see examples/ai-code-review.yml) holds the `on:` triggers.
+
+on:
+  workflow_call:
+    inputs:
+      agents:
+        description: Comma-separated list of AI agents to select from (e.g. 'claude, gemini').
+        type: string
+        default: 'claude, gemini'
+      pr-number:
+        description: Pull request number to review (required for workflow_dispatch).
+        type: string
+        default: ''
+      claude-review-workflow-file:
+        description: >-
+          Caller-repo workflow file dispatched for a Claude review. Defaults to
+          the name examples/claude-code-review.yml is copied to.
+        type: string
+        default: 'claude-code-review.yml'
+      gemini-review-workflow-file:
+        description: >-
+          Caller-repo workflow file dispatched for a Gemini review. Defaults to
+          the name examples/gemini-code-review.yml is copied to.
+        type: string
+        default: 'gemini-code-review.yml'
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+      GEMINI_API_KEY:
+        required: false
+
+jobs:
+  select-and-review:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+      # The one permission the dispatch needs: `gh workflow run` against the
+      # caller's own repo. `actions: write` on GITHUB_TOKEN covers it, so no
+      # PAT is involved --- and the picked agent's own review workflow
+      # declares whatever permissions it needs for itself.
+      actions: write
+
+    # Two dispatches for the same PR would put two agents' reviews on it,
+    # which is the opposite of picking one. Grouped per PR so a later push
+    # cancels the pending selection rather than adding to it. Cancelling
+    # cannot un-dispatch an agent whose run already started; it only stops a
+    # second selection from being made, which is what this group is for.
+    concurrency:
+      group: ai-review-${{ inputs.pr-number || github.event.pull_request.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Select an agent and dispatch its review workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
+          RAW_AGENTS: ${{ inputs.agents }}
+          CLAUDE_WF: ${{ inputs.claude-review-workflow-file }}
+          GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
+          # Secret *presence*, not the secret itself: a `secrets.X != ''`
+          # comparison is evaluated by Actions, so only the boolean reaches
+          # the runner.
+          HAS_CLAUDE_SECRET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_GEMINI_SECRET: ${{ secrets.GEMINI_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "::error::No PR number available for AI review."
+            exit 1
+          fi
+          # Same digits-only guard gemini-code-review.yml applies. The value is
+          # quoted at every use below, so this is not the last line of defence
+          # --- it is so a malformed workflow_dispatch input fails here, with a
+          # message naming the problem, rather than as a puzzling `gh api` 404.
+          if [[ ! "$PR_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::PR number must be digits only; got '$PR_NUMBER'."
+            exit 1
+          fi
+
+          mapfile -t AGENTS < <(tr ',' '\n' <<< "$RAW_AGENTS" \
+            | tr '[:upper:]' '[:lower:]' \
+            | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+            | grep -v '^$' \
+            | shuf)
+
+          if [ "${#AGENTS[@]}" -eq 0 ]; then
+            echo "::error::No valid agents configured in the 'agents' input: '$RAW_AGENTS'"
+            exit 1
+          fi
+
+          echo "Candidate agents, in the order they will be tried: ${AGENTS[*]}"
+
+          # This job doesn't check out the repo, so the PR's head branch has to
+          # be looked up explicitly. --ref pins the dispatched run's check-runs
+          # to that branch instead of the default branch that workflow_dispatch
+          # falls back to when no ref is given (#285).
+          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
+          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+          # A fork PR's head branch only exists in the fork, not in $REPO, so
+          # --ref would fail to resolve there (#289). Fall back to no --ref for
+          # fork PRs; the check-run then mis-attributes to the default branch,
+          # the lesser problem.
+          REF_ARGS=(--ref "$PR_BRANCH")
+          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+            echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching without --ref."
+            REF_ARGS=()
+          fi
+
+          for agent in "${AGENTS[@]}"; do
+            # One dispatch block for every agent: the per-agent difference is
+            # which secret gates it and which workflow file it dispatches, so
+            # only those two are resolved here.
+            case "$agent" in
+              claude) has_secret="$HAS_CLAUDE_SECRET"; agent_wf="$CLAUDE_WF" ;;
+              gemini) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$GEMINI_WF" ;;
+              *)
+                echo "::warning::Unknown agent '$agent'; trying the next candidate."
+                continue
+                ;;
+            esac
+
+            if [ "$has_secret" != "true" ]; then
+              echo "::notice::Agent '$agent' has no API key/token secret configured; trying the next candidate."
+              continue
+            fi
+
+            echo "Dispatching $agent_wf for PR #$PR_NUMBER ($agent)."
+            if gh workflow run "$agent_wf" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"; then
+              echo "Dispatched the review to $agent ($agent_wf)."
+              exit 0
+            fi
+            echo "::warning::Could not dispatch $agent_wf for '$agent'; trying the next candidate."
+          done
+
+          echo "::error::Every configured AI agent was tried; none could be dispatched."
+          exit 1

@@ -16,6 +16,14 @@
 # Usage: bash .github/workflows/scripts/tests/run-detect-bot-mention-tests.sh
 set -euo pipefail
 
+# The suites below exercise the scripts' DEFAULT behavior, which reads
+# BOT_NAME from the environment -- so an ambient value silently changes what
+# is being tested. `anthropics/claude-code-action` exports BOT_NAME=claude[bot]
+# in its environment, and under it this suite reported 7 of 23 cases failing
+# instead of its real result. Clear it here so a hand run and a CI run agree;
+# the BOT_NAME-specific cases below set it inline per case.
+unset BOT_NAME
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../../../.." && pwd)"
 detect_script="$repo_root/.github/workflows/scripts/detect-bot-mention.sh"
@@ -48,6 +56,7 @@ cases=(
 )
 
 failures=0
+
 for case in "${cases[@]}"; do
   want="${case%%|*}"
   body="${case#*|}"
@@ -89,8 +98,63 @@ else
   echo "OK   detect-bot-mention.sh rejects empty stdin"
 fi
 
+# BOT_NAME points the same gate at another bot's mention; gemini.yml passes
+# '@gemini,@gemini-cli'. Both tokens of a multi-token list have to match, and
+# @claude must stop matching once BOT_NAME names another bot -- otherwise a
+# `@claude` comment would also wake the Gemini agent. The stripping behaviour
+# is unchanged by BOT_NAME, so a quoted mention of the named bot still skips.
+bot_cases=(
+  "@gemini,@gemini-cli|true|@gemini fix this"
+  "@gemini,@gemini-cli|true|please look at this, @gemini-cli"
+  "@gemini,@gemini-cli|false|@claude fix this"
+  '@gemini|false|see `@gemini` in the docs'
+  # Whitespace around a token is trimmed, not split on.
+  "@ai , @gemini|true|@gemini fix this"
+)
+for case in "${bot_cases[@]}"; do
+  bot="${case%%|*}"
+  rest="${case#*|}"
+  want="${rest%%|*}"
+  body="${rest#*|}"
+  got="$(printf '%s\0' "$body" | BOT_NAME="$bot" bash "$detect_script")"
+  if [[ "$got" == "$want" ]]; then
+    echo "OK   detect-bot-mention.sh BOT_NAME=${bot@Q} ${body@Q} -> $got"
+  else
+    echo "::error::detect-bot-mention.sh BOT_NAME=${bot@Q} ${body@Q}: expected $want but got $got"
+    failures=$((failures + 1))
+  fi
+done
+
+# A BOT_NAME holding no usable token is a miswired caller. This gate's only
+# effect is to skip, so reporting "false" here would silence every run for a
+# typo in the caller's input; exit non-zero instead.
+if printf '%s\0' "@claude fix this" | BOT_NAME=" , " bash "$detect_script" >/dev/null 2>&1; then
+  echo "::error::detect-bot-mention.sh should exit non-zero on an empty BOT_NAME list"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-bot-mention.sh rejects an empty BOT_NAME list"
+fi
+
+# The script's own BOT_NAME fallback and the action's `bot-name` default are
+# declared in two files, so assert they agree rather than trusting a comment
+# (the gha#303 precedent for defaults declared more than once). Parsed with a
+# line scan because this job installs no YAML library.
+action_yml="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../actions/detect-bot-mention" && pwd)/action.yml"
+action_default="$(awk '/^  bot-name:/ {found=1} found && /^    default:/ {gsub(/^    default:[[:space:]]*/, ""); gsub(/^['"'"'"]|['"'"'"]$/, ""); print; exit}' "$action_yml")"
+script_default="$(awk '/^MENTION_LIST=/ {sub(/^MENTION_LIST="\$\{BOT_NAME:-/, ""); sub(/\}"$/, ""); print; exit}' "$detect_script")"
+if [[ -z "$action_default" ]]; then
+  echo "::error::detect-bot-mention/action.yml declares no default for bot-name"
+  failures=$((failures + 1))
+elif [[ "$action_default" != "$script_default" ]]; then
+  echo "::error::bot-name default drift: action.yml has ${action_default@Q}, script has ${script_default@Q}"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-bot-mention bot-name default agrees across action.yml and the script"
+fi
+
+total=$(( ${#cases[@]} + ${#bot_cases[@]} + 5 ))
 if [[ "$failures" -gt 0 ]]; then
-  echo "::error::$failures of $(( ${#cases[@]} + 3 )) detect-bot-mention case(s) did not behave as expected"
+  echo "::error::$failures of $total detect-bot-mention case(s) did not behave as expected"
   exit 1
 fi
-echo "All $(( ${#cases[@]} + 3 )) detect-bot-mention cases behaved as expected."
+echo "All $total detect-bot-mention cases behaved as expected."

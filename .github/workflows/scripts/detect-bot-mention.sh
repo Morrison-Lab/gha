@@ -39,10 +39,29 @@
 # Offline tests live in tests/run-detect-bot-mention-tests.sh.
 set -euo pipefail
 
-MENTION='@claude'
+# The default has to stay in step with detect-bot-mention/action.yml's own
+# `bot-name` default; tests/run-detect-bot-mention-tests.sh asserts the two
+# agree rather than leaving it to a comment (the gha#303 precedent).
+MENTION_LIST="${BOT_NAME:-@claude}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
+
+# Split the token list once, not per body: it does not vary between bodies.
+# The split and trim itself is delegated to split-csv-list.sh rather than
+# hand-rolled here --- that script exists precisely so this repo has one CSV
+# splitter instead of several, after two independent hand-rolled copies each
+# shipped a trimming bug (gha#253).
+declare -a MENTIONS=()
+while IFS= read -r token; do
+  [ -n "$token" ] || continue
+  MENTIONS+=("$token")
+done < <(bash "$SCRIPT_DIR/split-csv-list.sh" "$MENTION_LIST")
+
+if [ "${#MENTIONS[@]}" -eq 0 ]; then
+  echo "detect-bot-mention.sh: BOT_NAME held no non-empty tokens: '$MENTION_LIST'" >&2
+  exit 2
+fi
 
 shopt -s nocasematch
 
@@ -53,9 +72,13 @@ match=false
 while IFS= read -r -d '' body; do
   count=$((count + 1))
   [ -n "$body" ] || continue
-  if [[ "$(bash "$STRIP_MARKUP" <<<"$body")" == *"$MENTION"* ]]; then
-    match=true
-  fi
+  stripped="$(bash "$STRIP_MARKUP" <<<"$body")"
+  for token in "${MENTIONS[@]}"; do
+    if [[ "$stripped" == *"$token"* ]]; then
+      match=true
+      break
+    fi
+  done
 done
 
 if [ "$count" -eq 0 ]; then
