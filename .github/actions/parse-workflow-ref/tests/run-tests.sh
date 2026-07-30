@@ -12,10 +12,10 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 parse_script="$script_dir/../parse-workflow-ref.sh"
 
 declare -A cases=(
-  ["d-morrison/gha/.github/workflows/claude-code-review.yml@v2"]="repo=d-morrison/gha
+  ["Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2"]="repo=Morrison-Lab/gha
 path=.github/workflows/claude-code-review.yml
 ref=v2"
-  ["d-morrison/gha/.github/workflows/claude-review.yml@refs/heads/main"]="repo=d-morrison/gha
+  ["Morrison-Lab/gha/.github/workflows/claude-review.yml@refs/heads/main"]="repo=Morrison-Lab/gha
 path=.github/workflows/claude-review.yml
 ref=refs/heads/main"
   ["UCD-SERG/serodynamics/.github/workflows/claude-code-review.yml@e088a47d5a510786caf8f5522ac7fd4af9995afd"]="repo=UCD-SERG/serodynamics

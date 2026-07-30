@@ -11,16 +11,21 @@
   The `description`'s consumer list is untouched: `d-morrison` is still one
   of the orgs whose repositories call these workflows.
 
-  `sync-upstream.yml` embedded the old owner in a markdown link written into
-  every consumer's generated PR body, so that one shipped outward rather than
-  merely sitting in this repo.
+  Three reusable workflows embedded the old owner in a markdown link written
+  into every consumer's generated PR body, so those shipped outward rather
+  than merely sitting in this repo: `sync-upstream.yml`, `bump-submodule.yml`,
+  and `sync-shared-fragments.yml`.
 
   Three comments had become false rather than stale, since the code they
   describe already says `Morrison-Lab/gha/...@v2`: `_selftest.yml`'s
   request-dependabot-review note, `dependabot-review.yml`'s header, and
   `dependabot.yml`'s first-party-exemption note.
-  Six `.github/actions/*/action.yml` headers describing "not `d-morrison/gha`'s
-  own tree" were swept alongside them.
+  The remaining self-references were swept alongside them: six
+  `.github/actions/*/action.yml` headers describing "not `d-morrison/gha`'s
+  own tree", the same phrasing where `claude.yml` and `claude-code-review.yml`
+  explain why their steps run against the caller's checkout,
+  `check-links/lychee.default.toml`'s header, and the two `parse-workflow-ref`
+  test cases whose input strings named the old path.
 
   `generate-altdoc-version-dropdown` needed more than a rename.
   Its `GENERATED_MARKER` is written into each consumer's navbar config and
