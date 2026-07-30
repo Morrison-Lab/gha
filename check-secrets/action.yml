@@ -37,19 +37,25 @@ inputs:
   paths-ignore:
     description: >-
       Comma/newline-separated file paths to skip. These are Go REGEXES, not
-      globs -- gitleaks' own allowlist semantics -- so write
-      `tests/fixtures/` rather than `tests/fixtures/**`; an unmatched glob
-      operator fails the scan loudly rather than silently suppressing nothing.
-      Blank lines and `#` comments are ignored.
+      globs -- gitleaks' own allowlist semantics -- and they are matched
+      UNANCHORED, so `docs` suppresses every path containing that substring,
+      `mydocs-secrets.env` included. Anchor with `^` when that matters. Write
+      `tests/fixtures/` rather than `tests/fixtures/**`: `**` fails to compile
+      (Go rejects nested repetition), but a trailing `/*` is a valid regex that
+      silently widens the match instead of erroring, so glob-shaped patterns
+      are warned about rather than caught for you. Blank lines and `#`
+      comments are ignored.
     default: ''
   allowlist-file:
     description: >-
-      Path (in the caller repo) to a file of regexes, one per line; a finding
-      whose matched text matches any of them is suppressed. Defaults to
-      `.github/secrets-allowlist.txt` if present. Blank lines and `#` comments
-      are ignored. A single known finding is better suppressed by its
-      fingerprint in a `.gitleaksignore` file, or by a `gitleaks:allow` comment
-      on the line, both of which gitleaks reads without any input here.
+      Path (in the caller repo) to a file of regexes, ONE PER LINE -- commas
+      are ordinary regex syntax here and never separate entries, so a bounded
+      quantifier like `{16,20}` is safe. A finding whose matched text matches
+      any of them is suppressed. Defaults to `.github/secrets-allowlist.txt`
+      if present. Blank lines and `#` comments are ignored. A single known
+      finding is better suppressed by its fingerprint in a `.gitleaksignore`
+      file, or by a `gitleaks:allow` comment on the line, both of which
+      gitleaks reads without any input here.
     default: ''
   log-opts:
     description: >-
@@ -61,7 +67,9 @@ inputs:
     description: >-
       Fail the action when a possible secret is found (else warn only).
       Defaults to `true`: an exposed credential is not a style nit, and the
-      remedy (rotate it) is urgent enough to block on.
+      remedy (rotate it) is urgent enough to block on. Read fail-closed --
+      only an explicit `false` (trimmed, case-insensitive) opts out, so a
+      typo cannot quietly downgrade the gate to advisory.
     default: 'true'
 runs:
   using: composite

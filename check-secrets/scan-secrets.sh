@@ -22,8 +22,20 @@ set -euo pipefail
 : "${SECRETS_TARGET:?SECRETS_TARGET is required}"
 
 log_opts="${SECRETS_LOG_OPTS:-}"
-fail="${SECRETS_FAIL:-true}"
 report="${SECRETS_REPORT_PATH:-${RUNNER_TEMP:-/tmp}/check-secrets-report.json}"
+
+# Fail closed, and normalize before deciding: only an explicit "false" opts out.
+# check-phi does the same (`PHI_FAIL...strip().lower() != "false"`), and for the
+# one check here designed to block, matching an exact "true" would have made
+# `fail: 'True'`, `fail: 'yes'`, or a trailing space silently downgrade a
+# security gate to advisory while the job still reported green (gha#385 review).
+fail_raw="${SECRETS_FAIL:-true}"
+fail_normalized="$(printf '%s' "$fail_raw" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+if [ "$fail_normalized" = "false" ]; then
+  fail=false
+else
+  fail=true
+fi
 
 # A shallow clone silently limits the scan to whatever commits were fetched, so
 # a clean result would be a false all-clear over the history this check exists

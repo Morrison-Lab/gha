@@ -237,10 +237,17 @@ and departs from it in three that matter.
   where the advisory prose checks warn.
   A leaked credential is not a style nit.
 - **Its `paths-ignore` patterns are Go regexes, not globs**,
-  because they become gitleaks allowlist entries directly.
-  Write `tests/fixtures/`, not `tests/fixtures/**`;
-  a stray glob operator fails the scan loudly rather than silently
-  suppressing nothing.
+  because they become gitleaks allowlist entries directly,
+  and gitleaks matches them **unanchored**.
+  So `docs` suppresses every path containing that substring,
+  `mydocs-secrets.env` included;
+  anchor with `^` when that matters.
+  Write `tests/fixtures/`, not `tests/fixtures/**`.
+  The two glob forms fail differently, which is why the check warns rather
+  than trusting you to notice:
+  `**` does not compile, since Go rejects nested repetition,
+  but a trailing `/*` is a perfectly valid regex that silently widens the
+  match.
 
 Otherwise it behaves as `check-phi` does.
 **Values are never printed** -- a credential in a CI log is still a
@@ -248,7 +255,9 @@ credential -- so findings report only the rule, `file:line`, and the commit.
 Suppress a false positive with a `gitleaks:allow` comment on the line,
 a fingerprint in a `.gitleaksignore` file,
 a regex in the `allowlist-file`
-(defaults to `.github/secrets-allowlist.txt` when present),
+(defaults to `.github/secrets-allowlist.txt` when present;
+one regex per line, and a comma there is regex syntax rather than a
+separator, so a `{16,20}` quantifier is safe),
 or a path in `paths-ignore`.
 Site-specific credential formats the default ruleset does not know go in a
 gitleaks TOML named by the `config` input (`.gitleaks.toml` by default),

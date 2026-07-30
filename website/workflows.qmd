@@ -11,6 +11,7 @@ input tables and a copy-paste example.
 | [`check-bibliography-dois.yml`](reference/check-bibliography-dois.qmd)     | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata                                                                                                                                              | `exclude-keys`, `install-quarto`, `no-metadata-check`                                                                                                                               |
 | [`check-non-standard-chars.yml`](reference/check-non-standard-chars.qmd)   | Detect curly quotes and en/em dashes in `.qmd` and `.R` files                                                                                                                                                                     | `python-version`                                                                                                                                                                    |
 | [`check-phi.yml`](reference/check-phi.qmd)                                 | Scan PRs (added lines only) for content that looks like PHI                                                                                                                                                                       | `detectors`, `paths-ignore`, `allowlist-file`, `fail`                                                                                                                               |
+| [`check-secrets.yml`](reference/check-secrets.qmd)                         | Scan the repository's git **history** for committed credentials with gitleaks                                                                                                                                                     | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail`                                                                                        |
 | [`check-links.yml`](reference/check-links.qmd)                             | lychee link check with bundled config, PR skip-label, and auto-issue on `main`                                                                                                                                                    | `lychee-config`, `lychee-args`, `fail-if-empty`, `create-issue-on-main`, `skip-label`                                                                                               |
 | [`lint-yaml.yml`](reference/lint-yaml.qmd)                                 | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates                                                                                                   | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts`                                                                                 |
 | [`lint-markdown.yml`](reference/lint-markdown.qmd)                         | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates                                                                                        | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`                                                                                  |
@@ -46,8 +47,8 @@ including non-breaking ones, like `cleanup-pr-previews`'s `compact-history`
 input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to
 `@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
-`lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`, and
-`check-new-line-breaks.yml` only ever
+`lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`check-new-line-breaks.yml`, and `check-secrets.yml` only ever
 shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
@@ -108,6 +109,8 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   while untouched legacy code is left alone.
 - `check-phi.yml` scans for content that looks like protected health
   information; see [below](#phi-scanning).
+- `check-secrets.yml` scans the repository's git **history** for committed
+  credentials; see [below](#secret-scanning).
 - `test-coverage.yml` measures R-package test coverage with `covr` and uploads
   the Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the
   caller's `secrets:` block (optional for public repos, but recommended).
@@ -132,6 +135,30 @@ patient names.
 
 The `phone` and `email` detectors exist but are **off by default** because they
 are noisy in source; enable them through the `detectors` input.
+
+## Secret scanning {#secret-scanning}
+
+`check-secrets` is `check-phi`'s counterpart for **credentials**:
+`check-phi` detects identifiers and has no notion of a password or a token,
+so a committed credential passes it cleanly.
+
+- **It scans history, not the diff.**
+  A secret committed and then removed in a later commit is still exposed,
+  because the orphaned commit stays fetchable through the GitHub API until the
+  repository is garbage-collected.
+  So the caller checks out with `fetch-depth: 0`,
+  and a shallow clone is refused rather than reported clean on a partial scan.
+- **Values are never printed**, in the log or the run summary.
+  Findings report only the rule, `file:line`, and the commit.
+- **It blocks by default**, where the advisory prose checks warn.
+- **Its `paths-ignore` patterns are Go regexes matched unanchored**, not globs,
+  so `docs` suppresses every path containing that substring;
+  anchor with `^` when that matters.
+
+It complements GitHub's native secret scanning rather than replacing it -- that
+is a repository setting evaluating pushes, not a pull-request check -- and
+neither substitutes for rotating an exposed credential.
+See [`check-secrets.yml`](reference/check-secrets.qmd) for the full reference.
 
 ## Quarto sites {#quarto-sites}
 

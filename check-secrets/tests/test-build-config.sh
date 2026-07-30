@@ -21,6 +21,7 @@ case_name=""
 work_dir=""
 repo_dir=""
 out_config=""
+stderr_file=""
 build_status=0
 
 fail() {
@@ -60,18 +61,32 @@ new_case() {
   work_dir="$(mktemp -d)"
   repo_dir="$work_dir/repo"
   out_config="$work_dir/gitleaks.toml"
+  stderr_file="$work_dir/stderr.txt"
   mkdir -p "$repo_dir/.github"
+  : > "$stderr_file"
 }
 
 # Run the generator with only the SECRETS_* variables this case names, so no
 # case can leak an input into the next one.
 run_build() {
   env SECRETS_TARGET="$repo_dir" SECRETS_GENERATED_CONFIG="$out_config" "$@" \
-    bash "$build_script" > /dev/null 2>&1
+    bash "$build_script" > /dev/null 2> "$stderr_file"
   build_status=$?
   # Always leave a file behind so an assertion after a refused build reads an
   # empty config rather than erroring on a missing path.
   [ -f "$out_config" ] || : > "$out_config"
+}
+
+assert_stderr_contains() {
+  if ! grep -qF -- "$1" "$stderr_file"; then
+    fail "$2 -- expected on stderr: $1"
+  fi
+}
+
+assert_stderr_not_contains() {
+  if grep -qF -- "$1" "$stderr_file"; then
+    fail "$2 -- expected NOT on stderr: $1"
+  fi
 }
 
 new_case "no inputs extends the default ruleset"
@@ -103,6 +118,19 @@ assert_contains "'''some-regex-one'''," "first regex"
 assert_contains "'''some-regex-two'''," "second regex, trimmed"
 assert_not_contains "comment" "comment line dropped"
 
+# gha#385 review: the allowlist file is documented as one regex per line, and
+# a comma inside a regex is ordinary syntax. Comma-splitting it turned
+# `AKIA[0-9A-Z]{16,20}` into two fragments that both compile, so nothing
+# errored -- the suppression just stopped matching while `20}` became its own
+# unanchored allowlist entry. Confirmed to fail when split_patterns is passed
+# `commas` for this path.
+new_case "a bounded quantifier in the allowlist file survives intact"
+printf 'AKIA[0-9A-Z]{16,20}\n' > "$work_dir/allow.txt"
+run_build SECRETS_ALLOWLIST_FILE="$work_dir/allow.txt"
+assert_status 0
+assert_contains "'''AKIA[0-9A-Z]{16,20}'''," "quantifier kept whole"
+assert_not_contains "'''20}'''," "no fragment entry"
+
 new_case "an explicit config is extended by path, not by useDefault"
 printf '[extend]\nuseDefault = true\n' > "$work_dir/custom.toml"
 run_build SECRETS_CONFIG="$work_dir/custom.toml"
@@ -117,6 +145,24 @@ run_build
 assert_status 0
 assert_contains "path = '''$repo_dir/.gitleaks.toml'''" "auto-detected config"
 assert_contains "'''auto-detected-regex'''," "auto-detected allowlist"
+
+# gha#385 review: `**` fails to compile in Go, but a trailing `/*` is a valid
+# regex, and gitleaks matches allowlist paths unanchored -- so `docs/*`
+# silently suppresses every path containing `docs`. Warn rather than reject,
+# since `.*\.pem` is a legitimate pattern ending in a repetition operator.
+new_case "a glob-shaped path pattern is warned about, and a regex one is not"
+run_build SECRETS_PATHS_IGNORE='docs/*,tests/fixtures/**,^src/.*\.pem$'
+assert_status 0
+assert_stderr_contains "'docs/*' from the paths-ignore input looks like a glob" "trailing /* warned"
+assert_stderr_contains "'tests/fixtures/**' from the paths-ignore input looks like a glob" "** warned"
+assert_stderr_not_contains "^src/" "a plain regex is not warned about"
+assert_contains "'''docs/*'''," "the pattern is still emitted, not dropped"
+
+new_case "an allowlist-file regex ending in a repetition operator is not warned about"
+printf 'secret-.*\n' > "$work_dir/allow.txt"
+run_build SECRETS_ALLOWLIST_FILE="$work_dir/allow.txt"
+assert_status 0
+assert_stderr_not_contains "looks like a glob" "glob check does not apply to allowlist regexes"
 
 # Confirmed to fail when the generator's reject_toml_delimiter call is stubbed
 # out: the build then exits 0 and writes the delimiter-bearing pattern into the
