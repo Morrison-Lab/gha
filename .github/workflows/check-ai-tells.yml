@@ -13,6 +13,13 @@ on:
           by default).
         type: string
         default: '*.qmd *.md'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip. A
+          file that documents the tells necessarily contains them, so exclude
+          any such catalog here.
+        type: string
+        default: ''
       max-per-1k:
         description: >-
           Density threshold, in tells per 1000 added prose words, above which
@@ -45,6 +52,7 @@ jobs:
         uses: Morrison-Lab/gha/check-ai-tells@v2
         with:
           globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
           max-per-1k: ${{ inputs.max-per-1k }}
           fail: ${{ inputs.fail }}
           # On PRs, check only lines added relative to the base; on push there

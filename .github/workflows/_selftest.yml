@@ -86,6 +86,28 @@ jobs:
         with:
           working-directory: ghatools
           upload-snapshots: true
+  # Exercise the composite directly: it is new, so it does not exist at the
+  # released @v2 tag the reusable workflow pins. paths-ignore excludes the
+  # files that *define* and *test* the tells, which necessarily contain them.
+  ai-tells:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check added prose for AI tells
+        uses: ./check-ai-tells
+        with:
+          globs: '*.md *.qmd'
+          paths-ignore: |
+            ghatools/R/ai_tells.R
+            ghatools/tests/**
+            check-ai-tells/**
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   bib:
     permissions:
       contents: read

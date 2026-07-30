@@ -22,6 +22,16 @@ inputs:
       Space-separated git pathspecs of tracked files to check. Git pathspecs
       match at any depth, so this is recursive by default.
     default: '*.qmd *.md'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip. Supports
+      `*`, `?`, and recursive `**`. Needed more here than in most checks: a
+      file that *documents* the tells necessarily contains them, so the
+      catalog itself (ai-config's shared/writing/ai-tells.md) and this repo's
+      own pattern definitions must be excluded or the check flags its own
+      source. Verified by running this check over its own PR: 71 of its 71
+      hits came from the word list and this action's description.
+    default: ''
   max-per-1k:
     description: >-
       Density threshold, in tells per 1000 added prose words, above which the
@@ -60,6 +70,7 @@ runs:
       env:
         AIT_BASE_REF: ${{ inputs.base-ref }}
         AIT_GLOBS: ${{ inputs.globs }}
+        AIT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         AIT_MAX_PER_1K: ${{ inputs.max-per-1k }}
         AIT_FAIL: ${{ inputs.fail }}
       run: Rscript "${{ github.action_path }}/check-ai-tells.R"

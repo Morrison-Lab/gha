@@ -21,10 +21,31 @@
 #   reflag a corpus's entire existing prose on its first run.
 #
 # Environment:
-#   AIT_BASE_REF    Git ref/SHA to diff against. Empty => skip.
-#   AIT_GLOBS       Space-separated git pathspecs. Default "*.qmd *.md".
-#   AIT_FAIL        "true" => exit non-zero on hits. Default warn-only.
-#   AIT_MAX_PER_1K  Density above which the run adds a summary annotation.
+#   AIT_BASE_REF      Git ref/SHA to diff against. Empty => skip.
+#   AIT_GLOBS         Space-separated git pathspecs. Default "*.qmd *.md".
+#   AIT_PATHS_IGNORE  Comma/newline-separated globs to skip.
+#   AIT_FAIL          "true" => exit non-zero on hits. Default warn-only.
+#   AIT_MAX_PER_1K    Density above which the run adds a summary annotation.
+
+# Translate a comma/newline-separated glob list into regexes. `**` must be
+# consumed before `*`, or the single-star rule would rewrite half of it first
+# and leave a pattern that matches nothing.
+ignore_matchers <- function(spec) {
+  pats <- trimws(unlist(strsplit(spec, "[,\n]")))
+  pats <- pats[nzchar(pats)]
+  vapply(pats, function(p) {
+    rx <- gsub("([.^$+(){}\\[\\]|\\\\])", "\\\\\\1", p)   # escape regex metas
+    rx <- gsub("\\*\\*", "\001", rx)                       # placeholder for **
+    rx <- gsub("\\*", "[^/]*", rx)
+    rx <- gsub("\001", ".*", rx)
+    rx <- gsub("\\?", ".", rx)
+    paste0("^", rx, "$")
+  }, character(1), USE.NAMES = FALSE)
+}
+
+is_ignored <- function(path, matchers) {
+  length(matchers) > 0L && any(vapply(matchers, grepl, logical(1), x = path))
+}
 
 run_git <- function(args) {
   out <- suppressWarnings(
@@ -37,6 +58,7 @@ run_git <- function(args) {
 main <- function() {
   base <- trimws(Sys.getenv("AIT_BASE_REF", ""))
   globs <- strsplit(trimws(Sys.getenv("AIT_GLOBS", "*.qmd *.md")), "\\s+")[[1]]
+  ignores <- ignore_matchers(Sys.getenv("AIT_PATHS_IGNORE", ""))
   fail <- tolower(trimws(Sys.getenv("AIT_FAIL", "false"))) == "true"
   max1k <- suppressWarnings(as.numeric(Sys.getenv("AIT_MAX_PER_1K", "3")))
 
@@ -65,8 +87,10 @@ main <- function() {
   all_hits <- list()
   words <- 0L
   examined <- 0L
+  skipped <- 0L
   for (f in names(added)) {
     if (!file.exists(f)) next            # deleted or renamed away
+    if (is_ignored(f, ignores)) { skipped <- skipped + 1L; next }
     lines <- readLines(f, warn = FALSE)
     keep <- added[[f]]
     keep <- keep[keep >= 1L & keep <= length(lines)]
@@ -82,8 +106,9 @@ main <- function() {
   # State what was examined every run, so "0 tells" is distinguishable from a
   # run that read nothing.
   cat(sprintf(
-    "Examined %d added prose line(s), %d word(s): %d tell(s), %.2f per 1k.\n",
-    examined, words, n, per1k
+    "Examined %d added prose line(s), %d word(s): %d tell(s), %.2f per 1k.%s\n",
+    examined, words, n, per1k,
+    if (skipped > 0L) sprintf(" (%d file(s) skipped by paths-ignore)", skipped) else ""
   ))
 
   if (n > 0L) {

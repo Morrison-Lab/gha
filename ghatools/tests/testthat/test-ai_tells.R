@@ -58,3 +58,12 @@ test_that("word and line counts are reported even when there are no hits", {
   expect_gt(res$words, 5L)
   expect_identical(res$examined, 1L)
 })
+
+test_that("a file documenting the tells necessarily contains them", {
+  # Not a defect to fix heuristically: the check cannot distinguish prose that
+  # exhibits a tell from prose *about* a tell, and should not guess. This test
+  # pins the behaviour so the paths-ignore escape hatch stays justified --
+  # ai-config's own shared/writing/ai-tells.md, and this file, both trip it.
+  documenting <- "The catalog lists delve, leverage, and utilize as overused."
+  expect_gte(n_hits(documenting), 3L)
+})
