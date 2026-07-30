@@ -86,7 +86,7 @@ runs:
     # action always resolves against $GITHUB_WORKSPACE (the top-level
     # workflow's own checkout), never against the repo this composite was
     # itself fetched from (confirmed: actions/runner#1348). That breaks for
-    # every real consumer, who checks out their own repo, not d-morrison/gha.
+    # every real consumer, who checks out their own repo, not Morrison-Lab/gha.
     # github.action_path doesn't have that failure mode -- this repo's
     # established idiom for the same problem (see build-reviewer-args/action.yml).
     - name: Resolve base URL

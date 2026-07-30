@@ -8,7 +8,7 @@ description: >-
   finding 5). Wrapped in a composite action, located via github.action_path,
   for the same reason run-review-guard wraps check-review-execution.sh:
   claude-code-review.yml's steps run against the CALLER's checkout, not
-  d-morrison/gha's own tree.
+  Morrison-Lab/gha's own tree.
 
 inputs:
   cost-a:

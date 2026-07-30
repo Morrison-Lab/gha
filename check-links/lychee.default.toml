@@ -1,4 +1,4 @@
-# Default lychee configuration for d-morrison/gha check-links.
+# Default lychee configuration for Morrison-Lab/gha check-links.
 # Override by passing `lychee-config: path/to/lychee.toml` (a file in the
 # caller repo) to the reusable workflow.
 # Documentation: https://github.com/lycheeverse/lychee#configuration-file

@@ -67,7 +67,7 @@ runs:
         BODY: ${{ inputs.body }}
         LABELS: ${{ inputs.labels }}
         DRY_RUN: ${{ inputs.dry-run }}
-        # Callers run against their own checkout, not d-morrison/gha's tree, so
+        # Callers run against their own checkout, not Morrison-Lab/gha's tree, so
         # the helper is located through github.action_path -- the same
         # resolution build-reviewer-args and sum-costs use.
         SELECT_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/select-existing-issue.sh

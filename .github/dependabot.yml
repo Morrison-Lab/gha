@@ -8,7 +8,7 @@
 # The `/` entry below scans `.github/workflows/`; the composite actions
 # (top-level and internal `.github/actions/*` alike) live in their own
 # folders, so each one with external `uses:` is listed explicitly. First-party
-# `d-morrison/gha/*@v1` self-references and the `examples/` templates intentionally
+# `Morrison-Lab/gha/*@v1` self-references and the `examples/` templates intentionally
 # track the `@v1` major tag and are not SHA-pinned, so they need no Dependabot
 # coverage.
 version: 2
