@@ -17,7 +17,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
 `check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
-`lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`,
+`lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, and `ai-code-review` -- see
@@ -36,7 +36,17 @@ which is why the capabilities above moved to `@v2`.
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
-  exists to avoid). `check-links/` bundles `lychee.default.toml`;
+  exists to avoid).
+  `check-secrets/` (shell) is the deliberate counter-example to that pattern:
+  it is the one check that scans **history** rather than a diff,
+  because a secret committed and later removed stays fetchable through the
+  API,
+  so diff-scoping would miss the case the capability exists for.
+  It refuses a shallow clone rather than reporting a partial scan clean,
+  and it wraps the MIT gitleaks CLI rather than
+  `gitleaks/gitleaks-action`,
+  which is proprietary and needs a paid licence for organization accounts.
+  `check-links/` bundles `lychee.default.toml`;
   `preview/`, `quarto-publish/`, and `open-sync-pr/` are action-only (the last
   is the shared push-and-open-PR helper used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`).
@@ -679,6 +689,55 @@ The rule that catches both: a pattern must remove the construct and nothing
 adjacent to it, so backreference a delimiter's opening run rather than
 matching to the next one, and stop a URL before trailing sentence
 punctuation.
+
+`check-secrets/tests/test-build-config.sh` is a shell suite over
+`build-gitleaks-config.sh`, the script that turns the `paths-ignore`,
+`allowlist-file`, and `config` inputs into the gitleaks TOML the scan runs
+under.
+That generator is the piece worth testing because its failure mode is
+one-directional: a bug there widens an allowlist and quietly suppresses real
+findings, so the check goes green rather than breaking.
+Run it with `bash check-secrets/tests/test-build-config.sh`; CI runs it as the
+`secrets-tests` job in `_selftest.yml`, alongside a `secrets` job that
+exercises the real composite against this repo's own full history -- the same
+"local composite, not yet the `@v2`-pinned reusable-workflow chain" precedent
+`phi` and `new-line-breaks` use above.
+
+Two of its cases are the ones to keep if the suite is ever trimmed.
+A pattern carrying `'''` is refused rather than written, since a TOML literal
+string has no escapes and one would truncate the array, changing which
+findings are suppressed; that case was confirmed to fail when the guard is
+stubbed out.
+And a named-but-missing `config`/`allowlist-file` is an error rather than a
+silent fall back to the default ruleset -- a typo'd path must not read as "no
+allowlist".
+
+`check-secrets/tests/test-scan-secrets.sh` covers the other half, and exists
+because the `secrets` job structurally cannot.
+That job runs against this repo's own history, which is clean by design and by
+measurement, so it always takes the zero-findings early return -- meaning the
+`fail`-keyed branches, the annotation loop, the step summary, and the exit code
+never execute in CI.
+Round 1 of gha#385's review found a fail-open `fail` bug in exactly that region
+while both selftest jobs stayed green, which is the same shape as the
+`check-new-line-breaks` lesson two paragraphs up: a step that cannot fail
+proves nothing about the code past the point it returns.
+
+The fix is a **stub `gitleaks`** on `GITLEAKS_BIN_DIR` that writes a canned
+report and exits 0, so the real branching runs offline with no download and no
+network.
+Reintroducing either of the two bugs those tests were written for -- the
+fail-open comparison, or truncating the fingerprint to a 12-character SHA --
+turns two assertions red each; both were confirmed by mutation rather than
+assumed.
+
+**Its fixtures carry no credential-shaped strings, deliberately.** The
+`secrets` job scans this repo's own history, so a realistic dummy token in a
+committed fixture would trip it forever after -- the committed-fixture trap
+the paragraph below describes, in the one form no runtime generation can
+undo, since the commit that added it stays in history.
+The canned report the stub writes carries only `RuleID`, `File`, `StartLine`,
+`Commit`, and `Fingerprint`, never `Match` or `Secret`, for the same reason.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

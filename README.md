@@ -46,6 +46,7 @@ not reference `@main` from consumers.
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
 | `check-non-standard-chars.yml` | Detect curly quotes / en–em dashes in `.qmd` and `.R` files | `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
+| `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks` |
@@ -87,6 +88,7 @@ that need to write must have the **caller** grant it on the calling job:
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
 - `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
+  `check-secrets`,
   `check-new-line-breaks`, `test-coverage` → only `contents: read` (the
   default), so no `permissions:` block is needed. `test-coverage`
   additionally takes an optional `CODECOV_TOKEN` secret, passed through the
@@ -208,6 +210,96 @@ exist but are **off by default** (too noisy in source); enable them via the
   (defaults to `.github/phi-allowlist.txt` when present; override with the
   `allowlist-file` input). Use `fail: false` to downgrade to warnings.
 
+## Secret scanning (`check-secrets`)
+
+`check-secrets` is `check-phi`'s counterpart for **credentials**.
+`check-phi` detects identifiers and has no notion of a password or a token,
+so a committed credential passes it cleanly.
+This one runs [gitleaks](https://github.com/gitleaks/gitleaks) over the
+repository,
+catching API tokens, private keys, and high-entropy password assignments.
+
+It shares `check-phi`'s stance in most respects,
+and departs from it in three that matter.
+
+- **It scans history, not the diff.**
+  Every other check here is diff-scoped,
+  so a fixture committed long ago does not re-trip it.
+  That is the wrong default for a credential:
+  a secret committed and then removed in a later commit is still exposed,
+  because the orphaned commit stays fetchable through the GitHub API until
+  the repository is garbage-collected.
+  So the caller must check out with `fetch-depth: 0`,
+  and a shallow clone is **refused** rather than reported clean on a partial
+  scan.
+  The scan reaches further than "history" suggests, too:
+  gitleaks defaults to `git log -p -U0 --full-history --all`,
+  so it covers **every ref** the checkout holds rather than only `HEAD`'s
+  ancestry.
+  A finding can therefore name a commit that is not an ancestor of the PR's
+  own head,
+  which is right for a credential -- an exposed one is exposed wherever it
+  sits.
+  Narrow it with `log-opts` only deliberately.
+- **It blocks by default** (`fail: true`),
+  where the advisory prose checks warn.
+  A leaked credential is not a style nit.
+- **Its `paths-ignore` patterns are Go regexes, not globs**,
+  because they become gitleaks allowlist entries directly,
+  and gitleaks matches them **unanchored**.
+  So `docs` suppresses every path containing that substring,
+  `mydocs-secrets.env` included;
+  anchor with `^` when that matters.
+  Write `tests/fixtures/`, not `tests/fixtures/**`.
+  The two glob forms fail differently, which is why the check warns rather
+  than trusting you to notice:
+  `**` does not compile, since Go rejects nested repetition,
+  but a trailing `/*` is a perfectly valid regex that silently widens the
+  match.
+
+Otherwise it behaves as `check-phi` does.
+**Values are never printed** -- a credential in a CI log is still a
+credential -- so findings report only the rule, `file:line`, and the commit.
+Suppress a false positive with a `gitleaks:allow` comment on the line,
+a fingerprint in a `.gitleaksignore` file,
+a regex in the `allowlist-file`
+(defaults to `.github/secrets-allowlist.txt` when present;
+one regex per line, and a comma there is regex syntax rather than a
+separator, so a `{16,20}` quantifier is safe),
+or a path in `paths-ignore`.
+Site-specific credential formats the default ruleset does not know go in a
+gitleaks TOML named by the `config` input (`.gitleaks.toml` by default),
+which the generated config extends rather than replaces.
+
+Two limits worth stating plainly.
+
+**It complements GitHub's native secret scanning; it does not replace it.**
+That is a repository setting,
+it evaluates pushes rather than running as a PR check,
+and no reusable workflow can supply it.
+Enable both.
+
+**Neither substitutes for rotating an exposed credential.**
+Rewriting history does not un-expose one.
+Treat any value this check names as compromised,
+and rotate it before doing anything else.
+
+### Why not `gitleaks/gitleaks-action`
+
+The vendor's own action is proprietary:
+its `action.yml` carries a commercial EULA header,
+and its README states `GITLEAKS_LICENSE` is "required for organizations,
+not required for user accounts".
+Every consumer of this repo is an organization.
+The gitleaks **CLI** is MIT,
+so the composite installs the official release binary instead.
+Integrity comes from one pinned constant:
+the release's own `checksums.txt` is fetched and compared against the
+`checksums-sha256` input,
+and only then trusted to verify the platform tarball --
+one value covering every architecture.
+Bump `version` and `checksums-sha256` together.
+
 ## PR previews (`preview` family)
 
 The PR-preview family publishes a rendered Quarto site for each open PR to a
@@ -295,8 +387,8 @@ no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
 `compact-history` input, which does not exist at `@v1` at all. Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
-`lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`, and
-`check-new-line-breaks.yml` only ever
+`lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`check-new-line-breaks.yml`, and `check-secrets.yml` only ever
 shipped at `@v2` (too new to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
 `@v2` deploys to the `gh-pages` branch instead — required alongside the
@@ -382,7 +474,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
-`request-dependabot-review.yml`,
+`check-secrets.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`, and
 `ai-code-review.yml` at `@v2` -- see the

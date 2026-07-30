@@ -198,6 +198,57 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-new-line-breaks/tests/ -q
+  # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
+  # it doesn't exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-secrets@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual PR
+  # code. Unlike the phi job this is deliberately NOT diff-scoped: the whole
+  # point is that a secret committed and later removed is still exposed, so the
+  # scan runs over this repo's full history, which needs fetch-depth: 0.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # Deliberately passes no paths-ignore and no allowlist, unlike the phi
+      # job: this repo's whole history scans clean under the default ruleset,
+      # and an allowlist entry that has never suppressed anything is an
+      # entry nobody rechecks. Measured against gitleaks 8.30.1 over all 382
+      # commits reachable from this branch: zero findings. Add an exclusion
+      # when a real false positive appears, not in advance of one.
+      - name: Check for secrets
+        uses: ./check-secrets
+  # The secrets job above proves the composite runs clean against this repo's
+  # real history -- which means it always takes the zero-findings early return,
+  # so it exercises none of the blocking logic. These offline suites cover what
+  # it structurally cannot: a config regression that silently widens an
+  # allowlist, and the fail/annotate/exit branches that only run when a finding
+  # exists. Kept separate from that job because they need no network -- a flaky
+  # gitleaks download shouldn't take their signal down with it.
+  secrets-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run build-gitleaks-config tests
+        shell: bash
+        run: bash check-secrets/tests/test-build-config.sh
+      # Drives scan-secrets.sh against a stub gitleaks that writes a canned
+      # report, so the `fail`-keyed branches, the annotation loop, and the exit
+      # code run for real. Round 1 of gha#385's review found a fail-open `fail`
+      # bug in exactly this region while both selftest jobs stayed green;
+      # reintroducing it now turns two assertions red.
+      - name: Run scan-secrets tests
+        shell: bash
+        run: bash check-secrets/tests/test-scan-secrets.sh
   # claude-code-review.yml's fail-check step (its stub/placeholder-review
   # guard, #172) had no automated coverage — it was only verified by manual
   # trace against known stub texts, since a live Claude API call isn't

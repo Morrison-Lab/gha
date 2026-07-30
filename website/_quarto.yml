@@ -38,6 +38,7 @@ website:
           - reference/check-bibliography-dois.qmd
           - reference/check-non-standard-chars.qmd
           - reference/check-phi.qmd
+          - reference/check-secrets.qmd
           - reference/check-links.qmd
           - reference/check-news.qmd
           - reference/test-coverage.qmd
