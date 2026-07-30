@@ -1,0 +1,96 @@
+name: Check for secrets
+description: >-
+  Scan the caller's repository's git HISTORY for committed credentials -- API
+  tokens, private keys, high-entropy password assignments -- using gitleaks.
+  History rather than the diff, because a secret committed and then removed in
+  a later commit is still exposed: the orphaned commit stays fetchable through
+  the GitHub API until the repository is garbage-collected, so a diff-scoped
+  scan would miss it. That needs the caller to check out with `fetch-depth: 0`;
+  a shallow clone is refused rather than silently scanned in part. Matched
+  values are never printed to the log. Blocking by default, unlike the advisory
+  prose checks, because a leaked credential should stop a merge rather than
+  nudge one. Complements, and does not replace, GitHub's own secret scanning
+  (a repository setting that evaluates pushes, not a PR check) -- and neither
+  substitutes for rotating an exposed credential.
+inputs:
+  version:
+    description: >-
+      gitleaks release version to install (without the leading `v`). Bumping
+      this requires bumping `checksums-sha256` to match.
+    default: '8.30.1'
+  checksums-sha256:
+    description: >-
+      Expected SHA-256 of the release's own `gitleaks_<version>_checksums.txt`.
+      The installer trusts that file to verify the platform tarball only after
+      it matches this value, so one pinned constant covers every architecture.
+      Read it from the release page, or with
+      `curl -sL <checksums-url> | sha256sum`.
+    default: '061476c21adaf5441516f96f185c1a4706a83cd6329b9b38762271b3d4a52fae'
+  config:
+    description: >-
+      Path (in the caller repo) to a gitleaks TOML config with extra rules or
+      allowlists -- e.g. a rule for a site-specific credential format the
+      default ruleset does not know. Defaults to `.gitleaks.toml` when present.
+      The generated config extends it, so its own `[extend]` decides whether
+      gitleaks' default rules apply on top.
+    default: ''
+  paths-ignore:
+    description: >-
+      Comma/newline-separated file paths to skip. These are Go REGEXES, not
+      globs -- gitleaks' own allowlist semantics -- so write
+      `tests/fixtures/` rather than `tests/fixtures/**`; an unmatched glob
+      operator fails the scan loudly rather than silently suppressing nothing.
+      Blank lines and `#` comments are ignored.
+    default: ''
+  allowlist-file:
+    description: >-
+      Path (in the caller repo) to a file of regexes, one per line; a finding
+      whose matched text matches any of them is suppressed. Defaults to
+      `.github/secrets-allowlist.txt` if present. Blank lines and `#` comments
+      are ignored. A single known finding is better suppressed by its
+      fingerprint in a `.gitleaksignore` file, or by a `gitleaks:allow` comment
+      on the line, both of which gitleaks reads without any input here.
+    default: ''
+  log-opts:
+    description: >-
+      `git log` options passed through to gitleaks, narrowing which commits are
+      scanned (e.g. `origin/main..HEAD`). Empty scans all of `HEAD`'s history,
+      which is the point of this check -- narrow it only deliberately.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a possible secret is found (else warn only).
+      Defaults to `true`: an exposed credential is not a style nit, and the
+      remedy (rotate it) is urgent enough to block on.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install gitleaks
+      shell: bash
+      env:
+        GITLEAKS_VERSION: ${{ inputs.version }}
+        GITLEAKS_CHECKSUMS_SHA256: ${{ inputs.checksums-sha256 }}
+        GITLEAKS_BIN_DIR: ${{ runner.temp }}/check-secrets/bin
+      run: bash "$GITHUB_ACTION_PATH/install-gitleaks.sh"
+
+    - name: Build the gitleaks config
+      shell: bash
+      env:
+        SECRETS_TARGET: ${{ github.workspace }}
+        SECRETS_CONFIG: ${{ inputs.config }}
+        SECRETS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        SECRETS_ALLOWLIST_FILE: ${{ inputs.allowlist-file }}
+        SECRETS_GENERATED_CONFIG: ${{ runner.temp }}/check-secrets/gitleaks.toml
+      run: bash "$GITHUB_ACTION_PATH/build-gitleaks-config.sh"
+
+    - name: Scan git history for secrets
+      shell: bash
+      env:
+        GITLEAKS_BIN_DIR: ${{ runner.temp }}/check-secrets/bin
+        SECRETS_TARGET: ${{ github.workspace }}
+        SECRETS_GENERATED_CONFIG: ${{ runner.temp }}/check-secrets/gitleaks.toml
+        SECRETS_REPORT_PATH: ${{ runner.temp }}/check-secrets/report.json
+        SECRETS_LOG_OPTS: ${{ inputs.log-opts }}
+        SECRETS_FAIL: ${{ inputs.fail }}
+      run: bash "$GITHUB_ACTION_PATH/scan-secrets.sh"
