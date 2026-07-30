@@ -10,12 +10,15 @@ cats <- function(lines) {
 
 test_that("every tell category fires on a positive control", {
   expect_true("overused_vocabulary" %in% cats("We delve into the results."))
-  expect_true("not_just_antithesis" %in% cats("This is not just fast, it's transformative."))
-  expect_true("not_only_but"        %in% cats("It handles not only speed but also accuracy."))
-  expect_true("signposting_filler"  %in% cats("It's worth noting that the model converged."))
-  expect_true("hollow_conclusion"   %in% cats("In conclusion, the method works."))
-  expect_true("promotional"         %in% cats("A state-of-the-art approach."))
-  expect_true("vague_universal"     %in% cats("We tried a variety of settings."))
+  expect_true("not_just_antithesis" %in%
+                cats("This is not just fast, it's transformative."))
+  expect_true("not_only_but" %in%
+                cats("It handles not only speed but also accuracy."))
+  expect_true("signposting_filler" %in%
+                cats("It's worth noting that the model converged."))
+  expect_true("hollow_conclusion" %in% cats("In conclusion, the method works."))
+  expect_true("promotional" %in% cats("A state-of-the-art approach."))
+  expect_true("vague_universal" %in% cats("We tried a variety of settings."))
 })
 
 test_that("ordinary technical prose is silent, and does not error", {
@@ -34,7 +37,8 @@ test_that("ordinary technical prose is silent, and does not error", {
 })
 
 test_that("code, math, tables, and front matter are excluded", {
-  expect_identical(n_hits(c("Prose.", "```{r}", "# delve leverage", "x <- 1", "```")), 0L)
+  chunk <- c("Prose.", "```{r}", "# delve leverage", "x <- 1", "```")
+  expect_identical(n_hits(chunk), 0L)
   expect_identical(n_hits("The `delve` function is unrelated."), 0L)
   expect_identical(n_hits(c("$$", "\\text{delve}", "$$")), 0L)
   expect_identical(n_hits("#| label: delve-example"), 0L)
@@ -43,7 +47,8 @@ test_that("code, math, tables, and front matter are excluded", {
 })
 
 test_that("a link's visible text is prose but its URL is not", {
-  expect_identical(n_hits("See [the delve paper](https://example.com/delve)"), 1L)
+  link <- "See [the delve paper](https://example.com/delve)"
+  expect_identical(n_hits(link), 1L)
 })
 
 test_that("every match on a line is counted, not just the first", {

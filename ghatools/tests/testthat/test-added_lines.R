@@ -17,7 +17,8 @@ test_that("deleted lines do not advance the counter", {
 
 test_that("a no-newline marker is not a line", {
   got <- parse_diff_added(c(
-    "+++ b/z.qmd", "@@ -1 +1,2 @@", "+one", "\\ No newline at end of file", "+two"
+    "+++ b/z.qmd", "@@ -1 +1,2 @@", "+one",
+    "\\ No newline at end of file", "+two"
   ))
   expect_identical(got[["z.qmd"]], c(1L, 2L))
 })

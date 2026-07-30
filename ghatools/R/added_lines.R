@@ -20,7 +20,9 @@
 #' ))
 #' @export
 parse_diff_added <- function(diff) {
-  if (is.null(diff) || length(diff) == 0L || (length(diff) == 1L && is.na(diff))) {
+  empty <- is.null(diff) || length(diff) == 0L ||
+    (length(diff) == 1L && is.na(diff))
+  if (empty) {
     return(list())
   }
   if (length(diff) == 1L) diff <- strsplit(diff, "\n", fixed = TRUE)[[1]]
@@ -67,7 +69,11 @@ added_lines <- function(patch) {
     return(integer(0))
   }
   # No `+++` header, so give the parser one to attribute lines to.
-  lines <- if (length(patch) == 1L) strsplit(patch, "\n", fixed = TRUE)[[1]] else patch
+  lines <- if (length(patch) == 1L) {
+    strsplit(patch, "\n", fixed = TRUE)[[1]]
+  } else {
+    patch
+  }
   res <- parse_diff_added(c("+++ b/<patch>", lines))
   out <- res[["<patch>"]]
   if (is.null(out)) integer(0) else out

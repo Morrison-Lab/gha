@@ -71,14 +71,36 @@ prose_mask <- function(lines) {
   in_chunk <- in_yaml <- in_math <- FALSE
   for (i in seq_len(n)) {
     l <- lines[[i]]
-    if (i == 1L && grepl("^---\\s*$", l)) { in_yaml <- TRUE; next }
-    if (in_yaml) { if (grepl("^---\\s*$", l)) in_yaml <- FALSE; next }
-    if (grepl("^\\s*```", l)) { in_chunk <- !in_chunk; next }
-    if (in_chunk) next
-    if (grepl("^\\s*\\$\\$", l)) { in_math <- !in_math; next }
-    if (in_math) next
-    if (grepl("^\\s*(#\\||\\||:::|<!--)", l)) next
-    if (!nzchar(trimws(l))) next
+    if (i == 1L && grepl("^---\\s*$", l)) {
+      in_yaml <- TRUE
+      next
+    }
+    if (in_yaml) {
+      if (grepl("^---\\s*$", l)) {
+        in_yaml <- FALSE
+      }
+      next
+    }
+    if (grepl("^\\s*```", l)) {
+      in_chunk <- !in_chunk
+      next
+    }
+    if (in_chunk) {
+      next
+    }
+    if (grepl("^\\s*\\$\\$", l)) {
+      in_math <- !in_math
+      next
+    }
+    if (in_math) {
+      next
+    }
+    if (grepl("^\\s*(#\\||\\||:::|<!--)", l)) {
+      next
+    }
+    if (!nzchar(trimws(l))) {
+      next
+    }
     keep[[i]] <- TRUE
   }
   keep
