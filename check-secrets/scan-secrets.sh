@@ -71,10 +71,16 @@ scan_args+=("$SECRETS_TARGET")
 
 "$GITLEAKS_BIN_DIR/gitleaks" "${scan_args[@]}"
 
+# gitleaks has already printed its own "N commits scanned" line above, which is
+# the authoritative record of how much history was examined -- and it is the
+# thing that distinguishes "found nothing" from "examined nothing". Don't
+# restate it from `rev-list --count HEAD`: that counts unique commits reachable
+# from HEAD, gitleaks counts what it walked, and on a PR merge ref the two
+# genuinely differ (383 against 630 on this repo's own selftest run), so a
+# second number here reads as a contradiction rather than a corroboration.
 finding_count="$(jq 'length' "$report")"
-commit_count="$(git -C "$SECRETS_TARGET" rev-list --count HEAD)"
 
-echo "Scanned $commit_count commit(s) of history; $finding_count finding(s)."
+echo "$finding_count finding(s); see the commit count gitleaks reported above."
 
 if [ "$finding_count" -eq 0 ]; then
   echo "No secrets found."
