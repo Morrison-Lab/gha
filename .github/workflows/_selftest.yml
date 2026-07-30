@@ -224,11 +224,12 @@ jobs:
       - name: Check for secrets
         uses: ./check-secrets
   # The secrets job above proves the composite runs clean against this repo's
-  # real history; this job unit-tests the generated-config logic offline, so a
-  # regression that silently widens an allowlist is caught even when this
-  # repo's own history wouldn't trip it. Kept separate from that job because it
-  # needs no network -- a flaky gitleaks download shouldn't take its signal
-  # down with it.
+  # real history -- which means it always takes the zero-findings early return,
+  # so it exercises none of the blocking logic. These offline suites cover what
+  # it structurally cannot: a config regression that silently widens an
+  # allowlist, and the fail/annotate/exit branches that only run when a finding
+  # exists. Kept separate from that job because they need no network -- a flaky
+  # gitleaks download shouldn't take their signal down with it.
   secrets-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -240,6 +241,14 @@ jobs:
       - name: Run build-gitleaks-config tests
         shell: bash
         run: bash check-secrets/tests/test-build-config.sh
+      # Drives scan-secrets.sh against a stub gitleaks that writes a canned
+      # report, so the `fail`-keyed branches, the annotation loop, and the exit
+      # code run for real. Round 1 of gha#385's review found a fail-open `fail`
+      # bug in exactly this region while both selftest jobs stayed green;
+      # reintroducing it now turns two assertions red.
+      - name: Run scan-secrets tests
+        shell: bash
+        run: bash check-secrets/tests/test-scan-secrets.sh
   # claude-code-review.yml's fail-check step (its stub/placeholder-review
   # guard, #172) had no automated coverage — it was only verified by manual
   # trace against known stub texts, since a live Claude API call isn't

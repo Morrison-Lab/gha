@@ -5,7 +5,9 @@ description: >-
   History rather than the diff, because a secret committed and then removed in
   a later commit is still exposed: the orphaned commit stays fetchable through
   the GitHub API until the repository is garbage-collected, so a diff-scoped
-  scan would miss it. That needs the caller to check out with `fetch-depth: 0`;
+  scan would miss it. Every ref, in fact, rather than only `HEAD`'s ancestry --
+  see the `log-opts` input. That needs the caller to check out with
+  `fetch-depth: 0`;
   a shallow clone is refused rather than silently scanned in part. Matched
   values are never printed to the log. Blocking by default, unlike the advisory
   prose checks, because a leaked credential should stop a merge rather than
@@ -60,8 +62,14 @@ inputs:
   log-opts:
     description: >-
       `git log` options passed through to gitleaks, narrowing which commits are
-      scanned (e.g. `origin/main..HEAD`). Empty scans all of `HEAD`'s history,
-      which is the point of this check -- narrow it only deliberately.
+      scanned (e.g. `origin/main..HEAD`). Leave empty, which is the point of
+      this check -- narrow it only deliberately. Empty scans EVERY REF the
+      checkout holds, not merely `HEAD`'s ancestry: gitleaks' own default is
+      `git log -p -U0 --full-history --all`, so with `fetch-depth: 0` that
+      covers every branch and tag fetched, including ones never merged toward
+      `HEAD`. A finding can therefore point at a commit that is not an ancestor
+      of this PR's head, which is the correct behaviour for a credential -- an
+      exposed one is exposed wherever it sits.
     default: ''
   fail:
     description: >-

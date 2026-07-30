@@ -229,10 +229,18 @@ and departs from it in three that matter.
   a secret committed and then removed in a later commit is still exposed,
   because the orphaned commit stays fetchable through the GitHub API until
   the repository is garbage-collected.
-  So the scan covers all of `HEAD`'s history,
-  the caller must check out with `fetch-depth: 0`,
+  So the caller must check out with `fetch-depth: 0`,
   and a shallow clone is **refused** rather than reported clean on a partial
   scan.
+  The scan reaches further than "history" suggests, too:
+  gitleaks defaults to `git log -p -U0 --full-history --all`,
+  so it covers **every ref** the checkout holds rather than only `HEAD`'s
+  ancestry.
+  A finding can therefore name a commit that is not an ancestor of the PR's
+  own head,
+  which is right for a credential -- an exposed one is exposed wherever it
+  sits.
+  Narrow it with `log-opts` only deliberately.
 - **It blocks by default** (`fail: true`),
   where the advisory prose checks warn.
   A leaked credential is not a style nit.

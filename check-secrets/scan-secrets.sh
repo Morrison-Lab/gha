@@ -95,9 +95,17 @@ else
   annotation_level=warning
 fi
 
+# Report gitleaks' own Fingerprint verbatim rather than a truncated commit SHA.
+# It is `<commit>:<file>:<rule>:<line>` with the FULL 40-character SHA, and
+# .gitleaksignore matches it by exact map lookup, not by prefix -- so an entry
+# built from a shortened SHA is accepted without complaint and simply never
+# matches, leaving the "suppressed" finding to reappear on every future scan
+# with no diagnostic at all (gha#385 review round 2, reproduced directly).
+# Note what this does NOT print: Match, Secret, and Message. The fingerprint is
+# derived from location and rule alone, so it carries no part of the value.
 jq -r --arg level "$annotation_level" '
   .[]
-  | "::\($level) file=\(.File),line=\(.StartLine)::check-secrets: possible secret (\(.RuleID)) in commit \(.Commit[0:12]) -- value withheld; see the run summary for how to respond"
+  | "::\($level) file=\(.File),line=\(.StartLine)::check-secrets: possible secret (\(.RuleID)) -- value withheld. To suppress, add this line to .gitleaksignore: \(.Fingerprint)"
 ' "$report"
 
 {
@@ -106,9 +114,9 @@ jq -r --arg level "$annotation_level" '
   echo "$finding_count possible secret(s) found in git history."
   echo "Values are withheld deliberately -- a credential in a CI log is still a credential."
   echo ""
-  echo "| Rule | File | Line | Commit |"
+  echo "| Rule | File | Line | Fingerprint |"
   echo "| --- | --- | --- | --- |"
-  jq -r '.[] | "| \(.RuleID) | `\(.File)` | \(.StartLine) | `\(.Commit[0:12])` |"' "$report"
+  jq -r '.[] | "| \(.RuleID) | `\(.File)` | \(.StartLine) | `\(.Fingerprint)` |"' "$report"
   echo ""
   echo "**Rotate any credential this names before anything else.**"
   echo "Rewriting history does not un-expose it: an orphaned commit stays"
@@ -117,8 +125,10 @@ jq -r --arg level "$annotation_level" '
   echo ""
   echo "A false positive -- a fixture, a documented example -- is suppressed"
   echo "by the \`paths-ignore\` or \`allowlist-file\` input, by a"
-  echo "\`gitleaks:allow\` comment on the line, or by its fingerprint in a"
-  echo "\`.gitleaksignore\` file."
+  echo "\`gitleaks:allow\` comment on the line, or by pasting the fingerprint"
+  echo "above verbatim into a \`.gitleaksignore\` file at the repository root."
+  echo "Paste it whole: a shortened commit SHA is accepted silently and never"
+  echo "matches."
 } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 
 if [ "$fail" = "true" ]; then

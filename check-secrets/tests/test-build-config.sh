@@ -158,6 +158,24 @@ assert_stderr_contains "'tests/fixtures/**' from the paths-ignore input looks li
 assert_stderr_not_contains "^src/" "a plain regex is not warned about"
 assert_contains "'''docs/*'''," "the pattern is still emitted, not dropped"
 
+# gha#385 review round 2: a bare `docs*` matched neither the `**` arm nor the
+# trailing-`/*` arm, yet is strictly MORE over-broad than `docs/*` -- it also
+# matches `my-doc-secret.env` and `x/documents/key.pem`.
+new_case "a bare word-star glob is warned about too"
+run_build SECRETS_PATHS_IGNORE='docs*'
+assert_status 0
+assert_stderr_contains "'docs*' from the paths-ignore input looks like a glob" "bare word* warned"
+
+# The trailing-`*` arm keys on the character being quantified, so ordinary
+# regex repetition stays quiet. Without that, the warning fires constantly and
+# stops being read.
+new_case "ordinary regex repetition does not trigger the glob warning"
+run_build SECRETS_PATHS_IGNORE='.*\.pem$
+[a-z]*/keys
+\w*\.env'
+assert_status 0
+assert_stderr_not_contains "looks like a glob" "no false positives on real regexes"
+
 new_case "an allowlist-file regex ending in a repetition operator is not warned about"
 printf 'secret-.*\n' > "$work_dir/allow.txt"
 run_build SECRETS_ALLOWLIST_FILE="$work_dir/allow.txt"

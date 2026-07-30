@@ -77,17 +77,28 @@ split_patterns() {
 }
 
 # gitleaks matches allowlist paths with an unanchored regexp.MatchString, so a
-# glob-shaped pattern is a silent over-suppression rather than an error. `**`
-# does fail to compile (Go rejects nested repetition), but `docs/*` is a valid
-# regex meaning "doc" followed by any number of `s`... and, unanchored, it
-# matches every path containing `docs` -- `mydocs-secrets.env` included.
+# glob-shaped pattern is a silent over-suppression rather than an error.
+#
+# `**` does fail to compile, since Go rejects nested repetition. A single `*`
+# does not: in `docs/*` the `*` quantifies the preceding `/`, so it reads as
+# "docs followed by zero or more slashes" and, unanchored, matches every path
+# containing `docs` -- `mydocs-secrets.env` included. A bare `docs*` is worse
+# still, quantifying the `s`, so it also matches `my-doc-secret.env` and
+# `x/documents/key.pem` (gha#385 review round 2).
+#
+# So the trailing-`*` arm keys on the character being quantified: a word
+# character, `_`, `-`, or `/` means a glob was probably meant, while `.*`,
+# `[a-z]*`, and `\w*` are ordinary regex and stay quiet. The check is bounded
+# to a trailing `*` -- a mid-pattern `docs*/key` slips through -- because this
+# is a nudge, not a validator.
+#
 # Warn rather than reject: `.*\.pem` is a legitimate pattern ending in a
 # repetition operator, so there is no rule here that is both safe and exact.
 warn_if_glob_shaped() {
   local pattern="$1" source="$2"
   case "$pattern" in
-    *'**'* | */'*')
-      echo "::warning::check-secrets: '$pattern' from $source looks like a glob, but these are Go regexes matched unanchored. '**' will fail to compile; a trailing '/*' silently matches every path containing the prefix. Drop the '*', or anchor with '^'." >&2
+    *'**'* | *[[:alnum:]_/-]'*')
+      echo "::warning::check-secrets: '$pattern' from $source looks like a glob, but these are Go regexes matched unanchored. '**' fails to compile; a trailing '*' after a word character or '/' silently matches every path containing the prefix. Drop the '*', or anchor with '^'." >&2
       ;;
   esac
 }

@@ -712,11 +712,32 @@ And a named-but-missing `config`/`allowlist-file` is an error rather than a
 silent fall back to the default ruleset -- a typo'd path must not read as "no
 allowlist".
 
+`check-secrets/tests/test-scan-secrets.sh` covers the other half, and exists
+because the `secrets` job structurally cannot.
+That job runs against this repo's own history, which is clean by design and by
+measurement, so it always takes the zero-findings early return -- meaning the
+`fail`-keyed branches, the annotation loop, the step summary, and the exit code
+never execute in CI.
+Round 1 of gha#385's review found a fail-open `fail` bug in exactly that region
+while both selftest jobs stayed green, which is the same shape as the
+`check-new-line-breaks` lesson two paragraphs up: a step that cannot fail
+proves nothing about the code past the point it returns.
+
+The fix is a **stub `gitleaks`** on `GITLEAKS_BIN_DIR` that writes a canned
+report and exits 0, so the real branching runs offline with no download and no
+network.
+Reintroducing either of the two bugs those tests were written for -- the
+fail-open comparison, or truncating the fingerprint to a 12-character SHA --
+turns two assertions red each; both were confirmed by mutation rather than
+assumed.
+
 **Its fixtures carry no credential-shaped strings, deliberately.** The
 `secrets` job scans this repo's own history, so a realistic dummy token in a
 committed fixture would trip it forever after -- the committed-fixture trap
 the paragraph below describes, in the one form no runtime generation can
 undo, since the commit that added it stays in history.
+The canned report the stub writes carries only `RuleID`, `File`, `StartLine`,
+`Commit`, and `Fingerprint`, never `Match` or `Secret`, for the same reason.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
