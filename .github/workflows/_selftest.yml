@@ -639,6 +639,101 @@ jobs:
             exit 1
           fi
           echo "report-push-failure withheld the patch for a secret-scanning rejection"
+  # gemini.yml/gemini-code-review.yml had no error handling at all before
+  # this: a run-gemini-cli failure (quota exhaustion, an auth rejection, a
+  # suspended project) just red-X'd the job with the raw error in the log --
+  # no PR-visible explanation, indistinguishable from a genuine bug, and
+  # nothing stopping a reflexive re-run against a key that cannot currently
+  # be used. Separate job (not folded into review-fail-check above) so a
+  # failure here is attributable at a glance, matching this file's existing
+  # one-capability-per-job granularity (phi-tests/new-line-breaks-tests are
+  # already split from their parent jobs the same way).
+  gemini-review-fail-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run classify-gemini-failure tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-gemini-failure-tests.sh
+      # Two real `uses:` calls, proving report-gemini-failure's own
+      # github.action_path resolution of classify-gemini-failure.sh actually
+      # works end-to-end -- a unit test of the script alone would not catch a
+      # wiring regression the way #191's job_workflow_ref bug went undetected
+      # by fixture tests alone (gha#196). dry-run: true so this doesn't
+      # comment on a real thread or stamp a red/yellow annotation onto a
+      # passing selftest job (same reasoning as report-push-failure's e2e
+      # steps above).
+      #
+      # gemini.yml's/gemini-code-review.yml's own consumption of this action
+      # via @v2 isn't exercised end-to-end here -- the same documented,
+      # accepted bootstrap gap run-claude-review-attempt and
+      # request-dependabot-review have (CLAUDE.md): @v2 doesn't resolve until
+      # advanced past this PR's merge.
+      - name: Exercise report-gemini-failure on a quota-or-auth fixture
+        id: gemini-failure-quota
+        uses: ./.github/actions/report-gemini-failure
+        with:
+          error-output: '{"error":{"code":429,"message":"Resource has been exhausted (e.g. check quota).","status":"RESOURCE_EXHAUSTED"}}'
+          entity-number: '1'
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert the quota-or-auth fixture classified and reported gracefully
+        shell: bash
+        env:
+          KIND: ${{ steps.gemini-failure-quota.outputs.kind }}
+          BODY_FILE: ${{ steps.gemini-failure-quota.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "quota-or-auth" ]]; then
+            echo "::error::a RESOURCE_EXHAUSTED error classified as '$KIND', expected 'quota-or-auth'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-gemini-failure produced no comment body for the quota-or-auth fixture"
+            exit 1
+          fi
+          if ! grep -q 'not retried' "$BODY_FILE"; then
+            echo "::error::the graceful-skip report does not say the failure is not retried"
+            exit 1
+          fi
+          if ! grep -qF 'RESOURCE_EXHAUSTED' "$BODY_FILE"; then
+            echo "::error::the report does not include the raw error output"
+            exit 1
+          fi
+          echo "report-gemini-failure handled the quota-or-auth fixture correctly"
+      - name: Exercise report-gemini-failure on a genuine (other) failure
+        id: gemini-failure-other
+        uses: ./.github/actions/report-gemini-failure
+        with:
+          error-output: 'Error: connect ETIMEDOUT 142.250.80.95:443'
+          entity-number: '1'
+          dry-run: 'true'
+      - name: Assert the genuine-failure fixture classified as other
+        shell: bash
+        env:
+          KIND: ${{ steps.gemini-failure-other.outputs.kind }}
+          BODY_FILE: ${{ steps.gemini-failure-other.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "other" ]]; then
+            echo "::error::a network-timeout error classified as '$KIND', expected 'other'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-gemini-failure produced no comment body for the 'other' fixture"
+            exit 1
+          fi
+          # A genuine failure must NOT be told "not retried" -- that framing
+          # is specific to the quota/auth graceful-skip class.
+          if grep -q 'not retried' "$BODY_FILE"; then
+            echo "::error::a genuine failure was reported with the quota/auth 'not retried' framing"
+            exit 1
+          fi
+          echo "report-gemini-failure handled the genuine-failure fixture correctly"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `Morrison-Lab/gha/...@v2`, which won't
