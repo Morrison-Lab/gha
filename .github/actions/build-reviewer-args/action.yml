@@ -5,7 +5,7 @@ description: >-
   reviewers[]=...` arguments. Wrapped in a composite action, located via
   github.action_path, for the same reason sum-costs/extract-total-cost do:
   request-dependabot-review.yml's steps run against the CALLER's checkout,
-  not d-morrison/gha's own tree.
+  not Morrison-Lab/gha's own tree.
 
 inputs:
   reviewers:

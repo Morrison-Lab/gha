@@ -6,7 +6,7 @@ description: >-
   .github/workflows/scripts/detect-review-request.sh, located via
   github.action_path, for the same reason run-review-guard wraps
   check-review-execution.sh: claude.yml's steps run against the CALLER's
-  checkout, not d-morrison/gha's own tree, and this one runs before any
+  checkout, not Morrison-Lab/gha's own tree, and this one runs before any
   checkout has happened at all.
 
 inputs:

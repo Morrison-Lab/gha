@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from navbar_version import (  # noqa: E402
     DEV,
     GENERATED_MARKER,
+    _LEGACY_GENERATED_MARKERS,
     find_versions_entry,
     format_dropdown_title,
     parse_bool,
@@ -132,6 +133,24 @@ def test_find_versions_entry_locates_an_already_rewritten_block():
     ] + CONFIG[6:]
     block_start, entry_index, indent = find_versions_entry(rewritten)
     assert rewritten[block_start].strip() == GENERATED_MARKER
+    assert entry_index == block_start + 1
+    assert indent == 6
+
+
+def test_find_versions_entry_locates_a_pre_org_move_marker():
+    # A consumer config generated before the repo moved from `d-morrison/gha`
+    # carries the old marker. It is the only anchor left in such a file --- the
+    # `- text: Versions` line was consumed by that earlier rewrite --- so
+    # failing to match it would stack a second dropdown instead of replacing
+    # the first.
+    legacy = _LEGACY_GENERATED_MARKERS[0]
+    assert legacy != GENERATED_MARKER
+    rewritten = CONFIG[:5] + [
+        f"      {legacy}\n",
+        '      - text: "v1.2.0 (stable)"\n',
+    ] + CONFIG[6:]
+    block_start, entry_index, indent = find_versions_entry(rewritten)
+    assert rewritten[block_start].strip() == legacy
     assert entry_index == block_start + 1
     assert indent == 6
 
