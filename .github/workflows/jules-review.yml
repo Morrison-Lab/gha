@@ -17,7 +17,26 @@ jobs:
       statuses: write
     steps:
       - name: Run Jules PR Reviewer
-        uses: sanjay3290/jules-pr-reviewer@fc66a7c78b499bfa2e16235b55574e458c6551d6 #v1.0.0
+        uses: sanjay3290/jules-pr-reviewer@fc66a7c78b499bfa2e16235b55574e458c6551d6 # v1.0.0
         with:
           jules_api_key: ${{ secrets.JULES_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Deliberately `extra_instructions` and NOT the `rules_file` input.
+          # The action's prompt builder (src/prompt.ts at the pinned SHA)
+          # puts the two on opposite sides of its own trust boundary: the
+          # rules file is injected under "# UNTRUSTED: Project-specific
+          # rules", which the prompt's security preamble tells the model to
+          # ignore and to surface as a "[BLOCKING] Prompt injection attempt"
+          # finding -- so stating this there would be reported rather than
+          # obeyed. This input is injected under "# Trusted: Additional
+          # instructions (from workflow config)", because only someone who
+          # can edit this workflow can set it.
+          #
+          # Phrased as a limit on what the reviewer can know, rather than by
+          # naming the current year, so it needs no upkeep as time passes.
+          # This repo dates each `CLAUDE.md` entry and changelog fragment
+          # with the day it was written, so without this the reviewer reads
+          # every such entry as a future-dated typo (#366).
+          extra_instructions: |
+            You cannot reliably know today's date, so never report a date as a
+            typo or as being in the future.
