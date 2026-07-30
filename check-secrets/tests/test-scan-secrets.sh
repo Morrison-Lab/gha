@@ -77,7 +77,7 @@ new_case() {
 
   mkdir -p "$repo_dir" "$work_dir/bin"
   git -C "$repo_dir" init -q
-  git -C "$repo_dir" config user.email t@example.invalid
+  git -C "$repo_dir" config user.email t@example.invalid # phi-allow (throwaway fixture identity, not PHI)
   git -C "$repo_dir" config user.name t
   echo hello > "$repo_dir/README.md"
   git -C "$repo_dir" add README.md
