@@ -37,6 +37,12 @@ suspended_text='Your API access has been suspended for violating the Gemini API 
 # `error` output can be raw stderr text when stderr wasn't valid JSON.
 rate_limit_text='Error: rate limit exceeded, please try again later.'
 
+# The literal "Too Many Requests" phrasing (the HTTP 429 status text), with
+# neither a bare "429" nor "rate limit" wording present -- some SDKs/services
+# render only this phrase, or an error class name like "TooManyRequestsError",
+# without echoing the numeric code. Must match on its own.
+too_many_requests_text='googleapi: Error 0: TooManyRequestsError: please slow down.'
+
 # A genuine bug: a malformed prompt/settings error. Must classify as `other`
 # -- this is the failure class that must still fail loudly, not be swallowed
 # as a graceful skip.
@@ -80,6 +86,7 @@ check_kind "quota (429 / RESOURCE_EXHAUSTED)"    "$quota_json"      quota-or-aut
 check_kind "auth (403 / PERMISSION_DENIED)"      "$auth_json"       quota-or-auth
 check_kind "suspended project"                   "$suspended_text"  quota-or-auth
 check_kind "rate limit, no JSON envelope"        "$rate_limit_text" quota-or-auth
+check_kind "TooManyRequests, no 429/rate-limit"  "$too_many_requests_text" quota-or-auth
 check_kind "malformed request (genuine bug)"     "$malformed_json"  other
 check_kind "network timeout"                     "$network_text"    other
 check_kind "empty error output"                  ""                 other

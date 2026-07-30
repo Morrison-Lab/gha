@@ -46,7 +46,7 @@ fi
 # and all share the same correct response: don't retry, tell a human. Anything
 # else (a malformed prompt, a network blip, a genuine bug) must NOT match
 # here, or a real failure would be silently swallowed as a graceful skip.
-if grep -qiE 'RESOURCE_EXHAUSTED|429|rate.?limit|quota|PERMISSION_DENIED|UNAUTHENTICATED|401|403|api key not valid|API_KEY_INVALID|has been suspended|suspended|billing|disabled' <<<"$err"; then
+if grep -qiE 'RESOURCE_EXHAUSTED|429|too.?many.?requests|rate.?limit|quota|PERMISSION_DENIED|UNAUTHENTICATED|401|403|api key not valid|API_KEY_INVALID|has been suspended|suspended|billing|disabled' <<<"$err"; then
   kind=quota-or-auth
   headline='Gemini review skipped: the API key is rate-limited, unauthorized, or the project is suspended.'
   advice=$(
