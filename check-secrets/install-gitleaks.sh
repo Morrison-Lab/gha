@@ -39,13 +39,23 @@ base_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VER
 checksums_file="gitleaks_${GITLEAKS_VERSION}_checksums.txt"
 tarball="gitleaks_${GITLEAKS_VERSION}_${os}_${arch}.tar.gz"
 
+# macOS runners ship `shasum` rather than GNU coreutils' `sha256sum`, so the
+# Darwin branch above would otherwise promise support the script cannot honour.
+sha256_of() {
+  if command -v sha256sum > /dev/null 2>&1; then
+    sha256sum "$1" | cut -d' ' -f1
+  else
+    shasum -a 256 "$1" | cut -d' ' -f1
+  fi
+}
+
 work_dir="$(mktemp -d)"
 trap 'rm -rf "$work_dir"' EXIT
 
 curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
   --output "$work_dir/$checksums_file" "$base_url/$checksums_file"
 
-actual_checksums_sha256="$(sha256sum "$work_dir/$checksums_file" | cut -d' ' -f1)"
+actual_checksums_sha256="$(sha256_of "$work_dir/$checksums_file")"
 if [ "$actual_checksums_sha256" != "$GITLEAKS_CHECKSUMS_SHA256" ]; then
   echo "::error::check-secrets: $checksums_file failed its integrity check." >&2
   echo "  expected: $GITLEAKS_CHECKSUMS_SHA256" >&2
@@ -57,18 +67,24 @@ fi
 curl --fail --silent --show-error --location --retry 3 --retry-delay 2 \
   --output "$work_dir/$tarball" "$base_url/$tarball"
 
-# grep exits 1 when the platform's entry is absent, which is a real failure
-# rather than an expected empty result -- report it rather than letting an
-# empty checksum file silently verify nothing.
-if ! grep -F " ${tarball}" "$work_dir/$checksums_file" > "$work_dir/expected.sha256"; then
+# Match the filename as a whole field rather than as a substring, and make a
+# missing entry a loud failure: an empty expected value would otherwise compare
+# equal to nothing and verify nothing.
+expected_tarball_sha256="$(
+  awk -v want="$tarball" '$2 == want { print $1; found = 1 } END { exit !found }' \
+    "$work_dir/$checksums_file"
+)" || {
   echo "::error::check-secrets: no checksum entry for $tarball in $checksums_file." >&2
   exit 1
-fi
-
-(cd "$work_dir" && sha256sum --check --status expected.sha256) || {
-  echo "::error::check-secrets: $tarball failed its checksum verification." >&2
-  exit 1
 }
+
+actual_tarball_sha256="$(sha256_of "$work_dir/$tarball")"
+if [ "$actual_tarball_sha256" != "$expected_tarball_sha256" ]; then
+  echo "::error::check-secrets: $tarball failed its checksum verification." >&2
+  echo "  expected: $expected_tarball_sha256" >&2
+  echo "  actual:   $actual_tarball_sha256" >&2
+  exit 1
+fi
 
 mkdir -p "$GITLEAKS_BIN_DIR"
 tar -xzf "$work_dir/$tarball" -C "$GITLEAKS_BIN_DIR" gitleaks
