@@ -325,10 +325,22 @@ which is why the capabilities above moved to `@v2`.
   Deliberately simpler than `classify-push-failure.sh`: there is no patch to
   withhold and no credential to redact, since the input is API error text
   rather than a git push log, and the classifier itself does not embed the
-  raw error output -- that stays the composite's job, the same split
-  `classify-push-failure.sh`/`report-push-failure` already use, since safely
-  fencing arbitrary text needs the same longest-backtick-run logic either
-  way.
+  raw error output -- that stays the composite's job. The composite's
+  `fence_for()`/`truncate_to_bytes()` helpers live in
+  `scripts/fence-and-truncate.sh`, sourced by both this composite and
+  `report-push-failure` -- extracted rather than pasted twice, per this
+  file's own "factor shared logic into reusable units rather than copying it
+  between files" guidance (gha#380 review finding 3).
+  `classify-gemini-failure.sh`'s own quota/auth regex only matches
+  distinctive markers (`RESOURCE_EXHAUSTED`, `PERMISSION_DENIED`, a `"code"`
+  JSON key or `HTTP` status line paired with 401/403/429, etc.), never a bare
+  status code or a generic word like `disabled`/`billing` on its own --
+  `run-gemini-cli`'s `error` output is raw stderr when stderr isn't valid
+  JSON, so an unanchored alternative matches ordinary text in a realistic
+  multi-line stack trace (a Node stack trace's own line:column numbers, an
+  unrelated MCP log line) and would misclassify a genuine bug as a graceful
+  skip -- exactly the failure mode this script's header comment says must
+  never happen (gha#380 review finding 1).
   `gemini.yml` and `gemini-code-review.yml` both call it from a step gated on
   `steps.gemini-run.outcome == 'failure'`: a `quota-or-auth` classification
   posts a `> [!WARNING]` comment and stops there, deliberately never
@@ -339,12 +351,24 @@ which is why the capabilities above moved to `@v2`.
   the same two-tier structure `report-push-failure`'s `kind` decides.
   `gemini-code-review.yml` additionally gates a `require-review` job
   (mirroring `claude-code-review.yml`'s own) on this: it skips gray rather
-  than red when the review was a graceful quota/auth skip, and consumers
-  gating merges on this workflow should use `review / require-review`, not
-  `review / review`, for the same reason `claude-code-review.yml`'s own
-  header documents. (Added after the "Default Gemini Project" API-key
-  suspension incident, 2026-07-30 -- see the Tests section below for the
-  offline coverage and the `_selftest.yml` end-to-end proof.)
+  than red when the review was a graceful quota/auth skip, or when a
+  dispatch-guard block left the underlying `review` job's own result at
+  `success` with no review having actually run (`dispatch_guard_blocked`
+  output -- unlike `claude-code-review.yml`'s dispatch-guard, which lives in
+  a separate job and gates `claude-review`'s job-level `if:` directly,
+  `gemini-code-review.yml`'s dispatch-guard is a step inside the same job as
+  the review itself, so blocking it only skips downstream steps rather than
+  the job as a whole). Consumers gating merges on this workflow should use
+  `review / require-review`, not `review / review`, for the same reason
+  `claude-code-review.yml`'s own header documents. Its `review` job shares a
+  `cancel-in-progress` concurrency group across the automatic `pull_request`
+  trigger and `gemini.yml`'s `@gemini review` dispatch, the same race
+  CLAUDE.md's "A canceled review can red-X require-review" documents for
+  `claude-code-review.yml` -- a canceled run there fails `require-review`
+  outright, which is expected and not a code bug. (Added after the "Default
+  Gemini Project" API-key suspension incident, 2026-07-30, gha#379 -- see the
+  Tests section below for the offline coverage and the `_selftest.yml`
+  end-to-end proof.)
 - `.github/actions/build-reviewer-args/` — wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -804,8 +828,14 @@ rate-limit wording with no JSON envelope, and cases that must fall through to
 `other` (a malformed-request/`INVALID_ARGUMENT` blob, a network timeout, an
 empty error output) -- the last group matters as much as the first, since a
 genuine bug swallowed into the graceful-skip path would silently stop failing
-the check it should fail.
-It pins the three-part output contract (`kind=`, `headline=`, blank line,
+the check it should fail. Three more regression fixtures pin the anchoring
+fix from gha#380 review finding 1: a stack trace whose line:column number
+contains a bare `429` substring, an MCP log line carrying the bare word
+`disabled`, and a bare `HTTP 429` status line with no other marker present --
+the first two must classify `other` (the pre-fix regex matched either as a
+substring), the third must still classify `quota-or-auth` via the anchored
+`HTTP`-status-line alternative.
+It pins the four-part output contract (`kind=`, `headline=`, blank line,
 advice) by fixed line offset, the same reasoning
 `run-classify-push-failure-tests.sh` gives, and separately asserts the advice
 never embeds the raw error output itself -- that split is deliberate (see

@@ -46,7 +46,22 @@ fi
 # and all share the same correct response: don't retry, tell a human. Anything
 # else (a malformed prompt, a network blip, a genuine bug) must NOT match
 # here, or a real failure would be silently swallowed as a graceful skip.
-if grep -qiE 'RESOURCE_EXHAUSTED|429|too.?many.?requests|rate.?limit|quota|PERMISSION_DENIED|UNAUTHENTICATED|401|403|api key not valid|API_KEY_INVALID|has been suspended|suspended|billing|disabled' <<<"$err"; then
+#
+# Every alternative below must be a marker distinctive to a quota/auth/
+# suspension rejection, not a generic word or bare status code -- `error`
+# here is run-gemini-cli's raw stderr whenever stderr isn't valid JSON
+# (confirmed against google-github-actions/run-gemini-cli's action.yml at the
+# pinned SHA: it falls back to `cat "${TEMP_STDERR}"`), so this runs against
+# realistic multi-line stack traces, not just the clean JSON envelopes the
+# test fixtures use. A bare `429`/`401`/`403` matches a Node stack trace's
+# line:column numbers (e.g. `index.js:4291:17`); bare `disabled`/`billing`
+# match unrelated MCP log lines (e.g. "tool X disabled by includeTools
+# filter"); bare `quota` matches prose that merely mentions the word. Each of
+# those was dropped or anchored to actual error context instead: a numeric
+# code only counts next to a `"code":` JSON key or an `HTTP` status line, and
+# `quota`/`suspended` only count paired with the word that makes them an
+# error rather than incidental prose.
+if grep -qiE 'RESOURCE_EXHAUSTED|PERMISSION_DENIED|UNAUTHENTICATED|API_KEY_INVALID|api key not valid|has been suspended|too.?many.?requests|rate.?limit|quota.{0,20}(exceeded|exhausted)|"code"[[:space:]]*:[[:space:]]*"?(401|403|429)|\bhttp[^a-z0-9]{0,10}(401|403|429)\b' <<<"$err"; then
   kind=quota-or-auth
   headline='Gemini review skipped: the API key is rate-limited, unauthorized, or the project is suspended.'
   advice=$(

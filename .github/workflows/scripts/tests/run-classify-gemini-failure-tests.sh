@@ -54,6 +54,25 @@ EOF
 # A network/transient failure with no recognizable marker at all.
 network_text='Error: connect ETIMEDOUT 142.250.80.95:443'
 
+# Regression fixture (gha#380 review finding 1): a realistic Node stack trace
+# whose line:column number contains "429" as a bare substring. The pre-fix
+# regex matched any occurrence of "429" anywhere in the text, which
+# misclassified this genuine bug as a graceful quota skip.
+stack_trace_text='TypeError: Cannot read properties of undefined (reading '"'"'foo'"'"')
+    at parseResponse (/usr/lib/node_modules/@google/gemini-cli/dist/index.js:4291:17)
+    at processResponse (/usr/lib/node_modules/@google/gemini-cli/dist/index.js:4301:5)'
+
+# Regression fixture (gha#380 review finding 1): an MCP log line that
+# contains the bare word "disabled" for a reason unrelated to the API key.
+# The pre-fix regex treated bare "disabled" as a quota/auth marker.
+mcp_log_text='[MCP] tool run_shell_command(rm) disabled by includeTools filter'
+
+# A bare HTTP status line with no other marker present, isolating the
+# anchored-numeric-code path (gha#380 review finding 1's suggested fix):
+# a code only counts next to an explicit HTTP status line or a JSON "code"
+# key, not as a free-floating number.
+http_status_text='curl: (22) The requested URL returned error: HTTP 429'
+
 # check_kind <name> <error-output> <expected kind>
 check_kind() {
   local name="$1" err="$2" want="$3" got
@@ -90,6 +109,9 @@ check_kind "TooManyRequests, no 429/rate-limit"  "$too_many_requests_text" quota
 check_kind "malformed request (genuine bug)"     "$malformed_json"  other
 check_kind "network timeout"                     "$network_text"    other
 check_kind "empty error output"                  ""                 other
+check_kind "stack trace with bare 429 substring"  "$stack_trace_text" other
+check_kind "MCP log line with bare 'disabled'"   "$mcp_log_text"    other
+check_kind "bare HTTP status line (anchored)"    "$http_status_text" quota-or-auth
 
 # The graceful-skip advice must say "not retried" -- the whole point of this
 # script is stopping an automatic retry against a suspended/rate-limited key.

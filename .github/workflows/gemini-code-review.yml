@@ -56,15 +56,27 @@ jobs:
     # can land after the newer one and read as current. Grouped per PR across
     # both entry points --- the automatic pull_request run and gemini.yml's
     # dispatch --- so the two cancel each other rather than both posting.
-    # Unlike claude-code-review.yml's group, no `require-review`-style gate
-    # job asserts this job's result, so a cancelled run here cannot red-X a
-    # check the way that one does (see CLAUDE.md's "A canceled review can
-    # red-X require-review").
+    #
+    # Caveat for require-review (below), the same one CLAUDE.md's "A canceled
+    # review can red-X require-review" documents for claude-code-review.yml:
+    # a CANCELED run here makes require-review FAIL outright (`cancelled` is
+    # neither `skipped` nor a quota/dispatch-guard skip, so its `if:` still
+    # runs the assert, which then sees a non-success result). A push
+    # followed closely by an `@gemini review` comment --- or by gemini.yml's
+    # own re-dispatch landing on top of the next push's auto-review --- can
+    # show a red require-review that is just this race, not a real review
+    # failure. Check whether this job's conclusion is `cancelled` (not
+    # `failure`) before troubleshooting the PR's content; the survivor run's
+    # review is what to trust. To avoid triggering the race, don't post
+    # `@gemini review` immediately after pushing --- let the automatic
+    # review run alone, or wait for any in-flight dispatched review to
+    # finish first.
     concurrency:
       group: gemini-review-${{ inputs.pr-number || github.event.pull_request.number }}
       cancel-in-progress: true
     outputs:
       quota_skip: ${{ steps.gemini-failure.outputs.kind == 'quota-or-auth' }}
+      dispatch_guard_blocked: ${{ steps.dispatch-guard.outputs.blocked == 'true' }}
     steps:
       # Passed via env rather than interpolated into the script body: an
       # `${{ }}` expression is substituted before bash parses the line, so a
@@ -272,12 +284,23 @@ jobs:
         run: exit 1
 
   # Gate job: skipped (gray) when the review job was itself skipped (fork /
-  # Dependabot / dispatch-guard) or when the Gemini API rejected the request
-  # for a quota/auth/suspension reason. Passes on a clean review, fails when
-  # the review job failed for a real reason. Mirrors claude-code-review.yml's
-  # own require-review job -- see its comment for why a second job is the
-  # only way to produce a "skipped" (rather than misleadingly green)
-  # conclusion here.
+  # Dependabot / draft, via the job `if:` above) or when the review was
+  # blocked before it could run for a reason not reflected in the job's own
+  # result:
+  #   - dispatch-guard blocked a workflow_dispatch review of a fork/
+  #     Dependabot PR (dispatch_guard_blocked=true) -- the review job itself
+  #     still completes with result=success, since dispatch-guard only gates
+  #     downstream STEPS within the job, not the job as a whole (unlike
+  #     claude-code-review.yml's own dispatch-guard, which lives in a
+  #     separate gather-context job and gates claude-review's job-level
+  #     `if:` directly). Without this output, a blocked dispatch would read
+  #     as "Gemini review completed" rather than a gray skip.
+  #   - the Gemini API rejected the request for a quota/auth/suspension
+  #     reason (quota_skip=true).
+  # Passes on a clean review, fails when the review job failed for a real
+  # reason. Mirrors claude-code-review.yml's own require-review job -- see
+  # its comment for why a second job is the only way to produce a "skipped"
+  # (rather than misleadingly green) conclusion here.
   #
   # Consumers gating merges on this workflow should use THIS job's name
   # (`review / require-review`) in branch protection required-checks,
@@ -288,7 +311,8 @@ jobs:
     if: >-
       always() &&
       needs.review.result != 'skipped' &&
-      !fromJSON(needs.review.outputs.quota_skip || 'false')
+      !fromJSON(needs.review.outputs.quota_skip || 'false') &&
+      !fromJSON(needs.review.outputs.dispatch_guard_blocked || 'false')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

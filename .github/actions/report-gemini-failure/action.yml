@@ -41,11 +41,13 @@ inputs:
   dry-run:
     description: >-
       Build the report and write it to `body-file` without posting it or
-      emitting an annotation. Exists so `_selftest.yml` can exercise this
-      action end to end -- proving it resolves classify-gemini-failure.sh
-      through `github.action_path` -- without commenting on a real thread
-      or stamping a red/yellow annotation onto a passing selftest job (the
-      same reasoning report-push-failure's own `dry-run` input gives).
+      emitting a warning/error annotation. Exists so `_selftest.yml` can
+      exercise this action end to end -- proving it resolves
+      classify-gemini-failure.sh through `github.action_path` -- without
+      commenting on a real thread or stamping a red/yellow annotation onto a
+      passing selftest job (the same reasoning report-push-failure's own
+      `dry-run` input gives). A `::notice::` summarizing the dry run is still
+      emitted either way.
     required: false
     default: 'false'
 
@@ -79,6 +81,10 @@ runs:
         # so the helper is located through github.action_path -- the same
         # resolution run-review-guard/report-push-failure use.
         CLASSIFY_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/classify-gemini-failure.sh
+        # fence_for()/truncate_to_bytes() live here, shared with
+        # report-push-failure -- see that file for why (gha#380 review
+        # finding 3).
+        FENCE_TRUNCATE_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/fence-and-truncate.sh
         # A quota/auth error's JSON body is short; this is generous headroom
         # while still keeping the comment well under GitHub's 65,536-CHARACTER
         # cap (see the detect-review-request paragraph in CLAUDE.md).
@@ -86,34 +92,8 @@ runs:
       run: |
         set -euo pipefail
 
-        # Fence a block of arbitrary text: count the longest backtick run it
-        # contains and open with one more, since a fence is closed by a run
-        # of equal length -- a JSON error blob can itself carry backticks.
-        # `|| true` is load-bearing under `pipefail`: grep exits 1 when the
-        # text holds no backticks at all, the ordinary case here, which
-        # would otherwise abort this step (see report-push-failure's own
-        # fence_for for the fuller explanation, including why this can't be
-        # relied on to happen automatically at every call site).
-        fence_for() {
-          local longest
-          longest="$( { grep -oE '`+' <<<"$1" || true; } | awk '{ if (length($0) > m) m = length($0) } END { print m + 0 }')"
-          if [[ "$longest" -lt 3 ]]; then longest=2; fi
-          printf '`%.0s' $(seq $((longest + 1)))
-        }
-
-        # Cut a string to a byte budget without a pipe on the producer side,
-        # for the same SIGPIPE reason report-push-failure's own
-        # truncate_to_bytes documents.
-        truncate_to_bytes() {
-          local text="$1" max="$2" tmp
-          tmp="$(mktemp)"
-          printf '%s' "$text" > "$tmp"
-          if [[ "$(wc -c < "$tmp")" -le "$max" ]]; then
-            printf '%s' "$text"
-          else
-            head -c "$max" "$tmp" | iconv -f UTF-8 -t UTF-8 -c
-          fi
-        }
+        # shellcheck source=../../workflows/scripts/fence-and-truncate.sh
+        source "$FENCE_TRUNCATE_SCRIPT"
 
         classified="$(printf '%s\n' "$ERROR_OUTPUT" | bash "$CLASSIFY_SCRIPT" -)"
         kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
@@ -133,8 +113,19 @@ runs:
           fi
         fi
 
+        # Truncation is decided from the ORIGINAL byte count, not by
+        # comparing the before/after strings: `error_body="$(truncate_to_bytes
+        # ...)"` is itself a command substitution, which strips trailing
+        # newline(s) from truncate_to_bytes's returned text regardless of
+        # whether it actually truncated -- so a complete, untruncated payload
+        # ending in a newline would still come back shorter than
+        # $ERROR_OUTPUT and read as truncated under either a string or a
+        # byte-count comparison of the two variables (gha#380 review
+        # finding 5). Comparing the input's own size against the budget
+        # sidesteps that entirely.
+        error_output_bytes="$(printf '%s' "$ERROR_OUTPUT" | wc -c)"
         error_body="$(truncate_to_bytes "$ERROR_OUTPUT" "$MAX_ERROR_BYTES")"
-        if [[ "$error_body" != "$ERROR_OUTPUT" ]]; then
+        if [[ "$error_output_bytes" -gt "$MAX_ERROR_BYTES" ]]; then
           error_body="$error_body"$'\n\n... (truncated; full output in the workflow run)'
         fi
         error_fence="$(fence_for "$error_body")"
