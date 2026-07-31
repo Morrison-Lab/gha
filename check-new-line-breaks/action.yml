@@ -44,7 +44,7 @@ inputs:
       the SemBr spec's rule 5 ("a semantic line break SHOULD occur after an
       independent clause"), on top of the rule 4 sentence check that always
       runs. On by default; set 'false' to check sentences only. See
-      d-morrison/gha#336 for why only the semicolon is used, and the
+      Morrison-Lab/gha#336 for why only the semicolon is used, and the
       measurements behind it.
     default: 'true'
   clause-min-length:

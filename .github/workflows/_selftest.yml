@@ -158,9 +158,10 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
       # The clause check (#336) is on by default, so the step above already
-      # covers it. This one covers the opt-out, and covers exactly two things:
-      # that `action.yml` parses with the input declared, and that the
-      # clause_breaks=False path runs to completion. It cannot FAIL on
+      # covers it. This one covers the opt-out, and covers exactly one thing:
+      # that the clause_breaks=False path runs to completion without raising.
+      # It cannot show the input is even declared -- an undeclared composite
+      # input is only an Actions warning -- and it cannot FAIL on
       # findings -- neither step sets `fail:`, and main() returns 0 on every
       # path unless NLB_FAIL is set -- so it says nothing about whether the
       # value reaches the script. That is pinned instead by the env-var ->

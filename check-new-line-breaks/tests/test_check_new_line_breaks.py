@@ -232,6 +232,44 @@ def test_a_backtick_inside_a_multi_backtick_span_does_not_end_it():
     assert nlb.strip_inline_markup("use ``a `b` c`` here") == "use  here"
 
 
+@pytest.mark.parametrize(
+    "label,text",
+    [
+        # #337 round 5: stripping deletes the construct but not the space
+        # beside it, so a leading semicolon can land at index 1 and slip past
+        # the find(";", 1) guard. Both shapes strip to a leading " ; ".
+        ("space before the semicolon",
+         "`configure` ; the remaining prose runs on for quite a while here and "
+         "says rather a lot more besides, well past the gate"),
+        ("two adjacent constructs",
+         "`npm` `install`; the remaining prose runs on for quite a while here and "
+         "says rather a lot more besides, well past the gate"),
+    ],
+)
+def test_leading_semicolon_survives_whitespace_left_by_stripping(label, text):
+    stripped = nlb.strip_inline_markup(text).strip()
+    assert len(stripped) >= 80, (
+        f"{label}: fixture must clear the length gate, else this passes "
+        f"without ever reaching the leading-semicolon guard"
+    )
+    assert not nlb.has_late_semicolon(text), label
+
+
+@pytest.mark.parametrize("raw", ["eighty", "8o", "80.5"])
+def test_env_int_warns_on_a_non_numeric_value(raw, monkeypatch, capsys):
+    # #337 round 5: only the negative branch warned, so a caller's typo fell
+    # back silently -- the exact case this section's rationale names.
+    monkeypatch.setenv("NLB_CLAUSE_MIN_LENGTH", raw)
+    assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80
+    assert "::warning" in capsys.readouterr().out
+
+
+def test_env_int_stays_silent_when_unset(monkeypatch, capsys):
+    monkeypatch.delenv("NLB_CLAUSE_MIN_LENGTH", raising=False)
+    assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80
+    assert capsys.readouterr().out == ""
+
+
 def test_a_leading_semicolon_does_not_mask_a_later_interior_one():
     # Self-caught while reviewing the fix above: rejecting index 0 after a
     # plain find(';') threw away the whole line, so a leading semicolon hid a
