@@ -1,0 +1,96 @@
+name: Version check (reusable)
+
+# Fail a PR whose DESCRIPTION Version: differs from the base branch's.
+#
+# Inverts the old convention (each repo's own version-check.yaml, derived from
+# RMI-PACTA/actions' R-semver-check.yml, requiring a branch's version to
+# EXCEED main's): now that bump-dev-version.yml owns the dev-version bump
+# after every merge to main, a PR touching that line at all just guarantees a
+# collision with the next PR that merges -- see the "Engineering away
+# DESCRIPTION / NEWS.md merge conflicts" writeup this pair of workflows came
+# from. Depends on nothing but base R's `package_version` (see
+# scripts/description-version.R), so unlike the workflow it replaces this
+# needs no `install.packages('desc')` step and no rocker/verse container.
+#
+# Two bypasses, both skip the whole check:
+#   - the `no version increment` label -- preserved from the original
+#     workflow, for a genuine release-cut PR that DOES bump the version by
+#     hand (e.g. usethis::use_version() cutting an actual MAJOR.MINOR.PATCH).
+#   - the bump PR's own head branch (default matches bump-dev-version.yml's
+#     `pr-branch` default) -- its entire job is to change this line, so
+#     checking it against itself would always fail.
+
+on:
+  workflow_call:
+    inputs:
+      description-path:
+        description: Path to the DESCRIPTION file to check.
+        type: string
+        default: DESCRIPTION
+      no-version-increment-label:
+        description: >-
+          PR label that skips this check entirely (a genuine release-cut PR).
+        type: string
+        default: 'no version increment'
+      bump-branch:
+        description: >-
+          Head branch name that skips this check entirely (the bump-dev-version
+          automation's own PR).
+        type: string
+        default: automated/bump-dev-version
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pull-requests: read
+      contents: read
+    steps:
+      - name: Check if this PR is exempt
+        id: exempt
+        shell: bash
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          BUMP_BRANCH: ${{ inputs.bump-branch }}
+          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, inputs.no-version-increment-label) }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_LABEL" = "true" ]; then
+            echo "::notice::Skipping: '${{ inputs.no-version-increment-label }}' label present."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$HEAD_REF" = "$BUMP_BRANCH" ]; then
+            echo "::notice::Skipping: this is the bump-dev-version automation's own PR."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out PR head
+        if: steps.exempt.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          sparse-checkout: |
+            ${{ inputs.description-path }}
+            .github/workflows/scripts
+          path: working
+
+      - name: Check out base branch
+        if: steps.exempt.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: |
+            ${{ inputs.description-path }}
+          path: compare
+
+      - name: Compare versions
+        if: steps.exempt.outputs.skip != 'true'
+        shell: bash
+        env:
+          DESCRIPTION_PATH: ${{ inputs.description-path }}
+        run: |
+          set -euo pipefail
+          Rscript working/.github/workflows/scripts/check-dev-version.R \
+            "working/${DESCRIPTION_PATH}" "compare/${DESCRIPTION_PATH}"

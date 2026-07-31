@@ -1269,6 +1269,92 @@ jobs:
             exit 1
           fi
           echo "open-sync-pr correctly no-opped on a clean tree."
+  # bump-dev-version / version-check are brand new. Their reusable workflows'
+  # own internal `uses: Morrison-Lab/gha/.github/actions/...@v2` steps can't
+  # resolve until `@v2` is slid past this merge (the lint-yaml/lint-markdown
+  # precedent above), and bump-dev-version.yml also pushes a real branch/PR --
+  # a write side effect, like bump-submodule/sync-shared-fragments above. So
+  # this job exercises the two composites directly (offline unit tests cover
+  # the pure description-version.R logic; run
+  # `Rscript .github/workflows/scripts/tests/test-description-version.R`
+  # locally). The full reusable-workflow layer is validated by real consumer
+  # usage once merged and released, the same precedent altdoc-multiversion-docs
+  # and dependabot-review's own reusable-workflow layers follow.
+  dev-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run description-version.R offline tests
+        shell: bash
+        run: Rscript .github/workflows/scripts/tests/test-description-version.R
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - name: Generate a 4-component (dev) DESCRIPTION fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-dev-version-fixture
+          printf 'Package: fixture\nVersion: 0.1.0.9057\nTitle: A test fixture\n' \
+            > _ci-dev-version-fixture/DESCRIPTION
+      - name: Bump the dev version
+        id: bump
+        uses: ./.github/actions/bump-dev-version
+        with:
+          description-path: _ci-dev-version-fixture/DESCRIPTION
+      - name: Assert the bump composite incremented the dev counter
+        shell: bash
+        env:
+          OLD_VERSION: ${{ steps.bump.outputs.old-version }}
+          NEW_VERSION: ${{ steps.bump.outputs.new-version }}
+        run: |
+          set -euo pipefail
+          if [ "$OLD_VERSION" != "0.1.0.9057" ] || [ "$NEW_VERSION" != "0.1.0.9058" ]; then
+            echo "::error::bump-dev-version composite gave old=${OLD_VERSION} new=${NEW_VERSION}, expected 0.1.0.9057 -> 0.1.0.9058"
+            exit 1
+          fi
+          ON_DISK=$(grep '^Version:' _ci-dev-version-fixture/DESCRIPTION | sed 's/^Version:[[:space:]]*//')
+          if [ "$ON_DISK" != "0.1.0.9058" ]; then
+            echo "::error::bump-dev-version composite's outputs and the file on disk disagree (disk=${ON_DISK})"
+            exit 1
+          fi
+          echo "bump-dev-version correctly bumped 0.1.0.9057 -> 0.1.0.9058."
+      - name: Generate matching and mismatched compare-branch fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-dev-version-compare-match _ci-dev-version-compare-mismatch
+          cp _ci-dev-version-fixture/DESCRIPTION _ci-dev-version-compare-match/DESCRIPTION
+          printf 'Package: fixture\nVersion: 0.1.0.9057\nTitle: A test fixture\n' \
+            > _ci-dev-version-compare-mismatch/DESCRIPTION
+      - name: Check dev version on a match (expect success)
+        uses: ./.github/actions/check-dev-version
+        with:
+          working-description: _ci-dev-version-compare-match/DESCRIPTION
+          compare-description: _ci-dev-version-compare-match/DESCRIPTION
+      - name: Check dev version on a mismatch (expect failure)
+        id: check-mismatch
+        continue-on-error: true
+        uses: ./.github/actions/check-dev-version
+        with:
+          working-description: _ci-dev-version-fixture/DESCRIPTION
+          compare-description: _ci-dev-version-compare-mismatch/DESCRIPTION
+      - name: Assert the version mismatch was caught
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.check-mismatch.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::check-dev-version should have failed on a Version: mismatch (outcome=$OUTCOME)"
+            exit 1
+          fi
+          echo "check-dev-version correctly failed on a Version: mismatch."
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
   # composite against a minimal R-package fixture, with no Codecov token and

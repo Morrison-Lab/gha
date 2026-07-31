@@ -1,0 +1,37 @@
+name: Bump dev version
+description: >-
+  Increment an R package's DESCRIPTION dev-version counter (the 4th ".90NN"
+  component) in the calling job's checkout, and write the change back to disk.
+  Does not commit or push anything -- the calling reusable workflow
+  (bump-dev-version.yml) hands the modified file to open-sync-pr for that.
+  Locates description-version.R through `github.action_path`, the same
+  pattern report-push-failure/report-gemini-failure use, since a bare
+  repo-relative script path would resolve against the CALLING repo's checkout
+  rather than this one.
+
+inputs:
+  description-path:
+    description: Path to the DESCRIPTION file to bump, in the caller's checkout.
+    required: false
+    default: DESCRIPTION
+
+outputs:
+  old-version:
+    description: The DESCRIPTION version before the bump.
+    value: ${{ steps.bump.outputs.old_version }}
+  new-version:
+    description: The DESCRIPTION version after the bump.
+    value: ${{ steps.bump.outputs.new_version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Bump the dev version
+      id: bump
+      shell: bash
+      env:
+        DESCRIPTION_PATH: ${{ inputs.description-path }}
+        BUMP_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/bump-dev-version.R
+      run: |
+        set -euo pipefail
+        Rscript "$BUMP_SCRIPT" "$DESCRIPTION_PATH" >> "$GITHUB_OUTPUT"

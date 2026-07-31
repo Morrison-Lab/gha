@@ -1,0 +1,31 @@
+name: Check dev version
+description: >-
+  Fail if two DESCRIPTION files' Version: fields differ. Used by
+  version-check.yml to assert a PR's branch left the Version: line untouched
+  relative to the base branch -- the inverse of the old "branch must exceed
+  main" rule, now that bump-dev-version.yml owns the bump. Locates
+  check-dev-version.R through `github.action_path`, the same pattern
+  report-push-failure/report-gemini-failure use, since a bare repo-relative
+  script path would resolve against the CALLING repo's checkout rather than
+  this one.
+
+inputs:
+  working-description:
+    description: Path to the PR branch's DESCRIPTION file.
+    required: true
+  compare-description:
+    description: Path to the base branch's DESCRIPTION file.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Compare versions
+      shell: bash
+      env:
+        WORKING: ${{ inputs.working-description }}
+        COMPARE: ${{ inputs.compare-description }}
+        CHECK_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/check-dev-version.R
+      run: |
+        set -euo pipefail
+        Rscript "$CHECK_SCRIPT" "$WORKING" "$COMPARE"

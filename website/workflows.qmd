@@ -38,6 +38,8 @@ input tables and a copy-paste example.
 | [`sync-upstream.yml`](reference/sync-upstream.qmd)                         | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes                                                                                                                                           | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict`                                                                                                  |
 | [`request-dependabot-review.yml`](reference/request-dependabot-review.qmd) | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default)                                                                                                                           | `reviewers`, `bot-actor`                                                                                                                                                            |
 | [`altdoc-multiversion-docs.yml`](reference/altdoc-multiversion-docs.qmd) | Render an altdoc-based R package's docs and deploy multiple versions side by side on `gh-pages` (`/dev/`, `/latest-tag/`, `/vX.Y.Z/`, plus PR previews and a root redirect) | `r-packages`, `needs`, `apt-packages`, `setup-julia`, `checkout-submodules`, `default-branch`, `quarto-config-path`, `docs-base-url`, `preview-branch`, `timeout-minutes`, `rewrite-pr-preview-links`, `rewrite-issue-links`, `dispatch-version`, `dispatch-release-tag`, `legacy-paths`, `version-dropdown-title-template`, `version-in-navbar-title` |
+| [`bump-dev-version.yml`](reference/bump-dev-version.qmd)                  | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in                                                                                                        | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run`                                                                                                             |
+| [`version-check.yml`](reference/version-check.qmd)                        | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's                                                                                                                                                            | `description-path`, `no-version-increment-label`, `bump-branch`                                                                                                                     |
 
 ## Versioning {#versioning}
 
@@ -70,6 +72,9 @@ freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `gemini.yml`, `gemini-code-review.yml`, and `ai-code-review.yml` likewise only
 ever shipped at `@v2`, having been added well after the freeze - see
 [gha#357](https://github.com/Morrison-Lab/gha/pull/357).
+`bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added
+in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
+`@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1` remains
 current for them. `check-news.yml` was initially grouped with them, but later

@@ -57,6 +57,8 @@ website:
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd
           - reference/sync-upstream.qmd
+          - reference/bump-dev-version.qmd
+          - reference/version-check.qmd
 
 format:
   html:

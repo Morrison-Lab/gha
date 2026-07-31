@@ -20,7 +20,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
-`gemini-code-review`, and `ai-code-review` -- see
+`gemini-code-review`, `ai-code-review`, `bump-dev-version`, and
+`version-check` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,

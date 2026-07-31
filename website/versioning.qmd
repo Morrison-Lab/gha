@@ -16,7 +16,8 @@ so it has picked up no fixes since - not even non-breaking ones. Pin
 `check-new-line-breaks.yml`, `check-secrets.yml`,
 `request-dependabot-review.yml`, `sync-upstream.yml`,
 `altdoc-multiversion-docs.yml`, `report-failure.yml`, `gemini.yml`,
-`gemini-code-review.yml`, and `ai-code-review.yml` only ever shipped at
+`gemini-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`, and
+`version-check.yml` only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
 capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,

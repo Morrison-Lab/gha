@@ -1,0 +1,22 @@
+# Copy to .github/workflows/version-check.yml in your repo.
+# Fails a PR whose DESCRIPTION Version: differs from main's -- the inverse of
+# the old "branch version must exceed main" convention. Pairs with
+# bump-dev-version.yml, which now owns the dev-version bump after every merge
+# to main, so a PR is never supposed to touch Version: itself.
+name: Version check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version-check:
+    permissions:
+      pull-requests: read
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/version-check.yml@v2
+    with:
+      # description-path: DESCRIPTION                    # default
+      # no-version-increment-label: 'no version increment' # default
+      # bump-branch: automated/bump-dev-version           # default; must match
+      #   bump-dev-version.yml's own pr-branch input if you changed it there.

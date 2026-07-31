@@ -1,0 +1,82 @@
+---
+title: "bump-dev-version.yml"
+---
+
+Bump an R package's `DESCRIPTION` dev-version counter (the 4th `.90NN`
+component, e.g. `0.1.0.9057` -> `0.1.0.9058`) after every merge to `main`, and
+open -- or auto-merge -- a PR to carry it in. Pairs with
+[`version-check.yml`](version-check.qmd), which now fails a PR that touches
+`Version:` itself: since the bot owns the bump, a PR doing so just guarantees
+a collision with the next PR that merges.
+
+A version with exactly 3 components (a release just cut, e.g. `0.1.0`) starts
+a new dev cycle at `.9000`, matching the
+[lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html)
+`0.0.0.9000`, `0.0.0.9001`, ... convention. Depends on nothing but base R's
+`package_version` class -- no `install.packages()` step needed.
+
+Guards against re-triggering itself: the bump commit carries a
+`[skip bump-dev-version]` marker, and the job skips when the triggering push's
+head commit carries it. This assumes the bump PR is merged via squash (the
+default `auto-merge` behavior), so the marker survives into the merge commit's
+message.
+
+## Inputs
+
+| Input              | Type    | Default                     | Description                                                                 |
+| ------------------ | ------- | ---------------------------- | ---------------------------------------------------------------------------- |
+| `description-path` | string  | `DESCRIPTION`                | Path to the DESCRIPTION file to bump.                                        |
+| `base-branch`       | string  | `main`                        | Base branch to open the bump PR against.                                     |
+| `pr-branch`         | string  | `automated/bump-dev-version`  | Head branch for the automation PR.                                           |
+| `auto-merge`        | boolean | `true`                         | Enable GitHub's native auto-merge (squash) on the bump PR.                   |
+| `dry-run`           | boolean | `false`                        | Bump but skip opening/merging a PR -- used by this repo's own `_selftest.yml`. |
+
+## Secrets
+
+| Secret           | Required | Description                                                   |
+| ---------------- | -------- | -------------------------------------------------------------- |
+| `WORKFLOW_TOKEN` | no       | PAT or App token; needed only to push to a protected branch.   |
+
+## Outputs
+
+| Output        | Description                          |
+| ------------- | ------------------------------------- |
+| `old-version` | The DESCRIPTION version before the bump. |
+| `new-version` | The DESCRIPTION version after the bump.  |
+
+## Permissions
+
+Grant `contents: write` and `pull-requests: write`, and enable Settings ->
+Actions -> General -> "Allow GitHub Actions to create and approve pull
+requests". For `auto-merge`, also enable Settings -> General -> "Allow
+auto-merge".
+
+## Example
+
+```yaml
+# Copy to .github/workflows/bump-dev-version.yml in your repo.
+name: Bump dev version
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Morrison-Lab/gha/.github/workflows/bump-dev-version.yml@v2
+    with:
+      # description-path: DESCRIPTION   # default
+      # auto-merge: true                 # default; set false to review by hand
+    secrets:
+      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+```
+
+See
+[`examples/bump-dev-version.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/bump-dev-version.yml)
+for the full caller stub.
+
+Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
+exist at that tag. See [Versioning](../versioning.qmd).
