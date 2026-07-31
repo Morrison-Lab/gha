@@ -29,7 +29,7 @@ message.
 | `base-branch`       | string  | `main`                        | Base branch to open the bump PR against.                                     |
 | `pr-branch`         | string  | `automated/bump-dev-version`  | Head branch for the automation PR.                                           |
 | `auto-merge`        | boolean | `true`                         | Enable GitHub's native auto-merge (squash) on the bump PR.                   |
-| `dry-run`           | boolean | `false`                        | Bump but skip opening/merging a PR -- used by this repo's own `_selftest.yml`. |
+| `dry-run`           | boolean | `false`                        | Bump but skip opening/merging a PR. Not yet exercised by this repo's own CI (its `dev-version` selftest job calls the `bump-dev-version` composite directly instead of this reusable workflow -- see the bootstrapping-gap note in `CLAUDE.md`); meant for a consumer to smoke-test the bump logic. |
 
 ## Secrets
 

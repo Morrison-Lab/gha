@@ -43,9 +43,14 @@ on:
         default: true
       dry-run:
         description: >-
-          Run the version bump but skip opening (or auto-merging) a PR. Used
-          by this repo's own _selftest.yml so CI can prove the bump logic and
-          workflow wiring work without pushing a real branch/PR on every run.
+          Run the version bump but skip opening (or auto-merging) a PR. Not
+          yet exercised by this repo's own CI: this workflow's own internal
+          `@v2` composite reference can't resolve until this capability's
+          PR merges and the tag slides (see CLAUDE.md's bootstrapping-gap
+          note), so _selftest.yml's dev-version job calls the bump-dev-version
+          composite directly instead of this whole reusable workflow. Meant
+          for a consumer repo (or this one, once @v2 moves) to smoke-test the
+          bump logic without pushing a real branch/PR.
         type: boolean
         default: false
     secrets:

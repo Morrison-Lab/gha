@@ -73,7 +73,6 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           sparse-checkout: |
             ${{ inputs.description-path }}
-            .github/workflows/scripts
           path: working
 
       - name: Check out base branch
@@ -85,12 +84,24 @@ jobs:
             ${{ inputs.description-path }}
           path: compare
 
+      - name: Set up R
+        if: steps.exempt.outputs.skip != 'true'
+        uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      # Delegates to the check-dev-version composite (rather than invoking
+      # Rscript on a hardcoded script path in this checkout) because the
+      # actions/checkout steps above check out the CALLER's repo -- the
+      # ordinary workflow_call behavior for github.repository -- not
+      # Morrison-Lab/gha's own. check-dev-version.R only exists in gha's
+      # tree, so a caller's own checkout never has it; the composite
+      # resolves its script via github.action_path instead, which points
+      # into wherever this action was fetched to, regardless of what's
+      # checked out on disk.
       - name: Compare versions
         if: steps.exempt.outputs.skip != 'true'
-        shell: bash
-        env:
-          DESCRIPTION_PATH: ${{ inputs.description-path }}
-        run: |
-          set -euo pipefail
-          Rscript working/.github/workflows/scripts/check-dev-version.R \
-            "working/${DESCRIPTION_PATH}" "compare/${DESCRIPTION_PATH}"
+        uses: Morrison-Lab/gha/.github/actions/check-dev-version@v2
+        with:
+          working-description: working/${{ inputs.description-path }}
+          compare-description: compare/${{ inputs.description-path }}
