@@ -230,6 +230,24 @@ runs:
         # own, and doesn't touch the `code-review` plugin's own legitimate
         # `Task`/`Agent` fan-out to its 4 parallel sub-agents, which uses a
         # different tool than these three.
+        #
+        # That carve-out for the fan-out was too broad, and gha#392 is the
+        # bill for it. `Agent`'s `run_in_background` parameter defaults to
+        # TRUE, so the "legitimate same-run fan-out" this comment blesses
+        # is itself a background spawn -- the model then ends its turn
+        # waiting for completion notifications that only a later turn can
+        # deliver, which is the same shape as the three tools denied above,
+        # reached without calling any of them. Denying `Agent` would close
+        # it and would also break the plugin's intended parallelism, so the
+        # prompt below requires `run_in_background: false` instead. Read
+        # the two together: these three tools are denied outright because
+        # they have no synchronous form, while `Agent` is allowed in its
+        # synchronous form only.
+        #
+        # Measured on Morrison-Lab/ai-config#986, run 30671528617: eight
+        # `Agent` calls, `is_error: false`, `stop_reason: end_turn`,
+        # $9.76, and a final message reading "Waiting for the remaining
+        # background agents to complete." in place of a verdict.
         claude_args: >-
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,WebSearch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
@@ -263,10 +281,19 @@ runs:
           job ends, and do NOT schedule a follow-up, wait for external
           state, or defer any part of the review that way — nothing will
           ever run this job again to pick that up, and doing so has
-          produced reviews that silently never finish (gha#218). (The
-          code-review plugin's own same-run parallel sub-agent fan-out is
-          fine — this only forbids deferring work past the end of this
-          run.) Complete the entire review yourself, inline, within this
+          produced reviews that silently never finish (gha#218).
+
+          The code-review plugin's own same-run parallel sub-agent fan-out
+          is still fine, but every one of those calls MUST be synchronous:
+          pass `run_in_background: false` on each Agent/Task call. That
+          parameter defaults to TRUE, so an ordinary fan-out spawns
+          BACKGROUND agents whose completion notifications can only arrive
+          in a later turn, and this run has no later turn. Ending your turn
+          to wait for them throws away everything they found and posts no
+          verdict (gha#392). Collect every sub-agent's result inside this
+          run, before you write your review.
+
+          Complete the entire review yourself, inline, within this
           run, and end by posting the ### Verdict line before the run ends.${{ inputs.is-retry == 'true' && '
 
 
