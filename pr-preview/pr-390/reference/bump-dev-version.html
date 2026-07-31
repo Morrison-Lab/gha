@@ -687,7 +687,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">      # auto-merge: true                 # default; set false to review by hand</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">WORKFLOW_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.WORKFLOW_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/bump-dev-version.yml"><code>examples/bump-dev-version.yml</code></a> for the full caller stub.</p>
+<p>See <code>bump-dev-version.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, because a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it – the file does not exist on <code>main</code> until that PR merges, and <code>check-links</code> rightly fails it. The sibling pages can use the direct form because their targets already landed.)</p>
 <p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag. See <a href="../versioning.html">Versioning</a>.</p>
 
 
