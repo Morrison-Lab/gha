@@ -447,6 +447,20 @@ which is why the capabilities above moved to `@v2`.
   `DESCRIPTION` therefore shows its own version in the navbar while the
   menu still points `/dev/` at what is actually deployed there -- both
   correct, since the reader is looking at the PR's build, not `/dev/`.
+- `.github/actions/bump-dev-version/` and `.github/actions/check-dev-version/`
+  -- composite actions wrapping `description-version.R`'s pure
+  `read_version`/`versions_equal`/`bump_dev_version` logic via the
+  `github.action_path`-relative pattern described above (the
+  `build-reviewer-args` idiom), since `bump-dev-version.yml` and
+  `version-check.yml` are reusable workflows referencing this repo's own
+  scripts and cannot rely on their caller's checkout containing them.
+  `bump-dev-version` bumps the dev-version counter (the 4th `.90NN`
+  component of `DESCRIPTION`'s `Version:`) and hands off to
+  `open-sync-pr@v2`; `check-dev-version` fails a PR whose `DESCRIPTION`
+  differs from the base branch's at all, inverting the older
+  `RMI-PACTA/actions`-derived `version-check.yaml` copies each repo used to
+  carry, so no PR branch ever holds a competing version to conflict on
+  (gha#390).
 - `examples/` — caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` — top-level project docs;
   `REVDEPS.md` — lists registered downstream consumer repos. Every PR that
@@ -951,6 +965,28 @@ action via `Morrison-Lab/gha/...@v2`, which does not resolve until `@v2` is
 advanced past this capability's merge — so the job tests the composite
 directly, the same "local composite, not the full reusable-workflow chain"
 precedent `coverage` and `dependabot-review` use.
+
+`.github/workflows/scripts/tests/test-description-version.R` exercises
+`description-version.R`'s `read_version`/`versions_equal`/`bump_dev_version`
+functions offline against 15 cases, including the 3-vs-4-component version
+boundary (a freshly-cut release starts its next dev cycle at `.9000` rather
+than bumping a 4th component that doesn't exist yet) and the `.9999` ->
+`.10000` carry, mutation-verified against a deliberately broken bump rule so
+the suite is confirmed to actually catch a regression rather than pass
+vacuously. CI runs it, plus real `uses:` calls to both `bump-dev-version` and
+`check-dev-version` with `dry-run: true`, as the `dev-version` job in
+`_selftest.yml` -- the same `github.action_path`-resolution proof the other
+composite e2e steps above give, and asserting `check-dev-version`'s outcome
+differs between a matching and a mismatched `DESCRIPTION` pair (the
+`check-equation-renders` precedent for a pass/fail composite). Neither
+reusable workflow's own `@v2` composite reference resolves pre-merge (the
+bootstrapping gap `dependabot-review`/`open-failure-issue` above hit too),
+and `bump-dev-version.yml`'s real run is a write side effect selftest can't
+exercise, matching `sync-pr`'s own no-op-only precedent -- so this job
+covers the composites directly rather than the reusable workflows as a
+whole, which is exactly the gap gha#390's own review found in
+`version-check.yml` (a checkout resolving against the *calling* repo rather
+than gha's own; see Layout above).
 
 The `altdoc-docs` job in `_selftest.yml` exercises
 `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
