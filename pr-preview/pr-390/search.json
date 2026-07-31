@@ -1677,7 +1677,7 @@
     "href": "reference/bump-dev-version.html#inputs",
     "title": "bump-dev-version.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ndescription-path\nstring\nDESCRIPTION\nPath to the DESCRIPTION file to bump.\n\n\nbase-branch\nstring\nmain\nBase branch to open the bump PR against.\n\n\npr-branch\nstring\nautomated/bump-dev-version\nHead branch for the automation PR.\n\n\nauto-merge\nboolean\ntrue\nEnable GitHub’s native auto-merge (squash) on the bump PR.\n\n\ndry-run\nboolean\nfalse\nBump but skip opening/merging a PR – used by this repo’s own _selftest.yml.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ndescription-path\nstring\nDESCRIPTION\nPath to the DESCRIPTION file to bump.\n\n\nbase-branch\nstring\nmain\nBase branch to open the bump PR against.\n\n\npr-branch\nstring\nautomated/bump-dev-version\nHead branch for the automation PR.\n\n\nauto-merge\nboolean\ntrue\nEnable GitHub’s native auto-merge (squash) on the bump PR.\n\n\ndry-run\nboolean\nfalse\nBump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its dev-version selftest job calls the bump-dev-version composite directly instead of this reusable workflow – see the bootstrapping-gap note in CLAUDE.md); meant for a consumer to smoke-test the bump logic.",
     "crumbs": [
       "Overview",
       "Reference",

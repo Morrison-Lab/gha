@@ -613,7 +613,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>dry-run</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Bump but skip opening/merging a PR – used by this repo’s own <code>_selftest.yml</code>.</td>
+<td>Bump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its <code>dev-version</code> selftest job calls the <code>bump-dev-version</code> composite directly instead of this reusable workflow – see the bootstrapping-gap note in <code>CLAUDE.md</code>); meant for a consumer to smoke-test the bump logic.</td>
 </tr>
 </tbody>
 </table>
