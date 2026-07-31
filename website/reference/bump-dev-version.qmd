@@ -74,9 +74,14 @@ jobs:
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```
 
-See
-[`examples/bump-dev-version.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/bump-dev-version.yml)
+See `bump-dev-version.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 for the full caller stub.
+(Linked to the directory rather than the file, because a `blob/main/...` link
+to a capability's own example 404s on the pull request that introduces it --
+the file does not exist on `main` until that PR merges, and `check-links`
+rightly fails it. The sibling pages can use the direct form because their
+targets already landed.)
 
 Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
 exist at that tag. See [Versioning](../versioning.qmd).
