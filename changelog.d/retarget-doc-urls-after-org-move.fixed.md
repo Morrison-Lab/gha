@@ -18,9 +18,12 @@
   started on the old name must keep using it -- passing the new one is
   rejected, and `add_repo` will not bridge the two.
 
-  Repositories that did not move -- `qwt`, `rme`, `rpt` -- are untouched, as
-  are the plugin-marketplace identifiers (`ai-config@d-morrison` and the
-  `d-morrison/ai-config.git` clone URL), which are names rather than URLs and
-  still match the workflows that use them.
+  Repositories that did not move -- `qwt`, `rme`, `rpt` -- are untouched.
+  The plugin-marketplace identifiers (`ai-config@d-morrison` and the
+  `d-morrison/ai-config.git` clone URL) were left alone here too:
+  they are names rather than URLs, and they still matched the workflows that
+  used them when this entry was written.
+  That stopped holding once `ai-config` renamed the marketplace itself --
+  see the follow-up entry for the retarget.
   Historical entries in `CHANGELOG.md` and `changelog.d/` keep the name the
   repository had when they were written.

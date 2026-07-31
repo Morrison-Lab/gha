@@ -1,0 +1,70 @@
+name: Detect a genuine @claude mention
+description: >-
+  Decides whether the triggering body carries an @claude mention that is
+  actually addressed to the bot, rather than one quoted inside a code span, a
+  fenced code block, or a blockquote while writing about it. Wraps
+  .github/workflows/scripts/detect-bot-mention.sh, located via
+  github.action_path, for the same reason detect-review-request does:
+  claude.yml's steps run against the CALLER's checkout, not Morrison-Lab/gha's
+  own tree, and this one runs before any checkout has happened at all.
+
+inputs:
+  comment-body:
+    description: Body of the triggering comment, if the event carried one.
+    required: false
+    default: ''
+  review-body:
+    description: Body of the triggering PR review, if the event carried one.
+    required: false
+    default: ''
+  issue-body:
+    description: Body of the triggering issue, if the event carried one.
+    required: false
+    default: ''
+  issue-title:
+    description: >-
+      Title of the triggering issue, if the event carried one. The `issues`
+      event gates on the title as well as the body, so both are tested.
+    required: false
+    default: ''
+  bot-name:
+    description: >-
+      Bot mention token or comma-separated list of tokens to look for (e.g. '@claude', '@gemini', '@gemini-cli', '@ai').
+    required: false
+    default: '@claude'
+
+outputs:
+  match:
+    description: >-
+      `true` when a mention survives markup stripping in any body supplied,
+      else `false`. Callers should treat anything other than an explicit
+      `false` as a reason to proceed -- a genuine request that goes unanswered
+      is a far worse outcome than a run that turns out to be unnecessary.
+    value: ${{ steps.run.outputs.match }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run detect-bot-mention.sh
+      id: run
+      shell: bash
+      env:
+        COMMENT_BODY: ${{ inputs.comment-body }}
+        REVIEW_BODY: ${{ inputs.review-body }}
+        ISSUE_BODY: ${{ inputs.issue-body }}
+        ISSUE_TITLE: ${{ inputs.issue-title }}
+        BOT_NAME: ${{ inputs.bot-name }}
+      # The script lives in ../../workflows/scripts/ relative to this action's
+      # own directory, mirroring detect-review-request's resolution.
+      run: |
+        set -euo pipefail
+        SCRIPT="${{ github.action_path }}/../../workflows/scripts/detect-bot-mention.sh"
+        # Bodies go down a pipe, NUL-separated, never through argv: a single
+        # comment can exceed Linux's per-argument MAX_ARG_STRLEN and fail
+        # `execve`, which under `set -euo pipefail` would fail this step.
+        MATCH="$(
+          printf '%s\0' "$COMMENT_BODY" "$REVIEW_BODY" "$ISSUE_BODY" "$ISSUE_TITLE" \
+            | bash "$SCRIPT"
+        )"
+        echo "detect-bot-mention: match=$MATCH"
+        echo "match=$MATCH" >> "$GITHUB_OUTPUT"

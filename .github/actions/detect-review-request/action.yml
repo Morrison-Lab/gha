@@ -6,7 +6,7 @@ description: >-
   .github/workflows/scripts/detect-review-request.sh, located via
   github.action_path, for the same reason run-review-guard wraps
   check-review-execution.sh: claude.yml's steps run against the CALLER's
-  checkout, not d-morrison/gha's own tree, and this one runs before any
+  checkout, not Morrison-Lab/gha's own tree, and this one runs before any
   checkout has happened at all.
 
 inputs:
@@ -26,6 +26,11 @@ inputs:
       late-comment rescue scan uses it to test every comment posted after the
       trigger against the same matcher, rather than reimplementing the pattern
       in jq where it would drift out of sync.
+  bot-name:
+    description: >-
+      Bot mention token or comma-separated list of tokens to look for (e.g. '@claude', '@gemini', '@gemini-cli', '@ai').
+    required: false
+    default: '@claude'
 
 outputs:
   match:
@@ -44,6 +49,8 @@ runs:
         COMMENT_BODY: ${{ inputs.comment-body }}
         REVIEW_BODY: ${{ inputs.review-body }}
         BODIES_FILE: ${{ inputs.bodies-file }}
+        BOT_NAME: ${{ inputs.bot-name }}
+
       # The script lives in ../../workflows/scripts/ relative to this action's
       # own directory, mirroring sum-costs' and run-review-guard's resolution.
       run: |

@@ -158,10 +158,13 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
       # The clause check (#336) is on by default, so the step above already
-      # covers it. This one covers the opt-out, and covers exactly one thing:
-      # that the clause_breaks=False path runs to completion without raising.
-      # It cannot show the input is even declared -- an undeclared composite
-      # input is only an Actions warning -- and it cannot FAIL on
+      # covers it. This one covers the opt-out, and covers exactly two things:
+      # that `action.yml` parses, and that the clause_breaks=False path runs
+      # to completion. It does NOT pin that the input is declared: an
+      # undeclared composite input is only an Actions warning, so this step
+      # stays green either way. Declaration is pinned by the
+      # defaults-agreement test, which fails outright when the input has no
+      # `default:`. It cannot FAIL on
       # findings -- neither step sets `fail:`, and main() returns 0 on every
       # path unless NLB_FAIL is set -- so it says nothing about whether the
       # value reaches the script. That is pinned instead by the env-var ->
@@ -195,6 +198,57 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-new-line-breaks/tests/ -q
+  # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
+  # it doesn't exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-secrets@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual PR
+  # code. Unlike the phi job this is deliberately NOT diff-scoped: the whole
+  # point is that a secret committed and later removed is still exposed, so the
+  # scan runs over this repo's full history, which needs fetch-depth: 0.
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # Deliberately passes no paths-ignore and no allowlist, unlike the phi
+      # job: this repo's whole history scans clean under the default ruleset,
+      # and an allowlist entry that has never suppressed anything is an
+      # entry nobody rechecks. Measured against gitleaks 8.30.1 over all 382
+      # commits reachable from this branch: zero findings. Add an exclusion
+      # when a real false positive appears, not in advance of one.
+      - name: Check for secrets
+        uses: ./check-secrets
+  # The secrets job above proves the composite runs clean against this repo's
+  # real history -- which means it always takes the zero-findings early return,
+  # so it exercises none of the blocking logic. These offline suites cover what
+  # it structurally cannot: a config regression that silently widens an
+  # allowlist, and the fail/annotate/exit branches that only run when a finding
+  # exists. Kept separate from that job because they need no network -- a flaky
+  # gitleaks download shouldn't take their signal down with it.
+  secrets-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run build-gitleaks-config tests
+        shell: bash
+        run: bash check-secrets/tests/test-build-config.sh
+      # Drives scan-secrets.sh against a stub gitleaks that writes a canned
+      # report, so the `fail`-keyed branches, the annotation loop, and the exit
+      # code run for real. Round 1 of gha#385's review found a fail-open `fail`
+      # bug in exactly this region while both selftest jobs stayed green;
+      # reintroducing it now turns two assertions red.
+      - name: Run scan-secrets tests
+        shell: bash
+        run: bash check-secrets/tests/test-scan-secrets.sh
   # claude-code-review.yml's fail-check step (its stub/placeholder-review
   # guard, #172) had no automated coverage — it was only verified by manual
   # trace against known stub texts, since a live Claude API call isn't
@@ -221,6 +275,19 @@ jobs:
       - name: Run detect-review-request matcher tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-review-request-tests.sh
+      # Separate from the matcher tests above because the stripper has its own
+      # consumer coming (claude.yml's mention gate, gha#342) and its failure
+      # modes run in both directions -- under-stripping dispatches on quoted
+      # text, over-stripping swallows a real request.
+      - name: Run strip-non-invoking-markup tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh
+      - name: Run detect-bot-mention tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-detect-bot-mention-tests.sh
+      - name: Run classify-push-failure tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -395,9 +462,332 @@ jobs:
             exit 1
           fi
           echo "detect-review-request correctly surfaced match=true / match=false"
+      # Proves claude.yml's detect-bot-mention composite action end-to-end
+      # (gha#342) -- the same github.action_path-resolution proof the steps
+      # above give, which is the one thing the offline table cannot reach.
+      # Both directions are asserted, because the only behaviour this gate can
+      # cause is a skip: the negative case is the bug being fixed, and the
+      # positive case is what stops the fix from silencing real requests.
+      - name: Exercise detect-bot-mention on a quoted mention
+        id: mention-e2e-quoted
+        uses: ./.github/actions/detect-bot-mention
+        with:
+          comment-body: "the trigger is `@claude` and it has no notion of Markdown"
+      - name: Exercise detect-bot-mention on a genuine mention
+        id: mention-e2e-genuine
+        uses: ./.github/actions/detect-bot-mention
+        with:
+          issue-title: "@claude fix the failing test"
+      - name: Assert detect-bot-mention surfaced the correct matches
+        shell: bash
+        env:
+          MATCH_QUOTED: ${{ steps.mention-e2e-quoted.outputs.match }}
+          MATCH_GENUINE: ${{ steps.mention-e2e-genuine.outputs.match }}
+        run: |
+          set -euo pipefail
+          if [[ "$MATCH_QUOTED" != "false" ]]; then
+            echo "::error::detect-bot-mention treated a code-span mention as an invocation (got '$MATCH_QUOTED')"
+            exit 1
+          fi
+          if [[ "$MATCH_GENUINE" != "true" ]]; then
+            echo "::error::detect-bot-mention missed a genuine mention in an issue title (got '$MATCH_GENUINE')"
+            exit 1
+          fi
+          echo "detect-bot-mention correctly surfaced match=false / match=true"
+      # Proves claude.yml's report-push-failure composite action end-to-end
+      # (gha#360). Three things no offline table can reach: the
+      # github.action_path resolution of classify-push-failure.sh, the patch
+      # generated from a live checkout, and the credential redaction. That
+      # last one is the reason `dry-run` exists here -- the body is destined
+      # for a PR comment, where Actions' own secret masking does not apply, so
+      # a leak would be published rather than starred out.
+      #
+      # These steps run LAST in this job because they commit to the checkout.
+      - name: Stage a throwaway commit and a rejected-push log
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.email "selftest@example.invalid"  # phi-allow
+          git config user.name "selftest"
+          git switch -c selftest-report-push-failure
+          echo "baseline_sha=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          printf 'throwaway\n' > push-failure-fixture.txt
+          git add push-failure-fixture.txt
+          git commit -qm 'selftest: throwaway commit for report-push-failure'
+          # The rejection gha#360 was filed over, with a credential in the
+          # remote URL exactly as git echoes one back on a failed push. The
+          # credential is interpolated rather than written inline so the
+          # source line does not itself look like an email address to the
+          # `phi` job's scanner.
+          FAKE_CRED='notarealtoken'
+          printf '%s\n' \
+            "To https://x-access-token:${FAKE_CRED}@github.com/o/r.git" \
+            ' ! [remote rejected] HEAD -> topic (refusing to allow a GitHub App to create or update workflow `.github/workflows/validate.yml` without `workflows` permission)' \
+            > "$RUNNER_TEMP/push-failure.log"
+      - name: Exercise report-push-failure composite action end-to-end
+        id: push-failure-e2e
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/push-failure.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert report-push-failure classified, explained, and redacted
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-e2e.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-e2e.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "workflows-permission" ]]; then
+            echo "::error::report-push-failure classified the gha#360 rejection as '$KIND'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-push-failure produced no comment body"
+            exit 1
+          fi
+          if ! grep -q 'WORKFLOW_TOKEN' "$BODY_FILE"; then
+            echo "::error::the report does not name the secret that is missing"
+            exit 1
+          fi
+          # The whole point of preserving the work: without a patch the
+          # commits are gone when the runner is reclaimed.
+          if ! grep -q '^diff --git' "$BODY_FILE"; then
+            echo "::error::the report carries no patch of the unpushed commits"
+            exit 1
+          fi
+          if grep -q 'notarealtoken' "$BODY_FILE"; then
+            echo "::error::the report would have published the push credential"
+            exit 1
+          fi
+          echo "report-push-failure classified, explained, patched, and redacted correctly"
+      # A second real call, on a log holding no backticks at all -- the
+      # ordinary shape of a network or auth failure, and the one that falls
+      # through to `other`. It is here because the body builder counts
+      # backtick runs to size its fences, and `grep` exits non-zero when there
+      # are none: under the composite's own `pipefail` that can abort the
+      # whole report. The first fixture cannot catch it, since a
+      # workflows-permission rejection always carries backticks.
+      - name: Write a backtick-free push log
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'fatal: unable to access https://github.com/o/r.git/: Could not resolve host' \
+            > "$RUNNER_TEMP/push-failure-plain.log"
+      - name: Exercise report-push-failure on a backtick-free log
+        id: push-failure-plain
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/push-failure-plain.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          dry-run: 'true'
+      - name: Assert the backtick-free log still produced a report
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-plain.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-plain.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "other" ]]; then
+            echo "::error::an unrecognized failure classified as '$KIND', expected 'other'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::a backtick-free push log produced no report body"
+            exit 1
+          fi
+          echo "report-push-failure handled a backtick-free log correctly"
+      # A third call, with no push log at all -- the calling step failed
+      # before it pushed. This must still post, because the caller's
+      # response-post step is gated off on the same failure, so standing down
+      # here would leave the thread with no comment at all (gha#361 review).
+      - name: Exercise report-push-failure with no push log
+        id: push-failure-none
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/no-such-push-log.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          dry-run: 'true'
+      - name: Assert the missing-log case still reports
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-none.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-none.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "no-push-attempt" ]]; then
+            echo "::error::a missing push log classified as '$KIND', expected 'no-push-attempt'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::a missing push log produced no report -- the thread would go silent"
+            exit 1
+          fi
+          # The commits are still stranded, so the patch is the point.
+          if ! grep -q '^diff --git' "$BODY_FILE"; then
+            echo "::error::the missing-log report carries no patch of the unpushed commits"
+            exit 1
+          fi
+          echo "report-push-failure reported the no-push-attempt case correctly"
+      # A fourth call, on a secret-scanning rejection. This is the one kind
+      # that must NOT render the patch: those commits carry the secret the
+      # push was blocked to contain, so publishing them would undo the block
+      # (gha#361 review). The throwaway commit staged above is the payload.
+      - name: Write a push-protection rejection log
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            'remote: error: GH013: Repository rule violations found for refs/heads/topic.' \
+            'remote: - GITHUB PUSH PROTECTION' \
+            'remote:   Resolve the following secrets before pushing again.' \
+            > "$RUNNER_TEMP/push-failure-secret.log"
+      - name: Exercise report-push-failure on a secret-scanning rejection
+        id: push-failure-secret
+        uses: ./.github/actions/report-push-failure
+        with:
+          push-log: ${{ runner.temp }}/push-failure-secret.log
+          baseline-sha: ${{ env.baseline_sha }}
+          ref: HEAD
+          # Passed deliberately, matching both production call sites. Omitting
+          # it here hid a real contradiction: the no-patch fallback fires on an
+          # empty patch, so a withheld patch used to append "see the workflow
+          # run for the full log" directly under advice saying the run log
+          # omits it too (round 5). Without this input that branch is
+          # unreachable and the assertion below cannot see it.
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert the secret-scanning case withholds the patch
+        shell: bash
+        env:
+          KIND: ${{ steps.push-failure-secret.outputs.kind }}
+          BODY_FILE: ${{ steps.push-failure-secret.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "push-protection" ]]; then
+            echo "::error::a GH013 secret-scanning rejection classified as '$KIND'"
+            exit 1
+          fi
+          # The assertion that matters: no patch, because a patch here would
+          # republish whatever push protection caught.
+          if grep -q '^diff --git' "$BODY_FILE"; then
+            echo "::error::the report rendered a patch for a secret-scanning rejection"
+            exit 1
+          fi
+          if ! grep -q 'No patch is included' "$BODY_FILE"; then
+            echo "::error::the report does not tell the reader why the patch is missing"
+            exit 1
+          fi
+          # ... and does not then send the reader to the run log for it, which
+          # the advice two paragraphs up has just said omits it as well.
+          if grep -q 'No patch could be generated' "$BODY_FILE"; then
+            echo "::error::the report contradicts itself: patch withheld on purpose, then points at the run log for it"
+            exit 1
+          fi
+          echo "report-push-failure withheld the patch for a secret-scanning rejection"
+  # gemini.yml/gemini-code-review.yml had no error handling at all before
+  # this: a run-gemini-cli failure (quota exhaustion, an auth rejection, a
+  # suspended project) just red-X'd the job with the raw error in the log --
+  # no PR-visible explanation, indistinguishable from a genuine bug, and
+  # nothing stopping a reflexive re-run against a key that cannot currently
+  # be used. Separate job (not folded into review-fail-check above) so a
+  # failure here is attributable at a glance, matching this file's existing
+  # one-capability-per-job granularity (phi-tests/new-line-breaks-tests are
+  # already split from their parent jobs the same way).
+  gemini-review-fail-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run classify-gemini-failure tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-gemini-failure-tests.sh
+      # Two real `uses:` calls, proving report-gemini-failure's own
+      # github.action_path resolution of classify-gemini-failure.sh actually
+      # works end-to-end -- a unit test of the script alone would not catch a
+      # wiring regression the way #191's job_workflow_ref bug went undetected
+      # by fixture tests alone (gha#196). dry-run: true so this doesn't
+      # comment on a real thread or stamp a red/yellow annotation onto a
+      # passing selftest job (same reasoning as report-push-failure's e2e
+      # steps above).
+      #
+      # gemini.yml's/gemini-code-review.yml's own consumption of this action
+      # via @v2 isn't exercised end-to-end here -- the same documented,
+      # accepted bootstrap gap run-claude-review-attempt and
+      # request-dependabot-review have (CLAUDE.md): @v2 doesn't resolve until
+      # advanced past this PR's merge.
+      - name: Exercise report-gemini-failure on a quota-or-auth fixture
+        id: gemini-failure-quota
+        uses: ./.github/actions/report-gemini-failure
+        with:
+          error-output: '{"error":{"code":429,"message":"Resource has been exhausted (e.g. check quota).","status":"RESOURCE_EXHAUSTED"}}'
+          entity-number: '1'
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert the quota-or-auth fixture classified and reported gracefully
+        shell: bash
+        env:
+          KIND: ${{ steps.gemini-failure-quota.outputs.kind }}
+          BODY_FILE: ${{ steps.gemini-failure-quota.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "quota-or-auth" ]]; then
+            echo "::error::a RESOURCE_EXHAUSTED error classified as '$KIND', expected 'quota-or-auth'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-gemini-failure produced no comment body for the quota-or-auth fixture"
+            exit 1
+          fi
+          if ! grep -q 'not retried' "$BODY_FILE"; then
+            echo "::error::the graceful-skip report does not say the failure is not retried"
+            exit 1
+          fi
+          if ! grep -qF 'RESOURCE_EXHAUSTED' "$BODY_FILE"; then
+            echo "::error::the report does not include the raw error output"
+            exit 1
+          fi
+          echo "report-gemini-failure handled the quota-or-auth fixture correctly"
+      - name: Exercise report-gemini-failure on a genuine (other) failure
+        id: gemini-failure-other
+        uses: ./.github/actions/report-gemini-failure
+        with:
+          error-output: 'Error: connect ETIMEDOUT 142.250.80.95:443'
+          entity-number: '1'
+          dry-run: 'true'
+      - name: Assert the genuine-failure fixture classified as other
+        shell: bash
+        env:
+          KIND: ${{ steps.gemini-failure-other.outputs.kind }}
+          BODY_FILE: ${{ steps.gemini-failure-other.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "other" ]]; then
+            echo "::error::a network-timeout error classified as '$KIND', expected 'other'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-gemini-failure produced no comment body for the 'other' fixture"
+            exit 1
+          fi
+          # A genuine failure must NOT be told "not retried" -- that framing
+          # is specific to the quota/auth graceful-skip class.
+          if grep -q 'not retried' "$BODY_FILE"; then
+            echo "::error::a genuine failure was reported with the quota/auth 'not retried' framing"
+            exit 1
+          fi
+          echo "report-gemini-failure handled the genuine-failure fixture correctly"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
-  # yet: it calls build-reviewer-args via `d-morrison/gha/...@v2`, which won't
+  # yet: it calls build-reviewer-args via `Morrison-Lab/gha/...@v2`, which won't
   # resolve until @v2 is advanced past this PR's merge. Test the local
   # build-reviewer-args composite directly instead -- the same "test-coverage"
   # precedent used below, and the same offline-unit-test-plus-real-`uses:`-e2e

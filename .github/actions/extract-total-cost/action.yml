@@ -3,7 +3,7 @@ description: >-
   Extracts total_cost_usd from a claude-code-action execution-output file's
   last "result" event, located via github.action_path rather than a checked-
   out script path -- claude.yml's steps operate on the CALLER's checkout, not
-  d-morrison/gha's own tree, so a bare relative script path would not
+  Morrison-Lab/gha's own tree, so a bare relative script path would not
   resolve there. The same reasoning parse-workflow-ref and run-review-guard
   rely on. Shared by claude.yml's two comment-posting call sites so the jq
   filter isn't duplicated between them (gha#219 review finding 1).

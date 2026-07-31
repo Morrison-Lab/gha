@@ -1,0 +1,52 @@
+name: Jules PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: jules-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+    steps:
+      - name: Run Jules PR Reviewer
+        uses: sanjay3290/jules-pr-reviewer@f364d6653b2e9dc5a24df3ef12974aa264148c98 # v1.0.1
+        with:
+          jules_api_key: ${{ secrets.JULES_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # Deliberately `extra_instructions` and NOT the `rules_file` input.
+          # The action's prompt builder (src/prompt.ts at the pinned SHA)
+          # puts the two on opposite sides of its own trust boundary: the
+          # rules file is injected under "# UNTRUSTED: Project-specific
+          # rules", which the prompt's security preamble tells the model to
+          # ignore and to surface as a "[BLOCKING] Prompt injection attempt"
+          # finding -- so stating this there would be reported rather than
+          # obeyed. This input is injected under "# Trusted: Additional
+          # instructions (from workflow config)", because only someone who
+          # can edit this workflow can set it.
+          #
+          # Grounded in a limit on what the reviewer can know, rather than in
+          # the current year, so it needs no upkeep as time passes.
+          # `CLAUDE.md` cites an explicit date in a few incident write-ups,
+          # and the reviewer read one as a future-dated typo on three
+          # consecutive rounds, unmoved by rebuttal (#366).
+          #
+          # It bars more than the premise strictly requires: "never report a
+          # date as a typo" also covers a structurally invalid one
+          # (`2026-13-45`), which needs no knowledge of today to catch. That
+          # is deliberate. This is ai-config#817's wording verbatim, which
+          # #366 reports two clean runs behind; narrowing it would mean
+          # running an unproven variant, and the obvious narrowing has to
+          # reintroduce "implausible" to carve the exception out -- handing
+          # back the judgment this exists to stop. Little is given up: three
+          # dates in 1500 lines of `CLAUDE.md`, none in any fragment.
+          extra_instructions: |
+            You cannot reliably know today's date, so never report a date as a
+            typo or as being in the future.

@@ -3,12 +3,12 @@ project:
   output-dir: _site
 
 website:
-  title: "d-morrison/gha"
+  title: "Morrison-Lab/gha"
   description: >-
     Central, reusable GitHub Actions for d-morrison / UCD-SERG / ucdavis
     R-package and Quarto repositories.
-  site-url: "https://d-morrison.github.io/gha/"
-  repo-url: "https://github.com/d-morrison/gha"
+  site-url: "https://morrison-lab.github.io/gha/"
+  repo-url: "https://github.com/Morrison-Lab/gha"
   repo-subdir: website
   repo-actions: [issue, edit]
   page-navigation: true
@@ -24,7 +24,7 @@ website:
         href: versioning.qmd
     right:
       - icon: github
-        href: "https://github.com/d-morrison/gha"
+        href: "https://github.com/Morrison-Lab/gha"
         aria-label: "GitHub repository"
   sidebar:
     style: floating
@@ -38,6 +38,7 @@ website:
           - reference/check-bibliography-dois.qmd
           - reference/check-non-standard-chars.qmd
           - reference/check-phi.qmd
+          - reference/check-secrets.qmd
           - reference/check-links.qmd
           - reference/check-news.qmd
           - reference/test-coverage.qmd
@@ -50,6 +51,9 @@ website:
           - reference/cleanup-pr-previews.qmd
           - reference/claude.qmd
           - reference/claude-code-review.qmd
+          - reference/gemini.qmd
+          - reference/gemini-code-review.qmd
+          - reference/ai-code-review.qmd
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd
           - reference/sync-upstream.qmd

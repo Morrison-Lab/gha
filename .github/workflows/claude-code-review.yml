@@ -131,7 +131,7 @@ on:
         default: ''
       use-ai-config:
         description: >-
-          Install the d-morrison/ai-config plugin (ai-config@d-morrison), so
+          Install the Morrison-Lab/ai-config plugin (ai-config@Morrison-Lab), so
           the reviewer applies the lab's shared review conventions -- the
           standing prose, math, and code-review rules the skills and shared
           fragments in that repo encode -- rather than only the calling
@@ -145,7 +145,7 @@ on:
           Extra newline-separated Claude Code plugin marketplace Git URLs,
           added on top of the two marketplaces this workflow already uses
           (anthropics/claude-code.git for the code-review plugin, and
-          d-morrison/ai-config.git unless use-ai-config is false). Pair with
+          Morrison-Lab/ai-config.git unless use-ai-config is false). Pair with
           the plugins input below -- adding a marketplace alone installs
           nothing. Empty by default.
         type: string
@@ -154,7 +154,7 @@ on:
         description: >-
           Extra newline-separated Claude Code plugin refs to install
           (<plugin>@<marketplace-name>), added on top of the built-in
-          code-review@claude-code-plugins and ai-config@d-morrison. Each
+          code-review@claude-code-plugins and ai-config@Morrison-Lab. Each
           marketplace name must match the name that marketplace declares in
           its own .claude-plugin/marketplace.json -- it is not derived from
           the URL written into plugin-marketplaces. Empty by default.
@@ -619,9 +619,9 @@ jobs:
       # it can be exercised offline against canned fixtures (see
       # scripts/tests/), without a live Claude API call — see the
       # `review-fail-check` job in _selftest.yml (#174). That script lives in
-      # THIS reusable workflow's own repo (d-morrison/gha), not the caller's
+      # THIS reusable workflow's own repo (Morrison-Lab/gha), not the caller's
       # — the "Checkout repository" step above checks out the CALLER, not
-      # d-morrison/gha. #191 tried resolving d-morrison/gha's own ref via
+      # Morrison-Lab/gha. #191 tried resolving Morrison-Lab/gha's own ref via
       # github.job_workflow_ref and checking it out into a side directory, but
       # that context var came back EMPTY at this call site on real consumer
       # runs even though the calling step passed it correctly (gha#196) — the

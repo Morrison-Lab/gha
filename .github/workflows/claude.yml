@@ -19,8 +19,10 @@ name: Claude Code (reusable)
 # tag mode provides — so this workflow reproduces it with explicit pre/post
 # steps:
 #   - "Set up branch for issue trigger" creates claude/issue-N-<ts>.
-#   - "Push branch and finalize PR for issue trigger" pushes it + opens a
-#     draft PR, so an @claude mention on an *issue* yields a PR.
+#   - "Push branch for issue trigger" pushes it, and "Finalize PR for issue
+#     trigger" then marks the draft PR ready, so an @claude mention on an
+#     *issue* yields a PR. Two steps rather than one so the push's own
+#     outcome can gate what follows it (gha#360).
 #   - "Post Claude's response if no code was committed" surfaces prose replies
 #     (questions/reviews) that agent mode would otherwise discard.
 #   - "Dispatch <review-workflow-file> on @claude review" routes review
@@ -136,7 +138,7 @@ on:
         default: ''
       use-ai-config:
         description: >-
-          Install the d-morrison/ai-config plugin (ai-config@d-morrison), so
+          Install the Morrison-Lab/ai-config plugin (ai-config@Morrison-Lab), so
           the agent has the lab's shared skills, slash commands, and standing
           workflow conventions available rather than only the calling repo's
           own CLAUDE.md. On by default; set false to opt out. Distinct from
@@ -148,7 +150,7 @@ on:
         description: >-
           Extra newline-separated Claude Code plugin marketplace Git URLs,
           passed through to claude-code-action's plugin_marketplaces and
-          added on top of the d-morrison/ai-config.git marketplace
+          added on top of the Morrison-Lab/ai-config.git marketplace
           use-ai-config adds by default. Use to give Claude a further
           skills/commands source. Pair with the plugins input below --
           adding a marketplace alone installs nothing. Empty by default.
@@ -268,8 +270,10 @@ jobs:
       # session marks each comment it absorbs with a github-actions 🚀 reaction
       # (the "React to comments Claude absorbed" post-step below); this step
       # makes the queued run skip itself when its triggering comment already
-      # carries that marker, so the comment isn't handled twice. EVERY later
-      # step is gated on `steps.dedup.outputs.skip != 'true'`.
+      # carries that marker, so the comment isn't handled twice. This step does
+      # not gate anything directly: it feeds the "Decide whether this run
+      # should proceed" step below, and EVERY later step is gated on that
+      # step's `steps.gate.outputs.skip != 'true'` instead.
       #
       # This relies on the per-issue/PR concurrency group above
       # (cancel-in-progress: false): the queued duplicate's whole job — this
@@ -318,12 +322,90 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # --- Quoted-mention gate (gha#342) -----------------------------------
+      # The job `if:` above tests the raw body with `contains()`, which has no
+      # notion of Markdown, so writing *about* the bot invokes it: a mention
+      # inside a code span, a fenced block, or a blockquote reads exactly like
+      # one addressed to it. The cost compounds: the spawned run re-dispatches
+      # a review, and the per-PR `cancel-in-progress` group makes that cancel
+      # whichever review was already in flight, so a comment explaining the
+      # concurrency race reproduces it.
+      #
+      # An `if:` expression cannot strip markup, so the raw `contains()` stays
+      # as the cheap pre-filter (it also keeps an untrusted commenter from
+      # spawning this job at all) and the real decision happens here.
+      #
+      # This runs for all four reactive events, unlike the dedup step above,
+      # which only covers the two that can carry a reaction. On
+      # workflow_dispatch/schedule it does not run at all, leaving its output
+      # empty, which the gate below treats as "proceed", since those events
+      # have no body to quote a mention in.
+      - name: Detect a genuine @claude mention
+        id: mention
+        # Fail open, for the same reason the dedup step above does: a
+        # shell-level error here must not fail the job. Without this the job
+        # fails closed -- `gate` never runs (Actions implicitly ANDs
+        # `success()` onto a step with no status-check function), its output
+        # stays empty, and every downstream step including "Run Claude Code"
+        # is skipped, silently dropping a genuine request. That is the exact
+        # outcome the empty-value contract below is written to prevent, so
+        # without this line the step contradicts its own documentation
+        # (gha#343 review).
+        continue-on-error: true
+        if: >-
+          github.event_name == 'issue_comment' ||
+          github.event_name == 'pull_request_review_comment' ||
+          github.event_name == 'pull_request_review' ||
+          github.event_name == 'issues'
+        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
+        with:
+          comment-body: ${{ github.event.comment.body }}
+          review-body: ${{ github.event.review.body }}
+          # Scoped to the `issues` event, because only there are these the
+          # trigger. On an `issue_comment` event `github.event.issue` is the
+          # ENCLOSING issue or PR, so passing them unconditionally means an
+          # old unquoted mention in the thread's own title or description
+          # makes every later comment match -- including one that merely
+          # quotes the mention, which is precisely the case this gate exists
+          # to stand down on (gha#343 review). The job's own `if:` above
+          # already scopes the issue fields this way.
+          issue-body: ${{ github.event_name == 'issues' && github.event.issue.body || '' }}
+          issue-title: ${{ github.event_name == 'issues' && github.event.issue.title || '' }}
+
+      # One decision point for "should this run do anything?", so each of the
+      # ~27 downstream steps keeps a single condition instead of repeating a
+      # compound one that would have to be edited again for the next reason to
+      # stand down. Two independent reasons exist today: the comment was
+      # already absorbed by an active session, or the mention was quoted
+      # rather than addressed to the bot.
+      #
+      # Only an explicit `false` from the mention gate skips. An empty value
+      # means that step did not run (workflow_dispatch/schedule, or a step
+      # failure), and the run must proceed: a genuine request that goes
+      # unanswered is a far worse outcome than an unnecessary run.
+      - name: Decide whether this run should proceed
+        id: gate
+        env:
+          DEDUP_SKIP: ${{ steps.dedup.outputs.skip }}
+          MENTION_MATCH: ${{ steps.mention.outputs.match }}
+        run: |
+          set -euo pipefail
+          if [ "$DEDUP_SKIP" = "true" ]; then
+            echo "Standing down: this comment was already handled by an active run."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$MENTION_MATCH" = "false" ]; then
+            echo "Standing down: every @claude mention here sits inside a code span, a fenced block, or a blockquote, so it is being quoted rather than invoked."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # Post a visible acknowledgment BEFORE any multi-minute setup begins, so
       # the user knows the @claude mention was received. `continue-on-error`
       # keeps a transient comment-API hiccup from failing the run. Posted by
       # github-actions[bot], so it does not re-trigger this workflow.
       - name: Acknowledge @claude mention
-        if: steps.dedup.outputs.skip != 'true' && (github.event.issue.number || github.event.pull_request.number)
+        if: steps.gate.outputs.skip != 'true' && (github.event.issue.number || github.event.pull_request.number)
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -353,14 +435,14 @@ jobs:
       # runs (serodynamics#277).
       - name: Detect @claude review request
         id: review_request
-        if: steps.dedup.outputs.skip != 'true'
+        if: steps.gate.outputs.skip != 'true'
         uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           comment-body: ${{ github.event.comment.body }}
           review-body: ${{ github.event.review.body }}
 
       - name: Checkout repository
-        if: steps.dedup.outputs.skip != 'true'
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 1
@@ -370,7 +452,7 @@ jobs:
       # composite action handles the SUBMODULES_TOKEN insteadOf rewrite and the
       # anonymous fallback; see .github/actions/checkout-submodules.
       - name: Checkout submodules
-        if: steps.dedup.outputs.skip != 'true' && inputs.checkout-submodules
+        if: steps.gate.outputs.skip != 'true' && inputs.checkout-submodules
         uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
@@ -379,31 +461,31 @@ jobs:
       # jags, libglpk-dev, poppler-utils). Runs before R setup so renv/
       # setup-r-dependencies can build against them.
       - name: Install packages
-        if: steps.dedup.outputs.skip != 'true'
+        if: steps.gate.outputs.skip != 'true'
         uses: Morrison-Lab/gha/.github/actions/install-packages@v2
         with:
           apt-packages: ${{ inputs.apt-packages }}
           pip-packages: ${{ inputs.pip-packages }}
 
       - name: Set up pandoc
-        if: steps.dedup.outputs.skip != 'true' && inputs.setup-r
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
         uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
 
       - name: Set up R
-        if: steps.dedup.outputs.skip != 'true' && inputs.setup-r
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
         uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           use-public-rspm: true
 
       - name: Set up Quarto
-        if: steps.dedup.outputs.skip != 'true' && inputs.install-quarto
+        if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
         with:
           tinytex: true
 
       # renv flavor (Quarto books / projects pinned with renv) ...
       - name: Restore renv
-        if: steps.dedup.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
         uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         env:
           # Without GITHUB_PAT, renv can't reach the GitHub API to resolve
@@ -424,7 +506,7 @@ jobs:
       # own deps (`local::.`) plus the tools Claude runs for the pre-commit
       # checklist.
       - name: Install R dependencies
-        if: steps.dedup.outputs.skip != 'true' && inputs.setup-r && !inputs.use-renv
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r && !inputs.use-renv
         uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
         with:
           extra-packages: ${{ inputs.r-extra-packages }}
@@ -434,7 +516,7 @@ jobs:
       # post-steps can tell whether Claude pushed new commits.
       - name: Capture PR head SHA before Claude
         id: head_before
-        if: steps.dedup.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
+        if: steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -448,7 +530,7 @@ jobs:
       # would otherwise be stranded there and lost at runner cleanup.
       - name: Checkout PR branch
         id: pr_checkout
-        if: steps.dedup.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
+        if: steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -471,7 +553,7 @@ jobs:
       - name: Set up branch for issue trigger
         id: issue_branch
         if: |
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           (
             github.event_name == 'issues' ||
             (github.event_name == 'issue_comment' && !github.event.issue.pull_request)
@@ -504,7 +586,7 @@ jobs:
       - name: Open draft PR up front for issue trigger
         id: eager_pr
         if: |
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           inputs.eager-pr &&
           steps.issue_branch.outputs.branch != '' &&
           steps.issue_branch.outputs.existing_pr == ''
@@ -542,7 +624,7 @@ jobs:
       # failure degrades to no WebFetch grants rather than failing the run.
       - name: Build WebFetch allowlist
         id: webfetch
-        if: steps.dedup.outputs.skip != 'true' && inputs.webfetch-allowlist-url != ''
+        if: steps.gate.outputs.skip != 'true' && inputs.webfetch-allowlist-url != ''
         env:
           ALLOWLIST_URL: ${{ inputs.webfetch-allowlist-url }}
         run: |
@@ -581,7 +663,7 @@ jobs:
       # (a `git checkout` of the base tree). This step still helps issue
       # triggers, where no base restore runs.
       - name: Link repo skills into .claude/skills
-        if: steps.dedup.outputs.skip != 'true' && inputs.link-skills
+        if: steps.gate.outputs.skip != 'true' && inputs.link-skills
         run: |
           if [ -d skills ]; then
             mkdir -p .claude
@@ -597,7 +679,7 @@ jobs:
 
       - name: Run Claude Code
         id: claude
-        if: steps.dedup.outputs.skip != 'true'
+        if: steps.gate.outputs.skip != 'true'
         uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1.0.183
         # GH_TOKEN authenticates the `gh` commands granted in claude-args
         # (gh pr view/diff/edit, gh issue view, gh api); without it `gh`
@@ -620,10 +702,10 @@ jobs:
           # reviewer's copy); see the comment there for why they aren't shared
           # from one place. Update both sites together.
           plugin_marketplaces: |
-            ${{ inputs.use-ai-config && 'https://github.com/d-morrison/ai-config.git' || '' }}
+            ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
             ${{ inputs.plugin-marketplaces }}
           plugins: |
-            ${{ inputs.use-ai-config && 'ai-config@d-morrison' || '' }}
+            ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
             ${{ inputs.plugins }}
           # Append the WebFetch grants (empty when webfetch-allowlist-url is
           # unset). Multiple --allowedTools flags accumulate in the CLI.
@@ -664,7 +746,8 @@ jobs:
                Space-separate the ids; emit the marker only if you absorbed at
                least one. A post-step reacts 🚀 to each id with GITHUB_TOKEN
                (which can reliably write the reaction), and the dedup pre-step
-               in each duplicate run then sees the 🚀 and skips itself. Do NOT
+               in each duplicate run then sees the 🚀, which makes the gate
+               step below it stand the run down. Do NOT
                try to add the reaction yourself — just emit the marker; the
                post-step is what makes it reliable. (Review submissions have no
                reactions endpoint, so a late review submission can't be marked
@@ -699,15 +782,15 @@ jobs:
 
       # Extracted into its own step (rather than duplicated inline in each
       # comment-posting step below) because both "Post Claude's response if
-      # no code was committed" and "Push branch and finalize PR for issue
-      # trigger" read the SAME steps.claude.outputs.execution_file — one
+      # no code was committed" and "Finalize PR for issue trigger" read the
+      # SAME steps.claude.outputs.execution_file — one
       # extraction covers both call sites (gha#219 review finding 1). Wrapped
       # in a composite action because this workflow's steps run against the
-      # CALLER's checkout, not d-morrison/gha's own tree (see the action's
+      # CALLER's checkout, not Morrison-Lab/gha's own tree (see the action's
       # own header comment).
       - name: Extract run cost
         id: cost
-        if: always() && steps.dedup.outputs.skip != 'true' && inputs.report-cost
+        if: always() && steps.gate.outputs.skip != 'true' && inputs.report-cost
         uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v2
         with:
           execution-file: ${{ steps.claude.outputs.execution_file || '/home/runner/work/_temp/claude-execution-output.json' }}
@@ -717,7 +800,8 @@ jobs:
       # commits, so let it fail loudly; a fork's branch lives elsewhere (this
       # token can't push there), which is an expected warning.
       - name: Push PR branch if Claude committed
-        if: always() && steps.dedup.outputs.skip != 'true' && steps.pr_checkout.outputs.branch != ''
+        id: push_pr
+        if: always() && steps.gate.outputs.skip != 'true' && steps.pr_checkout.outputs.branch != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUSH_TOKEN: ${{ secrets.WORKFLOW_TOKEN || secrets.GITHUB_TOKEN }}
@@ -754,7 +838,7 @@ jobs:
           # Sweep changes Claude staged or left untracked but never committed so
           # they aren't dropped (uncommitted edits never advance HEAD, and the
           # push below only fires when HEAD moved). HEAD is the PR's checked-out
-          # head branch here. (The issue-trigger finalize step sweeps the same
+          # head branch here. ("Push branch for issue trigger" sweeps the same
           # way but does NOT revert config first: no base-restore runs there.)
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "claude[bot]"
@@ -778,11 +862,45 @@ jobs:
           # Explicit token URL: after `gh pr checkout` the persisted checkout
           # credential isn't reliably applied, so `git push origin` falls back
           # to unsupported password auth. The x-access-token URL always works.
-          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:$BRANCH"
+          #
+          # Captured rather than streamed so the next step can classify the
+          # rejection and preserve the commits (gha#360). The step still exits
+          # non-zero, so the job stays red. The log path is a literal both
+          # steps spell out rather than a step output, so the report step's
+          # inputs don't depend on anything the failing step had to write.
+          #
+          # `|| push_status=$?` rather than a bare call: this step runs under
+          # the default `bash -e`, which would exit on the failing push before
+          # the log could be echoed. A command in an `||` list is exempt.
+          PUSH_LOG="$RUNNER_TEMP/push-pr-branch.log"
+          push_status=0
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "HEAD:$BRANCH" >"$PUSH_LOG" 2>&1 \
+            || push_status=$?
+          cat "$PUSH_LOG"
+          exit "$push_status"
+
+      # Turn the raw git rejection into an actionable error and post the
+      # commits back to the PR as a patch, so work the runner is about to
+      # discard is recoverable (gha#360). Gated on the step's `outcome` rather
+      # than on a flag it wrote: `outcome` is set by the runner, so it cannot
+      # itself be lost to whatever made the step fail. It is also the wider
+      # signal -- the step can fail before reaching the push at all (the
+      # auto-commit sweep, the fork lookup), and the action reports that state
+      # too rather than mistaking it for a clean run.
+      - name: Report a rejected PR-branch push
+        if: always() && steps.push_pr.outcome == 'failure'
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        with:
+          push-log: ${{ runner.temp }}/push-pr-branch.log
+          entity-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          baseline-sha: ${{ steps.pr_checkout.outputs.starting_sha }}
+          ref: HEAD
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Capture PR head SHA after Claude
         id: head_after
-        if: always() && steps.dedup.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
+        if: always() && steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -791,8 +909,9 @@ jobs:
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
       # Mark the comments Claude absorbed via polling with a 🚀 reaction so the
-      # duplicate run each of them queued skips itself (the dedup pre-step looks
-      # for this reaction). Claude emits the absorbed ids in a
+      # duplicate run each of them queued stands itself down (the dedup
+      # pre-step looks for this reaction and feeds the gate step, which is
+      # what the downstream steps are gated on). Claude emits the absorbed ids in a
       # `<!-- claude-absorbed: id ... -->` marker; we react here with
       # GITHUB_TOKEN, which — unlike Claude's sandboxed `gh` calls — can reliably
       # POST the reaction. Fail-open: if the marker is absent or a reaction
@@ -800,7 +919,7 @@ jobs:
       - name: React to comments Claude absorbed via polling
         if: |
           always() &&
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           steps.claude.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -834,12 +953,34 @@ jobs:
       # Surface Claude's final prose reply when it didn't commit code (agent
       # mode discards it otherwise). Skipped on `@claude review` with PR
       # context, since the dispatch step below routes that to the reviewer.
+      #
+      # Also skipped when the push was REJECTED. That case reaches here looking
+      # exactly like "no code was committed" -- the PR head SHA never moved, so
+      # the check below reads false -- while Claude's prose describes the work
+      # it really did do, which is now stranded on the runner. Posting it makes
+      # the thread assert a state the branch does not have (gha#360); the
+      # report step above posts the truth, with the patch, instead.
+      #
+      # Only the PR path CAN have that gate: "Push branch for issue trigger"
+      # runs several hundred lines below this step, so its outcome does not
+      # exist yet and an equivalent condition here would always be empty.
+      #
+      # The issue path is covered structurally instead, in two pieces. Where
+      # Claude committed, the check below measures the local branch tip
+      # against its baseline -- a failed push does not move that tip, so it
+      # reads "committed" and this step stands down. Where Claude left the
+      # work uncommitted, the tip has not moved either, so this step DOES
+      # post prose; but the push step's own auto-commit sweep, and therefore
+      # the push that could fail, are both still ahead of it, so there is no
+      # failure yet to misreport. Either way the finalize step's
+      # success-shaped comment sits after the push and is gated on it.
       - name: Post Claude's response if no code was committed
         if: |
           always() &&
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           (github.event.issue.number || github.event.pull_request.number) &&
           steps.claude.outcome == 'success' &&
+          steps.push_pr.outcome != 'failure' &&
           !(
             steps.review_request.outputs.match == 'true' &&
             (github.event.pull_request.number || github.event.issue.pull_request)
@@ -941,7 +1082,7 @@ jobs:
       - name: Dispatch code review on @claude review comment
         if: |
           always() &&
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           (github.event.pull_request.number || github.event.issue.pull_request) &&
           steps.review_request.outputs.match == 'true'
         env:
@@ -994,7 +1135,7 @@ jobs:
         id: late_bodies
         if: |
           always() &&
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           (github.event.pull_request.number || github.event.issue.pull_request)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1066,7 +1207,7 @@ jobs:
       # reviewer and dispatch a fresh code review. GITHUB_TOKEN-driven pushes
       # don't fire `synchronize`, so the review wouldn't auto-trigger otherwise.
       - name: Re-request review and dispatch code review if Claude pushed commits
-        if: always() && steps.dedup.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.head_before.outputs.sha != ''
+        if: always() && steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.head_before.outputs.sha != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA_BEFORE: ${{ steps.head_before.outputs.sha }}
@@ -1123,15 +1264,21 @@ jobs:
             echo "No new commits on PR head; skipping review dispatch."
           fi
 
-      # Pair to "Set up branch for issue trigger": push Claude's commits and, in
-      # lazy mode, open the draft PR. In eager-pr mode (or when a PR was adopted
-      # for this issue) the PR already exists — push the new commits and dispatch
-      # a review, or close the empty up-front PR if Claude produced nothing.
+      # Pair to "Set up branch for issue trigger", split in two so this step's
+      # `outcome` means exactly "the push (or something before it) failed" --
+      # which is what the report step below is gated on. Folding the PR
+      # creation in here broke that: `gh pr create` runs unguarded under
+      # `bash -e`, so its failure (a PR already exists for the head, a rate
+      # limit, or the repo setting that forbids Actions from opening PRs)
+      # marked the step failed AFTER a successful push, and the report then
+      # announced commits as stranded that were already on the branch --
+      # the mirror of the bug this PR fixes (gha#361 review).
       # Runs on always() so partial work is preserved even if Claude failed.
-      - name: Push branch and finalize PR for issue trigger
+      - name: Push branch for issue trigger
+        id: push_issue
         if: |
           always() &&
-          steps.dedup.outputs.skip != 'true' &&
+          steps.gate.outputs.skip != 'true' &&
           steps.issue_branch.outputs.branch != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1189,7 +1336,60 @@ jobs:
           fi
 
           echo "Pushing $BRANCH ($BASELINE -> $CURRENT_SHA)"
-          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH"
+          # Captured, like the PR-trigger push above, so the rejection can be
+          # explained and the commits preserved rather than dying with the
+          # runner (gha#360). The push is this step's LAST action, so its
+          # outcome is an exact signal for the report step below.
+          PUSH_LOG="$RUNNER_TEMP/push-issue-branch.log"
+          push_status=0
+          git push "https://x-access-token:${PUSH_TOKEN}@github.com/${{ github.repository }}.git" "$BRANCH" >"$PUSH_LOG" 2>&1 \
+            || push_status=$?
+          cat "$PUSH_LOG"
+          [ "$push_status" -eq 0 ] || exit "$push_status"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # Turn the raw git rejection into an actionable error and post the
+      # commits back as a patch (gha#360). Gated on the push step's own
+      # `outcome`, which is now exact: nothing runs in that step after the
+      # push, so a failure there cannot mean "the push landed but a later
+      # command did not".
+      - name: Report a rejected issue-branch push
+        if: always() && steps.push_issue.outcome == 'failure'
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        with:
+          push-log: ${{ runner.temp }}/push-issue-branch.log
+          entity-number: ${{ github.event.issue.number }}
+          baseline-sha: ${{ steps.eager_pr.outputs.seed_sha || steps.issue_branch.outputs.starting_sha }}
+          ref: ${{ steps.issue_branch.outputs.branch }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Everything that happens once the commits are safely on the branch:
+      # open the PR in lazy mode, dispatch a review, mark ready, comment.
+      # Gated on the push having actually landed, so a failure in here is
+      # never mistaken for a push failure.
+      - name: Finalize PR for issue trigger
+        id: finalize_issue
+        if: |
+          always() &&
+          steps.gate.outputs.skip != 'true' &&
+          steps.push_issue.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ steps.issue_branch.outputs.branch }}
+          EAGER_PR_URL: ${{ steps.eager_pr.outputs.pr_url }}
+          EXISTING_PR_URL: ${{ steps.issue_branch.outputs.existing_pr }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REVIEW_WF: ${{ inputs.review-workflow-file }}
+          MARK_READY: ${{ inputs.mark-ready-for-review }}
+          CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
+          COST_USD: ${{ steps.cost.outputs.cost }}
+        run: |
+          # Recomputed rather than carried over: both values come from step
+          # env, so this is the same expression the push step evaluated.
+          PR_URL="${EAGER_PR_URL:-$EXISTING_PR_URL}"
 
           if [ -z "$PR_URL" ]; then
             # Lazy mode, first run: open the draft PR now that there are commits.
