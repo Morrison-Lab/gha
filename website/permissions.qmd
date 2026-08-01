@@ -44,6 +44,11 @@ already include the right `permissions:` blocks; copy them as-is.
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 - `request-dependabot-review` requests a reviewer on the PR, so grant
   `pull-requests: write`.
+- `bump-dev-version` opens (or auto-merges) a PR, so grant `contents: write`,
+  `pull-requests: write`, enable the same "Allow GitHub Actions to create and
+  approve pull requests" setting as above, and (for its default
+  `auto-merge: true`) "Allow auto-merge" too. `version-check` is read-only, so
+  grant only `pull-requests: read`, `contents: read`.
 
 ## Optional secrets
 

@@ -73,6 +73,8 @@ not reference `@main` from consumers.
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 | `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes — keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
+| `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run` |
+| `version-check.yml` | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's -- pairs with `bump-dev-version.yml` | `description-path`, `no-version-increment-label`, `bump-branch` |
 
 ## Permissions
 
@@ -144,6 +146,12 @@ that need to write must have the **caller** grant it on the calling job:
   to a protected branch; otherwise pushes fall back to `GITHUB_TOKEN`.
 - `request-dependabot-review` (requests a reviewer on the PR) → grant
   `pull-requests: write`.
+- `bump-dev-version` (opens/auto-merges a PR) → grant `contents: write`,
+  `pull-requests: write`, and the same "Allow GitHub Actions to create and
+  approve pull requests" setting as above; enable "Allow auto-merge" too for
+  its default `auto-merge: true`. Add a `WORKFLOW_TOKEN` only to push to a
+  protected branch. `version-check` (read-only) → only `pull-requests: read`,
+  `contents: read`.
 
 The stubs in [`examples/`](examples) already include the right `permissions:`
 blocks — copy them as-is.
@@ -406,6 +414,9 @@ does `sync-upstream.yml` (added after the freeze — see
 `altdoc-multiversion-docs.yml` (added after the freeze), and
 `report-failure.yml` (added after the freeze — see
 [gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
+`bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added
+in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
+`@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
@@ -476,8 +487,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
-`report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`, and
-`ai-code-review.yml` at `@v2` -- see the
+`report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
+`ai-code-review.yml`, `bump-dev-version.yml`, and
+`version-check.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

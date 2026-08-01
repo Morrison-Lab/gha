@@ -1,0 +1,68 @@
+---
+title: "version-check.yml"
+---
+
+Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's.
+
+Inverts the old convention (each repo's own bespoke `version-check.yaml`,
+derived from `RMI-PACTA/actions`' `R-semver-check.yml`, requiring a branch's
+version to *exceed* main's): now that
+[`bump-dev-version.yml`](bump-dev-version.qmd) owns the dev-version bump after
+every merge to `main`, a PR touching that line at all just guarantees a
+collision with the next PR that merges. Depends on nothing but base R's
+`package_version` class, so unlike the workflow it replaces this needs no
+`install.packages('desc')` step and no `rocker/verse` container.
+
+Two bypasses, both skip the check entirely:
+
+- the `no-version-increment-label` -- for a genuine release-cut PR that does
+  bump the version by hand (e.g. `usethis::use_version()` cutting an actual
+  MAJOR.MINOR.PATCH release).
+- the `bump-branch` -- the `bump-dev-version` automation's own PR, whose
+  entire job is to change this line.
+
+## Inputs
+
+| Input                          | Type   | Default                       | Description                                              |
+| ------------------------------- | ------ | ------------------------------- | ----------------------------------------------------------- |
+| `description-path`              | string | `DESCRIPTION`                  | Path to the DESCRIPTION file to check.                    |
+| `no-version-increment-label`    | string | `no version increment`          | PR label that skips this check entirely.                 |
+| `bump-branch`                   | string | `automated/bump-dev-version`    | Head branch that skips this check entirely.               |
+
+## Permissions
+
+Grant `pull-requests: read` and `contents: read`.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/version-check.yml in your repo.
+name: Version check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version-check:
+    permissions:
+      pull-requests: read
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/version-check.yml@v2
+    with:
+      # description-path: DESCRIPTION                    # default
+      # no-version-increment-label: 'no version increment' # default
+      # bump-branch: automated/bump-dev-version           # default
+```
+
+See `version-check.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
+(Linked to the directory rather than the file, because a `blob/main/...` link
+to a capability's own example 404s on the pull request that introduces it --
+the file does not exist on `main` until that PR merges, and `check-links`
+rightly fails it. The sibling pages can use the direct form because their
+targets already landed.)
+
+Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
+exist at that tag. See [Versioning](../versioning.qmd).

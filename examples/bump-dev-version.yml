@@ -1,0 +1,27 @@
+# Copy to .github/workflows/bump-dev-version.yml in your repo.
+# Bumps DESCRIPTION's dev-version counter after every merge to main, and opens
+# (or auto-merges) a PR to carry it in. Pairs with version-check.yml, which
+# now fails a PR that touches Version: itself -- see that workflow's own
+# caller stub for why. Requires Settings -> Actions -> General -> "Allow
+# GitHub Actions to create and approve pull requests" (the integrated
+# GITHUB_TOKEN opens the PR) and, for auto-merge, Settings -> General ->
+# "Allow auto-merge".
+name: Bump dev version
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  bump:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: Morrison-Lab/gha/.github/workflows/bump-dev-version.yml@v2
+    with:
+      # description-path: DESCRIPTION   # default
+      # auto-merge: true                 # default; set false to review by hand
+    secrets:
+      # Set only if the bot must push to a protected branch; otherwise omit
+      # and the push falls back to GITHUB_TOKEN.
+      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
