@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>report-failure.yml – Morrison-Lab/gha</title>
+<title>version-check.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/preview.html" rel="next">
-<link href="../reference/quarto-publish.html" rel="prev">
+<link href="../reference/bump-dev-version.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +331,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/report-failure.html">report-failure.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/version-check.html">version-check.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -439,7 +438,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/report-failure.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/report-failure.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">report-failure.yml</span></a>
   </div>
 </li>
@@ -517,7 +516,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/version-check.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/version-check.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">version-check.yml</span></a>
   </div>
 </li>
@@ -533,21 +532,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#deduplication" id="toc-deduplication" class="nav-link active" data-scroll-target="#deduplication">Deduplication</a></li>
-  <li><a href="#why-this-is-its-own-workflow" id="toc-why-this-is-its-own-workflow" class="nav-link" data-scroll-target="#why-this-is-its-own-workflow">Why this is its own workflow</a></li>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/report-failure.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/version-check.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/report-failure.html">report-failure.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-bibliography-dois.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/version-check.html">version-check.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">report-failure.yml</h1>
+<h1 class="title">version-check.yml</h1>
 </div>
 
 
@@ -564,27 +561,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>File an issue when a workflow fails, or comment on the issue already open for that failure.</p>
-<p>It is for workflows that run where no pull request carries their result: a push to the default branch, a schedule, a release. There, a red run is visible only to whoever thinks to open the Actions tab, so a broken deploy can go unnoticed while the published site goes stale.</p>
-<p>Add it as a final job in an existing caller stub, gated on the job you want watched. It is not a workflow to install on its own.</p>
-<section id="deduplication" class="level2">
-<h2 class="anchored" data-anchor-id="deduplication">Deduplication</h2>
-<p><code>title</code> is the deduplication key. Before filing, the workflow lists the repository’s open issues and looks for an exact, case-sensitive title match: on a match it appends a comment to that issue, and only otherwise files a new one. So a workflow that fails on every run for a week produces one issue with a week of comments, not seven issues.</p>
-<p>Two consequences. Keep <code>title</code> fixed across runs – a title carrying a run id, SHA, or timestamp defeats the matching and files a fresh issue each time. And close the issue once the workflow is green again, so the next failure opens a new one rather than reviving a resolved thread.</p>
-<p>The match is exact rather than fuzzy on purpose: two failures whose titles share a prefix (<code>Publish failed: website</code> and <code>Publish failed: website preview</code>) are different problems, and folding the second onto the first would bury its evidence under a report about the first.</p>
-</section>
-<section id="why-this-is-its-own-workflow" class="level2">
-<h2 class="anchored" data-anchor-id="why-this-is-its-own-workflow">Why this is its own workflow</h2>
-<p>A reusable workflow’s jobs can only hold permissions its caller already granted. Putting the failure-reporting job inside <code>quarto-publish.yml</code> would therefore make <code>issues: write</code> a requirement for every caller of that workflow, whether or not it wanted issues filed. Kept separate, the permission is granted only by callers that opt in – and any workflow can be watched, not only publishing.</p>
-</section>
+<p>Fail a PR whose <code>DESCRIPTION</code> <code>Version:</code> differs from the base branch’s.</p>
+<p>Inverts the old convention (each repo’s own bespoke <code>version-check.yaml</code>, derived from <code>RMI-PACTA/actions</code>’ <code>R-semver-check.yml</code>, requiring a branch’s version to <em>exceed</em> main’s): now that <a href="../reference/bump-dev-version.html"><code>bump-dev-version.yml</code></a> owns the dev-version bump after every merge to <code>main</code>, a PR touching that line at all just guarantees a collision with the next PR that merges. Depends on nothing but base R’s <code>package_version</code> class, so unlike the workflow it replaces this needs no <code>install.packages('desc')</code> step and no <code>rocker/verse</code> container.</p>
+<p>Two bypasses, both skip the check entirely:</p>
+<ul>
+<li>the <code>no-version-increment-label</code> – for a genuine release-cut PR that does bump the version by hand (e.g.&nbsp;<code>usethis::use_version()</code> cutting an actual MAJOR.MINOR.PATCH release).</li>
+<li>the <code>bump-branch</code> – the <code>bump-dev-version</code> automation’s own PR, whose entire job is to change this line.</li>
+</ul>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 5%">
+<col style="width: 24%">
 <col style="width: 4%">
-<col style="width: 5%">
-<col style="width: 85%">
+<col style="width: 24%">
+<col style="width: 46%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -596,66 +587,50 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>title</code></td>
+<td><code>description-path</code></td>
 <td>string</td>
-<td>required</td>
-<td>Issue title, and the deduplication key. Must be stable across runs; see above.</td>
+<td><code>DESCRIPTION</code></td>
+<td>Path to the DESCRIPTION file to check.</td>
 </tr>
 <tr class="even">
-<td><code>body</code></td>
+<td><code>no-version-increment-label</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Extra context prepended to the report. The run URL, workflow name, ref, and commit are always appended, so this is for what those cannot say.</td>
+<td><code>no version increment</code></td>
+<td>PR label that skips this check entirely.</td>
 </tr>
 <tr class="odd">
-<td><code>labels</code></td>
+<td><code>bump-branch</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Comma-separated labels for a newly filed issue. Labels the repository does not define are dropped with a warning rather than failing the report. Ignored when commenting on an existing issue.</td>
+<td><code>automated/bump-dev-version</code></td>
+<td>Head branch that skips this check entirely.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>issues: write</code> on the calling job, and nothing else. Grant it on that job only – not on the job being watched, which usually needs a different set.</p>
-<p><code>issues: write</code> alone is enough because the job performs no checkout: the action carries its own files and names the repository through <code>GH_REPO</code>. That matters more than it looks. Naming any scope in a <code>permissions:</code> block sets every unlisted scope to <code>none</code>, so a job that did check the repository out would also need <code>contents: read</code> – and without it the checkout fails on a private or internal repo, at the moment the job exists to report a failure.</p>
+<p>Grant <code>pull-requests: read</code> and <code>contents: read</code>.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the `report-failure` job into a workflow whose failures you want tracked.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Quarto Publish</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/version-check.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Version check</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">]</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">publish</span><span class="kw">:</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">version-check</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/version-check.yml@v2</span></span>
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">path</span><span class="kw">:</span><span class="at"> website</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">report-failure</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">needs</span><span class="kw">:</span><span class="at"> publish</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    # `always()` is what lets this job run once `publish` failed; the result</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    # check is what decides. The `pull_request` clause is inert as this stub</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    # stands (push and dispatch only); keep it if you add a `pull_request`</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    # trigger, since a PR already shows its own failure.</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="fu">    if</span><span class="kw">: </span><span class="ch">&gt;-</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a>      always()</span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>      &amp;&amp; needs.publish.result == 'failure'</span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>      &amp;&amp; github.event_name != 'pull_request'</span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/report-failure.yml@v2</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">title</span><span class="kw">:</span><span class="at"> Publish workflow is failing</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">body</span><span class="kw">:</span><span class="at"> The documentation site did not deploy, so the published site may be stale.</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">      # labels: bug,automated    # must already exist in your repo to be applied</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">      # description-path: DESCRIPTION                    # default</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">      # no-version-increment-label: 'no version increment' # default</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">      # bump-branch: automated/bump-dev-version           # default</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <code>version-check.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, because a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it – the file does not exist on <code>main</code> until that PR merges, and <code>check-links</code> rightly fails it. The sibling pages can use the direct form because their targets already landed.)</p>
 <p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag. See <a href="../versioning.html">Versioning</a>.</p>
 
 
@@ -1077,14 +1052,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/quarto-publish.html" class="pagination-link" aria-label="quarto-publish.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">quarto-publish.yml</span>
+      <a href="../reference/bump-dev-version.html" class="pagination-link" aria-label="bump-dev-version.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">bump-dev-version.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/preview.html" class="pagination-link" aria-label="preview.yml">
-        <span class="nav-page-text">preview.yml</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->
@@ -1092,4 +1064,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/report-failure.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/version-check.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>

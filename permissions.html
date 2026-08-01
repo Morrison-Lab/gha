@@ -474,6 +474,18 @@ ul.task-list li input[type="checkbox"] {
  <span class="menu-text">sync-upstream.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/bump-dev-version.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">bump-dev-version.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/version-check.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">version-check.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -532,6 +544,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>claude</code> pushes branches, opens PRs, and dispatches the review workflow, so grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, <code>actions: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</li>
 <li><code>claude-code-review</code> (read-only review) grants <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</li>
 <li><code>request-dependabot-review</code> requests a reviewer on the PR, so grant <code>pull-requests: write</code>.</li>
+<li><code>bump-dev-version</code> opens (or auto-merges) a PR, so grant <code>contents: write</code>, <code>pull-requests: write</code>, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default <code>auto-merge: true</code>) “Allow auto-merge” too. <code>version-check</code> is read-only, so grant only <code>pull-requests: read</code>, <code>contents: read</code>.</li>
 </ul>
 </section>
 <section id="optional-secrets" class="level2">
