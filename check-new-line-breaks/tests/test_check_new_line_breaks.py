@@ -46,10 +46,12 @@ def test_period_inside_inline_code_does_not_split():
 #
 # A sentence ending in emphasis puts the closing `**` between the period and
 # the whitespace, so a closing-char class that omits `*`/`_` never sees the
-# boundary. `**Claim.** Explanation.` is the corpus's most common paragraph
-# opener, so the omission made the check silently under-report its single most
-# common two-sentences-on-one-line construction. Ported from ai-config's own
-# test_slb.py (Bug 7/7b/7c/7d), whose sibling regex had the same defect.
+# boundary, and a `**Claim.** Explanation.` line reads as one sentence.
+# Measured 2026-08-03: adding the two characters raises the multi-sentence
+# lines detected across Morrison-Lab/ai-config's Markdown from 2837 to 3398,
+# so 561 lines -- about one in six of what the fixed check finds -- were
+# invisible to it. Ported from ai-config's own test_slb.py (Bug 7/7b/7c/7d),
+# whose sibling regex had the same defect.
 
 def test_bold_close_is_a_sentence_boundary():
     result = nlb.split_sentences(
