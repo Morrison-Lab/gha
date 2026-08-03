@@ -705,6 +705,25 @@ adjacent to it, so backreference a delimiter's opening run rather than
 matching to the next one, and stop a URL before trailing sentence
 punctuation.
 
+**The sentence regex has two independently-breakable halves, and a fix to
+one does not touch the other.**
+`_SENT_BREAK_RE` is `[.!?]` plus a **closing-character class**, then
+whitespace, then a **lookahead** at what starts the next sentence.
+Each half fails silently and in the same direction -- a missed boundary means
+the line reads as one sentence, so the check passes it clean.
+gha#397 was the closing class omitting `*` and `_`, which swallowed every
+`**Claim.** Explanation.` line, the corpus's most common paragraph opener.
+gha#389 is the lookahead requiring ``[A-Z"'`*\[]``, which misses a sentence
+starting with a lowercase identifier.
+So when either half is widened, ask what the *other* half now blocks before
+concluding the construction is covered -- and pair the widening with a
+negative case, since the two halves are also each other's guard rails
+(#397's `*` is safe to add precisely because the lookahead still refuses a
+following lowercase word).
+The whole regex is duplicated in `Morrison-Lab/ai-config`'s
+`scripts/semantic-line-breaks.py`, the reformatter this check is the detector
+half of, so a fix to either is owed to the other.
+
 `check-secrets/tests/test-build-config.sh` is a shell suite over
 `build-gitleaks-config.sh`, the script that turns the `paths-ignore`,
 `allowlist-file`, and `config` inputs into the gitleaks TOML the scan runs

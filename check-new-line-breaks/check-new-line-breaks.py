@@ -58,7 +58,13 @@ _ABBREVS = [
 _ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.")
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
-_SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]]*)\s+(?=[A-Z\"'`*\[])")
+# The closing-char class includes `*` and `_` so a sentence ending in Markdown
+# emphasis (`**Some claim.** Explanation...`, the corpus's most common paragraph
+# opener, or the `__claim.__` / `_claim._` underscore forms) is recognized: the
+# emphasis close sits between the period and the whitespace and would otherwise
+# defeat the boundary. A lowercase word after the close still blocks the split
+# via the uppercase-or-markup lookahead, so mid-sentence emphasis is left intact.
+_SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
 
 _PLACEHOLDER = "\x00"
 

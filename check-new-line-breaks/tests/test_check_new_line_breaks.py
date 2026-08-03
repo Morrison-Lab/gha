@@ -42,6 +42,61 @@ def test_period_inside_inline_code_does_not_split():
     assert len(result) == 1
 
 
+# ── Sentence boundaries at a Markdown emphasis close (gha#397) ───────────────
+#
+# A sentence ending in emphasis puts the closing `**` between the period and
+# the whitespace, so a closing-char class that omits `*`/`_` never sees the
+# boundary. `**Claim.** Explanation.` is the corpus's most common paragraph
+# opener, so the omission made the check silently under-report its single most
+# common two-sentences-on-one-line construction. Ported from ai-config's own
+# test_slb.py (Bug 7/7b/7c/7d), whose sibling regex had the same defect.
+
+def test_bold_close_is_a_sentence_boundary():
+    result = nlb.split_sentences(
+        "**Ending the head poll does not end the PR watch.** "
+        "The two run at different frequencies."
+    )
+    assert result == [
+        "**Ending the head poll does not end the PR watch.**",
+        "The two run at different frequencies.",
+    ]
+
+
+def test_italic_close_is_a_sentence_boundary():
+    result = nlb.split_sentences("See the note.* Then continue with the next point.")
+    assert result == ["See the note.*", "Then continue with the next point."]
+
+
+def test_underscore_emphasis_close_is_a_sentence_boundary():
+    result = nlb.split_sentences(
+        "__Ending the head poll does not end the PR watch.__ "
+        "The two run at different rates."
+    )
+    assert result == [
+        "__Ending the head poll does not end the PR watch.__",
+        "The two run at different rates.",
+    ]
+
+
+def test_emphasis_close_before_lowercase_does_not_split():
+    """Adding `*`/`_` to the closing class must not over-split.
+
+    A bold close followed by a lowercase word is a continuing clause, not a
+    sentence boundary; the uppercase-or-markup lookahead keeps it on one line.
+    """
+    text = "It is **critical.** yet often skipped on the first pass."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_bold_close_line_is_flagged_end_to_end():
+    """The detector, not just the splitter: this line must be reported."""
+    flagged = nlb.classify_line(
+        "**Ending the head poll does not end the PR watch.** "
+        "The two run at different frequencies."
+    )
+    assert flagged == "sentence"
+
+
 # ── prose_line_numbers ───────────────────────────────────────────────────────
 
 def test_frontmatter_and_heading_excluded():
