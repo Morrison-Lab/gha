@@ -103,15 +103,19 @@ fi
 #
 # denials is computed here (not just at its original use site further
 # below) because it also gates one of the "blocks" candidates next: a
-# Bash `gh pr comment`/`gh api .../comments` call is NOT in
-# run-claude-review-attempt's allowedTools (deliberately — see that
-# composite action's own header comment), so any such call in the
-# transcript was necessarily DENIED whenever this run had ANY permission
-# denials at all (each one increments this counter). Trusting that call's
-# argument text as evidence of a posted verdict is only safe when denials
-# is exactly zero — otherwise a denied attempt (which never actually
-# posted anything) could be mistaken for a genuine review and skip the
-# stub/retry safety net entirely (gha#218 review, finding 1).
+# Bash `gh pr comment`/`gh api .../comments` call. `gh pr comment` is now
+# explicitly DENIED in run-claude-review-attempt's `--disallowedTools`
+# (and the reviewer prompt tells the agent to OUTPUT its review rather
+# than post it), and `gh api` was never on its allowlist -- so any such
+# call in the transcript was necessarily DENIED, and each denial
+# increments this counter. Trusting that call's argument text as evidence
+# of a posted verdict is only safe when denials is exactly zero (i.e. no
+# such call was attempted) -- otherwise a denied attempt (which never
+# actually posted anything) could be mistaken for a genuine review and
+# skip the stub/retry safety net entirely (gha#218 review, finding 1).
+# With `gh pr comment` denied this branch is now largely defensive: the
+# agent is instructed not to post, and the workflow's "Post review
+# comment" step publishes review_text_file itself.
 denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
 # review_text_file (posted to the PR) and all_text_file (the pass/fail scan
 # below) must draw from the exact same candidate blocks, or a verdict this

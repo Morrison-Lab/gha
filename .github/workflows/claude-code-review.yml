@@ -259,13 +259,17 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           REPO: ${{ github.repository }}
         run: |
-          # Issue comments hold the summary/tracking comment (verdict).
-          # Filter to comments that contain a review heading to exclude
-          # @claude task-handler responses (which also post as claude[bot] but
-          # use "Claude finished…" / "Claude Code is working…" headers, not
-          # the "### Code Review:" / "### Verdict" heading the review workflow uses).
+          # Issue comments hold the summary/tracking comment (verdict). The
+          # review summary is posted by the workflow's own "Post review
+          # comment" step in agent mode (author github-actions[bot]), and by
+          # claude-code-action's tracking comment in tag mode (author
+          # claude[bot]) -- so match either bot. The "### Verdict" body test
+          # is what excludes non-review comments from either author: the cost
+          # and quota comments (github-actions[bot]) and the @claude
+          # task-handler responses (claude[bot], "Claude finished..." headers)
+          # carry no verdict heading.
           SUMMARY=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]" and (.body | test("### (Code Review|Verdict)")))] | .[-3:] |
+            --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)")))] | .[-3:] |
                   map("=== Summary posted \(.created_at) ===\n\(.body)") | join("\n\n")' \
             2>/dev/null || true)
           # PR review comments hold the per-line inline findings — these are the
@@ -883,11 +887,21 @@ jobs:
       # review (plus current cost comment) with history folded beneath it.
       # Only THIS workflow's comments are touched — identified by the run
       # each comment links to (its workflow `path` is this file) — so
-      # `@claude` task comments from claude.yml (same `claude[bot]` author)
-      # are left alone. This matches on the run-URL link alone, not comment
-      # content, so it folds both "Post review comment"'s and "Post cost
-      # comment"'s output identically (gha#219) — the cost comment includes
-      # its own `actions/runs/<id>` link for exactly this reason.
+      # `@claude` task comments from claude.yml are left alone (their run's
+      # path is claude.yml, not this file). This matches on the run-URL link,
+      # so it folds "Post review comment"'s and "Post cost comment"'s output
+      # identically (gha#219) -- the cost comment includes its own
+      # `actions/runs/<id>` link for exactly this reason.
+      #
+      # The author pre-filter must admit BOTH bots: the agent-mode review and
+      # cost comments are github-actions[bot] (posted by this workflow's own
+      # steps), while a tag-mode tracking comment is claude[bot] (posted by
+      # claude-code-action). An earlier version filtered claude[bot] alone,
+      # which silently folded nothing in agent mode -- the github-actions[bot]
+      # review/cost comments never matched, so every round's comments stayed
+      # expanded. The run->path check below is what actually scopes this to
+      # this workflow, so admitting both bots cannot touch another workflow's
+      # comments.
       #
       # Not gated to pull_request: a dispatched (workflow_dispatch / agent-mode)
       # review that wins the per-PR concurrency race must fold the earlier
@@ -914,7 +928,7 @@ jobs:
         run: |
           gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[]
-                  | select(.user.login == "claude[bot]")
+                  | select(.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
                   | "\(.node_id)\t\(((.body | capture("actions/runs/(?<r>[0-9]+)").r)?) // "")"' \
           | while IFS=$'\t' read -r NODE_ID RUN_ID; do
               [ -z "$RUN_ID" ] && continue
