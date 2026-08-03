@@ -705,6 +705,38 @@ adjacent to it, so backreference a delimiter's opening run rather than
 matching to the next one, and stop a URL before trailing sentence
 punctuation.
 
+**The sentence regex has two independently-breakable halves, and a fix to
+one does not touch the other.**
+`_SENT_BREAK_RE` is `[.!?]` plus a **closing-character class**, then
+whitespace, then a **lookahead** at what starts the next sentence.
+Each half fails silently and in the same direction -- a missed boundary means
+the line reads as one sentence, so the check passes it clean.
+gha#397 was the closing class omitting `*` and `_`, which swallowed every
+`**Claim.** Explanation.` line.
+Measured on 2026-08-03, adding the two characters took the multi-sentence lines
+detected across `Morrison-Lab/ai-config`'s Markdown from 2837 to 3398, and
+across this repo's from 719 to 784 --- increases of 19.8% and 9.0% *over the old
+counts*.
+Stated as a share instead, which is the figure that says how much was hidden:
+the 561 lines `ai-config` gained are about one in six of what the fixed check
+finds (561/3398 = 16.5%).
+Those two denominators are easy to mix up, and only the second answers "how much
+was the blind spot hiding".
+Note also that gha#389 leaves the lookahead half still missing sentences, so
+3398 is itself an undercount and the true hidden share is lower still --- which
+is an argument about the size of the number, not about whether it is worth
+fixing.
+gha#389 is the lookahead requiring ``[A-Z"'`*\[]``, which misses a sentence
+starting with a lowercase identifier.
+So when either half is widened, ask what the *other* half now blocks before
+concluding the construction is covered -- and pair the widening with a
+negative case, since the two halves are also each other's guard rails
+(#397's `*` is safe to add precisely because the lookahead still refuses a
+following lowercase word).
+The whole regex is duplicated in `Morrison-Lab/ai-config`'s
+`scripts/semantic-line-breaks.py`, the reformatter this check is the detector
+half of, so a fix to either is owed to the other.
+
 `check-secrets/tests/test-build-config.sh` is a shell suite over
 `build-gitleaks-config.sh`, the script that turns the `paths-ignore`,
 `allowlist-file`, and `config` inputs into the gitleaks TOML the scan runs
