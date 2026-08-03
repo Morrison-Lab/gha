@@ -712,11 +712,12 @@ whitespace, then a **lookahead** at what starts the next sentence.
 Each half fails silently and in the same direction -- a missed boundary means
 the line reads as one sentence, so the check passes it clean.
 gha#397 was the closing class omitting `*` and `_`, which swallowed every
-`**Claim.** Explanation.` line --- measured on 2026-08-03, adding the two
-characters took the multi-sentence lines detected across
-`Morrison-Lab/ai-config`'s Markdown from 2837 to 3398 (+19.8%) and across this
-repo's from 719 to 784 (+9.0%), so the blind spot was a fifth of that corpus's
-real findings rather than a corner case.
+`**Claim.** Explanation.` line.
+Measured on 2026-08-03, adding the two characters took the multi-sentence lines
+detected across `Morrison-Lab/ai-config`'s Markdown from 2837 to 3398 (+19.8%),
+and across this repo's from 719 to 784 (+9.0%) --- so in `ai-config` the blind
+spot hid nearly a fifth of that check's real findings, which is not a corner
+case.
 gha#389 is the lookahead requiring ``[A-Z"'`*\[]``, which misses a sentence
 starting with a lowercase identifier.
 So when either half is widened, ask what the *other* half now blocks before
