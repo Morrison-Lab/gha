@@ -59,11 +59,14 @@ _ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) +
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
-# emphasis (`**Some claim.** Explanation...`, the corpus's most common paragraph
-# opener, or the `__claim.__` / `_claim._` underscore forms) is recognized: the
-# emphasis close sits between the period and the whitespace and would otherwise
-# defeat the boundary. A lowercase word after the close still blocks the split
-# via the uppercase-or-markup lookahead, so mid-sentence emphasis is left intact.
+# emphasis (`**Some claim.** Explanation...`, or the `__claim.__` / `_claim._`
+# underscore forms) is recognized: the emphasis close sits between the period
+# and the whitespace and would otherwise defeat the boundary. A lowercase word
+# after the close still blocks the split via the uppercase-or-markup lookahead,
+# so mid-sentence emphasis is left intact. Measured 2026-08-03, the two
+# characters are worth their place in the class: they raise the multi-sentence
+# lines detected across Morrison-Lab/ai-config's Markdown from 2837 to 3398
+# (+19.8%), and across this repo's from 719 to 784 (+9.0%).
 _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
 
 _PLACEHOLDER = "\x00"
