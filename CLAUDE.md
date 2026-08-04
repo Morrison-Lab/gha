@@ -1504,6 +1504,7 @@ repositories this session is not scoped to.
 Before declaring a PR ready to merge (or clean / ready for merge verdict) for PRs in this repo (`gha`) that change GitHub Actions or their component actions/workflows, test the changes using one of the lab's template repos (`rpt`, `qwt`, `qbt`, `qmt`, etc.).
 
 Running unit tests or `_selftest.yml` in `gha` alone is not sufficient when modifying an action or workflow component. To ensure full compatibility and prevent downstream breakage, test the updated action/workflow end-to-end against a representative template repository:
+
 - **`rpt`** ([`UCD-SERG/rpt`](https://github.com/UCD-SERG/rpt)): R package template
 - **`qwt`** ([`UCD-SERG/qwt`](https://github.com/UCD-SERG/qwt)): Quarto website template
 - **`qbt`** ([`UCD-SERG/qbt`](https://github.com/UCD-SERG/qbt)): Quarto book template
