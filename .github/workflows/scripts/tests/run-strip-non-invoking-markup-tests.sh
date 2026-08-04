@@ -190,6 +190,29 @@ check "indented line after a list item is not code" \
   $'- a point\n    @claude review' \
   $'- a point\n    @claude review'
 
+# A setext heading underline (a run of only `=` or only `-` under paragraph text)
+# is also such a predecessor. CommonMark makes the two underline characters
+# symmetric; the `-` case is caught by the thematic-break check only for >=3
+# dashes, so the `=` twin and the 1-2 dash underlines are handled here.
+check "indented code block opens after an = setext underline" \
+  $'Heading\n======\n    @claude review' \
+  $'Heading\n======'
+
+check "indented code block opens after a single-dash setext underline" \
+  $'Heading\n-\n    @claude review' \
+  $'Heading\n-'
+
+# But a run of `=` NOT under paragraph text is an ordinary paragraph, not a
+# heading underline, so an indented line after it is a lazy continuation, not
+# code -- stripping it would drop a genuine request.
+check "= run at start of input is a paragraph, not a setext underline" \
+  $'======\n    @claude review' \
+  $'======\n    @claude review'
+
+check "= run after a blank line is a paragraph, not a setext underline" \
+  $'intro\n\n======\n    @claude review' \
+  $'intro\n\n======\n    @claude review'
+
 check "CRLF endings are normalized" \
   $'@claude review\r\nthanks\r' \
   $'@claude review\nthanks'
