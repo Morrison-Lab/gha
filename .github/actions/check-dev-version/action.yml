@@ -28,4 +28,4 @@ runs:
         CHECK_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/check-dev-version.R
       run: |
         set -euo pipefail
-        Rscript "$CHECK_SCRIPT" "$WORKING" "$COMPARE"
+        Rscript --vanilla "$CHECK_SCRIPT" "$WORKING" "$COMPARE"

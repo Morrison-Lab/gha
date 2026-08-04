@@ -1302,6 +1302,9 @@ jobs:
           mkdir -p _ci-dev-version-fixture
           printf 'Package: fixture\nVersion: 0.1.0.9057\nTitle: A test fixture\n' \
             > _ci-dev-version-fixture/DESCRIPTION
+          # Simulate an renv-using repo whose .Rprofile prints to stdout (issue #404)
+          printf 'cat("# Bootstrapping renv 1.2.3 ---------------------------------------------------\\\\n")\n' \
+            > .Rprofile
       - name: Bump the dev version
         id: bump
         uses: ./.github/actions/bump-dev-version
@@ -1355,6 +1358,10 @@ jobs:
             exit 1
           fi
           echo "check-dev-version correctly failed on a Version: mismatch."
+      - name: Clean up test .Rprofile
+        if: always()
+        shell: bash
+        run: rm -f .Rprofile
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
   # composite against a minimal R-package fixture, with no Codecov token and

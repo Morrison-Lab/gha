@@ -1,0 +1,1 @@
+- **`bump-dev-version` and `check-dev-version` run `Rscript --vanilla` and filter stdout** (#404). Prevents `.Rprofile` stdout banners (such as `renv` bootstrapping output) from landing in `$GITHUB_OUTPUT` and failing the step.
