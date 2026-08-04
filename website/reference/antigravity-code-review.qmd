@@ -2,9 +2,12 @@
 title: "antigravity-code-review.yml"
 ---
 
-Automated agentic code review, security audit, or test-suite generation via the Google Antigravity Python SDK (`google-antigravity`).
+Automated agentic code review, security audit, or test-suite generation via
+the Google Antigravity Python SDK (`google-antigravity`).
 
-Supports three operational modes (`code-review`, `security-audit`, `test-generation`) and two execution policies (`on-push` for automatic PR updates and `on-request` for manual/dispatch runs).
+Supports three operational modes (`code-review`, `security-audit`,
+`test-generation`) and two execution policies (`on-push` for automatic PR
+updates and `on-request` for manual/dispatch runs).
 
 Requires a `GEMINI_API_KEY` secret.
 
@@ -28,7 +31,8 @@ Requires a `GEMINI_API_KEY` secret.
 
 ## Permissions
 
-Grant `contents: read`, `pull-requests: write`, `issues: write`, and `id-token: write`.
+Grant `contents: read`, `pull-requests: write`, `issues: write`, and
+`id-token: write`.
 
 ## Example
 

@@ -29,6 +29,10 @@ inputs:
     description: 'Trigger policy: any (default), on-push (only automatic PR updates), or on-request (only manual/dispatch runs)'
     required: false
     default: 'any'
+  dry-run:
+    description: 'Run in dry-run mode (validate prompt and inputs without calling the API)'
+    required: false
+    default: 'false'
   post-comment:
     description: 'Whether to post the agent analysis as a comment/review on the PR'
     required: false
@@ -58,6 +62,7 @@ runs:
         INPUT_MODEL: ${{ inputs.model }}
         INPUT_PROMPT_ADDENDUM: ${{ inputs.prompt-addendum }}
         INPUT_TRIGGER_POLICY: ${{ inputs.trigger-policy }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
         INPUT_POST_COMMENT: ${{ inputs.post-comment }}
       run: |
         ARGS=(
@@ -68,6 +73,9 @@ runs:
         )
         if [ -n "${INPUT_PR_NUMBER}" ]; then
           ARGS+=("--pr-number" "${INPUT_PR_NUMBER}")
+        fi
+        if [ "${INPUT_DRY_RUN}" = "true" ]; then
+          ARGS+=("--dry-run")
         fi
         if [ "${INPUT_POST_COMMENT}" = "true" ]; then
           ARGS+=("--post-comment")

@@ -153,6 +153,7 @@ jobs:
         uses: ./antigravity-review
         with:
           mode: 'code-review'
+          dry-run: 'true'
           post-comment: 'false'
   # check-new-line-breaks is brand new, so (like check-phi/lint-yaml/lint-markdown
   # above) it doesn't exist at the released `@v2` tag its reusable workflow's
