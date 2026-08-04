@@ -64,12 +64,12 @@ jobs:
           PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
-          
+
           REF_ARGS=(--ref "$PR_BRANCH")
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
             REF_ARGS=()
           fi
-          
+
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
           gh issue comment "$PR_NUMBER" --repo "$REPO" \
             --body ":robot: Dispatched an Antigravity Agent review for PR #$PR_NUMBER (see [run]($RUN_URL))." \
