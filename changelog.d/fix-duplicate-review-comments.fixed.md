@@ -5,7 +5,7 @@
   review rather than post it -- so the workflow's own "Post review comment"
   step (`github-actions[bot]`) is the sole poster. This also retires the
   raw-`gh pr comment`-republishing class (#312, #318, #381): with the tool
-  denied, the agent never issues the command there was nothing to republish.
+  denied, the agent never issues the command, so there is nothing to republish.
   As part of the same change, the prior-review-context fetch and the
   older-comment collapse step now match the `github-actions[bot]` author the
   workflow actually posts under (they previously matched `claude[bot]` alone,
