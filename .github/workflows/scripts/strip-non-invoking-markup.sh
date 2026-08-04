@@ -70,6 +70,43 @@ function run_len(s, ch,   n) {
   return n
 }
 
+# Whether `bare` is a CommonMark thematic break: three or more of a single one
+# of `- * _`, with only spaces or tabs between. Written as a character count
+# rather than a regex because the POSIX ERE that awk uses has no backreference,
+# so a same-character-repeated pattern (a `\1` in PCRE) silently never matches.
+function is_thematic_break(bare,   ch, i, c, n) {
+  ch = substr(bare, 1, 1)
+  if (ch != "-" && ch != "*" && ch != "_") return 0
+  n = 0
+  for (i = 1; i <= length(bare); i++) {
+    c = substr(bare, i, 1)
+    if (c == ch) n++
+    else if (c != " " && c != "\t") return 0
+  }
+  return (n >= 3)
+}
+
+# Whether an indented code block may begin on the line *after* this one.
+# `bare` is the line with its indentation removed, `indent` its width.
+#
+# CommonMark forbids an indented code block only from *interrupting a
+# paragraph*, so the blank line the caller checks for is one way -- but not the
+# only way -- to know the following indented line is not a lazy paragraph
+# continuation. A thematic break and an ATX heading are leaf blocks that leave
+# no open paragraph, so an indented block opens after them with no blank line.
+# A list item deliberately does NOT qualify: an indented line after one is a
+# list continuation, not code, and stripping it is the over-stripping error the
+# mention gate must avoid (the list-continuation cases added in #345 guard
+# exactly this). Both shapes are only valid at three columns of indentation or
+# fewer; deeper, they are themselves code.
+function opens_icode(bare, indent) {
+  if (indent > 3) return 0
+  # ATX heading: 1-6 `#` then a space/tab or end of line.
+  if (bare ~ /^#{1,6}([ \t]|$)/) return 1
+  if (is_thematic_break(bare)) return 1
+  return 0
+}
+
 # Replace every closed inline code span in `text` with the placeholder.
 #
 # This runs once over the WHOLE remaining body rather than per line, because a
@@ -121,7 +158,7 @@ function strip_spans(text,   out, i, n, run, j, closerun, found) {
 BEGIN {
   in_fence = 0; fence_char = ""; fence_len = 0
   in_icode = 0
-  prev_blank = 1        # start of input behaves like a blank line
+  prev_opens_icode = 1  # start of input can open an indented code block
   kept = ""; nkept = 0
 }
 
@@ -142,23 +179,25 @@ BEGIN {
         substr(bare, run_len(bare, fence_char) + 1) ~ /^[ \t]*$/) {
       in_fence = 0
     }
-    prev_blank = blank
+    prev_opens_icode = 0
     next
   }
 
   # --- indented code block ----------------------------------------------
-  # Four columns of indentation after a blank line opens one, and it runs
-  # until a non-blank line dedents to three columns or fewer. The blank-line
-  # precondition is what keeps an indented *list continuation* out of this
-  # branch: those follow their list item directly, so over-stripping them
-  # would drop a genuine request, which is the expensive error for the
-  # mention gate sharing this script.
+  # Four columns of indentation opens one when the preceding line does not
+  # leave an open paragraph or list for it to lazily continue (a blank line, a
+  # thematic break, or an ATX heading -- see `opens_icode`). It runs until a
+  # non-blank line dedents to three columns or fewer. The precondition is what
+  # keeps an indented *list continuation* out of this branch: those follow
+  # their list item directly, so over-stripping them would drop a genuine
+  # request, which is the expensive error for the mention gate sharing this
+  # script.
   if (in_icode) {
-    if (blank || indent >= 4) { prev_blank = blank; next }
+    if (blank || indent >= 4) { prev_opens_icode = 0; next }
     in_icode = 0
-  } else if (prev_blank && !blank && indent >= 4) {
+  } else if (prev_opens_icode && !blank && indent >= 4) {
     in_icode = 1
-    prev_blank = blank
+    prev_opens_icode = 0
     next
   }
 
@@ -167,17 +206,17 @@ BEGIN {
       fence_char = lead
       fence_len = run_len(bare, lead)
       in_fence = 1
-      prev_blank = blank
+      prev_opens_icode = 0
       next
     }
-    if (lead == ">") { prev_blank = blank; next }
+    if (lead == ">") { prev_opens_icode = 0; next }
   }
 
   # Kept lines are buffered rather than printed, so the span scan below can
   # see across line boundaries.
   kept = (nkept == 0) ? line : kept "\n" line
   nkept++
-  prev_blank = blank
+  prev_opens_icode = (blank || opens_icode(bare, indent))
 }
 
 END {

@@ -167,6 +167,29 @@ check "indentation without a preceding blank line is not code" \
   $'some prose\n    @claude review' \
   $'some prose\n    @claude review'
 
+# An indented code block also opens after a thematic break or an ATX heading
+# with no blank line: neither leaves an open paragraph for the indented line to
+# lazily continue (CommonMark 0.31.2, "Indented code blocks"). A request quoted
+# this way must still be stripped (gha#356).
+check "indented code block opens after a thematic break" \
+  $'---\n    @claude review' \
+  '---'
+
+check "indented code block opens after an ATX heading" \
+  $'## Accepted phrasing\n    @claude review' \
+  '## Accepted phrasing'
+
+check "indented code block opens after a spaced thematic break" \
+  $'* * *\n    @claude review' \
+  '* * *'
+
+# A list item is NOT such a predecessor: an indented line after it is a list
+# continuation, not code, so it must survive -- and a lone-dash item must not
+# be mistaken for a thematic break, which would over-strip a genuine request.
+check "indented line after a list item is not code" \
+  $'- a point\n    @claude review' \
+  $'- a point\n    @claude review'
+
 check "CRLF endings are normalized" \
   $'@claude review\r\nthanks\r' \
   $'@claude review\nthanks'
