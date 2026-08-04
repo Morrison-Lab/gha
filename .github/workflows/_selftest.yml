@@ -1302,10 +1302,12 @@ jobs:
           mkdir -p _ci-dev-version-fixture _ci-dev-version-bin
           printf 'Package: fixture\nVersion: 0.1.0.9057\nTitle: A test fixture\n' \
             > _ci-dev-version-fixture/DESCRIPTION
-          # 1. Create a poisonous .Rprofile in the workspace root that throws an error if sourced.
-          # Because composite action Rscript calls run in the workspace root, omitting --vanilla
-          # in bump-dev-version or check-dev-version will source this file and fail the step.
+          # 1. Create a poisonous .Rprofile in the workspace root that touches a sentinel file
+          # and throws an error if sourced. Because composite action Rscript calls run in the
+          # workspace root, omitting --vanilla in bump-dev-version or check-dev-version will
+          # source this file, create the sentinel file, and fail the step.
           cat << 'EOF' > .Rprofile
+          touch _ci-rprofile-sourced.txt
           stop("ERROR: .Rprofile was sourced because Rscript --vanilla was omitted!")
           EOF
           # 2. Create a PATH wrapper around Rscript that prepends a fake renv bootstrap banner
@@ -1371,10 +1373,19 @@ jobs:
             exit 1
           fi
           echo "check-dev-version correctly failed on a Version: mismatch."
+      - name: Assert .Rprofile was never sourced during composite calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f _ci-rprofile-sourced.txt ]; then
+            echo "::error::.Rprofile was sourced by a composite action; --vanilla flag is missing."
+            exit 1
+          fi
+          echo ".Rprofile sentinel file was not created; Rscript --vanilla suppressed startup profiles across all composite calls."
       - name: Clean up dev-version test fixtures
         if: always()
         shell: bash
-        run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch .Rprofile
+        run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch .Rprofile _ci-rprofile-sourced.txt
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
   # composite against a minimal R-package fixture, with no Codecov token and
