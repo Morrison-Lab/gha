@@ -1295,27 +1295,20 @@ jobs:
       - name: Run description-version.R offline tests
         shell: bash
         run: Rscript .github/workflows/scripts/tests/test-description-version.R
-      - name: Assert Rscript --vanilla suppresses .Rprofile startup banners
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p _ci-rprofile-test
-          printf 'cat("# Bootstrapping renv 1.2.3 from .Rprofile\n")\n' > _ci-rprofile-test/.Rprofile
-          RAW_OUT=$(cd _ci-rprofile-test && Rscript --vanilla -e 'cat("clean\n")')
-          rm -rf _ci-rprofile-test
-          if [ "$RAW_OUT" != "clean" ]; then
-            echo "::error::Rscript --vanilla failed to suppress .Rprofile: $RAW_OUT"
-            exit 1
-          fi
-          echo "Rscript --vanilla correctly suppressed .Rprofile startup output."
-      - name: Generate a 4-component (dev) DESCRIPTION fixture and stdout-polluting Rscript wrapper
+      - name: Generate DESCRIPTION fixtures, stdout-polluting Rscript wrapper, and poisonous .Rprofile
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p _ci-dev-version-fixture _ci-dev-version-bin
           printf 'Package: fixture\nVersion: 0.1.0.9057\nTitle: A test fixture\n' \
             > _ci-dev-version-fixture/DESCRIPTION
-          # Create a PATH wrapper around Rscript that prepends a fake renv bootstrap banner
+          # 1. Create a poisonous .Rprofile in the workspace root that throws an error if sourced.
+          # Because composite action Rscript calls run in the workspace root, omitting --vanilla
+          # in bump-dev-version or check-dev-version will source this file and fail the step.
+          cat << 'EOF' > .Rprofile
+          stop("ERROR: .Rprofile was sourced because Rscript --vanilla was omitted!")
+          EOF
+          # 2. Create a PATH wrapper around Rscript that prepends a fake renv bootstrap banner
           # to stdout on every invocation, directly testing bump-dev-version's pipeline filter.
           REAL_RSCRIPT=$(which Rscript)
           cat << EOF > _ci-dev-version-bin/Rscript
@@ -1381,7 +1374,7 @@ jobs:
       - name: Clean up dev-version test fixtures
         if: always()
         shell: bash
-        run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch _ci-rprofile-test
+        run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch .Rprofile
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
   # composite against a minimal R-package fixture, with no Codecov token and
