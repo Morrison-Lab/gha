@@ -25,6 +25,10 @@ inputs:
     description: 'Python version to set up for executing the SDK script'
     required: false
     default: '3.11'
+  trigger-policy:
+    description: 'Trigger policy: any (default), on-push (only automatic PR updates), or on-request (only manual/dispatch runs)'
+    required: false
+    default: 'any'
   post-comment:
     description: 'Whether to post the agent analysis as a comment/review on the PR'
     required: false
@@ -53,12 +57,14 @@ runs:
         INPUT_PR_NUMBER: ${{ inputs.pr-number }}
         INPUT_MODEL: ${{ inputs.model }}
         INPUT_PROMPT_ADDENDUM: ${{ inputs.prompt-addendum }}
+        INPUT_TRIGGER_POLICY: ${{ inputs.trigger-policy }}
         INPUT_POST_COMMENT: ${{ inputs.post-comment }}
       run: |
         ARGS=(
           "--mode" "${INPUT_MODE}"
           "--model" "${INPUT_MODEL}"
           "--prompt-addendum" "${INPUT_PROMPT_ADDENDUM}"
+          "--trigger-policy" "${INPUT_TRIGGER_POLICY}"
         )
         if [ -n "${INPUT_PR_NUMBER}" ]; then
           ARGS+=("--pr-number" "${INPUT_PR_NUMBER}")

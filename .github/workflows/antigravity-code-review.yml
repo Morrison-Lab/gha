@@ -26,6 +26,10 @@ on:
         description: 'Model override passed to the Antigravity SDK (e.g. gemini-2.5-flash)'
         type: string
         default: 'gemini-2.5-flash'
+      trigger-policy:
+        description: 'Trigger policy mode: any (default), on-push (only automatic PR updates), or on-request (only manual workflow_dispatch)'
+        type: string
+        default: 'any'
     secrets:
       GEMINI_API_KEY:
         required: false
@@ -35,11 +39,16 @@ on:
 jobs:
   antigravity-review:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (inputs.trigger-policy == 'any' ||
+       (inputs.trigger-policy == 'on-push' && github.event_name == 'pull_request') ||
+       (inputs.trigger-policy == 'on-request' && github.event_name == 'workflow_dispatch')) &&
       (
-        github.event.pull_request.draft == false &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        github.event.sender.type != 'Bot'
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event.pull_request.draft == false &&
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          github.event.sender.type != 'Bot'
+        )
       )
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -110,4 +119,5 @@ jobs:
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           model: ${{ inputs.model }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
+          trigger-policy: ${{ inputs.trigger-policy }}
           post-comment: 'true'

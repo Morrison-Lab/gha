@@ -1,7 +1,17 @@
+# Copy to .github/workflows/antigravity-code-review.yml in your repo.
+# NOTE: Requires GEMINI_API_KEY stored as a GitHub secret.
+#
+# Supports two triggering modes:
+# 1. On-Push mode (Automatic): Runs on every PR push/opened event.
+# 2. On-Request mode (Manual): Runs only when manually dispatched or requested.
 name: Antigravity Code Review & Security Audit
+
 on:
+  # Option A: Automatic execution on PR code pushes
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, ready_for_review, reopened]
+
+  # Option B: Manual execution on demand via workflow_dispatch
   workflow_dispatch:
     inputs:
       mode:
@@ -17,6 +27,15 @@ on:
         description: 'Pull request number (for workflow_dispatch)'
         required: false
         type: string
+      trigger_policy:
+        description: 'Trigger policy enforcement: any, on-push, or on-request'
+        required: false
+        default: 'any'
+        type: choice
+        options:
+          - any
+          - on-push
+          - on-request
 
 jobs:
   antigravity-review:
@@ -24,5 +43,6 @@ jobs:
     with:
       mode: ${{ inputs.mode || 'code-review' }}
       pr-number: ${{ inputs.pr-number }}
+      trigger-policy: ${{ inputs.trigger_policy || 'any' }}
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

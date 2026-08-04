@@ -15,8 +15,16 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(args.mode, "code-review")
         self.assertEqual(args.model, "gemini-2.5-flash")
         self.assertEqual(args.prompt_addendum, "")
+        self.assertEqual(args.trigger_policy, "any")
         self.assertFalse(args.post_comment)
         self.assertFalse(args.dry_run)
+
+    def test_parse_args_trigger_policy(self):
+        args_on_push = run_antigravity.parse_args(["--trigger-policy", "on-push"])
+        self.assertEqual(args_on_push.trigger_policy, "on-push")
+
+        args_on_request = run_antigravity.parse_args(["--trigger-policy", "on-request"])
+        self.assertEqual(args_on_request.trigger_policy, "on-request")
 
     def test_parse_args_custom(self):
         args = run_antigravity.parse_args([

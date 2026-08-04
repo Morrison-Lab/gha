@@ -67,6 +67,12 @@ def parse_args(args=None):
         help="Additional instructions to append to the agent prompt",
     )
     parser.add_argument(
+        "--trigger-policy",
+        choices=["any", "on-push", "on-request"],
+        default="any",
+        help="Trigger policy: any (default), on-push (automatic PR updates), or on-request (manual dispatch)",
+    )
+    parser.add_argument(
         "--post-comment",
         action="store_true",
         help="Post the output as a comment/review on the GitHub PR via gh CLI",
