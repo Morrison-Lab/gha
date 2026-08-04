@@ -213,6 +213,15 @@ check "= run after a blank line is a paragraph, not a setext underline" \
   $'intro\n\n======\n    @claude review' \
   $'intro\n\n======\n    @claude review'
 
+# A chain of underline-shaped lines: the first `===` has no paragraph above it so
+# it is an ordinary paragraph, and the second `===` then underlines it into a
+# heading -- after which the indented request is code and must be stripped. This
+# only works if paragraph state tracks whether a line was actually *consumed* as
+# an underline, not the raw match.
+check "chain of two = runs forms a heading, stripping the indented request" \
+  $'===\n===\n    @claude review' \
+  $'===\n==='
+
 check "CRLF endings are normalized" \
   $'@claude review\r\nthanks\r' \
   $'@claude review\nthanks'

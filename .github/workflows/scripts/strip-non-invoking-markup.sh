@@ -228,14 +228,18 @@ BEGIN {
   nkept++
   # Decide what the NEXT line inherits. A blank line, an ATX heading, or a
   # thematic break (`hd`) opens an indented code block after it with no context;
-  # a setext underline (`ul`) does too, but only when the line before it -- the
-  # `prev_para` carried into this iteration -- was paragraph text. `prev_para`
-  # then records whether THIS line is itself paragraph text, i.e. a plain
-  # non-blank line that a following `=`/`-` run would underline.
+  # a setext underline does too, but only when it is actually *consumed* as one
+  # -- a `=`/`-` run (`ul`) sitting under paragraph text (`prev_para`). A ul-shaped
+  # run with no paragraph above it is not consumed: CommonMark makes it an
+  # ordinary new paragraph, so `prev_para` must go to 1 for the next line (a later
+  # underline could underline it), which is why `prev_para` keys on `consumed`
+  # rather than the raw `ul` match. Otherwise a chain of underline-shaped lines
+  # (`===` / `===` / indented request) mistracks state and under-strips.
   hd = heading_or_break(bare, indent)
   ul = (indent <= 3 && is_setext_underline(bare))
-  prev_opens_icode = (blank || hd || (ul && prev_para))
-  prev_para = (!blank && !hd && !ul)
+  consumed = (ul && prev_para)
+  prev_opens_icode = (blank || hd || consumed)
+  prev_para = (!blank && !hd && !consumed)
 }
 
 END {
