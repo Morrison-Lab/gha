@@ -65,6 +65,18 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("Task Mode: SECURITY-AUDIT", prompt)
         self.assertIn("OWASP Top 10 vulnerabilities", prompt)
 
+    @patch("subprocess.run")
+    def test_get_pr_diff_error(self, mock_run):
+        mock_run.side_effect = Exception("gh command failed")
+        with self.assertRaises(RuntimeError):
+            run_antigravity.get_pr_diff(10)
+
+    @patch("subprocess.run")
+    def test_get_pr_metadata_error(self, mock_run):
+        mock_run.side_effect = Exception("gh command failed")
+        with self.assertRaises(RuntimeError):
+            run_antigravity.get_pr_metadata(10)
+
 
 if __name__ == "__main__":
     unittest.main()

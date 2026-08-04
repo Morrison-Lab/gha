@@ -13,12 +13,13 @@ import sys
 from typing import Dict, Optional
 
 try:
-    from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig
+    from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig, BuiltinTools
 except ImportError:
     # Fallback / mock support for offline unit testing without SDK installed
     Agent = None
     LocalAgentConfig = None
     CapabilitiesConfig = None
+    BuiltinTools = None
 
 
 MODE_PROMPTS = {
@@ -93,9 +94,8 @@ def get_pr_diff(pr_number: Optional[int]) -> str:
     try:
         res = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return res.stdout
-    except (subprocess.CalledProcessError, FileNotFoundError) as err:
-        print(f"Warning: Could not fetch diff via `gh pr diff`: {err}", file=sys.stderr)
-        return ""
+    except Exception as err:
+        raise RuntimeError(f"Could not fetch diff via `gh pr diff`: {err}") from err
 
 
 def get_pr_metadata(pr_number: Optional[int]) -> Dict[str, str]:
@@ -107,8 +107,7 @@ def get_pr_metadata(pr_number: Optional[int]) -> Dict[str, str]:
         res = subprocess.run(cmd, capture_output=True, text=True, check=True)
         return json.loads(res.stdout)
     except Exception as err:
-        print(f"Warning: Could not fetch PR metadata via `gh pr view`: {err}", file=sys.stderr)
-        return {}
+        raise RuntimeError(f"Could not fetch PR metadata via `gh pr view`: {err}") from err
 
 
 def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: str) -> str:
@@ -160,11 +159,24 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
             "google-antigravity SDK is not installed. Install via `pip install google-antigravity`."
         )
 
-    # Restrict capabilities to read-only for security against prompt injection
+    # Restrict capabilities to read-only tools for security against prompt injection
+    capabilities = (
+        CapabilitiesConfig(
+            enabled_tools=[
+                BuiltinTools.VIEW_FILE,
+                BuiltinTools.LIST_DIR,
+                BuiltinTools.SEARCH_DIR,
+                BuiltinTools.FIND_FILE,
+            ]
+        )
+        if BuiltinTools is not None
+        else CapabilitiesConfig()
+    )
+
     config = LocalAgentConfig(
         system_instructions=system_instruction,
         model=model,
-        capabilities=CapabilitiesConfig(read_only=True),
+        capabilities=capabilities,
     )
 
     chunks = []
@@ -181,9 +193,27 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
 def main():
     args = parse_args()
     
-    pr_meta = get_pr_metadata(args.pr_number)
+    try:
+        pr_meta = get_pr_metadata(args.pr_number)
+    except Exception as err:
+        if args.dry_run:
+            print(f"Warning: Could not fetch PR metadata in dry-run mode: {err}", file=sys.stderr)
+            pr_meta = {}
+        else:
+            print(f"::error::Failed to fetch PR metadata: {err}", file=sys.stderr)
+            sys.exit(1)
+
     pr_num = args.pr_number or pr_meta.get("number")
-    diff = get_pr_diff(pr_num)
+
+    try:
+        diff = get_pr_diff(pr_num)
+    except Exception as err:
+        if args.dry_run:
+            print(f"Warning: Could not fetch PR diff in dry-run mode: {err}", file=sys.stderr)
+            diff = ""
+        else:
+            print(f"::error::Failed to fetch PR diff: {err}", file=sys.stderr)
+            sys.exit(1)
 
     system_instruction = (
         f"You are the Google Antigravity AI Agent running in automated mode ({args.mode}). "
@@ -201,8 +231,9 @@ def main():
         print(full_prompt)
         return
 
-    if not diff and not args.dry_run:
-        print("Warning: Empty diff fetched for analysis.", file=sys.stderr)
+    if not diff:
+        print("::error::Empty diff fetched for analysis.", file=sys.stderr)
+        sys.exit(1)
 
     try:
         report = asyncio.run(run_antigravity_agent(full_prompt, system_instruction, model=args.model))
