@@ -1311,10 +1311,9 @@ jobs:
           exec "$REAL_RSCRIPT" "\$@"
           EOF
           chmod +x _ci-dev-version-bin/Rscript
+          echo "${GITHUB_WORKSPACE}/_ci-dev-version-bin" >> "$GITHUB_PATH"
       - name: Bump the dev version
         id: bump
-        env:
-          PATH: ${{ github.workspace }}/_ci-dev-version-bin:${{ env.PATH }}
         uses: ./.github/actions/bump-dev-version
         with:
           description-path: _ci-dev-version-fixture/DESCRIPTION
