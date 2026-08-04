@@ -58,7 +58,7 @@ jobs:
       issues: write
       id-token: write
     concurrency:
-      group: antigravity-review-${{ inputs.pr-number || github.event.pull_request.number }}
+      group: antigravity-review-${{ inputs.mode }}-${{ inputs.pr-number || github.event.pull_request.number }}
       cancel-in-progress: true
     steps:
       - name: Resolve PR number
@@ -112,7 +112,7 @@ jobs:
 
       - name: Run Antigravity Action
         if: success() && steps.dispatch-guard.outputs.blocked != 'true'
-        uses: ./antigravity-review
+        uses: Morrison-Lab/gha/antigravity-review@v2
         with:
           mode: ${{ inputs.mode }}
           pr-number: ${{ steps.resolve-pr.outputs.pr-num }}

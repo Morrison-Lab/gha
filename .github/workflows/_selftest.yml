@@ -139,9 +139,9 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
         with:
           python-version: '3.x'
       - name: Run Antigravity runner unit tests
@@ -149,6 +149,11 @@ jobs:
         run: |
           set -euo pipefail
           python3 antigravity-review/tests/test_run_antigravity.py
+      - name: Test Antigravity composite action
+        uses: ./antigravity-review
+        with:
+          mode: 'code-review'
+          post-comment: 'false'
   # check-new-line-breaks is brand new, so (like check-phi/lint-yaml/lint-markdown
   # above) it doesn't exist at the released `@v2` tag its reusable workflow's
   # internal `uses: Morrison-Lab/gha/check-new-line-breaks@v2` step resolves

@@ -1,0 +1,69 @@
+---
+title: "antigravity-code-review.yml"
+---
+
+Automated agentic code review, security audit, or test-suite generation via the Google Antigravity Python SDK (`google-antigravity`).
+
+Supports three operational modes (`code-review`, `security-audit`, `test-generation`) and two execution policies (`on-push` for automatic PR updates and `on-request` for manual/dispatch runs).
+
+Requires a `GEMINI_API_KEY` secret.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `mode` | string | `'code-review'` | Operational mode: `code-review`, `security-audit`, or `test-generation`. |
+| `pr-number` | string | `''` | Pull request number to analyze. |
+| `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
+| `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
+| `checkout-submodules` | boolean | `false` | Check out git submodules. |
+| `model` | string | `'gemini-2.5-flash'` | Model override passed to the Antigravity SDK. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | no | Gemini / Antigravity API key. |
+| `SUBMODULES_TOKEN` | no | Token used to check out private submodules. |
+
+## Permissions
+
+Grant `contents: read`, `pull-requests: write`, `issues: write`, and `id-token: write`.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/antigravity-code-review.yml in your repo.
+name: Antigravity Code Review & Audit
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Operational mode: code-review, security-audit, or test-generation'
+        default: 'code-review'
+        type: choice
+        options:
+          - code-review
+          - security-audit
+          - test-generation
+      pr_number:
+        description: 'Pull request number'
+        type: string
+
+jobs:
+  antigravity-review:
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2
+    with:
+      mode: ${{ inputs.mode || 'code-review' }}
+      pr-number: ${{ inputs.pr_number }}
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+```

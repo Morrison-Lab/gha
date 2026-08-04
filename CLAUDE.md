@@ -20,7 +20,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
-`gemini-code-review`, `ai-code-review`, `bump-dev-version`, and
+`gemini-code-review`, `antigravity-code-review`, `ai-code-review`, `bump-dev-version`, and
 `version-check` -- see
 the Versioning section
 of `README.md`).

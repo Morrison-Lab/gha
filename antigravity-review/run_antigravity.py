@@ -147,23 +147,24 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
         cmd.append(str(pr_number))
     cmd.extend(["--body", full_body])
 
-    try:
-        subprocess.run(cmd, check=True)
-        print(f"Successfully posted Antigravity agent report to PR #{pr_number or 'current'}.")
-    except Exception as err:
-        print(f"Error posting GitHub comment: {err}", file=sys.stderr)
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"Failed to post GitHub comment via gh CLI: {res.stderr}")
+    print(f"Successfully posted Antigravity agent report to PR #{pr_number or 'current'}.")
 
 
-async def run_antigravity_agent(prompt: str, system_instruction: str) -> str:
+async def run_antigravity_agent(prompt: str, system_instruction: str, model: str = "gemini-2.5-flash") -> str:
     """Async execution of the Google Antigravity Agent SDK."""
     if Agent is None:
         raise RuntimeError(
             "google-antigravity SDK is not installed. Install via `pip install google-antigravity`."
         )
 
+    # Restrict capabilities to read-only for security against prompt injection
     config = LocalAgentConfig(
         system_instructions=system_instruction,
-        capabilities=CapabilitiesConfig(),
+        model=model,
+        capabilities=CapabilitiesConfig(read_only=True),
     )
 
     chunks = []
@@ -193,13 +194,18 @@ def main():
 
     if args.dry_run:
         print("=== DRY RUN MODE ===")
+        print(f"Model: {args.model}")
+        print(f"Trigger Policy: {args.trigger_policy}")
         print(f"System Instructions: {system_instruction}")
         print("--- Full Prompt ---")
         print(full_prompt)
         return
 
+    if not diff and not args.dry_run:
+        print("Warning: Empty diff fetched for analysis.", file=sys.stderr)
+
     try:
-        report = asyncio.run(run_antigravity_agent(full_prompt, system_instruction))
+        report = asyncio.run(run_antigravity_agent(full_prompt, system_instruction, model=args.model))
         if args.post_comment and report:
             post_github_comment(pr_num, report, args.mode)
     except Exception as err:

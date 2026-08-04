@@ -52,7 +52,7 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ github.token }}
-        GEMINI_API_KEY: ${{ inputs.gemini-api-key || secrets.GEMINI_API_KEY }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
         INPUT_MODE: ${{ inputs.mode }}
         INPUT_PR_NUMBER: ${{ inputs.pr-number }}
         INPUT_MODEL: ${{ inputs.model }}
