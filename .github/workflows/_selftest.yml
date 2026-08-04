@@ -1307,7 +1307,7 @@ jobs:
           # workspace root, omitting --vanilla in bump-dev-version or check-dev-version will
           # source this file, create the sentinel file, and fail the step.
           cat << 'EOF' > .Rprofile
-          touch _ci-rprofile-sourced.txt
+          writeLines("sourced", "_ci-rprofile-sourced.txt")
           stop("ERROR: .Rprofile was sourced because Rscript --vanilla was omitted!")
           EOF
           # 2. Create a PATH wrapper around Rscript that prepends a fake renv bootstrap banner
