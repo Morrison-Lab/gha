@@ -1314,22 +1314,37 @@ jobs:
       - name: Run description-version.R offline tests
         shell: bash
         run: Rscript .github/workflows/scripts/tests/test-description-version.R
-      - name: Generate a 4-component (dev) DESCRIPTION fixture
+      - name: Generate DESCRIPTION fixtures, stdout-polluting Rscript wrapper, and poisonous .Rprofile
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _ci-dev-version-fixture
+          mkdir -p _ci-dev-version-fixture _ci-dev-version-bin
           printf 'Package: fixture\nVersion: 0.1.0.9057\nTitle: A test fixture\n' \
             > _ci-dev-version-fixture/DESCRIPTION
-          # Simulate an renv-using repo whose .Rprofile prints to stdout (issue #404)
-          printf 'cat("# Bootstrapping renv 1.2.3 ---------------------------------------------------\\\\n")\n' \
-            > .Rprofile
+          # 1. Create a poisonous .Rprofile in the workspace root that touches a sentinel file
+          # and throws an error if sourced. Because composite action Rscript calls run in the
+          # workspace root, omitting --vanilla in bump-dev-version or check-dev-version will
+          # source this file, create the sentinel file, and fail the step.
+          cat << 'EOF' > .Rprofile
+          writeLines("sourced", "_ci-rprofile-sourced.txt")
+          stop("ERROR: .Rprofile was sourced because Rscript --vanilla was omitted!")
+          EOF
+          # 2. Create a PATH wrapper around Rscript that prepends a fake renv bootstrap banner
+          # to stdout on every invocation, directly testing bump-dev-version's pipeline filter.
+          REAL_RSCRIPT=$(which Rscript)
+          cat << EOF > _ci-dev-version-bin/Rscript
+          #!/usr/bin/env bash
+          echo "# Bootstrapping renv 1.2.3 ---------------------------------------------------"
+          exec "$REAL_RSCRIPT" "\$@"
+          EOF
+          chmod +x _ci-dev-version-bin/Rscript
+          echo "${GITHUB_WORKSPACE}/_ci-dev-version-bin" >> "$GITHUB_PATH"
       - name: Bump the dev version
         id: bump
         uses: ./.github/actions/bump-dev-version
         with:
           description-path: _ci-dev-version-fixture/DESCRIPTION
-      - name: Assert the bump composite incremented the dev counter
+      - name: Assert the bump composite incremented dev counter and filtered stdout pollution
         shell: bash
         env:
           OLD_VERSION: ${{ steps.bump.outputs.old-version }}
@@ -1345,7 +1360,7 @@ jobs:
             echo "::error::bump-dev-version composite's outputs and the file on disk disagree (disk=${ON_DISK})"
             exit 1
           fi
-          echo "bump-dev-version correctly bumped 0.1.0.9057 -> 0.1.0.9058."
+          echo "bump-dev-version correctly bumped 0.1.0.9057 -> 0.1.0.9058 through stdout pollution filter."
       - name: Generate matching and mismatched compare-branch fixtures
         shell: bash
         run: |
@@ -1377,10 +1392,19 @@ jobs:
             exit 1
           fi
           echo "check-dev-version correctly failed on a Version: mismatch."
-      - name: Clean up test .Rprofile
+      - name: Assert .Rprofile was never sourced during composite calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f _ci-rprofile-sourced.txt ]; then
+            echo "::error::.Rprofile was sourced by a composite action; --vanilla flag is missing."
+            exit 1
+          fi
+          echo ".Rprofile sentinel file was not created; Rscript --vanilla suppressed startup profiles across all composite calls."
+      - name: Clean up dev-version test fixtures
         if: always()
         shell: bash
-        run: rm -f .Rprofile
+        run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch .Rprofile _ci-rprofile-sourced.txt
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
   # composite against a minimal R-package fixture, with no Codecov token and
