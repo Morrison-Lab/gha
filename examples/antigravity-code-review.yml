@@ -1,0 +1,28 @@
+name: Antigravity Code Review & Security Audit
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Operational mode: code-review, security-audit, or test-generation'
+        required: false
+        default: 'code-review'
+        type: choice
+        options:
+          - code-review
+          - security-audit
+          - test-generation
+      pr-number:
+        description: 'Pull request number (for workflow_dispatch)'
+        required: false
+        type: string
+
+jobs:
+  antigravity-review:
+    uses: Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2
+    with:
+      mode: ${{ inputs.mode || 'code-review' }}
+      pr-number: ${{ inputs.pr-number }}
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
