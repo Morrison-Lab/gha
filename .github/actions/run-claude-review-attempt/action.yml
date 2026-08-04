@@ -188,7 +188,7 @@ runs:
         # the prompt below telling the agent to OUTPUT its review rather than
         # post it, closes that channel; it also retires the raw-`gh pr
         # comment`-republishing class (gha#312/#318/#381), since the agent
-        # never issues the command there is nothing to republish.
+        # never issues the command, so there is nothing to republish.
         #
         # `WebFetch` and `Bash(curl:*)` let the reviewer fetch the rendered
         # output a repo's `prompt-addendum` may tell it to check the diff
