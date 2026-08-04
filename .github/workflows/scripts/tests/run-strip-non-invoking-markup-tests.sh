@@ -167,6 +167,61 @@ check "indentation without a preceding blank line is not code" \
   $'some prose\n    @claude review' \
   $'some prose\n    @claude review'
 
+# An indented code block also opens after a thematic break or an ATX heading
+# with no blank line: neither leaves an open paragraph for the indented line to
+# lazily continue (CommonMark 0.31.2, "Indented code blocks"). A request quoted
+# this way must still be stripped (gha#356).
+check "indented code block opens after a thematic break" \
+  $'---\n    @claude review' \
+  '---'
+
+check "indented code block opens after an ATX heading" \
+  $'## Accepted phrasing\n    @claude review' \
+  '## Accepted phrasing'
+
+check "indented code block opens after a spaced thematic break" \
+  $'* * *\n    @claude review' \
+  '* * *'
+
+# A list item is NOT such a predecessor: an indented line after it is a list
+# continuation, not code, so it must survive -- and a lone-dash item must not
+# be mistaken for a thematic break, which would over-strip a genuine request.
+check "indented line after a list item is not code" \
+  $'- a point\n    @claude review' \
+  $'- a point\n    @claude review'
+
+# A setext heading underline (a run of only `=` or only `-` under paragraph text)
+# is also such a predecessor. CommonMark makes the two underline characters
+# symmetric; the `-` case is caught by the thematic-break check only for >=3
+# dashes, so the `=` twin and the 1-2 dash underlines are handled here.
+check "indented code block opens after an = setext underline" \
+  $'Heading\n======\n    @claude review' \
+  $'Heading\n======'
+
+check "indented code block opens after a single-dash setext underline" \
+  $'Heading\n-\n    @claude review' \
+  $'Heading\n-'
+
+# But a run of `=` NOT under paragraph text is an ordinary paragraph, not a
+# heading underline, so an indented line after it is a lazy continuation, not
+# code -- stripping it would drop a genuine request.
+check "= run at start of input is a paragraph, not a setext underline" \
+  $'======\n    @claude review' \
+  $'======\n    @claude review'
+
+check "= run after a blank line is a paragraph, not a setext underline" \
+  $'intro\n\n======\n    @claude review' \
+  $'intro\n\n======\n    @claude review'
+
+# A chain of underline-shaped lines: the first `===` has no paragraph above it so
+# it is an ordinary paragraph, and the second `===` then underlines it into a
+# heading -- after which the indented request is code and must be stripped. This
+# only works if paragraph state tracks whether a line was actually *consumed* as
+# an underline, not the raw match.
+check "chain of two = runs forms a heading, stripping the indented request" \
+  $'===\n===\n    @claude review' \
+  $'===\n==='
+
 check "CRLF endings are normalized" \
   $'@claude review\r\nthanks\r' \
   $'@claude review\nthanks'
