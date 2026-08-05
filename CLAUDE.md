@@ -1543,9 +1543,8 @@ failed` ("Exiting due to workflow validation skip"), produces no output, and
 reddens the check with no verdict.
 (Confirmed empirically 2026-08-05 via a throwaway dispatched review; the failure
 surfaces as a fast `no execution output`, not a literal `401`.)
-Fall back to the manual/offline path in [A PR fixing claude-code-review.yml (or
-claude.yml) itself can't self-verify before
-merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
+Fall back to the manual/offline path in
+[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
 or give the action a `github_token` override that skips the OIDC exchange.
 
 ## Code review guidelines
