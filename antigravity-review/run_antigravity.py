@@ -15,11 +15,6 @@ import sys
 from typing import Any, Dict, List, Optional
 
 try:
-    import humre
-except ImportError:
-    humre = None
-
-try:
     from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig, BuiltinTools
 except ImportError:
     # Fallback / mock support for offline unit testing without SDK installed
@@ -157,72 +152,28 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 
     Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:L12-L20]`.
     """
-    if humre is not None:
-        header = humre.optional(
-            humre.noncap_group(
-                humre.between(1, 6, "#"),
-                humre.one_or_more(humre.chars(" \t")),
-                humre.one_or_more(humre.nonchars("\n")),
-                humre.one_or_more("\n"),
-            )
-        )
-        location_prefix = humre.join(
-            humre.zero_or_more(humre.chars(" \t\n")),
-            humre.optional(humre.noncap_group(humre.esc("**"))),
-            "Location:",
-            humre.optional(humre.noncap_group(humre.esc("**"))),
-            humre.zero_or_more(humre.chars(" \t")),
-            humre.esc("["),
-        )
-        file_path_pat = humre.group(humre.one_or_more(humre.nonchars(r":\]")))
-        start_line_pat = humre.join(":L", humre.group(humre.one_or_more(humre.DIGIT)))
-        end_line_pat = humre.optional(
-            humre.noncap_group(
-                "-",
-                humre.optional(humre.noncap_group("L")),
-                humre.group(humre.one_or_more(humre.DIGIT)),
-            )
-        )
-        body_pat = humre.group(humre.zero_or_more_lazy(humre.ANYCHAR))
-        lookahead = humre.positive_lookahead(
-            humre.noncap_group_either(
-                humre.join("\n", humre.between(1, 6, "#"), humre.chars(" \t")),
-                humre.join(
-                    "\n",
-                    humre.zero_or_more(humre.chars(" \t")),
-                    humre.optional(humre.noncap_group(humre.esc("**"))),
-                    "Location:",
-                ),
-                "$",
-            )
-        )
-        pattern_str = humre.join(
-            header,
-            location_prefix,
-            file_path_pat,
-            start_line_pat,
-            end_line_pat,
-            humre.esc("]"),
-            body_pat,
-            lookahead,
-        )
-        pattern = humre.re.compile(pattern_str, humre.re.DOTALL | humre.re.IGNORECASE)
-    else:
-        pattern = re.compile(
-            r"(?:#{1,6}[ \t]+[^\n]+\n+)?[ \t\n]*(?:\*\*)?Location:(?:\*\*)?[ \t]*\[([^:\]]+):L(\d+)(?:-L?(\d+))?\](.*?)(?=\n#{1,6}[ \t]|\n[ \t]*(?:\*\*)?Location:|$)",
-            re.DOTALL | re.IGNORECASE,
-        )
+    pattern = re.compile(
+        r"""
+        (?:\#{1,6}[ \t]+[^\n]+\n+)?            # Optional section header line
+        [ \t\n]*
+        (?:\*\*)?Location:(?:\*\*)?[ \t]*      # Location: prefix
+        \[([^:\]]+):L(\d+)(?:-L?(\d+))?\]      # [file.ext:L12-L20]
+        (.*?)                                  # Finding body
+        (?=\n\#{1,6}[ \t]|\n[ \t]*(?:\*\*)?Location:|\Z)  # Lookahead for next section or Location
+        """,
+        re.DOTALL | re.IGNORECASE | re.VERBOSE,
+    )
     comments = []
     for match in pattern.finditer(content):
         file_path = match.group(1).strip()
         line1 = int(match.group(2))
         line2 = int(match.group(3)) if match.group(3) else None
-        finding_body = match.group(0).strip()
+        body_text = match.group(4).strip() if match.group(4) and match.group(4).strip() else match.group(0).strip()
 
         comment_obj = {
             "path": file_path,
             "side": "RIGHT",
-            "body": finding_body,
+            "body": body_text,
         }
 
         if line2 and line2 != line1:

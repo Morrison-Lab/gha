@@ -188,6 +188,17 @@ class TestRunAntigravity(unittest.TestCase):
         run_antigravity.post_github_comment(10, report, "code-review")
         self.assertEqual(mock_run.call_count, 2)
 
+    @patch("subprocess.run")
+    def test_post_github_comment_inline_review_fallback_on_api_error(self, mock_run):
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout=json.dumps({"number": 10, "headRefOid": "abc1234"})),
+            MagicMock(returncode=1, stderr="HTTP 422: Line number must be part of the diff"),
+            MagicMock(returncode=0, stdout="{}"),
+        ]
+        report = "#### 1. Bug\n**Location:** [main.py:L999]\nFix this."
+        run_antigravity.post_github_comment(10, report, "code-review")
+        self.assertEqual(mock_run.call_count, 3)
+
     def test_extract_inline_comments_with_bullet_list_and_inverted_range(self):
         sample_report = (
             "#### 1. Bug\n"
