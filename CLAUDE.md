@@ -1391,21 +1391,23 @@ SHA-comparison rule in
 `@v2` even entering the picture.** `claude-code-review.yml`'s own `Skip
 self-review when the PR edits this workflow` step compares the PR's changed
 files against the CALLER's review-workflow path (derived from
-`github.workflow_ref`) and, when the PR itself edits that file, skips every
-downstream step — checkout, run review, post review comment. `review /
-claude-review` and `review / require-review` both report `success`, but
-every step past the guard shows `skipped`, and no verdict comment is ever
-posted. This is deliberate (the action's own App-token exchange 401s on a
-workflow file that doesn't match the default branch's content until merge —
-see the guard's own comment), but a green `claude-review` check is easy to
-mistake for a real review.
+`github.workflow_ref`) and, when an automatic `pull_request` run edits that
+file, skips every downstream step — checkout, run review, post review comment.
+(Explicit mentions like `@claude review` or `workflow_dispatch` runs bypass
+this skip so on-demand reviews still run.) `review / claude-review` and
+`review / require-review` both report `success`, but on automatic runs every
+step past the guard shows `skipped`, and no verdict comment is ever posted. This
+is deliberate (the action's own App-token exchange 401s on an automatic workflow
+file that doesn't match the default branch's content until merge — see the guard's
+own comment), but a green `claude-review` check is easy to mistake for a real
+review.
 
 **The guard checks exactly one path, so it doesn't trip for every file this
 section's title mentions.** `WF_PATH` comes from `github.workflow_ref` — in a
 `workflow_call` run that's the CALLER's own workflow file, which in this
 repo's dogfooding setup is `.github/workflows/claude-review.yml` (for a
-downstream consumer, their own copy of the caller stub). Only a PR that
-touches that one file trips `self_mod=true`. `claude.yml` is a separate
+downstream consumer, their own copy of the caller stub). Only an automatic PR
+run that touches that one file trips `self_mod=true`. `claude.yml` is a separate
 reusable workflow (the agent, not the reviewer) with no analogous self-mod
 check — editing only `claude.yml` doesn't trip this guard at all (see the
 `@v2`-tag paragraph above for that file's own self-verify gap).
@@ -1415,16 +1417,14 @@ repo and `github.workflow_ref` can never resolve to it either. Check the
 job's step list, not just its conclusion, before trusting a green
 `claude-review` on a PR that touches `.github/workflows/claude-review.yml`:
 every step after the guard reading `skipped` means no review ran, regardless
-of what `@v2` currently points at. (gha#286: an `@claude review` comment
-produced only a `$0.60` cost comment, no verdict — the guard had set
-`self_mod=true` and skipped straight through, because the PR touched
-`claude-review.yml` itself.)
+of what `@v2` currently points at.
 
 **This section's title says "a PR fixing" the review workflow, but the guard
 does not check intent -- it checks whether `claude-review.yml` is in the
-changed-file list.** So it also fires on a PR that has nothing to do with the
-review system and touches that file only incidentally: a repo-wide sweep, a
-lint fix, a formatting pass, a dependency bump.
+changed-file list on automatic runs.** So it also fires on an automatic PR run
+that has nothing to do with the review system and touches that file only
+incidentally: a repo-wide sweep, a lint fix, a formatting pass, a dependency bump.
+(Mentioning `@claude review` explicitly will force a review on such PRs.)
 That case is the dangerous one, because the two cases above at least give you
 a reason to be suspicious of a green `claude-review`.
 Here nothing prompts the thought -- the PR is "about" something else

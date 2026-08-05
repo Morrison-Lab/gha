@@ -370,8 +370,10 @@ jobs:
       # default branch, so it 401s ("Workflow validation failed … must have
       # identical content to the … default branch") until merged — the action
       # says this is normal and to ignore it. Rather than post a failing check,
-      # detect that case and skip the review; it runs normally once merged. The
-      # file checked is the CALLER's review workflow, derived from
+      # detect that case and skip automatic review; it runs normally once merged.
+      # Explicit mentions (@claude review) or workflow_dispatch runs bypass this
+      # skip so on-demand reviews still run when editing the workflow. The file
+      # checked is the CALLER's review workflow, derived from
       # github.workflow_ref (owner/repo/.github/workflows/<file>@ref ->
       # .github/workflows/<file>): in a workflow_call run the github context is
       # the caller's, so workflow_ref is the consumer's stub — the callee
@@ -391,12 +393,13 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           WF_PATH: ${{ steps.caller-wf.outputs.path }}
+          IS_DISPATCH: ${{ inputs.pr-number != '' || github.event_name == 'workflow_dispatch' }}
         run: |
           set -euo pipefail
           files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' 2>/dev/null || true)
-          if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
+          if [ "$IS_DISPATCH" != "true" ] && printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
+            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping automatic self-review (the action 401s on workflow validation until merged; it runs after merge)."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
           fi
