@@ -120,6 +120,28 @@ class TestPreflightCheck(unittest.TestCase):
             if os.path.exists(f_path):
                 os.remove(f_path)
 
+    def test_extract_workflow_inputs_handles_inline_comments_and_quotes(self):
+        """Verify extract_workflow_inputs strips inline comments and quotes."""
+        sample_workflow = (
+            "on:\n"
+            "  workflow_call:\n"
+            "    inputs: # inline comment\n"
+            "      'mode': # operational mode\n"
+            "        type: string\n"
+            "      \"pr-number\":\n"
+            "        type: string\n"
+        )
+        with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".yml") as f:
+            f.write(sample_workflow)
+            f_path = f.name
+
+        try:
+            inputs = preflight_check.extract_workflow_inputs(f_path)
+            self.assertEqual(inputs, ["mode", "pr-number"])
+        finally:
+            if os.path.exists(f_path):
+                os.remove(f_path)
+
     def test_preflight_checks_pass(self):
         """Integration test: verify preflight checks pass against the real repo."""
         self.assertTrue(preflight_check.check_changelog_fragments())

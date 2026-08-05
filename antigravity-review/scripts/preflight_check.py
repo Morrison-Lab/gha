@@ -46,24 +46,27 @@ def extract_workflow_inputs(workflow_path: str) -> list[str]:
             if not stripped or stripped.startswith("#"):
                 continue
 
+            clean_line = stripped.split("#", 1)[0].strip()
+            if not clean_line:
+                continue
+
             indent = len(line) - len(line.lstrip())
 
-            if stripped == "inputs:":
+            if in_inputs and inputs_indent is not None and indent <= inputs_indent:
+                in_inputs = False
+
+            if clean_line == "inputs:":
                 in_inputs = True
                 inputs_indent = indent
                 target_indent = None
                 continue
 
             if in_inputs:
-                if indent <= inputs_indent:
-                    in_inputs = False
-                    continue
-
                 if target_indent is None:
                     target_indent = indent
 
-                if indent == target_indent and ":" in stripped:
-                    key = stripped.split(":", 1)[0].strip()
+                if indent == target_indent and ":" in clean_line:
+                    key = clean_line.split(":", 1)[0].strip().strip("'\"")
                     if key:
                         inputs.append(key)
 
