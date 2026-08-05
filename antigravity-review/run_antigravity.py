@@ -166,9 +166,9 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     comments = []
     for match in pattern.finditer(content):
         header_text = match.group("header").strip() if match.group("header") else ""
-        file_path = match.group("file").strip()
-        line1 = int(match.group("start"))
-        line2 = int(match.group("end")) if match.group("end") else None
+        file_path = match.group("file").strip("'\" ").lstrip("./")
+        line1 = max(1, int(match.group("start")))
+        line2 = max(1, int(match.group("end"))) if match.group("end") else None
         raw_body = match.group("body").strip() if match.group("body") else match.group(0).strip()
 
         body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
@@ -196,6 +196,7 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
     full_body = header + content
 
     inline_comments = extract_inline_comments(content)
+    resolved_pr_num = None
 
     if inline_comments:
         try:
@@ -236,8 +237,9 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
             print(f"::warning::Could not post inline review ({err}); falling back to PR comment.", file=sys.stderr)
 
     cmd = ["gh", "pr", "comment"]
-    if pr_number:
-        cmd.append(str(pr_number))
+    target_pr = resolved_pr_num or pr_number
+    if target_pr:
+        cmd.append(str(target_pr))
     cmd.extend(["--body", full_body])
 
     res = subprocess.run(cmd, capture_output=True, text=True)

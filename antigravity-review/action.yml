@@ -55,6 +55,7 @@ runs:
     - name: Execute Antigravity Agent
       shell: bash
       env:
+        PYTHONUNBUFFERED: "1"
         GITHUB_TOKEN: ${{ github.token }}
         GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
         INPUT_MODE: ${{ inputs.mode }}
