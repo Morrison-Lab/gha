@@ -1099,11 +1099,21 @@ jobs:
           # to when no ref is given (#285) --- without it, `require-review`'s
           # check-run lands on the wrong commit and never supersedes a stale
           # cancelled run tied to the PR's real head SHA. PR_BRANCH comes from
-          # the "Checkout PR branch" step above; if that step failed, this
-          # step still runs (always()), so skip rather than dispatch with an
-          # empty --ref.
+          # the "Checkout PR branch" step above. If that step failed or was
+          # skipped (e.g. setup-renv failed), resolve the PR head branch via
+          # API so the review dispatch still runs.
           if [ -z "$PR_BRANCH" ]; then
-            echo "::warning::PR_BRANCH is empty (checkout may have failed); skipping $REVIEW_WF dispatch."
+            echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
+            PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
+            if [ -n "$PR_DATA" ]; then
+              PR_BRANCH=$(echo "$PR_DATA" | jq -r '.branch // empty')
+              PR_HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head_repo // empty')
+            fi
+          fi
+          if [ -z "$PR_BRANCH" ]; then
+            echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
+            gh workflow run "$REVIEW_WF" -f pr_number="$PR_NUMBER" \
+              || echo "::warning::Could not dispatch $REVIEW_WF; review will not auto-run."
           else
             # A fork PR's head branch only exists in the fork, not in $REPO,
             # so --ref would fail to resolve there (#289). Fall back to no
