@@ -18,9 +18,9 @@ def check_changelog_fragments() -> bool:
             continue
         try:
             with open(file_path, "r", encoding="utf-8") as f:
-                first_line = f.readline().strip()
-                if first_line and not first_line.startswith("- "):
-                    print(f"❌ Preflight error: {file_path} line 1 must start with '- '", file=sys.stderr)
+                lines = [line.strip() for line in f if line.strip()]
+                if not lines or not lines[0].startswith("- "):
+                    print(f"❌ Preflight error: {file_path} must start with a '- ' bullet point", file=sys.stderr)
                     passed = False
         except Exception as err:
             print(f"❌ Error reading {file_path}: {err}", file=sys.stderr)
@@ -36,12 +36,13 @@ def check_action_docs_sync() -> bool:
     doc_path = os.path.join(repo_root, "website", "reference", "antigravity-code-review.qmd")
 
     if not os.path.isfile(action_path) or not os.path.isfile(doc_path):
-        return True
+        print(f"❌ Preflight error: Expected files missing: {action_path} or {doc_path}", file=sys.stderr)
+        return False
 
     try:
         with open(action_path, "r", encoding="utf-8") as f:
-            action_data = yaml.safe_load(f)
-        inputs = action_data.get("inputs", {})
+            action_data = yaml.safe_load(f) or {}
+        inputs = action_data.get("inputs") or {}
 
         with open(doc_path, "r", encoding="utf-8") as f:
             doc_content = f.read()
@@ -51,8 +52,8 @@ def check_action_docs_sync() -> bool:
                 print(f"❌ Preflight error: input `{input_name}` from action.yml is missing in {doc_path}", file=sys.stderr)
                 passed = False
     except Exception as err:
-                print(f"❌ Error checking action docs sync: {err}", file=sys.stderr)
-                passed = False
+        print(f"❌ Error checking action docs sync: {err}", file=sys.stderr)
+        passed = False
 
     return passed
 
