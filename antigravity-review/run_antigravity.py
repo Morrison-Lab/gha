@@ -188,7 +188,7 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     matches = list(header_loc_pat.finditer(content_masked))
     comments = []
     for i, match in enumerate(matches):
-        file_path = match.group("file").strip("'\" ")
+        file_path = match.group("file").strip("'\"` ")
         if file_path.startswith("./"):
             file_path = file_path[2:]
         start_line = max(1, int(match.group("start")))
@@ -201,11 +201,17 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 
         # Mask code blocks with spaces to preserve identical character offsets across all matches
         body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
-        summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
+        summary_match = re.search(r"\n+\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
         if summary_match:
             raw_body = raw_body[:summary_match.start()].strip()
 
+        if not raw_body:
+            continue
+
         body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
+
+        if not body_text:
+            continue
 
         comment_obj = {
             "path": file_path,

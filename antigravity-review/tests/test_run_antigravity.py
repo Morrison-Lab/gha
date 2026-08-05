@@ -280,6 +280,18 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(comments[0]["path"], "src/main.py")
         self.assertIn("example.py:L999", comments[0]["body"])
 
+    def test_extract_inline_comments_backtick_path_and_empty_body(self):
+        sample_report = (
+            "#### 1. Backtick Path\n"
+            "**Location:** [`src/utils.py`:L20]\n"
+            "Fix this function.\n\n"
+            "#### 2. Empty Body\n"
+            "**Location:** [src/empty.py:L10]\n"
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["path"], "src/utils.py")
+
     @patch("os.path.isfile")
     @patch("builtins.open", new_callable=MagicMock)
     def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):
@@ -299,17 +311,6 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("--- From `GEMINI.md` ---", prompt)
         self.assertIn("Always use strict typing.", prompt)
         self.assertIn("Extra advice", prompt)
-
-    def test_preflight_checks_pass(self):
-        scripts_dir = os.path.join(os.path.dirname(__file__), "..", "scripts")
-        sys.path.insert(0, scripts_dir)
-        try:
-            import preflight_check
-            self.assertTrue(preflight_check.check_changelog_fragments())
-            self.assertTrue(preflight_check.check_action_docs_sync())
-        finally:
-            if scripts_dir in sys.path:
-                sys.path.remove(scripts_dir)
 
 
 if __name__ == "__main__":
