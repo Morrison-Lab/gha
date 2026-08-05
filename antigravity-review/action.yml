@@ -50,7 +50,7 @@ runs:
       shell: bash
       run: |
         python3 -m pip install --quiet --upgrade pip
-        python3 -m pip install --quiet google-antigravity
+        python3 -m pip install --quiet google-antigravity humre
 
     - name: Execute Antigravity Agent
       shell: bash
