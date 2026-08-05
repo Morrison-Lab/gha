@@ -1,0 +1,1 @@
+- `examples/antigravity-code-review.yml`: Enable automatic Antigravity code review on every PR push (`pull_request`) by default.
