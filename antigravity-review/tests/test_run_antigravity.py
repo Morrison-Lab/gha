@@ -178,6 +178,7 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(comments[1]["line"], 10)
         self.assertNotIn("start_line", comments[1])
 
+    @patch.dict("os.environ", {"GITHUB_REPOSITORY": "owner/repo"})
     @patch("subprocess.run")
     def test_post_github_comment_inline_review_success(self, mock_run):
         mock_run.side_effect = [
@@ -188,6 +189,7 @@ class TestRunAntigravity(unittest.TestCase):
         run_antigravity.post_github_comment(10, report, "code-review")
         self.assertEqual(mock_run.call_count, 2)
 
+    @patch.dict("os.environ", {"GITHUB_REPOSITORY": "owner/repo"})
     @patch("subprocess.run")
     def test_post_github_comment_inline_review_fallback_on_api_error(self, mock_run):
         mock_run.side_effect = [
@@ -213,6 +215,24 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(comments[0]["line"], 50)
         self.assertIn("- First reason", comments[0]["body"])
         self.assertIn("- Second reason", comments[0]["body"])
+
+    def test_extract_inline_comments_with_code_block_comments(self):
+        sample_report = (
+            "#### 1. Bug Fix\n"
+            "**Location:** [src/main.py:L10]\n"
+            "Consider updating the code:\n"
+            "```python\n"
+            "# Fix bug here\n"
+            "return True\n"
+            "```\n\n"
+            "#### 2. Readability\n"
+            "**Location**: [src/utils.py:L20]\n"
+            "Simplify this function."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 2)
+        self.assertIn("# Fix bug here", comments[0]["body"])
+        self.assertEqual(comments[1]["path"], "src/utils.py")
 
     def test_extract_inline_comments_dot_directory_and_trailing_summary(self):
         sample_report = (

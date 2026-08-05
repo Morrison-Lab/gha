@@ -177,26 +177,29 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 
     Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:12-20]`.
     """
-    pattern = re.compile(
-        r"""
-        (?P<header>\#{1,6}[ \t]+[^\n]+\n+)?   # Optional section header line
-        [ \t\n]*
-        (?:\*\*)?Location:(?:\*\*)?[ \t]*      # Location: prefix
-        \[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]  # [file.ext:12-20] or [file.ext:L12-L20]
-        (?P<body>.*?)                          # Finding body
-        (?=\n\#{1,6}[ \t]+[^\n]+|\n[ \t]*(?:\*\*)?Location:|\Z)  # Lookahead for next header section, Location, or EOF
-        """,
-        re.DOTALL | re.IGNORECASE | re.VERBOSE,
+    header_loc_pat = re.compile(
+        r'(?:(?P<header>\#{1,6}[ \t]+[^\n]+\n+)[ \t\n]*)?(?:\*\*|\*|_)?Location(?:\*\*|\*|_)?:\*?\*?[ \t\n]*\[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]',
+        re.IGNORECASE,
     )
+    matches = list(header_loc_pat.finditer(content))
     comments = []
-    for match in pattern.finditer(content):
-        header_text = match.group("header").strip() if match.group("header") else ""
+    for i, match in enumerate(matches):
         file_path = match.group("file").strip("'\" ")
         if file_path.startswith("./"):
             file_path = file_path[2:]
-        line1 = max(1, int(match.group("start")))
-        line2 = max(1, int(match.group("end"))) if match.group("end") else None
-        raw_body = match.group("body").strip() if match.group("body") is not None and match.group("body").strip() else match.group(0).strip()
+        start_line = max(1, int(match.group("start")))
+        end_line = max(1, int(match.group("end"))) if match.group("end") else None
+        header_text = match.group("header").strip() if match.group("header") else ""
+
+        body_start = match.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        raw_body = content[body_start:body_end].strip()
+
+        if i + 1 == len(matches):
+            body_no_code = re.sub(r"```.*?```", "", raw_body, flags=re.DOTALL)
+            summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_no_code, re.IGNORECASE)
+            if summary_match:
+                raw_body = raw_body[:summary_match.start()].strip()
 
         body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
 
@@ -206,12 +209,12 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
             "body": body_text,
         }
 
-        if line2 and line2 != line1:
-            comment_obj["start_line"] = min(line1, line2)
-            comment_obj["line"] = max(line1, line2)
+        if end_line and end_line != start_line:
+            comment_obj["start_line"] = min(start_line, end_line)
+            comment_obj["line"] = max(start_line, end_line)
             comment_obj["start_side"] = "RIGHT"
         else:
-            comment_obj["line"] = line1
+            comment_obj["line"] = start_line
 
         comments.append(comment_obj)
     return comments
@@ -243,7 +246,13 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
                     "event": "COMMENT",
                     "comments": inline_comments,
                 }
-                repo_slug = os.environ.get("GITHUB_REPOSITORY", "{owner}/{repo}")
+                repo_slug = os.environ.get("GITHUB_REPOSITORY")
+                if not repo_slug:
+                    try:
+                        res_repo = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner"], capture_output=True, text=True, check=True)
+                        repo_slug = json.loads(res_repo.stdout).get("nameWithOwner")
+                    except Exception:
+                        repo_slug = "{owner}/{repo}"
                 api_cmd = [
                     "gh", "api",
                     f"repos/{repo_slug}/pulls/{resolved_pr_num}/reviews",
