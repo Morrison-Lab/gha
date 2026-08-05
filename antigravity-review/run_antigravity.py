@@ -178,7 +178,7 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
         "gemini-1.5-flash": "gemini-1.5-flash-latest",
         "gemini-1.5-pro": "gemini-1.5-pro-latest",
     }
-    target_model = (model or "").strip() or "gemini-2.5-flash"
+    target_model = (model or "").strip() or "gemini-1.5-flash"
     resolved_model = model_aliases.get(target_model, target_model)
 
     config = LocalAgentConfig(
