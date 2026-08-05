@@ -8,6 +8,7 @@ import argparse
 import asyncio
 import json
 import os
+import random
 import subprocess
 import sys
 from typing import Dict, Optional
@@ -205,10 +206,13 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
                 or "QUOTA" in err_upper
                 or "RATE_LIMIT" in err_upper
                 or "RESOURCE_EXHAUSTED" in err_upper
+                or "TOO_MANY_REQUESTS" in err_upper
+                or "THROTTLED" in err_upper
+                or "UNAVAILABLE" in err_upper
             ) and attempt < max_retries:
-                delay = base_delay * (2 ** (attempt - 1))
+                delay = (base_delay * (2 ** (attempt - 1))) + random.uniform(0, 1)
                 print(
-                    f"::warning::Antigravity Agent encountered API rate limit (429). Retrying in {delay}s (attempt {attempt}/{max_retries})...",
+                    f"::warning::Antigravity Agent encountered API rate limit (429). Retrying in {delay:.2f}s (attempt {attempt}/{max_retries})...",
                     file=sys.stderr,
                 )
                 await asyncio.sleep(delay)
