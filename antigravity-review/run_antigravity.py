@@ -133,15 +133,17 @@ def get_repo_instructions() -> str:
         ".github/ANTIGRAVITY.md",
     ]
     instructions = []
+    workspace_root = os.environ.get("GITHUB_WORKSPACE", ".")
     for rel_path in candidate_paths:
-        if os.path.isfile(rel_path):
+        full_path = os.path.join(workspace_root, rel_path)
+        if os.path.isfile(full_path):
             try:
-                with open(rel_path, "r", encoding="utf-8") as f:
+                with open(full_path, "r", encoding="utf-8") as f:
                     content = f.read().strip()
                     if content:
                         instructions.append(f"--- From `{rel_path}` ---\n{content}")
             except Exception as err:
-                print(f"::warning::Could not read repo instruction file {rel_path}: {err}", file=sys.stderr)
+                print(f"::warning::Could not read repo instruction file {full_path}: {err}", file=sys.stderr)
     return "\n\n".join(instructions)
 
 
@@ -198,7 +200,7 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     for i, match in enumerate(matches):
         prev_end = matches[i - 1].end() if i > 0 else 0
         preceding_text = content_masked[prev_end:match.start()]
-        headers = list(re.finditer(r"^[ \t]*\#{1,6}[ \t]+[^\n]+", preceding_text, re.MULTILINE))
+        headers = list(re.finditer(r"^[ \t]*\#{2,6}[ \t]+[^\n]+", preceding_text, re.MULTILINE))
         if headers:
             last_header = headers[-1]
             header_text = last_header.group(0).strip()
@@ -230,11 +232,11 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         # across all matches and avoid false summary-header hits on code comments.
         # Line-anchor fences so unclosed backticks don't span across findings.
         body_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), raw_body, flags=re.MULTILINE | re.DOTALL)
-        # Use \n+ (not \n{2,}) so single-newline summary headers are caught.
+        # Use (?:^|\n+) so summary headers at start of raw_body or after newlines are caught.
         # Restrict keywords to top-level report summary headings — bare
         # "Recommendation" or "Summary of X" inside a finding is excluded.
         summary_match = re.search(
-            r"\n+\#{1,6}[ \t]+(?:Summary|Conclusion|Overall[ \t]+(?:Summary|Recommendations?)|General[ \t]+(?:Summary|Recommendations?))\b(?![ \t]+(?:of|for|regarding|table|details))\b",
+            r"(?:^|\n+)\#{1,6}[ \t]+(?:Summary|Conclusion|Overall[ \t]+(?:Summary|Recommendations?)|General[ \t]+(?:Summary|Recommendations?))\b(?![ \t]+(?:of|for|regarding|table|details))\b",
             body_masked,
             re.IGNORECASE,
         )
@@ -297,7 +299,10 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
                         res_repo = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner"], capture_output=True, text=True, check=True)
                         repo_slug = json.loads(res_repo.stdout).get("nameWithOwner")
                     except Exception:
-                        repo_slug = "{owner}/{repo}"
+                        repo_slug = None
+
+                if not repo_slug or repo_slug == "{owner}/{repo}":
+                    raise ValueError("Could not resolve GITHUB_REPOSITORY for inline review submission.")
                 api_cmd = [
                     "gh", "api",
                     f"repos/{repo_slug}/pulls/{resolved_pr_num}/reviews",
