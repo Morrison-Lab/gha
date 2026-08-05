@@ -226,6 +226,24 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(len(comments), 1)
         self.assertEqual(comments[0]["path"], ".github/workflows/review.yml")
         self.assertNotIn("Summary Recommendations", comments[0]["body"])
+    @patch("os.path.isfile")
+    @patch("builtins.open", new_callable=MagicMock)
+    def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):
+        mock_isfile.side_effect = lambda path: path == "CLAUDE.md"
+        mock_file_handle = MagicMock()
+        mock_file_handle.__enter__.return_value.read.return_value = "Always use strict typing."
+        mock_open.return_value = mock_file_handle
+
+        prompt = run_antigravity.build_full_prompt(
+            mode="code-review",
+            pr_meta={"title": "Fix bug", "number": 412},
+            diff="diff --git a/a.py b/a.py",
+            addendum="Extra advice",
+        )
+        self.assertIn("Repository Guidelines & Standards:", prompt)
+        self.assertIn("--- From `CLAUDE.md` ---", prompt)
+        self.assertIn("Always use strict typing.", prompt)
+        self.assertIn("Extra advice", prompt)
 
 
 if __name__ == "__main__":

@@ -120,6 +120,27 @@ def get_pr_metadata(pr_number: Optional[int]) -> Dict[str, str]:
         raise RuntimeError(f"Could not fetch PR metadata via `gh pr view`: {err}") from err
 
 
+def get_repo_instructions() -> str:
+    """Discover and read repository-specific instruction files if present."""
+    candidate_paths = [
+        "AGENTS.md",
+        "CLAUDE.md",
+        ".github/copilot-instructions.md",
+        ".github/ANTIGRAVITY.md",
+    ]
+    instructions = []
+    for rel_path in candidate_paths:
+        if os.path.isfile(rel_path):
+            try:
+                with open(rel_path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                    if content:
+                        instructions.append(f"--- From `{rel_path}` ---\n{content}")
+            except Exception as err:
+                print(f"::warning::Could not read repo instruction file {rel_path}: {err}", file=sys.stderr)
+    return "\n\n".join(instructions)
+
+
 def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: str) -> str:
     """Construct the complete prompt for the Antigravity Agent."""
     base_instructions = MODE_PROMPTS.get(mode, MODE_PROMPTS["code-review"])
@@ -135,6 +156,10 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
         "Instructions:",
         base_instructions,
     ]
+
+    repo_guidelines = get_repo_instructions()
+    if repo_guidelines:
+        prompt_parts.append(f"\nRepository Guidelines & Standards:\n{repo_guidelines}")
 
     if addendum and addendum.strip():
         prompt_parts.append(f"\nAdditional Caller Guidance:\n{addendum.strip()}")
