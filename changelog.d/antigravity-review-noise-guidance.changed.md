@@ -1,0 +1,1 @@
+- Instruct Antigravity AI code reviewer to assume Python 3.10+ and suppress hyper-pedantic noise regarding legacy/EOL runtime compatibility.

@@ -8,10 +8,11 @@ review workflow for the PR, falling through to the next candidate when one
 can't be dispatched.
 
 It sits above whichever per-agent review workflows a repo has installed ---
-[`claude-code-review.yml`](claude-code-review.qmd) and
-[`gemini-code-review.yml`](gemini-code-review.qmd) --- rather than reviewing
-anything itself, so those stubs have to exist in the caller repo and be named
-to match the `*-review-workflow-file` inputs below.
+[`claude-code-review.yml`](claude-code-review.qmd),
+[`gemini-code-review.yml`](gemini-code-review.qmd), and
+[`antigravity-code-review.yml`](antigravity-code-review.qmd) --- rather than
+reviewing anything itself, so those stubs have to exist in the caller repo
+and be named to match the `*-review-workflow-file` inputs below.
 
 ## What the fallback covers
 
@@ -30,10 +31,11 @@ dispatched run to be located and awaited, tracked in
 
 | Input | Type | Default | Description |
 |---|---|---|---|
-| `agents` | string | `'claude, gemini'` | Comma-separated agents to select from. Unrecognized names are warned about and skipped. |
+| `agents` | string | `'claude, gemini'` | Comma-separated agents to select from (`claude`, `gemini`, `antigravity`). Unrecognized names are warned about and skipped. |
 | `pr-number` | string | `''` | Pull request number to review. Required on `workflow_dispatch`; taken from the event on `pull_request`. |
 | `claude-review-workflow-file` | string | `'claude-code-review.yml'` | Caller-repo workflow file dispatched for a Claude review. |
 | `gemini-review-workflow-file` | string | `'gemini-code-review.yml'` | Caller-repo workflow file dispatched for a Gemini review. |
+| `antigravity-review-workflow-file` | string | `'antigravity-code-review.yml'` | Caller-repo workflow file dispatched for an Antigravity review. |
 
 ## Secrets
 
@@ -41,7 +43,7 @@ dispatched run to be located and awaited, tracked in
 |---|---|---|
 | `CLAUDE_CODE_OAUTH_TOKEN` | no | Max-plan OAuth token. Either this or `ANTHROPIC_API_KEY` makes `claude` an eligible candidate. |
 | `ANTHROPIC_API_KEY` | no | Direct Anthropic API key. |
-| `GEMINI_API_KEY` | no | Gemini API key. Makes `gemini` an eligible candidate. |
+| `GEMINI_API_KEY` | no | Gemini API key. Makes `gemini` and `antigravity` eligible candidates. |
 
 ## Permissions
 
@@ -84,9 +86,10 @@ jobs:
     with:
       pr-number: ${{ inputs.pr_number }}
     # with:
-    #   agents: 'claude, gemini'
+    #   agents: 'claude, gemini, antigravity'
     #   claude-review-workflow-file: claude-code-review.yml
     #   gemini-review-workflow-file: gemini-code-review.yml
+    #   antigravity-review-workflow-file: antigravity-code-review.yml
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory

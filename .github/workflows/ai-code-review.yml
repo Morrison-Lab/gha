@@ -37,6 +37,12 @@ on:
           the name examples/gemini-code-review.yml is copied to.
         type: string
         default: 'gemini-code-review.yml'
+      antigravity-review-workflow-file:
+        description: >-
+          Caller-repo workflow file dispatched for an Antigravity review. Defaults to
+          the name examples/antigravity-code-review.yml is copied to.
+        type: string
+        default: 'antigravity-code-review.yml'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false
@@ -83,6 +89,7 @@ jobs:
           RAW_AGENTS: ${{ inputs.agents }}
           CLAUDE_WF: ${{ inputs.claude-review-workflow-file }}
           GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
+          ANTIGRAVITY_WF: ${{ inputs.antigravity-review-workflow-file }}
           # Secret *presence*, not the secret itself: a `secrets.X != ''`
           # comparison is evaluated by Actions, so only the boolean reaches
           # the runner.
@@ -141,6 +148,7 @@ jobs:
             case "$agent" in
               claude) has_secret="$HAS_CLAUDE_SECRET"; agent_wf="$CLAUDE_WF" ;;
               gemini) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$GEMINI_WF" ;;
+              antigravity) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$ANTIGRAVITY_WF" ;;
               *)
                 echo "::warning::Unknown agent '$agent'; trying the next candidate."
                 continue
