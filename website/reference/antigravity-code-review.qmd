@@ -20,7 +20,7 @@ Requires a `GEMINI_API_KEY` secret.
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
 | `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
-| `model` | string | `'gemini-2.5-flash'` | Model override passed to the Antigravity SDK. |
+| `model` | string | `''` | Model override passed to the Antigravity SDK. |
 
 ## Secrets
 
