@@ -1453,6 +1453,49 @@ silently skipped -- caught only by noticing the job finished in 4 seconds.
 Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
+**That guard is the workflow-level skip; the action carries its OWN
+workflow-content validation, which fires even when the guard is bypassed --
+and it does not print a literal `401`.**
+The section above skips the whole review job when the PR edits
+`claude-review.yml`.
+Bypassing that skip -- for instance dispatching the review via `@claude
+review` so the guard's `self_mod` gate does not apply, as gha#417 attempted --
+does not get a verdict either: `anthropics/claude-code-action` itself
+validates that the running workflow's content matches the default branch's,
+and on a mismatch it gracefully skips.
+In the "Run Claude Code Review" step that reads:
+
+```text
+Exchanging OIDC token for app token...
+##[warning]Skipping action due to workflow validation: Workflow validation
+failed. The workflow file must exist and have identical content to the
+version on the repository's default branch...
+Exiting due to workflow validation skip
+```
+
+The action STEP reports `outcome=success` (it "gracefully skips"), runs only
+~4-11s, and writes NO execution output -- so `check-review-execution.sh`
+reports `Claude review produced no execution output -- treating as a failed
+review`, and `claude-review` + `require-review` go RED with no verdict.
+
+Diagnostic tells, so this is not misdiagnosed as a `401`:
+
+- A `claude-review` job that fails in under ~15s with "no execution output".
+- Grepping the log for `401` finds nothing -- the auth failure the
+  parenthetical above calls "401s" does not surface as a literal `401`
+  string; grep for `workflow validation` / `Exiting due to workflow
+  validation skip`, or just READ the "Run Claude Code Review" step's own
+  output rather than grepping for a guessed string (per "Never just theorize"
+  below, and
+  [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
+- The validation keys on workflow CONTENT vs. the default branch, independent
+  of trigger type, so bypassing the self-review skip on `@claude
+  review`/dispatch does NOT help -- it just reddens the check with no verdict.
+
+The real fix for a PR editing the review workflow is a `github_token`
+override on the action, which skips the OIDC exchange and its content check.
+(Proven empirically via throwaway test PR #420, now closed, on 2026-08-05.)
+
 ## Never just theorize -- investigate empirically
 
 A hypothesis that is cheap to test must be tested before it is asserted, and
