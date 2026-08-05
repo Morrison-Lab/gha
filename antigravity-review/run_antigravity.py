@@ -30,6 +30,13 @@ LOCATION_GUIDANCE = (
     "This allows your findings to be posted as line-anchored inline PR review comments."
 )
 
+NOISE_GUIDANCE = (
+    "\n\nDo not generate asymptotic noise or hyper-pedantic nitpicks about legacy/EOL runtime compatibility "
+    "(assume Python 3.10+; do NOT flag PEP 604 `A | B` union types or `list[T]` generics as issues for Python < 3.10 "
+    "unless explicit legacy runtime support is declared). Focus strictly on actionable bugs, security vulnerabilities, "
+    "API contract breaks, and performance regressions."
+)
+
 MODE_PROMPTS = {
     "code-review": (
         "You are an expert AI code reviewer. Perform a comprehensive, single-pass review of the provided pull request diff. "
@@ -38,6 +45,7 @@ MODE_PROMPTS = {
         "surface every actionable finding and recommendation immediately in this single review. "
         "Provide actionable, constructive feedback with clear code examples where applicable."
         + LOCATION_GUIDANCE
+        + NOISE_GUIDANCE
     ),
     "security-audit": (
         "You are a principal security engineer conducting a comprehensive security audit on the pull request diff. "
@@ -46,6 +54,7 @@ MODE_PROMPTS = {
         "Do not stagger security findings across multiple review rounds; surface every finding immediately in a single audit pass. "
         "Classify findings by severity (Critical, High, Medium, Low) and provide defensive remediation guidance."
         + LOCATION_GUIDANCE
+        + NOISE_GUIDANCE
     ),
     "test-generation": (
         "You are an automated test engineering agent. Analyze the pull request diff and existing codebase structure. "
