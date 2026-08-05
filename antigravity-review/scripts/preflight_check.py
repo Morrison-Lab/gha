@@ -3,8 +3,8 @@
 
 import glob
 import os
+import re
 import sys
-import yaml
 
 
 def check_changelog_fragments() -> bool:
@@ -28,31 +28,38 @@ def check_changelog_fragments() -> bool:
     return passed
 
 
+def extract_workflow_inputs(workflow_path: str) -> list[str]:
+    """Extract input names from workflow YAML using stdlib regex."""
+    with open(workflow_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    match = re.search(r"inputs:\s*\n((?:[ \t]+.*\n)*)", content)
+    if not match:
+        return []
+    return re.findall(r"^[ \t]{6}([a-zA-Z0-9_-]+):", match.group(1), re.MULTILINE)
+
+
 def check_action_docs_sync() -> bool:
-    """Ensure inputs in action.yml are documented in website/reference/antigravity-code-review.qmd."""
+    """Ensure inputs in .github/workflows/antigravity-code-review.yml are documented in website/reference/antigravity-code-review.qmd."""
     passed = True
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-    action_path = os.path.join(repo_root, "antigravity-review", "action.yml")
+    workflow_path = os.path.join(repo_root, ".github", "workflows", "antigravity-code-review.yml")
     doc_path = os.path.join(repo_root, "website", "reference", "antigravity-code-review.qmd")
 
-    if not os.path.isfile(action_path) or not os.path.isfile(doc_path):
-        print(f"❌ Preflight error: Expected files missing: {action_path} or {doc_path}", file=sys.stderr)
+    if not os.path.isfile(workflow_path) or not os.path.isfile(doc_path):
+        print(f"❌ Preflight error: Expected files missing: {workflow_path} or {doc_path}", file=sys.stderr)
         return False
 
     try:
-        with open(action_path, "r", encoding="utf-8") as f:
-            action_data = yaml.safe_load(f) or {}
-        inputs = action_data.get("inputs") or {}
-
+        inputs = extract_workflow_inputs(workflow_path)
         with open(doc_path, "r", encoding="utf-8") as f:
             doc_content = f.read()
 
         for input_name in inputs:
             if f"`{input_name}`" not in doc_content:
-                print(f"❌ Preflight error: input `{input_name}` from action.yml is missing in {doc_path}", file=sys.stderr)
+                print(f"❌ Preflight error: input `{input_name}` from workflow is missing in {doc_path}", file=sys.stderr)
                 passed = False
     except Exception as err:
-        print(f"❌ Error checking action docs sync: {err}", file=sys.stderr)
+        print(f"❌ Error checking workflow docs sync: {err}", file=sys.stderr)
         passed = False
 
     return passed
