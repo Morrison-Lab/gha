@@ -17,10 +17,14 @@ Requires a `GEMINI_API_KEY` secret.
 |---|---|---|---|
 | `mode` | string | `'code-review'` | Operational mode: `code-review`, `security-audit`, or `test-generation`. |
 | `pr-number` | string | `''` | Pull request number to analyze. |
-| `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
-| `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
-| `checkout-submodules` | boolean | `false` | Check out git submodules. |
+| `gemini-api-key` | string | `''` | Gemini / Antigravity API key for authentication. |
 | `model` | string | `''` | Model override passed to the Antigravity SDK. |
+| `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
+| `python-version` | string | `'3.11'` | Python version to set up for executing the SDK script. |
+| `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
+| `dry-run` | boolean | `false` | Run in dry-run mode (validate prompt without calling API). |
+| `post-comment` | boolean | `true` | Whether to post the agent analysis as a comment/review on the PR. |
+| `checkout-submodules` | boolean | `false` | Check out git submodules. |
 
 ## Secrets
 
