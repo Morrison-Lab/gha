@@ -150,25 +150,28 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
 def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     """Parse line-anchored finding locations from agent report markdown.
 
-    Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:L12-L20]`.
+    Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:12-20]`.
     """
     pattern = re.compile(
         r"""
-        (?:\#{1,6}[ \t]+[^\n]+\n+)?            # Optional section header line
+        (?P<header>\#{1,6}[ \t]+[^\n]+\n+)?   # Optional section header line
         [ \t\n]*
         (?:\*\*)?Location:(?:\*\*)?[ \t]*      # Location: prefix
-        \[([^:\]]+):L(\d+)(?:-L?(\d+))?\]      # [file.ext:L12-L20]
-        (.*?)                                  # Finding body
-        (?=\n\#{1,6}[ \t]|\n[ \t]*(?:\*\*)?Location:|\Z)  # Lookahead for next section or Location
+        \[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]  # [file.ext:12-20] or [file.ext:L12-L20]
+        (?P<body>.*?)                          # Finding body
+        (?=\n\#{1,6}[ \t]+[^\n]+\n+[ \t\n]*(?:\*\*)?Location:|\n[ \t]*(?:\*\*)?Location:|\Z)  # Lookahead for next Location section or EOF
         """,
         re.DOTALL | re.IGNORECASE | re.VERBOSE,
     )
     comments = []
     for match in pattern.finditer(content):
-        file_path = match.group(1).strip()
-        line1 = int(match.group(2))
-        line2 = int(match.group(3)) if match.group(3) else None
-        body_text = match.group(4).strip() if match.group(4) and match.group(4).strip() else match.group(0).strip()
+        header_text = match.group("header").strip() if match.group("header") else ""
+        file_path = match.group("file").strip()
+        line1 = int(match.group("start"))
+        line2 = int(match.group("end")) if match.group("end") else None
+        raw_body = match.group("body").strip() if match.group("body") else match.group(0).strip()
+
+        body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
 
         comment_obj = {
             "path": file_path,
@@ -212,9 +215,10 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
                     "event": "COMMENT",
                     "comments": inline_comments,
                 }
+                repo_slug = os.environ.get("GITHUB_REPOSITORY", "{owner}/{repo}")
                 api_cmd = [
                     "gh", "api",
-                    f"repos/{{owner}}/{{repo}}/pulls/{resolved_pr_num}/reviews",
+                    f"repos/{repo_slug}/pulls/{resolved_pr_num}/reviews",
                     "--input", "-"
                 ]
                 res_review = subprocess.run(
@@ -290,7 +294,10 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
         except Exception as err:
             err_str = str(err)
             err_upper = err_str.upper()
-            status_code = getattr(err, "status_code", None) or getattr(err, "code", None)
+            status_code = getattr(err, "status_code", None)
+            if status_code is None and hasattr(err, "code"):
+                code_attr = getattr(err, "code")
+                status_code = code_attr() if callable(code_attr) else code_attr
             is_transient = (
                 status_code in (429, 500, 502, 503, 504)
                 or str(status_code) in ("429", "500", "502", "503", "504")
