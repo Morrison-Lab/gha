@@ -1503,14 +1503,16 @@ repositories this session is not scoped to.
 
 Before declaring a PR ready to merge (or clean / ready for merge verdict) for PRs in this repo (`gha`) that change GitHub Actions or their component actions/workflows, test the changes using one of the lab's template repos (`rpt`, `qwt`, `qbt`, `qmt`, etc.).
 
-Running unit tests or `_selftest.yml` in `gha` alone is not sufficient when modifying an action or workflow component. To ensure full compatibility and prevent downstream breakage, test the updated action/workflow end-to-end against a representative template repository:
+Running unit tests or `_selftest.yml` in `gha` alone is not sufficient when modifying an action or workflow component because `_selftest.yml` exercises local composites or throwaway fixtures rather than full downstream project structures (such as R package vignettes or Quarto site builds) that pin `@v2` reusable workflows. To ensure full compatibility and prevent downstream breakage:
 
-- **`rpt`** ([`UCD-SERG/rpt`](https://github.com/UCD-SERG/rpt)): R package template
-- **`qwt`** ([`UCD-SERG/qwt`](https://github.com/UCD-SERG/qwt)): Quarto website template
-- **`qbt`** ([`UCD-SERG/qbt`](https://github.com/UCD-SERG/qbt)): Quarto book template
-- **`qmt`** ([`d-morrison/qmt`](https://github.com/d-morrison/qmt)): Quarto manuscript template
+- Test the updated action/workflow against a representative template repository or test bed (e.g., `test.hac` or a template repo branch pointing `uses:` to the PR's branch/SHA):
+  - **`rpt`** ([`Morrison-Lab/rpt`](https://github.com/Morrison-Lab/rpt)): R package template
+  - **`qwt`** ([`d-morrison/qwt`](https://github.com/d-morrison/qwt)): Quarto website template
+  - **`qbt`** ([`d-morrison/qbt`](https://github.com/d-morrison/qbt)): Quarto book template
+  - **`qmt`** ([`d-morrison/qmt`](https://github.com/d-morrison/qmt)): Quarto manuscript template
+- For PRs fixing reusable workflows (`claude-code-review.yml` or `claude.yml`) that cannot self-verify on the unmerged `@v2` floating tag, follow the manual/offline verification path documented in [A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge).
 
-Verify that the action or workflow succeeds and behaves as expected in the template repo context before declaring the PR clean or ready to merge.
+Verify that the action or workflow succeeds and behaves as expected in the target template context before declaring the PR clean or ready to merge.
 
 ## Code review guidelines
 
