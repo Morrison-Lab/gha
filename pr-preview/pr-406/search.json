@@ -839,7 +839,7 @@
     "href": "versioning.html#pinning-third-party-actions",
     "title": "Versioning",
     "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, ai-code-review.yml, bump-dev-version.yml, and version-check.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, ai-code-review.yml, bump-dev-version.yml, and version-check.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -916,7 +916,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, and check-secrets.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, and check-secrets.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -1873,34 +1873,59 @@
     "href": "reference/antigravity-code-review.html",
     "title": "antigravity-code-review.yml",
     "section": "",
-    "text": "Automated agentic code review, security audit, or test-suite generation via the Google Antigravity Python SDK (google-antigravity).\nSupports three operational modes (code-review, security-audit, test-generation) and two execution policies (on-push for automatic PR updates and on-request for manual/dispatch runs).\nRequires a GEMINI_API_KEY secret."
+    "text": "Automated agentic code review, security audit, or test-suite generation via the Google Antigravity Python SDK (google-antigravity).\nSupports three operational modes (code-review, security-audit, test-generation) and two execution policies (on-push for automatic PR updates and on-request for manual/dispatch runs).\nRequires a GEMINI_API_KEY secret.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "antigravity-code-review.yml"
+    ]
   },
   {
     "objectID": "reference/antigravity-code-review.html#inputs",
     "href": "reference/antigravity-code-review.html#inputs",
     "title": "antigravity-code-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nmode\nstring\n'code-review'\nOperational mode: code-review, security-audit, or test-generation.\n\n\npr-number\nstring\n''\nPull request number to analyze.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the agent task prompt.\n\n\ntrigger-policy\nstring\n'any'\nEnforcement mode: any, on-push, or on-request.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\nmodel\nstring\n'gemini-2.5-flash'\nModel override passed to the Antigravity SDK."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nmode\nstring\n'code-review'\nOperational mode: code-review, security-audit, or test-generation.\n\n\npr-number\nstring\n''\nPull request number to analyze.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the agent task prompt.\n\n\ntrigger-policy\nstring\n'any'\nEnforcement mode: any, on-push, or on-request.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\nmodel\nstring\n'gemini-2.5-flash'\nModel override passed to the Antigravity SDK.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "antigravity-code-review.yml"
+    ]
   },
   {
     "objectID": "reference/antigravity-code-review.html#secrets",
     "href": "reference/antigravity-code-review.html#secrets",
     "title": "antigravity-code-review.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini / Antigravity API key.\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules."
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini / Antigravity API key.\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "antigravity-code-review.yml"
+    ]
   },
   {
     "objectID": "reference/antigravity-code-review.html#permissions",
     "href": "reference/antigravity-code-review.html#permissions",
     "title": "antigravity-code-review.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: read, pull-requests: write, issues: write, and id-token: write."
+    "text": "Permissions\nGrant contents: read, pull-requests: write, issues: write, and id-token: write.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "antigravity-code-review.yml"
+    ]
   },
   {
     "objectID": "reference/antigravity-code-review.html#example",
     "href": "reference/antigravity-code-review.html#example",
     "title": "antigravity-code-review.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/antigravity-code-review.yml in your repo.\nname: Antigravity Code Review & Audit\n\non:\n  pull_request:\n    types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      mode:\n        description: 'Operational mode: code-review, security-audit, or test-generation'\n        default: 'code-review'\n        type: choice\n        options:\n          - code-review\n          - security-audit\n          - test-generation\n      pr_number:\n        description: 'Pull request number'\n        type: string\n\njobs:\n  antigravity-review:\n    permissions:\n      contents: read\n      pull-requests: write\n      issues: write\n      id-token: write\n    uses: Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2\n    with:\n      mode: ${{ inputs.mode || 'code-review' }}\n      pr-number: ${{ inputs.pr_number }}\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}"
+    "text": "Example\n# Copy to .github/workflows/antigravity-code-review.yml in your repo.\nname: Antigravity Code Review & Audit\n\non:\n  pull_request:\n    types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      mode:\n        description: 'Operational mode: code-review, security-audit, or test-generation'\n        default: 'code-review'\n        type: choice\n        options:\n          - code-review\n          - security-audit\n          - test-generation\n      pr_number:\n        description: 'Pull request number'\n        type: string\n\njobs:\n  antigravity-review:\n    permissions:\n      contents: read\n      pull-requests: write\n      issues: write\n      id-token: write\n    uses: Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2\n    with:\n      mode: ${{ inputs.mode || 'code-review' }}\n      pr-number: ${{ inputs.pr_number }}\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "antigravity-code-review.yml"
+    ]
   }
 ]
