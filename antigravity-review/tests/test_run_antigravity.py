@@ -157,6 +157,23 @@ class TestRunAntigravity(unittest.TestCase):
                 asyncio.run(run_antigravity.run_antigravity_agent("prompt", "sys"))
             self.assertEqual(mock_sleep.call_count, 0)
 
+    def test_extract_inline_comments(self):
+        sample_report = (
+            "### Overview\nGreat changes.\n\n"
+            "#### 1. 🚨 Critical Issue\n"
+            "**Location:** [src/main.py:L42-L45]\n\n"
+            "This logic contains a bug.\n\n"
+            "#### 2. ⚠️ Minor Readability\n"
+            "**Location:** [utils/helper.py:L10]\n\n"
+            "Consider simplifying this helper."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 2)
+        self.assertEqual(comments[0]["path"], "src/main.py")
+        self.assertEqual(comments[0]["line"], 42)
+        self.assertEqual(comments[1]["path"], "utils/helper.py")
+        self.assertEqual(comments[1]["line"], 10)
+
 
 if __name__ == "__main__":
     unittest.main()

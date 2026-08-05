@@ -9,9 +9,10 @@ import asyncio
 import json
 import os
 import random
+import re
 import subprocess
 import sys
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 try:
     from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig, BuiltinTools
@@ -23,17 +24,25 @@ except ImportError:
     BuiltinTools = None
 
 
+LOCATION_GUIDANCE = (
+    "\n\nFor file-specific findings, include a location header formatted as:\n"
+    "**Location:** [relative/path/to/file.ext:L12] (or [path/to/file.ext:L12-L20] for line ranges).\n"
+    "This allows your findings to be posted as line-anchored inline PR review comments."
+)
+
 MODE_PROMPTS = {
     "code-review": (
         "You are an expert AI code reviewer. Review the provided pull request diff. "
         "Report architectural concerns, bugs, edge cases, performance issues, readability improvements, "
         "and missing test coverage. Provide actionable, constructive feedback with clear code examples where applicable."
+        + LOCATION_GUIDANCE
     ),
     "security-audit": (
         "You are a principal security engineer conducting a security audit on the pull request diff. "
         "Check for OWASP Top 10 vulnerabilities, credential or key leakage, improper input validation, "
         "injection risks, authentication/authorization gaps, and sensitive data (PHI/PII) exposure. "
         "Classify findings by severity (Critical, High, Medium, Low) and provide defensive remediation guidance."
+        + LOCATION_GUIDANCE
     ),
     "test-generation": (
         "You are an automated test engineering agent. Analyze the pull request diff and existing codebase structure. "
@@ -138,10 +147,71 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
     return "\n\n".join(prompt_parts)
 
 
+def extract_inline_comments(content: str) -> List[Dict[str, str]]:
+    """Parse line-anchored finding locations from agent report markdown.
+
+    Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:L12-L20]`.
+    """
+    pattern = re.compile(
+        r"####?\s+[^\n]+\n+\s*\*\*Location:\*\*\s*\[([^:\]]+):L(\d+)(?:-L?(\d+))?\](.*?)(?=\n####?\s+|\n###?\s+|$)",
+        re.DOTALL,
+    )
+    comments = []
+    for match in pattern.finditer(content):
+        file_path = match.group(1).strip()
+        line_num = int(match.group(2))
+        finding_body = match.group(0).strip()
+        comments.append({
+            "path": file_path,
+            "line": line_num,
+            "side": "RIGHT",
+            "body": finding_body,
+        })
+    return comments
+
+
 def post_github_comment(pr_number: Optional[int], content: str, mode: str):
-    """Post agent analysis report as a PR comment using gh CLI."""
+    """Post agent analysis report as a GitHub PR review (with inline comments if present) or issue comment."""
     header = f"### 🤖 Antigravity Agent Report ({mode.title()})\n\n"
     full_body = header + content
+
+    inline_comments = extract_inline_comments(content)
+
+    if inline_comments:
+        try:
+            cmd_sha = ["gh", "pr", "view"]
+            if pr_number:
+                cmd_sha.append(str(pr_number))
+            cmd_sha.extend(["--json", "headRefOid"])
+            res_sha = subprocess.run(cmd_sha, capture_output=True, text=True, check=True)
+            head_sha = json.loads(res_sha.stdout).get("headRefOid")
+
+            if head_sha:
+                payload = {
+                    "commit_id": head_sha,
+                    "body": full_body,
+                    "event": "COMMENT",
+                    "comments": inline_comments,
+                }
+                api_cmd = [
+                    "gh", "api",
+                    f"repos/{{owner}}/{{repo}}/pulls/{pr_number or 'current'}/reviews",
+                    "--input", "-"
+                ]
+                res_review = subprocess.run(
+                    api_cmd,
+                    input=json.dumps(payload),
+                    capture_output=True,
+                    text=True,
+                )
+                if res_review.returncode == 0:
+                    print(f"Successfully posted Antigravity agent review with {len(inline_comments)} inline comment(s) to PR #{pr_number or 'current'}.")
+                    return
+                else:
+                    print(f"::warning::Failed to post inline PR review ({res_review.stderr.strip()}); falling back to PR comment.", file=sys.stderr)
+        except Exception as err:
+            print(f"::warning::Could not post inline review ({err}); falling back to PR comment.", file=sys.stderr)
+
     cmd = ["gh", "pr", "comment"]
     if pr_number:
         cmd.append(str(pr_number))
