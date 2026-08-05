@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import sys
+import json
 import os
 
 # Add parent directory to path so run_antigravity can be imported
@@ -170,9 +171,22 @@ class TestRunAntigravity(unittest.TestCase):
         comments = run_antigravity.extract_inline_comments(sample_report)
         self.assertEqual(len(comments), 2)
         self.assertEqual(comments[0]["path"], "src/main.py")
-        self.assertEqual(comments[0]["line"], 42)
+        self.assertEqual(comments[0]["start_line"], 42)
+        self.assertEqual(comments[0]["line"], 45)
+        self.assertEqual(comments[0]["start_side"], "RIGHT")
         self.assertEqual(comments[1]["path"], "utils/helper.py")
         self.assertEqual(comments[1]["line"], 10)
+        self.assertNotIn("start_line", comments[1])
+
+    @patch("subprocess.run")
+    def test_post_github_comment_inline_review_success(self, mock_run):
+        mock_run.side_effect = [
+            MagicMock(returncode=0, stdout=json.dumps({"number": 10, "headRefOid": "abc1234"})),
+            MagicMock(returncode=0, stdout="{}"),
+        ]
+        report = "#### 1. Bug\n**Location:** [main.py:L10]\nFix this."
+        run_antigravity.post_github_comment(10, report, "code-review")
+        self.assertEqual(mock_run.call_count, 2)
 
 
 if __name__ == "__main__":

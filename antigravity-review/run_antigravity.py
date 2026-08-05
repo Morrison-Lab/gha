@@ -12,7 +12,7 @@ import random
 import re
 import subprocess
 import sys
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 try:
     from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig, BuiltinTools
@@ -147,26 +147,36 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
     return "\n\n".join(prompt_parts)
 
 
-def extract_inline_comments(content: str) -> List[Dict[str, str]]:
+def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     """Parse line-anchored finding locations from agent report markdown.
 
     Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:L12-L20]`.
     """
     pattern = re.compile(
-        r"####?\s+[^\n]+\n+\s*\*\*Location:\*\*\s*\[([^:\]]+):L(\d+)(?:-L?(\d+))?\](.*?)(?=\n####?\s+|\n###?\s+|$)",
+        r"(?:#{1,6}\s+[^\n]+\n+)?\s*\*\*Location:\*\*\s*\[([^:\]]+):L(\d+)(?:-L?(\d+))?\](.*?)(?=\n#{1,6}\s+|\n\s*-\s+|\n\*\*Location:\*\*|$)",
         re.DOTALL,
     )
     comments = []
     for match in pattern.finditer(content):
         file_path = match.group(1).strip()
-        line_num = int(match.group(2))
+        start_line = int(match.group(2))
+        end_line = int(match.group(3)) if match.group(3) else None
         finding_body = match.group(0).strip()
-        comments.append({
+
+        comment_obj = {
             "path": file_path,
-            "line": line_num,
             "side": "RIGHT",
             "body": finding_body,
-        })
+        }
+
+        if end_line and end_line != start_line:
+            comment_obj["start_line"] = start_line
+            comment_obj["line"] = end_line
+            comment_obj["start_side"] = "RIGHT"
+        else:
+            comment_obj["line"] = start_line
+
+        comments.append(comment_obj)
     return comments
 
 
@@ -179,14 +189,16 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
 
     if inline_comments:
         try:
-            cmd_sha = ["gh", "pr", "view"]
+            cmd_pr = ["gh", "pr", "view"]
             if pr_number:
-                cmd_sha.append(str(pr_number))
-            cmd_sha.extend(["--json", "headRefOid"])
-            res_sha = subprocess.run(cmd_sha, capture_output=True, text=True, check=True)
-            head_sha = json.loads(res_sha.stdout).get("headRefOid")
+                cmd_pr.append(str(pr_number))
+            cmd_pr.extend(["--json", "number,headRefOid"])
+            res_pr = subprocess.run(cmd_pr, capture_output=True, text=True, check=True)
+            pr_data = json.loads(res_pr.stdout)
+            resolved_pr_num = pr_data.get("number")
+            head_sha = pr_data.get("headRefOid")
 
-            if head_sha:
+            if head_sha and resolved_pr_num:
                 payload = {
                     "commit_id": head_sha,
                     "body": full_body,
@@ -195,7 +207,7 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
                 }
                 api_cmd = [
                     "gh", "api",
-                    f"repos/{{owner}}/{{repo}}/pulls/{pr_number or 'current'}/reviews",
+                    f"repos/{{owner}}/{{repo}}/pulls/{resolved_pr_num}/reviews",
                     "--input", "-"
                 ]
                 res_review = subprocess.run(
@@ -205,7 +217,7 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
                     text=True,
                 )
                 if res_review.returncode == 0:
-                    print(f"Successfully posted Antigravity agent review with {len(inline_comments)} inline comment(s) to PR #{pr_number or 'current'}.")
+                    print(f"Successfully posted Antigravity agent review with {len(inline_comments)} inline comment(s) to PR #{resolved_pr_num}.")
                     return
                 else:
                     print(f"::warning::Failed to post inline PR review ({res_review.stderr.strip()}); falling back to PR comment.", file=sys.stderr)
