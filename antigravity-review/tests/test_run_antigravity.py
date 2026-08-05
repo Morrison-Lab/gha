@@ -283,7 +283,7 @@ class TestRunAntigravity(unittest.TestCase):
     @patch("os.path.isfile")
     @patch("builtins.open", new_callable=MagicMock)
     def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):
-        mock_isfile.side_effect = lambda path: path == "CLAUDE.md"
+        mock_isfile.side_effect = lambda path: path in ("CLAUDE.md", "GEMINI.md")
         mock_file_handle = MagicMock()
         mock_file_handle.__enter__.return_value.read.return_value = "Always use strict typing."
         mock_open.return_value = mock_file_handle
@@ -296,6 +296,7 @@ class TestRunAntigravity(unittest.TestCase):
         )
         self.assertIn("Repository Guidelines & Standards:", prompt)
         self.assertIn("--- From `CLAUDE.md` ---", prompt)
+        self.assertIn("--- From `GEMINI.md` ---", prompt)
         self.assertIn("Always use strict typing.", prompt)
         self.assertIn("Extra advice", prompt)
 

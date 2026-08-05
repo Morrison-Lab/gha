@@ -125,6 +125,7 @@ def get_repo_instructions() -> str:
     candidate_paths = [
         "AGENTS.md",
         "CLAUDE.md",
+        "GEMINI.md",
         ".github/copilot-instructions.md",
         ".github/ANTIGRAVITY.md",
     ]
@@ -198,12 +199,11 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
         raw_body = content[body_start:body_end].strip()
 
-        if i + 1 == len(matches):
-            # Mask code blocks with spaces to preserve identical character offsets
-            body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
-            summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
-            if summary_match:
-                raw_body = raw_body[:summary_match.start()].strip()
+        # Mask code blocks with spaces to preserve identical character offsets across all matches
+        body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
+        summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
+        if summary_match:
+            raw_body = raw_body[:summary_match.start()].strip()
 
         body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
 
