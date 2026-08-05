@@ -32,15 +32,18 @@ LOCATION_GUIDANCE = (
 
 MODE_PROMPTS = {
     "code-review": (
-        "You are an expert AI code reviewer. Review the provided pull request diff. "
-        "Report architectural concerns, bugs, edge cases, performance issues, readability improvements, "
-        "and missing test coverage. Provide actionable, constructive feedback with clear code examples where applicable."
+        "You are an expert AI code reviewer. Perform a comprehensive, single-pass review of the provided pull request diff. "
+        "Report ALL architectural concerns, bugs, edge cases, performance issues, readability improvements, "
+        "and missing test coverage at once. Do not withhold or stagger findings across multiple review rounds; "
+        "surface every actionable finding and recommendation immediately in this single review. "
+        "Provide actionable, constructive feedback with clear code examples where applicable."
         + LOCATION_GUIDANCE
     ),
     "security-audit": (
-        "You are a principal security engineer conducting a security audit on the pull request diff. "
-        "Check for OWASP Top 10 vulnerabilities, credential or key leakage, improper input validation, "
-        "injection risks, authentication/authorization gaps, and sensitive data (PHI/PII) exposure. "
+        "You are a principal security engineer conducting a comprehensive security audit on the pull request diff. "
+        "Report ALL OWASP Top 10 vulnerabilities, credential or key leakage, improper input validation, "
+        "injection risks, authentication/authorization gaps, and sensitive data (PHI/PII) exposure at once. "
+        "Do not stagger security findings across multiple review rounds; surface every finding immediately in a single audit pass. "
         "Classify findings by severity (Critical, High, Medium, Low) and provide defensive remediation guidance."
         + LOCATION_GUIDANCE
     ),
@@ -183,8 +186,9 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         r'(?:(?P<header>\#{1,6}[ \t]+[^\n]+\n+)[ \t\n]*)?(?:\*\*|\*|_)?Location(?:\*\*|\*|_)?:\*?\*?[ \t\n]*\[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]',
         re.IGNORECASE,
     )
-    # Mask fenced code blocks with whitespace to prevent matching location tags inside code blocks
-    content_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), content, flags=re.DOTALL)
+    # Mask fenced code blocks with whitespace to prevent matching location tags inside code blocks.
+    # Line-anchor the opening/closing fences (supporting up to 3 leading spaces) so unclosed backticks don't span across findings.
+    content_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), content, flags=re.MULTILINE | re.DOTALL)
     matches = list(header_loc_pat.finditer(content_masked))
     comments = []
     for i, match in enumerate(matches):
@@ -200,10 +204,14 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         raw_body = content[body_start:body_end].strip()
 
         # Mask code blocks with spaces to preserve identical character offsets
-        # across all matches and avoid false summary-header hits on code comments
-        body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
+        # across all matches and avoid false summary-header hits on code comments.
+        # Line-anchor fences so unclosed backticks don't span across findings.
+        body_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), raw_body, flags=re.MULTILINE | re.DOTALL)
+        # Use \n+ (not \n{2,}) so single-newline summary headers are caught.
+        # Restrict keywords to top-level report summary headings — bare
+        # "Recommendation" or "Summary of X" inside a finding is excluded.
         summary_match = re.search(
-            r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)",
+            r"\n+\#{1,6}[ \t]+(?:Summary|Conclusion|Overall[ \t]+(?:Summary|Recommendations?)|General[ \t]+(?:Summary|Recommendations?))\b(?![ \t]+(?:of|for|regarding|table|details))\b",
             body_masked,
             re.IGNORECASE,
         )
