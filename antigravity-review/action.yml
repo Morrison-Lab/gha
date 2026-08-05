@@ -1,0 +1,84 @@
+name: 'Google Antigravity PR Review, Audit & Test Generation'
+description: 'Run automated agentic code reviews, security audits, or test-suite generation using the Google Antigravity Python SDK (google-antigravity).'
+inputs:
+  mode:
+    description: 'Operational mode: code-review, security-audit, or test-generation'
+    required: false
+    default: 'code-review'
+  pr-number:
+    description: 'Pull request number to analyze'
+    required: false
+    default: ''
+  gemini-api-key:
+    description: 'Gemini / Antigravity API key for authentication'
+    required: false
+    default: ''
+  model:
+    description: 'Antigravity / Gemini model name override (e.g. gemini-2.5-flash)'
+    required: false
+    default: 'gemini-2.5-flash'
+  prompt-addendum:
+    description: 'Extra prompt instructions appended to the agent task prompt'
+    required: false
+    default: ''
+  python-version:
+    description: 'Python version to set up for executing the SDK script'
+    required: false
+    default: '3.11'
+  trigger-policy:
+    description: 'Trigger policy: any (default), on-push (only automatic PR updates), or on-request (only manual/dispatch runs)'
+    required: false
+    default: 'any'
+  dry-run:
+    description: 'Run in dry-run mode (validate prompt and inputs without calling the API)'
+    required: false
+    default: 'false'
+  post-comment:
+    description: 'Whether to post the agent analysis as a comment/review on the PR'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install Google Antigravity SDK
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install google-antigravity
+
+    - name: Execute Antigravity Agent
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_PROMPT_ADDENDUM: ${{ inputs.prompt-addendum }}
+        INPUT_TRIGGER_POLICY: ${{ inputs.trigger-policy }}
+        INPUT_DRY_RUN: ${{ inputs.dry-run }}
+        INPUT_POST_COMMENT: ${{ inputs.post-comment }}
+      run: |
+        ARGS=(
+          "--mode" "${INPUT_MODE}"
+          "--model" "${INPUT_MODEL}"
+          "--prompt-addendum" "${INPUT_PROMPT_ADDENDUM}"
+          "--trigger-policy" "${INPUT_TRIGGER_POLICY}"
+        )
+        if [ -n "${INPUT_PR_NUMBER}" ]; then
+          ARGS+=("--pr-number" "${INPUT_PR_NUMBER}")
+        fi
+        if [ "${INPUT_DRY_RUN}" = "true" ]; then
+          ARGS+=("--dry-run")
+        fi
+        if [ "${INPUT_POST_COMMENT}" = "true" ]; then
+          ARGS+=("--post-comment")
+        fi
+
+        python "${{ github.action_path }}/run_antigravity.py" "${ARGS[@]}"

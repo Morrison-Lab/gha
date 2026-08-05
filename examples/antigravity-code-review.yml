@@ -1,0 +1,96 @@
+# Copy to .github/workflows/antigravity-code-review.yml in your repo.
+# NOTE: Requires GEMINI_API_KEY stored as a GitHub secret. Pass secrets explicitly.
+#
+# Default: On-request / mention-triggered via workflow_dispatch.
+# Optional: Uncomment `pull_request` below for automatic review on every PR push.
+# Optional: Uncomment `issue_comment` below to allow `/antigravity review` or `/review` comments.
+name: Antigravity Code Review
+
+on:
+  # Option A (On-Push): Automatic review on PR code pushes.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+
+  # Option B (On-Request): Direct on-demand `/review` or `/antigravity review` path.
+  # issue_comment:
+  #   types: [created]
+
+  # Default (On-Request): Manual dispatch or bot re-dispatch.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+      mode:
+        description: 'Operational mode: code-review, security-audit, or test-generation'
+        required: false
+        default: 'code-review'
+        type: choice
+        options:
+          - code-review
+          - security-audit
+          - test-generation
+
+jobs:
+  # `/review` or `/antigravity review` comment handler for on-demand requests.
+  dispatch-on-comment:
+    if: >-
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request &&
+      (startsWith(github.event.comment.body, '/review') || startsWith(github.event.comment.body, '/antigravity review')) &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      issues: write
+    steps:
+      - name: Parse workflow ref
+        id: this-wf
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
+      - name: Dispatch Antigravity Review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          WF_PATH: ${{ steps.this-wf.outputs.path }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$COMMENT_BODY" =~ ^/(review|antigravity[[:space:]]+review)([[:space:]]|$) ]]; then
+            echo "Comment does not start with a standalone '/review' or '/antigravity review' command; skipping dispatch."
+            exit 0
+          fi
+          WF_FILE=$(basename "$WF_PATH")
+          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
+          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+
+          REF_ARGS=(--ref "$PR_BRANCH")
+          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+            REF_ARGS=()
+          fi
+
+          gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
+          gh issue comment "$PR_NUMBER" --repo "$REPO" \
+            --body ":robot: Dispatched an Antigravity Agent review for PR #$PR_NUMBER (see [run]($RUN_URL))." \
+            || echo "::warning::Could not acknowledge comment."
+
+  review:
+    if: github.event_name != 'issue_comment'
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2
+    with:
+      mode: ${{ inputs.mode || 'code-review' }}
+      pr-number: ${{ inputs.pr_number }}
+      trigger-policy: ${{ github.event_name == 'pull_request' && 'on-push' || 'on-request' }}
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
