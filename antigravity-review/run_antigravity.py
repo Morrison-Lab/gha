@@ -177,8 +177,6 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
     model_aliases = {
         "gemini-1.5-flash": "gemini-1.5-flash-latest",
         "gemini-1.5-pro": "gemini-1.5-pro-latest",
-        "gemini-2.0-flash": "gemini-1.5-flash-latest",
-        "gemini-2.5-flash": "gemini-1.5-flash-latest",
     }
     resolved_model = model_aliases.get(model, model) if model else None
 
@@ -200,13 +198,21 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
                 response = await agent.chat(prompt)
                 async for token in response:
                     chunks.append(token)
-                    sys.stdout.write(token)
-                    sys.stdout.flush()
+
+            output = "".join(chunks)
+            sys.stdout.write(output)
+            sys.stdout.flush()
             print()
-            return "".join(chunks)
+            return output
         except Exception as err:
             err_str = str(err)
-            if ("429" in err_str or "Quota exceeded" in err_str or "RATE_LIMIT" in err_str) and attempt < max_retries:
+            err_upper = err_str.upper()
+            if (
+                "429" in err_str
+                or "QUOTA" in err_upper
+                or "RATE_LIMIT" in err_upper
+                or "RESOURCE_EXHAUSTED" in err_upper
+            ) and attempt < max_retries:
                 delay = base_delay * (2 ** (attempt - 1))
                 print(
                     f"::warning::Antigravity Agent encountered API rate limit (429). Retrying in {delay}s (attempt {attempt}/{max_retries})...",

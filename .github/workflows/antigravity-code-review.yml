@@ -112,7 +112,7 @@ jobs:
 
       - name: Run Antigravity Action
         if: success() && steps.dispatch-guard.outputs.blocked != 'true'
-        uses: ./antigravity-review
+        uses: Morrison-Lab/gha/antigravity-review@v2
         with:
           mode: ${{ inputs.mode }}
           pr-number: ${{ steps.resolve-pr.outputs.pr-num }}
