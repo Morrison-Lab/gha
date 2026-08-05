@@ -2,7 +2,8 @@
 # Dispatches a review from one of the configured AI agents, chosen at random,
 # falling through to the next candidate when one can't be dispatched.
 # NOTE: requires each agent's own review workflow to exist in your repo --- copy
-# examples/claude-code-review.yml and/or examples/gemini-code-review.yml too,
+# examples/claude-code-review.yml, examples/gemini-code-review.yml, and/or
+# examples/antigravity-code-review.yml too,
 # and set the *-review-workflow-file inputs below if you rename them.
 # Pass secrets explicitly (below) rather than via `secrets: inherit`: GitHub
 # only inherits secrets into a reusable workflow owned by the same org/user, so
@@ -36,7 +37,7 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
-    #   agents: 'claude, gemini'                        # pool to choose from
-    #   claude-review-workflow-file: claude-code-review.yml
-    #   gemini-review-workflow-file: gemini-code-review.yml
+      # agents: 'claude, gemini, antigravity'           # pool to choose from
+      # claude-review-workflow-file: claude-code-review.yml
+      # gemini-review-workflow-file: gemini-code-review.yml
+      # antigravity-review-workflow-file: antigravity-code-review.yml

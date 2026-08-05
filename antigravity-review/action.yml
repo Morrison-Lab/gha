@@ -49,8 +49,8 @@ runs:
     - name: Install Google Antigravity SDK
       shell: bash
       run: |
-        python -m pip install --upgrade pip
-        pip install google-antigravity
+        python3 -m pip install --quiet --upgrade pip
+        python3 -m pip install --quiet google-antigravity
 
     - name: Execute Antigravity Agent
       shell: bash
