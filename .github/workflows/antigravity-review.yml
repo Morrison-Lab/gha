@@ -1,0 +1,38 @@
+# Active caller for this repo's own reusable Antigravity PR review workflow (dogfooding).
+name: Antigravity Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+      mode:
+        description: 'Operational mode: code-review, security-audit, or test-generation'
+        required: false
+        default: 'code-review'
+        type: choice
+        options:
+          - code-review
+          - security-audit
+          - test-generation
+
+jobs:
+  review:
+    if: github.event_name != 'issue_comment'
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    uses: Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2
+    with:
+      mode: ${{ inputs.mode || 'code-review' }}
+      pr-number: ${{ inputs.pr_number }}
+      trigger-policy: ${{ github.event_name == 'pull_request' && 'on-push' || 'on-request' }}
+    secrets:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
