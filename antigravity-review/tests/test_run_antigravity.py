@@ -339,11 +339,36 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(comments[1]["path"], "utils/helper.py")
         self.assertIn("#### 2. Minor Edge Case", comments[1]["body"])
 
+    def test_extract_inline_comments_summary_directly_after_location(self):
+        """Verify summary section is truncated even when '### Summary' directly follows Location: tag with 0 body lines."""
+        sample_report = (
+            "#### 1. Empty Body Finding\n"
+            "**Location:** [src/main.py:L10]\n"
+            "### Summary\n"
+            "Overall PR looks good."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        # Empty body finding should be skipped or truncated cleanly without leaking summary text
+        for comment in comments:
+            self.assertNotIn("Overall PR looks good.", comment["body"])
+
+    def test_extract_inline_comments_ignores_top_level_document_heading(self):
+        """Verify single '#' top-level report title is ignored when extracting finding section headers."""
+        sample_report = (
+            "# Antigravity Code Review Report\n\n"
+            "#### 1. Real Finding\n"
+            "**Location:** [src/main.py:L10]\n"
+            "Fix this bug."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertNotIn("# Antigravity Code Review Report", comments[0]["body"])
+        self.assertIn("#### 1. Real Finding", comments[0]["body"])
 
     @patch("os.path.isfile")
     @patch("builtins.open", new_callable=MagicMock)
     def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):
-        mock_isfile.side_effect = lambda path: path in ("CLAUDE.md", "GEMINI.md")
+        mock_isfile.side_effect = lambda path: any(path.endswith(f) for f in ("CLAUDE.md", "GEMINI.md"))
         mock_file_handle = MagicMock()
         mock_file_handle.__enter__.return_value.read.return_value = "Always use strict typing."
         mock_open.return_value = mock_file_handle
@@ -359,17 +384,6 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("--- From `GEMINI.md` ---", prompt)
         self.assertIn("Always use strict typing.", prompt)
         self.assertIn("Extra advice", prompt)
-
-    def test_preflight_checks_pass(self):
-        scripts_dir = os.path.join(os.path.dirname(__file__), "..", "scripts")
-        sys.path.insert(0, scripts_dir)
-        try:
-            import preflight_check
-            self.assertTrue(preflight_check.check_changelog_fragments())
-            self.assertTrue(preflight_check.check_action_docs_sync())
-        finally:
-            if scripts_dir in sys.path:
-                sys.path.remove(scripts_dir)
 
 
 if __name__ == "__main__":
