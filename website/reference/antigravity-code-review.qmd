@@ -69,6 +69,10 @@ jobs:
       mode: ${{ inputs.mode || 'code-review' }}
       pr-number: ${{ inputs.pr_number }}
       trigger-policy: ${{ github.event_name == 'pull_request' && 'on-push' || 'on-request' }}
+      # checkout-submodules: true
+      # model: ''
+      # prompt-addendum: |
+      #   Repo-specific review guidance.
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```

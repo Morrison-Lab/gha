@@ -32,10 +32,20 @@ def extract_workflow_inputs(workflow_path: str) -> list[str]:
     """Extract input names from workflow YAML using stdlib regex."""
     with open(workflow_path, "r", encoding="utf-8") as f:
         content = f.read()
-    match = re.search(r"inputs:\s*\n((?:[ \t]+.*\n)*)", content)
+    match = re.search(r"^[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content, re.MULTILINE)
     if not match:
         return []
-    return re.findall(r"^[ \t]{6}([a-zA-Z0-9_-]+):", match.group(1), re.MULTILINE)
+
+    inputs_block = match.group(1)
+    indent = None
+    for line in inputs_block.splitlines():
+        if line.strip():
+            indent = len(line) - len(line.lstrip())
+            break
+    if indent is None:
+        return []
+
+    return re.findall(rf"^[ \t]{{{indent}}}([a-zA-Z0-9_-]+):", inputs_block, re.MULTILINE)
 
 
 def check_action_docs_sync() -> bool:

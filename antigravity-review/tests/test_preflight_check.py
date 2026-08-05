@@ -64,6 +64,32 @@ class TestPreflightCheck(unittest.TestCase):
             if os.path.exists(f_path):
                 os.remove(f_path)
 
+    def test_check_action_docs_sync_mock(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            workflow_dir = os.path.join(tmp_dir, ".github", "workflows")
+            doc_dir = os.path.join(tmp_dir, "website", "reference")
+            os.makedirs(workflow_dir)
+            os.makedirs(doc_dir)
+
+            wf_path = os.path.join(workflow_dir, "antigravity-code-review.yml")
+            doc_path = os.path.join(doc_dir, "antigravity-code-review.qmd")
+
+            with open(wf_path, "w", encoding="utf-8") as f:
+                f.write("on:\n  workflow_call:\n    inputs:\n      mode:\n        type: string\n")
+
+            with open(doc_path, "w", encoding="utf-8") as f:
+                f.write("| `mode` | string |\n")
+
+            with patch("os.path.abspath", return_value=tmp_dir):
+                self.assertTrue(preflight_check.check_action_docs_sync())
+
+            # Missing doc case
+            with open(doc_path, "w", encoding="utf-8") as f:
+                f.write("| `other` | string |\n")
+
+            with patch("os.path.abspath", return_value=tmp_dir):
+                self.assertFalse(preflight_check.check_action_docs_sync())
+
 
 if __name__ == "__main__":
     unittest.main()
