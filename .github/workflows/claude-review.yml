@@ -119,7 +119,7 @@ jobs:
       issues: write
       id-token: write
       actions: read   # lets the reviewer read CI status (github_ci MCP server)
-    uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@fix-self-review-mention-skip
     # Pass secrets explicitly (not `secrets: inherit`) for parity with
     # examples/claude-code-review.yml; inherit only works for same-owner callers.
     secrets:
