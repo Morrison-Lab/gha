@@ -87,7 +87,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
         run: |
-          set +e -uo pipefail
+          set -euo pipefail
           if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author); then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status; failing closed."

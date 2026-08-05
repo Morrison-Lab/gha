@@ -153,14 +153,14 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:L12-L20]`.
     """
     pattern = re.compile(
-        r"(?:#{1,6}\s+[^\n]+\n+)?\s*\*\*Location:\*\*\s*\[([^:\]]+):L(\d+)(?:-L?(\d+))?\](.*?)(?=\n#{1,6}\s+|\n\s*-\s+|\n\*\*Location:\*\*|$)",
-        re.DOTALL,
+        r"(?:#{1,6}\s+[^\n]+\n+)?\s*(?:\*\*)?Location:\*?\*?\s*\[([^:\]]+):L(\d+)(?:-L?(\d+))?\](.*?)(?=\n#{1,6}\s+|\n\s*(?:\*\*)?Location:\*?\*?|$)",
+        re.DOTALL | re.IGNORECASE,
     )
     comments = []
     for match in pattern.finditer(content):
         file_path = match.group(1).strip()
-        start_line = int(match.group(2))
-        end_line = int(match.group(3)) if match.group(3) else None
+        line1 = int(match.group(2))
+        line2 = int(match.group(3)) if match.group(3) else None
         finding_body = match.group(0).strip()
 
         comment_obj = {
@@ -169,12 +169,12 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
             "body": finding_body,
         }
 
-        if end_line and end_line != start_line:
-            comment_obj["start_line"] = start_line
-            comment_obj["line"] = end_line
+        if line2 and line2 != line1:
+            comment_obj["start_line"] = min(line1, line2)
+            comment_obj["line"] = max(line1, line2)
             comment_obj["start_side"] = "RIGHT"
         else:
-            comment_obj["line"] = start_line
+            comment_obj["line"] = line1
 
         comments.append(comment_obj)
     return comments
@@ -285,14 +285,21 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
             err_upper = err_str.upper()
             status_code = getattr(err, "status_code", None) or getattr(err, "code", None)
             is_transient = (
-                status_code in (429, 503)
+                status_code in (429, 500, 502, 503, 504)
+                or str(status_code) in ("429", "500", "502", "503", "504")
                 or "429" in err_str
-                or "QUOTA" in err_upper
-                or "RATE_LIMIT" in err_upper
-                or "RESOURCE_EXHAUSTED" in err_upper
-                or "TOO_MANY_REQUESTS" in err_upper
-                or "THROTTLED" in err_upper
-                or "UNAVAILABLE" in err_upper
+                or any(
+                    kw in err_upper
+                    for kw in (
+                        "QUOTA",
+                        "RATE_LIMIT",
+                        "RESOURCE_EXHAUSTED",
+                        "TOO_MANY_REQUESTS",
+                        "THROTTLED",
+                        "UNAVAILABLE",
+                        "OVERLOADED",
+                    )
+                )
             )
             if is_transient and attempt < max_retries:
                 delay = (base_delay * (2 ** (attempt - 1))) + random.uniform(0, 1)

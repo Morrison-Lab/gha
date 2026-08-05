@@ -188,6 +188,21 @@ class TestRunAntigravity(unittest.TestCase):
         run_antigravity.post_github_comment(10, report, "code-review")
         self.assertEqual(mock_run.call_count, 2)
 
+    def test_extract_inline_comments_with_bullet_list_and_inverted_range(self):
+        sample_report = (
+            "#### 1. Bug\n"
+            "**Location:** [src/main.py:L50-L40]\n"
+            "This logic fails because:\n"
+            "- First reason\n"
+            "- Second reason\n"
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["start_line"], 40)
+        self.assertEqual(comments[0]["line"], 50)
+        self.assertIn("- First reason", comments[0]["body"])
+        self.assertIn("- Second reason", comments[0]["body"])
+
 
 if __name__ == "__main__":
     unittest.main()
