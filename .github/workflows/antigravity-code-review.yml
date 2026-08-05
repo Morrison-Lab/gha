@@ -23,9 +23,9 @@ on:
         type: boolean
         default: false
       model:
-        description: 'Model override passed to the Antigravity SDK (e.g. gemini-1.5-flash)'
+        description: 'Model override passed to the Antigravity SDK (optional)'
         type: string
-        default: 'gemini-1.5-flash'
+        default: ''
       trigger-policy:
         description: 'Trigger policy mode: any (default), on-push (only automatic PR updates), or on-request (only manual workflow_dispatch)'
         type: string
