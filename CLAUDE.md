@@ -1518,12 +1518,35 @@ the workflow succeeds there:
 - **`qbt`** ([`d-morrison/qbt`](https://github.com/d-morrison/qbt)) -- Quarto book template
 - **`qmt`** ([`d-morrison/qmt`](https://github.com/d-morrison/qmt)) -- Quarto manuscript template
 
-A PR fixing a reusable workflow (`claude-code-review.yml` or `claude.yml`) is the
-exception: it cannot self-verify on the unmerged `@v2` floating tag, so it
-follows the manual/offline verification path in [A PR fixing
-claude-code-review.yml (or claude.yml) itself can't self-verify before
-merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge)
-instead.
+Repointing the template's top-level `uses:` exercises a change to a reusable
+workflow's own YAML, but not a change to a **composite action**
+(`.github/actions/<x>/`, where most of this repo's capabilities live).
+A reusable workflow pins its internal composite calls to a literal `@v2`
+(e.g. `claude-code-review.yml` has ~10 such `uses: .../actions/<x>@v2` sites),
+and those resolve at job-preparation time from the released tag regardless of
+the ref the parent workflow file was fetched from (see [Re-running *failed jobs*
+cannot verify a tag slide](#re-running-failed-jobs-cannot-verify-a-tag-slide)).
+So a template test of a composite-only change passes vacuously against the old
+released code.
+To exercise a composite change, also repoint the nested `@v2` refs to the PR
+branch on the branch-pinned reusable workflow, or invoke the composite directly.
+
+A PR fixing a reusable **review** workflow (`claude-code-review.yml` or
+`claude.yml`) can't be verified this way at all.
+The review runs `anthropics/claude-code-action`, whose OIDC App-token exchange
+validates that the calling review-workflow content matches the repo's default
+branch.
+Testing the fix means running the review against a modified copy of that
+workflow, which makes the caller differ from its own default branch -- in `gha`
+or in a template repo alike -- so the action aborts with `Workflow validation
+failed` ("Exiting due to workflow validation skip"), produces no output, and
+reddens the check with no verdict.
+(Confirmed empirically 2026-08-05 via a throwaway dispatched review; the failure
+surfaces as a fast `no execution output`, not a literal `401`.)
+Fall back to the manual/offline path in [A PR fixing claude-code-review.yml (or
+claude.yml) itself can't self-verify before
+merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
+or give the action a `github_token` override that skips the OIDC exchange.
 
 ## Code review guidelines
 
