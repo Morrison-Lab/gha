@@ -179,15 +179,30 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
         capabilities=capabilities,
     )
 
-    chunks = []
-    async with Agent(config) as agent:
-        response = await agent.chat(prompt)
-        async for token in response:
-            chunks.append(token)
-            sys.stdout.write(token)
-            sys.stdout.flush()
-    print()
-    return "".join(chunks)
+    max_retries = 3
+    base_delay = 5
+    for attempt in range(1, max_retries + 1):
+        try:
+            chunks = []
+            async with Agent(config) as agent:
+                response = await agent.chat(prompt)
+                async for token in response:
+                    chunks.append(token)
+                    sys.stdout.write(token)
+                    sys.stdout.flush()
+            print()
+            return "".join(chunks)
+        except Exception as err:
+            err_str = str(err)
+            if ("429" in err_str or "Quota exceeded" in err_str or "RATE_LIMIT" in err_str) and attempt < max_retries:
+                delay = base_delay * (2 ** (attempt - 1))
+                print(
+                    f"::warning::Antigravity Agent encountered API rate limit (429). Retrying in {delay}s (attempt {attempt}/{max_retries})...",
+                    file=sys.stderr,
+                )
+                await asyncio.sleep(delay)
+            else:
+                raise
 
 
 def main():

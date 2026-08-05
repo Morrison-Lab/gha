@@ -77,6 +77,30 @@ class TestRunAntigravity(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             run_antigravity.get_pr_metadata(10)
 
+    @patch("asyncio.sleep")
+    def test_run_antigravity_agent_retry_on_429(self, mock_sleep):
+        class MockAgent:
+            def __init__(self, config):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+            async def chat(self, prompt):
+                raise Exception("Quota exceeded for quota metric (429)")
+
+        with patch.object(run_antigravity, "Agent", MockAgent), \
+             patch.object(run_antigravity, "CapabilitiesConfig", MagicMock()), \
+             patch.object(run_antigravity, "LocalAgentConfig", MagicMock()):
+            with self.assertRaises(Exception) as ctx:
+                import asyncio
+                asyncio.run(run_antigravity.run_antigravity_agent("prompt", "sys"))
+            self.assertIn("Quota exceeded", str(ctx.exception))
+            self.assertEqual(mock_sleep.call_count, 2)
+
 
 if __name__ == "__main__":
     unittest.main()
