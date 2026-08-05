@@ -1,4 +1,4 @@
-Add `gemini.yml` and `gemini-code-review.yml` reusable workflows for Gemini CLI,
+- Add `gemini.yml` and `gemini-code-review.yml` reusable workflows for Gemini CLI,
 and `ai-code-review.yml`, which picks one configured AI agent at random and
 dispatches that agent's own review workflow.
 Both Gemini workflows wire `run-gemini-cli` to the GitHub MCP server following

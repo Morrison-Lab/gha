@@ -1,4 +1,4 @@
-* Added `report-failure.yml`, a reusable workflow that files an issue when a
+- Add `report-failure.yml`, a reusable workflow that files an issue when a
   watched job fails, or comments on the issue already open for that failure
   instead of filing another. It is for workflows that run where no pull
   request carries their result -- a push to the default branch, a schedule, a

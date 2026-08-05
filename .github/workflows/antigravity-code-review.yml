@@ -23,9 +23,9 @@ on:
         type: boolean
         default: false
       model:
-        description: 'Model override passed to the Antigravity SDK (e.g. gemini-2.5-flash)'
+        description: 'Model override passed to the Antigravity SDK (optional)'
         type: string
-        default: 'gemini-2.5-flash'
+        default: ''
       trigger-policy:
         description: 'Trigger policy mode: any (default), on-push (only automatic PR updates), or on-request (only manual workflow_dispatch)'
         type: string
@@ -87,9 +87,8 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
         run: |
-          set +e -uo pipefail
-          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author)
-          if [[ $? -ne 0 ]]; then
+          set -euo pipefail
+          if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author); then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status; failing closed."
             exit 1

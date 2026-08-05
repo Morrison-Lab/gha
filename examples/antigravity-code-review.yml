@@ -1,21 +1,19 @@
 # Copy to .github/workflows/antigravity-code-review.yml in your repo.
 # NOTE: Requires GEMINI_API_KEY stored as a GitHub secret. Pass secrets explicitly.
 #
-# Default: On-request / mention-triggered via workflow_dispatch.
-# Optional: Uncomment `pull_request` below for automatic review on every PR push.
+# Default: Automatic review on every PR push.
 # Optional: Uncomment `issue_comment` below to allow `/antigravity review` or `/review` comments.
 name: Antigravity Code Review
 
 on:
-  # Option A (On-Push): Automatic review on PR code pushes.
-  # pull_request:
-  #   types: [opened, synchronize, ready_for_review, reopened]
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
 
   # Option B (On-Request): Direct on-demand `/review` or `/antigravity review` path.
   # issue_comment:
   #   types: [created]
 
-  # Default (On-Request): Manual dispatch or bot re-dispatch.
+  # Manual dispatch or bot re-dispatch.
   workflow_dispatch:
     inputs:
       pr_number:
