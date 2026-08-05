@@ -148,7 +148,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 antigravity-review/tests/test_run_antigravity.py
+          python3 -m unittest discover -s antigravity-review/tests
+      - name: Run Antigravity preflight audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 antigravity-review/scripts/preflight_check.py
       - name: Test Antigravity composite action
         uses: ./antigravity-review
         with:
