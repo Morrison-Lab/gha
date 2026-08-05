@@ -214,6 +214,19 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("- First reason", comments[0]["body"])
         self.assertIn("- Second reason", comments[0]["body"])
 
+    def test_extract_inline_comments_dot_directory_and_trailing_summary(self):
+        sample_report = (
+            "#### 1. Security Risk\n"
+            "**Location:** [./.github/workflows/review.yml:L12]\n"
+            "Missing permission restrictions.\n\n"
+            "### Summary Recommendations\n"
+            "Ensure all workflows adhere to least-privilege principles."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["path"], ".github/workflows/review.yml")
+        self.assertNotIn("Summary Recommendations", comments[0]["body"])
+
 
 if __name__ == "__main__":
     unittest.main()

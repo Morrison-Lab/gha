@@ -159,17 +159,19 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         (?:\*\*)?Location:(?:\*\*)?[ \t]*      # Location: prefix
         \[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]  # [file.ext:12-20] or [file.ext:L12-L20]
         (?P<body>.*?)                          # Finding body
-        (?=\n\#{1,6}[ \t]+[^\n]+\n+[ \t\n]*(?:\*\*)?Location:|\n[ \t]*(?:\*\*)?Location:|\Z)  # Lookahead for next Location section or EOF
+        (?=\n\#{1,6}[ \t]+[^\n]+|\n[ \t]*(?:\*\*)?Location:|\Z)  # Lookahead for next header section, Location, or EOF
         """,
         re.DOTALL | re.IGNORECASE | re.VERBOSE,
     )
     comments = []
     for match in pattern.finditer(content):
         header_text = match.group("header").strip() if match.group("header") else ""
-        file_path = match.group("file").strip("'\" ").lstrip("./")
+        file_path = match.group("file").strip("'\" ")
+        if file_path.startswith("./"):
+            file_path = file_path[2:]
         line1 = max(1, int(match.group("start")))
         line2 = max(1, int(match.group("end"))) if match.group("end") else None
-        raw_body = match.group("body").strip() if match.group("body") else match.group(0).strip()
+        raw_body = match.group("body").strip() if match.group("body") is not None and match.group("body").strip() else match.group(0).strip()
 
         body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
 
@@ -245,7 +247,7 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
         raise RuntimeError(f"Failed to post GitHub comment via gh CLI: {res.stderr}")
-    print(f"Successfully posted Antigravity agent report to PR #{pr_number or 'current'}.")
+    print(f"Successfully posted Antigravity agent report to PR #{target_pr or 'current'}.")
 
 
 async def run_antigravity_agent(prompt: str, system_instruction: str, model: str = "") -> str:
