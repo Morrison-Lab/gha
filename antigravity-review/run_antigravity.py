@@ -176,12 +176,15 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     """Parse line-anchored finding locations from agent report markdown.
 
     Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:12-20]`.
+    Ignores false location headers inside fenced code blocks.
     """
     header_loc_pat = re.compile(
         r'(?:(?P<header>\#{1,6}[ \t]+[^\n]+\n+)[ \t\n]*)?(?:\*\*|\*|_)?Location(?:\*\*|\*|_)?:\*?\*?[ \t\n]*\[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]',
         re.IGNORECASE,
     )
-    matches = list(header_loc_pat.finditer(content))
+    # Mask fenced code blocks with whitespace to prevent matching location tags inside code blocks
+    content_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), content, flags=re.DOTALL)
+    matches = list(header_loc_pat.finditer(content_masked))
     comments = []
     for i, match in enumerate(matches):
         file_path = match.group("file").strip("'\" ")
@@ -196,8 +199,9 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         raw_body = content[body_start:body_end].strip()
 
         if i + 1 == len(matches):
-            body_no_code = re.sub(r"```.*?```", "", raw_body, flags=re.DOTALL)
-            summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_no_code, re.IGNORECASE)
+            # Mask code blocks with spaces to preserve identical character offsets
+            body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
+            summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
             if summary_match:
                 raw_body = raw_body[:summary_match.start()].strip()
 
@@ -356,7 +360,7 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
             if is_transient and attempt < max_retries:
                 delay = (base_delay * (2 ** (attempt - 1))) + random.uniform(0, 1)
                 print(
-                    f"::warning::Antigravity Agent encountered API rate limit ({status_code or 429}). Retrying in {delay:.2f}s (attempt {attempt}/{max_retries})...",
+                    f"::warning::Antigravity Agent encountered API rate limit or transient error ({status_code or 'transient'}). Retrying in {delay:.2f}s (attempt {attempt}/{max_retries})...",
                     file=sys.stderr,
                 )
                 await asyncio.sleep(delay)

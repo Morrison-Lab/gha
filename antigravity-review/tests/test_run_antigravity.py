@@ -246,6 +246,40 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(len(comments), 1)
         self.assertEqual(comments[0]["path"], ".github/workflows/review.yml")
         self.assertNotIn("Summary Recommendations", comments[0]["body"])
+
+    def test_extract_inline_comments_with_code_block_before_trailing_summary(self):
+        sample_report = (
+            "#### 1. Security Risk\n"
+            "**Location:** [./.github/workflows/review.yml:L12]\n"
+            "Missing permissions:\n"
+            "```yaml\n"
+            "permissions: read-all\n"
+            "```\n"
+            "Fix this permission setting.\n\n"
+            "### Summary Recommendations\n"
+            "Ensure all workflows adhere to least privilege."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertIn("permissions: read-all", comments[0]["body"])
+        self.assertIn("Fix this permission setting.", comments[0]["body"])
+        self.assertNotIn("Summary Recommendations", comments[0]["body"])
+
+    def test_extract_inline_comments_ignores_location_in_fenced_code_block(self):
+        sample_report = (
+            "#### 1. Real Finding\n"
+            "**Location:** [src/main.py:L15]\n"
+            "Check out this sample format:\n"
+            "```markdown\n"
+            "**Location:** [example.py:L999]\n"
+            "```\n"
+            "End of report."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["path"], "src/main.py")
+        self.assertIn("example.py:L999", comments[0]["body"])
+
     @patch("os.path.isfile")
     @patch("builtins.open", new_callable=MagicMock)
     def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):
