@@ -178,16 +178,14 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
         "gemini-1.5-flash": "gemini-1.5-flash-latest",
         "gemini-1.5-pro": "gemini-1.5-pro-latest",
     }
-    resolved_model = model_aliases.get(model, model) if model else None
+    target_model = (model or "").strip() or "gemini-2.5-flash"
+    resolved_model = model_aliases.get(target_model, target_model)
 
-    config_kwargs = {
-        "system_instructions": system_instruction,
-        "capabilities": capabilities,
-    }
-    if resolved_model:
-        config_kwargs["model"] = resolved_model
-
-    config = LocalAgentConfig(**config_kwargs)
+    config = LocalAgentConfig(
+        system_instructions=system_instruction,
+        model=resolved_model,
+        capabilities=capabilities,
+    )
 
     max_retries = 3
     base_delay = 5
