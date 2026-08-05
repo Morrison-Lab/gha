@@ -58,8 +58,13 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           WF_PATH: ${{ steps.this-wf.outputs.path }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
           set -euo pipefail
+          if [[ ! "$COMMENT_BODY" =~ ^/(review|antigravity[[:space:]]+review)([[:space:]]|$) ]]; then
+            echo "Comment does not start with a standalone '/review' or '/antigravity review' command; skipping dispatch."
+            exit 0
+          fi
           WF_FILE=$(basename "$WF_PATH")
           PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")

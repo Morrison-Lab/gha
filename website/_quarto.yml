@@ -53,6 +53,7 @@ website:
           - reference/claude-code-review.qmd
           - reference/gemini.qmd
           - reference/gemini-code-review.qmd
+          - reference/antigravity-code-review.qmd
           - reference/ai-code-review.qmd
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd

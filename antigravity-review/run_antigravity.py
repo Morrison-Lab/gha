@@ -193,6 +193,14 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
 def main():
     args = parse_args()
     
+    event_name = os.environ.get("GITHUB_EVENT_NAME", "")
+    if args.trigger_policy == "on-push" and event_name and event_name not in ("pull_request", "pull_request_target"):
+        print(f"Trigger policy 'on-push' enforced: skipping execution for event '{event_name}'.")
+        return
+    if args.trigger_policy == "on-request" and event_name and event_name != "workflow_dispatch":
+        print(f"Trigger policy 'on-request' enforced: skipping execution for event '{event_name}'.")
+        return
+
     try:
         pr_meta = get_pr_metadata(args.pr_number)
     except Exception as err:

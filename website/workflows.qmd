@@ -70,7 +70,8 @@ freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `altdoc-multiversion-docs.yml` (added after the freeze), and
 `report-failure.yml` (added after the freeze - see
 [gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
-`gemini.yml`, `gemini-code-review.yml`, and `ai-code-review.yml` likewise only
+`gemini.yml`, `gemini-code-review.yml`,
+`antigravity-code-review.yml`, and `ai-code-review.yml` likewise only
 ever shipped at `@v2`, having been added well after the freeze - see
 [gha#357](https://github.com/Morrison-Lab/gha/pull/357).
 `bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added

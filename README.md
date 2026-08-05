@@ -489,7 +489,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-secrets.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
-`ai-code-review.yml`, `bump-dev-version.yml`, and
+`antigravity-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`, and
 `version-check.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
