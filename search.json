@@ -1273,7 +1273,7 @@
     "href": "reference/ai-code-review.html",
     "title": "ai-code-review.yml",
     "section": "",
-    "text": "Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched.\nIt sits above whichever per-agent review workflows a repo has installed — claude-code-review.yml and gemini-code-review.yml — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the *-review-workflow-file inputs below.",
+    "text": "Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched.\nIt sits above whichever per-agent review workflows a repo has installed — claude-code-review.yml, gemini-code-review.yml, and antigravity-code-review.yml — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the *-review-workflow-file inputs below.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1297,7 +1297,7 @@
     "href": "reference/ai-code-review.html#inputs",
     "title": "ai-code-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nagents\nstring\n'claude, gemini'\nComma-separated agents to select from. Unrecognized names are warned about and skipped.\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nclaude-review-workflow-file\nstring\n'claude-code-review.yml'\nCaller-repo workflow file dispatched for a Claude review.\n\n\ngemini-review-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched for a Gemini review.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nagents\nstring\n'claude, gemini'\nComma-separated agents to select from (claude, gemini, antigravity). Unrecognized names are warned about and skipped.\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nclaude-review-workflow-file\nstring\n'claude-code-review.yml'\nCaller-repo workflow file dispatched for a Claude review.\n\n\ngemini-review-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched for a Gemini review.\n\n\nantigravity-review-workflow-file\nstring\n'antigravity-code-review.yml'\nCaller-repo workflow file dispatched for an Antigravity review.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1309,7 +1309,7 @@
     "href": "reference/ai-code-review.html#secrets",
     "title": "ai-code-review.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nMax-plan OAuth token. Either this or ANTHROPIC_API_KEY makes claude an eligible candidate.\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key.\n\n\nGEMINI_API_KEY\nno\nGemini API key. Makes gemini an eligible candidate.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nMax-plan OAuth token. Either this or ANTHROPIC_API_KEY makes claude an eligible candidate.\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key.\n\n\nGEMINI_API_KEY\nno\nGemini API key. Makes gemini and antigravity eligible candidates.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1333,7 +1333,7 @@
     "href": "reference/ai-code-review.html#example",
     "title": "ai-code-review.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/ai-code-review.yml in your repo.\nname: AI Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  ai-review:\n    permissions:\n      contents: read\n      pull-requests: read\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2\n    secrets:\n      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}\n      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   agents: 'claude, gemini'\n    #   claude-review-workflow-file: claude-code-review.yml\n    #   gemini-review-workflow-file: gemini-code-review.yml\nSee the examples/ directory for the full caller stub (ai-code-review.yml).",
+    "text": "Example\n# Copy to .github/workflows/ai-code-review.yml in your repo.\nname: AI Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  ai-review:\n    permissions:\n      contents: read\n      pull-requests: read\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2\n    secrets:\n      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}\n      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   agents: 'claude, gemini, antigravity'\n    #   claude-review-workflow-file: claude-code-review.yml\n    #   gemini-review-workflow-file: gemini-code-review.yml\n    #   antigravity-review-workflow-file: antigravity-code-review.yml\nSee the examples/ directory for the full caller stub (ai-code-review.yml).",
     "crumbs": [
       "Overview",
       "Reference",

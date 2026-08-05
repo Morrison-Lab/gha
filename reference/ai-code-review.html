@@ -571,7 +571,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched.</p>
-<p>It sits above whichever per-agent review workflows a repo has installed — <a href="../reference/claude-code-review.html"><code>claude-code-review.yml</code></a> and <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a> — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the <code>*-review-workflow-file</code> inputs below.</p>
+<p>It sits above whichever per-agent review workflows a repo has installed — <a href="../reference/claude-code-review.html"><code>claude-code-review.yml</code></a>, <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a>, and <a href="../reference/antigravity-code-review.html"><code>antigravity-code-review.yml</code></a> — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the <code>*-review-workflow-file</code> inputs below.</p>
 <section id="what-the-fallback-covers" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-fallback-covers">What the fallback covers</h2>
 <p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong>: no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo.</p>
@@ -599,7 +599,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>agents</code></td>
 <td>string</td>
 <td><code>'claude, gemini'</code></td>
-<td>Comma-separated agents to select from. Unrecognized names are warned about and skipped.</td>
+<td>Comma-separated agents to select from (<code>claude</code>, <code>gemini</code>, <code>antigravity</code>). Unrecognized names are warned about and skipped.</td>
 </tr>
 <tr class="even">
 <td><code>pr-number</code></td>
@@ -618,6 +618,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td><code>'gemini-code-review.yml'</code></td>
 <td>Caller-repo workflow file dispatched for a Gemini review.</td>
+</tr>
+<tr class="odd">
+<td><code>antigravity-review-workflow-file</code></td>
+<td>string</td>
+<td><code>'antigravity-code-review.yml'</code></td>
+<td>Caller-repo workflow file dispatched for an Antigravity review.</td>
 </tr>
 </tbody>
 </table>
@@ -651,7 +657,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>GEMINI_API_KEY</code></td>
 <td>no</td>
-<td>Gemini API key. Makes <code>gemini</code> an eligible candidate.</td>
+<td>Gemini API key. Makes <code>gemini</code> and <code>antigravity</code> eligible candidates.</td>
 </tr>
 </tbody>
 </table>
@@ -691,9 +697,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini'</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini, antigravity'</span></span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   claude-review-workflow-file: claude-code-review.yml</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   antigravity-review-workflow-file: antigravity-code-review.yml</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>ai-code-review.yml</code>).</p>
 
 
