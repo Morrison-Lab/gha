@@ -293,6 +293,30 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(comments[0]["path"], "src/main.py")
         self.assertIn("Fix nested fence logic.", comments[0]["body"])
 
+    def test_extract_inline_comments_structured_json(self):
+        sample_report = (
+            "### 🤖 Antigravity Agent Report\n\n"
+            "Overall review summary here.\n\n"
+            "```json\n"
+            "[\n"
+            "  {\n"
+            '    "path": "a/src/./utils\\\\helper.py",\n'
+            '    "start_line": 10,\n'
+            '    "end_line": 20,\n'
+            '    "title": "Null Pointer Risk",\n'
+            '    "body": "In `helper()`, `res` can be None.\\n```python\\nreturn None\\n```"\n'
+            "  }\n"
+            "]\n"
+            "```"
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["path"], "src/utils/helper.py")
+        self.assertEqual(comments[0]["start_line"], 10)
+        self.assertEqual(comments[0]["line"], 20)
+        self.assertIn("#### Null Pointer Risk", comments[0]["body"])
+        self.assertIn("In `helper()`, `res` can be None.", comments[0]["body"])
+
     def test_extract_inline_comments_ignores_location_in_fenced_code_block(self):
         sample_report = (
             "#### 1. Real Finding\n"

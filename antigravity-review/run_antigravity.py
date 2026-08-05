@@ -25,9 +25,19 @@ except ImportError:
 
 
 LOCATION_GUIDANCE = (
-    "\n\nFor file-specific findings, include a location header formatted as:\n"
-    "**Location:** [relative/path/to/file.ext:L12] (or [path/to/file.ext:L12-L20] for line ranges).\n"
-    "This allows your findings to be posted as line-anchored inline PR review comments."
+    "\n\nFor line-anchored code findings, include a fenced JSON block at the end of your report formatted as:\n"
+    "```json\n"
+    "[\n"
+    "  {\n"
+    '    "path": "relative/path/to/file.ext",\n'
+    '    "start_line": 12,\n'
+    '    "end_line": 20,\n'
+    '    "title": "Short Finding Title",\n'
+    '    "body": "Detailed explanation and suggested fix..."\n'
+    "  }\n"
+    "]\n"
+    "```\n"
+    "Alternatively, you may include location headers formatted as `**Location:** [path/to/file.ext:L12-L20]`."
 )
 
 NOISE_GUIDANCE = (
@@ -187,12 +197,103 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
     return "\n\n".join(prompt_parts)
 
 
+def parse_json_inline_comments(content: str) -> List[Dict[str, Any]]:
+    """Attempt to parse structured JSON inline finding block from report content.
+
+    Looks for a fenced ```json block containing a list of finding objects:
+    ```json
+    [
+      {
+        "path": "file.py",
+        "start_line": 10,
+        "end_line": 15,
+        "title": "Finding Title",
+        "body": "Detailed description"
+      }
+    ]
+    ```
+    """
+    json_block_pat = re.compile(r"```json\s*(\[\s*\{.*\}\s*\])\s*```", re.DOTALL | re.IGNORECASE)
+    match = json_block_pat.search(content)
+    if not match:
+        json_list_pat = re.compile(r"(\[\s*\{\s*\"path\".*\}\s*\])", re.DOTALL)
+        match = json_list_pat.search(content)
+        if not match:
+            return []
+
+    json_str = match.group(1).strip()
+    try:
+        items = json.loads(json_str)
+        if not isinstance(items, list):
+            return []
+    except Exception:
+        return []
+
+    comments = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        raw_path = str(item.get("path", "")).strip("'\"` ").replace("\\", "/")
+        if not raw_path:
+            continue
+        file_path = os.path.normpath(raw_path).lstrip("/").replace("\\", "/")
+        if file_path.startswith("./"):
+            file_path = file_path[2:]
+        if file_path.startswith("a/") or file_path.startswith("b/"):
+            file_path = file_path[2:]
+
+        start_line = item.get("start_line") or item.get("line")
+        if start_line is None:
+            continue
+        try:
+            start_line = max(1, int(start_line))
+        except (ValueError, TypeError):
+            continue
+
+        end_line = item.get("end_line")
+        if end_line is not None:
+            try:
+                end_line = max(1, int(end_line))
+            except (ValueError, TypeError):
+                end_line = None
+
+        title = str(item.get("title", "")).strip()
+        body = str(item.get("body", "")).strip()
+        if not body and not title:
+            continue
+
+        if title:
+            comment_body = f"#### {title}\n\n{body}".strip() if body else f"#### {title}"
+        else:
+            comment_body = body
+
+        comment_obj = {
+            "path": file_path,
+            "side": "RIGHT",
+            "body": comment_body,
+        }
+        if end_line and end_line != start_line:
+            comment_obj["start_line"] = min(start_line, end_line)
+            comment_obj["line"] = max(start_line, end_line)
+            comment_obj["start_side"] = "RIGHT"
+        else:
+            comment_obj["line"] = start_line
+
+        comments.append(comment_obj)
+
+    return comments
+
+
 def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     """Parse line-anchored finding locations from agent report markdown.
 
-    Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:12-20]`.
-    Ignores false location headers inside fenced code blocks.
+    First attempts parsing structured JSON inline findings block.
+    If no valid JSON findings block is present, falls back to regex matching.
     """
+    json_comments = parse_json_inline_comments(content)
+    if json_comments:
+        return json_comments
+
     loc_pat = re.compile(
         r'(?:\*\*|\*|_)?Location(?:\*\*|\*|_)?:\*?\*?[ \t\n]*\[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]',
         re.IGNORECASE,
@@ -296,7 +397,9 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 def post_github_comment(pr_number: Optional[int], content: str, mode: str):
     """Post agent analysis report as a GitHub PR review (with inline comments if present) or issue comment."""
     header = f"### 🤖 Antigravity Agent Report ({mode.title()})\n\n"
-    full_body = header + content
+    # Strip trailing JSON findings block from main PR report body so output remains clean for human readers
+    clean_content = re.sub(r"\n*```json\s*\[\s*\{.*\}\s*\]\s*```\s*$", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
+    full_body = header + clean_content
 
     inline_comments = extract_inline_comments(content)
     resolved_pr_num = None

@@ -1,0 +1,1 @@
+- Add structured JSON inline finding parsing (`parse_json_inline_comments`) to `run_antigravity.py` with automatic fallback to regex parsing, ensuring robust line-anchored inline PR reviews.
