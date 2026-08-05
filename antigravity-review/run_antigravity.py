@@ -199,9 +199,14 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
         raw_body = content[body_start:body_end].strip()
 
-        # Mask code blocks with spaces to preserve identical character offsets across all matches
+        # Mask code blocks with spaces to preserve identical character offsets
+        # across all matches and avoid false summary-header hits on code comments
         body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
-        summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
+        summary_match = re.search(
+            r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)",
+            body_masked,
+            re.IGNORECASE,
+        )
         if summary_match:
             raw_body = raw_body[:summary_match.start()].strip()
 
@@ -210,8 +215,7 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 
         body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
 
-        if not body_text:
-            continue
+        # body_text is guaranteed non-empty here (raw_body was already checked)
 
         comment_obj = {
             "path": file_path,
