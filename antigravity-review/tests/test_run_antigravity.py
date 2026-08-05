@@ -312,6 +312,17 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("Always use strict typing.", prompt)
         self.assertIn("Extra advice", prompt)
 
+    def test_preflight_checks_pass(self):
+        scripts_dir = os.path.join(os.path.dirname(__file__), "..", "scripts")
+        sys.path.insert(0, scripts_dir)
+        try:
+            import preflight_check
+            self.assertTrue(preflight_check.check_changelog_fragments())
+            self.assertTrue(preflight_check.check_action_docs_sync())
+        finally:
+            if scripts_dir in sys.path:
+                sys.path.remove(scripts_dir)
+
 
 if __name__ == "__main__":
     unittest.main()

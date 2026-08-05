@@ -1,2 +1,1 @@
-- Expand API rate limit / error pattern matching (`TOO_MANY_REQUESTS`, `THROTTLED`, `UNAVAILABLE`)
-  and add randomized backoff jitter in `antigravity-review/run_antigravity.py` (#412).
+- Expand API rate limit / error pattern matching (`TOO_MANY_REQUESTS`, `THROTTLED`, `UNAVAILABLE`) and add randomized backoff jitter in `antigravity-review/run_antigravity.py` (#412).

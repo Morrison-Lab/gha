@@ -16,11 +16,11 @@ Requires a `GEMINI_API_KEY` secret.
 | Input | Type | Default | Description |
 |---|---|---|---|
 | `mode` | string | `'code-review'` | Operational mode: `code-review`, `security-audit`, or `test-generation`. |
-| `pr-number` | string | `''` | Pull request number to analyze. |
+| `pr-number` | string | `''` | Pull request number to analyze (required for `workflow_dispatch`). |
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
-| `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
-| `model` | string | `''` | Model override passed to the Antigravity SDK. |
+| `model` | string | `''` | Antigravity / Gemini model override passed to the SDK (optional). |
+| `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
 
 ## Secrets
 

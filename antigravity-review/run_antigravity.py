@@ -201,7 +201,7 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 
         # Mask code blocks with spaces to preserve identical character offsets across all matches
         body_masked = re.sub(r"```.*?```", lambda m: " " * len(m.group(0)), raw_body, flags=re.DOTALL)
-        summary_match = re.search(r"\n+\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
+        summary_match = re.search(r"\n{2,}\#{1,6}[ \t]+(?:Summary|Conclusion|Recommendation|General|Overall)", body_masked, re.IGNORECASE)
         if summary_match:
             raw_body = raw_body[:summary_match.start()].strip()
 
