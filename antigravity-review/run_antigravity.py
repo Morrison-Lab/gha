@@ -198,8 +198,10 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         re.IGNORECASE,
     )
     # Mask fenced code blocks with whitespace to prevent matching location tags inside code blocks.
-    # Line-anchor the opening/closing fences (supporting up to 3 leading spaces) so unclosed backticks don't span across findings.
-    content_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), content, flags=re.MULTILINE | re.DOTALL)
+    # Line-anchor opening/closing fences (supporting up to 3 leading spaces & matching backtick counts)
+    # so unclosed backticks don't span across findings.
+    fence_pat = re.compile(r"^[ \t]{0,3}(`{3,})[^\n]*\n.*?\n[ \t]{0,3}\1[ \t]*$", re.MULTILINE | re.DOTALL)
+    content_masked = fence_pat.sub(lambda m: " " * len(m.group(0)), content)
     matches = list(loc_pat.finditer(content_masked))
     if not matches:
         return []
@@ -214,21 +216,31 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
             last_header = headers[-1]
             header_text = last_header.group(0).strip()
             header_start = prev_end + last_header.start()
+            header_end = prev_end + last_header.end()
+            pre_location_text = preceding_text[last_header.end():].strip()
         else:
             header_text = ""
             header_start = match.start()
+            header_end = match.start()
+            pre_location_text = ""
         parsed_items.append({
             "match": match,
             "header_text": header_text,
             "header_start": header_start,
+            "header_end": header_end,
+            "pre_location_text": pre_location_text,
         })
 
     comments = []
     for i, item in enumerate(parsed_items):
         match = item["match"]
         header_text = item["header_text"]
-        file_path = match.group("file").strip("'\"` ").lstrip("/")
+        pre_location_text = item["pre_location_text"]
+        raw_file = match.group("file").strip("'\"` ").replace("\\", "/")
+        file_path = os.path.normpath(raw_file).lstrip("/").replace("\\", "/")
         if file_path.startswith("./"):
+            file_path = file_path[2:]
+        if file_path.startswith("a/") or file_path.startswith("b/"):
             file_path = file_path[2:]
         start_line = max(1, int(match.group("start")))
         end_line = max(1, int(match.group("end"))) if match.group("end") else None
@@ -239,8 +251,7 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
 
         # Mask code blocks with spaces to preserve identical character offsets
         # across all matches and avoid false summary-header hits on code comments.
-        # Line-anchor fences so unclosed backticks don't span across findings.
-        body_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), raw_body, flags=re.MULTILINE | re.DOTALL)
+        body_masked = fence_pat.sub(lambda m: " " * len(m.group(0)), raw_body)
         # Use (?:^|\n+) so summary headers at start of raw_body or after newlines are caught.
         # Restrict keywords to top-level report summary headings — bare
         # "Recommendation" or "Summary of X" inside a finding is excluded.
@@ -252,12 +263,18 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         if summary_match:
             raw_body = raw_body[:summary_match.start()].strip()
 
-        if not raw_body:
+        body_parts = []
+        if header_text:
+            body_parts.append(header_text)
+        if pre_location_text:
+            body_parts.append(pre_location_text)
+        if raw_body:
+            body_parts.append(raw_body)
+
+        if not body_parts or (not raw_body and not pre_location_text):
             continue
 
-        body_text = f"{header_text}\n\n{raw_body}".strip() if header_text else raw_body
-
-        # body_text is guaranteed non-empty here (raw_body was already checked)
+        body_text = "\n\n".join(body_parts).strip()
 
         comment_obj = {
             "path": file_path,

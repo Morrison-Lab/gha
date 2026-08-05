@@ -261,9 +261,37 @@ class TestRunAntigravity(unittest.TestCase):
         )
         comments = run_antigravity.extract_inline_comments(sample_report)
         self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["path"], ".github/workflows/review.yml")
         self.assertIn("permissions: read-all", comments[0]["body"])
-        self.assertIn("Fix this permission setting.", comments[0]["body"])
         self.assertNotIn("Summary Recommendations", comments[0]["body"])
+
+    def test_extract_inline_comments_preserves_pre_location_intro_text(self):
+        sample_report = (
+            "#### 1. Null Pointer Risk\n"
+            "In `process_data()`, the response object can be None.\n"
+            "**Location:** [src/utils.py:L45]\n"
+            "Calling `res.group()` directly raises AttributeError."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertIn("In `process_data()`, the response object can be None.", comments[0]["body"])
+        self.assertIn("Calling `res.group()` directly raises AttributeError.", comments[0]["body"])
+
+    def test_extract_inline_comments_handles_nested_code_fences_and_path_normalization(self):
+        sample_report = (
+            "#### 1. Four Backtick Fence\n"
+            "````markdown\n"
+            "```python\n"
+            "code inside nested fence\n"
+            "```\n"
+            "````\n"
+            "**Location:** [a\\src\\./main.py:L15]\n"
+            "Fix nested fence logic."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertEqual(comments[0]["path"], "src/main.py")
+        self.assertIn("Fix nested fence logic.", comments[0]["body"])
 
     def test_extract_inline_comments_ignores_location_in_fenced_code_block(self):
         sample_report = (

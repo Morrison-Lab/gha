@@ -1,3 +1,3 @@
 - Add preflight audit script `antigravity-review/scripts/preflight_check.py`
   and test suite integration to validate changelog fragment bullet formatting
-  and action input documentation synchronization (#413).
+  and action input documentation synchronization (#412).
