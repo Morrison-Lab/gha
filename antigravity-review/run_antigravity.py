@@ -184,8 +184,8 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         re.IGNORECASE,
     )
     # Mask fenced code blocks with whitespace to prevent matching location tags inside code blocks.
-    # Line-anchor the opening/closing fences so unclosed backticks don't span across findings.
-    content_masked = re.sub(r"^```[^\n]*\n.*?\n```[ \t]*$", lambda m: " " * len(m.group(0)), content, flags=re.MULTILINE | re.DOTALL)
+    # Line-anchor the opening/closing fences (supporting up to 3 leading spaces) so unclosed backticks don't span across findings.
+    content_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), content, flags=re.MULTILINE | re.DOTALL)
     matches = list(header_loc_pat.finditer(content_masked))
     comments = []
     for i, match in enumerate(matches):
@@ -203,12 +203,12 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         # Mask code blocks with spaces to preserve identical character offsets
         # across all matches and avoid false summary-header hits on code comments.
         # Line-anchor fences so unclosed backticks don't span across findings.
-        body_masked = re.sub(r"^```[^\n]*\n.*?\n```[ \t]*$", lambda m: " " * len(m.group(0)), raw_body, flags=re.MULTILINE | re.DOTALL)
+        body_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), raw_body, flags=re.MULTILINE | re.DOTALL)
         # Use \n+ (not \n{2,}) so single-newline summary headers are caught.
         # Restrict keywords to top-level report summary headings — bare
-        # "Recommendation" is too broad (agents use it as a sub-header inside findings).
+        # "Recommendation" or "Summary of X" inside a finding is excluded.
         summary_match = re.search(
-            r"\n+\#{1,6}[ \t]+(?:Summary|Conclusion|Overall[ \t]+(?:Summary|Recommendations?)|General[ \t]+(?:Summary|Recommendations?))",
+            r"\n+\#{1,6}[ \t]+(?:Summary|Conclusion|Overall[ \t]+(?:Summary|Recommendations?)|General[ \t]+(?:Summary|Recommendations?))\b(?![ \t]+(?:of|for|regarding|table|details))\b",
             body_masked,
             re.IGNORECASE,
         )

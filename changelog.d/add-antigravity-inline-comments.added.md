@@ -1,1 +1,3 @@
-- Add inline PR review comment support to `antigravity-review/run_antigravity.py` via `gh api` and location pattern parsing (`**Location:** [file.ext:L12]`) with graceful fallback to issue comments (#412).
+- Add inline PR review comment support to `antigravity-review/run_antigravity.py`
+  via `gh api` and location pattern parsing (`**Location:** [file.ext:L12]`)
+  with graceful fallback to issue comments (#412).

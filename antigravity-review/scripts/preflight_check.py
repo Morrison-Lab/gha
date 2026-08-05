@@ -32,7 +32,9 @@ def extract_workflow_inputs(workflow_path: str) -> list[str]:
     """Extract input names from workflow YAML using stdlib regex."""
     with open(workflow_path, "r", encoding="utf-8") as f:
         content = f.read()
-    match = re.search(r"^[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content, re.MULTILINE)
+    match = re.search(r"workflow_call:\s*\n[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content)
+    if not match:
+        match = re.search(r"^[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content, re.MULTILINE)
     if not match:
         return []
 
