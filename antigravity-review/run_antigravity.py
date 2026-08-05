@@ -59,8 +59,8 @@ def parse_args(args=None):
     )
     parser.add_argument(
         "--model",
-        default="gemini-2.5-flash",
-        help="Model override (e.g. gemini-2.5-flash, gemini-2.5-pro)",
+        default="gemini-1.5-flash",
+        help="Model override (e.g. gemini-1.5-flash, gemini-1.5-pro)",
     )
     parser.add_argument(
         "--prompt-addendum",
@@ -152,7 +152,7 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str):
     print(f"Successfully posted Antigravity agent report to PR #{pr_number or 'current'}.")
 
 
-async def run_antigravity_agent(prompt: str, system_instruction: str, model: str = "gemini-2.5-flash") -> str:
+async def run_antigravity_agent(prompt: str, system_instruction: str, model: str = "gemini-1.5-flash") -> str:
     """Async execution of the Google Antigravity Agent SDK."""
     if Agent is None:
         raise RuntimeError(

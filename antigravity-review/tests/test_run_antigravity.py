@@ -13,7 +13,7 @@ class TestRunAntigravity(unittest.TestCase):
     def test_parse_args_defaults(self):
         args = run_antigravity.parse_args([])
         self.assertEqual(args.mode, "code-review")
-        self.assertEqual(args.model, "gemini-2.5-flash")
+        self.assertEqual(args.model, "gemini-1.5-flash")
         self.assertEqual(args.prompt_addendum, "")
         self.assertEqual(args.trigger_policy, "any")
         self.assertFalse(args.post_comment)
