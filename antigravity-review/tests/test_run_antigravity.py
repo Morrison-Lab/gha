@@ -292,6 +292,33 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(len(comments), 1)
         self.assertEqual(comments[0]["path"], "src/utils.py")
 
+    def test_extract_inline_comments_recommendation_subheader_kept(self):
+        """Bare '### Recommendation' inside a finding should NOT truncate the body."""
+        sample_report = (
+            "#### 1. Performance Issue\n"
+            "**Location:** [src/main.py:L30]\n"
+            "This function is slow.\n\n"
+            "### Recommendation\n"
+            "Use caching to speed it up.\n"
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertIn("### Recommendation", comments[0]["body"])
+        self.assertIn("Use caching to speed it up.", comments[0]["body"])
+
+    def test_extract_inline_comments_single_newline_summary_truncated(self):
+        """Single-newline before '### Summary' should still be truncated."""
+        sample_report = (
+            "#### 1. Bug\n"
+            "**Location:** [src/main.py:L10]\n"
+            "Fix this bug.\n"
+            "### Summary\n"
+            "Overall this PR looks good."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 1)
+        self.assertNotIn("Overall this PR looks good.", comments[0]["body"])
+
     @patch("os.path.isfile")
     @patch("builtins.open", new_callable=MagicMock)
     def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):
