@@ -182,25 +182,48 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     Matches patterns like `Location: [file.py:L12]` or `**Location:** [path/to/file.py:12-20]`.
     Ignores false location headers inside fenced code blocks.
     """
-    header_loc_pat = re.compile(
-        r'(?:(?P<header>\#{1,6}[ \t]+[^\n]+\n+)[ \t\n]*)?(?:\*\*|\*|_)?Location(?:\*\*|\*|_)?:\*?\*?[ \t\n]*\[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]',
+    loc_pat = re.compile(
+        r'(?:\*\*|\*|_)?Location(?:\*\*|\*|_)?:\*?\*?[ \t\n]*\[(?P<file>[^:\]]+):L?(?P<start>\d+)(?:-L?(?P<end>\d+))?\]',
         re.IGNORECASE,
     )
     # Mask fenced code blocks with whitespace to prevent matching location tags inside code blocks.
     # Line-anchor the opening/closing fences (supporting up to 3 leading spaces) so unclosed backticks don't span across findings.
     content_masked = re.sub(r"^[ \t]{0,3}```[^\n]*\n.*?\n[ \t]{0,3}```[ \t]*$", lambda m: " " * len(m.group(0)), content, flags=re.MULTILINE | re.DOTALL)
-    matches = list(header_loc_pat.finditer(content_masked))
-    comments = []
+    matches = list(loc_pat.finditer(content_masked))
+    if not matches:
+        return []
+
+    # Pre-calculate section header start position for each location match (if a header exists between previous match and current match)
+    parsed_items = []
     for i, match in enumerate(matches):
-        file_path = match.group("file").strip("'\"` ")
+        prev_end = matches[i - 1].end() if i > 0 else 0
+        preceding_text = content_masked[prev_end:match.start()]
+        headers = list(re.finditer(r"^[ \t]*\#{1,6}[ \t]+[^\n]+", preceding_text, re.MULTILINE))
+        if headers:
+            last_header = headers[-1]
+            header_text = last_header.group(0).strip()
+            header_start = prev_end + last_header.start()
+        else:
+            header_text = ""
+            header_start = match.start()
+        parsed_items.append({
+            "match": match,
+            "header_text": header_text,
+            "header_start": header_start,
+        })
+
+    comments = []
+    for i, item in enumerate(parsed_items):
+        match = item["match"]
+        header_text = item["header_text"]
+        file_path = match.group("file").strip("'\"` ").lstrip("/")
         if file_path.startswith("./"):
             file_path = file_path[2:]
         start_line = max(1, int(match.group("start")))
         end_line = max(1, int(match.group("end"))) if match.group("end") else None
-        header_text = match.group("header").strip() if match.group("header") else ""
 
         body_start = match.end()
-        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        body_end = parsed_items[i + 1]["header_start"] if i + 1 < len(parsed_items) else len(content)
         raw_body = content[body_start:body_end].strip()
 
         # Mask code blocks with spaces to preserve identical character offsets
