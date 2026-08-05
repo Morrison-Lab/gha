@@ -134,6 +134,29 @@ class TestRunAntigravity(unittest.TestCase):
             self.assertEqual(result, "Success response")
             self.assertEqual(mock_sleep.call_count, 1)
 
+    @patch("asyncio.sleep")
+    def test_run_antigravity_agent_non_retryable_error_fails_immediately(self, mock_sleep):
+        class MockAgent:
+            def __init__(self, config):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc_val, exc_tb):
+                pass
+
+            async def chat(self, prompt):
+                raise ValueError("Invalid configuration or unauthorized (401)")
+
+        with patch.object(run_antigravity, "Agent", MockAgent), \
+             patch.object(run_antigravity, "CapabilitiesConfig", MagicMock()), \
+             patch.object(run_antigravity, "LocalAgentConfig", MagicMock()):
+            import asyncio
+            with self.assertRaises(ValueError):
+                asyncio.run(run_antigravity.run_antigravity_agent("prompt", "sys"))
+            self.assertEqual(mock_sleep.call_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()

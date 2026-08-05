@@ -201,18 +201,21 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
         except Exception as err:
             err_str = str(err)
             err_upper = err_str.upper()
-            if (
-                "429" in err_str
+            status_code = getattr(err, "status_code", None) or getattr(err, "code", None)
+            is_transient = (
+                status_code in (429, 503)
+                or "429" in err_str
                 or "QUOTA" in err_upper
                 or "RATE_LIMIT" in err_upper
                 or "RESOURCE_EXHAUSTED" in err_upper
                 or "TOO_MANY_REQUESTS" in err_upper
                 or "THROTTLED" in err_upper
                 or "UNAVAILABLE" in err_upper
-            ) and attempt < max_retries:
+            )
+            if is_transient and attempt < max_retries:
                 delay = (base_delay * (2 ** (attempt - 1))) + random.uniform(0, 1)
                 print(
-                    f"::warning::Antigravity Agent encountered API rate limit (429). Retrying in {delay:.2f}s (attempt {attempt}/{max_retries})...",
+                    f"::warning::Antigravity Agent encountered API rate limit ({status_code or 429}). Retrying in {delay:.2f}s (attempt {attempt}/{max_retries})...",
                     file=sys.stderr,
                 )
                 await asyncio.sleep(delay)
