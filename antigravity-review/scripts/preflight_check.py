@@ -29,23 +29,45 @@ def check_changelog_fragments() -> bool:
 
 
 def extract_workflow_inputs(workflow_path: str) -> list[str]:
-    """Extract input names from workflow YAML using stdlib regex."""
+    """Extract input names under 'inputs:' from workflow YAML.
+
+    Parses line-by-line tracking indentation level so parsing stops
+    when indentation returns to or drops below ``inputs:``, preventing
+    capture of sibling blocks like ``secrets:``.
+    """
+    inputs: list[str] = []
+    in_inputs = False
+    inputs_indent: int | None = None
+    target_indent: int | None = None
+
     with open(workflow_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    match = re.search(r"^[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content, re.MULTILINE)
-    if not match:
-        return []
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
 
-    inputs_block = match.group(1)
-    indent = None
-    for line in inputs_block.splitlines():
-        if line.strip():
             indent = len(line) - len(line.lstrip())
-            break
-    if indent is None:
-        return []
 
-    return re.findall(rf"^[ \t]{{{indent}}}([a-zA-Z0-9_-]+):", inputs_block, re.MULTILINE)
+            if stripped == "inputs:":
+                in_inputs = True
+                inputs_indent = indent
+                target_indent = None
+                continue
+
+            if in_inputs:
+                if indent <= inputs_indent:
+                    in_inputs = False
+                    continue
+
+                if target_indent is None:
+                    target_indent = indent
+
+                if indent == target_indent and ":" in stripped:
+                    key = stripped.split(":", 1)[0].strip()
+                    if key:
+                        inputs.append(key)
+
+    return inputs
 
 
 def check_action_docs_sync() -> bool:
