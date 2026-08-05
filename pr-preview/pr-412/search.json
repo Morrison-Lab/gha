@@ -1885,7 +1885,7 @@
     "href": "reference/antigravity-code-review.html#inputs",
     "title": "antigravity-code-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nmode\nstring\n'code-review'\nOperational mode: code-review, security-audit, or test-generation.\n\n\npr-number\nstring\n''\nPull request number to analyze.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the agent task prompt.\n\n\ntrigger-policy\nstring\n'any'\nEnforcement mode: any, on-push, or on-request.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\nmodel\nstring\n''\nModel override passed to the Antigravity SDK.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nmode\nstring\n'code-review'\nOperational mode: code-review, security-audit, or test-generation.\n\n\npr-number\nstring\n''\nPull request number to analyze (required for workflow_dispatch).\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the agent task prompt.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\nmodel\nstring\n''\nAntigravity / Gemini model override passed to the SDK (optional).\n\n\ntrigger-policy\nstring\n'any'\nEnforcement mode: any, on-push, or on-request.",
     "crumbs": [
       "Overview",
       "Reference",
