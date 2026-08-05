@@ -88,8 +88,7 @@ jobs:
           PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
         run: |
           set +e -uo pipefail
-          PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author)
-          if [[ $? -ne 0 ]]; then
+          if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author); then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status; failing closed."
             exit 1
@@ -113,7 +112,7 @@ jobs:
 
       - name: Run Antigravity Action
         if: success() && steps.dispatch-guard.outputs.blocked != 'true'
-        uses: Morrison-Lab/gha/antigravity-review@v2
+        uses: ./antigravity-review
         with:
           mode: ${{ inputs.mode }}
           pr-number: ${{ steps.resolve-pr.outputs.pr-num }}
