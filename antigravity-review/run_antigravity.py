@@ -173,11 +173,23 @@ async def run_antigravity_agent(prompt: str, system_instruction: str, model: str
         else CapabilitiesConfig()
     )
 
-    config = LocalAgentConfig(
-        system_instructions=system_instruction,
-        model=model,
-        capabilities=capabilities,
-    )
+    # Map common aliases to full Gemini API v1beta model identifiers
+    model_aliases = {
+        "gemini-1.5-flash": "gemini-1.5-flash-latest",
+        "gemini-1.5-pro": "gemini-1.5-pro-latest",
+        "gemini-2.0-flash": "gemini-1.5-flash-latest",
+        "gemini-2.5-flash": "gemini-1.5-flash-latest",
+    }
+    resolved_model = model_aliases.get(model, model) if model else None
+
+    config_kwargs = {
+        "system_instructions": system_instruction,
+        "capabilities": capabilities,
+    }
+    if resolved_model:
+        config_kwargs["model"] = resolved_model
+
+    config = LocalAgentConfig(**config_kwargs)
 
     max_retries = 3
     base_delay = 5
