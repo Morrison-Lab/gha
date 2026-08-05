@@ -29,25 +29,48 @@ def check_changelog_fragments() -> bool:
 
 
 def extract_workflow_inputs(workflow_path: str) -> list[str]:
-    """Extract input names from workflow YAML using stdlib regex."""
+    """Extract input names under 'inputs:' from workflow YAML.
+
+    Parses line-by-line tracking indentation level so parsing stops
+    when indentation returns to or drops below ``inputs:``, preventing
+    capture of sibling blocks like ``secrets:``.
+    """
+    inputs: list[str] = []
+    in_inputs = False
+    inputs_indent: int | None = None
+    target_indent: int | None = None
+
     with open(workflow_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    match = re.search(r"workflow_call:\s*\n[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content)
-    if not match:
-        match = re.search(r"^[ \t]*inputs:\s*\n((?:[ \t]*\n|[ \t]+.*\n)*)", content, re.MULTILINE)
-    if not match:
-        return []
+        for line in f:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
 
-    inputs_block = match.group(1)
-    indent = None
-    for line in inputs_block.splitlines():
-        if line.strip():
+            clean_line = stripped.split("#", 1)[0].strip()
+            if not clean_line:
+                continue
+
             indent = len(line) - len(line.lstrip())
-            break
-    if indent is None:
-        return []
 
-    return re.findall(rf"^[ \t]{{{indent}}}([a-zA-Z0-9_-]+):", inputs_block, re.MULTILINE)
+            if in_inputs and inputs_indent is not None and indent <= inputs_indent:
+                in_inputs = False
+
+            if clean_line == "inputs:":
+                in_inputs = True
+                inputs_indent = indent
+                target_indent = None
+                continue
+
+            if in_inputs:
+                if target_indent is None:
+                    target_indent = indent
+
+                if indent == target_indent and ":" in clean_line:
+                    key = clean_line.split(":", 1)[0].strip().strip("'\"")
+                    if key:
+                        inputs.append(key)
+
+    return inputs
 
 
 def check_action_docs_sync() -> bool:

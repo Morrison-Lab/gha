@@ -319,6 +319,27 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(len(comments), 1)
         self.assertNotIn("Overall this PR looks good.", comments[0]["body"])
 
+    def test_extract_inline_comments_decoupled_header_and_leading_slash(self):
+        """Verify header extraction works when introductory lines exist between heading and Location, and leading slashes are stripped."""
+        sample_report = (
+            "#### 1. Critical Bug\n"
+            "Introductory details about the problem.\n"
+            "**Location:** [/src/main.py:L10]\n"
+            "Body of finding 1.\n\n"
+            "#### 2. Minor Edge Case\n"
+            "**Location:** [utils/helper.py:L20]\n"
+            "Body of finding 2."
+        )
+        comments = run_antigravity.extract_inline_comments(sample_report)
+        self.assertEqual(len(comments), 2)
+        self.assertEqual(comments[0]["path"], "src/main.py")
+        self.assertIn("#### 1. Critical Bug", comments[0]["body"])
+        self.assertIn("Body of finding 1.", comments[0]["body"])
+        self.assertNotIn("#### 2. Minor Edge Case", comments[0]["body"])
+        self.assertEqual(comments[1]["path"], "utils/helper.py")
+        self.assertIn("#### 2. Minor Edge Case", comments[1]["body"])
+
+
     @patch("os.path.isfile")
     @patch("builtins.open", new_callable=MagicMock)
     def test_get_repo_instructions_and_build_full_prompt(self, mock_open, mock_isfile):

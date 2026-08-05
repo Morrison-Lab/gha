@@ -90,6 +90,63 @@ class TestPreflightCheck(unittest.TestCase):
             with patch("os.path.abspath", return_value=tmp_dir):
                 self.assertFalse(preflight_check.check_action_docs_sync())
 
+    def test_extract_workflow_inputs_ignores_secrets(self):
+        """Regression: secrets block at same depth must not be captured as inputs."""
+        sample_workflow = (
+            "name: Test Workflow\n"
+            "on:\n"
+            "  workflow_call:\n"
+            "    inputs:\n"
+            "      mode:\n"
+            "        type: string\n"
+            "      pr-number:\n"
+            "        type: string\n"
+            "    secrets:\n"
+            "      GEMINI_API_KEY:\n"
+            "        required: true\n"
+            "      SUBMODULES_TOKEN:\n"
+            "        required: false\n"
+        )
+        with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".yml") as f:
+            f.write(sample_workflow)
+            f_path = f.name
+
+        try:
+            inputs = preflight_check.extract_workflow_inputs(f_path)
+            self.assertEqual(inputs, ["mode", "pr-number"])
+            self.assertNotIn("GEMINI_API_KEY", inputs)
+            self.assertNotIn("SUBMODULES_TOKEN", inputs)
+        finally:
+            if os.path.exists(f_path):
+                os.remove(f_path)
+
+    def test_extract_workflow_inputs_handles_inline_comments_and_quotes(self):
+        """Verify extract_workflow_inputs strips inline comments and quotes."""
+        sample_workflow = (
+            "on:\n"
+            "  workflow_call:\n"
+            "    inputs: # inline comment\n"
+            "      'mode': # operational mode\n"
+            "        type: string\n"
+            "      \"pr-number\":\n"
+            "        type: string\n"
+        )
+        with tempfile.NamedTemporaryFile("w+", delete=False, suffix=".yml") as f:
+            f.write(sample_workflow)
+            f_path = f.name
+
+        try:
+            inputs = preflight_check.extract_workflow_inputs(f_path)
+            self.assertEqual(inputs, ["mode", "pr-number"])
+        finally:
+            if os.path.exists(f_path):
+                os.remove(f_path)
+
+    def test_preflight_checks_pass(self):
+        """Integration test: verify preflight checks pass against the real repo."""
+        self.assertTrue(preflight_check.check_changelog_fragments())
+        self.assertTrue(preflight_check.check_action_docs_sync())
+
 
 if __name__ == "__main__":
     unittest.main()
