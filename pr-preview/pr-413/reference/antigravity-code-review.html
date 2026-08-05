@@ -600,19 +600,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>pr-number</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Pull request number to analyze.</td>
-</tr>
-<tr class="odd">
-<td><code>gemini-api-key</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Gemini / Antigravity API key for authentication.</td>
-</tr>
-<tr class="even">
-<td><code>model</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Model override passed to the Antigravity SDK.</td>
+<td>Pull request number to analyze (required for <code>workflow_dispatch</code>).</td>
 </tr>
 <tr class="odd">
 <td><code>prompt-addendum</code></td>
@@ -621,34 +609,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Extra prompt instructions appended to the agent task prompt.</td>
 </tr>
 <tr class="even">
-<td><code>python-version</code></td>
-<td>string</td>
-<td><code>'3.11'</code></td>
-<td>Python version to set up for executing the SDK script.</td>
-</tr>
-<tr class="odd">
-<td><code>trigger-policy</code></td>
-<td>string</td>
-<td><code>'any'</code></td>
-<td>Enforcement mode: <code>any</code>, <code>on-push</code>, or <code>on-request</code>.</td>
-</tr>
-<tr class="even">
-<td><code>dry-run</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Run in dry-run mode (validate prompt without calling API).</td>
-</tr>
-<tr class="odd">
-<td><code>post-comment</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Whether to post the agent analysis as a comment/review on the PR.</td>
-</tr>
-<tr class="even">
 <td><code>checkout-submodules</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Check out git submodules.</td>
+</tr>
+<tr class="odd">
+<td><code>model</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Antigravity / Gemini model override passed to the SDK (optional).</td>
+</tr>
+<tr class="even">
+<td><code>trigger-policy</code></td>
+<td>string</td>
+<td><code>'any'</code></td>
+<td>Enforcement mode: <code>any</code>, <code>on-push</code>, or <code>on-request</code>.</td>
 </tr>
 </tbody>
 </table>
