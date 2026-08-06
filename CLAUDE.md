@@ -1597,8 +1597,10 @@ slightly wrong:
 - **Prefer the run's own artifacts to your inference about them.**
   Which repositories moved in the org transfer was answerable from the lychee
   run's redirect and error lists -- `qwt`, `rme`, and `rpt` appeared in
-  neither, so they resolved cleanly -- rather than from reasoning about
-  which ones "probably" moved.
+  neither at the time, so they resolved cleanly then -- rather than from
+  reasoning about which ones "probably" moved.
+  (`rpt` has since moved to `Morrison-Lab/rpt`; the point here is the method,
+  and the list is a snapshot of what that specific run found.)
 
 **A wall of access failures is not evidence that something cannot be
 investigated.** In the same work, `get_check_run` returned `301`, the
