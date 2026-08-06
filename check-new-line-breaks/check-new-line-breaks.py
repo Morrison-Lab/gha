@@ -49,25 +49,99 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 # ── Sentence splitting ──────────────────────────────────────────────────────
 
 # Abbreviations whose trailing period should NOT trigger a sentence split.
+#
+# These are protected on BOTH sentence-break branches, in their conventional
+# case only (`No.`, `Dr.`, `Sec.`, `Fig.`, `e.g.`): a title or label
+# abbreviation is essentially never a sentence end, whatever follows it.
+# `_ABBREV_RE` runs once, up front, so it reaches both branches -- which is why
+# the lowercase forms are handled separately below rather than added here.
 _ABBREVS = [
     "e.g", "i.e", "vs", "etc", "Dr", "Mr", "Mrs", "Ms", "Jr", "Sr",
     "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "No", "approx",
     "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept",
     "al",  # et al.
 ]
-_ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.")
+
+
+def _abbrev_pattern(forms) -> str:
+    """A regex source matching any of `forms` as a whole token before a period."""
+    return r"(?<!\w)(" + "|".join(re.escape(a) for a in forms) + r")\."
+
+
+_ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
+
+# Lowercase abbreviation forms, protected ONLY on the lowercase-follower branch
+# (#389) -- applied *after* the uppercase branch has already run (see
+# split_sentences). This is the fix for a cross-branch leak caught over three
+# review rounds: the disambiguator for a lowercase unit abbreviation is the
+# follower's case. `It took 300 ms. The next run ...` (uppercase follower) is a
+# genuine sentence boundary and must still split, so this protection must not
+# reach the uppercase branch; but `set it to 3 sec. then wait` (lowercase
+# follower) is mid-sentence and must not split. Scoping the lowercase forms to
+# the lowercase branch is exactly that distinction. `no` is excluded (a
+# lowercase `no.` is the English word and should split on either branch), and
+# `min`/`hr`/`hrs` are added because bare time units are common in this repo's
+# timeout/duration prose and would otherwise false-split before a lowercase
+# word. The list is curated, not exhaustive: since the lowercase branch's
+# lookbehind only inspects the two trailing characters, ANY unlisted
+# abbreviation ending in two lowercase letters -- regardless of its overall case
+# (`Inc.`, `Prof.`, `Mon.`, `Jan.`) -- can still false-split before a lowercase
+# word, which is a disclosed limitation rather than a hard failure on this
+# warn-only check.
+_ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
+_ABBREV_LOWER_RE = re.compile(
+    _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
+)
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
 # emphasis (`**Some claim.** Explanation...`, or the `__claim.__` / `_claim._`
 # underscore forms) is recognized: the emphasis close sits between the period
 # and the whitespace and would otherwise defeat the boundary. A lowercase word
-# after the close still blocks the split via the uppercase-or-markup lookahead,
-# so mid-sentence emphasis is left intact. Measured 2026-08-03, the two
-# characters are worth their place in the class: they raise the multi-sentence
-# lines detected across Morrison-Lab/ai-config's Markdown from 2837 to 3398
-# (+19.8%), and across this repo's from 719 to 784 (+9.0%).
+# after the close still blocks this branch's split via the uppercase-or-markup
+# lookahead, so mid-sentence emphasis is left intact. Measured 2026-08-03, the
+# two characters are worth their place in the class: they raise the
+# multi-sentence lines detected across Morrison-Lab/ai-config's Markdown from
+# 2837 to 3398 (+19.8%), and across this repo's from 719 to 784 (+9.0%).
 _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
+
+# Lowercase-follower boundary (#389). Our prose routinely opens a sentence with
+# a bare lowercase package or repo name (`renv`, `serodynamics`, `dplyr`), which
+# the uppercase-or-markup lookahead above refuses -- so the check was silent on
+# exactly the multi-sentence lines we most often write. This branch accepts a
+# following lowercase letter. This comment is the map future widenings will be
+# read against, so each attribution below was mutation-verified (remove a guard,
+# check which case starts splitting) rather than reasoned about -- three review
+# rounds on this PR corrected earlier guesses here.
+#
+# Two structural guards keep it from over-splitting:
+#
+#   1. The `(?<=[a-z][a-z])` lookbehind requires two lowercase letters
+#      immediately before the terminal punctuation. It is the guard that refuses
+#      a single-letter initial (`U.S.`, the `.` follows `S`), a dotted
+#      abbreviation (`a.m.`, the `.` follows `.m`), a single-letter token
+#      (`option a.`), a digit- or version-ending token (`plan9.`; and `v2.1.` at
+#      a clause end, where the `.` DOES have a following space so only the
+#      lookbehind blocks it), AND an ellipsis (`wait... foo`): the only dot with
+#      a following space is the third, and the two characters before it are both
+#      dots, so the lookbehind fails there.
+#   2. The terminal `[.!?]` must be *immediately* followed by whitespace -- there
+#      is no closing-character class here (unlike the uppercase branch). A
+#      character wedged between the punctuation and the space blocks the split,
+#      which is what keeps mid-sentence emphasis (`**critical.** yet`) and a
+#      quoted or parenthesized fragment (`he said "stop." then`) on one line.
+#      A closing class was tried here and removed. The uppercase branch safely
+#      carries emphasis and quote closers -- #397 *added* `*`/`_` to its class so
+#      a `**bold.**` sentence end is caught -- because its uppercase-follower
+#      lookahead still refuses a mid-construct lowercase continuation. This
+#      branch's follower is lowercase, so any closer would fire on exactly those
+#      mid-construct cases (`"stop." then`, `**critical.** yet`) and re-introduce
+#      an over-split; hence no closer class here.
+#
+# Separately from both guards, an *internal* decimal or version dot (`0.9012`,
+# the `.` in `v2.1` between the digits) never even reaches a split attempt: it
+# has no following space, so the pre-existing `\s+` requirement fails there.
+_SENT_BREAK_LOWER_RE = re.compile(r"(?<=[a-z][a-z])([.!?])\s+(?=[a-z])")
 
 _PLACEHOLDER = "\x00"
 
@@ -85,6 +159,11 @@ def split_sentences(text: str) -> List[str]:
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
+    # Protect lowercase abbreviation forms only now, after the uppercase branch
+    # has run, so they suppress the lowercase branch below without stopping the
+    # uppercase branch from splitting a genuine `... ms. The next ...` boundary.
+    protected = _ABBREV_LOWER_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
+    protected = _SENT_BREAK_LOWER_RE.sub(lambda m: m.group(1) + "\n", protected)
     parts = [
         p.replace(_PLACEHOLDER, ".").replace("\x01", "!").replace("\x02", "?").strip()
         for p in protected.split("\n")

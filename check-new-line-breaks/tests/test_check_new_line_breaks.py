@@ -99,6 +99,176 @@ def test_bold_close_line_is_flagged_end_to_end():
     assert flagged == "sentence"
 
 
+# ── lowercase-opening second sentence (#389) ─────────────────────────────────
+
+def test_lowercase_sentence_start_is_split():
+    """A sentence opening with a bare lowercase identifier is a boundary.
+
+    Our prose routinely starts a sentence with a package or repo name
+    (`renv`, `serodynamics`); the check was silent on exactly those lines.
+    """
+    assert nlb.split_sentences(
+        "agent disabled in both. serodynamics needed the /review path built."
+    ) == [
+        "agent disabled in both.",
+        "serodynamics needed the /review path built.",
+    ]
+    assert nlb.split_sentences("it went red. renv restored the lockfile.") == [
+        "it went red.",
+        "renv restored the lockfile.",
+    ]
+
+
+def test_lowercase_start_line_is_flagged_end_to_end():
+    """The detector, not just the splitter: a lowercase-continuation line reports."""
+    flagged = nlb.classify_line("it went red. renv restored the lockfile.")
+    assert flagged == "sentence"
+
+
+# These first two pin the pre-existing `\s+`-after-terminator requirement (a
+# decimal's `.` sits between digits with no following space), NOT the new
+# lowercase-branch lookbehind -- deleting the lookbehind leaves both passing.
+# `test_digit_ending_token_...` below is the one that exercises the lookbehind
+# for a numeric-looking token.
+def test_decimal_between_digits_does_not_split():
+    text = "The lockfile drifted to 0.9012 in the diff."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_version_between_digits_does_not_split():
+    text = "We pinned it to v2.1 for the release."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_version_at_clause_end_does_not_split():
+    """`v2.1. renv`: unlike the internal-dot cases above, the trailing `.` here
+    IS followed by whitespace, so `\\s+` matches -- the lookbehind is the sole
+    guard (the char before the `.` is a digit). Mutation-verified: removing the
+    lookbehind turns this into a false split."""
+    text = "We shipped v2.1. renv restored it after."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_ellipsis_before_lowercase_does_not_split():
+    """`wait... foo`: the only dot with a following space is the third, and the
+    two characters immediately before it are both dots, so the `(?<=[a-z][a-z])`
+    lookbehind fails there. The lookbehind -- not the immediate-whitespace guard
+    -- is what blocks this one (mutation-verified: removing the lookbehind lets
+    `wait...` split off)."""
+    text = "wait... foo comes next here now."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_digit_ending_token_before_lowercase_does_not_split():
+    """`plan9. really`: a token ending in a digit IS followed by whitespace and a
+    lowercase word, so `\\s+` matches; the two-lowercase-letter lookbehind
+    (`n9` is not two letters) is what refuses this split. Deleting the lookbehind
+    turns this into a false split."""
+    text = "It ships as plan9. really soon now here."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_single_letter_initial_before_lowercase_does_not_split():
+    """`U.S. economy`: the terminal period follows a single uppercase letter,
+    so the two-lowercase-letter lookbehind refuses the split."""
+    text = "It is used across the U.S. economy at large."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_dotted_abbreviation_before_lowercase_does_not_split():
+    """`a.m.`: the terminal period follows `.m`, not two lowercase letters."""
+    text = "The build starts at 9 a.m. sharp every day."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_single_letter_word_before_lowercase_does_not_split():
+    """A one-letter token like `a.` is not a genuine word ending."""
+    text = "Option a. really works well in practice here."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_quoted_fragment_before_lowercase_does_not_split():
+    """A mid-sentence quoted or parenthesized fragment ending in `.` followed by
+    a lowercase word must NOT split: the lowercase branch has no closing-char
+    class, so the `"` between the `.` and the space blocks `\\s+`. (The uppercase
+    branch safely carries closers -- #397 added `*`/`_` to catch `**bold.**` --
+    because its uppercase-follower lookahead refuses this mid-construct case; a
+    lowercase follower does not, so a closer here would over-split.)"""
+    text = 'He said "stop that." and then walked away.'
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_lowercase_abbreviation_before_lowercase_does_not_split():
+    """A lowercase `sec.` before a lowercase word is mid-sentence, so it must not
+    split. Its lowercase form is protected only on the lowercase branch (via
+    `_ABBREV_LOWER_RE`, applied after the uppercase branch runs)."""
+    text = "Set the timeout to 3 sec. then wait a while."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_lowercase_abbreviation_before_uppercase_does_split():
+    """The mirror of the previous test: the same lowercase unit abbreviation
+    before an UPPERCASE follower IS a genuine sentence boundary and must split.
+    This is why the lowercase-form protection is scoped to the lowercase branch
+    only -- registering it on both branches (an earlier attempt) silently
+    un-split `... ms. The next ...`. Regression guard for round-3 finding."""
+    assert nlb.split_sentences(
+        "It took 300 ms. The next run was faster."
+    ) == ["It took 300 ms.", "The next run was faster."]
+    assert nlb.split_sentences(
+        "Refer to sec. The details are listed there."
+    ) == ["Refer to sec.", "The details are listed there."]
+
+
+def test_added_time_unit_before_lowercase_does_not_split():
+    """`min` is added to the lowercase-only list because bare time units are
+    common in this repo's timeout/duration prose; it must not false-split
+    before a lowercase word."""
+    text = "Set the retry backoff to 5 min. and then give up."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_incidental_lowercase_abbrev_before_lowercase_does_not_split():
+    """`ms.` lands in the lowercase-only list incidentally -- as the lowercased
+    form of the `Ms` title abbreviation, not a deliberate unit addition like
+    `min` -- but it falls in the same duration prose, so pin its
+    lowercase-follower behavior. (Its uppercase-follower case, which must still
+    split, is covered by test_lowercase_abbreviation_before_uppercase_does_split
+    above.)"""
+    text = "It took 300 ms. then it retried the request."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_no_as_a_word_before_lowercase_does_split():
+    """A lowercase `no.` is the English word ending a sentence, so it should
+    split: `No` is protected only in its listed (title) case, not lowercase."""
+    assert nlb.split_sentences("The answer is no. renv handles it fine.") == [
+        "The answer is no.",
+        "renv handles it fine.",
+    ]
+
+
+def test_number_abbreviation_before_uppercase_does_not_split():
+    """`Item No. Three`: `No.` (the "number" abbreviation) must stay protected on
+    the pre-existing uppercase branch. `_ABBREV_RE` runs before both branches, so
+    the abbreviation list has to keep `No` for this case even though a lowercase
+    `no.` splits (previous test). Regression guard for round-2 finding."""
+    text = "Item No. Three is the failing one here."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_all_caps_abbreviation_lookalike_still_splits():
+    """An ALL-CAPS abbreviation-lookalike (`SEC.`) is deliberately not protected,
+    so a genuine sentence boundary after it still splits -- a blanket IGNORECASE
+    would have added a false negative here."""
+    assert nlb.split_sentences(
+        "It was filed with the SEC. The case dragged on for years."
+    ) == [
+        "It was filed with the SEC.",
+        "The case dragged on for years.",
+    ]
+
+
 # ── prose_line_numbers ───────────────────────────────────────────────────────
 
 def test_frontmatter_and_heading_excluded():

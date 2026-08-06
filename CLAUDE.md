@@ -722,20 +722,70 @@ the 561 lines `ai-config` gained are about one in six of what the fixed check
 finds (561/3398 = 16.5%).
 Those two denominators are easy to mix up, and only the second answers "how much
 was the blind spot hiding".
-Note also that gha#389 leaves the lookahead half still missing sentences, so
-3398 is itself an undercount and the true hidden share is lower still --- which
-is an argument about the size of the number, not about whether it is worth
-fixing.
-gha#389 is the lookahead requiring ``[A-Z"'`*\[]``, which misses a sentence
-starting with a lowercase identifier.
-So when either half is widened, ask what the *other* half now blocks before
-concluding the construction is covered -- and pair the widening with a
-negative case, since the two halves are also each other's guard rails
-(#397's `*` is safe to add precisely because the lookahead still refuses a
-following lowercase word).
+Note also that at that measurement the lookahead half still missed a whole
+class of sentence, so 3398 was itself an undercount and the true hidden share
+was lower still --- which is an argument about the size of the number, not
+about whether it is worth fixing.
+That gap was gha#389: the lookahead required ``[A-Z"'`*\[]`` and so missed a
+sentence opening with a bare lowercase identifier (`renv restored the
+lockfile.`), the exact shape our prose writes most.
+gha#425 closed it with a second branch, `_SENT_BREAK_LOWER_RE`, that accepts a
+lowercase follower under two structural guards that share the work rather than
+one lookbehind carrying all of it.
+Get the division of labour exactly right, because this block is the map future
+widenings are read against, and three review rounds on gha#425 corrected earlier
+guesses here --- each attribution below is what a mutation test (remove a guard,
+see which case starts splitting) actually shows, not what reads plausibly.
+The `(?<=[a-z][a-z])` lookbehind requires two lowercase letters immediately
+before the terminal punctuation.
+It is the guard that refuses a single-letter initial (`U.S.`, the `.` follows
+`S`), a dotted abbreviation (`a.m.`, the `.` follows `.m`), a one-letter token
+(`option a.`), a digit- or version-ending token (`plan9.`, and `v2.1.` at a
+clause end where the `.` does have a following space), *and* the ellipsis
+(`wait... foo`): the only dot with a following space is the third, and the two
+characters before it are both dots, so the lookbehind fails there.
+The branch also has no closing-character class at all, so the terminal `[.!?]`
+must be immediately followed by whitespace --- which is what keeps mid-sentence
+emphasis (`**critical.** yet`) and a quoted or parenthesized fragment (`he said
+"stop." then`) on one line.
+Separately from both guards, an *internal* decimal or version dot (the `.` in
+`0.9012` or `v2.1` between the digits) never reaches a split attempt at all,
+since it has no following space for the `\s+` to match.
+A closing class was tried on the lowercase branch and removed.
+The uppercase branch safely carries emphasis and quote closers --- #397 *added*
+`*`/`_` to its class so a `**bold.**` sentence end is caught rather than
+swallowed --- because its uppercase-follower lookahead still refuses a
+mid-construct lowercase continuation.
+The lowercase branch's follower is lowercase, so any closer would fire on
+exactly those mid-construct cases (`"stop." then`, `**critical.** yet`) and
+re-introduce an over-split, which is why it has no closing class at all.
+So when either branch is widened, ask what the *other* guards now block before
+concluding the construction is covered --- and pair the widening with a
+negative case, since the guards are each other's backstops.
+The lowercase branch also made the pre-existing abbreviation list reachable for
+lowercase forms (`3 sec. then`), and getting that right took three review
+rounds because the abbreviation protection reaches both branches by default:
+`_ABBREV_RE` runs once, up front.
+The trap each round hit is that an abbreviation edit made for one branch
+silently regresses the other --- dropping `No` un-split `Item No. Three` on the
+uppercase branch, then registering every lowercase form un-split
+`It took 300 ms. The next ...` on it too.
+The disambiguator is the follower's case: a lowercase unit before a lowercase
+word (`3 sec. then`) is mid-sentence, but before an uppercase word
+(`300 ms. The`) it is a genuine boundary that must still split.
+So gha#425 protects the conventional-case abbreviations on both branches
+(`No.`, `Sec.`, unchanged from before), and protects the lowercase forms in a
+*second* pass (`_ABBREV_LOWER_RE`) applied only after the uppercase branch has
+run --- so the lowercase forms suppress the lowercase branch without ever
+reaching the uppercase one.
+That second list excludes `no` (a lowercase `no.` is the word, and should
+split) and adds `min`/`hr`/`hrs`; it is curated rather than exhaustive, so an
+unlisted lowercase abbreviation before a lowercase word can still false-split
+on this warn-only check.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
-half of, so a fix to either is owed to the other.
+half of, so a fix to either is owed to the other (porting gha#425's fix there
+is tracked in Morrison-Lab/ai-config#1212).
 
 `check-secrets/tests/test-build-config.sh` is a shell suite over
 `build-gitleaks-config.sh`, the script that turns the `paths-ignore`,
