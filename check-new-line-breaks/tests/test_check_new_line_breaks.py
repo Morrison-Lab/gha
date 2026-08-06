@@ -190,8 +190,10 @@ def test_single_letter_word_before_lowercase_does_not_split():
 def test_quoted_fragment_before_lowercase_does_not_split():
     """A mid-sentence quoted or parenthesized fragment ending in `.` followed by
     a lowercase word must NOT split: the lowercase branch has no closing-char
-    class, so the `"` between the `.` and the space blocks `\\s+`. (A closing
-    class here re-opened exactly the over-split #397 closed.)"""
+    class, so the `"` between the `.` and the space blocks `\\s+`. (The uppercase
+    branch safely carries closers -- #397 added `*`/`_` to catch `**bold.**` --
+    because its uppercase-follower lookahead refuses this mid-construct case; a
+    lowercase follower does not, so a closer here would over-split.)"""
     text = 'He said "stop that." and then walked away.'
     assert nlb.split_sentences(text) == [text]
 

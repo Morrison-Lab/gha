@@ -751,9 +751,14 @@ emphasis (`**critical.** yet`) and a quoted or parenthesized fragment (`he said
 Separately from both guards, an *internal* decimal or version dot (the `.` in
 `0.9012` or `v2.1` between the digits) never reaches a split attempt at all,
 since it has no following space for the `\s+` to match.
-A closing class was tried first and removed: it re-opened exactly the
-over-split that dropping `*`/`_` from the uppercase branch (#397) was meant to
-close, just via `"`/`'`/`)`/`]` instead of the emphasis markers.
+A closing class was tried on the lowercase branch and removed.
+The uppercase branch safely carries emphasis and quote closers --- #397 *added*
+`*`/`_` to its class so a `**bold.**` sentence end is caught rather than
+swallowed --- because its uppercase-follower lookahead still refuses a
+mid-construct lowercase continuation.
+The lowercase branch's follower is lowercase, so any closer would fire on
+exactly those mid-construct cases (`"stop." then`, `**critical.** yet`) and
+re-introduce an over-split, which is why it has no closing class at all.
 So when either branch is widened, ask what the *other* guards now block before
 concluding the construction is covered --- and pair the widening with a
 negative case, since the guards are each other's backstops.

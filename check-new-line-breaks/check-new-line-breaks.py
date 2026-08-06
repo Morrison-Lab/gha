@@ -125,9 +125,13 @@ _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
 #      character wedged between the punctuation and the space blocks the split,
 #      which is what keeps mid-sentence emphasis (`**critical.** yet`) and a
 #      quoted or parenthesized fragment (`he said "stop." then`) on one line.
-#      A closing class was tried and removed: it re-opened exactly the over-split
-#      that dropping `*`/`_` from the uppercase branch (#397) was meant to close,
-#      just via `"`/`'`/`)`/`]` instead of the emphasis markers.
+#      A closing class was tried here and removed. The uppercase branch safely
+#      carries emphasis and quote closers -- #397 *added* `*`/`_` to its class so
+#      a `**bold.**` sentence end is caught -- because its uppercase-follower
+#      lookahead still refuses a mid-construct lowercase continuation. This
+#      branch's follower is lowercase, so any closer would fire on exactly those
+#      mid-construct cases (`"stop." then`, `**critical.** yet`) and re-introduce
+#      an over-split; hence no closer class here.
 #
 # Separately from both guards, an *internal* decimal or version dot (`0.9012`,
 # the `.` in `v2.1` between the digits) never even reaches a split attempt: it
