@@ -20,8 +20,10 @@
 
   Repositories that did not move -- `qwt`, `rme` -- are untouched.
   (`rpt` was in that list when this entry was written but has since moved to
-  `Morrison-Lab/rpt`; the `Ported from d-morrison/rpt` provenance notes
-  elsewhere are historical names rather than links this sweep retargeted.)
+  `Morrison-Lab/rpt`; the `Ported from d-morrison/rpt` provenance references
+  elsewhere -- nearly all plain names, plus one still-navigable link on the
+  altdoc reference page -- are historical and were not retargeted by this
+  sweep.)
   The plugin-marketplace identifiers (`ai-config@d-morrison` and the
   `d-morrison/ai-config.git` clone URL) were left alone here too:
   they are names rather than URLs, and they still matched the workflows that
