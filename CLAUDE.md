@@ -1513,6 +1513,8 @@ override on the action, which would skip the OIDC exchange and its content
 check -- but that is untested: PR #420 only showed that bypassing `self_mod`
 *without* such an override is counterproductive (it hits this validation skip),
 and no `github_token` input is wired up in `run-claude-review-attempt` today.
+The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
+section reaches the same OIDC content-validation from the testing angle.
 
 ## Never just theorize -- investigate empirically
 
@@ -1606,7 +1608,8 @@ reddens the check with no verdict.
 surfaces as a fast `no execution output`, not a literal `401`.)
 Fall back to the manual/offline path in
 [A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
-or give the action a `github_token` override that skips the OIDC exchange.
+or give the action a `github_token` override that skips the OIDC exchange
+(untested -- see the workflow-validation-skip note's `github_token` caveat above).
 
 ## Code review guidelines
 
