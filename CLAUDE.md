@@ -1464,10 +1464,14 @@ with no trigger gating, so an `@claude review` dispatch trips it exactly as an
 automatic run does -- the gha#286 example above is that case, the guard firing
 on a dispatched review (green job, every post-guard step `skipped`).
 So today a caller-editing PR just gets that silent skip.
-Were the guard bypassed instead -- as gha#417 proposed, and this repo rejected
-for the reason below -- the review would run and hit
-`anthropics/claude-code-action`'s own content validation, which checks that the
-running workflow matches the default branch and gracefully skips on a mismatch.
+The review can still run and hit the action's OWN content validation by two
+paths. One is a deliberate bypass -- as gha#417 proposed and this repo rejected,
+for the reason below. The other is live and undeliberate: the guard sets
+`self_mod` from `files=$(gh api .../files ... || true)` in
+`claude-code-review.yml`, so a transient `gh api` failure leaves `files` empty,
+`self_mod=false`, and the review proceeds even on a PR that does edit
+`claude-review.yml`. Either way the action's content validation then checks the
+running workflow against the default branch and gracefully skips on a mismatch.
 The "Run Claude Code Review" step then reads:
 
 ```text
@@ -1484,8 +1488,8 @@ reports `Claude review produced no execution output -- treating as a failed
 review`, and `claude-review` + `require-review` go RED with no verdict.
 That is worse than the silent skip, which is why gha#417 was abandoned.
 
-Diagnostic tells, if the guard is ever bypassed (e.g. by the `github_token`
-fix below), so this is not misdiagnosed as a `401`:
+Diagnostic tells for that validation skip, so it is not misdiagnosed as a
+`401`:
 
 - The "Run Claude Code Review" STEP finishes in seconds (~4-11s measured)
   while writing no execution output; total job time is not a reliable tell,
@@ -1501,10 +1505,11 @@ fix below), so this is not misdiagnosed as a `401`:
   of trigger type, so bypassing the self-review skip on a dispatched
   `@claude review` does NOT help -- it just reddens the check with no verdict.
 
-The real fix for a PR editing the review workflow is a `github_token`
-override on the action, which skips the OIDC exchange and its content check.
-(Proven empirically via throwaway test PR #420, now closed, on 2026-08-05 --
-the test that showed gha#417's bypass to be counterproductive.)
+The likely fix for a PR editing the review workflow is a `github_token`
+override on the action, which would skip the OIDC exchange and its content
+check -- but that is untested: PR #420 only showed that bypassing `self_mod`
+*without* such an override is counterproductive (it hits this validation skip),
+and no `github_token` input is wired up in `run-claude-review-attempt` today.
 
 ## Never just theorize -- investigate empirically
 

@@ -12,4 +12,5 @@
   `Workflow validation failed` / `Exiting due to workflow validation skip`
   rather than a literal `401` (so it is read from the step's raw output, not
   grepped for a guessed string) -- and that a `github_token` override on the
-  action is the real fix (proven via throwaway test PR #420).
+  action is the likely (untested) fix, since PR #420 only showed that bypassing
+  the guard without one is counterproductive.
