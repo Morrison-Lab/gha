@@ -1453,6 +1453,67 @@ silently skipped -- caught only by noticing the job finished in 4 seconds.
 Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
+**That guard is the workflow-level skip; the action carries its OWN
+workflow-content validation, which would fire if the guard were bypassed --
+and it does not print a literal `401`.**
+The section above skips every step of the review job when the PR edits the
+caller workflow `claude-review.yml` (the job itself still runs and reports
+`success`, green -- not a gray skipped job).
+That `self_mod` skip fires on every such run, dispatched or automatic alike:
+`PR_NUMBER` resolves via `github.event.pull_request.number || inputs.pr-number`
+with no trigger gating, so an `@claude review` dispatch trips it exactly as an
+automatic run does -- the gha#286 example above is that case, the guard firing
+on a dispatched review (green job, every post-guard step `skipped`).
+So today a caller-editing PR just gets that silent skip.
+The review can still run and hit the action's OWN content validation by two
+paths.
+One is a deliberate bypass -- as gha#417 proposed and this repo rejected.
+The other is live and undeliberate: the guard sets `self_mod` from
+`files=$(gh api .../files ... || true)` in `claude-code-review.yml`, so a
+transient `gh api` failure leaves `files` empty, `self_mod=false`, and the
+review proceeds even on a PR that does edit `claude-review.yml`.
+Either way the action's content validation then checks the running workflow
+against the default branch and gracefully skips on a mismatch.
+The "Run Claude Code Review" step then reads:
+
+```text
+Exchanging OIDC token for app token...
+##[warning]Skipping action due to workflow validation: Workflow validation
+failed. The workflow file must exist and have identical content to the
+version on the repository's default branch...
+Exiting due to workflow validation skip
+```
+
+The action STEP reports `outcome=success` (it "gracefully skips"), runs only
+~4-11s, and writes NO execution output -- so `check-review-execution.sh`
+reports `Claude review produced no execution output -- treating as a failed
+review`, and `claude-review` + `require-review` go RED with no verdict.
+That is worse than the silent skip, which is why gha#417 was abandoned.
+
+Diagnostic tells for that validation skip, so it is not misdiagnosed as a
+`401`:
+
+- The "Run Claude Code Review" STEP finishes in seconds (~4-11s measured)
+  while writing no execution output; total job time is not a reliable tell,
+  since checkout, submodules, and package installs run first and can dominate.
+- Grepping the log for `401` finds nothing -- the auth failure the
+  parenthetical above calls "401s" does not surface as a literal `401`
+  string; grep for `workflow validation` / `Exiting due to workflow
+  validation skip`, or just READ the "Run Claude Code Review" step's own
+  output rather than grepping for a guessed string (per
+  [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
+- The validation keys on workflow CONTENT vs. the default branch, independent
+  of trigger type, so bypassing the self-review skip on a dispatched
+  `@claude review` does NOT help -- it just reddens the check with no verdict.
+
+The likely fix for a PR editing the review workflow is a `github_token`
+override on the action, which would skip the OIDC exchange and its content
+check -- but that is untested: PR #420 only showed that bypassing `self_mod`
+*without* such an override is counterproductive (it hits this validation skip),
+and no `github_token` input is wired up in `run-claude-review-attempt` today.
+The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
+section reaches the same OIDC content-validation from the testing angle.
+
 ## Never just theorize -- investigate empirically
 
 A hypothesis that is cheap to test must be tested before it is asserted, and
@@ -1545,7 +1606,8 @@ reddens the check with no verdict.
 surfaces as a fast `no execution output`, not a literal `401`.)
 Fall back to the manual/offline path in
 [A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
-or give the action a `github_token` override that skips the OIDC exchange.
+or give the action a `github_token` override that skips the OIDC exchange
+(untested -- see the workflow-validation-skip note's `github_token` caveat above).
 
 ## Code review guidelines
 
