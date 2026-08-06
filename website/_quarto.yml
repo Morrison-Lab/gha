@@ -40,6 +40,11 @@ website:
           - reference/check-phi.qmd
           - reference/check-secrets.qmd
           - reference/check-links.qmd
+          - reference/lint-yaml.qmd
+          - reference/lint-markdown.qmd
+          - reference/check-new-line-breaks.qmd
+          - reference/lint-qmd.qmd
+          - reference/lint-changed-lines.qmd
           - reference/check-news.qmd
           - reference/test-coverage.qmd
           - reference/update-snapshots.qmd
@@ -48,6 +53,7 @@ website:
           - reference/report-failure.qmd
           - reference/preview.qmd
           - reference/preview-deploy.qmd
+          - reference/check-equation-renders.qmd
           - reference/cleanup-pr-previews.qmd
           - reference/claude.qmd
           - reference/claude-code-review.qmd
@@ -58,6 +64,8 @@ website:
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd
           - reference/sync-upstream.qmd
+          - reference/request-dependabot-review.qmd
+          - reference/altdoc-multiversion-docs.qmd
           - reference/bump-dev-version.qmd
           - reference/version-check.qmd
 
