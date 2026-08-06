@@ -99,6 +99,66 @@ def test_bold_close_line_is_flagged_end_to_end():
     assert flagged == "sentence"
 
 
+# ── lowercase-opening second sentence (#389) ─────────────────────────────────
+
+def test_lowercase_sentence_start_is_split():
+    """A sentence opening with a bare lowercase identifier is a boundary.
+
+    Our prose routinely starts a sentence with a package or repo name
+    (`renv`, `serodynamics`); the check was silent on exactly those lines.
+    """
+    assert nlb.split_sentences(
+        "agent disabled in both. serodynamics needed the /review path built."
+    ) == [
+        "agent disabled in both.",
+        "serodynamics needed the /review path built.",
+    ]
+    assert nlb.split_sentences("it went red. renv restored the lockfile.") == [
+        "it went red.",
+        "renv restored the lockfile.",
+    ]
+
+
+def test_lowercase_start_line_is_flagged_end_to_end():
+    """The detector, not just the splitter: a lowercase-continuation line reports."""
+    flagged = nlb.classify_line("it went red. renv restored the lockfile.")
+    assert flagged == "sentence"
+
+
+def test_decimal_does_not_split():
+    text = "The lockfile drifted to 0.9012 in the diff."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_version_string_does_not_split():
+    text = "We pinned it to v2.1 for the release."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_ellipsis_before_lowercase_does_not_split():
+    text = "wait... foo comes next here now."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_single_letter_initial_before_lowercase_does_not_split():
+    """`U.S. economy`: the terminal period follows a single uppercase letter,
+    so the two-lowercase-letter lookbehind refuses the split."""
+    text = "It is used across the U.S. economy at large."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_dotted_abbreviation_before_lowercase_does_not_split():
+    """`a.m.`: the terminal period follows `.m`, not two lowercase letters."""
+    text = "The build starts at 9 a.m. sharp every day."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_single_letter_word_before_lowercase_does_not_split():
+    """A one-letter token like `a.` is not a genuine word ending."""
+    text = "Option a. really works well in practice here."
+    assert nlb.split_sentences(text) == [text]
+
+
 # ── prose_line_numbers ───────────────────────────────────────────────────────
 
 def test_frontmatter_and_heading_excluded():

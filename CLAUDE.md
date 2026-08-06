@@ -722,17 +722,26 @@ the 561 lines `ai-config` gained are about one in six of what the fixed check
 finds (561/3398 = 16.5%).
 Those two denominators are easy to mix up, and only the second answers "how much
 was the blind spot hiding".
-Note also that gha#389 leaves the lookahead half still missing sentences, so
-3398 is itself an undercount and the true hidden share is lower still --- which
-is an argument about the size of the number, not about whether it is worth
-fixing.
-gha#389 is the lookahead requiring ``[A-Z"'`*\[]``, which misses a sentence
-starting with a lowercase identifier.
+Note also that at that measurement the lookahead half still missed a whole
+class of sentence, so 3398 was itself an undercount and the true hidden share
+was lower still --- which is an argument about the size of the number, not
+about whether it is worth fixing.
+That gap was gha#389: the lookahead required ``[A-Z"'`*\[]`` and so missed a
+sentence opening with a bare lowercase identifier (`renv restored the
+lockfile.`), the exact shape our prose writes most.
+gha#425 closed it with a second branch, `_SENT_BREAK_LOWER_RE`, that accepts a
+lowercase follower only when the previous sentence ends in two lowercase
+letters (`(?<=[a-z][a-z])`) --- the guard that refuses a single-letter initial
+(`U.S.`), a dotted abbreviation (`a.m.`), a decimal or version (`v2.1`), and an
+ellipsis (`wait... foo`) --- and whose closing class omits `*`/`_` so
+mid-sentence emphasis stays on one line.
 So when either half is widened, ask what the *other* half now blocks before
 concluding the construction is covered -- and pair the widening with a
 negative case, since the two halves are also each other's guard rails
 (#397's `*` is safe to add precisely because the lookahead still refuses a
-following lowercase word).
+following lowercase word, and #425's lowercase branch is safe precisely
+because its two-letter lookbehind refuses everything that is not a word
+ending).
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other.

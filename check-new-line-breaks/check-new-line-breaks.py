@@ -62,12 +62,28 @@ _ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) +
 # emphasis (`**Some claim.** Explanation...`, or the `__claim.__` / `_claim._`
 # underscore forms) is recognized: the emphasis close sits between the period
 # and the whitespace and would otherwise defeat the boundary. A lowercase word
-# after the close still blocks the split via the uppercase-or-markup lookahead,
-# so mid-sentence emphasis is left intact. Measured 2026-08-03, the two
-# characters are worth their place in the class: they raise the multi-sentence
-# lines detected across Morrison-Lab/ai-config's Markdown from 2837 to 3398
-# (+19.8%), and across this repo's from 719 to 784 (+9.0%).
+# after the close still blocks this branch's split via the uppercase-or-markup
+# lookahead, so mid-sentence emphasis is left intact. Measured 2026-08-03, the
+# two characters are worth their place in the class: they raise the
+# multi-sentence lines detected across Morrison-Lab/ai-config's Markdown from
+# 2837 to 3398 (+19.8%), and across this repo's from 719 to 784 (+9.0%).
 _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
+
+# Lowercase-follower boundary (#389). Our prose routinely opens a sentence with
+# a bare lowercase package or repo name (`renv`, `serodynamics`, `dplyr`), which
+# the uppercase-or-markup lookahead above refuses -- so the check was silent on
+# exactly the multi-sentence lines we most often write. This branch accepts a
+# following lowercase letter, but only when the previous sentence ends in a
+# genuine word: the `(?<=[a-z][a-z])` lookbehind requires two trailing lowercase
+# letters before the terminal punctuation. That two-char guard is what the
+# uppercase lookahead gave the other branch for free -- it refuses a
+# single-letter initial (`U.S.`), a dotted abbreviation (`a.m.`), a decimal or
+# version (`v2.1`), and an ellipsis (`wait... foo`), since none of those end in
+# two lowercase letters. The closing class here omits the emphasis markers
+# `*`/`_`, so mid-sentence emphasis (`It is **critical.** yet ...`) stays on one
+# line: widening the follower to lowercase would otherwise re-open the exact
+# over-split the emphasis-aware lookahead (#397) was added to prevent.
+_SENT_BREAK_LOWER_RE = re.compile(r"(?<=[a-z][a-z])([.!?][`\"')\]]*)\s+(?=[a-z])")
 
 _PLACEHOLDER = "\x00"
 
@@ -85,6 +101,7 @@ def split_sentences(text: str) -> List[str]:
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
+    protected = _SENT_BREAK_LOWER_RE.sub(lambda m: m.group(1) + "\n", protected)
     parts = [
         p.replace(_PLACEHOLDER, ".").replace("\x01", "!").replace("\x02", "?").strip()
         for p in protected.split("\n")
