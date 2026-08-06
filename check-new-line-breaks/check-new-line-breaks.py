@@ -75,9 +75,12 @@ _ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) +
 # lowercase `no.` is the English word and should split on either branch), and
 # `min`/`hr`/`hrs` are added because bare time units are common in this repo's
 # timeout/duration prose and would otherwise false-split before a lowercase
-# word. The list is curated, not exhaustive: an unlisted lowercase abbreviation
-# before a lowercase word (`5 Jan. and ...`) can still false-split, which is a
-# disclosed limitation rather than a hard failure on this warn-only check.
+# word. The list is curated, not exhaustive: since the lowercase branch's
+# lookbehind only inspects the two trailing characters, ANY unlisted
+# abbreviation ending in two lowercase letters -- regardless of its overall case
+# (`Inc.`, `Prof.`, `Mon.`, `Jan.`) -- can still false-split before a lowercase
+# word, which is a disclosed limitation rather than a hard failure on this
+# warn-only check.
 _ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
 _ABBREV_LOWER_RE = re.compile(
     r"(?<!\w)("
@@ -101,26 +104,34 @@ _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
 # a bare lowercase package or repo name (`renv`, `serodynamics`, `dplyr`), which
 # the uppercase-or-markup lookahead above refuses -- so the check was silent on
 # exactly the multi-sentence lines we most often write. This branch accepts a
-# following lowercase letter, but two structural guards keep it from over-
-# splitting:
+# following lowercase letter. This comment is the map future widenings will be
+# read against, so each attribution below was mutation-verified (remove a guard,
+# check which case starts splitting) rather than reasoned about -- three review
+# rounds on this PR corrected earlier guesses here.
 #
-#   1. The `(?<=[a-z][a-z])` lookbehind requires the previous sentence to end in
-#      two trailing lowercase letters -- a genuine word. This is what refuses a
-#      single-letter initial (`U.S.`, the `.` follows `S`), a dotted abbreviation
-#      (`a.m.`, the `.` follows `.m`), and a single-letter token (`option a.`).
+# Two structural guards keep it from over-splitting:
+#
+#   1. The `(?<=[a-z][a-z])` lookbehind requires two lowercase letters
+#      immediately before the terminal punctuation. It is the guard that refuses
+#      a single-letter initial (`U.S.`, the `.` follows `S`), a dotted
+#      abbreviation (`a.m.`, the `.` follows `.m`), a single-letter token
+#      (`option a.`), a digit- or version-ending token (`plan9.`; and `v2.1.` at
+#      a clause end, where the `.` DOES have a following space so only the
+#      lookbehind blocks it), AND an ellipsis (`wait... foo`): the only dot with
+#      a following space is the third, and the two characters before it are both
+#      dots, so the lookbehind fails there.
 #   2. The terminal `[.!?]` must be *immediately* followed by whitespace -- there
-#      is no closing-character class here (unlike the uppercase branch). Any
+#      is no closing-character class here (unlike the uppercase branch). A
 #      character wedged between the punctuation and the space blocks the split,
-#      which is what keeps mid-sentence emphasis (`**critical.** yet`), a quoted
-#      or parenthesized fragment (`he said "stop." then`), and an ellipsis
-#      (`wait... foo`, the first `.` is followed by more dots) all on one line.
+#      which is what keeps mid-sentence emphasis (`**critical.** yet`) and a
+#      quoted or parenthesized fragment (`he said "stop." then`) on one line.
 #      A closing class was tried and removed: it re-opened exactly the over-split
 #      that dropping `*`/`_` from the uppercase branch (#397) was meant to close,
 #      just via `"`/`'`/`)`/`]` instead of the emphasis markers.
 #
-# A decimal or version (`v2.1`, `0.9012`) is left intact by the pre-existing
-# `\s+` requirement rather than by either guard above: the `.` sits between
-# digits with no following space.
+# Separately from both guards, an *internal* decimal or version dot (`0.9012`,
+# the `.` in `v2.1` between the digits) never even reaches a split attempt: it
+# has no following space, so the pre-existing `\s+` requirement fails there.
 _SENT_BREAK_LOWER_RE = re.compile(r"(?<=[a-z][a-z])([.!?])\s+(?=[a-z])")
 
 _PLACEHOLDER = "\x00"

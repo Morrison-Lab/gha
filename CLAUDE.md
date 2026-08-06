@@ -732,20 +732,25 @@ lockfile.`), the exact shape our prose writes most.
 gha#425 closed it with a second branch, `_SENT_BREAK_LOWER_RE`, that accepts a
 lowercase follower under two structural guards that share the work rather than
 one lookbehind carrying all of it.
-The `(?<=[a-z][a-z])` lookbehind requires the previous sentence to end in two
-lowercase letters, which refuses a single-letter initial (`U.S.`, the `.`
-follows `S`), a dotted abbreviation (`a.m.`, the `.` follows `.m`), and a
-one-letter token (`option a.`).
+Get the division of labour exactly right, because this block is the map future
+widenings are read against, and three review rounds on gha#425 corrected earlier
+guesses here --- each attribution below is what a mutation test (remove a guard,
+see which case starts splitting) actually shows, not what reads plausibly.
+The `(?<=[a-z][a-z])` lookbehind requires two lowercase letters immediately
+before the terminal punctuation.
+It is the guard that refuses a single-letter initial (`U.S.`, the `.` follows
+`S`), a dotted abbreviation (`a.m.`, the `.` follows `.m`), a one-letter token
+(`option a.`), a digit- or version-ending token (`plan9.`, and `v2.1.` at a
+clause end where the `.` does have a following space), *and* the ellipsis
+(`wait... foo`): the only dot with a following space is the third, and the two
+characters before it are both dots, so the lookbehind fails there.
 The branch also has no closing-character class at all, so the terminal `[.!?]`
 must be immediately followed by whitespace --- which is what keeps mid-sentence
-emphasis (`**critical.** yet`), a quoted or parenthesized fragment (`he said
-"stop." then`), and an ellipsis (`wait... foo`, whose second dot blocks the
-`\s+`) on one line.
-Note the division of labour precisely, because the first draft misattributed
-it: the lookbehind is *not* what blocks the ellipsis (`wait` ends in two
-lowercase letters, so the lookbehind is satisfied there), and a decimal or
-version (`v2.1`) is blocked by neither guard but by the pre-existing `\s+`
-requirement, since its `.` sits between digits with no following space.
+emphasis (`**critical.** yet`) and a quoted or parenthesized fragment (`he said
+"stop." then`) on one line.
+Separately from both guards, an *internal* decimal or version dot (the `.` in
+`0.9012` or `v2.1` between the digits) never reaches a split attempt at all,
+since it has no following space for the `\s+` to match.
 A closing class was tried first and removed: it re-opened exactly the
 over-split that dropping `*`/`_` from the uppercase branch (#397) was meant to
 close, just via `"`/`'`/`)`/`]` instead of the emphasis markers.

@@ -140,11 +140,21 @@ def test_version_between_digits_does_not_split():
     assert nlb.split_sentences(text) == [text]
 
 
+def test_version_at_clause_end_does_not_split():
+    """`v2.1. renv`: unlike the internal-dot cases above, the trailing `.` here
+    IS followed by whitespace, so `\\s+` matches -- the lookbehind is the sole
+    guard (the char before the `.` is a digit). Mutation-verified: removing the
+    lookbehind turns this into a false split."""
+    text = "We shipped v2.1. renv restored it after."
+    assert nlb.split_sentences(text) == [text]
+
+
 def test_ellipsis_before_lowercase_does_not_split():
-    """`wait... foo`: the terminal `[.!?]` consumes one dot of `...`, leaving
-    `..` immediately after, so the `\\s+` requirement is never satisfied. The
-    lookbehind is satisfied here (`wait` ends in `it`); the immediate-whitespace
-    guard, not the lookbehind, is what blocks this one."""
+    """`wait... foo`: the only dot with a following space is the third, and the
+    two characters immediately before it are both dots, so the `(?<=[a-z][a-z])`
+    lookbehind fails there. The lookbehind -- not the immediate-whitespace guard
+    -- is what blocks this one (mutation-verified: removing the lookbehind lets
+    `wait...` split off)."""
     text = "wait... foo comes next here now."
     assert nlb.split_sentences(text) == [text]
 

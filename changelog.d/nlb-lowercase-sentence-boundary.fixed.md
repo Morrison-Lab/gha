@@ -7,11 +7,12 @@
   most, since it routinely opens a sentence with a lowercase package or repo
   name (`renv`, `serodynamics`).
   A second regex branch accepts a lowercase follower under two guards: a
-  two-lowercase-letter lookbehind that refuses a single-letter initial (`U.S.`)
-  or a dotted abbreviation (`a.m.`), and a no-closing-class requirement that the
-  terminal punctuation be immediately followed by whitespace, which leaves a
-  quoted or parenthesized fragment (`he said "stop." then`), mid-sentence
-  emphasis (`**critical.** yet`), and an ellipsis (`wait... foo`) on one line.
+  two-lowercase-letter lookbehind that refuses a single-letter initial (`U.S.`),
+  a dotted abbreviation (`a.m.`), and an ellipsis (`wait... foo`); and a
+  no-closing-class requirement that the terminal punctuation be immediately
+  followed by whitespace, which leaves a quoted or parenthesized fragment
+  (`he said "stop." then`) and mid-sentence emphasis (`**critical.** yet`) on
+  one line.
   Lowercase abbreviation forms (`sec.`, `ms.`) are protected only on this new
   branch, in a second pass after the uppercase branch runs, so a lowercase unit
   before a lowercase word (`3 sec. then`) is left intact while the same unit
