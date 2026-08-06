@@ -1467,8 +1467,7 @@ on a dispatched review (green job, every post-guard step `skipped`).
 So today a caller-editing PR just gets that silent skip.
 The review can still run and hit the action's OWN content validation by two
 paths.
-One is a deliberate bypass -- as gha#417 proposed and this repo rejected, for
-the reason below.
+One is a deliberate bypass -- as gha#417 proposed and this repo rejected.
 The other is live and undeliberate: the guard sets `self_mod` from
 `files=$(gh api .../files ... || true)` in `claude-code-review.yml`, so a
 transient `gh api` failure leaves `files` empty, `self_mod=false`, and the
