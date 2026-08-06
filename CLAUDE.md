@@ -1456,8 +1456,9 @@ merged on CI plus a self-review with no external verdict at all.)
 **That guard is the workflow-level skip; the action carries its OWN
 workflow-content validation, which would fire if the guard were bypassed --
 and it does not print a literal `401`.**
-The section above skips the whole review job when the PR edits the caller
-workflow `claude-review.yml`.
+The section above skips every step of the review job when the PR edits the
+caller workflow `claude-review.yml` (the job itself still runs and reports
+`success`, green -- not a gray skipped job).
 That `self_mod` skip fires on every such run, dispatched or automatic alike:
 `PR_NUMBER` resolves via `github.event.pull_request.number || inputs.pr-number`
 with no trigger gating, so an `@claude review` dispatch trips it exactly as an
