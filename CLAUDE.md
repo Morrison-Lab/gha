@@ -1501,8 +1501,7 @@ Diagnostic tells for that validation skip, so it is not misdiagnosed as a
   parenthetical above calls "401s" does not surface as a literal `401`
   string; grep for `workflow validation` / `Exiting due to workflow
   validation skip`, or just READ the "Run Claude Code Review" step's own
-  output rather than grepping for a guessed string (per "Never just theorize"
-  below, and
+  output rather than grepping for a guessed string (per
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
 - The validation keys on workflow CONTENT vs. the default branch, independent
   of trigger type, so bypassing the self-review skip on a dispatched

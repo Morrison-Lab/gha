@@ -1,5 +1,5 @@
 - **Documented the `anthropics/claude-code-action` workflow-validation skip**
-  in `CLAUDE.md`, beside the existing `self_mod` self-review-skip guard.
+  (#422) in `CLAUDE.md`, beside the existing `self_mod` self-review-skip guard.
   The `self_mod` guard skips the review when a PR edits the caller workflow
   `claude-review.yml` (dispatched or automatic alike), so such a PR gets a
   green, verdict-less skip today.
