@@ -730,18 +730,32 @@ That gap was gha#389: the lookahead required ``[A-Z"'`*\[]`` and so missed a
 sentence opening with a bare lowercase identifier (`renv restored the
 lockfile.`), the exact shape our prose writes most.
 gha#425 closed it with a second branch, `_SENT_BREAK_LOWER_RE`, that accepts a
-lowercase follower only when the previous sentence ends in two lowercase
-letters (`(?<=[a-z][a-z])`) --- the guard that refuses a single-letter initial
-(`U.S.`), a dotted abbreviation (`a.m.`), a decimal or version (`v2.1`), and an
-ellipsis (`wait... foo`) --- and whose closing class omits `*`/`_` so
-mid-sentence emphasis stays on one line.
-So when either half is widened, ask what the *other* half now blocks before
-concluding the construction is covered -- and pair the widening with a
-negative case, since the two halves are also each other's guard rails
-(#397's `*` is safe to add precisely because the lookahead still refuses a
-following lowercase word, and #425's lowercase branch is safe precisely
-because its two-letter lookbehind refuses everything that is not a word
-ending).
+lowercase follower under two structural guards that share the work rather than
+one lookbehind carrying all of it.
+The `(?<=[a-z][a-z])` lookbehind requires the previous sentence to end in two
+lowercase letters, which refuses a single-letter initial (`U.S.`, the `.`
+follows `S`), a dotted abbreviation (`a.m.`, the `.` follows `.m`), and a
+one-letter token (`option a.`).
+The branch also has no closing-character class at all, so the terminal `[.!?]`
+must be immediately followed by whitespace --- which is what keeps mid-sentence
+emphasis (`**critical.** yet`), a quoted or parenthesized fragment (`he said
+"stop." then`), and an ellipsis (`wait... foo`, whose second dot blocks the
+`\s+`) on one line.
+Note the division of labour precisely, because the first draft misattributed
+it: the lookbehind is *not* what blocks the ellipsis (`wait` ends in two
+lowercase letters, so the lookbehind is satisfied there), and a decimal or
+version (`v2.1`) is blocked by neither guard but by the pre-existing `\s+`
+requirement, since its `.` sits between digits with no following space.
+A closing class was tried first and removed: it re-opened exactly the
+over-split that dropping `*`/`_` from the uppercase branch (#397) was meant to
+close, just via `"`/`'`/`)`/`]` instead of the emphasis markers.
+So when either branch is widened, ask what the *other* guards now block before
+concluding the construction is covered --- and pair the widening with a
+negative case, since the guards are each other's backstops.
+The lowercase branch also made the pre-existing case-sensitive abbreviation
+list reachable for lowercase forms (`3 sec. then`), so gha#425 added
+`re.IGNORECASE` to `_ABBREV_RE` and dropped `No` from the list, since a
+lowercase `no.` is the English word rather than the "number" abbreviation.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other.

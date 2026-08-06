@@ -125,18 +125,36 @@ def test_lowercase_start_line_is_flagged_end_to_end():
     assert flagged == "sentence"
 
 
-def test_decimal_does_not_split():
+# These first two pin the pre-existing `\s+`-after-terminator requirement (a
+# decimal's `.` sits between digits with no following space), NOT the new
+# lowercase-branch lookbehind -- deleting the lookbehind leaves both passing.
+# `test_digit_ending_token_...` below is the one that exercises the lookbehind
+# for a numeric-looking token.
+def test_decimal_between_digits_does_not_split():
     text = "The lockfile drifted to 0.9012 in the diff."
     assert nlb.split_sentences(text) == [text]
 
 
-def test_version_string_does_not_split():
+def test_version_between_digits_does_not_split():
     text = "We pinned it to v2.1 for the release."
     assert nlb.split_sentences(text) == [text]
 
 
 def test_ellipsis_before_lowercase_does_not_split():
+    """`wait... foo`: the terminal `[.!?]` consumes one dot of `...`, leaving
+    `..` immediately after, so the `\\s+` requirement is never satisfied. The
+    lookbehind is satisfied here (`wait` ends in `it`); the immediate-whitespace
+    guard, not the lookbehind, is what blocks this one."""
     text = "wait... foo comes next here now."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_digit_ending_token_before_lowercase_does_not_split():
+    """`plan9. really`: a token ending in a digit IS followed by whitespace and a
+    lowercase word, so `\\s+` matches; the two-lowercase-letter lookbehind
+    (`n9` is not two letters) is what refuses this split. Deleting the lookbehind
+    turns this into a false split."""
+    text = "It ships as plan9. really soon now here."
     assert nlb.split_sentences(text) == [text]
 
 
@@ -157,6 +175,31 @@ def test_single_letter_word_before_lowercase_does_not_split():
     """A one-letter token like `a.` is not a genuine word ending."""
     text = "Option a. really works well in practice here."
     assert nlb.split_sentences(text) == [text]
+
+
+def test_quoted_fragment_before_lowercase_does_not_split():
+    """A mid-sentence quoted or parenthesized fragment ending in `.` followed by
+    a lowercase word must NOT split: the lowercase branch has no closing-char
+    class, so the `"` between the `.` and the space blocks `\\s+`. (A closing
+    class here re-opened exactly the over-split #397 closed.)"""
+    text = 'He said "stop that." and then walked away.'
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_lowercase_abbreviation_before_lowercase_does_not_split():
+    """The abbreviation list is matched case-insensitively, so a lowercase
+    `sec.` reached only via the lowercase branch is still protected."""
+    text = "Set the timeout to 3 sec. then wait a while."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_no_as_a_word_before_lowercase_does_split():
+    """`no` is deliberately not in the abbreviation list: a lowercase `no.` is
+    the English word ending a sentence, so it should split."""
+    assert nlb.split_sentences("The answer is no. renv handles it fine.") == [
+        "The answer is no.",
+        "renv handles it fine.",
+    ]
 
 
 # ── prose_line_numbers ───────────────────────────────────────────────────────

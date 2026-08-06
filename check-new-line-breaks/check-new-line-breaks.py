@@ -49,13 +49,23 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 # ── Sentence splitting ──────────────────────────────────────────────────────
 
 # Abbreviations whose trailing period should NOT trigger a sentence split.
+# Matched case-insensitively: the lowercase-follower branch below (#389) made a
+# lowercase abbreviation reachable (`Set it to 3 sec. then ...`), which the old
+# uppercase-only lookahead never was, so a case-sensitive list would split
+# `sec.`/`vol.`/`fig.` falsely. `No` is deliberately absent from the list: a
+# lowercase `no.` is the ordinary English word ending a sentence (`the answer is
+# no. renv handles it.`), which should still split, and `No.` for "number" is
+# followed by a digit or an uppercase word and so is handled by the other
+# branches anyway.
 _ABBREVS = [
     "e.g", "i.e", "vs", "etc", "Dr", "Mr", "Mrs", "Ms", "Jr", "Sr",
-    "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "No", "approx",
+    "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "approx",
     "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept",
     "al",  # et al.
 ]
-_ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.")
+_ABBREV_RE = re.compile(
+    r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.", re.IGNORECASE
+)
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
@@ -73,17 +83,27 @@ _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
 # a bare lowercase package or repo name (`renv`, `serodynamics`, `dplyr`), which
 # the uppercase-or-markup lookahead above refuses -- so the check was silent on
 # exactly the multi-sentence lines we most often write. This branch accepts a
-# following lowercase letter, but only when the previous sentence ends in a
-# genuine word: the `(?<=[a-z][a-z])` lookbehind requires two trailing lowercase
-# letters before the terminal punctuation. That two-char guard is what the
-# uppercase lookahead gave the other branch for free -- it refuses a
-# single-letter initial (`U.S.`), a dotted abbreviation (`a.m.`), a decimal or
-# version (`v2.1`), and an ellipsis (`wait... foo`), since none of those end in
-# two lowercase letters. The closing class here omits the emphasis markers
-# `*`/`_`, so mid-sentence emphasis (`It is **critical.** yet ...`) stays on one
-# line: widening the follower to lowercase would otherwise re-open the exact
-# over-split the emphasis-aware lookahead (#397) was added to prevent.
-_SENT_BREAK_LOWER_RE = re.compile(r"(?<=[a-z][a-z])([.!?][`\"')\]]*)\s+(?=[a-z])")
+# following lowercase letter, but two structural guards keep it from over-
+# splitting:
+#
+#   1. The `(?<=[a-z][a-z])` lookbehind requires the previous sentence to end in
+#      two trailing lowercase letters -- a genuine word. This is what refuses a
+#      single-letter initial (`U.S.`, the `.` follows `S`), a dotted abbreviation
+#      (`a.m.`, the `.` follows `.m`), and a single-letter token (`option a.`).
+#   2. The terminal `[.!?]` must be *immediately* followed by whitespace -- there
+#      is no closing-character class here (unlike the uppercase branch). Any
+#      character wedged between the punctuation and the space blocks the split,
+#      which is what keeps mid-sentence emphasis (`**critical.** yet`), a quoted
+#      or parenthesized fragment (`he said "stop." then`), and an ellipsis
+#      (`wait... foo`, the first `.` is followed by more dots) all on one line.
+#      A closing class was tried and removed: it re-opened exactly the over-split
+#      that dropping `*`/`_` from the uppercase branch (#397) was meant to close,
+#      just via `"`/`'`/`)`/`]` instead of the emphasis markers.
+#
+# A decimal or version (`v2.1`, `0.9012`) is left intact by the pre-existing
+# `\s+` requirement rather than by either guard above: the `.` sits between
+# digits with no following space.
+_SENT_BREAK_LOWER_RE = re.compile(r"(?<=[a-z][a-z])([.!?])\s+(?=[a-z])")
 
 _PLACEHOLDER = "\x00"
 

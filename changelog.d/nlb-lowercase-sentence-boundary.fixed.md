@@ -6,7 +6,11 @@
   read as one sentence and shipped unflagged --- the shape our prose writes
   most, since it routinely opens a sentence with a lowercase package or repo
   name (`renv`, `serodynamics`).
-  A second regex branch accepts a lowercase follower, guarded by a
-  two-lowercase-letter lookbehind so a single-letter initial (`U.S.`), a dotted
-  abbreviation (`a.m.`), a decimal or version (`v2.1`), and an ellipsis
-  (`wait... foo`) are still left intact.
+  A second regex branch accepts a lowercase follower under two guards: a
+  two-lowercase-letter lookbehind that refuses a single-letter initial (`U.S.`)
+  or a dotted abbreviation (`a.m.`), and a no-closing-class requirement that the
+  terminal punctuation be immediately followed by whitespace, which leaves a
+  quoted or parenthesized fragment (`he said "stop." then`), mid-sentence
+  emphasis (`**critical.** yet`), and an ellipsis (`wait... foo`) on one line.
+  The abbreviation list is now matched case-insensitively so a lowercase `sec.`
+  is protected too.
