@@ -194,11 +194,32 @@ def test_lowercase_abbreviation_before_lowercase_does_not_split():
 
 
 def test_no_as_a_word_before_lowercase_does_split():
-    """`no` is deliberately not in the abbreviation list: a lowercase `no.` is
-    the English word ending a sentence, so it should split."""
+    """A lowercase `no.` is the English word ending a sentence, so it should
+    split: `No` is protected only in its listed (title) case, not lowercase."""
     assert nlb.split_sentences("The answer is no. renv handles it fine.") == [
         "The answer is no.",
         "renv handles it fine.",
+    ]
+
+
+def test_number_abbreviation_before_uppercase_does_not_split():
+    """`Item No. Three`: `No.` (the "number" abbreviation) must stay protected on
+    the pre-existing uppercase branch. `_ABBREV_RE` runs before both branches, so
+    the abbreviation list has to keep `No` for this case even though a lowercase
+    `no.` splits (previous test). Regression guard for round-2 finding."""
+    text = "Item No. Three is the failing one here."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_all_caps_abbreviation_lookalike_still_splits():
+    """An ALL-CAPS abbreviation-lookalike (`SEC.`) is deliberately not protected,
+    so a genuine sentence boundary after it still splits -- a blanket IGNORECASE
+    would have added a false negative here."""
+    assert nlb.split_sentences(
+        "It was filed with the SEC. The case dragged on for years."
+    ) == [
+        "It was filed with the SEC.",
+        "The case dragged on for years.",
     ]
 
 

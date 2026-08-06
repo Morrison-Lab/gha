@@ -12,5 +12,7 @@
   terminal punctuation be immediately followed by whitespace, which leaves a
   quoted or parenthesized fragment (`he said "stop." then`), mid-sentence
   emphasis (`**critical.** yet`), and an ellipsis (`wait... foo`) on one line.
-  The abbreviation list is now matched case-insensitively so a lowercase `sec.`
-  is protected too.
+  The abbreviation list now protects each entry in its conventional and
+  lowercase forms (so a lowercase `sec.` is caught) but not its all-caps form,
+  and keeps `No` case-sensitive so `No.` (number) stays protected while a
+  lowercase `no.` (the word) still splits.

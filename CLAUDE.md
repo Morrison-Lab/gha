@@ -753,12 +753,20 @@ So when either branch is widened, ask what the *other* guards now block before
 concluding the construction is covered --- and pair the widening with a
 negative case, since the guards are each other's backstops.
 The lowercase branch also made the pre-existing case-sensitive abbreviation
-list reachable for lowercase forms (`3 sec. then`), so gha#425 added
-`re.IGNORECASE` to `_ABBREV_RE` and dropped `No` from the list, since a
-lowercase `no.` is the English word rather than the "number" abbreviation.
+list reachable for lowercase forms (`3 sec. then`).
+`_ABBREV_RE` runs once before *both* branches, so the fix is delicate: gha#425
+protects each abbreviation in its conventional case and its all-lowercase form
+but not its all-caps form (a blanket `re.IGNORECASE` would also stop
+`filed with the SEC. The case ...` from splitting), and keeps `No` as a
+case-sensitive exception so `No.` (number) stays protected on the uppercase
+branch while a lowercase `no.` (the word) splits.
+A first attempt dropped `No` from the list outright, which regressed
+`Item No. Three` on the uppercase branch --- the same "an abbreviation edit for
+one branch silently regresses the other" trap, caught in review.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
-half of, so a fix to either is owed to the other.
+half of, so a fix to either is owed to the other (porting gha#425's fix there
+is tracked in Morrison-Lab/ai-config#1212).
 
 `check-secrets/tests/test-build-config.sh` is a shell suite over
 `build-gitleaks-config.sh`, the script that turns the `paths-ignore`,

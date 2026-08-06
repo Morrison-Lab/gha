@@ -49,22 +49,33 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 # ── Sentence splitting ──────────────────────────────────────────────────────
 
 # Abbreviations whose trailing period should NOT trigger a sentence split.
-# Matched case-insensitively: the lowercase-follower branch below (#389) made a
-# lowercase abbreviation reachable (`Set it to 3 sec. then ...`), which the old
-# uppercase-only lookahead never was, so a case-sensitive list would split
-# `sec.`/`vol.`/`fig.` falsely. `No` is deliberately absent from the list: a
-# lowercase `no.` is the ordinary English word ending a sentence (`the answer is
-# no. renv handles it.`), which should still split, and `No.` for "number" is
-# followed by a digit or an uppercase word and so is handled by the other
-# branches anyway.
+# `_ABBREV_RE` runs once, before *both* sentence-break branches, so any change
+# here affects the uppercase branch too -- keep that in mind (dropping `No`
+# outright once regressed `Item No. Three` on the uppercase branch).
+#
+# Each abbreviation is protected in its conventional case AND its all-lowercase
+# form, but NOT its all-caps form. The lowercase form is needed because the
+# lowercase-follower branch below (#389) made a lowercase abbreviation reachable
+# (`Set it to 3 sec. then ...`) that the old uppercase-only lookahead never was.
+# The all-caps form is deliberately left unprotected: `filed with the SEC. The
+# case ...` correctly split under the old code and should keep splitting, so a
+# blanket `re.IGNORECASE` (which also matches `SEC.`) would add false negatives.
+# `No` is the lone case-sensitive exception -- protected only as `No.` (the
+# "number" abbreviation), since a lowercase `no.` is the English word ending a
+# sentence (`the answer is no. renv ...`) and should split.
 _ABBREVS = [
     "e.g", "i.e", "vs", "etc", "Dr", "Mr", "Mrs", "Ms", "Jr", "Sr",
-    "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "approx",
+    "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "No", "approx",
     "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept",
     "al",  # et al.
 ]
+_ABBREV_FORMS = sorted(
+    {a for a in _ABBREVS} | {a.lower() for a in _ABBREVS if a != "No"},
+    key=len,
+    reverse=True,
+)
 _ABBREV_RE = re.compile(
-    r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.", re.IGNORECASE
+    r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREV_FORMS) + r")\."
 )
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
