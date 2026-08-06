@@ -49,33 +49,40 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 # ── Sentence splitting ──────────────────────────────────────────────────────
 
 # Abbreviations whose trailing period should NOT trigger a sentence split.
-# `_ABBREV_RE` runs once, before *both* sentence-break branches, so any change
-# here affects the uppercase branch too -- keep that in mind (dropping `No`
-# outright once regressed `Item No. Three` on the uppercase branch).
 #
-# Each abbreviation is protected in its conventional case AND its all-lowercase
-# form, but NOT its all-caps form. The lowercase form is needed because the
-# lowercase-follower branch below (#389) made a lowercase abbreviation reachable
-# (`Set it to 3 sec. then ...`) that the old uppercase-only lookahead never was.
-# The all-caps form is deliberately left unprotected: `filed with the SEC. The
-# case ...` correctly split under the old code and should keep splitting, so a
-# blanket `re.IGNORECASE` (which also matches `SEC.`) would add false negatives.
-# `No` is the lone case-sensitive exception -- protected only as `No.` (the
-# "number" abbreviation), since a lowercase `no.` is the English word ending a
-# sentence (`the answer is no. renv ...`) and should split.
+# These are protected on BOTH sentence-break branches, in their conventional
+# case only (`No.`, `Dr.`, `Sec.`, `Fig.`, `e.g.`): a title or label
+# abbreviation is essentially never a sentence end, whatever follows it.
+# `_ABBREV_RE` runs once, up front, so it reaches both branches -- which is why
+# the lowercase forms are handled separately below rather than added here.
 _ABBREVS = [
     "e.g", "i.e", "vs", "etc", "Dr", "Mr", "Mrs", "Ms", "Jr", "Sr",
     "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "No", "approx",
     "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept",
     "al",  # et al.
 ]
-_ABBREV_FORMS = sorted(
-    {a for a in _ABBREVS} | {a.lower() for a in _ABBREVS if a != "No"},
-    key=len,
-    reverse=True,
-)
-_ABBREV_RE = re.compile(
-    r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREV_FORMS) + r")\."
+_ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.")
+
+# Lowercase abbreviation forms, protected ONLY on the lowercase-follower branch
+# (#389) -- applied *after* the uppercase branch has already run (see
+# split_sentences). This is the fix for a cross-branch leak caught over three
+# review rounds: the disambiguator for a lowercase unit abbreviation is the
+# follower's case. `It took 300 ms. The next run ...` (uppercase follower) is a
+# genuine sentence boundary and must still split, so this protection must not
+# reach the uppercase branch; but `set it to 3 sec. then wait` (lowercase
+# follower) is mid-sentence and must not split. Scoping the lowercase forms to
+# the lowercase branch is exactly that distinction. `no` is excluded (a
+# lowercase `no.` is the English word and should split on either branch), and
+# `min`/`hr`/`hrs` are added because bare time units are common in this repo's
+# timeout/duration prose and would otherwise false-split before a lowercase
+# word. The list is curated, not exhaustive: an unlisted lowercase abbreviation
+# before a lowercase word (`5 Jan. and ...`) can still false-split, which is a
+# disclosed limitation rather than a hard failure on this warn-only check.
+_ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
+_ABBREV_LOWER_RE = re.compile(
+    r"(?<!\w)("
+    + "|".join(re.escape(a) for a in sorted(_ABBREV_LOWER, key=len, reverse=True))
+    + r")\."
 )
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
@@ -132,6 +139,10 @@ def split_sentences(text: str) -> List[str]:
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
+    # Protect lowercase abbreviation forms only now, after the uppercase branch
+    # has run, so they suppress the lowercase branch below without stopping the
+    # uppercase branch from splitting a genuine `... ms. The next ...` boundary.
+    protected = _ABBREV_LOWER_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, protected)
     protected = _SENT_BREAK_LOWER_RE.sub(lambda m: m.group(1) + "\n", protected)
     parts = [
         p.replace(_PLACEHOLDER, ".").replace("\x01", "!").replace("\x02", "?").strip()

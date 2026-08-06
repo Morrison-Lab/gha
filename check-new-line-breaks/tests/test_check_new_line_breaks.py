@@ -187,9 +187,32 @@ def test_quoted_fragment_before_lowercase_does_not_split():
 
 
 def test_lowercase_abbreviation_before_lowercase_does_not_split():
-    """The abbreviation list is matched case-insensitively, so a lowercase
-    `sec.` reached only via the lowercase branch is still protected."""
+    """A lowercase `sec.` before a lowercase word is mid-sentence, so it must not
+    split. Its lowercase form is protected only on the lowercase branch (via
+    `_ABBREV_LOWER_RE`, applied after the uppercase branch runs)."""
     text = "Set the timeout to 3 sec. then wait a while."
+    assert nlb.split_sentences(text) == [text]
+
+
+def test_lowercase_abbreviation_before_uppercase_does_split():
+    """The mirror of the previous test: the same lowercase unit abbreviation
+    before an UPPERCASE follower IS a genuine sentence boundary and must split.
+    This is why the lowercase-form protection is scoped to the lowercase branch
+    only -- registering it on both branches (an earlier attempt) silently
+    un-split `... ms. The next ...`. Regression guard for round-3 finding."""
+    assert nlb.split_sentences(
+        "It took 300 ms. The next run was faster."
+    ) == ["It took 300 ms.", "The next run was faster."]
+    assert nlb.split_sentences(
+        "Refer to sec. The details are listed there."
+    ) == ["Refer to sec.", "The details are listed there."]
+
+
+def test_added_time_unit_before_lowercase_does_not_split():
+    """`min` is added to the lowercase-only list because bare time units are
+    common in this repo's timeout/duration prose; it must not false-split
+    before a lowercase word."""
+    text = "Set the retry backoff to 5 min. and then give up."
     assert nlb.split_sentences(text) == [text]
 
 

@@ -752,17 +752,26 @@ close, just via `"`/`'`/`)`/`]` instead of the emphasis markers.
 So when either branch is widened, ask what the *other* guards now block before
 concluding the construction is covered --- and pair the widening with a
 negative case, since the guards are each other's backstops.
-The lowercase branch also made the pre-existing case-sensitive abbreviation
-list reachable for lowercase forms (`3 sec. then`).
-`_ABBREV_RE` runs once before *both* branches, so the fix is delicate: gha#425
-protects each abbreviation in its conventional case and its all-lowercase form
-but not its all-caps form (a blanket `re.IGNORECASE` would also stop
-`filed with the SEC. The case ...` from splitting), and keeps `No` as a
-case-sensitive exception so `No.` (number) stays protected on the uppercase
-branch while a lowercase `no.` (the word) splits.
-A first attempt dropped `No` from the list outright, which regressed
-`Item No. Three` on the uppercase branch --- the same "an abbreviation edit for
-one branch silently regresses the other" trap, caught in review.
+The lowercase branch also made the pre-existing abbreviation list reachable for
+lowercase forms (`3 sec. then`), and getting that right took three review
+rounds because the abbreviation protection reaches both branches by default:
+`_ABBREV_RE` runs once, up front.
+The trap each round hit is that an abbreviation edit made for one branch
+silently regresses the other --- dropping `No` un-split `Item No. Three` on the
+uppercase branch, then registering every lowercase form un-split
+`It took 300 ms. The next ...` on it too.
+The disambiguator is the follower's case: a lowercase unit before a lowercase
+word (`3 sec. then`) is mid-sentence, but before an uppercase word
+(`300 ms. The`) it is a genuine boundary that must still split.
+So gha#425 protects the conventional-case abbreviations on both branches
+(`No.`, `Sec.`, unchanged from before), and protects the lowercase forms in a
+*second* pass (`_ABBREV_LOWER_RE`) applied only after the uppercase branch has
+run --- so the lowercase forms suppress the lowercase branch without ever
+reaching the uppercase one.
+That second list excludes `no` (a lowercase `no.` is the word, and should
+split) and adds `min`/`hr`/`hrs`; it is curated rather than exhaustive, so an
+unlisted lowercase abbreviation before a lowercase word can still false-split
+on this warn-only check.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other (porting gha#425's fix there
