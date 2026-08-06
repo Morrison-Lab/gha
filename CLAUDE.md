@@ -1499,6 +1499,54 @@ unauthenticated one, not a reason to report the question as unanswerable.
 The same principle already appears above for reading files out of
 repositories this session is not scoped to.
 
+## Test changes against a template repo before declaring ready to merge
+
+Before declaring a PR ready to merge -- or reporting a clean / ready-for-merge
+verdict -- for a change in this repo (`gha`) that touches a GitHub Action or a
+component action/workflow, test that change against one of the lab's template
+repos.
+
+Running the unit tests or `_selftest.yml` in `gha` alone is not sufficient for
+such a change, because `_selftest.yml` exercises local composites and throwaway
+fixtures rather than the full downstream project structures -- an R package's
+vignettes, a Quarto site build -- that pin the `@v2` reusable workflows.
+Instead, point a template repo's `uses:` at the PR's branch or SHA and confirm
+the workflow succeeds there:
+
+- **`rpt`** ([`Morrison-Lab/rpt`](https://github.com/Morrison-Lab/rpt)) -- R package template
+- **`qwt`** ([`d-morrison/qwt`](https://github.com/d-morrison/qwt)) -- Quarto website template
+- **`qbt`** ([`d-morrison/qbt`](https://github.com/d-morrison/qbt)) -- Quarto book template
+- **`qmt`** ([`d-morrison/qmt`](https://github.com/d-morrison/qmt)) -- Quarto manuscript template
+
+Repointing the template's top-level `uses:` exercises a change to a reusable
+workflow's own YAML, but not a change to a **composite action**
+(`.github/actions/<x>/`, where most of this repo's capabilities live).
+A reusable workflow pins its internal composite calls to a literal `@v2`
+(e.g. `claude-code-review.yml` has ~10 such `uses: .../actions/<x>@v2` sites),
+and those resolve at job-preparation time from the released tag regardless of
+the ref the parent workflow file was fetched from (see [Re-running *failed jobs*
+cannot verify a tag slide](#re-running-failed-jobs-cannot-verify-a-tag-slide)).
+So a template test of a composite-only change passes vacuously against the old
+released code.
+To exercise a composite change, also repoint the nested `@v2` refs to the PR
+branch on the branch-pinned reusable workflow, or invoke the composite directly.
+
+A PR fixing a reusable **review** workflow (`claude-code-review.yml` or
+`claude.yml`) can't be verified this way at all.
+The review runs `anthropics/claude-code-action`, whose OIDC App-token exchange
+validates that the calling review-workflow content matches the repo's default
+branch.
+Testing the fix means running the review against a modified copy of that
+workflow, which makes the caller differ from its own default branch -- in `gha`
+or in a template repo alike -- so the action aborts with `Workflow validation
+failed` ("Exiting due to workflow validation skip"), produces no output, and
+reddens the check with no verdict.
+(Confirmed empirically 2026-08-05 via a throwaway dispatched review; the failure
+surfaces as a fast `no execution output`, not a literal `401`.)
+Fall back to the manual/offline path in
+[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
+or give the action a `github_token` override that skips the OIDC exchange.
+
 ## Code review guidelines
 
 When reviewing a pull request (e.g. via `/review`, `/code-review`, or as a Claude
