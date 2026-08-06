@@ -228,6 +228,17 @@ def test_added_time_unit_before_lowercase_does_not_split():
     assert nlb.split_sentences(text) == [text]
 
 
+def test_incidental_lowercase_abbrev_before_lowercase_does_not_split():
+    """`ms.` lands in the lowercase-only list incidentally -- as the lowercased
+    form of the `Ms` title abbreviation, not a deliberate unit addition like
+    `min` -- but it falls in the same duration prose, so pin its
+    lowercase-follower behavior. (Its uppercase-follower case, which must still
+    split, is covered by test_lowercase_abbreviation_before_uppercase_does_split
+    above.)"""
+    text = "It took 300 ms. then it retried the request."
+    assert nlb.split_sentences(text) == [text]
+
+
 def test_no_as_a_word_before_lowercase_does_split():
     """A lowercase `no.` is the English word ending a sentence, so it should
     split: `No` is protected only in its listed (title) case, not lowercase."""

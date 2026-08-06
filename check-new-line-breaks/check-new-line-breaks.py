@@ -61,7 +61,14 @@ _ABBREVS = [
     "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept",
     "al",  # et al.
 ]
-_ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) + r")\.")
+
+
+def _abbrev_pattern(forms) -> str:
+    """A regex source matching any of `forms` as a whole token before a period."""
+    return r"(?<!\w)(" + "|".join(re.escape(a) for a in forms) + r")\."
+
+
+_ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 
 # Lowercase abbreviation forms, protected ONLY on the lowercase-follower branch
 # (#389) -- applied *after* the uppercase branch has already run (see
@@ -83,9 +90,7 @@ _ABBREV_RE = re.compile(r"(?<!\w)(" + "|".join(re.escape(a) for a in _ABBREVS) +
 # warn-only check.
 _ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
 _ABBREV_LOWER_RE = re.compile(
-    r"(?<!\w)("
-    + "|".join(re.escape(a) for a in sorted(_ABBREV_LOWER, key=len, reverse=True))
-    + r")\."
+    _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
 )
 
 # Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.

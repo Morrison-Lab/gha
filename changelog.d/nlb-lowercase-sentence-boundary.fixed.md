@@ -13,8 +13,8 @@
   followed by whitespace, which leaves a quoted or parenthesized fragment
   (`he said "stop." then`) and mid-sentence emphasis (`**critical.** yet`) on
   one line.
-  Lowercase abbreviation forms (`sec.`, `ms.`) are protected only on this new
-  branch, in a second pass after the uppercase branch runs, so a lowercase unit
-  before a lowercase word (`3 sec. then`) is left intact while the same unit
-  before an uppercase word (`300 ms. The next ...`) still splits as the genuine
-  sentence boundary it is.
+  Lowercase abbreviation forms (`sec.`, and bare time units like `min.`) are
+  protected only on this new branch, in a second pass after the uppercase branch
+  runs, so a lowercase unit before a lowercase word (`3 sec. then`) is left
+  intact while the same unit before an uppercase word (`300 ms. The next ...`)
+  still splits as the genuine sentence boundary it is.
