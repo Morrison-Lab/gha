@@ -1454,16 +1454,21 @@ Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
 **That guard is the workflow-level skip; the action carries its OWN
-workflow-content validation, which fires even when the guard is bypassed --
+workflow-content validation, which would fire if the guard were bypassed --
 and it does not print a literal `401`.**
-The section above skips the whole review job when the PR edits
-`claude-review.yml`.
-Bypassing that skip -- for instance dispatching the review via `@claude
-review` so the guard's `self_mod` gate does not apply, as gha#417 attempted --
-does not get a verdict either: `anthropics/claude-code-action` itself
-validates that the running workflow's content matches the default branch's,
-and on a mismatch it gracefully skips.
-In the "Run Claude Code Review" step that reads:
+The section above skips the whole review job when the PR edits the caller
+workflow `claude-review.yml`.
+That `self_mod` skip fires on every such run, dispatched or automatic alike:
+`PR_NUMBER` resolves via `github.event.pull_request.number || inputs.pr-number`
+with no trigger gating, so an `@claude review` dispatch trips it exactly as an
+automatic run does -- the gha#286 example above is that case, the guard firing
+on a dispatched review (green job, every post-guard step `skipped`).
+So today a caller-editing PR just gets that silent skip.
+Were the guard bypassed instead -- as gha#417 proposed, and this repo rejected
+for the reason below -- the review would run and hit
+`anthropics/claude-code-action`'s own content validation, which checks that the
+running workflow matches the default branch and gracefully skips on a mismatch.
+The "Run Claude Code Review" step then reads:
 
 ```text
 Exchanging OIDC token for app token...
@@ -1477,10 +1482,14 @@ The action STEP reports `outcome=success` (it "gracefully skips"), runs only
 ~4-11s, and writes NO execution output -- so `check-review-execution.sh`
 reports `Claude review produced no execution output -- treating as a failed
 review`, and `claude-review` + `require-review` go RED with no verdict.
+That is worse than the silent skip, which is why gha#417 was abandoned.
 
-Diagnostic tells, so this is not misdiagnosed as a `401`:
+Diagnostic tells, if the guard is ever bypassed (e.g. by the `github_token`
+fix below), so this is not misdiagnosed as a `401`:
 
-- A `claude-review` job that fails in under ~15s with "no execution output".
+- The "Run Claude Code Review" STEP finishes in seconds (~4-11s measured)
+  while writing no execution output; total job time is not a reliable tell,
+  since checkout, submodules, and package installs run first and can dominate.
 - Grepping the log for `401` finds nothing -- the auth failure the
   parenthetical above calls "401s" does not surface as a literal `401`
   string; grep for `workflow validation` / `Exiting due to workflow
@@ -1489,12 +1498,13 @@ Diagnostic tells, so this is not misdiagnosed as a `401`:
   below, and
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
 - The validation keys on workflow CONTENT vs. the default branch, independent
-  of trigger type, so bypassing the self-review skip on `@claude
-  review`/dispatch does NOT help -- it just reddens the check with no verdict.
+  of trigger type, so bypassing the self-review skip on a dispatched
+  `@claude review` does NOT help -- it just reddens the check with no verdict.
 
 The real fix for a PR editing the review workflow is a `github_token`
 override on the action, which skips the OIDC exchange and its content check.
-(Proven empirically via throwaway test PR #420, now closed, on 2026-08-05.)
+(Proven empirically via throwaway test PR #420, now closed, on 2026-08-05 --
+the test that showed gha#417's bypass to be counterproductive.)
 
 ## Never just theorize -- investigate empirically
 
