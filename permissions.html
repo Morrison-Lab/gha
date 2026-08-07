@@ -374,6 +374,36 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/lint-yaml.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-yaml.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/lint-markdown.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-markdown.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-new-line-breaks.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-new-line-breaks.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/lint-qmd.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-qmd.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/lint-changed-lines.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-changed-lines.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -418,6 +448,12 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="./reference/preview-deploy.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">preview-deploy.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-equation-renders.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-equation-renders.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -478,6 +514,18 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="./reference/sync-upstream.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">sync-upstream.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/request-dependabot-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">request-dependabot-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/altdoc-multiversion-docs.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">altdoc-multiversion-docs.yml</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -556,7 +604,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="optional-secrets" class="level2">
 <h2 class="anchored" data-anchor-id="optional-secrets">Optional secrets</h2>
 <ul>
-<li><strong><code>WORKFLOW_TOKEN</code></strong> (a PAT or GitHub App token with <code>contents:write</code> + <code>workflows:write</code>). The integrated <code>GITHUB_TOKEN</code> cannot push changes to files under <code>.github/workflows/</code>; GitHub rejects them without the <code>workflows</code> scope. Add this secret if <code>claude</code> will edit workflow files, or to push to a protected branch. Unlike <code>GITHUB_TOKEN</code>, a PAT or App-token push <strong>does</strong> trigger other <code>push</code>-based workflows, so enabling it can set off extra CI runs. When the secret is absent and <code>claude</code> does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a <code>git format-patch</code> so they survive the run.</li>
+<li><strong><code>WORKFLOW_TOKEN</code></strong> (a PAT or GitHub App token with <code>contents:write</code> + <code>workflows:write</code>). The integrated <code>GITHUB_TOKEN</code> cannot push changes to files under <code>.github/workflows/</code>; GitHub rejects them without the <code>workflows</code> scope. Add this secret if <code>claude</code> will edit workflow files, to push to a protected branch, or – for <code>bump-dev-version</code> with its default <code>auto-merge</code> in a repo with required status checks – to let the bump PR’s checks run so it can merge (a <code>GITHUB_TOKEN</code>-authored PR’s <code>pull_request</code> checks never report, so the merge stays blocked; see its <a href="./reference/bump-dev-version.html">reference page</a>). Unlike <code>GITHUB_TOKEN</code>, a PAT or App-token push <strong>does</strong> trigger other <code>push</code>-based workflows, so enabling it can set off extra CI runs. When the secret is absent and <code>claude</code> does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a <code>git format-patch</code> so they survive the run.</li>
 <li><strong><code>SUBMODULES_TOKEN</code>.</strong> Public submodules clone anonymously; private ones need this secret. Relevant to <code>claude</code>, <code>claude-code-review</code>, and <code>bump-submodule</code> when <code>checkout-submodules</code> (or the submodule update) touches a private submodule.</li>
 </ul>
 </section>

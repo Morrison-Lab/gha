@@ -160,28 +160,48 @@
     "href": "reference/lint-qmd.html",
     "title": "lint-qmd.yml",
     "section": "",
-    "text": "Lint the prose sections of tracked .qmd Quarto files with markdownlint. Quarto code chunks (```{lang} / ```{=fmt}) are replaced with blank lines before linting so only prose is checked; YAML front matter is skipped natively by markdownlint. A default 80-character line-length ceiling (MD013) encourages semantic line breaks - one sentence or clause per source line - without requiring a separate rule for them."
+    "text": "Lint the prose sections of tracked .qmd Quarto files with markdownlint. Quarto code chunks (```{lang} / ```{=fmt}) are replaced with blank lines before linting so only prose is checked; YAML front matter is skipped natively by markdownlint. A default 80-character line-length ceiling (MD013) encourages semantic line breaks - one sentence or clause per source line - without requiring a separate rule for them.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-qmd.yml"
+    ]
   },
   {
     "objectID": "reference/lint-qmd.html#inputs",
     "href": "reference/lint-qmd.html#inputs",
     "title": "lint-qmd.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yml/.yaml). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-line-length\nstring\n'80'\nMaximum prose line length (MD013). Applied on top of the resolved config. Set 0 to disable the line-length check."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yml/.yaml). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.qmd'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-line-length\nstring\n'80'\nMaximum prose line length (MD013). Applied on top of the resolved config. Set 0 to disable the line-length check.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-qmd.yml"
+    ]
   },
   {
     "objectID": "reference/lint-qmd.html#permissions",
     "href": "reference/lint-qmd.html#permissions",
     "title": "lint-qmd.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-qmd.yml"
+    ]
   },
   {
     "objectID": "reference/lint-qmd.html#example",
     "href": "reference/lint-qmd.html#example",
     "title": "lint-qmd.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-qmd.yml in your repo.\n# Lints the prose sections of tracked .qmd Quarto files with markdownlint.\n# Code chunks are stripped before linting; only prose is checked.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint QMD Prose\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-qmd.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   globs: '*.qmd'                      # git pathspecs to lint (recursive)\n    #   paths-ignore: 'docs/'               # skip generated output directories\n    #   fail: false                         # warn instead of failing on errors\n    #   max-line-length: '100'              # override the default 80-char ceiling\nSee the examples/ directory for the full caller stub (lint-qmd.yml)."
+    "text": "Example\n# Copy to .github/workflows/lint-qmd.yml in your repo.\n# Lints the prose sections of tracked .qmd Quarto files with markdownlint.\n# Code chunks are stripped before linting; only prose is checked.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint QMD Prose\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-qmd.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   globs: '*.qmd'                      # git pathspecs to lint (recursive)\n    #   paths-ignore: 'docs/'               # skip generated output directories\n    #   fail: false                         # warn instead of failing on errors\n    #   max-line-length: '100'              # override the default 80-char ceiling\nSee the examples/ directory for the full caller stub (lint-qmd.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-qmd.yml"
+    ]
   },
   {
     "objectID": "reference/bump-dev-version.html",
@@ -200,7 +220,7 @@
     "href": "reference/bump-dev-version.html#inputs",
     "title": "bump-dev-version.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ndescription-path\nstring\nDESCRIPTION\nPath to the DESCRIPTION file to bump.\n\n\nbase-branch\nstring\nmain\nBase branch to open the bump PR against.\n\n\npr-branch\nstring\nautomated/bump-dev-version\nHead branch for the automation PR.\n\n\nauto-merge\nboolean\ntrue\nEnable GitHub’s native auto-merge (squash) on the bump PR.\n\n\ndry-run\nboolean\nfalse\nBump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its dev-version selftest job calls the bump-dev-version composite directly instead of this reusable workflow – see the bootstrapping-gap note in CLAUDE.md); meant for a consumer to smoke-test the bump logic.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ndescription-path\nstring\nDESCRIPTION\nPath to the DESCRIPTION file to bump.\n\n\nbase-branch\nstring\nmain\nBase branch to open the bump PR against.\n\n\npr-branch\nstring\nautomated/bump-dev-version\nHead branch for the automation PR.\n\n\nauto-merge\nboolean\ntrue\nEnable GitHub’s native auto-merge (squash) on the bump PR. In a repo with required status checks, needs WORKFLOW_TOKEN (see Secrets).\n\n\ndry-run\nboolean\nfalse\nBump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its dev-version selftest job calls the bump-dev-version composite directly instead of this reusable workflow – see the bootstrapping-gap note in CLAUDE.md); meant for a consumer to smoke-test the bump logic.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -212,7 +232,7 @@
     "href": "reference/bump-dev-version.html#secrets",
     "title": "bump-dev-version.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nWORKFLOW_TOKEN\nno\nPAT or App token; needed only to push to a protected branch.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nWORKFLOW_TOKEN\nconditional\nPAT or App token. Needed to push the bump commit when pr-branch is protected, and to let auto-merge complete when the repo has required status checks (it authors the PR as a real user, so its checks run). Optional when neither applies.\n\n\n\nWORKFLOW_TOKEN covers two independent needs. First, the checkout and open-sync-pr push steps use it to push the bump commit; without it they fall back to the integrated GITHUB_TOKEN, which cannot push to a pr-branch a ruleset protects. This is the reason the sibling open-sync-pr stubs (bump-submodule, sync-shared-fragments, sync-upstream) document, and it still applies here. Second, it lets auto-merge complete in a repo with required status checks. GitHub does not trigger pull_request workflow runs for a GITHUB_TOKEN-authored PR (it suppresses them to prevent recursive runs), so those required checks never report and the merge is blocked forever – the PR sits open on every merge. Required checks block manual merges too, so turning off auto-merge does not avoid this; the genuine fixes are to set WORKFLOW_TOKEN (so the PR is authored by a real user whose checks run), force-merge with branch-protection bypass rights, or re-trigger the checks with a real-user event (a manual push to the bump branch, or closing and reopening the PR). The reusable workflow emits a warning at the start of its run when auto-merge is on and WORKFLOW_TOKEN is missing. Omit the token only when pr-branch is unprotected and the repo has no required checks.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -320,56 +340,96 @@
     "href": "reference/check-equation-renders.html",
     "title": "check-equation-renders.yml",
     "section": "",
-    "text": "Fourth leg of the PR-preview family, alongside preview.yml and preview-deploy.yml. Triggered on the build workflow’s workflow_run completion, it downloads the same pr-preview-site artifact preview-deploy.yml uses, crawls the extracted site with a headless browser, and fails when any equation fails to render.\nQuarto’s html-math-method: mathjax embeds raw TeX (\\(...\\), $$...$$) unchanged in the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad equation therefore produces no warning in the Quarto/pandoc build log – the static HTML is “valid” pandoc output even when the embedded TeX can’t be typeset. This workflow is what actually runs MathJax (via a headless Chromium) and checks for three ways a page can fail to render its equations:\nIt runs independently of preview-deploy.yml – both trigger on the same build completion, but this one downloads the artifact directly rather than depending on the deploy, so it needs no gh-pages write access and no live preview URL."
+    "text": "Fourth leg of the PR-preview family, alongside preview.yml and preview-deploy.yml. Triggered on the build workflow’s workflow_run completion, it downloads the same pr-preview-site artifact preview-deploy.yml uses, crawls the extracted site with a headless browser, and fails when any equation fails to render.\nQuarto’s html-math-method: mathjax embeds raw TeX (\\(...\\), $$...$$) unchanged in the static HTML; MathJax only parses and typesets it client-side, in the browser. A bad equation therefore produces no warning in the Quarto/pandoc build log – the static HTML is “valid” pandoc output even when the embedded TeX can’t be typeset. This workflow is what actually runs MathJax (via a headless Chromium) and checks for three ways a page can fail to render its equations:\nIt runs independently of preview-deploy.yml – both trigger on the same build completion, but this one downloads the artifact directly rather than depending on the deploy, so it needs no gh-pages write access and no live preview URL.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-equation-renders.yml"
+    ]
   },
   {
     "objectID": "reference/check-equation-renders.html#inputs",
     "href": "reference/check-equation-renders.html#inputs",
     "title": "check-equation-renders.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nfail\nboolean\ntrue\nFail the workflow run when equation render errors are found."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nfail\nboolean\ntrue\nFail the workflow run when equation render errors are found.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-equation-renders.yml"
+    ]
   },
   {
     "objectID": "reference/check-equation-renders.html#permissions",
     "href": "reference/check-equation-renders.html#permissions",
     "title": "check-equation-renders.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: read (the default) and actions: read (download the build artifact)."
+    "text": "Permissions\nGrant contents: read (the default) and actions: read (download the build artifact).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-equation-renders.yml"
+    ]
   },
   {
     "objectID": "reference/check-equation-renders.html#example",
     "href": "reference/check-equation-renders.html#example",
     "title": "check-equation-renders.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-equation-renders.yml in your repo.\n# Fourth leg of the PR-preview family, alongside preview.yml and\n# preview-deploy.yml: triggered when the build workflow finishes, downloads its\n# artifact, and crawls the extracted site with a headless browser to catch\n# equations that fail to render (MathJax only typesets client-side, so a bad\n# equation never shows up in the Quarto/pandoc build log).\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Check Equation Renders\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  check:\n    permissions:\n      contents: read\n      actions: read # needed to download the build artifact\n    uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v2\n    # with:\n    #   fail: false   # report equation render errors without failing the run\nSee the examples/ directory for the full caller stub (check-equation-renders.yml)."
+    "text": "Example\n# Copy to .github/workflows/check-equation-renders.yml in your repo.\n# Fourth leg of the PR-preview family, alongside preview.yml and\n# preview-deploy.yml: triggered when the build workflow finishes, downloads its\n# artifact, and crawls the extracted site with a headless browser to catch\n# equations that fail to render (MathJax only typesets client-side, so a bad\n# equation never shows up in the Quarto/pandoc build log).\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Check Equation Renders\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  check:\n    permissions:\n      contents: read\n      actions: read # needed to download the build artifact\n    uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v2\n    # with:\n    #   fail: false   # report equation render errors without failing the run\nSee the examples/ directory for the full caller stub (check-equation-renders.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-equation-renders.yml"
+    ]
   },
   {
     "objectID": "reference/check-new-line-breaks.html",
     "href": "reference/check-new-line-breaks.html",
     "title": "check-new-line-breaks.yml",
     "section": "",
-    "text": "Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines. Pairs well with lint-markdown.yml when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.\nTwo checks run, both on by default. The first is the SemBr spec’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an independent clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see gha#336 for the measurements.\nThe gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s visible length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set clause-breaks: false to check sentences only."
+    "text": "Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines. Pairs well with lint-markdown.yml when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.\nTwo checks run, both on by default. The first is the SemBr spec’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an independent clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see gha#336 for the measurements.\nThe gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s visible length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set clause-breaks: false to check sentences only.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-new-line-breaks.yml"
+    ]
   },
   {
     "objectID": "reference/check-new-line-breaks.html#inputs",
     "href": "reference/check-new-line-breaks.html#inputs",
     "title": "check-new-line-breaks.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when a violation is found; otherwise warn only.\n\n\nclause-breaks\nboolean\ntrue\nAlso flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set false to check sentences only.\n\n\nclause-min-length\nstring\n'80'\nMinimum line length before clause-breaks applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when clause-breaks is false."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when a violation is found; otherwise warn only.\n\n\nclause-breaks\nboolean\ntrue\nAlso flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set false to check sentences only.\n\n\nclause-min-length\nstring\n'80'\nMinimum line length before clause-breaks applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when clause-breaks is false.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-new-line-breaks.yml"
+    ]
   },
   {
     "objectID": "reference/check-new-line-breaks.html#permissions",
     "href": "reference/check-new-line-breaks.html#permissions",
     "title": "check-new-line-breaks.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-new-line-breaks.yml"
+    ]
   },
   {
     "objectID": "reference/check-new-line-breaks.html#example",
     "href": "reference/check-new-line-breaks.html#example",
     "title": "check-new-line-breaks.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-new-line-breaks.yml in your repo.\n# Advisory check: flags newly-added Markdown lines packing more than one\n# sentence/clause onto one source line. Diff-scoped, so it only ever flags\n# what a PR itself adds -- pairs well with lint-markdown when MD013\n# (line-length) is disabled because the corpus already has long-line drift.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check new markdown lines for missing semantic breaks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2\n    # with:\n    #   globs: '*.md'                          # pathspecs to check (recursive)\n    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths\n    #   fail: true                             # block the PR instead of warning\n    #   clause-breaks: false                   # sentences only; skip the\n    #                                          # semicolon clause check (on by default)\n    #   clause-min-length: 100                 # raise the clause check's length gate\nSee examples/check-new-line-breaks.yml for the full caller stub."
+    "text": "Example\n# Copy to .github/workflows/check-new-line-breaks.yml in your repo.\n# Advisory check: flags newly-added Markdown lines packing more than one\n# sentence/clause onto one source line. Diff-scoped, so it only ever flags\n# what a PR itself adds -- pairs well with lint-markdown when MD013\n# (line-length) is disabled because the corpus already has long-line drift.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check new markdown lines for missing semantic breaks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2\n    # with:\n    #   globs: '*.md'                          # pathspecs to check (recursive)\n    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths\n    #   fail: true                             # block the PR instead of warning\n    #   clause-breaks: false                   # sentences only; skip the\n    #                                          # semicolon clause check (on by default)\n    #   clause-min-length: 100                 # raise the clause check's length gate\nSee examples/check-new-line-breaks.yml for the full caller stub.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-new-line-breaks.yml"
+    ]
   },
   {
     "objectID": "reference/check-secrets.html",
@@ -460,28 +520,48 @@
     "href": "reference/lint-yaml.html",
     "title": "lint-yaml.yml",
     "section": "",
-    "text": "Lint tracked YAML files with yamllint using a bundled default config (overridable), plus a companion check that flags run: script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo’s own R/Python capabilities already do."
+    "text": "Lint tracked YAML files with yamllint using a bundled default config (overridable), plus a companion check that flags run: script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo’s own R/Python capabilities already do.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
   },
   {
     "objectID": "reference/lint-yaml.html#inputs",
     "href": "reference/lint-yaml.html#inputs",
     "title": "lint-yaml.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a yamllint config file. Falls back to the bundled default when empty or the file does not exist.\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when yamllint reports an error (not a warning).\n\n\nmax-script-lines\nstring\n'150'\nFlag a run: block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-scripts\nboolean\nfalse\nFail when a run: block exceeds max-script-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint."
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a yamllint config file. Falls back to the bundled default when empty or the file does not exist.\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when yamllint reports an error (not a warning).\n\n\nmax-script-lines\nstring\n'150'\nFlag a run: block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-scripts\nboolean\nfalse\nFail when a run: block exceeds max-script-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
   },
   {
     "objectID": "reference/lint-yaml.html#permissions",
     "href": "reference/lint-yaml.html#permissions",
     "title": "lint-yaml.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
   },
   {
     "objectID": "reference/lint-yaml.html#example",
     "href": "reference/lint-yaml.html#example",
     "title": "lint-yaml.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-yaml.yml in your repo.\n# Lints tracked YAML files with yamllint (bundled default config), plus a\n# companion check that flags long `run:` script blocks in workflow/action\n# YAML as decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint YAML\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-yaml.yml@v2\n    # with:\n    #   config-file: '.yamllint.yml'   # override the bundled default config\n    #   paths-ignore: 'renv/**'        # skip known-vendored paths\n    #   fail: false                    # warn instead of failing on yamllint errors\nSee the examples/ directory for the full caller stub (lint-yaml.yml)."
+    "text": "Example\n# Copy to .github/workflows/lint-yaml.yml in your repo.\n# Lints tracked YAML files with yamllint (bundled default config), plus a\n# companion check that flags long `run:` script blocks in workflow/action\n# YAML as decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint YAML\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-yaml.yml@v2\n    # with:\n    #   config-file: '.yamllint.yml'   # override the bundled default config\n    #   paths-ignore: 'renv/**'        # skip known-vendored paths\n    #   fail: false                    # warn instead of failing on yamllint errors\nSee the examples/ directory for the full caller stub (lint-yaml.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
   },
   {
     "objectID": "reference/check-bibliography-dois.html",
@@ -740,77 +820,132 @@
     "href": "reference/lint-changed-lines.html",
     "title": "lint-changed-lines.yml",
     "section": "",
-    "text": "Run lintr over the R files a pull request changes, but report only the lints on lines the PR actually added or modified – not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.\nContrast with a whole-file “lint changed files” gate, which fails on function definitions a PR never touched – forcing either a repo-wide reformat or disabling the linter. lint-changed-lines is the incremental alternative."
+    "text": "Run lintr over the R files a pull request changes, but report only the lints on lines the PR actually added or modified – not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.\nContrast with a whole-file “lint changed files” gate, which fails on function definitions a PR never touched – forcing either a repo-wide reformat or disabling the linter. lint-changed-lines is the incremental alternative.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
   },
   {
     "objectID": "reference/lint-changed-lines.html#how-it-works",
     "href": "reference/lint-changed-lines.html#how-it-works",
     "title": "lint-changed-lines.yml",
     "section": "How it works",
-    "text": "How it works\nThe workflow checks out the PR head commit (not the default refs/pull/N/merge ref), sets up R, installs the package (so object_usage_linter can resolve the package’s own functions), then runs lintr on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API patch, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.\nMust be triggered by pull_request (the changed-line set comes from the PR)."
+    "text": "How it works\nThe workflow checks out the PR head commit (not the default refs/pull/N/merge ref), sets up R, installs the package (so object_usage_linter can resolve the package’s own functions), then runs lintr on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API patch, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.\nMust be triggered by pull_request (the changed-line set comes from the PR).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
   },
   {
     "objectID": "reference/lint-changed-lines.html#inputs",
     "href": "reference/lint-changed-lines.html#inputs",
     "title": "lint-changed-lines.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages to install (gh and lintr are always installed).\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL before linting so object_usage_linter can resolve the package’s own functions. Set false for a repo that is not an installable R package.\n\n\nfail\nboolean\ntrue\nFail the workflow when a lint is found on a changed line (rather than warn only)."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages to install (gh and lintr are always installed).\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL before linting so object_usage_linter can resolve the package’s own functions. Set false for a repo that is not an installable R package.\n\n\nfail\nboolean\ntrue\nFail the workflow when a lint is found on a changed line (rather than warn only).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
   },
   {
     "objectID": "reference/lint-changed-lines.html#permissions",
     "href": "reference/lint-changed-lines.html#permissions",
     "title": "lint-changed-lines.yml",
     "section": "Permissions",
-    "text": "Permissions\ncontents: read and pull-requests: read (to read the PR’s changed-file patches)."
+    "text": "Permissions\ncontents: read and pull-requests: read (to read the PR’s changed-file patches).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
   },
   {
     "objectID": "reference/lint-changed-lines.html#example",
     "href": "reference/lint-changed-lines.html#example",
     "title": "lint-changed-lines.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-changed-lines.yml in your repo.\n# Lints only the lines a pull request adds or modifies (not whole changed\n# files), so lint rules can be adopted or tightened incrementally.\nname: lint-changed-lines\n\non:\n  pull_request:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2\n    # with:\n    #   path: '.'               # R package root (holding DESCRIPTION)\n    #   extra-packages: ''      # extra R deps (gh + lintr always installed)\n    #   install-package: false  # skip R CMD INSTALL for a non-package repo\n    #   fail: false             # warn instead of failing on lints\nSee the examples/ directory for the full caller stub (lint-changed-lines.yml)."
+    "text": "Example\n# Copy to .github/workflows/lint-changed-lines.yml in your repo.\n# Lints only the lines a pull request adds or modifies (not whole changed\n# files), so lint rules can be adopted or tightened incrementally.\nname: lint-changed-lines\n\non:\n  pull_request:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2\n    # with:\n    #   path: '.'               # R package root (holding DESCRIPTION)\n    #   extra-packages: ''      # extra R deps (gh + lintr always installed)\n    #   install-package: false  # skip R CMD INSTALL for a non-package repo\n    #   fail: false             # warn instead of failing on lints\nSee the examples/ directory for the full caller stub (lint-changed-lines.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
   },
   {
     "objectID": "reference/altdoc-multiversion-docs.html",
     "href": "reference/altdoc-multiversion-docs.html",
     "title": "altdoc-multiversion-docs.yml",
     "section": "",
-    "text": "Render an altdoc-based R package’s Quarto docs site and deploy multiple versions side by side on gh-pages: PRs to /pr-preview/pr-&lt;number&gt;/, pushes to the default branch to /dev/, published releases to /latest-tag/ and /vX.Y.Z/, and a root / redirect landing page into the default docs version. Ported from d-morrison/rpt’s bespoke docs.yaml into a reusable workflow (see UCD-SERG/serocalculator#504).\nOne-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root). Requires an altdoc/quarto_website.yml navbar with a “Versions” menu entry for the version-dropdown step to rewrite (see the Example section).\nUnlike the preview / preview-deploy family, this keeps a single job for build, deploy, and PR-preview cleanup, rather than splitting into a fork-safe read-only build half and a base-repo-context deploy half. Hardening that trust boundary is a possible follow-up, not part of this port."
+    "text": "Render an altdoc-based R package’s Quarto docs site and deploy multiple versions side by side on gh-pages: PRs to /pr-preview/pr-&lt;number&gt;/, pushes to the default branch to /dev/, published releases to /latest-tag/ and /vX.Y.Z/, and a root / redirect landing page into the default docs version. Ported from d-morrison/rpt’s bespoke docs.yaml into a reusable workflow (see UCD-SERG/serocalculator#504).\nOne-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root). Requires an altdoc/quarto_website.yml navbar with a “Versions” menu entry for the version-dropdown step to rewrite (see the Example section).\nUnlike the preview / preview-deploy family, this keeps a single job for build, deploy, and PR-preview cleanup, rather than splitting into a fork-safe read-only build half and a base-repo-context deploy half. Hardening that trust boundary is a possible follow-up, not part of this port.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
   },
   {
     "objectID": "reference/altdoc-multiversion-docs.html#inputs",
     "href": "reference/altdoc-multiversion-docs.html#inputs",
     "title": "altdoc-multiversion-docs.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nr-packages\nstring\n(see workflow file)\nr-lib/actions package specs to install. Must include local::. and any::altdoc (or a fork).\n\n\nneeds\nstring\n\"connect\\nwebsite\"\nr-lib/actions/setup-r-dependencies needs: list.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before rendering (space-separated).\n\n\nsetup-julia\nboolean\nfalse\nInstall Julia before rendering (for packages with a JuliaCall dependency).\n\n\ncheckout-submodules\nstring\n'recursive'\nPassed to actions/checkout’s submodules ('recursive', 'true', or 'false').\n\n\ndefault-branch\nstring\n'main'\nThe repo’s default branch, used for dev-docs deploys and to read the dev version from DESCRIPTION even on release builds.\n\n\nquarto-config-path\nstring\n'altdoc/quarto_website.yml'\nPath to the altdoc Quarto config file, relative to the repo root.\n\n\ndocs-base-url\nstring\n''\nOverride the docs base URL. Leave empty to derive it from the calling repository.\n\n\npreview-branch\nstring\n'gh-pages'\nBranch PR previews and version subdirectories are deployed to.\n\n\ntimeout-minutes\nnumber\n30\nTimeout for the docs job as a whole, and for the render step within it. Both are set from this one value.\n\n\nrewrite-pr-preview-links\nboolean\ntrue\nOn PR builds, repoint Quarto’s repo-action links and the navbar GitHub icon at the PR’s head branch and conversation page.\n\n\nrewrite-issue-links\nboolean\ntrue\nRepoint rendered “Report an issue” links at the base repository’s issues page.\n\n\ndispatch-version\nstring\n''\nForward the caller’s workflow_dispatch version input ('dev' or 'stable'): a reusable workflow only sees with:-passed values.\n\n\ndispatch-release-tag\nstring\n''\nForward the caller’s workflow_dispatch release_tag input, required when dispatch-version is 'stable'.\n\n\nlegacy-paths\nstring\n''\nRetired docs subdirectories to keep working, as old=new pairs (e.g. main=dev). See Retired version directories.\n\n\nversion-dropdown-title-template\nstring\n'{version}'\nLabel for the navbar “Versions” menu, where {version} is the version being rendered. See Showing which version a reader is on.\n\n\nversion-in-navbar-title\nboolean\ntrue\nShow that version next to the navbar title, the way pkgdown does."
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nr-packages\nstring\n(see workflow file)\nr-lib/actions package specs to install. Must include local::. and any::altdoc (or a fork).\n\n\nneeds\nstring\n\"connect\\nwebsite\"\nr-lib/actions/setup-r-dependencies needs: list.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before rendering (space-separated).\n\n\nsetup-julia\nboolean\nfalse\nInstall Julia before rendering (for packages with a JuliaCall dependency).\n\n\ncheckout-submodules\nstring\n'recursive'\nPassed to actions/checkout’s submodules ('recursive', 'true', or 'false').\n\n\ndefault-branch\nstring\n'main'\nThe repo’s default branch, used for dev-docs deploys and to read the dev version from DESCRIPTION even on release builds.\n\n\nquarto-config-path\nstring\n'altdoc/quarto_website.yml'\nPath to the altdoc Quarto config file, relative to the repo root.\n\n\ndocs-base-url\nstring\n''\nOverride the docs base URL. Leave empty to derive it from the calling repository.\n\n\npreview-branch\nstring\n'gh-pages'\nBranch PR previews and version subdirectories are deployed to.\n\n\ntimeout-minutes\nnumber\n30\nTimeout for the docs job as a whole, and for the render step within it. Both are set from this one value.\n\n\nrewrite-pr-preview-links\nboolean\ntrue\nOn PR builds, repoint Quarto’s repo-action links and the navbar GitHub icon at the PR’s head branch and conversation page.\n\n\nrewrite-issue-links\nboolean\ntrue\nRepoint rendered “Report an issue” links at the base repository’s issues page.\n\n\ndispatch-version\nstring\n''\nForward the caller’s workflow_dispatch version input ('dev' or 'stable'): a reusable workflow only sees with:-passed values.\n\n\ndispatch-release-tag\nstring\n''\nForward the caller’s workflow_dispatch release_tag input, required when dispatch-version is 'stable'.\n\n\nlegacy-paths\nstring\n''\nRetired docs subdirectories to keep working, as old=new pairs (e.g. main=dev). See Retired version directories.\n\n\nversion-dropdown-title-template\nstring\n'{version}'\nLabel for the navbar “Versions” menu, where {version} is the version being rendered. See Showing which version a reader is on.\n\n\nversion-in-navbar-title\nboolean\ntrue\nShow that version next to the navbar title, the way pkgdown does.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
   },
   {
     "objectID": "reference/altdoc-multiversion-docs.html#showing-which-version-a-reader-is-on",
     "href": "reference/altdoc-multiversion-docs.html#showing-which-version-a-reader-is-on",
     "title": "altdoc-multiversion-docs.yml",
     "section": "Showing which version a reader is on",
-    "text": "Showing which version a reader is on\nA reader who arrives at /v1.1.0/reference/index.html from a search result should be able to tell they are on an archived release without reading the URL. Two places say so, each switchable:\n\nThe navbar “Versions” menu is labeled with the version this build renders – v1.2.3 (stable), 0.1.0.9000 (dev), or an archived v1.1.0 – matching the entry it corresponds to, rather than a static “Versions”. Set version-dropdown-title-template to change the format, e.g. 'Version: {version}'.\nThe navbar title carries that version beside the package name, after pkgdown, muted for a release and red for a development build. Set version-in-navbar-title: false to leave the title alone.\n\nThe badge is written to Quarto’s website.navbar.title, not website.title, so the page &lt;title&gt;, the feed, and social-card metadata keep the plain site title.\nWhich version a build renders comes from the event: a release build renders its own tag, a workflow_dispatch with version: stable renders the tag it was given, and everything else – default-branch pushes and PR previews – renders the branch, so it is labeled as the development version."
+    "text": "Showing which version a reader is on\nA reader who arrives at /v1.1.0/reference/index.html from a search result should be able to tell they are on an archived release without reading the URL. Two places say so, each switchable:\n\nThe navbar “Versions” menu is labeled with the version this build renders – v1.2.3 (stable), 0.1.0.9000 (dev), or an archived v1.1.0 – matching the entry it corresponds to, rather than a static “Versions”. Set version-dropdown-title-template to change the format, e.g. 'Version: {version}'.\nThe navbar title carries that version beside the package name, after pkgdown, muted for a release and red for a development build. Set version-in-navbar-title: false to leave the title alone.\n\nThe badge is written to Quarto’s website.navbar.title, not website.title, so the page &lt;title&gt;, the feed, and social-card metadata keep the plain site title.\nWhich version a build renders comes from the event: a release build renders its own tag, a workflow_dispatch with version: stable renders the tag it was given, and everything else – default-branch pushes and PR previews – renders the branch, so it is labeled as the development version.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
   },
   {
     "objectID": "reference/altdoc-multiversion-docs.html#retired-version-directories",
     "href": "reference/altdoc-multiversion-docs.html#retired-version-directories",
     "title": "altdoc-multiversion-docs.yml",
     "section": "Retired version directories",
-    "text": "Retired version directories\nA site that previously published the default branch’s docs to /&lt;branch&gt;/ – the insightsengineering/r-pkgdown-multiversion layout – has every /main/... link broken by the move to /dev/, this workflow’s layout and pkgdown’s own development-mode convention.\nSet legacy-paths to a comma- or newline-separated list of old=new pairs to keep the old links alive:\nlegacy-paths: main=dev\nThat generates a site-root 404.html rewriting any request under /main/ to the same path under /dev/, so /main/reference/index.html lands on /dev/reference/index.html. GitHub Pages serves no server-side redirects but does serve a site-root 404.html for unresolved paths, which is what makes deep links work – a per-directory index.html meta-refresh only catches the directory root.\nTwo consequences worth knowing:\n\nRedirection needs JavaScript. Without it the page renders as a plain not-found notice linking to the docs root.\nThe redirect replaces the site’s 404 page. Any path the site cannot resolve renders this page, not GitHub’s default one.\n\nThe pairs are explicit rather than derived from whichever version this build deployed, so /main/ resolves to the same place after a release build as after a default-branch build."
+    "text": "Retired version directories\nA site that previously published the default branch’s docs to /&lt;branch&gt;/ – the insightsengineering/r-pkgdown-multiversion layout – has every /main/... link broken by the move to /dev/, this workflow’s layout and pkgdown’s own development-mode convention.\nSet legacy-paths to a comma- or newline-separated list of old=new pairs to keep the old links alive:\nlegacy-paths: main=dev\nThat generates a site-root 404.html rewriting any request under /main/ to the same path under /dev/, so /main/reference/index.html lands on /dev/reference/index.html. GitHub Pages serves no server-side redirects but does serve a site-root 404.html for unresolved paths, which is what makes deep links work – a per-directory index.html meta-refresh only catches the directory root.\nTwo consequences worth knowing:\n\nRedirection needs JavaScript. Without it the page renders as a plain not-found notice linking to the docs root.\nThe redirect replaces the site’s 404 page. Any path the site cannot resolve renders this page, not GitHub’s default one.\n\nThe pairs are explicit rather than derived from whichever version this build deployed, so /main/ resolves to the same place after a release build as after a default-branch build.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
   },
   {
     "objectID": "reference/altdoc-multiversion-docs.html#permissions",
     "href": "reference/altdoc-multiversion-docs.html#permissions",
     "title": "altdoc-multiversion-docs.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write (deploys push to gh-pages), pull-requests: write, and issues: write (the PR-preview sticky comment and link rewrites)."
+    "text": "Permissions\nGrant contents: write (deploys push to gh-pages), pull-requests: write, and issues: write (the PR-preview sticky comment and link rewrites).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
   },
   {
     "objectID": "reference/altdoc-multiversion-docs.html#example",
     "href": "reference/altdoc-multiversion-docs.html#example",
     "title": "altdoc-multiversion-docs.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/docs.yaml in your repo.\nname: Docs\n\non:\n  push:\n    branches: [main]\n  release:\n    types: [published]\n  pull_request:\n    types: [opened, reopened, synchronize, closed]\n  workflow_dispatch:\n    inputs:\n      version:\n        description: Documentation version to deploy\n        required: true\n        default: dev\n        type: choice\n        options: [dev, stable]\n      release_tag:\n        description: Stable release tag to deploy when version=stable (e.g. v1.2.3)\n        required: false\n        type: string\n\njobs:\n  docs:\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n    uses: Morrison-Lab/gha/.github/workflows/altdoc-multiversion-docs.yml@v2\n    with:\n      dispatch-version: ${{ github.event.inputs.version }}\n      dispatch-release-tag: ${{ github.event.inputs.release_tag }}\n      # legacy-paths: main=dev     # keep pre-migration /main/ links working\n      # version-dropdown-title-template: 'Version: {version}'\n      # version-in-navbar-title: false\nYour altdoc/quarto_website.yml navbar needs a placeholder “Versions” entry for the version-dropdown step to find and rewrite:\nwebsite:\n  navbar:\n    right:\n      - text: Versions\n        menu:\n          - text: \"$ALTDOC_PACKAGE_VERSION (dev)\"\n            href: https://&lt;owner&gt;.github.io/&lt;repo&gt;/dev/\nSee the examples/ directory for the full caller stub (altdoc-multiversion-docs.yml), with every optional input commented out."
+    "text": "Example\n# Copy to .github/workflows/docs.yaml in your repo.\nname: Docs\n\non:\n  push:\n    branches: [main]\n  release:\n    types: [published]\n  pull_request:\n    types: [opened, reopened, synchronize, closed]\n  workflow_dispatch:\n    inputs:\n      version:\n        description: Documentation version to deploy\n        required: true\n        default: dev\n        type: choice\n        options: [dev, stable]\n      release_tag:\n        description: Stable release tag to deploy when version=stable (e.g. v1.2.3)\n        required: false\n        type: string\n\njobs:\n  docs:\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n    uses: Morrison-Lab/gha/.github/workflows/altdoc-multiversion-docs.yml@v2\n    with:\n      dispatch-version: ${{ github.event.inputs.version }}\n      dispatch-release-tag: ${{ github.event.inputs.release_tag }}\n      # legacy-paths: main=dev     # keep pre-migration /main/ links working\n      # version-dropdown-title-template: 'Version: {version}'\n      # version-in-navbar-title: false\nYour altdoc/quarto_website.yml navbar needs a placeholder “Versions” entry for the version-dropdown step to find and rewrite:\nwebsite:\n  navbar:\n    right:\n      - text: Versions\n        menu:\n          - text: \"$ALTDOC_PACKAGE_VERSION (dev)\"\n            href: https://&lt;owner&gt;.github.io/&lt;repo&gt;/dev/\nSee the examples/ directory for the full caller stub (altdoc-multiversion-docs.yml), with every optional input commented out.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
   },
   {
     "objectID": "versioning.html",
@@ -883,7 +1018,7 @@
     "href": "permissions.html#optional-secrets",
     "title": "Permissions",
     "section": "Optional secrets",
-    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, or to push to a protected branch. Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
+    "text": "Optional secrets\n\nWORKFLOW_TOKEN (a PAT or GitHub App token with contents:write + workflows:write). The integrated GITHUB_TOKEN cannot push changes to files under .github/workflows/; GitHub rejects them without the workflows scope. Add this secret if claude will edit workflow files, to push to a protected branch, or – for bump-dev-version with its default auto-merge in a repo with required status checks – to let the bump PR’s checks run so it can merge (a GITHUB_TOKEN-authored PR’s pull_request checks never report, so the merge stays blocked; see its reference page). Unlike GITHUB_TOKEN, a PAT or App-token push does trigger other push-based workflows, so enabling it can set off extra CI runs. When the secret is absent and claude does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a git format-patch so they survive the run.\nSUBMODULES_TOKEN. Public submodules clone anonymously; private ones need this secret. Relevant to claude, claude-code-review, and bump-submodule when checkout-submodules (or the submodule update) touches a private submodule.",
     "crumbs": [
       "Overview",
       "Permissions"
@@ -1037,28 +1172,48 @@
     "href": "reference/request-dependabot-review.html",
     "title": "request-dependabot-review.yml",
     "section": "",
-    "text": "Request review from a configurable list of reviewers when a PR’s author matches a bot actor (Dependabot by default), so scheduled dependency bumps don’t merge without a human look."
+    "text": "Request review from a configurable list of reviewers when a PR’s author matches a bot actor (Dependabot by default), so scheduled dependency bumps don’t merge without a human look.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "request-dependabot-review.yml"
+    ]
   },
   {
     "objectID": "reference/request-dependabot-review.html#inputs",
     "href": "reference/request-dependabot-review.html#inputs",
     "title": "request-dependabot-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nreviewers\nstring\n(required)\nComma-separated GitHub usernames to request review from.\n\n\nbot-actor\nstring\n'dependabot[bot]'\nOnly request review when the PR author’s login matches this."
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nreviewers\nstring\n(required)\nComma-separated GitHub usernames to request review from.\n\n\nbot-actor\nstring\n'dependabot[bot]'\nOnly request review when the PR author’s login matches this.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "request-dependabot-review.yml"
+    ]
   },
   {
     "objectID": "reference/request-dependabot-review.html#permissions",
     "href": "reference/request-dependabot-review.html#permissions",
     "title": "request-dependabot-review.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant pull-requests: write (it requests a reviewer on the PR)."
+    "text": "Permissions\nGrant pull-requests: write (it requests a reviewer on the PR).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "request-dependabot-review.yml"
+    ]
   },
   {
     "objectID": "reference/request-dependabot-review.html#example",
     "href": "reference/request-dependabot-review.html#example",
     "title": "request-dependabot-review.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/request-dependabot-review.yml in your repo.\n# NOTE: the calling job grants pull-requests:write so the workflow can\n# request a review. Required because repos default to a read-only token.\nname: Request Dependabot PR Review\n\non:\n  pull_request:\n    types: [opened]\n\njobs:\n  request-review:\n    permissions:\n      pull-requests: write\n    uses: Morrison-Lab/gha/.github/workflows/request-dependabot-review.yml@v2\n    with:\n      reviewers: your-github-username\n      # bot-actor: renovate[bot]   # override the default (dependabot[bot])\nSee the examples/ directory for the full caller stub (request-dependabot-review.yml)."
+    "text": "Example\n# Copy to .github/workflows/request-dependabot-review.yml in your repo.\n# NOTE: the calling job grants pull-requests:write so the workflow can\n# request a review. Required because repos default to a read-only token.\nname: Request Dependabot PR Review\n\non:\n  pull_request:\n    types: [opened]\n\njobs:\n  request-review:\n    permissions:\n      pull-requests: write\n    uses: Morrison-Lab/gha/.github/workflows/request-dependabot-review.yml@v2\n    with:\n      reviewers: your-github-username\n      # bot-actor: renovate[bot]   # override the default (dependabot[bot])\nSee the examples/ directory for the full caller stub (request-dependabot-review.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "request-dependabot-review.yml"
+    ]
   },
   {
     "objectID": "reference/update-snapshots.html",
@@ -1173,28 +1328,48 @@
     "href": "reference/lint-markdown.html",
     "title": "lint-markdown.yml",
     "section": "",
-    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates."
+    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-markdown.yml"
+    ]
   },
   {
     "objectID": "reference/lint-markdown.html#inputs",
     "href": "reference/lint-markdown.html#inputs",
     "title": "lint-markdown.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint."
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-markdown.yml"
+    ]
   },
   {
     "objectID": "reference/lint-markdown.html#permissions",
     "href": "reference/lint-markdown.html#permissions",
     "title": "lint-markdown.yml",
     "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed."
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-markdown.yml"
+    ]
   },
   {
     "objectID": "reference/lint-markdown.html#example",
     "href": "reference/lint-markdown.html#example",
     "title": "lint-markdown.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus a companion check that flags long fenced code blocks as\n# decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\nSee the examples/ directory for the full caller stub (lint-markdown.yml)."
+    "text": "Example\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus a companion check that flags long fenced code blocks as\n# decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\nSee the examples/ directory for the full caller stub (lint-markdown.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-markdown.yml"
+    ]
   },
   {
     "objectID": "reference/report-failure.html",
