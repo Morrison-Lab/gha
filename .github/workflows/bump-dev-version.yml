@@ -38,7 +38,11 @@ on:
           default on: the diff is always exactly one mechanical line and needs
           no review. Requires the repo to have Settings -> General -> "Allow
           auto-merge" enabled, and "Allow GitHub Actions to create and approve
-          pull requests" for the PR-open step itself.
+          pull requests" for the PR-open step itself. In a repo with required
+          status checks it also requires WORKFLOW_TOKEN: a GITHUB_TOKEN-authored
+          PR does not trigger the pull_request runs those checks need, so
+          without the token the required checks never report and auto-merge
+          blocks forever (see the warning step below).
         type: boolean
         default: true
       dry-run:
@@ -85,6 +89,34 @@ jobs:
       old-version: ${{ steps.bump.outputs.old-version }}
       new-version: ${{ steps.bump.outputs.new-version }}
     steps:
+      - name: Warn if auto-merge cannot complete without WORKFLOW_TOKEN
+        # A GITHUB_TOKEN-authored PR does not trigger `pull_request` workflow
+        # runs -- GitHub suppresses them to prevent recursion -- so in a repo
+        # with required status checks those contexts never report, and native
+        # auto-merge blocks forever (the bump PR sits open on every merge until
+        # a human intervenes). WORKFLOW_TOKEN (a PAT or App token) authors the
+        # PR as a real user, whose `pull_request` runs are not suppressed, so
+        # the required checks report and auto-merge can complete. This warns
+        # rather than fails because the combination is only unreachable when the
+        # repo actually has required checks: a repo without them auto-merges
+        # fine on GITHUB_TOKEN, and failing here would break that legitimate
+        # config. Runs first, before any work, so the signal is visible up
+        # front rather than as a PR that silently never merges.
+        if: ${{ !inputs.dry-run && inputs.auto-merge }}
+        shell: bash
+        env:
+          WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
+        run: |
+          if [ -n "$WORKFLOW_TOKEN" ]; then
+            exit 0
+          fi
+          msg="auto-merge is enabled but WORKFLOW_TOKEN is not set. In a repo with required status checks, the bump PR is authored by the integrated GITHUB_TOKEN, whose pull_request runs GitHub suppresses -- so the required checks never report and native auto-merge blocks forever (the PR sits open on every merge). Required checks block manual merges too, so turning off auto-merge does not help. Set WORKFLOW_TOKEN (a PAT or App token) so the PR is authored by a real user whose checks run and report."
+          echo "::warning title=bump-dev-version::$msg"
+          {
+            echo "> [!WARNING]"
+            echo "> $msg"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
