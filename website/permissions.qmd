@@ -55,10 +55,14 @@ already include the right `permissions:` blocks; copy them as-is.
 - **`WORKFLOW_TOKEN`** (a PAT or GitHub App token with `contents:write` +
   `workflows:write`). The integrated `GITHUB_TOKEN` cannot push changes to files
   under `.github/workflows/`; GitHub rejects them without the `workflows` scope.
-  Add this secret if `claude` will edit workflow files, or to push to a
-  protected branch. Unlike `GITHUB_TOKEN`, a PAT or App-token push **does**
-  trigger other `push`-based workflows, so enabling it can set off extra CI
-  runs.
+  Add this secret if `claude` will edit workflow files, to push to a protected
+  branch, or -- for `bump-dev-version` with its default `auto-merge` in a repo
+  with required status checks -- to let the bump PR's checks run so it can merge
+  (a `GITHUB_TOKEN`-authored PR's `pull_request` checks never report, so the
+  merge stays blocked; see its
+  [reference page](reference/bump-dev-version.qmd)). Unlike `GITHUB_TOKEN`, a
+  PAT or App-token push **does** trigger other `push`-based workflows, so
+  enabling it can set off extra CI runs.
   When the secret is absent and `claude` does edit a workflow file, the
   rejected push is reported as an error naming this secret, and the commits
   are posted to the thread as a `git format-patch` so they survive the run.

@@ -110,7 +110,7 @@ jobs:
           if [ -n "$WORKFLOW_TOKEN" ]; then
             exit 0
           fi
-          msg="auto-merge is enabled but WORKFLOW_TOKEN is not set. In a repo with required status checks, the bump PR is authored by the integrated GITHUB_TOKEN, whose pull_request runs GitHub suppresses -- so the required checks never report and native auto-merge blocks forever (the PR sits open on every merge). Set WORKFLOW_TOKEN (a PAT or App token) so the PR is authored by a real user whose checks run, or set auto-merge: false to merge the bump PR by hand."
+          msg="auto-merge is enabled but WORKFLOW_TOKEN is not set. In a repo with required status checks, the bump PR is authored by the integrated GITHUB_TOKEN, whose pull_request runs GitHub suppresses -- so the required checks never report and native auto-merge blocks forever (the PR sits open on every merge). Required checks block manual merges too, so turning off auto-merge does not help. Set WORKFLOW_TOKEN (a PAT or App token) so the PR is authored by a real user whose checks run and report."
           echo "::warning title=bump-dev-version::$msg"
           {
             echo "> [!WARNING]"

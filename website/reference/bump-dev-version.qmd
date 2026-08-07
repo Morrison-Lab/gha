@@ -35,19 +35,30 @@ message.
 
 | Secret           | Required      | Description                                                   |
 | ---------------- | ------------- | -------------------------------------------------------------- |
-| `WORKFLOW_TOKEN` | conditional   | PAT or App token that authors the bump PR as a real user. Effectively required when the repo has required status checks and `auto-merge` is on; otherwise optional. |
+| `WORKFLOW_TOKEN` | conditional   | PAT or App token. Needed to push the bump commit when `pr-branch` is protected, and to let `auto-merge` complete when the repo has required status checks (it authors the PR as a real user, so its checks run). Optional when neither applies. |
 
-Without `WORKFLOW_TOKEN`, the bump PR is opened by the integrated
-`GITHUB_TOKEN`. GitHub does not trigger `pull_request` workflow runs for a
+`WORKFLOW_TOKEN` covers two independent needs.
+First, the checkout and `open-sync-pr` push steps use it to push the bump
+commit; without it they fall back to the integrated `GITHUB_TOKEN`, which
+cannot push to a `pr-branch` a ruleset protects.
+This is the reason the sibling `open-sync-pr` stubs
+([`bump-submodule`](bump-submodule.qmd),
+[`sync-shared-fragments`](sync-shared-fragments.qmd),
+[`sync-upstream`](sync-upstream.qmd)) document, and it still applies here.
+Second, it lets `auto-merge` complete in a repo with required status checks.
+GitHub does not trigger `pull_request` workflow runs for a
 `GITHUB_TOKEN`-authored PR (it suppresses them to prevent recursive runs), so
-in a repo with required status checks those checks never report and native
-`auto-merge` blocks forever -- the PR sits open on every merge until a human
-intervenes. Setting `WORKFLOW_TOKEN` (a PAT or App token) authors the PR as a
-real user, whose `pull_request` runs are not suppressed, so the required checks
-report and `auto-merge` completes. The reusable workflow emits a warning at the
-start of its run when `auto-merge` is on and `WORKFLOW_TOKEN` is missing. Omit
-the token only if the repo has no required checks, or set `auto-merge: false`
-and merge the bump PR by hand.
+those required checks never report and the merge is blocked forever -- the PR
+sits open on every merge.
+Required checks block manual merges too, so turning off `auto-merge` does not
+avoid this; the genuine fixes are to set `WORKFLOW_TOKEN` (so the PR is authored
+by a real user whose checks run), force-merge with branch-protection bypass
+rights, or re-trigger the checks with a real-user event (a manual push to the
+bump branch, or closing and reopening the PR).
+The reusable workflow emits a warning at the start of its run when `auto-merge`
+is on and `WORKFLOW_TOKEN` is missing.
+Omit the token only when `pr-branch` is unprotected and the repo has no required
+checks.
 
 ## Outputs
 
