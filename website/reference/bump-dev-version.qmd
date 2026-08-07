@@ -28,14 +28,26 @@ message.
 | `description-path` | string  | `DESCRIPTION`                | Path to the DESCRIPTION file to bump.                                        |
 | `base-branch`       | string  | `main`                        | Base branch to open the bump PR against.                                     |
 | `pr-branch`         | string  | `automated/bump-dev-version`  | Head branch for the automation PR.                                           |
-| `auto-merge`        | boolean | `true`                         | Enable GitHub's native auto-merge (squash) on the bump PR.                   |
+| `auto-merge`        | boolean | `true`                         | Enable GitHub's native auto-merge (squash) on the bump PR. In a repo with required status checks, needs `WORKFLOW_TOKEN` (see Secrets).       |
 | `dry-run`           | boolean | `false`                        | Bump but skip opening/merging a PR. Not yet exercised by this repo's own CI (its `dev-version` selftest job calls the `bump-dev-version` composite directly instead of this reusable workflow -- see the bootstrapping-gap note in `CLAUDE.md`); meant for a consumer to smoke-test the bump logic. |
 
 ## Secrets
 
-| Secret           | Required | Description                                                   |
-| ---------------- | -------- | -------------------------------------------------------------- |
-| `WORKFLOW_TOKEN` | no       | PAT or App token; needed only to push to a protected branch.   |
+| Secret           | Required      | Description                                                   |
+| ---------------- | ------------- | -------------------------------------------------------------- |
+| `WORKFLOW_TOKEN` | conditional   | PAT or App token that authors the bump PR as a real user. Effectively required when the repo has required status checks and `auto-merge` is on; otherwise optional. |
+
+Without `WORKFLOW_TOKEN`, the bump PR is opened by the integrated
+`GITHUB_TOKEN`. GitHub does not trigger `pull_request` workflow runs for a
+`GITHUB_TOKEN`-authored PR (it suppresses them to prevent recursive runs), so
+in a repo with required status checks those checks never report and native
+`auto-merge` blocks forever -- the PR sits open on every merge until a human
+intervenes. Setting `WORKFLOW_TOKEN` (a PAT or App token) authors the PR as a
+real user, whose `pull_request` runs are not suppressed, so the required checks
+report and `auto-merge` completes. The reusable workflow emits a warning at the
+start of its run when `auto-merge` is on and `WORKFLOW_TOKEN` is missing. Omit
+the token only if the repo has no required checks, or set `auto-merge: false`
+and merge the bump PR by hand.
 
 ## Outputs
 

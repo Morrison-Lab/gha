@@ -22,6 +22,11 @@ jobs:
       # description-path: DESCRIPTION   # default
       # auto-merge: true                 # default; set false to review by hand
     secrets:
-      # Set only if the bot must push to a protected branch; otherwise omit
-      # and the push falls back to GITHUB_TOKEN.
+      # Effectively required whenever the repo has required status checks and
+      # auto-merge is on (the default): a GITHUB_TOKEN-authored bump PR does not
+      # trigger the pull_request runs those checks need, so the required checks
+      # never report and auto-merge blocks forever. Set a PAT or App token here
+      # to author the PR as a real user. You can omit it only if the repo has no
+      # required checks, or you set auto-merge: false -- then the push falls
+      # back to GITHUB_TOKEN.
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
