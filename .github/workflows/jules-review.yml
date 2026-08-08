@@ -17,7 +17,7 @@ jobs:
       statuses: write
     steps:
       - name: Run Jules PR Reviewer
-        uses: sanjay3290/jules-pr-reviewer@f364d6653b2e9dc5a24df3ef12974aa264148c98 # v1.0.1
+        uses: sanjay3290/jules-pr-reviewer@66c23eff45e2103fb3d2d6873ba073e6e281ef31 # v1.0.2
         with:
           jules_api_key: ${{ secrets.JULES_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
