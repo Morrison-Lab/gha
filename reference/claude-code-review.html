@@ -590,6 +590,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
+  <li><a href="#the-require-review-gate" id="toc-the-require-review-gate" class="nav-link" data-scroll-target="#the-require-review-gate">The <code>require-review</code> gate</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/claude-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -760,6 +761,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
 <p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and <code>id-token: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</p>
+</section>
+<section id="the-require-review-gate" class="level2">
+<h2 class="anchored" data-anchor-id="the-require-review-gate">The <code>require-review</code> gate</h2>
+<p>Put <strong><code>review / require-review</code></strong> in branch protection’s required checks, not <code>review / claude-review</code>: the review job reports success in cases where no verdict was produced, and this gate job exists to distinguish them.</p>
+<p>Read its result as follows.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 71%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Result</th>
+<th>What it attests</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Green</td>
+<td>A reviewer ran and the job did not fail. <strong>Not</strong> that the reviewer approved — read the posted verdict for that.</td>
+</tr>
+<tr class="even">
+<td>Gray (skipped)</td>
+<td>No review ran. Does not block merging.</td>
+</tr>
+<tr class="odd">
+<td>Red</td>
+<td>The review job did not succeed. Blocks merging.</td>
+</tr>
+</tbody>
+</table>
+<p>One red result is not a review failure at all: a <code>claude-review</code> run canceled by a newer run of the same PR (<code>cancel-in-progress</code>) also turns this gate red. Check whether <code>claude-review</code>’s conclusion is <code>cancelled</code> rather than <code>failure</code> before investigating the diff, and trust the surviving run’s review.</p>
+<p>The gate skips gray whenever no review was attempted. That covers anything that made the <code>claude-review</code> job’s own <code>if:</code> false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:</p>
+<ul>
+<li>the API quota was exhausted before any review work happened;</li>
+<li>the PR edits the caller’s own review workflow file.</li>
+</ul>
+<p>That last case deserves care. <code>claude-code-action</code> requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and <strong>no re-run or re-dispatch will change that</strong> — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
