@@ -8,7 +8,7 @@
   check.
   The review job now surfaces the guard's decision as a `self_mod` output, the
   gate reports a gray *skipped* rather than green, and the review job posts a
-  PR comment saying that no review ran, that the condition is permanent for
-  that PR, and that a self-review or human review is needed.
+  PR comment saying that no review ran, that no re-run will change that, and
+  that a self-review or human review is needed.
   `require-review`'s semantics are now documented on the reference page: green
   attests that a reviewer ran, never that one approved.

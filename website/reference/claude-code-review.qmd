@@ -75,10 +75,10 @@ ran and stopped early:
 
 That last case deserves care. `claude-code-action` requires the calling
 workflow to match the default branch, so a PR editing it cannot be reviewed by
-this workflow at all, and the condition is **permanent for that PR** --- no
-push and no re-dispatch will clear it. The review job posts a PR comment saying
-so. Merge such a PR on a self-review or a human review; do not read the gray
-gate as an all-clear.
+this workflow at all, and **no re-run or re-dispatch will change that** --- the
+skip lifts only if the PR stops editing the file, which is rarely what the PR
+is for. The review job posts a PR comment saying so. Merge such a PR on a
+self-review or a human review; do not read the gray gate as an all-clear.
 
 ## Example
 
