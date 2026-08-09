@@ -64,12 +64,13 @@ by a newer run of the same PR (`cancel-in-progress`) also turns this gate red.
 Check whether `claude-review`'s conclusion is `cancelled` rather than `failure`
 before investigating the diff, and trust the surviving run's review.
 
-The gate skips gray in four cases:
+The gate skips gray whenever no review was attempted. That covers anything that
+made the `claude-review` job's own `if:` false --- a draft, fork, or
+bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the
+context-gathering job having been cancelled --- plus two cases where the job
+ran and stopped early:
 
-- the PR is a draft, a fork PR, or authored by a bot, so `claude-review` never
-  ran;
 - the API quota was exhausted before any review work happened;
-- a dispatched review was blocked by the fork/Dependabot dispatch guard;
 - the PR edits the caller's own review workflow file.
 
 That last case deserves care. `claude-code-action` requires the calling

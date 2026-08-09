@@ -412,11 +412,20 @@ jobs:
       # and require-review's own `if:`, which now excludes this case so the gate
       # shows a gray skip instead.
       #
-      # Posted once per PR rather than once per run: the guard fires on every run
-      # for as long as the PR edits the caller workflow, so an unguarded post
-      # would leave one identical warning per push. The run URL is included so
-      # that if the PR later stops editing the workflow and a real review runs,
-      # the collapse step below folds this notice as OUTDATED.
+      # Posted once per run, and de-duplicated the way this workflow's review and
+      # cost comments already are: the "Collapse previous Claude review comments"
+      # step below folds every earlier comment carrying an `actions/runs/<id>`
+      # link from this same workflow, so a PR that pushes N times shows one
+      # expanded notice rather than N. That is why the run URL is included, and
+      # why this step scans nothing before posting.
+      #
+      # An earlier draft instead posted once per PR, guarded by a marker string
+      # it grepped the thread for. Don't reintroduce that: the review comments
+      # are themselves posted by github-actions[bot] via `gh pr comment`, so any
+      # review that quoted the marker while discussing this diff would suppress
+      # the real notice for the rest of that PR's life -- the same quoted-text
+      # trap gha#344 records for `detect-review-request`. Filtering by author
+      # does not fix it, because the quoting comment has the same author.
       - name: Post a notice that self-review was skipped
         if: steps.selfmod.outputs.self_mod == 'true'
         env:
@@ -427,23 +436,6 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          MARKER='<!-- gha:claude-code-review:self-review-skipped -->'
-          # A listing failure errs toward posting a duplicate notice rather than
-          # toward silence, which is the whole failure this step exists to fix.
-          BODIES=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" --jq '.[].body') || {
-            echo "::warning::Could not list comments on #$PR_NUMBER; posting the notice without a duplicate check."
-            BODIES=""
-          }
-          # Substring-match in the shell rather than `printf | grep -q`: under
-          # `pipefail`, grep exiting early on a match can leave printf killed by
-          # SIGPIPE, and that non-zero status would read as "no match" and
-          # re-post the notice on every run.
-          case "$BODIES" in
-            *"$MARKER"*)
-              echo "Self-review-skip notice already present on #$PR_NUMBER; not repeating."
-              exit 0
-              ;;
-          esac
           # --body-file, not --body: the body carries backticks, which the shell
           # would otherwise run as command substitution.
           BODY_FILE="$(mktemp)"
@@ -458,9 +450,13 @@ jobs:
             printf '> Merge on a self-review or a human review instead.\n'
             printf '>\n'
             printf '> [View run](%s)\n' "$RUN_URL"
-            printf '\n%s\n' "$MARKER"
           } > "$BODY_FILE"
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"
+          # Warn rather than fail: require-review is gray either way, so the gate
+          # stays honest without this comment, and the next run posts again. A
+          # red claude-review here would mislabel a comment-posting failure as a
+          # review failure, on a PR where no review was ever attempted.
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE" \
+            || echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
 
       - name: Checkout repository
         if: steps.selfmod.outputs.self_mod != 'true'
@@ -972,10 +968,16 @@ jobs:
       # The "Post review comment" step above ensures that dispatched and
       # pull_request runs always leave a comment with an `actions/runs/<id>` link,
       # so this collapse step can match and fold it in future rounds.
+      #
+      # Also runs on the self-review-skip path, where resolve-final never ran:
+      # that path posts a notice comment per run (see above), and this step is
+      # what keeps a PR from accumulating one per push. It needs nothing from the
+      # skipped steps -- only `gh api` and caller-wf's already-parsed path.
       - name: Collapse previous Claude review comments
         if: >-
-          steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true'
+          steps.selfmod.outputs.self_mod == 'true' ||
+          (steps.resolve-final.outcome == 'success' &&
+          steps.resolve-final.outputs.quota_exhausted != 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -1146,7 +1148,9 @@ jobs:
     needs: claude-review
     # Run when the claude-review job ran and produced a real verdict.
     # Skip (gray) when:
-    #   - claude-review was skipped (fork/draft/bot `if:` was false)
+    #   - claude-review was skipped, whatever made its own `if:` false --- a
+    #     draft, fork, or bot-authored PR; a dispatch blocked by the
+    #     fork/Dependabot guard; or gather-context having been cancelled
     #   - quota_exhausted=true (API rejected the request before any work)
     #   - self_mod=true (the PR edits the caller workflow, so the review was
     #     deliberately skipped --- gha#434)
