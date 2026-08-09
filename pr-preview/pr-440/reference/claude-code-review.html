@@ -798,7 +798,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>the API quota was exhausted before any review work happened;</li>
 <li>the PR edits the caller’s own review workflow file.</li>
 </ul>
-<p>That last case deserves care. <code>claude-code-action</code> requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and the condition is <strong>permanent for that PR</strong> — no push and no re-dispatch will clear it. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.</p>
+<p>That last case deserves care. <code>claude-code-action</code> requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and <strong>no re-run or re-dispatch will change that</strong> — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
