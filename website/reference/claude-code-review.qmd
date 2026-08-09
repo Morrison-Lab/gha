@@ -45,6 +45,40 @@ Grant `contents: read`, `pull-requests: write`, `issues: write`, and
 `id-token: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
 `ANTHROPIC_API_KEY` secret.
 
+## The `require-review` gate
+
+Put **`review / require-review`** in branch protection's required checks, not
+`review / claude-review`: the review job reports success in cases where no
+verdict was produced, and this gate job exists to distinguish them.
+
+Read its result as follows.
+
+| Result | What it attests |
+| ------ | --------------- |
+| Green | A reviewer ran and the job did not fail. **Not** that the reviewer approved --- read the posted verdict for that. |
+| Gray (skipped) | No review ran. Does not block merging. |
+| Red | The review job did not succeed. Blocks merging. |
+
+One red result is not a review failure at all: a `claude-review` run canceled
+by a newer run of the same PR (`cancel-in-progress`) also turns this gate red.
+Check whether `claude-review`'s conclusion is `cancelled` rather than `failure`
+before investigating the diff, and trust the surviving run's review.
+
+The gate skips gray in four cases:
+
+- the PR is a draft, a fork PR, or authored by a bot, so `claude-review` never
+  ran;
+- the API quota was exhausted before any review work happened;
+- a dispatched review was blocked by the fork/Dependabot dispatch guard;
+- the PR edits the caller's own review workflow file.
+
+That last case deserves care. `claude-code-action` requires the calling
+workflow to match the default branch, so a PR editing it cannot be reviewed by
+this workflow at all, and the condition is **permanent for that PR** --- no
+push and no re-dispatch will clear it. The review job posts a PR comment saying
+so. Merge such a PR on a self-review or a human review; do not read the gray
+gate as an all-clear.
+
 ## Example
 
 ```yaml
