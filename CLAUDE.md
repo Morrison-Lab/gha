@@ -1442,13 +1442,24 @@ SHA-comparison rule in
 self-review when the PR edits this workflow` step compares the PR's changed
 files against the CALLER's review-workflow path (derived from
 `github.workflow_ref`) and, when the PR itself edits that file, skips every
-downstream step — checkout, run review, post review comment. `review /
-claude-review` and `review / require-review` both report `success`, but
-every step past the guard shows `skipped`, and no verdict comment is ever
-posted. This is deliberate (the action's own App-token exchange 401s on a
-workflow file that doesn't match the default branch's content until merge —
-see the guard's own comment), but a green `claude-review` check is easy to
-mistake for a real review.
+downstream step: checkout, run review, post review comment.
+`review / claude-review` reports `success`, but every step past the guard shows
+`skipped`, and no verdict is ever produced.
+This is deliberate, since the action's own App-token exchange 401s on a workflow
+file that doesn't match the default branch's content until merge (see the
+guard's own comment).
+But a green `claude-review` check is easy to mistake for a real review.
+
+**`require-review` used to report `success` here too, which is what made this
+indistinguishable from a clean review on a required check (gha#434).**
+Since gha#440 the skip is surfaced as a `self_mod` job output that
+`require-review` excludes, so that gate shows a gray *skipped* instead, and the
+review job posts a PR comment explaining that no review ran.
+Read the gray as "nobody reviewed this", not as an all-clear.
+Note the usual tag lag: consumers pinned to `@v2`, this repo's own dogfood
+caller included, keep the old both-green behaviour until `@v2` slides past that
+merge, so a green `require-review` on an older run is this case rather than a
+contradiction.
 
 **The guard checks exactly one path, so it doesn't trip for every file this
 section's title mentions.** `WF_PATH` comes from `github.workflow_ref` — in a

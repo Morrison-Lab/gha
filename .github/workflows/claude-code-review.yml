@@ -351,6 +351,10 @@ jobs:
 
     outputs:
       quota_exhausted: ${{ steps.resolve-final.outputs.quota_exhausted }}
+      # Surfaced so require-review (below) can tell "reviewed, no findings"
+      # apart from "never reviewed" and report a gray skip for the latter
+      # instead of the same green (gha#434).
+      self_mod: ${{ steps.selfmod.outputs.self_mod }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -399,6 +403,69 @@ jobs:
             echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # The skip above is correct, but on its own it is silent: every later step
+      # is skipped, the job still succeeds, and require-review used to report the
+      # same green it reports for a clean review --- so an unreviewed PR looked
+      # review-clean (gha#434). Two things make the skip visible: this comment,
+      # and require-review's own `if:`, which now excludes this case so the gate
+      # shows a gray skip instead.
+      #
+      # Posted once per run, and de-duplicated the way this workflow's review and
+      # cost comments already are: the "Collapse previous Claude review comments"
+      # step below folds every earlier comment carrying an `actions/runs/<id>`
+      # link from this same workflow, so a PR that pushes N times shows one
+      # expanded notice rather than N. That is why the run URL is included, and
+      # why this step scans nothing before posting.
+      #
+      # An earlier draft instead posted once per PR, guarded by a marker string
+      # it grepped the thread for. Don't reintroduce that: the review comments
+      # are themselves posted by github-actions[bot] via `gh pr comment`, so any
+      # review that quoted the marker while discussing this diff would suppress
+      # the real notice for the rest of that PR's life -- the same quoted-text
+      # trap gha#344 records for `detect-review-request`. Filtering by author
+      # does not fix it, because the quoting comment has the same author.
+      - name: Post a notice that self-review was skipped
+        id: skip-notice
+        if: steps.selfmod.outputs.self_mod == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          WF_PATH: ${{ steps.caller-wf.outputs.path }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # --body-file, not --body: the body carries backticks, which the shell
+          # would otherwise run as command substitution.
+          BODY_FILE="$(mktemp)"
+          {
+            printf '> [!WARNING]\n'
+            printf '> **No review ran --- this PR edits `%s`, the review workflow itself.**\n' "$WF_PATH"
+            printf '> `claude-code-action` requires that file to match the default branch, so its token exchange fails until this change merges.\n'
+            printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing that file.\n'
+            printf '>\n'
+            printf '> `require-review` reports a gray *skipped* rather than green.\n'
+            printf '> A green there attests that a reviewer ran, never that one approved; here none ran at all.\n'
+            printf '> Merge on a self-review or a human review instead.\n'
+            printf '>\n'
+            printf '> [View run](%s)\n' "$RUN_URL"
+          } > "$BODY_FILE"
+          # Warn rather than fail: require-review is gray either way, so the gate
+          # stays honest without this comment, and the next run posts again. A
+          # red claude-review here would mislabel a comment-posting failure as a
+          # review failure, on a PR where no review was ever attempted.
+          #
+          # Record whether it landed. The collapse step below folds the previous
+          # run's notice, so it must not run when this one failed to post --- that
+          # would leave the PR with a gray gate and no visible explanation, which
+          # is gha#434's symptom reproduced in a single run.
+          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"; then
+            echo "posted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "posted=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
           fi
 
       - name: Checkout repository
@@ -911,10 +978,21 @@ jobs:
       # The "Post review comment" step above ensures that dispatched and
       # pull_request runs always leave a comment with an `actions/runs/<id>` link,
       # so this collapse step can match and fold it in future rounds.
+      #
+      # Also runs on the self-review-skip path, where resolve-final never ran:
+      # that path posts a notice comment per run (see above), and this step is
+      # what keeps a PR from accumulating one per push. It needs nothing from the
+      # skipped steps -- only `gh api` and caller-wf's already-parsed path.
+      #
+      # Gated on that notice having actually POSTED, not merely on self_mod: the
+      # post is best-effort, so folding the previous run's notice after a failed
+      # post would leave the PR gray with no explanation at all -- gha#434's own
+      # symptom, reproduced in one run.
       - name: Collapse previous Claude review comments
         if: >-
-          steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true'
+          steps.skip-notice.outputs.posted == 'true' ||
+          (steps.resolve-final.outcome == 'success' &&
+          steps.resolve-final.outputs.quota_exhausted != 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -1057,28 +1135,53 @@ jobs:
           fi
 
   # Gate job: skipped (gray) when the claude-review job was itself skipped
-  # (fork/draft/bot) or when the API quota was exhausted. Passes on a clean
-  # review, fails when the review job failed for a real reason.
+  # (fork/draft/bot), when the API quota was exhausted, or when the self-review
+  # guard skipped the review because the PR edits the caller workflow. Passes on
+  # a clean review, fails when the review job failed for a real reason.
   #
   # GitHub Actions can only produce a "skipped" job conclusion via a false
   # `if:` — a running job can only conclude success or failure. This second
-  # job is the mechanism: when quota_exhausted=true the `if:` is false and
-  # the job shows the gray skip icon instead of a misleading green checkmark.
+  # job is the mechanism: when quota_exhausted=true or self_mod=true the `if:`
+  # is false and the job shows the gray skip icon instead of a misleading green
+  # checkmark.
+  #
+  # What a green result attests to, and what it does not: a reviewer RAN and the
+  # job did not fail. It does not attest that the reviewer APPROVED --- read the
+  # posted verdict for that. A gray skip attests less still: no review ran.
+  # Before gha#434 the self-review skip produced the same green as a clean
+  # review, so an unreviewed PR was indistinguishable from a reviewed one.
   #
   # Consumers should use this job's name (e.g. `review / require-review`) in
   # branch protection required-checks instead of (or in addition to)
   # `review / claude-review`. A skipped result does not block merging; a
-  # failing result does.
+  # failing result does. Skipping rather than failing is deliberate for the
+  # self-review case: no re-run or re-dispatch clears that condition, and the
+  # only thing that does is the PR ceasing to edit the file, so failing would
+  # force an admin override on every workflow-editing PR. The gray icon plus the
+  # PR comment the review job posts carry the signal instead.
   require-review:
     needs: claude-review
-    # Run when the claude-review job ran and quota was not exhausted.
+    # Run when the claude-review job ran and produced a real verdict.
     # Skip (gray) when:
-    #   - claude-review was skipped (fork/draft/bot `if:` was false)
+    #   - claude-review was skipped, whatever made its own `if:` false --- a
+    #     draft, fork, or bot-authored PR; a dispatch blocked by the
+    #     fork/Dependabot guard; or gather-context having been cancelled
     #   - quota_exhausted=true (API rejected the request before any work)
+    #   - self_mod=true (the PR edits the caller workflow, so the review was
+    #     deliberately skipped --- gha#434)
+    #
+    # Both of those last two are conditioned on the review job having SUCCEEDED.
+    # A deliberate no-verdict skip and a job that blew up are different states,
+    # and only the first is safe to gray out: without the success test, a
+    # genuine failure in any step that still runs on those paths would be
+    # reported as "nothing to review" rather than red, which is the fail-open
+    # direction this whole job exists to close.
     if: >-
       always() &&
       needs.claude-review.result != 'skipped' &&
-      !fromJSON(needs.claude-review.outputs.quota_exhausted || 'false')
+      !(needs.claude-review.result == 'success' &&
+      (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
+      fromJSON(needs.claude-review.outputs.self_mod || 'false')))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
