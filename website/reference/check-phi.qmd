@@ -14,7 +14,7 @@ only `file:line:col` and the detector name.
 | Input            | Type    | Default | Description                                                                                                                     |
 | ---------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `python-version` | string  | `'3.x'` | Python version to set up.                                                                                                       |
-| `detectors`      | string  | `''`    | Comma-separated detector set, overriding the default (`ssn`, `mrn`, `dob`, `csv_phi_header`). Also available: `phone`, `email`. |
+| `detectors`      | string  | `''`    | Comma-separated detector set, overriding the default (`ssn`, `mrn`, `dob`, `csv_phi_header`, `study_id`). Also available: `phone`, `email`. |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`.                      |
 | `allowlist-file` | string  | `''`    | Path in the caller repo to a regex allowlist file.                                                                              |
 | `fail`           | boolean | `true`  | Fail the workflow when possible PHI is found; otherwise warn only.                                                              |
@@ -44,7 +44,7 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-phi.yml@v2
     # with:
-    #   detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'  # add phone/email
+    #   detectors: 'ssn,mrn,dob,csv_phi_header,study_id,phone,email'  # add phone/email
     #   paths-ignore: 'tests/testthat/fixtures/*,docs/*'      # skip known-safe paths
     #   allowlist-file: '.github/phi-allowlist.txt'           # regexes to suppress
     #   fail: false                                           # warn instead of failing

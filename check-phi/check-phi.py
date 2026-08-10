@@ -21,7 +21,8 @@ Design notes:
 Configuration (all via environment variables, set by the composite action):
   PHI_BASE_REF        Git ref/SHA to diff against. Empty => scan whole tree.
   PHI_DETECTORS       Comma list overriding the enabled detector set
-                      (choose from: ssn, mrn, dob, csv_phi_header, phone, email).
+                      (choose from: ssn, mrn, dob, csv_phi_header, study_id, phone,
+                      email).
   PHI_PATHS_IGNORE    Comma/newline-separated glob patterns to skip.
   PHI_ALLOWLIST_FILE  Path to a file of regexes; a match whose text matches any
                       regex is suppressed. Defaults to .github/phi-allowlist.txt
@@ -45,7 +46,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 # in a consumer's YAML), which would silently exclude those lines from scanning.
 INLINE_PRAGMA_RE = re.compile(r"\bphi-allow\b", re.IGNORECASE)
 DEFAULT_ALLOWLIST = ".github/phi-allowlist.txt"
-DEFAULT_DETECTORS = ("ssn", "mrn", "dob", "csv_phi_header")
+DEFAULT_DETECTORS = ("ssn", "mrn", "dob", "csv_phi_header", "study_id")
 CSV_SUFFIXES = (".csv", ".tsv", ".psv")
 
 
@@ -97,6 +98,45 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
     return [
         (m.start() + 1, "Possible date of birth")
         for m in _DOB_RE.finditer(line)
+    ]
+
+
+# A study/participant identifier assigned a literal, e.g. the one-off debugging
+# spot-check `if StudyID_c="A1B2C3D4E5";` that survives into committed analysis
+# code.
+#
+# Keyed on the *variable name*, not on the value's shape, because a study's own
+# id format is arbitrary and picking a shape gets it wrong quietly. In the
+# exposure this detector was built from, seven distinct values were each ten
+# characters and only two were all digits, so a rule keyed on a run of ten
+# digits would have reported twelve of forty-five sites and passed over the
+# rest.
+#
+# Precision comes from requiring all three of: an id-suggestive variable name,
+# an assignment or comparison operator, and a *quoted* literal of at least eight
+# alphanumerics containing at least one digit. An unquoted right-hand side is
+# almost always another variable; a short or all-alphabetic literal is almost
+# always a category label; and the eight-character floor keeps ordinary tokens
+# like "config1" out while still reaching every real id shape seen so far.
+#
+# Known limits, stated rather than papered over. A redacted placeholder of the
+# form STUDYID20 satisfies the pattern, so a repository that pseudonymizes in
+# place needs an allowlist entry for its own placeholder shape. And nothing
+# here reaches an identifier with no variable name beside it --- a pasted
+# `proc print` block listing bare ids passes straight through, exactly as the
+# csv_phi_header detector cannot see an unlabeled column.
+_STUDY_ID_RE = re.compile(
+    r"(?i)\b(?:study|subject|participant|patient|member|enrollee|respondent)"
+    r"[\s_-]*(?:id|identifier)s?(?:_[a-z0-9]{1,4})?"
+    r"\s*(?:!=|==|=|:)\s*"
+    r"(['\"])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{8,}\1"
+)
+
+
+def _detect_study_id(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
+    return [
+        (m.start() + 1, "Possible study/participant identifier literal")
+        for m in _STUDY_ID_RE.finditer(line)
     ]
 
 
@@ -161,6 +201,7 @@ DETECTORS: Dict[str, Callable[[str, int, str], List[Tuple[int, str]]]] = {
     "mrn": _detect_mrn,
     "dob": _detect_dob,
     "csv_phi_header": _detect_csv_phi_header,
+    "study_id": _detect_study_id,
     "phone": _detect_phone,
     "email": _detect_email,
 }

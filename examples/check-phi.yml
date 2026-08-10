@@ -16,7 +16,7 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-phi.yml@v2
     # with:
-    #   detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'  # add phone/email
+    #   detectors: 'ssn,mrn,dob,csv_phi_header,study_id,phone,email'  # add phone/email
     #   paths-ignore: 'tests/testthat/fixtures/*,docs/*'      # skip known-safe paths
     #   allowlist-file: '.github/phi-allowlist.txt'           # regexes to suppress
     #   fail: false                                           # warn instead of failing

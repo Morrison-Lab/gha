@@ -131,6 +131,80 @@ def test_csv_header_ignores_non_phi_columns():
     assert check_phi._detect_csv_phi_header("data.csv", 1, "id,value,count") == []
 
 
+# ── Study/participant identifier literals ─────────────────────────
+# Every value below is synthetic. The exposure this detector was built from is
+# reproduced by *shape* only: ten alphanumerics, digit-leading, quoted, in a
+# one-off `if <var>="...";` debugging spot-check.
+
+def test_study_id_matches_the_incident_shape():
+    # The literal form that motivated the detector, with a synthetic value.
+    hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
+    assert len(hits) == 1
+    assert "identifier" in hits[0][1]
+
+
+def test_study_id_matches_regardless_of_the_value_alphabet():
+    # The point of keying on the variable name: an all-digit id and a mixed
+    # alphanumeric one are both caught, so the rule does not silently cover
+    # only the subset that looks numeric.
+    for value in ("1234567890", "1ABCDEFGHI", "AB12345678", "a1b2c3d4e5"):
+        assert check_phi._detect_study_id("p.sas", 1, f'if StudyID_c="{value}";')
+
+
+def test_study_id_matches_other_id_variable_names_and_operators():
+    for line in (
+        'patient_id = "AB12345678"',
+        'subject_id: "X9Y8Z7W6V5"',
+        "if studyid_c=='1ABCDEFGHI'",
+        'participant_ids = "1ABCDEFGHI"',
+        'member_identifier = "AB12345678"',
+        'if StudyID_c != "1ABCDEFGHI"',
+    ):
+        assert check_phi._detect_study_id("f.txt", 1, line), line
+
+
+def test_study_id_never_echoes_the_value():
+    hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
+    assert hits  # must fire so the no-echo check below is non-vacuous
+    assert all("1ABCDEFGHI" not in message for _, message in hits)
+
+
+def test_study_id_reports_a_one_based_column():
+    hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
+    assert len(hits) == 1
+    assert hits[0][0] == 4  # "StudyID_c" begins at index 3
+
+
+def test_study_id_rejects_an_unquoted_right_hand_side():
+    # Almost always another variable rather than a literal.
+    for line in ("study_id = another_var;", "studyid_c = subject_id;",
+                 "study_id = 1ABCDEFGHI;"):
+        assert check_phi._detect_study_id("f.txt", 1, line) == [], line
+
+
+def test_study_id_rejects_short_or_all_alphabetic_literals():
+    for line in ('patient_id = "1234"',        # too short
+                 'study_id = "ABCDEFGH"',      # no digit: a category label
+                 'subject_id = "config1"'):    # under the eight-char floor
+        assert check_phi._detect_study_id("f.txt", 1, line) == [], line
+
+
+def test_study_id_rejects_prose_with_no_assignment():
+    assert check_phi._detect_study_id("d.md", 1, "study id 1234567890 was dropped") == []
+
+
+def test_study_id_fires_on_a_placeholder_so_pseudonyms_need_an_allowlist():
+    # Documented limit rather than an oversight: a repository that redacts in
+    # place to STUDYIDnn must allowlist that shape, or its own redacted files
+    # re-trip the check.
+    assert check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="STUDYID20";')
+
+
+def test_study_id_is_registered_and_on_by_default():
+    assert "study_id" in check_phi.DETECTORS
+    assert "study_id" in check_phi.DEFAULT_DETECTORS
+
+
 # ── Off-by-default line detectors ────────────────────────────────────────────
 
 def test_phone_needs_separators():
