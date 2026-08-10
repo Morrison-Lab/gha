@@ -189,6 +189,21 @@ def test_study_id_still_requires_a_whole_name_not_a_suffix():
     assert check_phi._detect_study_id("a.R", 1, 'mystudy_id = "1ABCDEFGHI"') == []
 
 
+def test_study_id_matches_sas_word_operators():
+    # SAS writes comparisons as words. `if StudyID_c ne "..." then delete;` is
+    # how one real site escaped every `=`-keyed search during the exposure
+    # this detector was built from.
+    for line in ('if StudyID_c ne "1ABCDEFGHI" then delete;',
+                 'if StudyID_c eq "1ABCDEFGHI";'):
+        assert check_phi._detect_study_id("p.sas", 1, line), line
+
+
+def test_study_id_word_operators_require_surrounding_space():
+    # Without the space requirement, `ne`/`eq` would match inside a longer
+    # variable name and turn the operator alternation into a wildcard.
+    assert check_phi._detect_study_id("p.sas", 1, 'study_idne = "1ABCDEFGHI"') == []
+
+
 def test_study_id_never_echoes_the_value():
     hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
     assert hits  # must fire so the no-echo check below is non-vacuous

@@ -40,3 +40,14 @@
   detector added to `DEFAULT_DETECTORS` and not added there gets no end-to-end
   coverage through the real composite action, and the job's own "run every
   detector" comment quietly stops being true.
+- The detector also reaches SAS's word-form comparisons, `StudyID_c ne "..."`
+  and `eq`, which need surrounding whitespace and so are a separate
+  alternative rather than another symbol.
+  A real site written that way escaped every `=`-keyed search during the
+  exposure this was built from.
+- The doc comment now records the limit that matters most for how this should
+  be read: an identifier passed to a generically-named parameter
+  (`get_IDs(IDs = "...")`) is out of reach, because a bare `IDs` cannot be
+  keyed on without drowning the check.
+  It is a tripwire for identifiers nobody was looking for, not proof that a
+  tree is clean --- for that, search for the values.
