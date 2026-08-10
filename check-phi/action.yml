@@ -2,6 +2,7 @@ name: Check for PHI
 description: >-
   Scan the caller's repository for content that looks like Protected Health
   Information (Social Security numbers, medical record numbers, dates of birth,
+  study/participant identifier literals,
   PHI column headers in data files). On pull requests only the added lines are
   scanned; otherwise the whole tracked tree is scanned. Matched values are
   never printed to the log.

@@ -27,3 +27,16 @@
   Consumers get this without opting in; one that trips it either has a real
   finding or adds an allowlist entry, which is the mechanism already designed
   for that.
+- The detector reaches R's `<-` and `<<-` assignment, underscore-prefixed
+  names (`base_patient_id`), and subscripted column access
+  (`df[["patient_id"]] <- ...`).
+  The first matters most: R and Quarto are this org's target ecosystem, where
+  `<-` is the dominant assignment form, so a rule seeing only `=` would have
+  been narrower than its own documentation claimed.
+  The underscore case was a `\b` that finds no boundary after `_`, which is a
+  word character.
+- `_selftest.yml`'s `phi` job now lists `study_id` in its `detectors:` input.
+  That input **replaces** the default set rather than extending it, so a
+  detector added to `DEFAULT_DETECTORS` and not added there gets no end-to-end
+  coverage through the real composite action, and the job's own "run every
+  detector" comment quietly stops being true.

@@ -1,6 +1,7 @@
 # Copy to .github/workflows/check-phi.yml in your repo.
 # Scans pull requests for content that looks like Protected Health Information
-# (SSNs, medical record numbers, dates of birth, PHI column headers in data
+# (SSNs, medical record numbers, dates of birth, study/participant identifier
+# literals, PHI column headers in data
 # files). On PRs only the added lines are scanned; on push the whole tree is.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check for PHI

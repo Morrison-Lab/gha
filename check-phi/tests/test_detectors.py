@@ -163,6 +163,32 @@ def test_study_id_matches_other_id_variable_names_and_operators():
         assert check_phi._detect_study_id("f.txt", 1, line), line
 
 
+def test_study_id_matches_r_assignment_arrows():
+    # R and Quarto are the target ecosystem, where `<-` is the dominant
+    # assignment form; a rule that only saw `=` would miss most of it.
+    for line in ('study_id <- "1ABCDEFGHI"', 'study_id <<- "1ABCDEFGHI"'):
+        assert check_phi._detect_study_id("a.R", 1, line), line
+
+
+def test_study_id_matches_an_underscore_prefixed_name():
+    # A `\b` finds no boundary before an underscore, so these were skipped
+    # until the lookbehind replaced it.
+    for line in ('base_patient_id = "1ABCDEFGHI"', '_study_id = "1ABCDEFGHI"'):
+        assert check_phi._detect_study_id("a.py", 1, line), line
+
+
+def test_study_id_matches_subscripted_column_access():
+    for line in ('df["patient_id"] = "1ABCDEFGHI"',
+                 'df[["patient_id"]] <- "1ABCDEFGHI"'):
+        assert check_phi._detect_study_id("a.R", 1, line), line
+
+
+def test_study_id_still_requires_a_whole_name_not_a_suffix():
+    # The lookbehind must not turn into "match anywhere": a name whose id-word
+    # is embedded in a longer alphanumeric token is not an id variable.
+    assert check_phi._detect_study_id("a.R", 1, 'mystudy_id = "1ABCDEFGHI"') == []
+
+
 def test_study_id_never_echoes_the_value():
     hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
     assert hits  # must fire so the no-echo check below is non-vacuous

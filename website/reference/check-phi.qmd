@@ -4,7 +4,8 @@ title: "check-phi.yml"
 
 Scan pull requests (added lines only; the whole tracked tree on `push`) for
 content that looks like protected health information: US Social Security
-numbers, medical record numbers, dates of birth, and PHI-suggestive column
+numbers, medical record numbers, dates of birth, study/participant identifier
+literals, and PHI-suggestive column
 headers in delimited data files. It is a heuristic tripwire, not a HIPAA
 compliance tool. Matched values are never printed to the log; findings report
 only `file:line:col` and the detector name.
@@ -28,7 +29,8 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 ```yaml
 # Copy to .github/workflows/check-phi.yml in your repo.
 # Scans pull requests for content that looks like Protected Health Information
-# (SSNs, medical record numbers, dates of birth, PHI column headers in data
+# (SSNs, medical record numbers, dates of birth, study/participant identifier
+# literals, PHI column headers in data
 # files). On PRs only the added lines are scanned; on push the whole tree is.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check for PHI

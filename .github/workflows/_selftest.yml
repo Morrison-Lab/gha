@@ -103,7 +103,11 @@ jobs:
           # maintainer email, and check-new-line-breaks' throwaway git-repo
           # test fixtures' placeholder git config email), which are skipped
           # via paths-ignore below.
-          detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'
+          # This input REPLACES the default set rather than extending it, so a
+          # detector added to DEFAULT_DETECTORS and not added here gets no
+          # end-to-end coverage at all and the comment above quietly stops
+          # being true.
+          detectors: 'ssn,mrn,dob,csv_phi_header,study_id,phone,email'
           paths-ignore: |
             check-phi/tests/**
             test-coverage/tests/**

@@ -5,7 +5,8 @@ like Protected Health Information (PHI) / personally identifiable identifiers.
 
 This is a *heuristic* tripwire, not a HIPAA compliance tool: it flags patterns
 that are very unlikely to belong in source control (Social Security numbers,
-medical record numbers, dates of birth, PHI column headers in data files) so a
+medical record numbers, dates of birth, study/participant identifier literals,
+PHI column headers in data files) so a
 human can review before the data is merged. It is intentionally tuned for high
 precision (few false positives) over recall.
 
@@ -101,9 +102,13 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
     ]
 
 
-# A study/participant identifier assigned a literal, e.g. the one-off debugging
-# spot-check `if StudyID_c="A1B2C3D4E5";` that survives into committed analysis
-# code.
+# A study/participant identifier assigned a literal: the one-off debugging
+# spot-check, `if StudyID_c=` followed by a quoted id, that survives into
+# committed analysis code.
+#
+# No example id appears in this comment on purpose. An illustrative literal of
+# the right shape would satisfy the pattern below, so this file would flag
+# itself the moment the selftest runs every detector over the repository.
 #
 # Keyed on the *variable name*, not on the value's shape, because a study's own
 # id format is arbitrary and picking a shape gets it wrong quietly. In the
@@ -126,9 +131,16 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # `proc print` block listing bare ids passes straight through, exactly as the
 # csv_phi_header detector cannot see an unlabeled column.
 _STUDY_ID_RE = re.compile(
-    r"(?i)\b(?:study|subject|participant|patient|member|enrollee|respondent)"
+    # A lookbehind rather than \b: an underscore is a word character, so \b
+    # finds no boundary in `base_patient_id` and the name would be skipped.
+    r"(?i)(?<![A-Za-z0-9])"
+    r"(?:study|subject|participant|patient|member|enrollee|respondent)"
     r"[\s_-]*(?:id|identifier)s?(?:_[a-z0-9]{1,4})?"
-    r"\s*(?:!=|==|=|:)\s*"
+    # Optional close of a subscripted column, `df["patient_id"] = ...`.
+    r"(?:[\"']\s*\]{1,2})?"
+    # `<-` and `<<-` matter as much as `=` here: R and Quarto are the target
+    # ecosystem, and `<-` is the dominant assignment form in both.
+    r"\s*(?:<<-|<-|!=|==|=|:)\s*"
     r"(['\"])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{8,}\1"
 )
 
