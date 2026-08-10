@@ -1,0 +1,23 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "I've read the diff and I'm now waiting for the remaining background agents to complete before I can finalize."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": true,
+    "num_turns": 2,
+    "duration_ms": 53000,
+    "total_cost_usd": 0.97,
+    "permission_denials_count": 0
+  }
+]

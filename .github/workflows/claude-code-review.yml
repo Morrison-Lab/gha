@@ -686,6 +686,16 @@ jobs:
       # wrong — the PR hasn't been reviewed, but it also hasn't been found to
       # have problems. Skip gracefully instead and post a comment so the author
       # knows to re-trigger once the quota resets.
+      #
+      # Second special case (gha#391): is_error:true alongside subtype:"success"
+      # is itself self-contradictory -- the turn loop believed it finished
+      # normally, and the flag's cause is unestablished. When this happens and
+      # a genuine, complete verdict was ALREADY posted, failing the check
+      # anyway hides a finished review from every reader rather than merely
+      # under-reviewing the PR (gha#391's #984/#985: both merged with the
+      # verdict unread). The guard passes that specific combination through
+      # instead; any other is_error/error-subtype shape still fails here
+      # exactly as before.
       # The guard logic itself lives in scripts/check-review-execution.sh so
       # it can be exercised offline against canned fixtures (see
       # scripts/tests/), without a live Claude API call — see the

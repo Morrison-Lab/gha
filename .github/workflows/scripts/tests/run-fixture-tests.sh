@@ -30,6 +30,16 @@ declare -A expected=(
   [stub-gha198-high-denial-count.json]=fail
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
+  # gha#391: is_error:true alongside subtype:"success" is a self-contradictory
+  # result. When a genuine verdict was already posted, the review already did
+  # its job and the check must not hide it (was `fail` before this fix --
+  # both is-error-success-*.json fixtures reproduce gha#391's #984/#986
+  # evidence). When no verdict was posted, the anomaly gets no special
+  # treatment: still `fail`, and deliberately NOT `fail-stub` -- retrying a
+  # result shape nobody has evidence recovers is a separate decision this fix
+  # does not make (see check-review-execution.sh's own comment at that check).
+  [is-error-success-with-verdict.json]=pass
+  [is-error-success-no-verdict.json]=fail
   [quota-exhausted.json]=skip
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
@@ -45,6 +55,9 @@ declare -A expected=(
 # (gha#173): the block it must contain, and a block it must NOT contain.
 declare -A must_contain=(
   [verdict-not-last-block.json]='Ready for merge'
+  # gha#391: confirms review_text_file carries the actual posted verdict, not
+  # just an empty/fallback string from the is_error early-fail path.
+  [is-error-success-with-verdict.json]='Ready for merge'
   # gha#218 review finding 2: review_text_file must carry the actual
   # verdict-bearing content (from the inline-comment tool's body), not
   # just fall back to the narration text block that happens to satisfy
@@ -91,6 +104,8 @@ declare -A expected_cost=(
   [stub-gha198-high-denial-count.json]=2.2062398500000007
   [empty-review-text.json]=0.01
   [is-error-result.json]=0.15
+  [is-error-success-with-verdict.json]=6.23
+  [is-error-success-no-verdict.json]=0.97
   [quota-exhausted.json]=0
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
