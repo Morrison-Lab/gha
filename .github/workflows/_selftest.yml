@@ -1487,6 +1487,34 @@ jobs:
           fi
           echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."
 
+  # gha#442: SUBMODULES_TOKEN authenticates a cross-owner SUBMODULE fetch
+  # (via the checkout-submodules composite's `submodules-token:` input) and
+  # must never gate the caller's own repo checkout --- a consumer that sets
+  # it correctly for its own submodule is exactly the consumer whose main
+  # checkout then fails, since the token has no reason to be able to read the
+  # caller's repo. The anchor is `^\s*token:`, not a bare `token:` substring
+  # match, so this does not also flag `submodules-token:` (which legitimately
+  # carries the secret) --- a trimmed line starting with "submodules-token:"
+  # never matches a pattern requiring "token:" immediately after the leading
+  # whitespace.
+  lint-checkout-tokens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Assert no workflow passes SUBMODULES_TOKEN to a top-level checkout's token input
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -rnE '^\s*token:\s*\$\{\{[^}]*SUBMODULES_TOKEN' .github/workflows/*.yml; then
+            echo "::error::A workflow above passes SUBMODULES_TOKEN to a top-level actions/checkout 'token:' input (see gha#442) --- it authenticates a cross-owner submodule fetch, not the caller's own repo. Use the checkout-submodules composite's 'submodules-token:' input instead."
+            exit 1
+          fi
+          echo "No workflow passes SUBMODULES_TOKEN to a top-level checkout token: input."
+
   # Covers the open-failure-issue action. report-failure.yml is its only
   # caller so far; check-links.yml's migration onto it is deferred to gha#327,
   # since a @v2 reference to a not-yet-released action fails at job-prepare

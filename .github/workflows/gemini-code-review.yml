@@ -162,12 +162,22 @@ jobs:
       # the guard step is skipped entirely, so its output is the empty string;
       # there the job `if:` has already applied the equivalent checks from the
       # event payload.
+      # The caller's own repo is checked out with the runner's default
+      # github.token, never SUBMODULES_TOKEN --- that secret authenticates a
+      # CROSS-OWNER submodule fetch and has no reason to (and, when a
+      # consumer sets it correctly for its own submodule, frequently cannot)
+      # read the caller's own repo (gha#442). Submodule auth is handled below
+      # by the shared checkout-submodules composite, the same one
+      # claude-code-review.yml already uses.
       - name: Checkout repository
         if: success() && steps.dispatch-guard.outputs.blocked != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout submodules
+        if: success() && steps.dispatch-guard.outputs.blocked != 'true' && inputs.checkout-submodules
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
         with:
-          submodules: ${{ inputs.checkout-submodules }}
-          token: ${{ secrets.SUBMODULES_TOKEN || github.token }}
+          submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
       # Pinned to a release SHA per README's "Pinning third-party actions".
       # run-gemini-cli publishes v0 / v0.1.x and has no v1 tag, so a `@v1` ref
