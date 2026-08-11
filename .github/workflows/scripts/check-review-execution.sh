@@ -12,6 +12,17 @@
 #     an error that isn't a quota/auth pre-processing rejection;
 #   - writes quota_exhausted=true to $GITHUB_OUTPUT (if set) and exits 0 on a
 #     zero-cost, single-turn error result (quota exhaustion / auth failure);
+#   - passes a run whose result object is self-contradictory --
+#     is_error:true alongside subtype:"success" -- when the transcript
+#     already carries a genuine, complete verdict (gha#391). subtype:"success"
+#     means the SDK's own turn loop believed it finished normally; is_error
+#     being set anyway is an unexplained anomaly (root cause unestablished --
+#     see gha#391), not a named SDK failure, and failing the check regardless
+#     hides a completed review from every reader (gha#391's #984/#985: both
+#     merged with the verdict unread). A genuine error subtype
+#     (error_during_execution, error_max_turns, ...) names a specific way the
+#     run broke and keeps failing unconditionally, whatever text happens to be
+#     in the transcript.
 #   - fails if the run's assistant text is empty/whitespace-only, or states no
 #     verdict anywhere (no `### Verdict` heading, `**Verdict:**` label, or
 #     `Verdict:` line in any assistant block — catches stub/placeholder
@@ -59,10 +70,22 @@ if [[ -n "$total_cost_usd" ]]; then
 fi
 is_error="$(jq -r '.is_error // false' <<< "$result")"
 subtype="$(jq -r '.subtype // ""' <<< "$result")"
+# A verdict line: optional leading blockquote / list / heading / bold
+# markers, then "verdict" (case-insensitive). Matches `### Verdict`,
+# `**Verdict:**`, `Verdict:`, `> Verdict`, `- Verdict:`; a stub
+# ("waiting for background agents…", "needs your approval") has none.
+# Shared by the gha#391 is_error/subtype=="success" check below and the
+# ordinary no-verdict check further down, so the two never drift apart.
+has_verdict() {
+  grep -qiE '^[[:space:]>*_#-]*verdict\b' "$1"
+}
 if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
   # total_cost_usd==0 with num_turns==1 means the API rejected the
   # request before any real processing — quota exhaustion, auth
-  # failure, or an immediate network error. Skip gracefully.
+  # failure, or an immediate network error. Skip gracefully. This has to
+  # run before any content extraction below, and applies whether or not
+  # subtype=="success" (the quota/auth rejection shape observed so far is
+  # always a genuine error_* subtype, e.g. quota-exhausted.json).
   total_cost="$(jq -r '.total_cost_usd // 1' <<< "$result")"
   num_turns="$(jq -r '.num_turns // 0' <<< "$result")"
   if [[ "$total_cost" == "0" && "$num_turns" == "1" ]]; then
@@ -70,9 +93,6 @@ if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
     echo "::warning::Claude review skipped — CLAUDE_CODE_OAUTH_TOKEN quota or auth error (zero cost, turn 1). Re-trigger the review once the quota resets."
     exit 0
   fi
-  echo "::error::Claude review ended in an error state (is_error=$is_error, subtype=$subtype)."
-  jq '{subtype, is_error, num_turns, duration_ms, total_cost_usd, permission_denials_count}' <<< "$result" || true
-  exit 1
 fi
 # Guard against a run that reports is_error:false but never actually
 # produced a review — e.g. it exits after posting only an orchestration
@@ -116,7 +136,18 @@ fi
 # With `gh pr comment` denied this branch is now largely defensive: the
 # agent is instructed not to post, and the workflow's "Post review
 # comment" step publishes review_text_file itself.
-denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
+#
+# permission_denials_count can be JSON null, not just a genuine 0 --
+# observed in real gha#391 evidence, e.g. the is-error-success-with-verdict.json
+# fixture below carries permission_denials_count:null. Coalescing null to 0
+# would satisfy BOTH this line's ($denials == 0) Bash-trust gate and the
+# stub-retry (denials <= max_denials) gate further down, treating an UNKNOWN
+# denial count as a CONFIRMED zero -- which a denied `gh pr comment` attempt
+# (never actually posted) can then exploit to fake a "posted" verdict
+# (confirmed empirically; gha#446 review finding 1). Coalesce to a sentinel
+# far above any real denial count instead, so unknown denials read as unsafe
+# on both gates rather than as zero.
+denials="$(jq -r '.permission_denials_count // 999999' <<< "$result")"
 # review_text_file (posted to the PR) and all_text_file (the pass/fail scan
 # below) must draw from the exact same candidate blocks, or a verdict this
 # script recognizes as "posted" can differ from what the PR actually shows
@@ -194,15 +225,29 @@ jq -r '
 ' "$blocks_file" > "$review_text_file" 2>/dev/null || true
 all_text_file="$(mktemp)"
 jq -r '.[]' "$blocks_file" > "$all_text_file" 2>/dev/null || true
+if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
+  # gha#391: only the self-contradictory is_error:true + subtype:"success"
+  # combination gets a second look, and only when the transcript we just
+  # extracted already carries a genuine, complete verdict -- see the header
+  # comment above for why. Anything else in this branch (a real error
+  # subtype, or subtype:"success" with no verdict posted) is left exactly as
+  # risky as it was before this fix: fail loudly, and don't guess at
+  # retryability for a shape nobody has evidence about.
+  if [[ "$subtype" == "success" ]] && has_verdict "$all_text_file"; then
+    echo "::warning::Claude review reported is_error=true with subtype=success, but a complete verdict was already posted -- treating as a completed review rather than failing the check (gha#391; the is_error cause is unestablished)."
+    echo "review_text_file=$review_text_file" >> "$GITHUB_OUTPUT"
+    echo "Claude review completed with an anomalous is_error flag (subtype=success); a verdict was posted."
+    exit 0
+  fi
+  echo "::error::Claude review ended in an error state (is_error=$is_error, subtype=$subtype)."
+  jq '.' <<< "$result" || true
+  exit 1
+fi
 if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
   echo "::error::Claude review produced no review text — treating as a failed review."
   exit 1
 fi
-# A verdict line: optional leading blockquote / list / heading / bold
-# markers, then "verdict" (case-insensitive). Matches `### Verdict`,
-# `**Verdict:**`, `Verdict:`, `> Verdict`, `- Verdict:`; a stub
-# ("waiting for background agents…", "needs your approval") has none.
-if ! grep -qiE '^[[:space:]>*_#-]*verdict\b' "$all_text_file"; then
+if ! has_verdict "$all_text_file"; then
   # gha#185 (low denial count, e.g. 1) vs gha#198 (high denial count,
   # 17-35) are the same textual shape — real text, is_error:false, no
   # verdict — and are only distinguishable by permission_denials_count.

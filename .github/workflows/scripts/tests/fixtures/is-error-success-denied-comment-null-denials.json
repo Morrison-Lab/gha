@@ -1,0 +1,30 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "I've reviewed the diff and will post my findings now."
+        },
+        {
+          "type": "tool_use",
+          "name": "Bash",
+          "input": {
+            "command": "gh pr comment 446 --body \"$(cat <<EOF\n### Verdict\n**Ready for merge.**\nEOF\n)\""
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": true,
+    "num_turns": 3,
+    "duration_ms": 45000,
+    "total_cost_usd": 1.1,
+    "permission_denials_count": null
+  }
+]

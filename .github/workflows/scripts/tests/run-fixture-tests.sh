@@ -30,6 +30,28 @@ declare -A expected=(
   [stub-gha198-high-denial-count.json]=fail
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
+  # gha#391: is_error:true alongside subtype:"success" is a self-contradictory
+  # result. When a genuine verdict was already posted, the review already did
+  # its job and the check must not hide it (was `fail` before this fix).
+  # is-error-success-with-verdict.json mirrors #984's/#985's logged
+  # is_error/subtype pair (Group A -- verdict posted, check failed anyway,
+  # both merged unread); is-error-success-no-verdict.json mirrors #986's
+  # logged run numbers (Group B -- no verdict, real content). When no verdict
+  # was posted, the anomaly gets no special treatment: still `fail`, and
+  # deliberately NOT `fail-stub` -- retrying a result shape nobody has
+  # evidence recovers is a separate decision this fix does not make (see
+  # check-review-execution.sh's own comment at that check).
+  [is-error-success-with-verdict.json]=pass
+  [is-error-success-no-verdict.json]=fail
+  # gha#446 review finding 1: permission_denials_count can be JSON null
+  # (observed real evidence, not hypothetical -- see the null-denials comment
+  # in check-review-execution.sh). A denied `gh pr comment`/`gh api ...
+  # comments` attempt must not be trusted as a posted verdict just because
+  # the denial count is unknown rather than a confirmed 0; both directions
+  # (is_error:true+subtype:success, and the pre-existing is_error:false path)
+  # must still `fail` rather than being fooled into `pass`/`fail-stub`.
+  [is-error-success-denied-comment-null-denials.json]=fail
+  [denied-comment-null-denials-not-trusted.json]=fail
   [quota-exhausted.json]=skip
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
@@ -45,6 +67,9 @@ declare -A expected=(
 # (gha#173): the block it must contain, and a block it must NOT contain.
 declare -A must_contain=(
   [verdict-not-last-block.json]='Ready for merge'
+  # gha#391: confirms review_text_file carries the actual posted verdict, not
+  # just an empty/fallback string from the is_error early-fail path.
+  [is-error-success-with-verdict.json]='Ready for merge'
   # gha#218 review finding 2: review_text_file must carry the actual
   # verdict-bearing content (from the inline-comment tool's body), not
   # just fall back to the narration text block that happens to satisfy
@@ -91,6 +116,10 @@ declare -A expected_cost=(
   [stub-gha198-high-denial-count.json]=2.2062398500000007
   [empty-review-text.json]=0.01
   [is-error-result.json]=0.15
+  [is-error-success-with-verdict.json]=6.23
+  [is-error-success-no-verdict.json]=0.97
+  [is-error-success-denied-comment-null-denials.json]=1.1
+  [denied-comment-null-denials-not-trusted.json]=1.1
   [quota-exhausted.json]=0
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
