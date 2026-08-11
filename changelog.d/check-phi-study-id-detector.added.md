@@ -5,13 +5,12 @@
   It keys on the **variable name** rather than on the value's shape, which is
   the whole point: a study's own id format is arbitrary, so a rule keyed on a
   shape gets it wrong quietly.
-  In the exposure it was built from (`ucdavis/bcs#609`), seven distinct values
-  were each ten characters and only two were all digits, so a rule keyed on a
-  run of ten digits would have reported twelve of forty-five sites and passed
+  In the exposure it was built from (`ucdavis/bcs#609`), nine distinct values
+  were each ten characters and only three were all digits, so a rule keyed on a
+  run of ten digits would have reported thirteen of forty-nine sites and passed
   over the rest.
   Verified against that repository's own pre-redaction files rather than
-  against fixtures alone: the detector reports all 45 sites across 7 files,
-  reproducing the count the issue derived independently.
+  against fixtures alone.
   Precision comes from requiring an id-suggestive variable name, an assignment
   or comparison operator, and a quoted literal of at least eight alphanumerics
   containing at least one digit --- so an unquoted right-hand side (almost
