@@ -136,7 +136,18 @@ fi
 # With `gh pr comment` denied this branch is now largely defensive: the
 # agent is instructed not to post, and the workflow's "Post review
 # comment" step publishes review_text_file itself.
-denials="$(jq -r '.permission_denials_count // 0' <<< "$result")"
+#
+# permission_denials_count can be JSON null, not just a genuine 0 --
+# observed in real gha#391 evidence, e.g. the is-error-success-with-verdict.json
+# fixture below carries permission_denials_count:null. Coalescing null to 0
+# would satisfy BOTH this line's ($denials == 0) Bash-trust gate and the
+# stub-retry (denials <= max_denials) gate further down, treating an UNKNOWN
+# denial count as a CONFIRMED zero -- which a denied `gh pr comment` attempt
+# (never actually posted) can then exploit to fake a "posted" verdict
+# (confirmed empirically; gha#446 review finding 1). Coalesce to a sentinel
+# far above any real denial count instead, so unknown denials read as unsafe
+# on both gates rather than as zero.
+denials="$(jq -r '.permission_denials_count // 999999' <<< "$result")"
 # review_text_file (posted to the PR) and all_text_file (the pass/fail scan
 # below) must draw from the exact same candidate blocks, or a verdict this
 # script recognizes as "posted" can differ from what the PR actually shows
