@@ -32,6 +32,12 @@ cases=(
   # Punctuated and polite phrasings it missed (serodynamics#276, #277).
   "true|@claude, please review"
   "true|@claude, review"
+  # Whitespace BEFORE the punctuation, which is how the mention is actually
+  # typed in the wild (verbatim shape from UCD-SERG/serodynamics#230). The
+  # unspaced forms above are pinned and this one was not, so nothing recorded
+  # that the `[[:space:][:punct:]]+` separator class -- rather than a
+  # punctuation-then-space ordering -- is what admits it.
+  "true|@claude , please review"
   "true|@claude please review this PR"
   "true|@claude can you review this?"
   "true|@claude could you please review"
@@ -62,6 +68,14 @@ cases=(
   # instead of a drift (gha#346).
   "false|@claude review the changes I just pushed"
   "false|@claude please review when you get a chance"
+  # A third, from a real thread: the mention carries a non-review task, and the
+  # review is asked for in a separate later sentence with no mention of its
+  # own. False because a request must sit adjacent to the mention, which is
+  # right -- but unlike the two above, this one was written by someone who did
+  # want a review and did not get one (UCD-SERG/serodynamics#230). Pinned so
+  # that relaxing adjacency, or letting a later line carry the request, stays a
+  # deliberate decision rather than a drift.
+  $'false|@claude, Please acknowledge and fix the comments left in this review.\r\n\r\nAlso, please review this pull request.'
   # CRLF is what GitHub actually delivers, and the pattern anchors on a bare
   # newline, so the normalizer has to strip the CRs for any of the above to
   # hold in production (gha#346).
@@ -97,6 +111,15 @@ cases=(
   "false|Please review this."
   "false|@claude what does this function do?"
   "false|"
+  # The agent's own trailing attribution line, which every comment it posts
+  # carries. That makes it the highest-frequency body in the wild containing
+  # the token, and the one where a regression costs the most: matching it would
+  # be a self-trigger loop rather than a stray run, since the agent would be
+  # dispatching a review off its own footer. False because the word after the
+  # mention is not a request keyword. (Shape from a real bot comment on
+  # UCD-SERG/serodynamics#230; its em dash is written `--` here per this repo's
+  # ASCII-punctuation rule, which the matcher is indifferent to.)
+  'false|<sub>-- posted by @claude post-step from [workflow run](https://example.invalid/r)</sub>'
   # BOT_NAME defaults to @claude alone, so another bot's mention is not a
   # request until a caller passes it (the BOT_NAME table below).
   "false|@gemini review"
