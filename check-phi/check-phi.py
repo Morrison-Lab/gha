@@ -131,11 +131,20 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # repository that pseudonymizes in place needs an allowlist entry for its own
 # placeholder shape.
 #
-# An `in (...)` list is read at its first element only, so a qualifying id
-# sitting behind a shorter non-id element, as in `in ("A", "...")`, is missed.
-# Every real list of study ids is uniform in shape, so the first element is an
-# id; the alternative is a skip pattern whose looseness costs more than the
-# case is worth.
+# The scan is line-based, so a match must fall entirely on one line --- name,
+# operator, and literal together. An `in (...)` list is therefore reached only
+# when its first element sits on the same line as the name and the operator.
+# A list whose opening paren ends the line is missed in full, not merely past
+# its first element:
+#
+#     where StudyID_c in (
+#         "...",
+#     );
+#
+# yields nothing on any of its lines, and that holds however uniform the list
+# is. On a single line, a qualifying id sitting behind a shorter non-id element
+# (`in ("A", "...")`) is missed too; there the alternative is a skip pattern
+# whose looseness costs more than the case is worth.
 #
 # Nothing here reaches an identifier with no variable name beside it --- a
 # pasted `proc print` block listing bare ids passes straight through, exactly
@@ -168,7 +177,15 @@ _STUDY_ID_RE = re.compile(
     # call. SAS itself requires the token boundary, so nothing real is lost.
     # `\s*\(` covers `in (` and `in(` alike, and the leading `(?i)` already
     # covers the uppercase `IN` that SAS is usually written in.
-    r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+|\s+in\s*\(\s*)"
+    #
+    # `not in (...)` is covered too. The other operator families each carry
+    # both polarities (`==`/`!=`, `eq`/`ne`), and membership should not be the
+    # one that reaches only the affirmative: excluding a named participant,
+    # `if StudyID_c not in ("...") then delete;`, is exactly as ordinary a
+    # place for a hard-coded identifier as selecting one. The `\s+` before
+    # `not` keeps the same token-boundary guard, so `study_idnot in (...)` and
+    # `study_id notin (...)` both stay out.
+    r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+|\s+(?:not\s+)?in\s*\(\s*)"
     r"(['\"])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{8,}\1"
 )
 

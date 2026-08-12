@@ -218,12 +218,45 @@ def test_study_id_matches_sas_membership_operator():
         assert check_phi._detect_study_id("p.sas", 1, line), line
 
 
+def test_study_id_matches_negated_sas_membership_operator():
+    # The other operator families each carry both polarities (`==`/`!=`,
+    # `eq`/`ne`), so membership must not reach only the affirmative. Excluding a
+    # named participant is as ordinary a place for a hard-coded id as selecting
+    # one, and the leading `(?i)` covers the upper-case form SAS usually writes.
+    for line in ('where StudyID_c not in ("1ABCDEFGHI");',
+                 'where StudyID_c NOT IN ("1ABCDEFGHI");',
+                 'if StudyID_c not in ("1ABCDEFGHI") then delete;',
+                 'where StudyID_c  not   in  ("1ABCDEFGHI");'):
+        assert check_phi._detect_study_id("p.sas", 1, line), line
+
+
+def test_study_id_negated_membership_keeps_the_token_boundary():
+    # The negated form must not relax the guard the affirmative one carries:
+    # `not` needs whitespace on both sides, or a longer variable name and a
+    # one-word `notin` would each read as a membership test.
+    for line in ('study_idnot in ("1ABCDEFGHI")',
+                 'where study_id notin ("1ABCDEFGHI");',
+                 'patient_id not_in ("1ABCDEFGHI")'):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
 def test_study_id_membership_list_needs_only_one_hit():
     # A multi-value list flags the line on its first element; the detector
     # reports the line, not an inventory of the values on it.
     hits = check_phi._detect_study_id(
         "p.sas", 1, 'where StudyID_c in ("1ABCDEFGHI","AB12345678");')
     assert len(hits) == 1
+
+
+def test_study_id_membership_cannot_span_lines():
+    # The scan is line-based, so a wrapped list is missed in full rather than
+    # past its first element: the opening line carries the name and operator
+    # with no literal, and the literal lines carry no name.
+    for line in ("where StudyID_c in (",
+                 '    "1ABCDEFGHI",',
+                 '    "AB12345678"',
+                 ");"):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
 
 
 def test_study_id_membership_operator_requires_a_preceding_space():
