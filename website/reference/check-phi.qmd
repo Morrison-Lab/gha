@@ -4,7 +4,8 @@ title: "check-phi.yml"
 
 Scan pull requests (added lines only; the whole tracked tree on `push`) for
 content that looks like protected health information: US Social Security
-numbers, medical record numbers, dates of birth, and PHI-suggestive column
+numbers, medical record numbers, dates of birth, study/participant identifier
+literals, and PHI-suggestive column
 headers in delimited data files. It is a heuristic tripwire, not a HIPAA
 compliance tool. Matched values are never printed to the log; findings report
 only `file:line:col` and the detector name.
@@ -14,7 +15,7 @@ only `file:line:col` and the detector name.
 | Input            | Type    | Default | Description                                                                                                                     |
 | ---------------- | ------- | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `python-version` | string  | `'3.x'` | Python version to set up.                                                                                                       |
-| `detectors`      | string  | `''`    | Comma-separated detector set, overriding the default (`ssn`, `mrn`, `dob`, `csv_phi_header`). Also available: `phone`, `email`. |
+| `detectors`      | string  | `''`    | Comma-separated detector set, overriding the default (`ssn`, `mrn`, `dob`, `csv_phi_header`, `study_id`). Also available: `phone`, `email`. |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`.                      |
 | `allowlist-file` | string  | `''`    | Path in the caller repo to a regex allowlist file.                                                                              |
 | `fail`           | boolean | `true`  | Fail the workflow when possible PHI is found; otherwise warn only.                                                              |
@@ -28,7 +29,8 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 ```yaml
 # Copy to .github/workflows/check-phi.yml in your repo.
 # Scans pull requests for content that looks like Protected Health Information
-# (SSNs, medical record numbers, dates of birth, PHI column headers in data
+# (SSNs, medical record numbers, dates of birth, study/participant identifier
+# literals, PHI column headers in data
 # files). On PRs only the added lines are scanned; on push the whole tree is.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Check for PHI
@@ -44,7 +46,7 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-phi.yml@v2
     # with:
-    #   detectors: 'ssn,mrn,dob,csv_phi_header,phone,email'  # add phone/email
+    #   detectors: 'ssn,mrn,dob,csv_phi_header,study_id,phone,email'  # add phone/email
     #   paths-ignore: 'tests/testthat/fixtures/*,docs/*'      # skip known-safe paths
     #   allowlist-file: '.github/phi-allowlist.txt'           # regexes to suppress
     #   fail: false                                           # warn instead of failing
