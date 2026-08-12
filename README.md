@@ -179,13 +179,13 @@ branch. It's a slash command rather than an `@claude review` mention on
 purpose: any `@claude` substring would also trigger `claude.yml`, so the slash
 command keeps the direct path independent.
 
-That reasoning holds only while `claude.yml` is enabled. If you have switched
-the agent **off**, nothing answers `@claude` at all, and a mention produces a
-one-second run with every job skipped and no comment posted. Set the repository
-variable `CLAUDE_AGENT_DISABLED` to `true` in that case, and the review stub
-accepts `@claude review` alongside `/review`. Leave it unset whenever the agent
-is live, or both workflows answer the same mention and dispatch two paid
-reviews of possibly different heads.
+That reasoning holds only while `claude.yml` is enabled.
+If you have switched the agent **off**, nothing answers `@claude` at all, and a
+mention produces a one-second run with every job skipped and no comment posted.
+Set the repository variable `CLAUDE_AGENT_DISABLED` to `true` in that case, and
+the review stub accepts `@claude review` alongside `/review`.
+Leave it unset whenever the agent is live, or both workflows answer the same
+mention and dispatch two paid reviews of possibly different heads.
 
 ## Claude session visibility
 

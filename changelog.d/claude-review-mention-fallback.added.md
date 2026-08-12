@@ -1,6 +1,7 @@
 - `examples/claude-code-review.yml`: `dispatch-on-comment` can now accept an
   `@claude review` mention in addition to `/review`, for repos that have
-  disabled the `claude.yml` agent. It is opt-in behind the repository variable
+  disabled the `claude.yml` agent.
+  It is opt-in behind the repository variable
   `CLAUDE_AGENT_DISABLED`, so the default behaviour is unchanged: with the
   agent live, both workflows would answer the same mention and dispatch two
   paid reviews of possibly different heads
