@@ -225,7 +225,9 @@ An `@claude review` mention (or any commit Claude pushes) routes through
 Install both, and keep the review stub named `claude-code-review.yml` (or set
 `claude.yml`'s `review-workflow-file` input to match) so the dispatch resolves.
 If you also want the direct `/review` path, enable `issue_comment` in the review
-stub too.
+stub too. If you have disabled `claude.yml`, also set the repository variable
+`CLAUDE_AGENT_DISABLED` to `true`, so an `@claude review` mention dispatches a
+review from the stub rather than reaching a workflow that no longer answers it.
 
 `gemini.yml` and `gemini-code-review.yml` are the same pair for Gemini CLI, with
 the same division of labour: the agent answers `@gemini` and `@gemini-cli`

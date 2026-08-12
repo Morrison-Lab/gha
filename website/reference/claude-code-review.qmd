@@ -11,6 +11,12 @@ default, callers run it only on dispatched runs (for `@claude review` via
 stub named `claude-code-review.yml` (or set `claude.yml`'s
 `review-workflow-file` to match) so the dispatch resolves.
 
+If you have disabled `claude.yml`, set the repository variable
+`CLAUDE_AGENT_DISABLED` to `true` so the stub's `dispatch-on-comment` job also
+accepts an `@claude review` mention. Without it a repo with the agent off has no
+mention path, and the phrasing people reach for silently does nothing. Leave the
+variable unset while the agent is live, or the mention is answered twice.
+
 ## Inputs
 
 | Input                 | Type    | Default                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
@@ -96,13 +102,17 @@ self-review or a human review; do not read the gray gate as an all-clear.
 # claude.yml's review-workflow-file to match) so the dispatch resolves.
 # Optional: uncomment pull_request for automatic review, and uncomment
 # issue_comment to allow trusted collaborators to trigger `/review` directly.
+# If you have DISABLED claude.yml, also set the repository variable
+# CLAUDE_AGENT_DISABLED to `true`, so an `@claude review` mention dispatches a
+# review here rather than reaching a workflow that no longer answers it.
 name: Claude Code Review
 
 on:
   # Optional: enable automatic review on PR activity.
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
-  # Optional: direct on-demand `/review` path (independent of @claude).
+  # Optional: direct on-demand `/review` path (independent of @claude), plus
+  # the opt-in `@claude review` fallback for repos with the agent disabled.
   # issue_comment:
   #   types: [created]
   workflow_dispatch:
