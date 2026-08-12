@@ -118,17 +118,24 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # number.
 #
 # Precision comes from requiring all three of: an id-suggestive variable name,
-# an assignment or comparison operator, and a *quoted* literal of at least eight
-# alphanumerics containing at least one digit. An unquoted right-hand side is
-# almost always another variable; a short or all-alphabetic literal is almost
-# always a category label; and the eight-character floor keeps ordinary tokens
-# like "config1" out while still reaching every real id shape seen so far.
+# an assignment, comparison, or membership operator, and a *quoted* literal of
+# at least eight alphanumerics containing at least one digit. An unquoted
+# right-hand side is almost always another variable; a short or all-alphabetic
+# literal is almost always a category label; and the eight-character floor
+# keeps ordinary tokens like "config1" out while still reaching every real id
+# shape seen so far.
 #
 # Known limits, stated rather than papered over.
 #
 # A redacted placeholder of the form STUDYID20 satisfies the pattern, so a
 # repository that pseudonymizes in place needs an allowlist entry for its own
 # placeholder shape.
+#
+# An `in (...)` list is read at its first element only, so a qualifying id
+# sitting behind a shorter non-id element, as in `in ("A", "...")`, is missed.
+# Every real list of study ids is uniform in shape, so the first element is an
+# id; the alternative is a skip pattern whose looseness costs more than the
+# case is worth.
 #
 # Nothing here reaches an identifier with no variable name beside it --- a
 # pasted `proc print` block listing bare ids passes straight through, exactly
@@ -152,7 +159,16 @@ _STUDY_ID_RE = re.compile(
     # ecosystem, and `<-` is the dominant assignment form in both. SAS's
     # word-form comparisons (`eq`, `ne`) need whitespace around them, so they
     # are a separate alternative rather than another symbol.
-    r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+)"
+    #
+    # SAS's `in (...)` membership test is a third shape, and the one that let a
+    # real identifier through: it takes a leading space like `eq`/`ne`, but
+    # closes on a paren rather than a space, so it is its own alternative
+    # again. That leading `\s+` is load-bearing rather than decorative ---
+    # without it `patient_idin("...")` reads as a match on an ordinary function
+    # call. SAS itself requires the token boundary, so nothing real is lost.
+    # `\s*\(` covers `in (` and `in(` alike, and the leading `(?i)` already
+    # covers the uppercase `IN` that SAS is usually written in.
+    r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+|\s+in\s*\(\s*)"
     r"(['\"])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{8,}\1"
 )
 

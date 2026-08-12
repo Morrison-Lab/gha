@@ -204,6 +204,45 @@ def test_study_id_word_operators_require_surrounding_space():
     assert check_phi._detect_study_id("p.sas", 1, 'study_idne = "1ABCDEFGHI"') == []
 
 
+def test_study_id_matches_sas_membership_operator():
+    # SAS's `in (...)` is the third comparison shape, alongside `=` and the
+    # word operators. `where StudyID_c in ("...");` is how a real identifier
+    # escaped this detector while every name-keyed check reported clean.
+    # `in (` and `in(` are both valid SAS, and SAS is usually written upper
+    # case, which the pattern's leading `(?i)` already covers.
+    for line in ('\twhere StudyID_c in ("1ABCDEFGHI");',
+                 'where StudyID_c IN ("1ABCDEFGHI");',
+                 'where StudyID_c in("1ABCDEFGHI");',
+                 'where StudyID_c in ( "1ABCDEFGHI" );',
+                 "where patient_id in ('AB12345678');"):
+        assert check_phi._detect_study_id("p.sas", 1, line), line
+
+
+def test_study_id_membership_list_needs_only_one_hit():
+    # A multi-value list flags the line on its first element; the detector
+    # reports the line, not an inventory of the values on it.
+    hits = check_phi._detect_study_id(
+        "p.sas", 1, 'where StudyID_c in ("1ABCDEFGHI","AB12345678");')
+    assert len(hits) == 1
+
+
+def test_study_id_membership_operator_requires_a_preceding_space():
+    # The negative control for the `in` branch, and the reason it carries the
+    # same `\s+` as `eq`/`ne`: without it, an ordinary function call whose name
+    # merely ends in `id` would read as a membership test on an id variable.
+    for line in ('study_idin ("1ABCDEFGHI")', 'patient_idin("1ABCDEFGHI")'):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
+def test_study_id_membership_still_requires_a_quoted_literal():
+    # The `in` branch must not relax the right-hand side: a subquery or a bare
+    # column list inside the parens is not an identifier literal.
+    for line in ("where study_id in (subject_id);",
+                 "where study_id in (select id from cohort);",
+                 'where patient_id in ("2026-01-01");'):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
 def test_study_id_never_echoes_the_value():
     hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
     assert hits  # must fire so the no-echo check below is non-vacuous
