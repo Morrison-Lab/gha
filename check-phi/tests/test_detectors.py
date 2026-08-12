@@ -204,6 +204,78 @@ def test_study_id_word_operators_require_surrounding_space():
     assert check_phi._detect_study_id("p.sas", 1, 'study_idne = "1ABCDEFGHI"') == []
 
 
+def test_study_id_matches_sas_membership_operator():
+    # SAS's `in (...)` is the third comparison shape, alongside `=` and the
+    # word operators. `where StudyID_c in ("...");` is how a real identifier
+    # escaped this detector while every name-keyed check reported clean.
+    # `in (` and `in(` are both valid SAS, and SAS is usually written upper
+    # case, which the pattern's leading `(?i)` already covers.
+    for line in ('\twhere StudyID_c in ("1ABCDEFGHI");',
+                 'where StudyID_c IN ("1ABCDEFGHI");',
+                 'where StudyID_c in("1ABCDEFGHI");',
+                 'where StudyID_c in ( "1ABCDEFGHI" );',
+                 "where patient_id in ('AB12345678');"):
+        assert check_phi._detect_study_id("p.sas", 1, line), line
+
+
+def test_study_id_matches_negated_sas_membership_operator():
+    # The other operator families each carry both polarities (`==`/`!=`,
+    # `eq`/`ne`), so membership must not reach only the affirmative. Excluding a
+    # named participant is as ordinary a place for a hard-coded id as selecting
+    # one, and the leading `(?i)` covers the upper-case form SAS usually writes.
+    for line in ('where StudyID_c not in ("1ABCDEFGHI");',
+                 'where StudyID_c NOT IN ("1ABCDEFGHI");',
+                 'if StudyID_c not in ("1ABCDEFGHI") then delete;',
+                 'where StudyID_c  not   in  ("1ABCDEFGHI");'):
+        assert check_phi._detect_study_id("p.sas", 1, line), line
+
+
+def test_study_id_negated_membership_keeps_the_token_boundary():
+    # The negated form must not relax the guard the affirmative one carries:
+    # `not` needs whitespace on both sides, or a longer variable name and a
+    # one-word `notin` would each read as a membership test.
+    for line in ('study_idnot in ("1ABCDEFGHI")',
+                 'where study_id notin ("1ABCDEFGHI");',
+                 'patient_id not_in ("1ABCDEFGHI")'):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
+def test_study_id_membership_list_needs_only_one_hit():
+    # A multi-value list flags the line on its first element; the detector
+    # reports the line, not an inventory of the values on it.
+    hits = check_phi._detect_study_id(
+        "p.sas", 1, 'where StudyID_c in ("1ABCDEFGHI","AB12345678");')
+    assert len(hits) == 1
+
+
+def test_study_id_membership_cannot_span_lines():
+    # The scan is line-based, so a wrapped list is missed in full rather than
+    # past its first element: the opening line carries the name and operator
+    # with no literal, and the literal lines carry no name.
+    for line in ("where StudyID_c in (",
+                 '    "1ABCDEFGHI",',
+                 '    "AB12345678"',
+                 ");"):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
+def test_study_id_membership_operator_requires_a_preceding_space():
+    # The negative control for the `in` branch, and the reason it carries the
+    # same `\s+` as `eq`/`ne`: without it, an ordinary function call whose name
+    # merely ends in `id` would read as a membership test on an id variable.
+    for line in ('study_idin ("1ABCDEFGHI")', 'patient_idin("1ABCDEFGHI")'):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
+def test_study_id_membership_still_requires_a_quoted_literal():
+    # The `in` branch must not relax the right-hand side: a subquery or a bare
+    # column list inside the parens is not an identifier literal.
+    for line in ("where study_id in (subject_id);",
+                 "where study_id in (select id from cohort);",
+                 'where patient_id in ("2026-01-01");'):
+        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+
+
 def test_study_id_never_echoes_the_value():
     hits = check_phi._detect_study_id("p.sas", 1, 'if StudyID_c="1ABCDEFGHI";')
     assert hits  # must fire so the no-echo check below is non-vacuous
