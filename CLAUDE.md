@@ -185,24 +185,6 @@ which is why the capabilities above moved to `@v2`.
   The `sed 's/\r$//'` it replaced only worked under GNU sed -- BSD/macOS sed
   reads `\r` as a literal `r` -- and the composite probes `base64 -d` vs `-D`
   for the same reason.
-  A fourth belongs to the awk in `strip-non-invoking-markup.sh` rather than to
-  this script, and it is the one an editor is most likely to reintroduce:
-  **never write an interval expression (`{m,n}`) into that awk.**
-  `mawk` is `awk` on Debian and Ubuntu, and `mawk 1.3.4 20240123` aborts the
-  whole process on one --- `REcompile() - panic: values still on machine
-  stack` --- rather than returning a verdict, so the abort is absorbed into a
-  `false` for every input and a genuine review request is silently never
-  dispatched (gha#448).
-  Express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
-  check, or unrolled as `^##?#?#?#?#?([ \t]|$)`.
-  Two things make it easy to miss.
-  `_selftest.yml` is green on `main` throughout, because whatever awk
-  `ubuntu-latest` provides does not panic --- so this is latent until a
-  consumer sets `runs-on`, which is exactly the class the three notes above
-  cover.
-  And bracketing the braces, the fix for a *literal* `{}` that mawk misreads
-  as an interval, does not help here: the interval is the thing being asked
-  for.
   And `bodies-file` takes **base64-encoded lines**, not raw or
   NUL-separated ones: comment bodies are multi-line, and `jq --raw-output0`
   needs jq 1.7 while `runs-on` is a consumer-settable input, so a runner with
@@ -227,7 +209,7 @@ which is why the capabilities above moved to `@v2`.
   directions of error land on different callers: under-stripping dispatches a
   review off quoted text, while over-stripping drops a genuine request in the
   mention gate that shares the script (gha#342).
-  Three things constrain any change to that stripper.
+  Four things constrain any change to that stripper.
   A code span becomes the placeholder word `elided` rather than being
   deleted, because deleting it lets its neighbours close up into a request
   the author never wrote: a span sitting between the mention and the keyword
@@ -251,6 +233,32 @@ which is why the capabilities above moved to `@v2`.
   The blank-line precondition on that last one is load-bearing: without it an
   indented list continuation would be stripped, which drops a genuine
   request.
+  Fourth, **never write an interval expression (`{m,n}`) into that awk.**
+  `mawk` is Debian's and Ubuntu's *default* `awk`, selected through the `awk`
+  alternatives link, so any image that has not installed and selected another
+  implementation resolves `awk` to it.
+  `mawk 1.3.4 20240123` aborts the whole process on an interval ---
+  `REcompile() - panic: values still on machine stack` --- rather than
+  returning a verdict, so the abort is absorbed into a `false` for every
+  input and a genuine review request is silently never dispatched.
+  This is a live defect rather than one an editor might reintroduce:
+  `strip-non-invoking-markup.sh` line 113 still reads
+  `if (bare ~ /^#{1,6}([ \t]|$)/) return 1`, and gha#448 tracks it.
+  Express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
+  check, or unrolled as `^##?#?#?#?#?([ \t]|$)`.
+  Two things make it easy to miss.
+  `_selftest.yml` is green on `main` throughout, so whatever awk the
+  `ubuntu-latest` runner provides does not hit the panic --- which is not a
+  claim about *which* awk that is, since `actions/runner-images`'
+  `Ubuntu2404-Readme.md` names neither `mawk` nor `gawk`, and a container's
+  own `readlink -f /usr/bin/awk` reports only that container.
+  The guarantee stops at that runner either way: `runs-on` is a
+  consumer-settable input, so a consumer whose runner resolves `awk` to
+  `mawk` gets the abort, which is the same portability class as the three
+  notes above.
+  And bracketing the braces, the fix for a *literal* `{}` that mawk misreads
+  as an interval, does not help here: the interval is the thing being asked
+  for.
   It lives in its own script rather than inline because the same constructs
   gate whether the agent runs at all (gha#342).
 - `.github/actions/detect-bot-mention/` -- wraps
