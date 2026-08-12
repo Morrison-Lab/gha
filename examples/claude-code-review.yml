@@ -11,13 +11,21 @@
 # claude.yml's review-workflow-file to match) so the dispatch resolves.
 # Optional: uncomment pull_request for automatic review, and uncomment
 # issue_comment to allow trusted collaborators to trigger `/review` directly.
+# If you have DISABLED claude.yml, do BOTH of these, or nothing happens: uncomment
+# the issue_comment trigger below, and set the repository variable
+# CLAUDE_AGENT_DISABLED to `true`. dispatch-on-comment only ever runs on an
+# issue_comment event, so the variable on its own changes nothing. With both in
+# place an `@claude review` mention dispatches a review here rather than
+# reaching a workflow that no longer answers it. See dispatch-on-comment below
+# for why the fallback is opt-in.
 name: Claude Code Review
 
 on:
   # Optional: automatic review on PR activity.
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
-  # Optional: direct on-demand `/review` path (independent of @claude).
+  # Optional: direct on-demand `/review` path (independent of @claude), plus
+  # the opt-in `@claude review` fallback for repos with the agent disabled.
   # issue_comment:
   #   types: [created]
   workflow_dispatch:
@@ -35,12 +43,30 @@ jobs:
   # `gh workflow run` (the reusable workflow's jobs skip a raw issue_comment
   # run), so `gh workflow run` needs this file on the default branch first.
   # Enable the issue_comment trigger above to activate this path.
+  #
+  # Opt-in second path, for repos that have switched the agent OFF: uncomment
+  # the issue_comment trigger above and set the repository variable
+  # CLAUDE_AGENT_DISABLED to `true`, and an `@claude review` mention dispatches
+  # a review here too. Both are needed -- this job only runs on issue_comment.
+  #
+  # Set it ONLY if claude.yml is disabled in your repo. With the agent live,
+  # both workflows would answer the same mention and dispatch two paid review
+  # runs of possibly different heads -- the exact double-dispatch of
+  # UCD-SERG/serodynamics#277. Unset (the default) keeps `/review` as the only
+  # comment trigger, so today's behaviour is unchanged.
+  #
+  # Without it, a repo with the agent off has no mention path at all: the
+  # phrasing people actually reach for produces a one-second run with every job
+  # skipped and nothing posted, which is indistinguishable from a broken bot
+  # (gha#447).
   dispatch-on-comment:
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/review') &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) &&
+      (startsWith(github.event.comment.body, '/review') ||
+      (vars.CLAUDE_AGENT_DISABLED == 'true' &&
+      contains(github.event.comment.body, '@claude')))
     runs-on: ubuntu-latest
     permissions:
       actions: write        # dispatch this workflow via `gh workflow run`
@@ -52,6 +78,25 @@ jobs:
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
+      # Gated on the fallback being enabled, rather than on the body not being a
+      # `/review` command. Keying it on `!startsWith(body, '/review')` dropped a
+      # genuine mention in a body that merely BEGAN with the literal string --
+      # `/reviewers should look at this, @claude review` skipped this step, and
+      # the dispatch step's stricter regex then rejected it too, so nothing ran
+      # and nothing was posted. Keying on the variable also states the real
+      # condition; with it unset this never runs, so the double-dispatch hazard
+      # above cannot reappear.
+      # Reuses the matcher claude.yml already uses rather than adding a second
+      # inline pattern, which is how the two drifted apart before (gha#341).
+      # It strips code spans and fenced blocks first, so a comment quoting the
+      # phrasing while writing about it does not dispatch (gha#344).
+      - name: Check for an `@claude review` request
+        id: mention
+        if: ${{ vars.CLAUDE_AGENT_DISABLED == 'true' }}
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
+        with:
+          comment-body: ${{ github.event.comment.body }}
+
       - name: Dispatch a review for the commented PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -61,16 +106,24 @@ jobs:
           # Passed via env (not inlined) so the comment body is a shell value,
           # never interpreted as script — avoids injection.
           COMMENT_BODY: ${{ github.event.comment.body }}
+          # Empty when the step above was skipped, i.e. when the fallback is off.
+          MENTION_MATCH: ${{ steps.mention.outputs.match }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          # The job-level `if:` only does a cheap startsWith('/review') pre-filter;
-          # GitHub Actions expressions can't reliably tell '/review' from
-          # '/reviewer' or handle a newline/tab after the command. Enforce the real
-          # match here: the body must begin with a standalone '/review' token,
-          # followed by whitespace (space/tab/newline) or end-of-string.
-          if [[ ! "$COMMENT_BODY" =~ ^/review([[:space:]]|$) ]]; then
-            echo "Comment does not start with a standalone '/review' command; skipping dispatch."
+          # The job-level `if:` only does cheap pre-filters; GitHub Actions
+          # expressions can't reliably tell '/review' from '/reviewer' or handle
+          # a newline/tab after the command, and `contains(body, '@claude')`
+          # matches a mention anywhere, quoted ones included. Enforce the real
+          # match here: the body must either begin with a standalone '/review'
+          # token, followed by whitespace (space/tab/newline) or end-of-string,
+          # or be an `@claude review` request per the matcher step above.
+          if [[ "$COMMENT_BODY" =~ ^/review([[:space:]]|$) ]]; then
+            TRIGGER='/review'
+          elif [ "$MENTION_MATCH" = 'true' ]; then
+            TRIGGER='@claude review'
+          else
+            echo "Comment is neither a standalone '/review' command nor an '@claude review' request; skipping dispatch."
             exit 0
           fi
           # This workflow's filename, so the dispatch resolves whatever you
@@ -84,7 +137,7 @@ jobs:
           PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
-          echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) (/review comment)."
+          echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) ($TRIGGER comment)."
           # A fork PR's head branch only exists in the fork, not in $REPO, so
           # --ref would fail to resolve there. Fall back to no --ref for fork
           # PRs; the resulting check-run mis-attributes to the default branch
@@ -98,8 +151,8 @@ jobs:
           # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
           gh issue comment "$PR_NUMBER" --repo "$REPO" \
-            --body ":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
-            || echo "::warning::Could not acknowledge the /review comment."
+            --body ":mag: \`$TRIGGER\` received -- dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
+            || echo "::warning::Could not acknowledge the $TRIGGER comment."
 
   review:
     # pull_request and workflow_dispatch only; the issue_comment path is handled

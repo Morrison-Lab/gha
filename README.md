@@ -179,6 +179,17 @@ branch. It's a slash command rather than an `@claude review` mention on
 purpose: any `@claude` substring would also trigger `claude.yml`, so the slash
 command keeps the direct path independent.
 
+That reasoning holds only while `claude.yml` is enabled.
+If you have switched the agent **off**, nothing answers `@claude` at all, and a
+mention produces a one-second run with every job skipped and no comment posted.
+In that case do two things, not one: enable the `issue_comment` trigger in the
+stub, and set the repository variable `CLAUDE_AGENT_DISABLED` to `true`.
+`dispatch-on-comment` only ever runs on an `issue_comment` event, so the
+variable on its own changes nothing, and you get the same silence.
+With both in place the stub accepts `@claude review` alongside `/review`.
+Leave the variable unset whenever the agent is live, or both workflows answer
+the same mention and dispatch two paid reviews of possibly different heads.
+
 ## Claude session visibility
 
 GHA sessions (both `claude.yml` and `claude-code-review.yml`) run as headless
