@@ -185,6 +185,24 @@ which is why the capabilities above moved to `@v2`.
   The `sed 's/\r$//'` it replaced only worked under GNU sed -- BSD/macOS sed
   reads `\r` as a literal `r` -- and the composite probes `base64 -d` vs `-D`
   for the same reason.
+  A fourth belongs to the awk in `strip-non-invoking-markup.sh` rather than to
+  this script, and it is the one an editor is most likely to reintroduce:
+  **never write an interval expression (`{m,n}`) into that awk.**
+  `mawk` is `awk` on Debian and Ubuntu, and `mawk 1.3.4 20240123` aborts the
+  whole process on one --- `REcompile() - panic: values still on machine
+  stack` --- rather than returning a verdict, so the abort is absorbed into a
+  `false` for every input and a genuine review request is silently never
+  dispatched (gha#448).
+  Express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
+  check, or unrolled as `^##?#?#?#?#?([ \t]|$)`.
+  Two things make it easy to miss.
+  `_selftest.yml` is green on `main` throughout, because whatever awk
+  `ubuntu-latest` provides does not panic --- so this is latent until a
+  consumer sets `runs-on`, which is exactly the class the three notes above
+  cover.
+  And bracketing the braces, the fix for a *literal* `{}` that mawk misreads
+  as an interval, does not help here: the interval is the thing being asked
+  for.
   And `bodies-file` takes **base64-encoded lines**, not raw or
   NUL-separated ones: comment bodies are multi-line, and `jq --raw-output0`
   needs jq 1.7 while `runs-on` is a consumer-settable input, so a runner with
