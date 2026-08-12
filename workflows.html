@@ -785,7 +785,7 @@ ul.task-list li input[type="checkbox"] {
 </section>
 <section id="phi-scanning" class="level2">
 <h2 class="anchored" data-anchor-id="phi-scanning">PHI scanning</h2>
-<p><code>check-phi</code> is a <strong>heuristic tripwire, not a HIPAA compliance tool.</strong> It flags patterns that should almost never be committed: US Social Security numbers, medical record numbers, dates of birth, and PHI-suggestive column headers in delimited data files (<code>.csv</code>/<code>.tsv</code>/<code>.psv</code>), so a human reviews before the data merges. It is tuned for high precision, so it misses free-text PHI such as patient names.</p>
+<p><code>check-phi</code> is a <strong>heuristic tripwire, not a HIPAA compliance tool.</strong> It flags patterns that should almost never be committed: US Social Security numbers, medical record numbers, dates of birth, study/participant identifier literals, and PHI-suggestive column headers in delimited data files (<code>.csv</code>/<code>.tsv</code>/<code>.psv</code>), so a human reviews before the data merges. It is tuned for high precision, so it misses free-text PHI such as patient names.</p>
 <ul>
 <li><strong>Diff-scoped on PRs.</strong> Only lines <em>added</em> by the PR are scanned; <code>push</code> scans the whole tracked tree.</li>
 <li><strong>Values are never printed.</strong> Findings report only <code>file:line:col</code> and the detector name, never the matched text, because a leaked identifier in a CI log is still a leak.</li>
