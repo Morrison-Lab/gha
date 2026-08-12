@@ -15,6 +15,10 @@
   self-trigger loop rather than a stray run.
   These are characterization tests: they pass against `main` today and exist to
   make a future widening a deliberate decision.
-  The separator case was mutation-checked in isolation (narrowing the class to
-  `[[:punct:]]?[[:space:]]+` flips it to `false` while the existing unspaced
-  positives still pass), so it is not a vacuous pin.
+  The separator case was mutation-checked in isolation: narrowing the class to
+  `[[:punct:]]?[[:space:]]+` flips it to `false` while the sibling
+  `@claude, please review` and `@claude, review` positives still pass, which is
+  the isolation claim.
+  Exactly one other case flips alongside it, `@ai-review` under
+  `BOT_NAME='@ai'`, which leans on the same class for its hyphen separator.
+  So the pin is not vacuous.
