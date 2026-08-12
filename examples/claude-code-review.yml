@@ -11,10 +11,13 @@
 # claude.yml's review-workflow-file to match) so the dispatch resolves.
 # Optional: uncomment pull_request for automatic review, and uncomment
 # issue_comment to allow trusted collaborators to trigger `/review` directly.
-# If you have DISABLED claude.yml, also set the repository variable
-# CLAUDE_AGENT_DISABLED to `true`, so an `@claude review` mention dispatches a
-# review here rather than reaching a workflow that no longer answers it. See
-# dispatch-on-comment below for why that is opt-in.
+# If you have DISABLED claude.yml, do BOTH of these, or nothing happens: uncomment
+# the issue_comment trigger below, and set the repository variable
+# CLAUDE_AGENT_DISABLED to `true`. dispatch-on-comment only ever runs on an
+# issue_comment event, so the variable on its own changes nothing. With both in
+# place an `@claude review` mention dispatches a review here rather than
+# reaching a workflow that no longer answers it. See dispatch-on-comment below
+# for why the fallback is opt-in.
 name: Claude Code Review
 
 on:
@@ -41,9 +44,10 @@ jobs:
   # run), so `gh workflow run` needs this file on the default branch first.
   # Enable the issue_comment trigger above to activate this path.
   #
-  # Opt-in second path, for repos that have switched the agent OFF: set the
-  # repository variable CLAUDE_AGENT_DISABLED to `true` and an `@claude review`
-  # mention dispatches a review here too.
+  # Opt-in second path, for repos that have switched the agent OFF: uncomment
+  # the issue_comment trigger above and set the repository variable
+  # CLAUDE_AGENT_DISABLED to `true`, and an `@claude review` mention dispatches
+  # a review here too. Both are needed -- this job only runs on issue_comment.
   #
   # Set it ONLY if claude.yml is disabled in your repo. With the agent live,
   # both workflows would answer the same mention and dispatch two paid review
@@ -74,14 +78,21 @@ jobs:
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
-      # Only consulted on the mention path; a `/review` body needs no matcher.
+      # Gated on the fallback being enabled, rather than on the body not being a
+      # `/review` command. Keying it on `!startsWith(body, '/review')` dropped a
+      # genuine mention in a body that merely BEGAN with the literal string --
+      # `/reviewers should look at this, @claude review` skipped this step, and
+      # the dispatch step's stricter regex then rejected it too, so nothing ran
+      # and nothing was posted. Keying on the variable also states the real
+      # condition; with it unset this never runs, so the double-dispatch hazard
+      # above cannot reappear.
       # Reuses the matcher claude.yml already uses rather than adding a second
       # inline pattern, which is how the two drifted apart before (gha#341).
       # It strips code spans and fenced blocks first, so a comment quoting the
       # phrasing while writing about it does not dispatch (gha#344).
       - name: Check for an `@claude review` request
         id: mention
-        if: ${{ !startsWith(github.event.comment.body, '/review') }}
+        if: ${{ vars.CLAUDE_AGENT_DISABLED == 'true' }}
         uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           comment-body: ${{ github.event.comment.body }}
@@ -95,7 +106,7 @@ jobs:
           # Passed via env (not inlined) so the comment body is a shell value,
           # never interpreted as script — avoids injection.
           COMMENT_BODY: ${{ github.event.comment.body }}
-          # Empty when the step above was skipped, i.e. on the /review path.
+          # Empty when the step above was skipped, i.e. when the fallback is off.
           MENTION_MATCH: ${{ steps.mention.outputs.match }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |

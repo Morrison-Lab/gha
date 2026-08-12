@@ -11,9 +11,11 @@ default, callers run it only on dispatched runs (for `@claude review` via
 stub named `claude-code-review.yml` (or set `claude.yml`'s
 `review-workflow-file` to match) so the dispatch resolves.
 
-If you have disabled `claude.yml`, set the repository variable
-`CLAUDE_AGENT_DISABLED` to `true` so the stub's `dispatch-on-comment` job also
-accepts an `@claude review` mention. Without it a repo with the agent off has no
+If you have disabled `claude.yml`, enable `issue_comment` in the stub **and**
+set the repository variable `CLAUDE_AGENT_DISABLED` to `true`, so its
+`dispatch-on-comment` job also accepts an `@claude review` mention. Both are
+required: that job only ever runs on an `issue_comment` event, so the variable
+on its own changes nothing. Without them a repo with the agent off has no
 mention path, and the phrasing people reach for silently does nothing. Leave the
 variable unset while the agent is live, or the mention is answered twice.
 
@@ -102,9 +104,10 @@ self-review or a human review; do not read the gray gate as an all-clear.
 # claude.yml's review-workflow-file to match) so the dispatch resolves.
 # Optional: uncomment pull_request for automatic review, and uncomment
 # issue_comment to allow trusted collaborators to trigger `/review` directly.
-# If you have DISABLED claude.yml, also set the repository variable
-# CLAUDE_AGENT_DISABLED to `true`, so an `@claude review` mention dispatches a
-# review here rather than reaching a workflow that no longer answers it.
+# If you have DISABLED claude.yml, do BOTH of these, or nothing happens: uncomment
+# the issue_comment trigger below, and set the repository variable
+# CLAUDE_AGENT_DISABLED to `true`. dispatch-on-comment only ever runs on an
+# issue_comment event, so the variable on its own changes nothing.
 name: Claude Code Review
 
 on:
