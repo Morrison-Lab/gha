@@ -45,7 +45,7 @@ set -euo pipefail
 MENTION_LIST="${BOT_NAME:-@claude}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
+STRIP_MARKUP="${STRIP_MARKUP:-$SCRIPT_DIR/strip-non-invoking-markup.sh}"
 
 # Split the token list once, not per body: it does not vary between bodies.
 # The split and trim itself is delegated to split-csv-list.sh rather than

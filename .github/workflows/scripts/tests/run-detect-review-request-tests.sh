@@ -230,10 +230,27 @@ elif [[ "$action_default" != "$script_default" ]]; then
 else
   echo "OK   detect-review-request bot-name default agrees across action.yml and the script"
 fi
+# Verify that a stripper failure causes detect-review-request.sh to fail loudly (exit non-zero)
+tmp_failing_stripper="$(mktemp "${TMPDIR:-/tmp}/failing_stripper.XXXXXX")"
+chmod +x "$tmp_failing_stripper"
+cat <<'EOF' > "$tmp_failing_stripper"
+#!/usr/bin/env bash
+echo "REcompile() - panic" >&2
+exit 100
+EOF
 
-total=$(( ${#cases[@]} + ${#bot_cases[@]} + ${#invalid_bots[@]} + 5 ))
+if printf '%s\0' "@claude review" | STRIP_MARKUP="$tmp_failing_stripper" bash "$detect_script" >/dev/null 2>&1; then
+  echo "::error::detect-review-request.sh should fail loudly when stripper fails"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-review-request.sh fails loudly when stripper fails"
+fi
+rm -f "$tmp_failing_stripper"
+
+total=$(( ${#cases[@]} + ${#bot_cases[@]} + ${#invalid_bots[@]} + 6 ))
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of $total detect-review-request case(s) did not behave as expected"
   exit 1
 fi
 echo "All $total detect-review-request cases behaved as expected."
+

@@ -131,7 +131,7 @@ PATTERN="${PATTERN}${TAIL}[[:blank:][:punct:]]*($NEWLINE|\$)"
 # feature (gha#344). Blockquote stripping predates it -- GitHub's "Quote
 # reply" button reproduces a whole body prefixed with `> ` -- as does the CR
 # removal the CRLF-anchored pattern above needs.
-STRIP_MARKUP="$SCRIPT_DIR/strip-non-invoking-markup.sh"
+STRIP_MARKUP="${STRIP_MARKUP:-$SCRIPT_DIR/strip-non-invoking-markup.sh}"
 
 normalize_body() {
   bash "$STRIP_MARKUP" <<<"$1"
@@ -147,7 +147,8 @@ match=false
 while IFS= read -r -d '' body; do
   count=$((count + 1))
   [ -n "$body" ] || continue
-  if [[ "$(normalize_body "$body")" =~ $PATTERN ]]; then
+  normalized="$(normalize_body "$body")"
+  if [[ "$normalized" =~ $PATTERN ]]; then
     match=true
   fi
 done

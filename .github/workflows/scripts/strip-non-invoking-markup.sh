@@ -43,7 +43,7 @@ set -euo pipefail
 # placeholder itself.
 PLACEHOLDER='elided'
 
-tr -d '\r' | awk -v placeholder="$PLACEHOLDER" '
+tr -d '\r' | ${AWK:-awk} -v placeholder="$PLACEHOLDER" '
 # Width in columns of the leading whitespace of `s`, counting a tab as
 # advancing to the next multiple of 4 (CommonMark 0.31.2 "Tabs").
 function indent_width(s,   i, c, w) {
@@ -110,7 +110,11 @@ function is_setext_underline(bare) {
 function heading_or_break(bare, indent) {
   if (indent > 3) return 0
   # ATX heading: 1-6 `#` then a space/tab or end of line.
-  if (bare ~ /^#{1,6}([ \t]|$)/) return 1
+  # Avoid interval quantifier `{1,6}` for mawk 1.3.4 compatibility (gha#448).
+  if (bare ~ /^#+([ \t]|$)/) {
+    match(bare, /^#+/)
+    if (RLENGTH <= 6) return 1
+  }
   if (is_thematic_break(bare)) return 1
   return 0
 }
