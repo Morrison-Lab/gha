@@ -45,7 +45,7 @@ not reference `@main` from consumers.
 |---|---|---|
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
 | `check-non-standard-chars.yml` | Detect curly quotes / en–em dashes in `.qmd` and `.R` files | `python-version` |
-| `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
+| `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
@@ -211,7 +211,8 @@ says so.
 
 `check-phi` is a **heuristic tripwire, not a HIPAA compliance tool.** It flags
 patterns that should almost never be committed — US Social Security numbers,
-medical record numbers, dates of birth, and PHI-suggestive column headers in
+medical record numbers, dates of birth, study/participant identifier literals,
+and PHI-suggestive column headers in
 delimited data files (`.csv`/`.tsv`/`.psv`) — so a human reviews before the
 data merges. It is tuned for high precision (few false positives), so it will
 miss free-text PHI such as patient names. The `phone` and `email` detectors

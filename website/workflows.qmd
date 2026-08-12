@@ -126,7 +126,8 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
 
 `check-phi` is a **heuristic tripwire, not a HIPAA compliance tool.** It flags
 patterns that should almost never be committed: US Social Security numbers,
-medical record numbers, dates of birth, and PHI-suggestive column headers in
+medical record numbers, dates of birth, study/participant identifier literals,
+and PHI-suggestive column headers in
 delimited data files (`.csv`/`.tsv`/`.psv`), so a human reviews before the data
 merges. It is tuned for high precision, so it misses free-text PHI such as
 patient names.

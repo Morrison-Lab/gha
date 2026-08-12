@@ -10,7 +10,7 @@ on:
       detectors:
         description: >-
           Comma-separated detector set, overriding the default
-          (ssn, mrn, dob, csv_phi_header). Also available: phone, email.
+          (ssn, mrn, dob, csv_phi_header, study_id). Also available: phone, email.
         type: string
         default: ''
       paths-ignore:

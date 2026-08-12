@@ -5,7 +5,8 @@ like Protected Health Information (PHI) / personally identifiable identifiers.
 
 This is a *heuristic* tripwire, not a HIPAA compliance tool: it flags patterns
 that are very unlikely to belong in source control (Social Security numbers,
-medical record numbers, dates of birth, PHI column headers in data files) so a
+medical record numbers, dates of birth, study/participant identifier literals,
+PHI column headers in data files) so a
 human can review before the data is merged. It is intentionally tuned for high
 precision (few false positives) over recall.
 
@@ -21,7 +22,8 @@ Design notes:
 Configuration (all via environment variables, set by the composite action):
   PHI_BASE_REF        Git ref/SHA to diff against. Empty => scan whole tree.
   PHI_DETECTORS       Comma list overriding the enabled detector set
-                      (choose from: ssn, mrn, dob, csv_phi_header, phone, email).
+                      (choose from: ssn, mrn, dob, csv_phi_header, study_id, phone,
+                      email).
   PHI_PATHS_IGNORE    Comma/newline-separated glob patterns to skip.
   PHI_ALLOWLIST_FILE  Path to a file of regexes; a match whose text matches any
                       regex is suppressed. Defaults to .github/phi-allowlist.txt
@@ -45,7 +47,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 # in a consumer's YAML), which would silently exclude those lines from scanning.
 INLINE_PRAGMA_RE = re.compile(r"\bphi-allow\b", re.IGNORECASE)
 DEFAULT_ALLOWLIST = ".github/phi-allowlist.txt"
-DEFAULT_DETECTORS = ("ssn", "mrn", "dob", "csv_phi_header")
+DEFAULT_DETECTORS = ("ssn", "mrn", "dob", "csv_phi_header", "study_id")
 CSV_SUFFIXES = (".csv", ".tsv", ".psv")
 
 
@@ -97,6 +99,68 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
     return [
         (m.start() + 1, "Possible date of birth")
         for m in _DOB_RE.finditer(line)
+    ]
+
+
+# A study/participant identifier assigned a literal: the one-off debugging
+# spot-check, `if StudyID_c=` followed by a quoted id, that survives into
+# committed analysis code.
+#
+# No example id appears in this comment on purpose. An illustrative literal of
+# the right shape would satisfy the pattern below, so this file would flag
+# itself the moment the selftest runs every detector over the repository.
+#
+# Keyed on the *variable name*, not on the value's shape, because a study's own
+# id format is arbitrary and picking a shape gets it wrong quietly. In the
+# exposure this detector was built from, nine distinct values were each ten
+# characters and only three were all digits, so a rule keyed on a run of ten
+# digits would have passed over most of the sites while reporting a confident
+# number.
+#
+# Precision comes from requiring all three of: an id-suggestive variable name,
+# an assignment or comparison operator, and a *quoted* literal of at least eight
+# alphanumerics containing at least one digit. An unquoted right-hand side is
+# almost always another variable; a short or all-alphabetic literal is almost
+# always a category label; and the eight-character floor keeps ordinary tokens
+# like "config1" out while still reaching every real id shape seen so far.
+#
+# Known limits, stated rather than papered over.
+#
+# A redacted placeholder of the form STUDYID20 satisfies the pattern, so a
+# repository that pseudonymizes in place needs an allowlist entry for its own
+# placeholder shape.
+#
+# Nothing here reaches an identifier with no variable name beside it --- a
+# pasted `proc print` block listing bare ids passes straight through, exactly
+# as the csv_phi_header detector cannot see an unlabeled column.
+#
+# Nor does it reach one whose name gives nothing away. In the same exposure, a
+# real identifier was passed as `get_IDs(IDs = "...")`: a bare `IDs` is far too
+# common to key on without drowning the check in noise, so that site was found
+# only by searching for the *values*, which are known once redaction begins.
+# Read this detector as a tripwire for identifiers nobody was looking for, not
+# as proof that a tree is clean.
+_STUDY_ID_RE = re.compile(
+    # A lookbehind rather than \b: an underscore is a word character, so \b
+    # finds no boundary in `base_patient_id` and the name would be skipped.
+    r"(?i)(?<![A-Za-z0-9])"
+    r"(?:study|subject|participant|patient|member|enrollee|respondent)"
+    r"[\s_-]*(?:id|identifier)s?(?:_[a-z0-9]{1,4})?"
+    # Optional close of a subscripted column, `df["patient_id"] = ...`.
+    r"(?:[\"']\s*\]{1,2})?"
+    # `<-` and `<<-` matter as much as `=` here: R and Quarto are the target
+    # ecosystem, and `<-` is the dominant assignment form in both. SAS's
+    # word-form comparisons (`eq`, `ne`) need whitespace around them, so they
+    # are a separate alternative rather than another symbol.
+    r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+)"
+    r"(['\"])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{8,}\1"
+)
+
+
+def _detect_study_id(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
+    return [
+        (m.start() + 1, "Possible study/participant identifier literal")
+        for m in _STUDY_ID_RE.finditer(line)
     ]
 
 
@@ -161,6 +225,7 @@ DETECTORS: Dict[str, Callable[[str, int, str], List[Tuple[int, str]]]] = {
     "mrn": _detect_mrn,
     "dob": _detect_dob,
     "csv_phi_header": _detect_csv_phi_header,
+    "study_id": _detect_study_id,
     "phone": _detect_phone,
     "email": _detect_email,
 }
