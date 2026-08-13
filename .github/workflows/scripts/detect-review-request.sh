@@ -5,9 +5,9 @@
 #
 # Usage: printf '%s\0' <body> [<body> ...] | detect-review-request.sh
 # Reads NUL-separated bodies on stdin and prints `true` if ANY of them is a
-# review request, else `false`. Exits 0 either way, so a caller running under
-# `set -e` can branch on the output; exits 2 if stdin carried no bodies at
-# all, which can only mean the caller is miswired.
+# review request, else `false`. Exits 0 on a clean evaluation (whether matching
+# or not); exits non-zero if the markup stripper fails (propagated under `set -e`)
+# or if stdin carried no bodies at all (exit 2).
 #
 # Bodies arrive on stdin rather than as arguments because argv is size-capped
 # and comment bodies are attacker-influenced. Linux caps a SINGLE argument at
