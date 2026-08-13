@@ -436,6 +436,7 @@ jobs:
       - name: Detect @claude review request
         id: review_request
         if: steps.gate.outputs.skip != 'true'
+        continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
         with:
           comment-body: ${{ github.event.comment.body }}

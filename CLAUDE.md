@@ -241,11 +241,11 @@ which is why the capabilities above moved to `@v2`.
   `REcompile() - panic: values still on machine stack` --- rather than
   returning a verdict, so the abort is absorbed into a `false` for every
   input and a genuine review request is silently never dispatched.
-  This is a live defect rather than one an editor might reintroduce:
-  `strip-non-invoking-markup.sh` line 113 still reads
-  `if (bare ~ /^#{1,6}([ \t]|$)/) return 1`, and gha#448 tracks it.
-  Express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
-  check, or unrolled as `^##?#?#?#?#?([ \t]|$)`.
+  This defect was fixed in gha#457 (formerly tracked by gha#448):
+  `strip-non-invoking-markup.sh` previously read
+  `if (bare ~ /^#{1,6}([ \t]|$)/) return 1`.
+  Always express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
+  check (or `^##?#?#?#?#?([ \t]|$)`) rather than using interval quantifiers like `{1,6}`.
   Two things make it easy to miss.
   `_selftest.yml` is green on `main` throughout, so whatever awk the
   `ubuntu-latest` runner provides does not hit the panic --- which is not a
