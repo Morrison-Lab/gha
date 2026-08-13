@@ -228,6 +228,28 @@ check "CRLF endings are normalized" \
 
 check "empty input stays empty" '' ''
 
+# ATX heading boundary cases (1-6 hashes open a heading, 7 hashes do not)
+check "6-hash ATX heading opens code block" \
+  $'###### Heading\n    @claude review' \
+  $'###### Heading'
+
+check "7-hash run is not an ATX heading, so indented text survives" \
+  $'####### Not a heading\n    @claude review' \
+  $'####### Not a heading\n    @claude review'
+
+# If mawk is installed, exercise AWK=mawk explicitly to verify mawk compatibility (gha#448)
+if command -v mawk >/dev/null 2>&1; then
+  mawk_got="$(printf '%s' $'###### Heading\n    @claude review' | AWK=mawk bash "$strip_script")"
+  mawk_want=$'###### Heading'
+  checked=$((checked + 1))
+  if [[ "$mawk_got" == "$mawk_want" ]]; then
+    echo "OK   strip-non-invoking-markup.sh executes under AWK=mawk without panic"
+  else
+    echo "::error::strip-non-invoking-markup.sh failed under AWK=mawk"
+    failures=$((failures + 1))
+  fi
+fi
+
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of $checked strip-non-invoking-markup case(s) did not behave as expected"
   exit 1
