@@ -239,15 +239,11 @@ check "7-hash run is not an ATX heading, so indented text survives" \
 
 # If mawk is installed, exercise AWK=mawk explicitly to verify mawk compatibility (gha#448)
 if command -v mawk >/dev/null 2>&1; then
-  mawk_got="$(printf '%s' $'###### Heading\n    @claude review' | AWK=mawk bash "$strip_script")"
-  mawk_want=$'###### Heading'
-  checked=$((checked + 1))
-  if [[ "$mawk_got" == "$mawk_want" ]]; then
-    echo "OK   strip-non-invoking-markup.sh executes under AWK=mawk without panic"
-  else
-    echo "::error::strip-non-invoking-markup.sh failed under AWK=mawk"
-    failures=$((failures + 1))
-  fi
+  AWK=mawk check "strip-non-invoking-markup.sh executes under AWK=mawk without panic" \
+    $'###### Heading\n    @claude review' \
+    $'###### Heading'
+else
+  echo "::warning::mawk is not installed; skipping AWK=mawk compatibility check case"
 fi
 
 if [[ "$failures" -gt 0 ]]; then

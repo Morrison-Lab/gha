@@ -246,7 +246,7 @@ which is why the capabilities above moved to `@v2`.
   `if (bare ~ /^#{1,6}([ \t]|$)/) return 1`.
   Always express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
   check (or `^##?#?#?#?#?([ \t]|$)`) rather than using interval quantifiers like `{1,6}`.
-  Two things make it easy to miss.
+  Two things make this regression risk easy to miss.
   `_selftest.yml` is green on `main` throughout, so whatever awk the
   `ubuntu-latest` runner provides does not hit the panic --- which is not a
   claim about *which* awk that is, since `actions/runner-images`'
@@ -254,11 +254,10 @@ which is why the capabilities above moved to `@v2`.
   own `readlink -f /usr/bin/awk` reports only that container.
   The guarantee stops at that runner either way: `runs-on` is a
   consumer-settable input, so a consumer whose runner resolves `awk` to
-  `mawk` gets the abort, which is the same portability class as the three
-  notes above.
-  And bracketing the braces, the fix for a *literal* `{}` that mawk misreads
-  as an interval, does not help here: the interval is the thing being asked
-  for.
+  `mawk` would get the abort if interval quantifiers were reintroduced,
+  which is the same portability class as the three notes above.
+  And bracketing the braces (the fix for a *literal* `{}` that mawk misreads
+  as an interval) does not help: length checks or unrolled quantifiers must be used instead.
   It lives in its own script rather than inline because the same constructs
   gate whether the agent runs at all (gha#342).
 - `.github/actions/detect-bot-mention/` -- wraps
