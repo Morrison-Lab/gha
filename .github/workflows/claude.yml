@@ -433,6 +433,12 @@ jobs:
       # dispatch job, and that job then made the plain `@claude review` case
       # -- the one phrasing both matchers accept -- spend two paid review
       # runs (serodynamics#277).
+      # `continue-on-error`: `detect-review-request` propagates script failures
+      # as a non-zero exit under `set -e` (gha#451). Tolerating step failures
+      # here degrades a stripper or engine failure to "not a review request"
+      # (skipping automated review dispatch) rather than aborting the entire
+      # workflow run over an optional-dispatch check. The step still logs as
+      # failed/red in GitHub Actions UI.
       - name: Detect @claude review request
         id: review_request
         if: steps.gate.outputs.skip != 'true'
