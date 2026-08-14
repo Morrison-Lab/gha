@@ -4,4 +4,3 @@
   `strip-non-invoking-markup.sh` outside `if` conditions so script failures propagate
   a non-zero exit under `set -e`, and adds `continue-on-error: true` to `claude.yml`'s
   primary detection step so workflow runs tolerate stripper/engine failures safely.
-
