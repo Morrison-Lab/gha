@@ -202,6 +202,23 @@ jobs:
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Without this the CLI refuses to start: "Gemini CLI is not running
+          # in a trusted directory" (gha#458). A runner's checkout is never a
+          # trusted folder, so the gate fires on every run -- gemini-code-review
+          # had 0 successes in 9 runs on `ucdavis/bcs` before this was set.
+          #
+          # It also silences the line that precedes the fatal one, "Approval
+          # mode overridden to \"default\" because the current folder is not
+          # trusted": the `settings:` block below asks for unattended tool
+          # approval, and the trust gate was downgrading it. So the two are one
+          # cause, and a run that appeared to have tools would not have used
+          # them without prompting.
+          #
+          # The env var is upstream's own recommendation for headless
+          # environments, and is preferred over `--skip-trust` because the CLI
+          # is invoked through the action rather than a command line this
+          # workflow controls.
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_model: ${{ inputs.gemini-model }}

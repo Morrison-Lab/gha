@@ -344,6 +344,12 @@ jobs:
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Same gate as `gemini-code-review.yml`'s: without this the CLI
+          # refuses to start on a runner checkout, which is never a trusted
+          # folder (gha#458). Set here too rather than only where the failure
+          # was observed -- this workflow invokes the same CLI the same way, so
+          # it hits the same gate; it simply has less traffic.
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_model: ${{ inputs.gemini-model }}
