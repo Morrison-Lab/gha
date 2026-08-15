@@ -209,15 +209,23 @@ jobs:
           #
           # It also silences the line that precedes the fatal one, "Approval
           # mode overridden to \"default\" because the current folder is not
-          # trusted": the `settings:` block below asks for unattended tool
-          # approval, and the trust gate was downgrading it. So the two are one
-          # cause, and a run that appeared to have tools would not have used
-          # them without prompting.
+          # trusted". That unattended mode comes from the ACTION, not from the
+          # `settings:` block below: run-gemini-cli invokes `gemini --yolo
+          # --prompt ...` unconditionally (action.yml lines 309 and 316 at the
+          # pinned SHA), while `settings:` only configures mcpServers,
+          # model.maxSessionTurns, and tools.core. So the trust gate was
+          # overriding the action's own flag, and the two symptoms are one
+          # cause.
           #
-          # The env var is upstream's own recommendation for headless
-          # environments, and is preferred over `--skip-trust` because the CLI
-          # is invoked through the action rather than a command line this
-          # workflow controls.
+          # The name is the one the CLI's own error message prints, and the one
+          # google-gemini/gemini-cli documents in docs/cli/trusted-folders.md.
+          # Deliberately NOT taken from run-gemini-cli's own
+          # docs/trust-guidance.md, which at this pinned SHA still recommends
+          # `GEMINI_TRUST_WORKSPACE` -- missing the `_CLI_`, and so inert
+          # (fixed later in run-gemini-cli#507).
+          #
+          # Preferred over `--skip-trust` because the CLI is invoked through
+          # the action rather than a command line this workflow controls.
           GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
