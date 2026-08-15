@@ -202,6 +202,31 @@ jobs:
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          # Without this the CLI refuses to start: "Gemini CLI is not running
+          # in a trusted directory" (gha#458). A runner's checkout is never a
+          # trusted folder, so the gate fires on every run -- gemini-code-review
+          # had 0 successes in 9 runs on `ucdavis/bcs` before this was set.
+          #
+          # It also silences the line that precedes the fatal one, "Approval
+          # mode overridden to \"default\" because the current folder is not
+          # trusted". That unattended mode comes from the ACTION, not from the
+          # `settings:` block below: run-gemini-cli invokes `gemini --yolo
+          # --prompt ...` unconditionally (action.yml lines 309 and 316 at the
+          # pinned SHA), while `settings:` only configures mcpServers,
+          # model.maxSessionTurns, and tools.core. So the trust gate was
+          # overriding the action's own flag, and the two symptoms are one
+          # cause.
+          #
+          # The name is the one the CLI's own error message prints, and the one
+          # google-gemini/gemini-cli documents in docs/cli/trusted-folders.md.
+          # Deliberately NOT taken from run-gemini-cli's own
+          # docs/trust-guidance.md, which at this pinned SHA still recommends
+          # `GEMINI_TRUST_WORKSPACE` -- missing the `_CLI_`, and so inert
+          # (fixed later in run-gemini-cli#507).
+          #
+          # Preferred over `--skip-trust` because the CLI is invoked through
+          # the action rather than a command line this workflow controls.
+          GEMINI_CLI_TRUST_WORKSPACE: 'true'
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           gemini_model: ${{ inputs.gemini-model }}
