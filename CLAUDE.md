@@ -241,12 +241,12 @@ which is why the capabilities above moved to `@v2`.
   `REcompile() - panic: values still on machine stack` --- rather than
   returning a verdict, so the abort is absorbed into a `false` for every
   input and a genuine review request is silently never dispatched.
-  This is a live defect rather than one an editor might reintroduce:
-  `strip-non-invoking-markup.sh` line 113 still reads
-  `if (bare ~ /^#{1,6}([ \t]|$)/) return 1`, and gha#448 tracks it.
-  Express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
-  check, or unrolled as `^##?#?#?#?#?([ \t]|$)`.
-  Two things make it easy to miss.
+  This defect was fixed in gha#457 (formerly tracked by gha#448 and gha#451):
+  `strip-non-invoking-markup.sh` previously read
+  `if (bare ~ /^#{1,6}([ \t]|$)/) return 1`.
+  Always express the CommonMark 1-6 heading limit as `^#+([ \t]|$)` plus a length
+  check (or `^##?#?#?#?#?([ \t]|$)`) rather than using interval quantifiers like `{1,6}`.
+  Two things make this regression risk easy to miss.
   `_selftest.yml` is green on `main` throughout, so whatever awk the
   `ubuntu-latest` runner provides does not hit the panic --- which is not a
   claim about *which* awk that is, since `actions/runner-images`'
@@ -254,11 +254,16 @@ which is why the capabilities above moved to `@v2`.
   own `readlink -f /usr/bin/awk` reports only that container.
   The guarantee stops at that runner either way: `runs-on` is a
   consumer-settable input, so a consumer whose runner resolves `awk` to
-  `mawk` gets the abort, which is the same portability class as the three
-  notes above.
-  And bracketing the braces, the fix for a *literal* `{}` that mawk misreads
-  as an interval, does not help here: the interval is the thing being asked
-  for.
+  `mawk` would get the abort if interval quantifiers were reintroduced,
+  which is the same portability class as the three notes above.
+  And bracketing the braces (the fix for a *literal* `{}` that mawk misreads
+  as an interval) does not help here: the interval is the thing being asked for,
+  so express the limit as a length check or unrolled quantifiers instead.
+  Also, `detect-review-request.sh` previously swallowed stripper failures inside
+  `if` condition evaluations (gha#451); body normalization now evaluates
+  `strip-non-invoking-markup.sh` outside `if` constructs so script failures propagate
+  under `set -e`, and `claude.yml` step `Detect @claude review request` carries
+  `continue-on-error: true` so workflow runs tolerate stripper/engine failures safely.
   It lives in its own script rather than inline because the same constructs
   gate whether the agent runs at all (gha#342).
 - `.github/actions/detect-bot-mention/` -- wraps
@@ -921,7 +926,8 @@ right total for a real `uses:` call (gha#219 review finding 5).
 `detect-review-request.sh` (see Layout above) offline against a table of
 comment bodies: the phrasings that must dispatch a review, the ones that must
 not (a quote-reply, an `@claude` request that merely contains the word
-"review", `reviewer` as a whole different word), and a multi-body call.
+"review", `reviewer` as a whole different word), a multi-body call, and
+stripper-failure propagation under `set -e` (gha#451).
 CI runs it as a step in the `review-fail-check` job, which also calls
 `detect-review-request` itself through two real `uses:` steps -- the same
 `github.action_path`-resolution proof the `run-review-guard` /
