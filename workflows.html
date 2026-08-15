@@ -602,7 +602,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><a href="./reference/check-non-standard-chars.html"><code>check-non-standard-chars.yml</code></a></td>
-<td>Detect curly quotes and en/em dashes in <code>.qmd</code> and <code>.R</code> files</td>
+<td>Detect curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code> and <code>.R</code> files</td>
 <td><code>python-version</code></td>
 </tr>
 <tr class="odd">
@@ -771,7 +771,7 @@ ul.task-list li input[type="checkbox"] {
 <p>These run on pull requests (and often on <code>main</code>) to keep a repo’s content clean.</p>
 <ul>
 <li><code>check-bibliography-dois.yml</code> confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.</li>
-<li><code>check-non-standard-chars.yml</code> flags curly quotes and en/em dashes in <code>.qmd</code> and <code>.R</code> files, which can break Quarto and R rendering.</li>
+<li><code>check-non-standard-chars.yml</code> flags curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code> and <code>.R</code> files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: <code>x</code> or <code>*</code> in code, and <code>$\times$</code> or <code>&amp;times;</code> in prose, since Pandoc renders a <code>\uXXXX</code> escape literally rather than decoding it.</li>
 <li><code>check-links.yml</code> runs a <a href="https://github.com/lycheeverse/lychee">lychee</a> link check with a bundled config, a PR skip-label, and an auto-filed issue when <code>main</code> breaks.</li>
 <li><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</li>
 <li><code>lint-yaml.yml</code> runs <a href="https://yamllint.readthedocs.io/">yamllint</a> over tracked YAML with a bundled config, plus a check that flags long <code>run:</code> script blocks as decomposition candidates.</li>
