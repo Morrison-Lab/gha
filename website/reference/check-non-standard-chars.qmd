@@ -2,9 +2,9 @@
 title: "check-non-standard-chars.yml"
 ---
 
-Detect curly quotes and en/em dashes in `.qmd` and `.R` files, which can break
-Quarto and R rendering. The check fails when it finds any, reporting each
-`file:line:col` so you can fix it.
+Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd` and
+`.R` files, which can break Quarto and R rendering. The check fails when it
+finds any, reporting each `file:line:col` so you can fix it.
 
 ## Inputs
 

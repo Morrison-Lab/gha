@@ -10,11 +10,18 @@ can cause issues in Quarto/R projects, such as:
 - ' (U+2019) - Right single quotation mark
 - – (U+2013) - En dash
 - — (U+2014) - Em dash
+- × (U+00D7) - Multiplication sign
 
 These should typically be replaced with their ASCII equivalents:
 - " (U+0022) - Quotation mark
 - ' (U+0027) - Apostrophe
 - - (U+002D) - Hyphen-minus
+- x (U+0078) or * (U+002A) - for the multiplication sign
+
+The multiplication sign is the one whose replacement depends on where it
+lands. In code and comments, `x` or `*`. In .qmd prose, `$\\times$` or
+`&times;` -- NOT a `\\uXXXX` escape, which Pandoc renders literally rather
+than decoding.
 """
 
 import sys
@@ -29,6 +36,12 @@ NON_STANDARD_CHARS = {
     '\u2019': 'Right single quotation mark',
     '\u2013': 'En dash',
     '\u2014': 'Em dash',
+    # Reaches source by the same rendered-text copy-paste as the rest,
+    # typically in a dimension or a rate ("round x month", "365.25 days/year
+    # x 4"). Added in gha#322: the shared ASCII-punctuation convention has
+    # always named it alongside the dashes and quotes, and this set did not
+    # carry it, so consumers had a rule with no instrument behind it.
+    '\u00d7': 'Multiplication sign',
 }
 
 
@@ -128,6 +141,12 @@ def main() -> int:
     print('  \u201C or \u201D -> " (standard double quote)')
     print('  \u2018 or \u2019 -> \' (standard single quote)')
     print('  \u2013 or \u2014 -> - (standard hyphen)')
+    # Two lines rather than one, because this is the only entry whose
+    # replacement depends on where it sits. A single "-> x" would send a
+    # reader to write `x` into rendered prose that wanted a times symbol.
+    print('  \u00d7 -> x or * (in code and comments)')
+    print('  \u00d7 -> $\\times$ or &times; (in .qmd prose; a \\uXXXX escape')
+    print('       is rendered literally by Pandoc, not decoded)')
     print()
     
     return 1
