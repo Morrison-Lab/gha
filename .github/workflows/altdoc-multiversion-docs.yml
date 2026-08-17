@@ -451,7 +451,7 @@ jobs:
 
       - name: Deploy to GitHub pages
         if: github.event_name != 'pull_request' && env.subdir != ''
-        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
           clean-exclude: |
             pr-preview
@@ -464,7 +464,7 @@ jobs:
 
       - name: Deploy root landing page
         if: github.event_name != 'pull_request' && env.landing_target != ''
-        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
           clean: true
           clean-exclude: |
@@ -477,7 +477,7 @@ jobs:
 
       - name: "[default branch] Bootstrap /latest-tag/ from latest stable archive"
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch) && env.bootstrap_latest_tag == 'true'
-        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
           clean: false
           branch: ${{ inputs.preview-branch }}
@@ -488,7 +488,7 @@ jobs:
       # so previous releases remain accessible and directly linkable.
       - name: "[release] Deploy to version subdirectory"
         if: github.event_name == 'release' && !github.event.release.prerelease
-        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
           clean: false
           branch: ${{ inputs.preview-branch }}
