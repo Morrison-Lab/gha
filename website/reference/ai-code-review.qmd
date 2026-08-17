@@ -52,6 +52,16 @@ The dispatch uses `GITHUB_TOKEN`, so no personal access token is needed:
 Each agent's own review workflow declares whatever permissions it needs for
 itself.
 
+## Concurrency
+
+Do not declare a top-level `concurrency:` block in your caller workflow.
+`ai-code-review.yml` manages per-PR concurrency internally on its
+`select-and-review` job (`group: ai-review-<PR>`).
+Adding a top-level `concurrency:` block in the caller with a PR-scoped group
+name causes GitHub Actions to detect a deadlock between the top-level workflow
+and the nested job, cancelling the run immediately
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+
 ## Example
 
 ```yaml

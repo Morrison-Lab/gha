@@ -88,6 +88,16 @@ skip lifts only if the PR stops editing the file, which is rarely what the PR
 is for. The review job posts a PR comment saying so. Merge such a PR on a
 self-review or a human review; do not read the gray gate as an all-clear.
 
+## Concurrency
+
+Do not declare a top-level `concurrency:` block in your caller workflow.
+`claude-code-review.yml` manages per-PR concurrency internally on its
+`claude-review` job (`group: claude-review-<PR>`).
+Adding a top-level `concurrency:` block in the caller with a PR-scoped group
+name causes GitHub Actions to detect a deadlock between the top-level workflow
+and the nested job, cancelling the run immediately
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+
 ## Example
 
 ```yaml

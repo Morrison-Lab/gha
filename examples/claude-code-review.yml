@@ -1,4 +1,10 @@
 # Copy to .github/workflows/claude-code-review.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
+# The reusable workflow manages per-PR concurrency internally on its job
+# (`group: claude-review-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested job and cancels the run
+# ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+#
 # NOTE: requires either CLAUDE_CODE_OAUTH_TOKEN (Claude Max plan) or
 # ANTHROPIC_API_KEY (direct API / GitHub App via /install-github-app). Pass
 # secrets explicitly (below) rather than via `secrets: inherit`: GitHub only
