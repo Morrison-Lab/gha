@@ -197,6 +197,21 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
     return "\n\n".join(prompt_parts)
 
 
+def normalize_diff_path(raw_path: str) -> str:
+    """Clean and normalize a file path from diffs or location tags."""
+    if not raw_path:
+        return ""
+    cleaned = str(raw_path).strip("'\"` ").replace("\\", "/")
+    if cleaned.startswith('"') and cleaned.endswith('"'):
+        cleaned = cleaned[1:-1].strip()
+    normalized = os.path.normpath(cleaned).replace("\\", "/").lstrip("/")
+    if normalized.startswith("./"):
+        normalized = normalized[2:]
+    if normalized.startswith("a/") or normalized.startswith("b/"):
+        normalized = normalized[2:]
+    return normalized
+
+
 def parse_json_inline_comments(content: str) -> List[Dict[str, Any]]:
     """Attempt to parse structured JSON inline finding block from report content.
 
@@ -233,14 +248,9 @@ def parse_json_inline_comments(content: str) -> List[Dict[str, Any]]:
     for item in items:
         if not isinstance(item, dict):
             continue
-        raw_path = str(item.get("path", "")).strip("'\"` ").replace("\\", "/")
-        if not raw_path:
+        file_path = normalize_diff_path(str(item.get("path", "")))
+        if not file_path:
             continue
-        file_path = os.path.normpath(raw_path).replace("\\", "/").lstrip("/")
-        if file_path.startswith("./"):
-            file_path = file_path[2:]
-        if file_path.startswith("a/") or file_path.startswith("b/"):
-            file_path = file_path[2:]
 
         start_line = item.get("start_line") or item.get("line")
         if start_line is None:
@@ -337,12 +347,9 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         match = item["match"]
         header_text = item["header_text"]
         pre_location_text = item["pre_location_text"]
-        raw_file = match.group("file").strip("'\"` ").replace("\\", "/")
-        file_path = os.path.normpath(raw_file).replace("\\", "/").lstrip("/")
-        if file_path.startswith("./"):
-            file_path = file_path[2:]
-        if file_path.startswith("a/") or file_path.startswith("b/"):
-            file_path = file_path[2:]
+        file_path = normalize_diff_path(match.group("file"))
+        if not file_path:
+            continue
         start_line = max(1, int(match.group("start")))
         end_line = max(1, int(match.group("end"))) if match.group("end") else None
 
@@ -403,23 +410,25 @@ def parse_diff_valid_lines(diff_text: str) -> Dict[str, Set[int]]:
     current_file: Optional[str] = None
     hunk_header_pat = re.compile(r"^@@\s+-\d+(?:,\d+)?\s+\+(?P<start>\d+)(?:,(?P<count>\d+))?\s+@@")
 
-    for line in diff_text.splitlines():
-        if line.startswith("+++ b/"):
-            raw_path = line[6:].strip()
-            current_file = os.path.normpath(raw_path).replace("\\", "/").lstrip("/")
-            if current_file.startswith("./"):
-                current_file = current_file[2:]
-            if current_file not in valid_lines:
-                valid_lines[current_file] = set()
-            continue
-        elif line.startswith("+++ /dev/null"):
+    for line in diff_text.split("\n"):
+        line_str = line.rstrip("\r")
+        if line_str.startswith("diff --git "):
             current_file = None
             continue
-        elif line.startswith("--- "):
+        elif line_str.startswith("+++ b/") or line_str.startswith('+++ "b/'):
+            raw_path = line_str[4:].strip()
+            current_file = normalize_diff_path(raw_path)
+            if current_file and current_file not in valid_lines:
+                valid_lines[current_file] = set()
+            continue
+        elif line_str.startswith("+++ /dev/null"):
+            current_file = None
+            continue
+        elif line_str.startswith("--- "):
             continue
 
         if current_file is not None:
-            match = hunk_header_pat.match(line)
+            match = hunk_header_pat.match(line_str)
             if match:
                 start = int(match.group("start"))
                 count_str = match.group("count")
@@ -476,6 +485,8 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str, diff:
     clean_content = re.sub(r"\n*```json\s*\[\s*\{.*\}\s*\]\s*```\s*$", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
     full_body = header + clean_content
 
+    json_comments = parse_json_inline_comments(content)
+    is_json_report = bool(json_comments)
     inline_comments = extract_inline_comments(content)
     resolved_pr_num = None
 
@@ -489,7 +500,9 @@ def post_github_comment(pr_number: Optional[int], content: str, mode: str, diff:
         valid_lines = parse_diff_valid_lines(diff) if diff else {}
         valid_comments, invalid_comments = validate_inline_comments(inline_comments, valid_lines)
 
-        if invalid_comments:
+        # Only append off-diff findings to full_body for JSON block reports (where the JSON block was stripped from clean_content).
+        # For markdown-extracted findings (Location: [file:L10]), the findings text is already present in clean_content / full_body.
+        if invalid_comments and is_json_report:
             off_diff_lines = ["\n\n### 📌 Additional Findings (Off-diff)"]
             for c in invalid_comments:
                 c_path = c.get("path", "")

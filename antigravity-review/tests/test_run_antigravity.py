@@ -486,6 +486,30 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(len(empty_valid), 0)
         self.assertEqual(len(empty_invalid), 4)
 
+    def test_normalize_diff_path(self):
+        self.assertEqual(run_antigravity.normalize_diff_path("a/src/main.py"), "src/main.py")
+        self.assertEqual(run_antigravity.normalize_diff_path('"b/src/my file.py"'), "src/my file.py")
+        self.assertEqual(run_antigravity.normalize_diff_path("./path\\to\\file.py"), "path/to/file.py")
+
+    def test_parse_diff_valid_lines_quoted_and_reset(self):
+        quoted_diff = (
+            'diff --git "a/path/with space.py" "b/path/with space.py"\n'
+            '--- "a/path/with space.py"\n'
+            '+++ "b/path/with space.py"\n'
+            '@@ -1,2 +1,3 @@\n'
+            '+new line\n'
+            'diff --git a/other.py b/other.py\n'
+            '--- a/other.py\n'
+            '+++ b/other.py\n'
+            '@@ -10 +10 @@\n'
+            '+changed\n'
+        )
+        valid_lines = run_antigravity.parse_diff_valid_lines(quoted_diff)
+        self.assertIn("path/with space.py", valid_lines)
+        self.assertEqual(valid_lines["path/with space.py"], {1, 2, 3})
+        self.assertIn("other.py", valid_lines)
+        self.assertEqual(valid_lines["other.py"], {10})
+
 
 if __name__ == "__main__":
     unittest.main()
