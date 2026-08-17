@@ -1,4 +1,10 @@
 # Copy to .github/workflows/ai-code-review.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
+# The reusable workflow manages per-PR concurrency internally on its job
+# (`group: ai-review-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested job and cancels the run
+# ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+#
 # Dispatches a review from one of the configured AI agents, chosen at random,
 # falling through to the next candidate when one can't be dispatched or fails
 # during execution ([gha#444](https://github.com/Morrison-Lab/gha/issues/444)).

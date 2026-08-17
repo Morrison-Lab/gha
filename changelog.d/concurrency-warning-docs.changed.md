@@ -1,0 +1,1 @@
+- Document that caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `ai-code-review.yml`) must not declare top-level `concurrency:` blocks with PR-scoped group names, as they deadlock GitHub Actions against the nested job's internal concurrency group ([#437](https://github.com/Morrison-Lab/gha/issues/437)).

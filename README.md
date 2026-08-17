@@ -169,6 +169,8 @@ The `examples/claude-code-review.yml` stub defaults to this mention-triggered
 path only (no automatic `pull_request` trigger). Add `pull_request` in that
 stub if you want automatic review on each PR update.
 
+Do not declare a top-level `concurrency:` block in caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `ai-code-review.yml`). The reusable workflows manage per-PR concurrency internally on their review jobs. A top-level `concurrency:` block in the caller with a PR-scoped group name deadlocks GitHub Actions against the nested job's group and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment — but that path is opt-in:
 enable the `issue_comment` trigger in `examples/claude-code-review.yml` first.

@@ -1,4 +1,10 @@
 # Copy to .github/workflows/gemini-code-review.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
+# The reusable workflow manages per-PR concurrency internally on its job
+# (`group: gemini-review-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested job and cancels the run
+# ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+#
 # NOTE: requires GEMINI_API_KEY stored as a GitHub secret. Pass secrets
 # explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
 # secrets into a reusable workflow owned by the same org/user, so a
