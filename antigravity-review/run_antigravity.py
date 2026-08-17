@@ -440,7 +440,7 @@ def validate_inline_comments(
     it targets are present in active diff hunks.
     """
     if not valid_lines:
-        return inline_comments, []
+        return [], list(inline_comments)
 
     valid_comments = []
     invalid_comments = []

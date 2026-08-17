@@ -481,6 +481,11 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertEqual(invalid_comments[0]["line"], 99)
         self.assertEqual(invalid_comments[1]["path"], "other/file.py")
 
+        # Empty valid_lines (e.g. unparseable diff or binary-only diff) treats all comments as off-diff
+        empty_valid, empty_invalid = run_antigravity.validate_inline_comments(comments, {})
+        self.assertEqual(len(empty_valid), 0)
+        self.assertEqual(len(empty_invalid), 4)
+
 
 if __name__ == "__main__":
     unittest.main()
