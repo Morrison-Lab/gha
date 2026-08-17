@@ -1472,7 +1472,7 @@
     "href": "reference/small-model-agent.html#permissions",
     "title": "small-model-agent.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write, pull-requests: write, and issues: write.",
+    "text": "Permissions\nGrant contents: read and pull-requests: write.",
     "crumbs": [
       "Overview",
       "Reference",
