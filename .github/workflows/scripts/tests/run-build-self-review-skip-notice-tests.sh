@@ -41,7 +41,7 @@ fi
 
 # Apply the collapse step's literal capture pattern for actions/runs/(?<r>[0-9]+)
 if command -v jq >/dev/null 2>&1; then
-  extracted_run_id="$(jq -n -r --arg body "$got" '($body | capture("actions/runs/(?<r>[0-9]+)").r) // ""')"
+  extracted_run_id="$(jq -n -r --arg body "$got" '((($body | capture("actions/runs/(?<r>[0-9]+)").r)?) // "")')"
 else
   extracted_run_id="$(printf '%s\n' "$got" | grep -oE 'actions/runs/[0-9]+' | cut -d'/' -f3 || true)"
 fi

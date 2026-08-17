@@ -405,6 +405,11 @@ jobs:
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+
       # The skip above is correct, but on its own it is silent: every later step
       # is skipped, the job still succeeds, and require-review used to report the
       # same green it reports for a clean review --- so an unreviewed PR looked
@@ -457,12 +462,6 @@ jobs:
             echo "posted=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
           fi
-
-      - name: Checkout repository
-        if: steps.selfmod.outputs.self_mod != 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 1
 
       # Initialize submodules so the reviewer can read their contents — without
       # this, reviews of files that include or reference a submodule report it
