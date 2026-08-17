@@ -61,6 +61,7 @@ declare -A expected=(
   [verdict-via-gh-comment-heredoc-dash-tab.json]=pass
   [verdict-via-gh-comment-heredoc-crlf.json]=pass
   [denied-bash-comment-not-trusted.json]=fail-stub
+  [short-circuit-no-result.json]=fail-short-circuit
 )
 
 # For `pass` fixtures where the posted review_text_file's content matters
@@ -129,11 +130,12 @@ declare -A expected_cost=(
   [verdict-via-gh-comment-heredoc-dash-tab.json]=0.83
   [verdict-via-gh-comment-heredoc-crlf.json]=0.94
   [denied-bash-comment-not-trusted.json]=0.4
+  [short-circuit-no-result.json]=""
 )
 
 assert_cost() {
   local fixture="$1" output_file="$2"
-  local want="${expected_cost[$fixture]}" got
+  local want="${expected_cost[$fixture]:-}" got
   got="$(sed -n 's/^total_cost_usd=//p' "$output_file")"
   [[ "$got" == "$want" ]]
 }
@@ -163,6 +165,11 @@ assert_fail_stub() {
   [[ "$exit_code" -ne 0 ]] && grep -q '^stub_review=true$' "$output_file"
 }
 
+assert_fail_short_circuit() {
+  local exit_code="$1" output_file="$2"
+  [[ "$exit_code" -ne 0 ]] && grep -q '^action_short_circuit=true$' "$output_file"
+}
+
 assert_skip() {
   local exit_code="$1" output_file="$2"
   [[ "$exit_code" -eq 0 ]] && grep -q '^quota_exhausted=true$' "$output_file"
@@ -184,6 +191,7 @@ for fixture in "${!expected[@]}"; do
     pass) assert_pass "$fixture" "$exit_code" "$output_file" && ok=true ;;
     fail) assert_fail "$exit_code" "$output_file" && ok=true ;;
     fail-stub) assert_fail_stub "$exit_code" "$output_file" && ok=true ;;
+    fail-short-circuit) assert_fail_short_circuit "$exit_code" "$output_file" && ok=true ;;
     skip) assert_skip "$exit_code" "$output_file" && ok=true ;;
     *) echo "::error::unknown expected outcome '$want' for fixture $fixture"; exit 1 ;;
   esac
@@ -205,6 +213,20 @@ for fixture in "${!expected[@]}"; do
   fi
   rm -f "$output_file" "$log_file"
 done
+
+# Explicit non-existent file test (action short-circuit / missing execution file; gha#368)
+output_file="$(mktemp)"
+set +e
+GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixtures_dir/nonexistent-file.json" >/dev/null 2>&1
+exit_code=$?
+set -e
+if [[ "$exit_code" -ne 0 ]] && grep -q '^action_short_circuit=true$' "$output_file" && grep -q '^no_execution_file=true$' "$output_file"; then
+  echo "OK   nonexistent-file.json (expected fail-short-circuit, exit=$exit_code)"
+else
+  echo "::error::nonexistent-file.json did not report action_short_circuit=true and no_execution_file=true"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of ${#expected[@]} fixture(s) did not behave as expected"
