@@ -1,0 +1,44 @@
+name: Resolve PR info
+description: >-
+  Looks up PR head branch and head repo over GitHub API, determines whether
+  the PR is from a fork, and resolves the --ref argument for workflow_dispatch.
+  (gha#369)
+
+inputs:
+  pr-number:
+    description: Issue or PR number.
+    required: true
+  repository:
+    description: Repository name (owner/repo).
+    required: false
+    default: ${{ github.repository }}
+  github-token:
+    description: GitHub token for API requests.
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  pr_branch:
+    description: The head branch name of the PR.
+    value: ${{ steps.resolve.outputs.pr_branch }}
+  pr_head_repo:
+    description: The head repository full name (owner/repo) of the PR.
+    value: ${{ steps.resolve.outputs.pr_head_repo }}
+  is_fork:
+    description: ''true'' if head repo is different from repository, else ''false''.
+    value: ${{ steps.resolve.outputs.is_fork }}
+  ref_arg:
+    description: '--ref <branch>' if not a fork and branch is known, else empty.
+    value: ${{ steps.resolve.outputs.ref_arg }}
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve PR info
+      id: resolve
+      shell: bash
+      env:
+        PR_NUMBER: ${{ inputs.pr-number }}
+        GH_REPO: ${{ inputs.repository }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: bash "${{ github.action_path }}/../../workflows/scripts/resolve-pr-info.sh"

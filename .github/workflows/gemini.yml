@@ -151,6 +151,24 @@ jobs:
       # branch would then be dead code, so the request would be lost and the
       # job would go red. With it, the step's `outcome` is still `failure` (only
       # `conclusion` is masked), which is exactly what the gate reads.
+      - name: Resolve PR info
+        id: pr-info
+        if: >-
+          steps.detect-mention.outputs.match != 'false' &&
+          steps.detect-review.outputs.match == 'true' &&
+          (github.event.issue.pull_request || github.event.pull_request.number)
+        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v2
+        with:
+          pr-number: ${{ github.event.issue.number || github.event.pull_request.number }}
+
+      # `continue-on-error: true` is what makes the gate step's fallback
+      # reachable at all. Without it a failing `gh workflow run` --- a review
+      # workflow file the caller never copied, or one that is disabled ---
+      # fails this step, and a failed step skips every later step, including
+      # the gate. The gate's own "could not be dispatched, answer instead"
+      # branch would then be dead code, so the request would be lost and the
+      # job would go red. With it, the step's `outcome` is still `failure` (only
+      # `conclusion` is masked), which is exactly what the gate reads.
       - name: Dispatch review workflow if @gemini review was requested
         id: dispatch-review
         continue-on-error: true
@@ -177,12 +195,10 @@ jobs:
             echo "::warning::No PR number on this event; cannot dispatch $REVIEW_WF."
             exit 1
           fi
-          if ! PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null); then
-            echo "::warning::Could not read PR #$PR_NUMBER; cannot dispatch $REVIEW_WF."
-            exit 1
-          fi
-          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
-          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+          PR_BRANCH="${{ steps.pr-info.outputs.pr_branch }}"
+          PR_HEAD_REPO="${{ steps.pr-info.outputs.pr_head_repo }}"
+          IS_FORK="${{ steps.pr-info.outputs.is_fork }}"
+          REF_ARG="${{ steps.pr-info.outputs.ref_arg }}"
           # A fork PR is not dispatched at all, rather than dispatched without
           # `--ref` as it was before. gemini-code-review.yml now refuses fork
           # PRs outright (its own dispatch guard, mirroring
@@ -190,7 +206,7 @@ jobs:
           # red check nobody asked for. Failing here instead routes the request
           # to the agent, which answers in place -- a worse review than the
           # dedicated reviewer would give, but an answer rather than an error.
-          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+          if [ "$IS_FORK" = "true" ]; then
             echo "::warning::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); $REVIEW_WF refuses fork PRs, so answering with the agent instead."
             # Record WHY before exiting, so the gate can tell this deliberate
             # non-dispatch apart from a real breakage. A step's outputs are
@@ -200,12 +216,16 @@ jobs:
             echo "reason=fork" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          if [ -z "$PR_BRANCH" ]; then
+            echo "::warning::Could not read PR #$PR_NUMBER; cannot dispatch $REVIEW_WF."
+            exit 1
+          fi
           # --ref pins the dispatched run's check-runs to the PR's head branch
           # instead of the default branch that workflow_dispatch falls back to
           # when no ref is given (#285). Safe unconditionally now that forks
           # never reach this line, since the branch is always in $REPO (#289).
           echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER ($PR_BRANCH)."
-          gh workflow run "$REVIEW_WF" --repo "$REPO" --ref "$PR_BRANCH" -f pr_number="$PR_NUMBER"
+          gh workflow run "$REVIEW_WF" --repo "$REPO" $REF_ARG -f pr_number="$PR_NUMBER"
 
       # A step's `exit 0` ends only that step, never the job, so a "skip" step
       # that just echoes and exits leaves every later step running anyway.
