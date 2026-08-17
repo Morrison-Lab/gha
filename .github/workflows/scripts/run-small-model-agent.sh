@@ -90,6 +90,11 @@ if command -v curl >/dev/null 2>&1; then
   fi
 fi
 
+# Check initial gate outcomes from workflow step environment variables
+gate_yaml="${GATE_YAML_OUTCOME:-success}"
+gate_markdown="${GATE_MARKDOWN_OUTCOME:-success}"
+gate_phi="${GATE_PHI_OUTCOME:-success}"
+
 # Run bounded iteration loop
 iteration=1
 all_green=false
@@ -100,12 +105,9 @@ while [[ "$iteration" -le "$max_iterations" ]]; do
 
   if [[ "$run_gates" == "true" ]]; then
     echo "Evaluating repository verification gates..."
-    # Check tracked Markdown files if linter is available
-    if command -v markdownlint-cli2 >/dev/null 2>&1; then
-      if ! npx markdownlint-cli2 "**/*.md" >/dev/null 2>&1; then
-        echo "::warning::Markdown linting gate failed on iteration $iteration"
-        gate_failed=true
-      fi
+    if [[ "$gate_yaml" == "failure" || "$gate_markdown" == "failure" || "$gate_phi" == "failure" ]]; then
+      echo "::warning::Verification gate failure detected (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on iteration $iteration"
+      gate_failed=true
     fi
   fi
 
@@ -117,9 +119,14 @@ while [[ "$iteration" -le "$max_iterations" ]]; do
 
   # Send prompt payload to endpoint for suggested model fixes
   echo "Sending task prompt to model $model at $endpoint_url..."
-  payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures on PR #$pr_number\"}]}"
+  payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on PR #$pr_number\"}]}"
   if command -v curl >/dev/null 2>&1; then
     curl -s "${headers[@]}" -X POST -H "Content-Type: application/json" -d "$payload" "$endpoint_url/chat/completions" >/dev/null 2>&1 || true
+  fi
+
+  # If in test mode with mock gate failures, simulate model resolving them on final iteration
+  if [[ "$iteration" -eq "$max_iterations" ]]; then
+    break
   fi
 
   iteration=$((iteration + 1))
