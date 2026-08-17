@@ -38,7 +38,7 @@ Companion to [`Morrison-Lab/ai-config#1292`](https://github.com/Morrison-Lab/ai-
 
 ## Permissions
 
-Grant `contents: write`, `pull-requests: write`, and `issues: write`.
+Grant `contents: read` and `pull-requests: write`.
 
 ## Concurrency
 
