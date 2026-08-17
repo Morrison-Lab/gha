@@ -736,6 +736,18 @@
     ]
   },
   {
+    "objectID": "reference/antigravity-code-review.html#concurrency",
+    "href": "reference/antigravity-code-review.html#concurrency",
+    "title": "antigravity-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. antigravity-code-review.yml manages per-PR concurrency internally on its antigravity-review job (group: antigravity-review-&lt;mode&gt;-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "antigravity-code-review.yml"
+    ]
+  },
+  {
     "objectID": "reference/antigravity-code-review.html#example",
     "href": "reference/antigravity-code-review.html#example",
     "title": "antigravity-code-review.yml",
@@ -1060,6 +1072,18 @@
     ]
   },
   {
+    "objectID": "reference/gemini-code-review.html#concurrency",
+    "href": "reference/gemini-code-review.html#concurrency",
+    "title": "gemini-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. gemini-code-review.yml manages per-PR concurrency internally on its review job (group: gemini-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
     "objectID": "reference/gemini-code-review.html#example",
     "href": "reference/gemini-code-review.html#example",
     "title": "gemini-code-review.yml",
@@ -1125,6 +1149,18 @@
     "title": "claude-code-review.yml",
     "section": "The require-review gate",
     "text": "The require-review gate\nPut review / require-review in branch protection’s required checks, not review / claude-review: the review job reports success in cases where no verdict was produced, and this gate job exists to distinguish them.\nRead its result as follows.\n\n\n\n\n\n\n\nResult\nWhat it attests\n\n\n\n\nGreen\nA reviewer ran and the job did not fail. Not that the reviewer approved — read the posted verdict for that.\n\n\nGray (skipped)\nNo review ran. Does not block merging.\n\n\nRed\nThe review job did not succeed. Blocks merging.\n\n\n\nOne red result is not a review failure at all: a claude-review run canceled by a newer run of the same PR (cancel-in-progress) also turns this gate red. Check whether claude-review’s conclusion is cancelled rather than failure before investigating the diff, and trust the surviving run’s review.\nThe gate skips gray whenever no review was attempted. That covers anything that made the claude-review job’s own if: false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:\n\nthe API quota was exhausted before any review work happened;\nthe PR edits the caller’s own review workflow file.\n\nThat last case deserves care. claude-code-action requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and no re-run or re-dispatch will change that — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "claude-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/claude-code-review.html#concurrency",
+    "href": "reference/claude-code-review.html#concurrency",
+    "title": "claude-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. claude-code-review.yml manages per-PR concurrency internally on its claude-review job (group: claude-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1869,6 +1905,18 @@
     "title": "ai-code-review.yml",
     "section": "Permissions",
     "text": "Permissions\nGrant contents: read, pull-requests: read, and actions: write (the last so it can dispatch the selected agent’s review workflow).\nThe dispatch uses GITHUB_TOKEN, so no personal access token is needed: actions: write is enough to start a workflow in the caller’s own repository. Each agent’s own review workflow declares whatever permissions it needs for itself.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "ai-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/ai-code-review.html#concurrency",
+    "href": "reference/ai-code-review.html#concurrency",
+    "title": "ai-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. ai-code-review.yml manages per-PR concurrency internally on its select-and-review job (group: ai-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
     "crumbs": [
       "Overview",
       "Reference",

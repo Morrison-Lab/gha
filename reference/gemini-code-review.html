@@ -591,6 +591,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#what-it-refuses-to-review" id="toc-what-it-refuses-to-review" class="nav-link" data-scroll-target="#what-it-refuses-to-review">What it refuses to review</a></li>
+  <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/gemini-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -704,6 +705,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The automatic <code>pull_request</code> path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.</p>
 <p>A <code>workflow_dispatch</code> run carries none of that payload, only <code>pr-number</code>, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad <code>pr-number</code>) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.</p>
 <p>Only one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.</p>
+</section>
+<section id="concurrency" class="level2">
+<h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
+<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>gemini-code-review.yml</code> manages per-PR concurrency internally on its <code>review</code> job (<code>group: gemini-review-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>

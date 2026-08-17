@@ -591,6 +591,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
+  <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/ai-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -714,6 +715,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
 <p>Grant <code>contents: read</code>, <code>pull-requests: read</code>, and <code>actions: write</code> (the last so it can dispatch the selected agent’s review workflow).</p>
 <p>The dispatch uses <code>GITHUB_TOKEN</code>, so no personal access token is needed: <code>actions: write</code> is enough to start a workflow in the caller’s own repository. Each agent’s own review workflow declares whatever permissions it needs for itself.</p>
+</section>
+<section id="concurrency" class="level2">
+<h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
+<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>ai-code-review.yml</code> manages per-PR concurrency internally on its <code>select-and-review</code> job (<code>group: ai-review-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
