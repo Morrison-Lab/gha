@@ -1092,7 +1092,7 @@ jobs:
       # Route an explicit `@claude review` request to the dedicated reviewer
       # workflow rather than letting the agent self-review.
       - name: Dispatch code review
-        if: steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.review_request.outputs.match == 'true'
+        if: always() && steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.review_request.outputs.match == 'true'
         uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
         with:
           pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
@@ -1227,7 +1227,7 @@ jobs:
                 || echo "::warning::Could not post cost comment."
             fi
           else
-            echo "No new commits on PR head; skipping review dispatch."
+            echo "No new commits on PR head; skipping reviewer re-request."
           fi
 
       # Pair to "Set up branch for issue trigger", split in two so this step's

@@ -35,15 +35,8 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cat <<'EOF' > "$tmp_dir/gh"
 #!/usr/bin/env bash
 if [[ "$1" == "api" ]]; then
-  for arg in "$@"; do
-    if [[ "$arg" == *".head.ref"* ]]; then
-      echo "api-branch"
-      exit 0
-    elif [[ "$arg" == *".head.repo.full_name"* ]]; then
-      echo "Morrison-Lab/gha"
-      exit 0
-    fi
-  done
+  echo '{"branch":"api-branch","head_repo":"Morrison-Lab/gha"}'
+  exit 0
 fi
 echo "Unexpected gh invocation: $@" >&2
 exit 1
@@ -91,6 +84,25 @@ if GH_REPO="Morrison-Lab/gha" bash "$dispatch_script" >/dev/null 2>&1; then
   failures=$((failures + 1))
 else
   echo "OK   dispatch-review.sh fails when PR_NUMBER is missing"
+fi
+
+# Test 7: Empty PR_HEAD_REPO conservatively omits --ref (fork-like fallback)
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+if [[ "$1" == "api" ]]; then
+  echo '{"branch":"api-branch","head_repo":""}'
+  exit 0
+fi
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="128" PR_BRANCH="" PR_HEAD_REPO="" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'is from a fork' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=128'; then
+  echo "OK   dispatch-review.sh conservatively omits --ref when PR_HEAD_REPO is empty"
+else
+  echo "::error::dispatch-review.sh failed empty PR_HEAD_REPO fallback test; got: $out"
+  failures=$((failures + 1))
 fi
 
 if [[ "$failures" -gt 0 ]]; then

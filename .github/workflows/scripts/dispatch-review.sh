@@ -43,8 +43,11 @@ fi
 
 if [[ -z "$PR_BRANCH" ]]; then
   echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
-  PR_BRANCH=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.ref // empty' 2>/dev/null || true)
-  PR_HEAD_REPO=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.repo.full_name // empty' 2>/dev/null || true)
+  PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
+  if [[ -n "$PR_DATA" ]]; then
+    PR_BRANCH=$(python3 -c "import sys, json; data=json.loads(sys.stdin.read()); print(data.get('branch') or '')" <<<"$PR_DATA" 2>/dev/null || echo "$PR_DATA" | jq -r '.branch // empty' 2>/dev/null || true)
+    PR_HEAD_REPO=$(python3 -c "import sys, json; data=json.loads(sys.stdin.read()); print(data.get('head_repo') or '')" <<<"$PR_DATA" 2>/dev/null || echo "$PR_DATA" | jq -r '.head_repo // empty' 2>/dev/null || true)
+  fi
 fi
 
 NOTICE_SUFFIX=""
@@ -62,7 +65,7 @@ if [[ -z "$PR_BRANCH" ]]; then
   fi
 else
   REF_ARGS=(--ref "$PR_BRANCH")
-  if [[ -n "$PR_HEAD_REPO" && "$PR_HEAD_REPO" != "$REPO" ]]; then
+  if [[ "$PR_HEAD_REPO" != "$REPO" ]]; then
     echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
     REF_ARGS=()
   fi
