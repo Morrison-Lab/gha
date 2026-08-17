@@ -54,8 +54,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if ! [[ "$max_iterations" =~ ^[0-9]+$ ]]; then
+  echo "::error::--max-iterations must be a positive integer" >&2
+  exit 1
+fi
+
 if [[ "$dry_run" == "true" ]]; then
-  echo "::notice::Running small-model-agent in dry-run mode"
+  echo "::notice::Running small-model-agent in dry-run mode" >&2
   cat <<EOF
 {
   "status": "success",
@@ -77,7 +82,7 @@ if [[ -z "$endpoint_url" ]]; then
   exit 1
 fi
 
-echo "Connecting to endpoint $endpoint_url with model $model (max_iterations=$max_iterations, run_gates=$run_gates)..."
+echo "Connecting to endpoint $endpoint_url with model $model (max_iterations=$max_iterations, run_gates=$run_gates)..." >&2
 
 headers=()
 if [[ -n "$api_key" ]]; then
@@ -86,7 +91,7 @@ fi
 
 if command -v curl >/dev/null 2>&1; then
   if ! curl -s "${headers[@]}" --max-time 10 "$endpoint_url/models" >/dev/null 2>&1; then
-    echo "::warning::Endpoint $endpoint_url did not respond to /models health check; proceeding with task execution."
+    echo "::warning::Endpoint $endpoint_url did not respond to /models health check; proceeding with task execution." >&2
   fi
 fi
 
@@ -100,27 +105,33 @@ iteration=1
 all_green=false
 
 while [[ "$iteration" -le "$max_iterations" ]]; do
-  echo "Iteration $iteration/$max_iterations..."
+  echo "Iteration $iteration/$max_iterations..." >&2
   gate_failed=false
 
   if [[ "$run_gates" == "true" ]]; then
-    echo "Evaluating repository verification gates..."
+    echo "Evaluating repository verification gates..." >&2
     if [[ "$gate_yaml" == "failure" || "$gate_markdown" == "failure" || "$gate_phi" == "failure" ]]; then
-      echo "::warning::Verification gate failure detected (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on iteration $iteration"
+      echo "::warning::Verification gate failure detected (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on iteration $iteration" >&2
       gate_failed=true
     fi
   fi
 
   if [[ "$gate_failed" == "false" ]]; then
-    echo "All gates passed green on iteration $iteration."
+    echo "All gates passed green on iteration $iteration." >&2
     all_green=true
     break
   fi
 
   # Send prompt payload to endpoint for suggested model fixes
   if [[ -n "$endpoint_url" ]]; then
-    echo "Sending task prompt to model $model at $endpoint_url..."
-    payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on PR #$pr_number\"}]}"
+    echo "Sending task prompt to model $model at $endpoint_url..." >&2
+    if command -v jq >/dev/null 2>&1; then
+      payload="$(jq -n --arg m "$model" --arg pr "$pr_number" --arg y "$gate_yaml" --arg md "$gate_markdown" --arg phi "$gate_phi" \
+        '{model: $m, messages: [{role: "user", content: "Fix repository gate failures (yaml=\($y), markdown=\($md), phi=\($phi)) on PR #\($pr)"}]}')"
+    else
+      payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures on PR #$pr_number\"}]}"
+    fi
+
     if command -v curl >/dev/null 2>&1; then
       curl -s "${headers[@]}" -X POST -H "Content-Type: application/json" -d "$payload" "$endpoint_url/chat/completions" >/dev/null 2>&1 || true
     fi
