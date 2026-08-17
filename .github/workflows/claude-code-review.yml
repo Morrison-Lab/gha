@@ -896,7 +896,7 @@ jobs:
             echo "No review text found in execution output; skipping comment."
             exit 0
           fi
-          COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')}"
+          COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)}"
           # Include the run URL so the collapse step can match this comment by
           # run ID (same regex: `actions/runs/<id>` in the body).
           # Write the body to a file and post it with --body-file so the review
