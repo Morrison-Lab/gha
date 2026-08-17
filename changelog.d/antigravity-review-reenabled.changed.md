@@ -1,0 +1,1 @@
+- **Re-enable `antigravity-review.yml` workflow** ([#426](https://github.com/Morrison-Lab/gha/issues/426)). Restores active workflow status for `antigravity-review.yml` in `gha` and `ai-config`.
