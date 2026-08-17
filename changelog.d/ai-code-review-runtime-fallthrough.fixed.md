@@ -1,0 +1,1 @@
+- **`ai-code-review.yml`**: Added runtime-failure fallthrough to the random agent selector. When a dispatched agent run fails or is cancelled during execution, the selector now falls through to try the next candidate agent (#444).

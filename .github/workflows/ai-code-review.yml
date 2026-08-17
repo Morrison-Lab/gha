@@ -2,15 +2,13 @@ name: AI Code Review (reusable)
 
 # Reusable multi-agent PR review workflow. Picks one of the configured AI
 # agents at random and dispatches that agent's own review workflow for the PR,
-# falling through to the next candidate when one can't be dispatched.
+# falling through to the next candidate when one can't be dispatched or fails
+# during execution (#444).
 #
-# Scope of the fallback: it covers agents that are unavailable *at dispatch
-# time* --- no API key/token secret configured, or the agent's review workflow
-# file missing or disabled in the caller repo. It does NOT cover an agent that
-# dispatches fine and then fails partway through its own run, because
-# `gh workflow run` returns as soon as the run is queued and reports no run id
-# to wait on. Failing over on a runtime failure needs the dispatched run to be
-# located and awaited; tracked separately rather than papered over here.
+# Scope of the fallback: covers agents that cannot be dispatched (no secret
+# configured, or workflow file missing) as well as dispatched runs that fail
+# partway through execution (#444). When a dispatched agent run fails or is
+# cancelled, the selector falls through to try the next candidate agent.
 #
 # The caller stub (see examples/ai-code-review.yml) holds the `on:` triggers.
 
@@ -61,7 +59,7 @@ jobs:
         github.event.sender.type != 'Bot'
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     permissions:
       contents: read
       pull-requests: read
@@ -161,12 +159,40 @@ jobs:
             fi
 
             echo "Dispatching $agent_wf for PR #$PR_NUMBER ($agent)."
+            START_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
             if gh workflow run "$agent_wf" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"; then
               echo "Dispatched the review to $agent ($agent_wf)."
-              exit 0
+
+              # Locate the dispatched workflow run
+              RUN_ID=""
+              for attempt in {1..12}; do
+                sleep 5
+                RUN_ID=$(gh run list --workflow "$agent_wf" --repo "$REPO" --limit 5 --json databaseId,createdAt --jq ".[] | select(.createdAt >= \"$START_TIME\") | .databaseId" | head -n1 || true)
+                if [ -n "$RUN_ID" ]; then
+                  break
+                fi
+              done
+
+              if [ -n "$RUN_ID" ]; then
+                echo "Tracking dispatched run $RUN_ID for agent '$agent'..."
+                if gh run watch "$RUN_ID" --repo "$REPO"; then
+                  CONCLUSION=$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion --jq '.conclusion' || true)
+                  if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
+                    echo "Agent '$agent' completed review successfully (conclusion: $CONCLUSION)."
+                    exit 0
+                  fi
+                  echo "::warning::Dispatched run $RUN_ID for agent '$agent' completed with status '$CONCLUSION'; trying the next candidate agent."
+                else
+                  echo "::warning::Dispatched run $RUN_ID for agent '$agent' failed during execution; trying the next candidate agent."
+                fi
+              else
+                echo "::notice::Could not locate queued run ID for $agent_wf within timeout; assuming dispatch succeeded."
+                exit 0
+              fi
+            else
+              echo "::warning::Could not dispatch $agent_wf for '$agent'; trying the next candidate agent."
             fi
-            echo "::warning::Could not dispatch $agent_wf for '$agent'; trying the next candidate."
           done
 
-          echo "::error::Every configured AI agent was tried; none could be dispatched."
+          echo "::error::Every configured AI agent was tried; none could be dispatched or completed successfully."
           exit 1
