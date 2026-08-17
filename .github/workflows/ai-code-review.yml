@@ -59,7 +59,7 @@ jobs:
         github.event.sender.type != 'Bot'
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: read
@@ -134,9 +134,11 @@ jobs:
           # fork PRs; the check-run then mis-attributes to the default branch,
           # the lesser problem.
           REF_ARGS=(--ref "$PR_BRANCH")
+          BRANCH_FILTER=(--branch "$PR_BRANCH")
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching without --ref."
             REF_ARGS=()
+            BRANCH_FILTER=()
           fi
 
           for agent in "${AGENTS[@]}"; do
@@ -163,11 +165,11 @@ jobs:
             if gh workflow run "$agent_wf" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"; then
               echo "Dispatched the review to $agent ($agent_wf)."
 
-              # Locate the dispatched workflow run
+              # Locate the dispatched workflow run (scoped to $PR_BRANCH for same-repo PRs)
               RUN_ID=""
               for attempt in {1..12}; do
                 sleep 5
-                RUN_ID=$(gh run list --workflow "$agent_wf" --repo "$REPO" --limit 5 --json databaseId,createdAt --jq ".[] | select(.createdAt >= \"$START_TIME\") | .databaseId" | head -n1 || true)
+                RUN_ID=$(gh run list --workflow "$agent_wf" --repo "$REPO" "${BRANCH_FILTER[@]}" --limit 5 --json databaseId,createdAt --jq ".[] | select(.createdAt >= \"$START_TIME\") | .databaseId" | head -n1 || true)
                 if [ -n "$RUN_ID" ]; then
                   break
                 fi
