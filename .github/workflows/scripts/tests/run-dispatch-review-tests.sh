@@ -43,6 +43,14 @@ exit 1
 EOF
 chmod +x "$tmp_dir/gh"
 
+if ! command -v jq >/dev/null 2>&1; then
+  cat <<'EOF' > "$tmp_dir/jq"
+#!/usr/bin/env bash
+python3 -c "import sys, json; data=json.loads(sys.stdin.read()); field=sys.argv[2].lstrip('.').split(' ')[0]; print(data.get(field) or '')" "$@"
+EOF
+  chmod +x "$tmp_dir/jq"
+fi
+
 out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="125" PR_BRANCH="" PR_HEAD_REPO="" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
 if echo "$out" | grep -q 'attempting API lookup for PR #125' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref api-branch -f pr_number=125'; then
   echo "OK   dispatch-review.sh resolves empty PR_BRANCH via API lookup"

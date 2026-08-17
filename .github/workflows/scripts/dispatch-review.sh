@@ -45,8 +45,8 @@ if [[ -z "$PR_BRANCH" ]]; then
   echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
   PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
   if [[ -n "$PR_DATA" ]]; then
-    PR_BRANCH=$(python3 -c "import sys, json; data=json.loads(sys.stdin.read()); print(data.get('branch') or '')" <<<"$PR_DATA" 2>/dev/null || echo "$PR_DATA" | jq -r '.branch // empty' 2>/dev/null || true)
-    PR_HEAD_REPO=$(python3 -c "import sys, json; data=json.loads(sys.stdin.read()); print(data.get('head_repo') or '')" <<<"$PR_DATA" 2>/dev/null || echo "$PR_DATA" | jq -r '.head_repo // empty' 2>/dev/null || true)
+    PR_BRANCH=$(echo "$PR_DATA" | jq -r '.branch // empty' 2>/dev/null || true)
+    PR_HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head_repo // empty' 2>/dev/null || true)
   fi
 fi
 
