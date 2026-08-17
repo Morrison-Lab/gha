@@ -118,15 +118,12 @@ while [[ "$iteration" -le "$max_iterations" ]]; do
   fi
 
   # Send prompt payload to endpoint for suggested model fixes
-  echo "Sending task prompt to model $model at $endpoint_url..."
-  payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on PR #$pr_number\"}]}"
-  if command -v curl >/dev/null 2>&1; then
-    curl -s "${headers[@]}" -X POST -H "Content-Type: application/json" -d "$payload" "$endpoint_url/chat/completions" >/dev/null 2>&1 || true
-  fi
-
-  # If in test mode with mock gate failures, simulate model resolving them on final iteration
-  if [[ "$iteration" -eq "$max_iterations" ]]; then
-    break
+  if [[ -n "$endpoint_url" ]]; then
+    echo "Sending task prompt to model $model at $endpoint_url..."
+    payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on PR #$pr_number\"}]}"
+    if command -v curl >/dev/null 2>&1; then
+      curl -s "${headers[@]}" -X POST -H "Content-Type: application/json" -d "$payload" "$endpoint_url/chat/completions" >/dev/null 2>&1 || true
+    fi
   fi
 
   iteration=$((iteration + 1))
@@ -135,6 +132,8 @@ done
 final_status="completed"
 if [[ "$all_green" == "true" ]]; then
   final_status="success"
+else
+  final_status="failed"
 fi
 
 cat <<EOF
@@ -149,3 +148,8 @@ cat <<EOF
   "summary": "Agent execution completed with status $final_status."
 }
 EOF
+
+if [[ "$final_status" == "failed" ]]; then
+  echo "::error::Small model agent failed to resolve repository gates after $max_iterations iteration(s)." >&2
+  exit 1
+fi

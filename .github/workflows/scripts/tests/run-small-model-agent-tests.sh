@@ -27,16 +27,21 @@ else
   echo "OK   run-small-model-agent.sh fails when --endpoint-url missing in live mode"
 fi
 
-# Test 3: Live mode execution with gate failure reports completed status when iterations exhaust
-out="$(GATE_YAML_OUTCOME="failure" bash "$agent_script" --endpoint-url "http://localhost:9999/v1" --model "test-model" --max-iterations 2 --pr-number "123")"
-if echo "$out" | grep -q '"status": "completed"'; then
-  echo "OK   run-small-model-agent.sh reports status=completed when gates fail"
-else
-  echo "::error::run-small-model-agent.sh failed to report status=completed on gate failure; got: $out"
+# Test 3: Live mode execution with gate failure reports status=failed and exits non-zero
+out=""
+if out="$(GATE_YAML_OUTCOME="failure" bash "$agent_script" --endpoint-url "http://localhost:9999/v1" --model "test-model" --max-iterations 2 --pr-number "123" 2>&1)"; then
+  echo "::error::run-small-model-agent.sh should exit non-zero when gates remain failed"
   failures=$((failures + 1))
+else
+  if echo "$out" | grep -q '"status": "failed"'; then
+    echo "OK   run-small-model-agent.sh reports status=failed and exits non-zero when gates fail"
+  else
+    echo "::error::run-small-model-agent.sh failed to report status=failed; got: $out"
+    failures=$((failures + 1))
+  fi
 fi
 
-# Test 4: Live mode execution with green gates reports status=success
+# Test 4: Live mode execution with green gates reports status=success and exits zero
 out="$(GATE_YAML_OUTCOME="success" GATE_MARKDOWN_OUTCOME="success" bash "$agent_script" --endpoint-url "http://localhost:9999/v1" --model "test-model" --max-iterations 2 --pr-number "123")"
 if echo "$out" | grep -q '"status": "success"'; then
   echo "OK   run-small-model-agent.sh reports status=success when all gates pass"
