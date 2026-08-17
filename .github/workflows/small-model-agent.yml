@@ -1,8 +1,8 @@
 name: Small Model Agent (reusable)
 
 # Runs a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a PR,
-# using the repository's verification composites (YAML/Markdown linting, PHI tripwire scans)
-# as bounded verification gates (gha#436, gha#415, wai#39).
+# enforcing bounded retries against pre-check repository verification gates
+# (YAML/Markdown linting, PHI tripwire scans) (gha#436, gha#415, wai#39).
 #
 # Division of labor (wai#39): wai explains, ai-config configures, gha runs.
 #

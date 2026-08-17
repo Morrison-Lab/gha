@@ -435,7 +435,9 @@ does `sync-upstream.yml` (added after the freeze — see
 `bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added
 in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
 `@v2`.
-`small-model-agent.yml` postdates the freeze too (added in [gha#436](https://github.com/Morrison-Lab/gha/issues/436)); pin to `@v2`.
+`small-model-agent.yml` postdates the freeze too
+(added in [gha#436](https://github.com/Morrison-Lab/gha/issues/436));
+pin to `@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,

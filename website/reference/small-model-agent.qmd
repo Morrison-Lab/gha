@@ -3,9 +3,8 @@ title: "small-model-agent.yml"
 ---
 
 Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a
-pull request, using the repository's verification gates
-(YAML/Markdown linting, PHI tripwire scans) as bounded
-verification gates
+pull request, enforcing bounded retries against pre-check repository
+verification gates (YAML/Markdown linting, PHI tripwire scans)
 ([gha#436](https://github.com/Morrison-Lab/gha/issues/436),
 [gha#415](https://github.com/Morrison-Lab/gha/issues/415)).
 
