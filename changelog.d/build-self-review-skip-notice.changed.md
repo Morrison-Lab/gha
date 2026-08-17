@@ -1,0 +1,1 @@
+Extract `claude-code-review.yml`'s self-review skip notice body assembly to `scripts/build-self-review-skip-notice.sh` with offline CI unit tests verifying its formatting and run-ID matching contract ([#441](https://github.com/Morrison-Lab/gha/issues/441)).

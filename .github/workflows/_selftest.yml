@@ -316,6 +316,9 @@ jobs:
       - name: Run classify-push-failure tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-push-failure-tests.sh
+      - name: Run build-self-review-skip-notice tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually

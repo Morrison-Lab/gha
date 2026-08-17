@@ -438,20 +438,10 @@ jobs:
         run: |
           set -euo pipefail
           # --body-file, not --body: the body carries backticks, which the shell
-          # would otherwise run as command substitution.
+          # would otherwise run as command substitution. Body assembly extracted to
+          # scripts/build-self-review-skip-notice.sh for offline testing (gha#441).
           BODY_FILE="$(mktemp)"
-          {
-            printf '> [!WARNING]\n'
-            printf '> **No review ran --- this PR edits `%s`, the review workflow itself.**\n' "$WF_PATH"
-            printf '> `claude-code-action` requires that file to match the default branch, so its token exchange fails until this change merges.\n'
-            printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing that file.\n'
-            printf '>\n'
-            printf '> `require-review` reports a gray *skipped* rather than green.\n'
-            printf '> A green there attests that a reviewer ran, never that one approved; here none ran at all.\n'
-            printf '> Merge on a self-review or a human review instead.\n'
-            printf '>\n'
-            printf '> [View run](%s)\n' "$RUN_URL"
-          } > "$BODY_FILE"
+          bash .github/workflows/scripts/build-self-review-skip-notice.sh "$WF_PATH" "$RUN_URL" > "$BODY_FILE"
           # Warn rather than fail: require-review is gray either way, so the gate
           # stays honest without this comment, and the next run posts again. A
           # red claude-review here would mislabel a comment-posting failure as a
