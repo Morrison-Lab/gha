@@ -428,16 +428,29 @@ jobs:
           # red claude-review here would mislabel a comment-posting failure as a
           # review failure, on a PR where no review was ever attempted.
           #
-          # Record whether it landed. The collapse step below folds the previous
-          # run's notice, so it must not run when this one failed to post --- that
-          # would leave the PR with a gray gate and no visible explanation, which
-          # is gha#434's symptom reproduced in a single run.
           if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"; then
             echo "posted=true" >> "$GITHUB_OUTPUT"
           else
             echo "posted=false" >> "$GITHUB_OUTPUT"
             echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
           fi
+
+      # Post an early comment linking the run for dispatched reviews (gha#424).
+      # On workflow_dispatch, from the PR there is otherwise no link to the run
+      # and no sign a review is in progress if the job stalls during setup/model execution.
+      - name: Post early review dispatch notice
+        if: steps.selfmod.outputs.self_mod != 'true' && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          SHA_SHORT="${HEAD_SHA:0:7}"
+          BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" || true
 
       - name: Checkout repository
         if: steps.selfmod.outputs.self_mod != 'true'

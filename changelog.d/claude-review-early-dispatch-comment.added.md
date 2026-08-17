@@ -1,0 +1,1 @@
+- **Post early PR-anchored comment on dispatched reviews** ([#424](https://github.com/Morrison-Lab/gha/issues/424)). On `workflow_dispatch`, `claude-code-review.yml` posts an early comment linking the review workflow run and target head SHA before model execution begins.
