@@ -186,7 +186,8 @@ class TestRunAntigravity(unittest.TestCase):
             MagicMock(returncode=0, stdout="{}"),
         ]
         report = "#### 1. Bug\n**Location:** [main.py:L10]\nFix this."
-        run_antigravity.post_github_comment(10, report, "code-review")
+        sample_diff = "--- a/main.py\n+++ b/main.py\n@@ -10 +10 @@\n+Fix this."
+        run_antigravity.post_github_comment(10, report, "code-review", diff=sample_diff)
         self.assertEqual(mock_run.call_count, 2)
 
     @patch.dict("os.environ", {"GITHUB_REPOSITORY": "owner/repo"})
@@ -197,8 +198,9 @@ class TestRunAntigravity(unittest.TestCase):
             MagicMock(returncode=1, stderr="HTTP 422: Line number must be part of the diff"),
             MagicMock(returncode=0, stdout="{}"),
         ]
-        report = "#### 1. Bug\n**Location:** [main.py:L999]\nFix this."
-        run_antigravity.post_github_comment(10, report, "code-review")
+        report = "#### 1. Bug\n**Location:** [main.py:L10]\nFix this."
+        sample_diff = "--- a/main.py\n+++ b/main.py\n@@ -10 +10 @@\n+Fix this."
+        run_antigravity.post_github_comment(10, report, "code-review", diff=sample_diff)
         self.assertEqual(mock_run.call_count, 3)
 
     def test_extract_inline_comments_with_bullet_list_and_inverted_range(self):
@@ -436,6 +438,77 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("--- From `GEMINI.md` ---", prompt)
         self.assertIn("Always use strict typing.", prompt)
         self.assertIn("Extra advice", prompt)
+
+    def test_parse_diff_valid_lines(self):
+        sample_diff = (
+            "diff --git a/src/main.py b/src/main.py\n"
+            "--- a/src/main.py\n"
+            "+++ b/src/main.py\n"
+            "@@ -10,3 +12,4 @@\n"
+            " context\n"
+            "+added line 1\n"
+            "+added line 2\n"
+            " context\n"
+            "diff --git a/utils/helper.py b/utils/helper.py\n"
+            "--- a/utils/helper.py\n"
+            "+++ b/utils/helper.py\n"
+            "@@ -5 +5 @@\n"
+            "+changed line\n"
+        )
+        valid_lines = run_antigravity.parse_diff_valid_lines(sample_diff)
+        self.assertIn("src/main.py", valid_lines)
+        self.assertEqual(valid_lines["src/main.py"], {12, 13, 14, 15})
+        self.assertIn("utils/helper.py", valid_lines)
+        self.assertEqual(valid_lines["utils/helper.py"], {5})
+
+    def test_validate_inline_comments(self):
+        valid_lines = {
+            "src/main.py": {12, 13, 14, 15},
+            "utils/helper.py": {5},
+        }
+        comments = [
+            {"path": "src/main.py", "line": 13, "body": "In-diff finding 1"},
+            {"path": "src/main.py", "start_line": 12, "line": 14, "body": "In-diff range finding"},
+            {"path": "src/main.py", "line": 99, "body": "Off-diff line 99"},
+            {"path": "other/file.py", "line": 5, "body": "Off-diff file"},
+        ]
+        valid_comments, invalid_comments = run_antigravity.validate_inline_comments(comments, valid_lines)
+        self.assertEqual(len(valid_comments), 2)
+        self.assertEqual(valid_comments[0]["path"], "src/main.py")
+        self.assertEqual(valid_comments[0]["line"], 13)
+        self.assertEqual(valid_comments[1]["start_line"], 12)
+        self.assertEqual(len(invalid_comments), 2)
+        self.assertEqual(invalid_comments[0]["line"], 99)
+        self.assertEqual(invalid_comments[1]["path"], "other/file.py")
+
+        # Empty valid_lines (e.g. unparseable diff or binary-only diff) treats all comments as off-diff
+        empty_valid, empty_invalid = run_antigravity.validate_inline_comments(comments, {})
+        self.assertEqual(len(empty_valid), 0)
+        self.assertEqual(len(empty_invalid), 4)
+
+    def test_normalize_diff_path(self):
+        self.assertEqual(run_antigravity.normalize_diff_path("a/src/main.py"), "src/main.py")
+        self.assertEqual(run_antigravity.normalize_diff_path('"b/src/my file.py"'), "src/my file.py")
+        self.assertEqual(run_antigravity.normalize_diff_path("./path\\to\\file.py"), "path/to/file.py")
+
+    def test_parse_diff_valid_lines_quoted_and_reset(self):
+        quoted_diff = (
+            'diff --git "a/path/with space.py" "b/path/with space.py"\n'
+            '--- "a/path/with space.py"\n'
+            '+++ "b/path/with space.py"\n'
+            '@@ -1,2 +1,3 @@\n'
+            '+new line\n'
+            'diff --git a/other.py b/other.py\n'
+            '--- a/other.py\n'
+            '+++ b/other.py\n'
+            '@@ -10 +10 @@\n'
+            '+changed\n'
+        )
+        valid_lines = run_antigravity.parse_diff_valid_lines(quoted_diff)
+        self.assertIn("path/with space.py", valid_lines)
+        self.assertEqual(valid_lines["path/with space.py"], {1, 2, 3})
+        self.assertIn("other.py", valid_lines)
+        self.assertEqual(valid_lines["other.py"], {10})
 
 
 if __name__ == "__main__":

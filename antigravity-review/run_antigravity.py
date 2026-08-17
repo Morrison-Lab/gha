@@ -12,7 +12,7 @@ import random
 import re
 import subprocess
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 try:
     from google.antigravity import Agent, LocalAgentConfig, CapabilitiesConfig, BuiltinTools
@@ -197,6 +197,21 @@ def build_full_prompt(mode: str, pr_meta: Dict[str, str], diff: str, addendum: s
     return "\n\n".join(prompt_parts)
 
 
+def normalize_diff_path(raw_path: str) -> str:
+    """Clean and normalize a file path from diffs or location tags."""
+    if not raw_path:
+        return ""
+    cleaned = str(raw_path).strip("'\"` ").replace("\\", "/")
+    if cleaned.startswith('"') and cleaned.endswith('"'):
+        cleaned = cleaned[1:-1].strip()
+    normalized = os.path.normpath(cleaned).replace("\\", "/").lstrip("/")
+    if normalized.startswith("./"):
+        normalized = normalized[2:]
+    if normalized.startswith("a/") or normalized.startswith("b/"):
+        normalized = normalized[2:]
+    return normalized
+
+
 def parse_json_inline_comments(content: str) -> List[Dict[str, Any]]:
     """Attempt to parse structured JSON inline finding block from report content.
 
@@ -233,14 +248,9 @@ def parse_json_inline_comments(content: str) -> List[Dict[str, Any]]:
     for item in items:
         if not isinstance(item, dict):
             continue
-        raw_path = str(item.get("path", "")).strip("'\"` ").replace("\\", "/")
-        if not raw_path:
+        file_path = normalize_diff_path(str(item.get("path", "")))
+        if not file_path:
             continue
-        file_path = os.path.normpath(raw_path).lstrip("/").replace("\\", "/")
-        if file_path.startswith("./"):
-            file_path = file_path[2:]
-        if file_path.startswith("a/") or file_path.startswith("b/"):
-            file_path = file_path[2:]
 
         start_line = item.get("start_line") or item.get("line")
         if start_line is None:
@@ -337,12 +347,9 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
         match = item["match"]
         header_text = item["header_text"]
         pre_location_text = item["pre_location_text"]
-        raw_file = match.group("file").strip("'\"` ").replace("\\", "/")
-        file_path = os.path.normpath(raw_file).lstrip("/").replace("\\", "/")
-        if file_path.startswith("./"):
-            file_path = file_path[2:]
-        if file_path.startswith("a/") or file_path.startswith("b/"):
-            file_path = file_path[2:]
+        file_path = normalize_diff_path(match.group("file"))
+        if not file_path:
+            continue
         start_line = max(1, int(match.group("start")))
         end_line = max(1, int(match.group("end"))) if match.group("end") else None
 
@@ -394,62 +401,162 @@ def extract_inline_comments(content: str) -> List[Dict[str, Any]]:
     return comments
 
 
-def post_github_comment(pr_number: Optional[int], content: str, mode: str):
+def parse_diff_valid_lines(diff_text: str) -> Dict[str, Set[int]]:
+    """Parse unified git diff output into a mapping of file_path -> set of valid line numbers on the target branch (RIGHT side)."""
+    valid_lines: Dict[str, Set[int]] = {}
+    if not diff_text:
+        return valid_lines
+
+    current_file: Optional[str] = None
+    hunk_header_pat = re.compile(r"^@@\s+-\d+(?:,\d+)?\s+\+(?P<start>\d+)(?:,(?P<count>\d+))?\s+@@")
+
+    for line in diff_text.split("\n"):
+        line_str = line.rstrip("\r")
+        if line_str.startswith("diff --git "):
+            current_file = None
+            continue
+        elif line_str.startswith("+++ b/") or line_str.startswith('+++ "b/'):
+            raw_path = line_str[4:].strip()
+            current_file = normalize_diff_path(raw_path)
+            if current_file and current_file not in valid_lines:
+                valid_lines[current_file] = set()
+            continue
+        elif line_str.startswith("+++ /dev/null"):
+            current_file = None
+            continue
+        elif line_str.startswith("--- "):
+            continue
+
+        if current_file is not None:
+            match = hunk_header_pat.match(line_str)
+            if match:
+                start = int(match.group("start"))
+                count_str = match.group("count")
+                count = int(count_str) if count_str is not None else 1
+                for line_num in range(start, start + count):
+                    valid_lines[current_file].add(line_num)
+
+    return valid_lines
+
+
+def validate_inline_comments(
+    inline_comments: List[Dict[str, Any]], valid_lines: Dict[str, Set[int]]
+) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Filter proposed inline comments against valid diff hunk lines.
+
+    Returns a tuple of (valid_comments, invalid_comments).
+    An inline comment is valid if its file exists in valid_lines and all line numbers
+    it targets are present in active diff hunks.
+    """
+    if not valid_lines:
+        return [], list(inline_comments)
+
+    valid_comments = []
+    invalid_comments = []
+
+    for comment in inline_comments:
+        path = comment.get("path", "")
+        if path not in valid_lines:
+            invalid_comments.append(comment)
+            continue
+
+        file_lines = valid_lines[path]
+        line = comment.get("line")
+        start_line = comment.get("start_line", line)
+
+        if line is None:
+            invalid_comments.append(comment)
+            continue
+
+        target_start = start_line if start_line is not None else line
+        target_range = range(target_start, line + 1)
+        if all(l in file_lines for l in target_range):
+            valid_comments.append(comment)
+        else:
+            invalid_comments.append(comment)
+
+    return valid_comments, invalid_comments
+
+
+def post_github_comment(pr_number: Optional[int], content: str, mode: str, diff: str = ""):
     """Post agent analysis report as a GitHub PR review (with inline comments if present) or issue comment."""
     header = f"### 🤖 Antigravity Agent Report ({mode.title()})\n\n"
     # Strip trailing JSON findings block from main PR report body so output remains clean for human readers
     clean_content = re.sub(r"\n*```json\s*\[\s*\{.*\}\s*\]\s*```\s*$", "", content, flags=re.DOTALL | re.IGNORECASE).strip()
     full_body = header + clean_content
 
+    json_comments = parse_json_inline_comments(content)
+    is_json_report = bool(json_comments)
     inline_comments = extract_inline_comments(content)
     resolved_pr_num = None
 
     if inline_comments:
-        try:
-            cmd_pr = ["gh", "pr", "view"]
-            if pr_number:
-                cmd_pr.append(str(pr_number))
-            cmd_pr.extend(["--json", "number,headRefOid"])
-            res_pr = subprocess.run(cmd_pr, capture_output=True, text=True, check=True)
-            pr_data = json.loads(res_pr.stdout)
-            resolved_pr_num = pr_data.get("number")
-            head_sha = pr_data.get("headRefOid")
+        if not diff and (pr_number or os.environ.get("GITHUB_REF")):
+            try:
+                diff = get_pr_diff(pr_number)
+            except Exception:
+                diff = ""
 
-            if head_sha and resolved_pr_num:
-                payload = {
-                    "commit_id": head_sha,
-                    "body": full_body,
-                    "event": "COMMENT",
-                    "comments": inline_comments,
-                }
-                repo_slug = os.environ.get("GITHUB_REPOSITORY")
-                if not repo_slug:
-                    try:
-                        res_repo = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner"], capture_output=True, text=True, check=True)
-                        repo_slug = json.loads(res_repo.stdout).get("nameWithOwner")
-                    except Exception:
-                        repo_slug = None
+        valid_lines = parse_diff_valid_lines(diff) if diff else {}
+        valid_comments, invalid_comments = validate_inline_comments(inline_comments, valid_lines)
 
-                if not repo_slug or repo_slug == "{owner}/{repo}":
-                    raise ValueError("Could not resolve GITHUB_REPOSITORY for inline review submission.")
-                api_cmd = [
-                    "gh", "api",
-                    f"repos/{repo_slug}/pulls/{resolved_pr_num}/reviews",
-                    "--input", "-"
-                ]
-                res_review = subprocess.run(
-                    api_cmd,
-                    input=json.dumps(payload),
-                    capture_output=True,
-                    text=True,
-                )
-                if res_review.returncode == 0:
-                    print(f"Successfully posted Antigravity agent review with {len(inline_comments)} inline comment(s) to PR #{resolved_pr_num}.")
-                    return
-                else:
-                    print(f"::warning::Failed to post inline PR review ({res_review.stderr.strip()}); falling back to PR comment.", file=sys.stderr)
-        except Exception as err:
-            print(f"::warning::Could not post inline review ({err}); falling back to PR comment.", file=sys.stderr)
+        # Only append off-diff findings to full_body for JSON block reports (where the JSON block was stripped from clean_content).
+        # For markdown-extracted findings (Location: [file:L10]), the findings text is already present in clean_content / full_body.
+        if invalid_comments and is_json_report:
+            off_diff_lines = ["\n\n### 📌 Additional Findings (Off-diff)"]
+            for c in invalid_comments:
+                c_path = c.get("path", "")
+                c_line = c.get("line", "")
+                c_body = c.get("body", "")
+                off_diff_lines.append(f"**Location:** `{c_path}:L{c_line}`\n{c_body}")
+            full_body += "\n\n" + "\n\n".join(off_diff_lines)
+
+        if valid_comments:
+            try:
+                cmd_pr = ["gh", "pr", "view"]
+                if pr_number:
+                    cmd_pr.append(str(pr_number))
+                cmd_pr.extend(["--json", "number,headRefOid"])
+                res_pr = subprocess.run(cmd_pr, capture_output=True, text=True, check=True)
+                pr_data = json.loads(res_pr.stdout)
+                resolved_pr_num = pr_data.get("number")
+                head_sha = pr_data.get("headRefOid")
+
+                if head_sha and resolved_pr_num:
+                    payload = {
+                        "commit_id": head_sha,
+                        "body": full_body,
+                        "event": "COMMENT",
+                        "comments": valid_comments,
+                    }
+                    repo_slug = os.environ.get("GITHUB_REPOSITORY")
+                    if not repo_slug:
+                        try:
+                            res_repo = subprocess.run(["gh", "repo", "view", "--json", "nameWithOwner"], capture_output=True, text=True, check=True)
+                            repo_slug = json.loads(res_repo.stdout).get("nameWithOwner")
+                        except Exception:
+                            repo_slug = None
+
+                    if not repo_slug or repo_slug == "{owner}/{repo}":
+                        raise ValueError("Could not resolve GITHUB_REPOSITORY for inline review submission.")
+                    api_cmd = [
+                        "gh", "api",
+                        f"repos/{repo_slug}/pulls/{resolved_pr_num}/reviews",
+                        "--input", "-"
+                    ]
+                    res_review = subprocess.run(
+                        api_cmd,
+                        input=json.dumps(payload),
+                        capture_output=True,
+                        text=True,
+                    )
+                    if res_review.returncode == 0:
+                        print(f"Successfully posted Antigravity agent review with {len(valid_comments)} inline comment(s) to PR #{resolved_pr_num}.")
+                        return
+                    else:
+                        print(f"::warning::Failed to post inline PR review ({res_review.stderr.strip()}); falling back to PR comment.", file=sys.stderr)
+            except Exception as err:
+                print(f"::warning::Could not post inline review ({err}); falling back to PR comment.", file=sys.stderr)
 
     cmd = ["gh", "pr", "comment"]
     target_pr = resolved_pr_num or pr_number
@@ -599,7 +706,7 @@ def main():
     try:
         report = asyncio.run(run_antigravity_agent(full_prompt, system_instruction, model=args.model))
         if args.post_comment and report:
-            post_github_comment(pr_num, report, args.mode)
+            post_github_comment(pr_num, report, args.mode, diff=diff)
     except Exception as err:
         print(f"Execution failed: {err}", file=sys.stderr)
         sys.exit(1)
