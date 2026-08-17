@@ -80,9 +80,15 @@ runs:
         if [[ -n "$RUN_GATES" ]]; then ARGS+=(--run-gates "$RUN_GATES"); fi
         if [[ "$DRY_RUN" == "true" ]]; then ARGS+=(--dry-run); fi
 
+        set +e
         RESULT="$(bash "${{ github.action_path }}/../../workflows/scripts/run-small-model-agent.sh" "${ARGS[@]}")"
+        SCRIPT_EXIT=$?
+        set -e
+
         # Escaping multiline output for GITHUB_OUTPUT
         EOF_DELIM="EOF_$(openssl rand -hex 8)"
         echo "result_json<<$EOF_DELIM" >> "$GITHUB_OUTPUT"
         echo "$RESULT" >> "$GITHUB_OUTPUT"
         echo "$EOF_DELIM" >> "$GITHUB_OUTPUT"
+
+        exit "$SCRIPT_EXIT"

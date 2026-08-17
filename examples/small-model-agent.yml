@@ -31,9 +31,8 @@ on:
 jobs:
   agent:
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
-      issues: write
     uses: Morrison-Lab/gha/.github/workflows/small-model-agent.yml@v2
     with:
       pr-number: ${{ inputs.pr_number }}
