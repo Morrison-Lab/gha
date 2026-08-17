@@ -279,8 +279,8 @@ jobs:
           # likeliest to drop.
           prompt: |
             Review pull request #${{ steps.resolve-pr.outputs.pr-num }} in
-            ${{ github.repository }}. Read the diff with the `pull_request_read`
-            tool, then post your review with `pull_request_review_write`.
+            ${{ github.repository }}. Read the diff with the `mcp_github_pull_request_read`
+            tool, then post your review with `mcp_github_pull_request_review_write`.
             Report bugs, security concerns, performance problems, style
             departures from the surrounding code, and gaps in test coverage.
             Post the review even when you find nothing, so the run leaves a

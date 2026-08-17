@@ -399,7 +399,7 @@ jobs:
           prompt: |
             ${{ steps.gate.outputs.thread_line }}
             Read the thread, answer what was asked, and post your answer as a
-            comment with `add_issue_comment`.
+            comment with `mcp_github_add_issue_comment`.
             You cannot commit, push, or open pull requests from this workflow,
             so when the request needs a code change, reply with the change as a
             diff or a description rather than claiming to have made it.
