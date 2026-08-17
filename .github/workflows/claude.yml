@@ -464,61 +464,6 @@ jobs:
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
-      # System libraries some R/Quarto packages need to compile or run (e.g.
-      # jags, libglpk-dev, poppler-utils). Runs before R setup so renv/
-      # setup-r-dependencies can build against them.
-      - name: Install packages
-        if: steps.gate.outputs.skip != 'true'
-        uses: Morrison-Lab/gha/.github/actions/install-packages@v2
-        with:
-          apt-packages: ${{ inputs.apt-packages }}
-          pip-packages: ${{ inputs.pip-packages }}
-
-      - name: Set up pandoc
-        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
-        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
-
-      - name: Set up R
-        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
-        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
-        with:
-          use-public-rspm: true
-
-      - name: Set up Quarto
-        if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
-        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
-        with:
-          tinytex: true
-
-      # renv flavor (Quarto books / projects pinned with renv) ...
-      - name: Restore renv
-        if: steps.gate.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
-        uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
-        env:
-          # Without GITHUB_PAT, renv can't reach the GitHub API to resolve
-          # GitHub-sourced packages (e.g. ddsjoberg/gtsummary) and
-          # renv::restore() aborts with "GitHub authentication credentials are
-          # not available."
-          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-          # renv::restore() only needs each package's already-pinned RemoteSha
-          # from renv.lock; it doesn't need to also re-resolve the consumer's
-          # DESCRIPTION Remotes: field against GitHub's API on every run (a
-          # source of flaky/rate-limited failures -- see
-          # d-morrison/rme#994 / gha#239).
-          RENV_CONFIG_INSTALL_REMOTES: false
-        with:
-          cache-version: ${{ inputs.renv-cache-version }}
-
-      # ... vs DESCRIPTION-based flavor (R packages). Installs the package's
-      # own deps (`local::.`) plus the tools Claude runs for the pre-commit
-      # checklist.
-      - name: Install R dependencies
-        if: steps.gate.outputs.skip != 'true' && inputs.setup-r && !inputs.use-renv
-        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
-        with:
-          extra-packages: ${{ inputs.r-extra-packages }}
-          needs: check
-
       # Record the PR's head SHA before Claude runs (PR triggers only), so the
       # post-steps can tell whether Claude pushed new commits.
       - name: Capture PR head SHA before Claude
@@ -535,6 +480,9 @@ jobs:
       # events this workflow listens on are `pull_request` events, so the
       # checkout above landed on the default branch — any commit Claude makes
       # would otherwise be stranded there and lost at runner cleanup.
+      # Moving this before R/renv setup ensures renv::restore() and
+      # setup-r-dependencies read the PR branch's renv.lock and DESCRIPTION
+      # rather than main's (#435).
       - name: Checkout PR branch
         id: pr_checkout
         if: steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request)
@@ -623,6 +571,61 @@ jobs:
           gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" \
             --body "Opened draft PR up front: ${PR_URL} — Claude is working on it now." \
             || echo "::warning::Could not post up-front PR link."
+
+      # System libraries some R/Quarto packages need to compile or run (e.g.
+      # jags, libglpk-dev, poppler-utils). Runs before R setup so renv/
+      # setup-r-dependencies can build against them.
+      - name: Install packages
+        if: steps.gate.outputs.skip != 'true'
+        uses: Morrison-Lab/gha/.github/actions/install-packages@v2
+        with:
+          apt-packages: ${{ inputs.apt-packages }}
+          pip-packages: ${{ inputs.pip-packages }}
+
+      - name: Set up pandoc
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
+        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+
+      - name: Set up R
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          use-public-rspm: true
+
+      - name: Set up Quarto
+        if: steps.gate.outputs.skip != 'true' && inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+        with:
+          tinytex: true
+
+      # renv flavor (Quarto books / projects pinned with renv) ...
+      - name: Restore renv
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
+        uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        env:
+          # Without GITHUB_PAT, renv can't reach the GitHub API to resolve
+          # GitHub-sourced packages (e.g. ddsjoberg/gtsummary) and
+          # renv::restore() aborts with "GitHub authentication credentials are
+          # not available."
+          GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+          # renv::restore() only needs each package's already-pinned RemoteSha
+          # from renv.lock; it doesn't need to also re-resolve the consumer's
+          # DESCRIPTION Remotes: field against GitHub's API on every run (a
+          # source of flaky/rate-limited failures -- see
+          # d-morrison/rme#994 / gha#239).
+          RENV_CONFIG_INSTALL_REMOTES: false
+        with:
+          cache-version: ${{ inputs.renv-cache-version }}
+
+      # ... vs DESCRIPTION-based flavor (R packages). Installs the package's
+      # own deps (`local::.`) plus the tools Claude runs for the pre-commit
+      # checklist.
+      - name: Install R dependencies
+        if: steps.gate.outputs.skip != 'true' && inputs.setup-r && !inputs.use-renv
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          extra-packages: ${{ inputs.r-extra-packages }}
+          needs: check
 
       # Turn a shared hostname allowlist into WebFetch(domain:<host>) grants so
       # Claude can read pages from approved sites. The hostname regex ensures a
