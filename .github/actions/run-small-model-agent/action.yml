@@ -10,6 +10,10 @@ inputs:
     description: OpenAI-compatible API endpoint URL (e.g. http://localhost:11434/v1).
     required: false
     default: ''
+  api-key:
+    description: Optional API key for remote endpoint.
+    required: false
+    default: ''
   model:
     description: Model name override passed to the agent runner.
     required: false
@@ -22,6 +26,10 @@ inputs:
     description: Pull request number.
     required: false
     default: ''
+  run-gates:
+    description: Run repository verification gates.
+    required: false
+    default: 'true'
   dry-run:
     description: Run in dry-run verification mode without external network calls.
     required: false
@@ -40,17 +48,21 @@ runs:
       shell: bash
       env:
         ENDPOINT_URL: ${{ inputs.endpoint-url }}
+        API_KEY: ${{ inputs.api-key }}
         MODEL: ${{ inputs.model }}
         MAX_ITERATIONS: ${{ inputs.max-iterations }}
         PR_NUMBER: ${{ inputs.pr-number }}
+        RUN_GATES: ${{ inputs.run-gates }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail
         ARGS=()
         if [[ -n "$ENDPOINT_URL" ]]; then ARGS+=(--endpoint-url "$ENDPOINT_URL"); fi
+        if [[ -n "$API_KEY" ]]; then ARGS+=(--api-key "$API_KEY"); fi
         if [[ -n "$MODEL" ]]; then ARGS+=(--model "$MODEL"); fi
         if [[ -n "$MAX_ITERATIONS" ]]; then ARGS+=(--max-iterations "$MAX_ITERATIONS"); fi
         if [[ -n "$PR_NUMBER" ]]; then ARGS+=(--pr-number "$PR_NUMBER"); fi
+        if [[ -n "$RUN_GATES" ]]; then ARGS+=(--run-gates "$RUN_GATES"); fi
         if [[ "$DRY_RUN" == "true" ]]; then ARGS+=(--dry-run); fi
 
         RESULT="$(bash "${{ github.action_path }}/../../workflows/scripts/run-small-model-agent.sh" "${ARGS[@]}")"

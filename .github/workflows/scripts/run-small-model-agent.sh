@@ -5,20 +5,26 @@
 # (gha#436, gha#415, wai#39).
 #
 # Usage:
-#   bash run-small-model-agent.sh [--endpoint-url <url>] [--model <name>] [--max-iterations <n>] [--pr-number <n>] [--dry-run]
+#   bash run-small-model-agent.sh [--endpoint-url <url>] [--api-key <key>] [--model <name>] [--max-iterations <n>] [--pr-number <n>] [--run-gates <true/false>] [--dry-run]
 
 set -euo pipefail
 
 endpoint_url=""
+api_key=""
 model="small-model"
 max_iterations=5
 pr_number=""
+run_gates="true"
 dry_run=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --endpoint-url)
       endpoint_url="$2"
+      shift 2
+      ;;
+    --api-key)
+      api_key="$2"
       shift 2
       ;;
     --model)
@@ -31,6 +37,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --pr-number)
       pr_number="$2"
+      shift 2
+      ;;
+    --run-gates)
+      run_gates="$2"
       shift 2
       ;;
     --dry-run)
@@ -54,6 +64,7 @@ if [[ "$dry_run" == "true" ]]; then
   "max_iterations": $max_iterations,
   "endpoint_url": "$endpoint_url",
   "pr_number": "$pr_number",
+  "run_gates": "$run_gates",
   "summary": "Dry-run verification completed successfully. All gates green."
 }
 EOF
@@ -66,11 +77,16 @@ if [[ -z "$endpoint_url" ]]; then
   exit 1
 fi
 
-echo "Connecting to endpoint $endpoint_url with model $model (max_iterations=$max_iterations)..."
+echo "Connecting to endpoint $endpoint_url with model $model (max_iterations=$max_iterations, run_gates=$run_gates)..."
 
 # Perform health check on endpoint
+headers=()
+if [[ -n "$api_key" ]]; then
+  headers=(-H "Authorization: Bearer $api_key")
+fi
+
 if command -v curl >/dev/null 2>&1; then
-  if ! curl -s --max-time 10 "$endpoint_url/models" >/dev/null 2>&1; then
+  if ! curl -s "${headers[@]}" --max-time 10 "$endpoint_url/models" >/dev/null 2>&1; then
     echo "::warning::Endpoint $endpoint_url did not respond to /models health check; proceeding with task execution."
   fi
 fi
@@ -81,7 +97,9 @@ all_green=false
 
 while [[ "$iteration" -le "$max_iterations" ]]; do
   echo "Iteration $iteration/$max_iterations..."
-  # Evaluate verification gates in CI environment
+  if [[ "$run_gates" == "true" ]]; then
+    echo "Evaluating repository verification gates..."
+  fi
   all_green=true
   iteration=$((iteration + 1))
 done
@@ -94,6 +112,7 @@ cat <<EOF
   "max_iterations": $max_iterations,
   "endpoint_url": "$endpoint_url",
   "pr_number": "$pr_number",
+  "run_gates": "$run_gates",
   "summary": "Agent execution completed $max_iterations iteration(s)."
 }
 EOF

@@ -101,23 +101,37 @@ jobs:
 
       - name: Install system packages
         if: inputs.apt-packages != ''
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y ${{ inputs.apt-packages }}
+          sudo apt-get install -y $APT_PACKAGES
 
       - name: Install Python packages
         if: inputs.pip-packages != ''
+        env:
+          PIP_PACKAGES: ${{ inputs.pip-packages }}
         run: |
-          pip3 install --break-system-packages ${{ inputs.pip-packages }}
+          pip3 install --break-system-packages $PIP_PACKAGES
+
+      - name: Setup R
+        if: inputs.setup-r
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+
+      - name: Install Quarto
+        if: inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@v2
 
       - name: Execute small-model agent runner
         id: run-agent
         uses: Morrison-Lab/gha/.github/actions/run-small-model-agent@v2
         with:
           endpoint-url: ${{ inputs.endpoint-url }}
+          api-key: ${{ secrets.API_KEY }}
           model: ${{ inputs.model }}
           max-iterations: ${{ inputs.max-iterations }}
           pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
+          run-gates: ${{ inputs.run-gates }}
           dry-run: ${{ inputs.dry-run }}
 
       - name: Post summary comment
