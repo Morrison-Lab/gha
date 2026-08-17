@@ -257,8 +257,10 @@ if ! has_verdict "$all_text_file"; then
   # non-recovering pattern. (denials was already computed above, where it
   # also gates the Bash-tool-use blocks candidate.)
   max_denials="${STUB_RETRY_MAX_DENIALS:-5}"
+  echo "permission_denials_count=$denials (stub-retry max_denials=$max_denials)"
   if [[ "$denials" -le "$max_denials" ]]; then
     echo "stub_review=true" >> "$GITHUB_OUTPUT"
+    echo "Claude review produced no verdict with low permission_denials_count ($denials <= $max_denials) — marking as a retryable stub review (gha#185)."
   else
     echo "::warning::permission_denials_count=$denials exceeds the stub-retry threshold ($max_denials) — this looks like gha#198's pattern, not gha#185's; not marking as retryable."
   fi
