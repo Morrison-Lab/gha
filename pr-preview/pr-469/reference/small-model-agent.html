@@ -624,7 +624,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a pull request, using the repository’s verification gates (YAML/Markdown linting, PHI tripwire scans) as bounded verification gates (<a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>, <a href="https://github.com/Morrison-Lab/gha/issues/415">gha#415</a>).</p>
+<p>Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a pull request, enforcing bounded retries against pre-check repository verification gates (YAML/Markdown linting, PHI tripwire scans) (<a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>, <a href="https://github.com/Morrison-Lab/gha/issues/415">gha#415</a>).</p>
 <p>Division of labor (<a href="https://github.com/Morrison-Lab/wai/issues/39">wai#39</a>): <code>wai</code> explains, <code>ai-config</code> configures, <code>gha</code> runs. Companion to <a href="https://github.com/Morrison-Lab/ai-config/issues/1292"><code>Morrison-Lab/ai-config#1292</code></a>.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>

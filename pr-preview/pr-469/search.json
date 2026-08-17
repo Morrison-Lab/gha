@@ -1436,7 +1436,7 @@
     "href": "reference/small-model-agent.html",
     "title": "small-model-agent.yml",
     "section": "",
-    "text": "Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a pull request, using the repository’s verification gates (YAML/Markdown linting, PHI tripwire scans) as bounded verification gates (gha#436, gha#415).\nDivision of labor (wai#39): wai explains, ai-config configures, gha runs. Companion to Morrison-Lab/ai-config#1292.",
+    "text": "Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a pull request, enforcing bounded retries against pre-check repository verification gates (YAML/Markdown linting, PHI tripwire scans) (gha#436, gha#415).\nDivision of labor (wai#39): wai explains, ai-config configures, gha runs. Companion to Morrison-Lab/ai-config#1292.",
     "crumbs": [
       "Overview",
       "Reference",
