@@ -1091,54 +1091,15 @@ jobs:
 
       # Route an explicit `@claude review` request to the dedicated reviewer
       # workflow rather than letting the agent self-review.
-      - name: Dispatch code review on @claude review comment
-        if: |
-          always() &&
-          steps.gate.outputs.skip != 'true' &&
-          (github.event.pull_request.number || github.event.issue.pull_request) &&
-          steps.review_request.outputs.match == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          REVIEW_WF: ${{ inputs.review-workflow-file }}
-          PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
-          PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
-        run: |
-          PR_NUMBER="${{ github.event.pull_request.number || github.event.issue.number }}"
-          echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER (@claude review comment)."
-          # --ref pins the dispatched run's check-runs to the PR's own head
-          # branch instead of the default branch workflow_dispatch falls back
-          # to when no ref is given (#285) --- without it, `require-review`'s
-          # check-run lands on the wrong commit and never supersedes a stale
-          # cancelled run tied to the PR's real head SHA. PR_BRANCH comes from
-          # the "Checkout PR branch" step above. If that step failed or was
-          # skipped (e.g. setup-renv failed), resolve the PR head branch via
-          # API so the review dispatch still runs.
-          if [ -z "$PR_BRANCH" ]; then
-            echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
-            PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
-            if [ -n "$PR_DATA" ]; then
-              PR_BRANCH=$(echo "$PR_DATA" | jq -r '.branch // empty')
-              PR_HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head_repo // empty')
-            fi
-          fi
-          if [ -z "$PR_BRANCH" ]; then
-            echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
-            gh workflow run "$REVIEW_WF" -f pr_number="$PR_NUMBER" \
-              || echo "::warning::Could not dispatch $REVIEW_WF; review will not auto-run."
-          else
-            # A fork PR's head branch only exists in the fork, not in $REPO,
-            # so --ref would fail to resolve there (#289). Fall back to no
-            # --ref for fork PRs; the resulting check-run mis-attributes to
-            # the default branch (the pre-#285 behavior), the lesser problem.
-            REF_ARGS=(--ref "$PR_BRANCH")
-            if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-              echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
-              REF_ARGS=()
-            fi
-            gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
-              || echo "::warning::Could not dispatch $REVIEW_WF; review will not auto-run."
-          fi
+      - name: Dispatch code review
+        if: always() && steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.review_request.outputs.match == 'true'
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        with:
+          pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          pr-branch: ${{ steps.pr_checkout.outputs.branch }}
+          pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
+          review-workflow-file: ${{ inputs.review-workflow-file }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # If an `@claude review` arrived as a LATE comment (posted after the
       # trigger and absorbed by this session's polling), the dedup marks it so
@@ -1200,90 +1161,53 @@ jobs:
 
       - name: Dispatch review for a late @claude review comment
         if: always() && steps.late_review_request.outputs.match == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
-          TRIGGER_TS: ${{ github.event.comment.created_at || github.event.review.submitted_at || github.event.issue.created_at }}
-          REVIEW_WF: ${{ inputs.review-workflow-file }}
-          PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
-          PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
-        run: |
-          echo "Found a late @claude review request newer than $TRIGGER_TS; dispatching review."
-          # --ref: see the comment on the earlier dispatch step above (#285).
-          # If checkout was skipped/failed, resolve PR_BRANCH via API (#418).
-          if [ -z "$PR_BRANCH" ]; then
-            echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
-            PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
-            if [ -n "$PR_DATA" ]; then
-              PR_BRANCH=$(echo "$PR_DATA" | jq -r '.branch // empty')
-              PR_HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head_repo // empty')
-            fi
-          fi
-          if [ -z "$PR_BRANCH" ]; then
-            echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
-            gh workflow run "$REVIEW_WF" -f pr_number="$PR_NUMBER" \
-              || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
-          else
-            # Fork PRs: see the comment on the earlier dispatch step above (#289).
-            REF_ARGS=(--ref "$PR_BRANCH")
-            if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-              echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
-              REF_ARGS=()
-            fi
-            gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
-              || echo "::warning::Could not dispatch $REVIEW_WF for the late review request."
-          fi
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        with:
+          pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          pr-branch: ${{ steps.pr_checkout.outputs.branch }}
+          pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
+          review-workflow-file: ${{ inputs.review-workflow-file }}
+          context-notice: 'for the late review request'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dispatch code review after Claude pushed commits
+        if: >-
+          always() &&
+          steps.gate.outputs.skip != 'true' &&
+          (github.event.pull_request.number || github.event.issue.pull_request) &&
+          steps.head_before.outputs.sha != '' &&
+          steps.head_after.outputs.sha != '' &&
+          steps.head_after.outputs.sha != steps.head_before.outputs.sha
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        with:
+          pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
+          pr-branch: ${{ steps.pr_checkout.outputs.branch }}
+          pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
+          review-workflow-file: ${{ inputs.review-workflow-file }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # When Claude pushed new commits to a PR, re-request the standing
-      # reviewer and dispatch a fresh code review. GITHUB_TOKEN-driven pushes
+      # reviewer and mark the PR ready to review. GITHUB_TOKEN-driven pushes
       # don't fire `synchronize`, so the review wouldn't auto-trigger otherwise.
-      - name: Re-request review and dispatch code review if Claude pushed commits
+      - name: Re-request review if Claude pushed commits
         if: always() && steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.head_before.outputs.sha != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SHA_BEFORE: ${{ steps.head_before.outputs.sha }}
           SHA_AFTER: ${{ steps.head_after.outputs.sha }}
           REVIEWER: ${{ inputs.reviewer }}
-          REVIEW_WF: ${{ inputs.review-workflow-file }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           COST_USD: ${{ steps.cost.outputs.cost }}
-          PR_BRANCH: ${{ steps.pr_checkout.outputs.branch }}
-          PR_HEAD_REPO: ${{ steps.pr_checkout.outputs.head_repo }}
           REPO: ${{ github.repository }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number || github.event.issue.number }}"
           echo "before=$SHA_BEFORE  after=$SHA_AFTER"
           if [ -n "$SHA_AFTER" ] && [ "$SHA_AFTER" != "$SHA_BEFORE" ]; then
-            echo "Claude pushed new commits; re-requesting reviewer and dispatching code review."
+            echo "Claude pushed new commits; re-requesting reviewer."
             if [ -n "$REVIEWER" ]; then
               gh api -X POST "repos/${{ github.repository }}/pulls/$PR_NUMBER/requested_reviewers" -f "reviewers[]=$REVIEWER" \
                 || echo "::warning::Could not re-request $REVIEWER as reviewer."
-            fi
-            # --ref: see the comment on the earlier dispatch step above (#285).
-            # If checkout was skipped/failed, resolve PR_BRANCH via API (#418).
-            if [ -z "$PR_BRANCH" ]; then
-              echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
-              PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
-              if [ -n "$PR_DATA" ]; then
-                PR_BRANCH=$(echo "$PR_DATA" | jq -r '.branch // empty')
-                PR_HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head_repo // empty')
-              fi
-            fi
-            if [ -z "$PR_BRANCH" ]; then
-              echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
-              gh workflow run "$REVIEW_WF" -f pr_number="$PR_NUMBER" \
-                || echo "::warning::Could not dispatch $REVIEW_WF."
-            else
-              # Fork PRs: see the comment on the earlier dispatch step above (#289).
-              REF_ARGS=(--ref "$PR_BRANCH")
-              if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-                echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
-                REF_ARGS=()
-              fi
-              gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
-                || echo "::warning::Could not dispatch $REVIEW_WF."
             fi
             # Claude finished successfully with new commits: take the PR out of
             # draft so a human knows it's ready to review. `gh pr ready` is a
@@ -1303,7 +1227,7 @@ jobs:
                 || echo "::warning::Could not post cost comment."
             fi
           else
-            echo "No new commits on PR head; skipping review dispatch."
+            echo "No new commits on PR head; skipping reviewer re-request."
           fi
 
       # Pair to "Set up branch for issue trigger", split in two so this step's

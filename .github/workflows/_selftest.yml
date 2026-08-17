@@ -324,6 +324,16 @@ jobs:
       - name: Run build-self-review-skip-notice tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
+      - name: Run dispatch-review tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-dispatch-review-tests.sh
+      - name: Exercise dispatch-review composite action end-to-end
+        uses: ./.github/actions/dispatch-review
+        with:
+          pr-number: '123'
+          pr-branch: 'main'
+          pr-head-repo: 'Morrison-Lab/gha'
+          dry-run: 'true'
       - name: Exercise build-self-review-skip-notice composite action end-to-end
         id: skip-notice-e2e
         uses: ./.github/actions/build-self-review-skip-notice
