@@ -1,0 +1,1 @@
+- **Add `GH_TOKEN` to Quarto setup steps in `altdoc-multiversion-docs.yml` and `claude.yml`** ([#432](https://github.com/Morrison-Lab/gha/issues/432)). Prevents unauthenticated TinyTeX release lookup 403 rate limits on shared runners.
