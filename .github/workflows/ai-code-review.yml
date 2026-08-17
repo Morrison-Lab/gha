@@ -134,7 +134,7 @@ jobs:
           # fork PRs; the check-run then mis-attributes to the default branch,
           # the lesser problem.
           REF_ARGS=(--ref "$PR_BRANCH")
-          BRANCH_FILTER=(--branch "$PR_BRANCH")
+          BRANCH_FILTER=(--branch "$PR_BRANCH" --event workflow_dispatch)
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching without --ref."
             REF_ARGS=()
