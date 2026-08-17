@@ -405,27 +405,14 @@ jobs:
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # The skip above is correct, but on its own it is silent: every later step
-      # is skipped, the job still succeeds, and require-review used to report the
-      # same green it reports for a clean review --- so an unreviewed PR looked
-      # review-clean (gha#434). Two things make the skip visible: this comment,
-      # and require-review's own `if:`, which now excludes this case so the gate
-      # shows a gray skip instead.
-      #
-      # Posted once per run, and de-duplicated the way this workflow's review and
-      # cost comments already are: the "Collapse previous Claude review comments"
-      # step below folds every earlier comment carrying an `actions/runs/<id>`
-      # link from this same workflow, so a PR that pushes N times shows one
-      # expanded notice rather than N. That is why the run URL is included, and
-      # why this step scans nothing before posting.
-      #
-      # An earlier draft instead posted once per PR, guarded by a marker string
-      # it grepped the thread for. Don't reintroduce that: the review comments
-      # are themselves posted by github-actions[bot] via `gh pr comment`, so any
-      # review that quoted the marker while discussing this diff would suppress
-      # the real notice for the rest of that PR's life -- the same quoted-text
-      # trap gha#344 records for `detect-review-request`. Filtering by author
-      # does not fix it, because the quoting comment has the same author.
+      - name: Build self-review skip notice body
+        id: build-notice
+        if: steps.selfmod.outputs.self_mod == 'true'
+        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
+        with:
+          workflow-path: ${{ steps.caller-wf.outputs.path }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
       - name: Post a notice that self-review was skipped
         id: skip-notice
         if: steps.selfmod.outputs.self_mod == 'true'
@@ -433,25 +420,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          WF_PATH: ${{ steps.caller-wf.outputs.path }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BODY_FILE: ${{ steps.build-notice.outputs.body-file }}
         run: |
           set -euo pipefail
-          # --body-file, not --body: the body carries backticks, which the shell
-          # would otherwise run as command substitution.
-          BODY_FILE="$(mktemp)"
-          {
-            printf '> [!WARNING]\n'
-            printf '> **No review ran --- this PR edits `%s`, the review workflow itself.**\n' "$WF_PATH"
-            printf '> `claude-code-action` requires that file to match the default branch, so its token exchange fails until this change merges.\n'
-            printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing that file.\n'
-            printf '>\n'
-            printf '> `require-review` reports a gray *skipped* rather than green.\n'
-            printf '> A green there attests that a reviewer ran, never that one approved; here none ran at all.\n'
-            printf '> Merge on a self-review or a human review instead.\n'
-            printf '>\n'
-            printf '> [View run](%s)\n' "$RUN_URL"
-          } > "$BODY_FILE"
           # Warn rather than fail: require-review is gray either way, so the gate
           # stays honest without this comment, and the next run posts again. A
           # red claude-review here would mislabel a comment-posting failure as a

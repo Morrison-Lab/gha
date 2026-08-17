@@ -1,0 +1,36 @@
+name: Build self-review skip notice body
+description: >-
+  Generates the markdown notice comment body posted when self-review is skipped
+  because a PR edits the review workflow file itself. Extracted from
+  claude-code-review.yml so the notice assembly and its run-URL matching contract
+  can be unit-tested offline (gha#441). Wrapped in a composite action, located
+  via github.action_path, so it resolves correctly when invoked from a caller
+  repo.
+
+inputs:
+  workflow-path:
+    description: Workflow file path (e.g. .github/workflows/claude-code-review.yml)
+    required: true
+  run-url:
+    description: Run URL (e.g. https://github.com/.../actions/runs/123)
+    required: true
+
+outputs:
+  body-file:
+    description: Absolute path to temporary file containing the notice markdown body
+    value: ${{ steps.run.outputs.body_file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate notice body file
+      id: run
+      shell: bash
+      env:
+        WF_PATH: ${{ inputs.workflow-path }}
+        RUN_URL: ${{ inputs.run-url }}
+      run: |
+        set -euo pipefail
+        BODY_FILE="$(mktemp)"
+        bash "${{ github.action_path }}/../../workflows/scripts/build-self-review-skip-notice.sh" "$WF_PATH" "$RUN_URL" > "$BODY_FILE"
+        echo "body_file=$BODY_FILE" >> "$GITHUB_OUTPUT"
