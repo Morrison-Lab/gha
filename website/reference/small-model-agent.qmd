@@ -1,0 +1,81 @@
+---
+title: "small-model-agent.yml"
+---
+
+Run a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a
+pull request, using the repository's existing verification composites
+(linting, link checks, PHI scans, secret checks, test suites) as bounded
+verification gates
+([gha#436](https://github.com/Morrison-Lab/gha/issues/436),
+[gha#415](https://github.com/Morrison-Lab/gha/issues/415)).
+
+Division of labor ([wai#39](https://github.com/Morrison-Lab/wai/issues/39)):
+`wai` explains, `ai-config` configures, `gha` runs.
+Companion to [`Morrison-Lab/ai-config#1292`](https://github.com/Morrison-Lab/ai-config/issues/1292).
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `pr-number` | string | `''` | PR number to run agent against. |
+| `endpoint-url` | string | `''` | OpenAI-compatible API endpoint URL (e.g. `http://localhost:11434/v1`). |
+| `model` | string | `'small-model'` | Model name override passed to the agent runner. |
+| `max-iterations` | string | `'5'` | Maximum loop iterations / bounded retries. |
+| `setup-r` | boolean | `false` | Install R before running verification gates. |
+| `install-quarto` | boolean | `false` | Install Quarto before running verification gates. |
+| `apt-packages` | string | `''` | Extra apt packages to install before setup. |
+| `pip-packages` | string | `''` | Python packages to install with `pip3`. |
+| `checkout-submodules` | boolean | `false` | Check out git submodules. |
+| `run-gates` | boolean | `true` | Run repository verification gates. |
+| `dry-run` | boolean | `false` | Run in dry-run verification mode without network calls. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `API_KEY` | no | Optional API key for remote endpoint authentication. |
+| `SUBMODULES_TOKEN` | no | Optional token to check out private submodules. |
+
+## Permissions
+
+Grant `contents: write`, `pull-requests: write`, and `issues: write`.
+
+## Concurrency
+
+Do not declare a top-level `concurrency:` block in your caller workflow.
+`small-model-agent.yml` manages per-PR concurrency internally on its `agent`
+job (`group: small-model-agent-<PR>`).
+Adding a top-level `concurrency:` block in the caller with a PR-scoped group
+name causes GitHub Actions to detect a deadlock between the top-level workflow
+and the nested job, cancelling the run immediately
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+
+## Example
+
+```yaml
+# Copy to .github/workflows/small-model-agent.yml in your repo.
+name: Small Model Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number'
+        type: string
+        required: false
+      endpoint_url:
+        description: 'OpenAI-compatible API endpoint URL'
+        type: string
+        required: false
+
+jobs:
+  agent:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/small-model-agent.yml@v2
+    with:
+      pr-number: ${{ inputs.pr_number }}
+      endpoint-url: ${{ inputs.endpoint_url }}
+```

@@ -1,0 +1,61 @@
+name: Run small-model agent
+description: >-
+  Runs a small or self-hosted model agent against a pull request, enforcing
+  bounded iterations and verification gates (gha#436, gha#415, wai#39). Wrapped
+  in a composite action, located via github.action_path, so it resolves
+  correctly when invoked from a caller repo.
+
+inputs:
+  endpoint-url:
+    description: OpenAI-compatible API endpoint URL (e.g. http://localhost:11434/v1).
+    required: false
+    default: ''
+  model:
+    description: Model name override passed to the agent runner.
+    required: false
+    default: 'small-model'
+  max-iterations:
+    description: Maximum loop iterations / bounded retries.
+    required: false
+    default: '5'
+  pr-number:
+    description: Pull request number.
+    required: false
+    default: ''
+  dry-run:
+    description: Run in dry-run verification mode without external network calls.
+    required: false
+    default: 'false'
+
+outputs:
+  result-json:
+    description: JSON output summarizing the agent run status and iterations.
+    value: ${{ steps.run.outputs.result_json }}
+
+runs:
+  using: composite
+  steps:
+    - name: Execute agent script
+      id: run
+      shell: bash
+      env:
+        ENDPOINT_URL: ${{ inputs.endpoint-url }}
+        MODEL: ${{ inputs.model }}
+        MAX_ITERATIONS: ${{ inputs.max-iterations }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+        ARGS=()
+        if [[ -n "$ENDPOINT_URL" ]]; then ARGS+=(--endpoint-url "$ENDPOINT_URL"); fi
+        if [[ -n "$MODEL" ]]; then ARGS+=(--model "$MODEL"); fi
+        if [[ -n "$MAX_ITERATIONS" ]]; then ARGS+=(--max-iterations "$MAX_ITERATIONS"); fi
+        if [[ -n "$PR_NUMBER" ]]; then ARGS+=(--pr-number "$PR_NUMBER"); fi
+        if [[ "$DRY_RUN" == "true" ]]; then ARGS+=(--dry-run); fi
+
+        RESULT="$(bash "${{ github.action_path }}/../../workflows/scripts/run-small-model-agent.sh" "${ARGS[@]}")"
+        # Escaping multiline output for GITHUB_OUTPUT
+        EOF_DELIM="EOF_$(openssl rand -hex 8)"
+        echo "result_json<<$EOF_DELIM" >> "$GITHUB_OUTPUT"
+        echo "$RESULT" >> "$GITHUB_OUTPUT"
+        echo "$EOF_DELIM" >> "$GITHUB_OUTPUT"

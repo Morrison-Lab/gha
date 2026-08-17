@@ -319,6 +319,26 @@ jobs:
       - name: Run build-self-review-skip-notice tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
+      - name: Run small-model-agent tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-small-model-agent-tests.sh
+      - name: Exercise run-small-model-agent composite action end-to-end
+        id: agent-e2e
+        uses: ./.github/actions/run-small-model-agent
+        with:
+          model: test-model
+          dry-run: 'true'
+      - name: Assert run-small-model-agent returned result json
+        shell: bash
+        env:
+          RESULT_JSON: ${{ steps.agent-e2e.outputs.result-json }}
+        run: |
+          set -euo pipefail
+          if ! echo "$RESULT_JSON" | grep -q '"status": "success"'; then
+            echo "::error::run-small-model-agent composite action did not return success json"
+            exit 1
+          fi
+          echo "run-small-model-agent correctly returned result-json"
       - name: Exercise build-self-review-skip-notice composite action end-to-end
         id: skip-notice-e2e
         uses: ./.github/actions/build-self-review-skip-notice
