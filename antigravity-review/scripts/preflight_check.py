@@ -74,25 +74,40 @@ def extract_workflow_inputs(workflow_path: str) -> list[str]:
 
 
 def check_action_docs_sync() -> bool:
-    """Ensure inputs in .github/workflows/antigravity-code-review.yml are documented in website/reference/antigravity-code-review.qmd."""
+    """Ensure inputs in .github/workflows/antigravity-code-review.yml are documented in:
+    1. website/reference/antigravity-code-review.qmd
+    2. README.md
+    3. website/workflows.qmd
+    """
     passed = True
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     workflow_path = os.path.join(repo_root, ".github", "workflows", "antigravity-code-review.yml")
-    doc_path = os.path.join(repo_root, "website", "reference", "antigravity-code-review.qmd")
+    doc_paths = [
+        os.path.join(repo_root, "website", "reference", "antigravity-code-review.qmd"),
+        os.path.join(repo_root, "README.md"),
+        os.path.join(repo_root, "website", "workflows.qmd"),
+    ]
 
-    if not os.path.isfile(workflow_path) or not os.path.isfile(doc_path):
-        print(f"❌ Preflight error: Expected files missing: {workflow_path} or {doc_path}", file=sys.stderr)
+    if not os.path.isfile(workflow_path):
+        print(f"❌ Preflight error: Expected workflow missing: {workflow_path}", file=sys.stderr)
         return False
+
+    for doc_path in doc_paths:
+        if not os.path.isfile(doc_path):
+            print(f"❌ Preflight error: Expected doc file missing: {doc_path}", file=sys.stderr)
+            return False
 
     try:
         inputs = extract_workflow_inputs(workflow_path)
-        with open(doc_path, "r", encoding="utf-8") as f:
-            doc_content = f.read()
+        for doc_path in doc_paths:
+            with open(doc_path, "r", encoding="utf-8") as f:
+                doc_content = f.read()
 
-        for input_name in inputs:
-            if f"`{input_name}`" not in doc_content:
-                print(f"❌ Preflight error: input `{input_name}` from workflow is missing in {doc_path}", file=sys.stderr)
-                passed = False
+            for input_name in inputs:
+                if f"`{input_name}`" not in doc_content:
+                    rel_path = os.path.relpath(doc_path, repo_root)
+                    print(f"❌ Preflight error: input `{input_name}` from workflow is missing in {rel_path}", file=sys.stderr)
+                    passed = False
     except Exception as err:
         print(f"❌ Error checking workflow docs sync: {err}", file=sys.stderr)
         passed = False

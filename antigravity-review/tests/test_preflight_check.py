@@ -68,11 +68,14 @@ class TestPreflightCheck(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             workflow_dir = os.path.join(tmp_dir, ".github", "workflows")
             doc_dir = os.path.join(tmp_dir, "website", "reference")
+            website_dir = os.path.join(tmp_dir, "website")
             os.makedirs(workflow_dir)
             os.makedirs(doc_dir)
 
             wf_path = os.path.join(workflow_dir, "antigravity-code-review.yml")
             doc_path = os.path.join(doc_dir, "antigravity-code-review.qmd")
+            readme_path = os.path.join(tmp_dir, "README.md")
+            workflows_path = os.path.join(website_dir, "workflows.qmd")
 
             with open(wf_path, "w", encoding="utf-8") as f:
                 f.write("on:\n  workflow_call:\n    inputs:\n      mode:\n        type: string\n")
@@ -80,12 +83,38 @@ class TestPreflightCheck(unittest.TestCase):
             with open(doc_path, "w", encoding="utf-8") as f:
                 f.write("| `mode` | string |\n")
 
+            with open(readme_path, "w", encoding="utf-8") as f:
+                f.write("| `antigravity-code-review.yml` | `mode` |\n")
+
+            with open(workflows_path, "w", encoding="utf-8") as f:
+                f.write("| `antigravity-code-review.yml` | `mode` |\n")
+
             with patch("os.path.abspath", return_value=tmp_dir):
                 self.assertTrue(preflight_check.check_action_docs_sync())
 
-            # Missing doc case
+            # Missing doc in reference qmd case
             with open(doc_path, "w", encoding="utf-8") as f:
                 f.write("| `other` | string |\n")
+
+            with patch("os.path.abspath", return_value=tmp_dir):
+                self.assertFalse(preflight_check.check_action_docs_sync())
+
+            # Restore reference qmd, make README.md missing input
+            with open(doc_path, "w", encoding="utf-8") as f:
+                f.write("| `mode` | string |\n")
+
+            with open(readme_path, "w", encoding="utf-8") as f:
+                f.write("| `antigravity-code-review.yml` | `other` |\n")
+
+            with patch("os.path.abspath", return_value=tmp_dir):
+                self.assertFalse(preflight_check.check_action_docs_sync())
+
+            # Restore README.md, make website/workflows.qmd missing input
+            with open(readme_path, "w", encoding="utf-8") as f:
+                f.write("| `antigravity-code-review.yml` | `mode` |\n")
+
+            with open(workflows_path, "w", encoding="utf-8") as f:
+                f.write("| `antigravity-code-review.yml` | `other` |\n")
 
             with patch("os.path.abspath", return_value=tmp_dir):
                 self.assertFalse(preflight_check.check_action_docs_sync())
