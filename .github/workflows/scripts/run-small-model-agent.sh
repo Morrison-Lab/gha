@@ -114,6 +114,17 @@ while [[ "$iteration" -le "$max_iterations" ]]; do
       echo "::warning::Verification gate failure detected (yaml=$gate_yaml, markdown=$gate_markdown, phi=$gate_phi) on iteration $iteration" >&2
       gate_failed=true
     fi
+
+    # Re-evaluate Markdown linting gate on iteration if tool is available
+    if command -v markdownlint-cli2 >/dev/null 2>&1; then
+      if npx markdownlint-cli2 "**/*.md" >/dev/null 2>&1; then
+        echo "Markdown linting gate passed on iteration $iteration." >&2
+        gate_markdown="success"
+        if [[ "$gate_yaml" == "success" && "$gate_phi" == "success" ]]; then
+          gate_failed=false
+        fi
+      fi
+    fi
   fi
 
   if [[ "$gate_failed" == "false" ]]; then

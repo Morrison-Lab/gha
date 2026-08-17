@@ -864,6 +864,26 @@ jobs:
             exit 1
           fi
           echo "run-small-model-agent correctly returned result-json"
+      - name: Exercise run-small-model-agent composite action on gate failure
+        id: agent-e2e-failure
+        uses: ./.github/actions/run-small-model-agent
+        continue-on-error: true
+        with:
+          model: test-model
+          endpoint-url: http://localhost:9999/v1
+          max-iterations: '1'
+          gate-yaml-outcome: failure
+      - name: Assert run-small-model-agent failure returned valid result json
+        shell: bash
+        env:
+          RESULT_JSON: ${{ steps.agent-e2e-failure.outputs.result-json }}
+        run: |
+          set -euo pipefail
+          if ! echo "$RESULT_JSON" | grep -q '"status": "failed"'; then
+            echo "::error::run-small-model-agent composite action did not return failed status in result-json: '$RESULT_JSON'"
+            exit 1
+          fi
+          echo "run-small-model-agent correctly returned status=failed in result-json on gate failure"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
   # yet: it calls build-reviewer-args via `Morrison-Lab/gha/...@v2`, which won't
