@@ -79,7 +79,6 @@ fi
 
 echo "Connecting to endpoint $endpoint_url with model $model (max_iterations=$max_iterations, run_gates=$run_gates)..."
 
-# Perform health check on endpoint
 headers=()
 if [[ -n "$api_key" ]]; then
   headers=(-H "Authorization: Bearer $api_key")
@@ -97,22 +96,49 @@ all_green=false
 
 while [[ "$iteration" -le "$max_iterations" ]]; do
   echo "Iteration $iteration/$max_iterations..."
+  gate_failed=false
+
   if [[ "$run_gates" == "true" ]]; then
     echo "Evaluating repository verification gates..."
+    # Check tracked Markdown files if linter is available
+    if command -v markdownlint-cli2 >/dev/null 2>&1; then
+      if ! npx markdownlint-cli2 "**/*.md" >/dev/null 2>&1; then
+        echo "::warning::Markdown linting gate failed on iteration $iteration"
+        gate_failed=true
+      fi
+    fi
   fi
-  all_green=true
+
+  if [[ "$gate_failed" == "false" ]]; then
+    echo "All gates passed green on iteration $iteration."
+    all_green=true
+    break
+  fi
+
+  # Send prompt payload to endpoint for suggested model fixes
+  echo "Sending task prompt to model $model at $endpoint_url..."
+  payload="{\"model\": \"$model\", \"messages\": [{\"role\": \"user\", \"content\": \"Fix repository gate failures on PR #$pr_number\"}]}"
+  if command -v curl >/dev/null 2>&1; then
+    curl -s "${headers[@]}" -X POST -H "Content-Type: application/json" -d "$payload" "$endpoint_url/chat/completions" >/dev/null 2>&1 || true
+  fi
+
   iteration=$((iteration + 1))
 done
 
+final_status="completed"
+if [[ "$all_green" == "true" ]]; then
+  final_status="success"
+fi
+
 cat <<EOF
 {
-  "status": "completed",
+  "status": "$final_status",
   "model": "$model",
-  "iterations": $((iteration - 1)),
+  "iterations": $((iteration > max_iterations ? max_iterations : iteration)),
   "max_iterations": $max_iterations,
   "endpoint_url": "$endpoint_url",
   "pr_number": "$pr_number",
   "run_gates": "$run_gates",
-  "summary": "Agent execution completed $max_iterations iteration(s)."
+  "summary": "Agent execution completed with status $final_status."
 }
 EOF

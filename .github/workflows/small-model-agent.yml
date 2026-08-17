@@ -120,7 +120,22 @@ jobs:
 
       - name: Install Quarto
         if: inputs.install-quarto
-        uses: quarto-dev/quarto-actions/setup@v2
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+
+      - name: Run YAML linter gate
+        if: inputs.run-gates
+        uses: Morrison-Lab/gha/lint-yaml@v2
+        continue-on-error: true
+
+      - name: Run Markdown linter gate
+        if: inputs.run-gates
+        uses: Morrison-Lab/gha/lint-markdown@v2
+        continue-on-error: true
+
+      - name: Run PHI tripwire gate
+        if: inputs.run-gates
+        uses: Morrison-Lab/gha/check-phi@v2
+        continue-on-error: true
 
       - name: Execute small-model agent runner
         id: run-agent
