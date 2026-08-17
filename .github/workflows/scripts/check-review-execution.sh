@@ -265,7 +265,6 @@ if ! has_verdict "$all_text_file"; then
   # rather than let a caller retry (and re-spend $2-4/attempt) on a known
   # non-recovering pattern. (denials was already computed above, where it
   # also gates the Bash-tool-use blocks candidate.)
-  max_denials="${STUB_RETRY_MAX_DENIALS:-5}"
   echo "permission_denials_count=$denials (stub-retry max_denials=$max_denials)"
   if [[ "$denials" -le "$max_denials" ]]; then
     echo "stub_review=true" >> "$GITHUB_OUTPUT"

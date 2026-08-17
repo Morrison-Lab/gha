@@ -36,6 +36,11 @@ outputs:
       (gha#219) — set regardless of whether the attempt succeeded, was a
       quota skip, or was a stub, since cost is incurred either way.
     value: ${{ steps.run.outputs.total_cost_usd }}
+  denials:
+    description: >-
+      The permission_denials_count from the execution result (or sentinel
+      999999 if missing/unparseable).
+    value: ${{ steps.run.outputs.denials }}
 
 runs:
   using: composite
