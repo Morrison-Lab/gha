@@ -55,13 +55,17 @@ EXECUTION_FILE="${1:?usage: check-review-execution.sh <execution-file>}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
 if [[ ! -f "$EXECUTION_FILE" ]]; then
-  echo "::error::Claude review produced no execution output — treating as a failed review."
+  echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
+  echo "no_execution_file=true" >> "$GITHUB_OUTPUT"
+  echo "::error::Claude review produced no execution output (action short-circuit / setup failure; gha#368) — treating as a failed review."
   exit 1
 fi
 # Handles NDJSON stream or a single JSON array; grabs the last result object.
 result="$(jq -s 'flatten | map(select(.type=="result")) | last // empty' "$EXECUTION_FILE")"
 if [[ -z "$result" || "$result" == "null" ]]; then
-  echo "::error::No result object in execution output — review did not finish."
+  echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
+  echo "no_result=true" >> "$GITHUB_OUTPUT"
+  echo "::error::No result object in execution output — review did not finish (action short-circuit; gha#368)."
   exit 1
 fi
 total_cost_usd="$(jq -r '.total_cost_usd // empty' <<< "$result")"
