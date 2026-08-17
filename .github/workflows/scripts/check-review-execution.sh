@@ -147,7 +147,16 @@ fi
 # (confirmed empirically; gha#446 review finding 1). Coalesce to a sentinel
 # far above any real denial count instead, so unknown denials read as unsafe
 # on both gates rather than as zero.
-denials="$(jq -r '.permission_denials_count // 999999' <<< "$result")"
+max_denials="${STUB_RETRY_MAX_DENIALS:-5}"
+raw_denials="$(jq -r '.permission_denials_count // "MISSING"' <<< "$result")"
+if [[ "$raw_denials" =~ ^[0-9]+$ ]]; then
+  denials="$raw_denials"
+else
+  echo "::warning::permission_denials_count could not be parsed from execution result (got '$raw_denials'); defaulting to sentinel 999999 (gha#370)."
+  denials=999999
+fi
+echo "denials=$denials" >> "$GITHUB_OUTPUT"
+echo "permission_denials_count=$denials (max_denials=$max_denials)"
 # review_text_file (posted to the PR) and all_text_file (the pass/fail scan
 # below) must draw from the exact same candidate blocks, or a verdict this
 # script recognizes as "posted" can differ from what the PR actually shows
