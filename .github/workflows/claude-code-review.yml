@@ -664,8 +664,10 @@ jobs:
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
       # "success" but is_error is true), so without this step a silently-failed
-      # review looks green. Runs only when claude-review exited 0 (outcome ==
-      # 'success'); if the action step itself failed, the job is already red.
+      # review looks green. Runs whenever claude-review was not skipped (gated on
+      # outcome != 'skipped' rather than == 'success') so the guard script can
+      # still evaluate execution output even when the action step failed with exit
+      # code 1 (e.g. quota exhaustion or runtime errors, gha#350).
       # Falls back to the well-known temp path when the action doesn't expose
       # the execution_file output on the pinned version.
       #

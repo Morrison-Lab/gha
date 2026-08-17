@@ -1,0 +1,2 @@
+- **`claude-code-review.yml` quota-exhaustion guard reachability**:
+  Updated the `if:` conditions for `exec-file` (`always() && steps.claude-review.outcome != 'skipped'`) and `fail-check` (`always() && steps.exec-file.outcome == 'success'`), plus their retry-block mirrors (`exec-file-retry` and `fail-check-retry`), so the guard script (`check-review-execution.sh`) runs even when `claude-code-action` exits 1 due to quota exhaustion or errors (#350).
