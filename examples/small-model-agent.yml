@@ -1,0 +1,40 @@
+# Copy to .github/workflows/small-model-agent.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
+# The reusable workflow manages per-PR concurrency internally on its `agent` job
+# (`group: small-model-agent-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested job and cancels the run
+# ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+#
+# Runs a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a PR,
+# enforcing bounded iterations and verification gates ([gha#436](https://github.com/Morrison-Lab/gha/issues/436), [gha#415](https://github.com/Morrison-Lab/gha/issues/415)).
+name: Small Model Agent
+
+on:
+  # Optional: automatic run on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number'
+        type: string
+        required: false
+      endpoint_url:
+        description: 'OpenAI-compatible API endpoint URL (e.g. http://localhost:11434/v1)'
+        type: string
+        required: false
+      model:
+        description: 'Model name override'
+        type: string
+        default: 'small-model'
+
+jobs:
+  agent:
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: Morrison-Lab/gha/.github/workflows/small-model-agent.yml@v2
+    with:
+      pr-number: ${{ inputs.pr_number }}
+      endpoint-url: ${{ inputs.endpoint_url }}
+      model: ${{ inputs.model }}

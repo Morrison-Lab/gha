@@ -61,6 +61,7 @@ website:
           - reference/gemini-code-review.qmd
           - reference/antigravity-code-review.qmd
           - reference/ai-code-review.qmd
+          - reference/small-model-agent.qmd
           - reference/bump-submodule.qmd
           - reference/sync-shared-fragments.qmd
           - reference/sync-upstream.qmd

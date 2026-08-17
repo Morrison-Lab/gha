@@ -1,0 +1,175 @@
+name: Small Model Agent (reusable)
+
+# Runs a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a PR,
+# enforcing bounded retries against pre-check repository verification gates
+# (YAML/Markdown linting, PHI tripwire scans) (gha#436, gha#415, wai#39).
+#
+# Division of labor (wai#39): wai explains, ai-config configures, gha runs.
+#
+# Do NOT declare a top-level `concurrency:` block in your caller workflow.
+# This reusable workflow manages per-PR concurrency internally on its `agent` job
+# (`group: small-model-agent-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested job and cancels the run (gha#437).
+
+on:
+  workflow_call:
+    inputs:
+      pr-number:
+        description: PR number to run agent against (required on workflow_dispatch; taken from event on pull_request).
+        type: string
+        default: ''
+      endpoint-url:
+        description: OpenAI-compatible API endpoint URL (e.g. http://localhost:11434/v1 for local Ollama, or remote endpoint).
+        type: string
+        default: ''
+      model:
+        description: Model name override passed to the agent runner.
+        type: string
+        default: 'small-model'
+      max-iterations:
+        description: Maximum loop iterations / bounded retries.
+        type: string
+        default: '5'
+      setup-r:
+        description: Install R before running verification gates.
+        type: boolean
+        default: false
+      install-quarto:
+        description: Install Quarto before running verification gates.
+        type: boolean
+        default: false
+      apt-packages:
+        description: Extra apt packages to install before setup.
+        type: string
+        default: ''
+      pip-packages:
+        description: Python packages to install with pip3.
+        type: string
+        default: ''
+      checkout-submodules:
+        description: Check out git submodules.
+        type: boolean
+        default: false
+      run-gates:
+        description: Run repository verification gates (YAML linting, Markdown linting, PHI checks).
+        type: boolean
+        default: true
+      dry-run:
+        description: Run in dry-run verification mode without external network calls.
+        type: boolean
+        default: false
+
+    secrets:
+      API_KEY:
+        description: Optional API key for remote endpoint authentication.
+        required: false
+      SUBMODULES_TOKEN:
+        description: Optional token to check out private submodules.
+        required: false
+
+jobs:
+  agent:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+
+    concurrency:
+      group: small-model-agent-${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.pr-number != '' && format('refs/pull/{0}/merge', inputs.pr-number) || github.ref }}
+          fetch-depth: 0
+
+      - name: Checkout submodules
+        if: inputs.checkout-submodules
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        with:
+          submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Install system packages
+        if: inputs.apt-packages != ''
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y $APT_PACKAGES
+
+      - name: Install Python packages
+        if: inputs.pip-packages != ''
+        env:
+          PIP_PACKAGES: ${{ inputs.pip-packages }}
+        run: |
+          pip3 install --break-system-packages $PIP_PACKAGES
+
+      - name: Setup R
+        if: inputs.setup-r
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+
+      - name: Install Quarto
+        if: inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+
+      - name: Run YAML linter gate
+        if: inputs.run-gates
+        id: gate-yaml
+        uses: Morrison-Lab/gha/lint-yaml@v2
+        continue-on-error: true
+
+      - name: Run Markdown linter gate
+        if: inputs.run-gates
+        id: gate-markdown
+        uses: Morrison-Lab/gha/lint-markdown@v2
+        continue-on-error: true
+
+      - name: Run PHI tripwire gate
+        if: inputs.run-gates
+        id: gate-phi
+        uses: Morrison-Lab/gha/check-phi@v2
+        continue-on-error: true
+
+      - name: Execute small-model agent runner
+        id: run-agent
+        uses: Morrison-Lab/gha/.github/actions/run-small-model-agent@v2
+        with:
+          endpoint-url: ${{ inputs.endpoint-url }}
+          api-key: ${{ secrets.API_KEY }}
+          model: ${{ inputs.model }}
+          max-iterations: ${{ inputs.max-iterations }}
+          pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
+          run-gates: ${{ inputs.run-gates }}
+          gate-yaml-outcome: ${{ steps.gate-yaml.outcome }}
+          gate-markdown-outcome: ${{ steps.gate-markdown.outcome }}
+          gate-phi-outcome: ${{ steps.gate-phi.outcome }}
+          dry-run: ${{ inputs.dry-run }}
+
+      - name: Post summary comment
+        if: always() && (github.event.pull_request.number || inputs.pr-number)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
+          RESULT_JSON: ${{ steps.run-agent.outputs.result-json }}
+        run: |
+          set -euo pipefail
+          COMMENT_BODY=$(cat <<EOF
+          ### Small Model Agent Execution Summary
+
+          \`\`\`json
+          ${RESULT_JSON:-"{}"}
+          \`\`\`
+          EOF
+          )
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$COMMENT_BODY" || true

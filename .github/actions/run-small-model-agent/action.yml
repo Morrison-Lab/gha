@@ -1,0 +1,94 @@
+name: Run small-model agent
+description: >-
+  Runs a small or self-hosted model agent against a pull request, enforcing
+  bounded iterations and verification gates (gha#436, gha#415, wai#39). Wrapped
+  in a composite action, located via github.action_path, so it resolves
+  correctly when invoked from a caller repo.
+
+inputs:
+  endpoint-url:
+    description: OpenAI-compatible API endpoint URL (e.g. http://localhost:11434/v1).
+    required: false
+    default: ''
+  api-key:
+    description: Optional API key for remote endpoint.
+    required: false
+    default: ''
+  model:
+    description: Model name override passed to the agent runner.
+    required: false
+    default: 'small-model'
+  max-iterations:
+    description: Maximum loop iterations / bounded retries.
+    required: false
+    default: '5'
+  pr-number:
+    description: Pull request number.
+    required: false
+    default: ''
+  run-gates:
+    description: Run repository verification gates.
+    required: false
+    default: 'true'
+  gate-yaml-outcome:
+    description: Outcome of YAML linter gate step (success, failure, skipped).
+    required: false
+    default: 'success'
+  gate-markdown-outcome:
+    description: Outcome of Markdown linter gate step (success, failure, skipped).
+    required: false
+    default: 'success'
+  gate-phi-outcome:
+    description: Outcome of PHI tripwire gate step (success, failure, skipped).
+    required: false
+    default: 'success'
+  dry-run:
+    description: Run in dry-run verification mode without external network calls.
+    required: false
+    default: 'false'
+
+outputs:
+  result-json:
+    description: JSON output summarizing the agent run status and iterations.
+    value: ${{ steps.run.outputs.result_json }}
+
+runs:
+  using: composite
+  steps:
+    - name: Execute agent script
+      id: run
+      shell: bash
+      env:
+        ENDPOINT_URL: ${{ inputs.endpoint-url }}
+        API_KEY: ${{ inputs.api-key }}
+        MODEL: ${{ inputs.model }}
+        MAX_ITERATIONS: ${{ inputs.max-iterations }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        RUN_GATES: ${{ inputs.run-gates }}
+        GATE_YAML_OUTCOME: ${{ inputs.gate-yaml-outcome }}
+        GATE_MARKDOWN_OUTCOME: ${{ inputs.gate-markdown-outcome }}
+        GATE_PHI_OUTCOME: ${{ inputs.gate-phi-outcome }}
+        DRY_RUN: ${{ inputs.dry-run }}
+      run: |
+        set -euo pipefail
+        ARGS=()
+        if [[ -n "$ENDPOINT_URL" ]]; then ARGS+=(--endpoint-url "$ENDPOINT_URL"); fi
+        if [[ -n "$API_KEY" ]]; then ARGS+=(--api-key "$API_KEY"); fi
+        if [[ -n "$MODEL" ]]; then ARGS+=(--model "$MODEL"); fi
+        if [[ -n "$MAX_ITERATIONS" ]]; then ARGS+=(--max-iterations "$MAX_ITERATIONS"); fi
+        if [[ -n "$PR_NUMBER" ]]; then ARGS+=(--pr-number "$PR_NUMBER"); fi
+        if [[ -n "$RUN_GATES" ]]; then ARGS+=(--run-gates "$RUN_GATES"); fi
+        if [[ "$DRY_RUN" == "true" ]]; then ARGS+=(--dry-run); fi
+
+        set +e
+        RESULT="$(bash "${{ github.action_path }}/../../workflows/scripts/run-small-model-agent.sh" "${ARGS[@]}")"
+        SCRIPT_EXIT=$?
+        set -e
+
+        # Escaping multiline output for GITHUB_OUTPUT
+        EOF_DELIM="EOF_$(openssl rand -hex 8)"
+        echo "result_json<<$EOF_DELIM" >> "$GITHUB_OUTPUT"
+        echo "$RESULT" >> "$GITHUB_OUTPUT"
+        echo "$EOF_DELIM" >> "$GITHUB_OUTPUT"
+
+        exit "$SCRIPT_EXIT"
