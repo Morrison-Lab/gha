@@ -10,8 +10,12 @@ concurrency:
 
 jobs:
   review:
+    # Skip on forks: jules_api_key is required: true in action.yml and is read before
+    # skip_forks, so fork PRs lack secrets.JULES_API_KEY and fail the step.
     if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    # The action's internal timeout_minutes defaults to 30 to report gracefully;
+    # 40m job timeout leaves 10m buffer before the runner hard-kills.
     timeout-minutes: 40
     permissions:
       contents: read
