@@ -504,6 +504,23 @@ jobs:
               | gh api -X DELETE "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input - || true
           fi
 
+      # Post an early comment linking the run for dispatched reviews (gha#424).
+      # On workflow_dispatch, from the PR there is otherwise no link to the run
+      # and no sign a review is in progress if the job stalls during setup/model execution.
+      - name: Post early review dispatch notice
+        if: steps.selfmod.outputs.self_mod != 'true' && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ steps.stash.outputs.head_before }}
+        run: |
+          set -euo pipefail
+          SHA_SHORT="${HEAD_SHA:0:7}"
+          BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" || true
+
       # Compose the SERG lab-manual review guidance, gated on the `lab-manual`
       # input. Empty when a caller opts out (e.g. a non-R/Quarto repo), so the
       # reviewer isn't handed R/tidyverse-specific instructions irrelevant to its
