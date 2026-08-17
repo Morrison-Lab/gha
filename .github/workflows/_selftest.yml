@@ -1515,7 +1515,27 @@ jobs:
             echo "::error::check-dev-version should have failed on a Version: mismatch (outcome=$OUTCOME)"
             exit 1
           fi
-          echo "check-dev-version correctly failed on a Version: mismatch."
+      - name: Assert .Rprofile was never sourced during composite calls
+        if: always()
+        shell: bash
+        env:
+          BUMP_OUTCOME: ${{ steps.bump.outcome }}
+          CHECK_MATCH_OUTCOME: ${{ steps.check-match.outcome }}
+        run: |
+          set -euo pipefail
+          if [ -f _ci-rprofile-sourced.txt ]; then
+            echo "::error::.Rprofile was sourced by a composite action; --vanilla flag is missing."
+            exit 1
+          fi
+          if [ "$BUMP_OUTCOME" != "success" ]; then
+            echo "::error::bump-dev-version composite step failed unexpectedly (outcome=$BUMP_OUTCOME)."
+            exit 1
+          fi
+          if [ "$CHECK_MATCH_OUTCOME" != "success" ]; then
+            echo "::error::check-dev-version (match) composite step failed unexpectedly (outcome=$CHECK_MATCH_OUTCOME)."
+            exit 1
+          fi
+          echo ".Rprofile sentinel file was not created; Rscript --vanilla suppressed startup profiles across all composite calls."
       - name: Clean up dev-version test fixtures
         if: always()
         shell: bash
