@@ -36,7 +36,13 @@ Grant `contents: read`, `pull-requests: write`, `issues: write`, and
 
 ## Concurrency
 
-Do not declare a top-level `concurrency:` block in your caller workflow. `antigravity-code-review.yml` manages per-PR concurrency internally on its `antigravity-review` job (`group: antigravity-review-<mode>-<PR>`). Adding a top-level `concurrency:` block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+Do not declare a top-level `concurrency:` block in your caller workflow.
+`antigravity-code-review.yml` manages per-PR concurrency internally on its
+`antigravity-review` job (`group: antigravity-review-<mode>-<PR>`).
+Adding a top-level `concurrency:` block in the caller with a PR-scoped group
+name causes GitHub Actions to detect a deadlock between the top-level workflow
+and the nested job, cancelling the run immediately
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 
 ## Example
 
