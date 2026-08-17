@@ -25,10 +25,12 @@ outputs:
     description: The head repository full name (owner/repo) of the PR.
     value: ${{ steps.resolve.outputs.pr_head_repo }}
   is_fork:
-    description: ''true'' if head repo is different from repository, else ''false''.
+    description: >-
+      'true' if head repo is different from repository, else 'false'.
     value: ${{ steps.resolve.outputs.is_fork }}
   ref_arg:
-    description: '--ref <branch>' if not a fork and branch is known, else empty.
+    description: >-
+      '--ref <branch>' if not a fork and branch is known, else empty.
     value: ${{ steps.resolve.outputs.ref_arg }}
 
 runs:

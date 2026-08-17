@@ -83,7 +83,7 @@ jobs:
         id: pr-info
         uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v2
         with:
-          pr-number: ${{ inputs.pr-number }}
+          pr-number: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
 
       - name: Try candidate review workflows until one dispatches
         id: dispatch-first-available
@@ -95,6 +95,10 @@ jobs:
           CLAUDE_WF: ${{ inputs.claude-review-workflow-file }}
           GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
           ANTIGRAVITY_WF: ${{ inputs.antigravity-review-workflow-file }}
+          PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
+          PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
+          IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
+          REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
           # Secret *presence*, not the secret itself: a `secrets.X != ''`
           # comparison is evaluated by Actions, so only the boolean reaches
           # the runner.
@@ -129,10 +133,6 @@ jobs:
 
           echo "Candidate agents, in the order they will be tried: ${AGENTS[*]}"
 
-          PR_BRANCH="${{ steps.pr-info.outputs.pr_branch }}"
-          PR_HEAD_REPO="${{ steps.pr-info.outputs.pr_head_repo }}"
-          IS_FORK="${{ steps.pr-info.outputs.is_fork }}"
-          REF_ARG="${{ steps.pr-info.outputs.ref_arg }}"
           REF_ARGS=()
           BRANCH_FILTER=()
           if [ -n "$REF_ARG" ]; then

@@ -142,15 +142,6 @@ jobs:
       # the same words on a plain issue. Without it the `gh api .../pulls/N`
       # below 404s on a normal issue and, under `set -euo pipefail`, fails the
       # whole job over a request that was simply not about a PR.
-      #
-      # `continue-on-error: true` is what makes the gate step's fallback
-      # reachable at all. Without it a failing `gh workflow run` --- a review
-      # workflow file the caller never copied, or one that is disabled ---
-      # fails this step, and a failed step skips every later step, including
-      # the gate. The gate's own "could not be dispatched, answer instead"
-      # branch would then be dead code, so the request would be lost and the
-      # job would go red. With it, the step's `outcome` is still `failure` (only
-      # `conclusion` is masked), which is exactly what the gate reads.
       - name: Resolve PR info
         id: pr-info
         if: >-
@@ -181,6 +172,10 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
           REVIEW_WF: ${{ inputs.review-workflow-file }}
+          PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
+          PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
+          IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
+          REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
         run: |
           set -euo pipefail
           # Every failure path below exits NON-zero, deliberately. The step is
@@ -195,10 +190,6 @@ jobs:
             echo "::warning::No PR number on this event; cannot dispatch $REVIEW_WF."
             exit 1
           fi
-          PR_BRANCH="${{ steps.pr-info.outputs.pr_branch }}"
-          PR_HEAD_REPO="${{ steps.pr-info.outputs.pr_head_repo }}"
-          IS_FORK="${{ steps.pr-info.outputs.is_fork }}"
-          REF_ARG="${{ steps.pr-info.outputs.ref_arg }}"
           # A fork PR is not dispatched at all, rather than dispatched without
           # `--ref` as it was before. gemini-code-review.yml now refuses fork
           # PRs outright (its own dispatch guard, mirroring
