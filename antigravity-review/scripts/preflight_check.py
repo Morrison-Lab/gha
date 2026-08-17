@@ -73,6 +73,20 @@ def extract_workflow_inputs(workflow_path: str) -> list[str]:
     return inputs
 
 
+def get_doc_search_target(doc_content: str, doc_filename: str) -> str:
+    """Extract search target for doc checking.
+
+    For summary table documents (README.md, website/workflows.qmd), scopes
+    matching to the antigravity-code-review.yml table row line so shared
+    input names are not falsely satisfied by sibling workflow rows.
+    """
+    if doc_filename in ("README.md", "workflows.qmd"):
+        for line in doc_content.splitlines():
+            if "antigravity-code-review.yml" in line:
+                return line
+    return doc_content
+
+
 def check_action_docs_sync() -> bool:
     """Ensure inputs in .github/workflows/antigravity-code-review.yml are documented in:
     1. website/reference/antigravity-code-review.qmd
@@ -103,8 +117,10 @@ def check_action_docs_sync() -> bool:
             with open(doc_path, "r", encoding="utf-8") as f:
                 doc_content = f.read()
 
+            search_target = get_doc_search_target(doc_content, os.path.basename(doc_path))
+
             for input_name in inputs:
-                if f"`{input_name}`" not in doc_content:
+                if f"`{input_name}`" not in search_target:
                     rel_path = os.path.relpath(doc_path, repo_root)
                     print(f"❌ Preflight error: input `{input_name}` from workflow is missing in {rel_path}", file=sys.stderr)
                     passed = False

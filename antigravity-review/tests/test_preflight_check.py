@@ -119,6 +119,16 @@ class TestPreflightCheck(unittest.TestCase):
             with patch("os.path.abspath", return_value=tmp_dir):
                 self.assertFalse(preflight_check.check_action_docs_sync())
 
+            # Row scoping test: input `mode` exists in a sibling row but not in antigravity-code-review.yml row
+            with open(readme_path, "w", encoding="utf-8") as f:
+                f.write("| `claude.yml` | `mode` |\n| `antigravity-code-review.yml` | `other` |\n")
+
+            with open(workflows_path, "w", encoding="utf-8") as f:
+                f.write("| `antigravity-code-review.yml` | `mode` |\n")
+
+            with patch("os.path.abspath", return_value=tmp_dir):
+                self.assertFalse(preflight_check.check_action_docs_sync())
+
     def test_extract_workflow_inputs_ignores_secrets(self):
         """Regression: secrets block at same depth must not be captured as inputs."""
         sample_workflow = (
