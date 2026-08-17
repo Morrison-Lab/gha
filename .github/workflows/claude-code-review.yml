@@ -709,7 +709,7 @@ jobs:
       # extracting run-claude-review-attempt, just at a smaller scale).
       - name: Resolve and upload execution file path
         id: exec-file
-        if: steps.claude-review.outcome == 'success'
+        if: always() && steps.claude-review.outcome != 'skipped'
         uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
         with:
           execution-file: ${{ steps.claude-review.outputs.execution_file }}
@@ -721,7 +721,7 @@ jobs:
       # the job for real when neither attempt produces a usable review.
       - name: Fail the check if the review did not complete (attempt 1)
         id: fail-check
-        if: steps.claude-review.outcome == 'success'
+        if: always() && steps.exec-file.outcome == 'success'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
         with:
@@ -774,7 +774,7 @@ jobs:
 
       - name: Resolve and upload execution file path (retry)
         id: exec-file-retry
-        if: steps.claude-review-retry.outcome == 'success'
+        if: always() && steps.claude-review-retry.outcome != 'skipped'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
         with:
@@ -783,7 +783,7 @@ jobs:
 
       - name: Fail the check if the retry also did not complete
         id: fail-check-retry
-        if: steps.exec-file-retry.outcome == 'success'
+        if: always() && steps.exec-file-retry.outcome == 'success'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
         with:
