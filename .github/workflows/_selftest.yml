@@ -319,6 +319,23 @@ jobs:
       - name: Run build-self-review-skip-notice tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
+      - name: Exercise build-self-review-skip-notice composite action end-to-end
+        id: skip-notice-e2e
+        uses: ./.github/actions/build-self-review-skip-notice
+        with:
+          workflow-path: .github/workflows/claude-code-review.yml
+          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Assert build-self-review-skip-notice generated body file
+        shell: bash
+        env:
+          BODY_FILE: ${{ steps.skip-notice-e2e.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ ! -s "$BODY_FILE" ]]; then
+            echo "::error::build-self-review-skip-notice did not generate a non-empty body file"
+            exit 1
+          fi
+          echo "build-self-review-skip-notice correctly generated body file at $BODY_FILE"
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
