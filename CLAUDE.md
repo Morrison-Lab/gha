@@ -7,6 +7,14 @@ Guidance for Claude Code when working in this repository.
 - Persist standing notes and memories only in repo-tracked files
   (via commits/PRs); do not save them to non-repo local paths.
 
+## Standing merge policy (`mwc`)
+
+- **Standing `mwc` is active by default in `Morrison-Lab/gha`**: AI agent
+  sessions working in this repository have standing permission to squash-merge
+  pull requests once they reach **fully clean** (all CI checks green and zero
+  outstanding review findings), unless explicitly instructed otherwise for a
+  specific PR or session.
+
 ## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
