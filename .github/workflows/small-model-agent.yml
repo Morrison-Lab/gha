@@ -1,8 +1,8 @@
 name: Small Model Agent (reusable)
 
 # Runs a small, self-hosted (or OpenAI-compatible API endpoint) AI agent against a PR,
-# using the repository's existing verification composites (linting, link checks, PHI scans,
-# secret checks, test suites) as bounded verification gates (gha#436, gha#415, wai#39).
+# using the repository's verification composites (YAML/Markdown linting, PHI tripwire scans)
+# as bounded verification gates (gha#436, gha#415, wai#39).
 #
 # Division of labor (wai#39): wai explains, ai-config configures, gha runs.
 #
@@ -51,7 +51,7 @@ on:
         type: boolean
         default: false
       run-gates:
-        description: Run repository verification gates (linting, PHI, secrets, link check).
+        description: Run repository verification gates (YAML linting, Markdown linting, PHI checks).
         type: boolean
         default: true
       dry-run:
@@ -124,16 +124,19 @@ jobs:
 
       - name: Run YAML linter gate
         if: inputs.run-gates
+        id: gate-yaml
         uses: Morrison-Lab/gha/lint-yaml@v2
         continue-on-error: true
 
       - name: Run Markdown linter gate
         if: inputs.run-gates
+        id: gate-markdown
         uses: Morrison-Lab/gha/lint-markdown@v2
         continue-on-error: true
 
       - name: Run PHI tripwire gate
         if: inputs.run-gates
+        id: gate-phi
         uses: Morrison-Lab/gha/check-phi@v2
         continue-on-error: true
 
@@ -147,6 +150,9 @@ jobs:
           max-iterations: ${{ inputs.max-iterations }}
           pr-number: ${{ inputs.pr-number || github.event.pull_request.number }}
           run-gates: ${{ inputs.run-gates }}
+          gate-yaml-outcome: ${{ steps.gate-yaml.outcome }}
+          gate-markdown-outcome: ${{ steps.gate-markdown.outcome }}
+          gate-phi-outcome: ${{ steps.gate-phi.outcome }}
           dry-run: ${{ inputs.dry-run }}
 
       - name: Post summary comment

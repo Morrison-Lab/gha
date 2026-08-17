@@ -30,6 +30,18 @@ inputs:
     description: Run repository verification gates.
     required: false
     default: 'true'
+  gate-yaml-outcome:
+    description: Outcome of YAML linter gate step (success, failure, skipped).
+    required: false
+    default: 'success'
+  gate-markdown-outcome:
+    description: Outcome of Markdown linter gate step (success, failure, skipped).
+    required: false
+    default: 'success'
+  gate-phi-outcome:
+    description: Outcome of PHI tripwire gate step (success, failure, skipped).
+    required: false
+    default: 'success'
   dry-run:
     description: Run in dry-run verification mode without external network calls.
     required: false
@@ -53,6 +65,9 @@ runs:
         MAX_ITERATIONS: ${{ inputs.max-iterations }}
         PR_NUMBER: ${{ inputs.pr-number }}
         RUN_GATES: ${{ inputs.run-gates }}
+        GATE_YAML_OUTCOME: ${{ inputs.gate-yaml-outcome }}
+        GATE_MARKDOWN_OUTCOME: ${{ inputs.gate-markdown-outcome }}
+        GATE_PHI_OUTCOME: ${{ inputs.gate-phi-outcome }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail
