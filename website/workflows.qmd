@@ -247,7 +247,7 @@ secret; the two families are independent, so a repo can install either or both.
 it picks one of the configured agents at random and dispatches that agent's own
 review workflow, falling through to the next candidate when one can't be
 dispatched (no API key secret configured, or its review workflow file missing
-or disabled) or fails during execution ([#444](https://github.com/Morrison-Lab/gha/issues/444)).
+or disabled) or fails during execution ([gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
 
 ## Content sync {#content-sync}
 
