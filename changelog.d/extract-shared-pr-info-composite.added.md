@@ -1,0 +1,2 @@
+- **Extracted shared `resolve-pr-info` composite action**:
+  Created `.github/actions/resolve-pr-info` (wrapping `.github/workflows/scripts/resolve-pr-info.sh`) to consolidate PR branch, head repo, fork status, and `--ref` argument resolution across workflows (`ai-code-review.yml`, `gemini.yml`, and `dispatch-review.sh`), with offline test coverage in `run-resolve-pr-info-tests.sh` and `_selftest.yml` (#369).

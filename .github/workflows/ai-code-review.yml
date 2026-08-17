@@ -79,15 +79,26 @@ jobs:
       cancel-in-progress: true
 
     steps:
-      - name: Select an agent and dispatch its review workflow
+      - name: Resolve PR info
+        id: pr-info
+        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v2
+        with:
+          pr-number: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
+
+      - name: Try candidate review workflows until one dispatches
+        id: dispatch-first-available
         env:
           GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
           PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
           RAW_AGENTS: ${{ inputs.agents }}
+          REPO: ${{ github.repository }}
           CLAUDE_WF: ${{ inputs.claude-review-workflow-file }}
           GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
           ANTIGRAVITY_WF: ${{ inputs.antigravity-review-workflow-file }}
+          PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
+          PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
+          IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
+          REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
           # Secret *presence*, not the secret itself: a `secrets.X != ''`
           # comparison is evaluated by Actions, so only the boolean reaches
           # the runner.
@@ -122,23 +133,14 @@ jobs:
 
           echo "Candidate agents, in the order they will be tried: ${AGENTS[*]}"
 
-          # This job doesn't check out the repo, so the PR's head branch has to
-          # be looked up explicitly. --ref pins the dispatched run's check-runs
-          # to that branch instead of the default branch that workflow_dispatch
-          # falls back to when no ref is given (#285).
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
-          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
-          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
-          # A fork PR's head branch only exists in the fork, not in $REPO, so
-          # --ref would fail to resolve there (#289). Fall back to no --ref for
-          # fork PRs; the check-run then mis-attributes to the default branch,
-          # the lesser problem.
-          REF_ARGS=(--ref "$PR_BRANCH")
-          BRANCH_FILTER=(--branch "$PR_BRANCH" --event workflow_dispatch)
-          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+          REF_ARGS=()
+          BRANCH_FILTER=()
+          if [ -n "$REF_ARG" ]; then
+            REF_ARGS=($REF_ARG)
+            BRANCH_FILTER=(--branch "$PR_BRANCH" --event workflow_dispatch)
+          fi
+          if [ "$IS_FORK" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching without --ref."
-            REF_ARGS=()
-            BRANCH_FILTER=()
           fi
 
           for agent in "${AGENTS[@]}"; do

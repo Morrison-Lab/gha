@@ -56,9 +56,9 @@ which is why the capabilities above moved to `@v2`.
   `gitleaks/gitleaks-action`,
   which is proprietary and needs a paid licence for organization accounts.
   `check-links/` bundles `lychee.default.toml`;
-  `preview/`, `quarto-publish/`, and `open-sync-pr/` are action-only (the last
-  is the shared push-and-open-PR helper used by `bump-submodule`,
-  `sync-shared-fragments`, and `sync-upstream`).
+  `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
+  two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
+  `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
 - `.github/workflows/` — the `workflow_call` reusable workflows that wrap the
   composites (one per consumer-facing capability — the shared internal
   `open-sync-pr` composite has no wrapper), plus the `claude.yml` and

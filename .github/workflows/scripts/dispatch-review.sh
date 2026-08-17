@@ -43,11 +43,10 @@ fi
 
 if [[ -z "$PR_BRANCH" ]]; then
   echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
-  PR_DATA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{branch: .head.ref, head_repo: .head.repo.full_name}' 2>/dev/null || true)
-  if [[ -n "$PR_DATA" ]]; then
-    PR_BRANCH=$(echo "$PR_DATA" | jq -r '.branch // empty' 2>/dev/null || true)
-    PR_HEAD_REPO=$(echo "$PR_DATA" | jq -r '.head_repo // empty' 2>/dev/null || true)
-  fi
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  info=$("$script_dir/resolve-pr-info.sh" --repo "$REPO" --pr-number "$PR_NUMBER")
+  PR_BRANCH=$(echo "$info" | sed -n 's/^pr_branch=//p')
+  PR_HEAD_REPO=$(echo "$info" | sed -n 's/^pr_head_repo=//p')
 fi
 
 NOTICE_SUFFIX=""
