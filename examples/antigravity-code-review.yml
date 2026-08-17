@@ -1,9 +1,9 @@
 # Copy to .github/workflows/antigravity-code-review.yml in your repo.
 # NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
 # The reusable workflow manages per-PR concurrency internally on its job
-# (`group: antigravity-review-<PR>`). A top-level `concurrency:` block with a PR-scoped
-# group name deadlocks GitHub Actions against the nested job and cancels the run
-# ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+# (`group: antigravity-review-<mode>-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested `antigravity-review` job
+# and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 #
 # NOTE: Requires GEMINI_API_KEY stored as a GitHub secret. Pass secrets explicitly.
 #

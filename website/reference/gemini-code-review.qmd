@@ -51,6 +51,8 @@ Dependabot PR. A lookup that fails outright (rate limit, a bad `pr-number`)
 also skips, and fails the run rather than reviewing a PR whose provenance it
 could not establish.
 
+Only one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.
+
 ## Concurrency
 
 Do not declare a top-level `concurrency:` block in your caller workflow. `gemini-code-review.yml` manages per-PR concurrency internally on its `review` job (`group: gemini-review-<PR>`). Adding a top-level `concurrency:` block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
