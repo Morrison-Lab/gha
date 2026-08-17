@@ -1,0 +1,1 @@
+- **Add website reference sidebar guard to `_selftest.yml`** ([#430](https://github.com/Morrison-Lab/gha/issues/430)). Asserts that every `website/reference/*.qmd` page has a corresponding sidebar entry in `website/_quarto.yml`.

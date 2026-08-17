@@ -54,6 +54,11 @@ jobs:
         with:
           globs: '*.qmd'
           fail: true
+      - name: Run website reference sidebar guard unit tests and repo verification
+        shell: bash
+        run: |
+          bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh --self-test
+          bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser
