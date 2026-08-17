@@ -704,6 +704,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="what-it-refuses-to-review">What it refuses to review</h2>
 <p>The automatic <code>pull_request</code> path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.</p>
 <p>A <code>workflow_dispatch</code> run carries none of that payload, only <code>pr-number</code>, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad <code>pr-number</code>) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.</p>
+<p>Only one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.</p>
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>

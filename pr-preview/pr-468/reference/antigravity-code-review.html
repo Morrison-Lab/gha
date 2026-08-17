@@ -713,7 +713,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
-<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>antigravity-code-review.yml</code> manages per-PR concurrency internally on its <code>review</code> job (<code>group: antigravity-review-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
+<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>antigravity-code-review.yml</code> manages per-PR concurrency internally on its <code>antigravity-review</code> job (<code>group: antigravity-review-&lt;mode&gt;-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>

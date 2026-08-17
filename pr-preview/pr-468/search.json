@@ -740,7 +740,7 @@
     "href": "reference/antigravity-code-review.html#concurrency",
     "title": "antigravity-code-review.yml",
     "section": "Concurrency",
-    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. antigravity-code-review.yml manages per-PR concurrency internally on its review job (group: antigravity-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. antigravity-code-review.yml manages per-PR concurrency internally on its antigravity-review job (group: antigravity-review-&lt;mode&gt;-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1064,7 +1064,7 @@
     "href": "reference/gemini-code-review.html#what-it-refuses-to-review",
     "title": "gemini-code-review.yml",
     "section": "What it refuses to review",
-    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad pr-number) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.",
+    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad pr-number) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.\nOnly one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1916,7 +1916,7 @@
     "href": "reference/ai-code-review.html#concurrency",
     "title": "ai-code-review.yml",
     "section": "Concurrency",
-    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. ai-code-review.yml manages per-PR concurrency internally on its dispatch job (group: ai-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. ai-code-review.yml manages per-PR concurrency internally on its select-and-review job (group: ai-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
     "crumbs": [
       "Overview",
       "Reference",
