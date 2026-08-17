@@ -8,8 +8,10 @@
 #
 # Reads a claude-code-action execution-output file (NDJSON stream or a single
 # JSON array of stream-json messages), and:
-#   - fails if the file is missing, has no `result` object, or the result is
-#     an error that isn't a quota/auth pre-processing rejection;
+#   - fails if the file is missing or has no `result` object, writing
+#     action_short_circuit=true alongside no_execution_file=true or no_result=true
+#     to $GITHUB_OUTPUT (gha#368);
+#   - fails if the result is an error that isn't a quota/auth pre-processing rejection;
 #   - writes quota_exhausted=true to $GITHUB_OUTPUT (if set) and exits 0 on a
 #     zero-cost, single-turn error result (quota exhaustion / auth failure);
 #   - passes a run whose result object is self-contradictory --
