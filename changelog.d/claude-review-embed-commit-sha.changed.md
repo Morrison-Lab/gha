@@ -1,0 +1,1 @@
+- **Embed reviewed commit SHA in review comment body** ([#423](https://github.com/Morrison-Lab/gha/issues/423)). Appends `Reviewed commit: <full-sha>` to `claude-code-review.yml`'s posted review comments so automated verification scripts can associate reviews with specific commit SHAs.

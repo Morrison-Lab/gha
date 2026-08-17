@@ -880,6 +880,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REVIEW_TEXT_FILE: ${{ steps.resolve-final.outputs.review_text_file }}
+          HEAD_SHA: ${{ steps.stash.outputs.head_before }}
         run: |
           # resolve-final already picked the winning attempt's extracted and
           # validated review text (and would have failed the job if neither
@@ -890,6 +891,7 @@ jobs:
             echo "No review text found in execution output; skipping comment."
             exit 0
           fi
+          COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')}"
           # Include the run URL so the collapse step can match this comment by
           # run ID (same regex: `actions/runs/<id>` in the body).
           # Write the body to a file and post it with --body-file so the review
@@ -901,9 +903,10 @@ jobs:
           # both PyYAML and GitHub Actions' parser, truncating the script
           # mid-string and producing "unexpected EOF" on the runner.
           BODY_FILE="$(mktemp)"
-          printf '%s\n\n---\n\n%s' \
+          printf '%s\n\n---\n\n%s\n\nReviewed commit: %s' \
             "**Claude finished review** — [View run]($RUN_URL)" \
-            "$REVIEW" > "$BODY_FILE"
+            "$REVIEW" \
+            "$COMMIT_SHA" > "$BODY_FILE"
           # `gh pr comment` prints the new comment's URL to stdout; capture it
           # so the cost-comment step below can link back to it (gha#219).
           COMMENT_URL="$(gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE")"
