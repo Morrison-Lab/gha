@@ -447,10 +447,15 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
-          SHA_SHORT="${HEAD_SHA:0:7}"
-          BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" || true
+          [ -z "$PR_NUMBER" ] && exit 0
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+          if [ -n "$HEAD_SHA" ]; then
+            SHA_SHORT="${HEAD_SHA:0:7}"
+            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
+          else
+            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER."
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" 2>/dev/null || true
 
       - name: Checkout repository
         if: steps.selfmod.outputs.self_mod != 'true'
