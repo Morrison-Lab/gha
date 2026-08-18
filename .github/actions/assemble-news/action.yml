@@ -1,0 +1,23 @@
+name: Assemble R Package NEWS.md
+description: >-
+  Collates news.d/ fragment files into NEWS.md under standard R package section
+  headings (## Breaking changes, ## New features, ## Bug fixes, ## Minor improvements)
+  and deletes the consumed fragment files.
+
+inputs:
+  fragments-dir:
+    description: Directory containing fragment files (<slug>.<category>.md).
+    required: false
+    default: 'news.d'
+  news-file:
+    description: Target NEWS.md file path.
+    required: false
+    default: 'NEWS.md'
+
+runs:
+  using: composite
+  steps:
+    - name: Run assemble-news.sh
+      shell: bash
+      run: |
+        bash "${{ github.action_path }}/../../workflows/scripts/assemble-news.sh" "${{ inputs.fragments-dir }}" "${{ inputs.news-file }}"

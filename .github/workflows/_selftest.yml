@@ -59,6 +59,9 @@ jobs:
         run: |
           bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh --self-test
           bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh
+      - name: Run assemble-news unit tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-assemble-news-tests.sh
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser

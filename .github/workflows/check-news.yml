@@ -47,15 +47,10 @@ jobs:
       - name: Check for added news/changelog fragments
         id: check-fragments
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref || 'main' }}
         run: |
           set -euo pipefail
-          if [ -z "${PR_NUMBER:-}" ]; then
-            echo "fragment_found=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          CHANGED_FILES=$(gh pr view "$PR_NUMBER" --json files --jq '.files[].path')
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || git diff --name-only HEAD~1)
           if echo "$CHANGED_FILES" | grep -E '^news\.d/|^changelog\.d/' | grep -q '\.md$'; then
             echo "fragment_found=true" >> "$GITHUB_OUTPUT"
             echo "Found added news/changelog fragment file in PR."

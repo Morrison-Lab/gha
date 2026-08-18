@@ -31,10 +31,7 @@ heading_for() {
   esac
 }
 
-# Group fragments by heading to avoid duplicate section headings
 declare -A heading_blocks
-declare -A heading_order
-order_idx=0
 
 consumed=()
 for cat in "${categories[@]}"; do
@@ -44,11 +41,6 @@ for cat in "${categories[@]}"; do
   [ ${#frags[@]} -gt 0 ] || continue
 
   heading="$(heading_for "$cat")"
-  if [ -z "${heading_order["$heading"]+x}" ]; then
-    heading_order["$heading"]=$order_idx
-    order_idx=$((order_idx + 1))
-  fi
-
   for f in "${frags[@]}"; do
     heading_blocks["$heading"]="${heading_blocks["$heading"]:-}$(cat "$f")"$'\n\n'
     consumed+=( "$f" )
@@ -65,15 +57,18 @@ if [ ! -f "$news_file" ]; then
   exit 1
 fi
 
+if ! grep -q '^# ' "$news_file"; then
+  echo "::error::No top-level '# ' heading found in $news_file; cannot insert fragments." >&2
+  exit 1
+fi
+
 block=""
-# Display headings in logical R package order: Breaking changes, New features, Bug fixes, Minor improvements
 for heading in "Breaking changes" "New features" "Bug fixes" "Minor improvements"; do
   if [ -n "${heading_blocks["$heading"]:-}" ]; then
     block+="## $heading"$'\n\n'"${heading_blocks["$heading"]}"
   fi
 done
 
-# Insert block under top section heading (e.g., `# pkgname (development version)` or first `#` heading)
 block_file="$(mktemp)"
 printf '%s' "$block" > "$block_file"
 tmp="$(mktemp)"
@@ -86,7 +81,19 @@ awk -v block_file="$block_file" '
     close(block_file)
     inserted = 1
   }
-' "$news_file" > "$tmp"
+  END {
+    if (!inserted) exit 42
+  }
+' "$news_file" > "$tmp" || {
+  status=$?
+  rm -f "$block_file" "$tmp"
+  if [ $status -eq 42 ]; then
+    echo "::error::Failed to insert fragments into $news_file — no top-level '# ' heading was matched." >&2
+  else
+    echo "::error::awk error ($status) while processing $news_file." >&2
+  fi
+  exit 1
+}
 
 mv "$tmp" "$news_file"
 rm -f "$block_file"
