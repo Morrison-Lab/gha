@@ -2,9 +2,13 @@
 title: "assemble-news"
 ---
 
-Collate `news.d/` fragment files into `NEWS.md` under section headings (`## Breaking changes`, `## New features`, `## Bug fixes`, `## Minor improvements`) and delete consumed fragment files.
+Collate `news.d/` fragment files into `NEWS.md` under section headings
+(`## Breaking changes`, `## New features`, `## Bug fixes`,
+`## Minor improvements`) and delete consumed fragment files.
 
-Pairs with [`check-news.yml`](check-news.qmd), allowing pull requests to add fragment files under `news.d/` instead of directly editing `NEWS.md`, eliminating merge conflicts between concurrent PRs.
+Pairs with [`check-news.yml`](check-news.qmd), allowing pull requests to add
+fragment files under `news.d/` instead of directly editing `NEWS.md`,
+eliminating merge conflicts between concurrent PRs.
 
 ## Inputs
 

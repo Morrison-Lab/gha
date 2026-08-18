@@ -1,7 +1,7 @@
 # `news.d/` — R package news fragments
 
 Changelog entries for R packages live here as **one file per change**, not as direct
-edits to [`NEWS.md`](../NEWS.md). Each pull request adds a new fragment file, so
+edits to `NEWS.md`. Each pull request adds a new fragment file, so
 two PRs in flight never touch the same lines and never conflict.
 
 ## Adding a fragment
