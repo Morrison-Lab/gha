@@ -1,0 +1,1 @@
+- Added `check-ai-tells` composite action and reusable workflow to scan prose in Markdown/Quarto documents for AI tell density and rhetorical markers ([#382](https://github.com/Morrison-Lab/gha/issues/382)).

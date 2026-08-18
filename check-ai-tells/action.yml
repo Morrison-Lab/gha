@@ -1,0 +1,38 @@
+name: Check AI tells
+description: >-
+  Scans narrative prose in Markdown and Quarto files (*.md, *.qmd, *.Rmd) for
+  AI-generated tells, overused vocabulary, and rhetorical templates from the
+  ai-config catalog, reporting density per 1,000 words.
+inputs:
+  paths:
+    description: Comma- or space-separated list of files or globs to check. Defaults to all Markdown/Quarto files.
+    default: ''
+  paths-ignore:
+    description: Comma- or space-separated list of file paths or globs to exclude from scanning.
+    default: ''
+  base-ref:
+    description: Git base ref to limit checking to newly added/modified lines in diff.
+    default: ''
+  threshold:
+    description: Maximum allowed tell density (tells per 1,000 words) before failing when fail is true.
+    default: '10'
+  fail:
+    description: Whether to fail the check if tell density exceeds threshold. Defaults to false (warn-only).
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up R
+      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        use-public-rspm: true
+
+    - name: Scan for AI tells
+      shell: bash
+      env:
+        AIT_PATHS: ${{ inputs.paths }}
+        AIT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        AIT_BASE_REF: ${{ inputs.base-ref }}
+        AIT_THRESHOLD: ${{ inputs.threshold }}
+        AIT_FAIL: ${{ inputs.fail }}
+      run: Rscript "$GITHUB_ACTION_PATH/check-ai-tells.R"
