@@ -2,7 +2,10 @@
 title: "check-ai-tells"
 ---
 
-Scans narrative prose in Markdown and Quarto files (`*.md`, `*.qmd`, `*.Rmd`) for AI tell patterns (e.g. overused vocabulary, negation-reversal antithesis, signposting filler) from the `ai-config` catalog, computing tell density per 1,000 words.
+Scans narrative prose in Markdown and Quarto files (`*.md`, `*.qmd`, `*.Rmd`)
+for AI tell patterns (e.g. overused vocabulary, negation-reversal antithesis,
+signposting filler) from the `ai-config` catalog, computing tell density
+per 1,000 words.
 
 ## Usage
 
