@@ -62,17 +62,22 @@ jobs:
       - name: Run assemble-news unit tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-assemble-news-tests.sh
-      - name: Verify assemble-news composite action execution
+      - name: Prepare assemble-news fixture
         shell: bash
         run: |
-          set -euo pipefail
-          tmp_dir="$(mktemp -d)"
-          mkdir -p "$tmp_dir/news.d"
-          printf -- '- Test feature ([#1](https://github.com/foo/bar/issues/1)).\n' > "$tmp_dir/news.d/test.added.md"
-          printf '# pkg (dev)\n' > "$tmp_dir/NEWS.md"
-          bash .github/workflows/scripts/assemble-news.sh "$tmp_dir/news.d" "$tmp_dir/NEWS.md"
-          grep -q '## New features' "$tmp_dir/NEWS.md"
-          rm -rf "$tmp_dir"
+          mkdir -p fixture_news.d
+          printf -- '- Test feature ([#1](https://github.com/foo/bar/issues/1)).\n' > fixture_news.d/test.added.md
+          printf '# pkg (dev)\n' > fixture_NEWS.md
+      - name: Exercise assemble-news composite action
+        uses: ./.github/actions/assemble-news
+        with:
+          fragments-dir: fixture_news.d
+          news-file: fixture_NEWS.md
+      - name: Verify assembled fixture output
+        shell: bash
+        run: |
+          grep -q '## New features' fixture_NEWS.md
+          rm -rf fixture_news.d fixture_NEWS.md
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser
