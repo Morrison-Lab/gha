@@ -2012,7 +2012,7 @@
     "href": "reference/check-news.html",
     "title": "check-news.yml",
     "section": "",
-    "text": "Enforce a changelog entry on each pull request (wraps UCD-SERG/changelog-check-action). Supports both direct changelog edits (NEWS.md/CHANGELOG.md) and fragment-based changelog files (news.d/ or changelog.d/ files named &lt;slug&gt;.&lt;category&gt;.md). R package repos can use scripts/assemble-news.sh at release time to collate news.d/ fragments into NEWS.md under standard headings (## New features, ## Bug fixes, ## Minor improvements, ## Breaking changes).",
+    "text": "Enforce a changelog entry on each pull request (wraps UCD-SERG/changelog-check-action). Supports both direct changelog edits (NEWS.md/CHANGELOG.md) and fragment-based changelog files (news.d/ or changelog.d/ files named &lt;slug&gt;.&lt;category&gt;.md). R package repos can use the assemble-news composite action (uses: Morrison-Lab/gha/.github/actions/assemble-news@v2) at release time to collate news.d/ fragments into NEWS.md under section headings.",
     "crumbs": [
       "Overview",
       "Reference",
