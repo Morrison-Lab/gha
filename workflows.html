@@ -828,7 +828,7 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li><strong>It scans history, not the diff.</strong> A secret committed and then removed in a later commit is still exposed, because the orphaned commit stays fetchable through the GitHub API until the repository is garbage-collected. So the caller checks out with <code>fetch-depth: 0</code>, and a shallow clone is refused rather than reported clean on a partial scan.</li>
 <li><strong>Values are never printed</strong>, in the log or the run summary. Findings report only the rule, <code>file:line</code>, and the commit.</li>
-<li><strong>It blocks by default</strong>, where the advisory prose checks warn.</li>
+<li><strong>It blocks by default</strong>, where the advisory prose checks are non-blocking.</li>
 <li><strong>Its <code>paths-ignore</code> patterns are Go regexes matched unanchored</strong>, not globs, so <code>docs</code> suppresses every path containing that substring; anchor with <code>^</code> when that matters.</li>
 </ul>
 <p>It complements GitHub’s native secret scanning rather than replacing it – that is a repository setting evaluating pushes, not a pull-request check – and neither substitutes for rotating an exposed credential. See <a href="./reference/check-secrets.html"><code>check-secrets.yml</code></a> for the full reference.</p>
