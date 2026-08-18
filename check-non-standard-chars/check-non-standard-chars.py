@@ -37,6 +37,11 @@ NON_STANDARD_CHARS = {
     '\u2019': 'Right single quotation mark',
     '\u2013': 'En dash',
     '\u2014': 'Em dash',
+    # Reaches source by the same rendered-text copy-paste as the rest,
+    # typically in a dimension or a rate ("round x month", "365.25 days/year
+    # x 4"). Added in gha#322: the shared ASCII-punctuation convention has
+    # always named it alongside the dashes and quotes, and this set did not
+    # carry it, so consumers had a rule with no instrument behind it.
     '\u00d7': 'Multiplication sign',
 }
 
@@ -85,7 +90,7 @@ def check_file(file_path: Path) -> List[Tuple[int, int, str, str]]:
 def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     """
     Find all files with given extensions in the directory tree.
-    Ignores hidden directories and build artifacts.
+    Ignores hidden tool directories and build artifacts.
     
     Args:
         root_dir: Root directory to search
@@ -97,13 +102,14 @@ def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     files = []
     for ext in extensions:
         files.extend(root_dir.glob(f'**/*{ext}'))
+    ignored_dirs = {'.git', '.worktrees', '.Rproj.user', 'node_modules', 'renv', 'site_libs', '_site', '_freeze'}
     filtered = []
     for f in files:
-        parts = f.parts
-        if any(p.startswith('.') or p in ('node_modules', 'renv', 'site_libs', '_site', '_freeze') for p in parts[:-1]):
+        if any(p in ignored_dirs for p in f.parts[:-1]):
             continue
         filtered.append(f)
     return sorted(filtered)
+
 
 
 def main() -> int:

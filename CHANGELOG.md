@@ -74,8 +74,8 @@ below with migration steps.
   block.
   See `examples/test-coverage.yml` for the caller stub.
 
-
 - **`check-equation-renders` -- catch equations MathJax can't render in PR previews**
+
   (#159). A new fourth leg of the PR-preview family: a composite
   (`check-equation-renders/action.yml`) that crawls a built Quarto/HTML site with a
   headless Chromium (Playwright), lets MathJax finish typesetting each page, and

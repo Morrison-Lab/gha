@@ -3,4 +3,3 @@
   failing `require-review`.
   `Bash(maxima:*)` is now allowlisted and `python3 -c` is no longer disallowed (inline SymPy);
   `python3 -m` and all git-write tools stay blocked.
-
