@@ -1,0 +1,41 @@
+name: Check AI Tells (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: Comma- or space-separated list of files or globs to check.
+        type: string
+        default: ''
+      base-ref:
+        description: Git base ref to limit checking to newly added/modified lines.
+        type: string
+        default: ''
+      threshold:
+        description: Maximum allowed tell density per 1,000 words.
+        type: string
+        default: '10'
+      fail:
+        description: Whether to fail the workflow on high tell density.
+        type: boolean
+        default: false
+
+jobs:
+  check-ai-tells:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check AI tells
+        uses: Morrison-Lab/gha/check-ai-tells@v2
+        with:
+          paths: ${{ inputs.paths }}
+          base-ref: ${{ inputs.base-ref }}
+          threshold: ${{ inputs.threshold }}
+          fail: ${{ inputs.fail }}

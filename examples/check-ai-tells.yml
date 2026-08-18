@@ -1,0 +1,20 @@
+name: Check AI Tells
+
+on:
+  pull_request:
+    paths:
+      - '**.md'
+      - '**.qmd'
+      - '**.Rmd'
+  push:
+    branches: [main]
+    paths:
+      - '**.md'
+      - '**.qmd'
+      - '**.Rmd'
+
+jobs:
+  check-ai-tells:
+    uses: Morrison-Lab/gha/.github/workflows/check-ai-tells.yml@v2
+    with:
+      fail: false
