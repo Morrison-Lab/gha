@@ -1,0 +1,14 @@
+Package: ghatools
+Title: Shared R Utilities for Morrison-Lab/gha Workflows
+Version: 0.1.0.9000
+Authors@R: person("Doug", "Morrison", , "dmorrison@ucdavis.edu", role = c("aut", "cre"))
+Description: Provides shared R helper functions for GitHub Actions workflows
+    in Morrison-Lab/gha, including unified diff patch parsing to identify added
+    lines and DESCRIPTION version bumping and checking utilities.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

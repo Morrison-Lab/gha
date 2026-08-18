@@ -1,0 +1,1 @@
+- Created `ghatools` internal R package consolidating shared R utilities (such as unified diff parsing and DESCRIPTION version bumping) with `testthat` unit test coverage ([#383](https://github.com/Morrison-Lab/gha/issues/383)).
