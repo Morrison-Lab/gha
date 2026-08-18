@@ -58,7 +58,9 @@ below with migration steps.
 
 ### Added
 
-- **`test-coverage` -- R-package test coverage with Codecov upload** (#147). A new
+- **`test-coverage`** --
+  R-package test coverage with Codecov upload (#147). A new
+
   composite (`test-coverage/action.yml`) and reusable workflow
   (`.github/workflows/test-coverage.yml`) that set up R and dependencies, run
   `covr::package_coverage()`, and upload the Cobertura report with
@@ -69,7 +71,9 @@ below with migration steps.
   r-lib heuristic -- fail on non-PR events, and on PRs only when a token is set,
   since tokenless PR uploads are flaky -- or force `'true'`/`'false'`); the
   optional `CODECOV_TOKEN` secret is passed through the caller's `secrets:`
-  block. See `examples/test-coverage.yml` for the caller stub.
+  block.
+  See `examples/test-coverage.yml` for the caller stub.
+
 
 - **`check-equation-renders` -- catch equations MathJax can't render in PR previews**
   (#159). A new fourth leg of the PR-preview family: a composite
@@ -168,7 +172,8 @@ below with migration steps.
 ### Breaking
 
 - **`quarto-publish` now deploys to the `gh-pages` branch** instead of the
-  GitHub Pages artifact (#118, #120). Consumers must set Settings → Pages →
+  GitHub Pages artifact (#118, #120).
+  Consumers must set Settings -> Pages ->
   Source = "Deploy from a branch", branch `gh-pages` / `(root)`, and grant the
   caller `contents: write` (dropping `pages: write` + `id-token: write`) -- still
   required with `deploy: false`. This makes `quarto-publish` compatible with the
@@ -190,8 +195,9 @@ below with migration steps.
 - `preview` gains a `path` input (#100) -- the project directory to render
   (the dir holding `_quarto.yml`), defaulting to the repo root. This brings
   `preview` to parity with `quarto-publish` and lets a site that lives in a
-  subdirectory (like this repo's `website/`) get a PR preview. Backward
-  compatible: existing callers that render the repo root need no change.
+  subdirectory (like this repo's `website/`) get a PR preview.
+  Backward compatible: existing callers that render the repo root need no change.
+
 - Shared-content sync family (#57) -- keeps guidance shared between repos current
   in both directions, via two reusable workflows and a shared helper:
   - `bump-submodule.yml` -- update a named submodule to its upstream HEAD and open
@@ -202,7 +208,9 @@ below with migration steps.
     change (the other direction; avoids a recursive mutual submodule).
   - `open-sync-pr` composite -- the commit-and-open-PR helper both workflows
     reuse: commits staged changes to a reused automation branch and opens or
-    updates the PR, no-op when nothing changed. First consumers:
+    updates the PR, no-op when nothing changed.
+    First consumers:
+
     `UCD-SERG/lab-manual` and `d-morrison/ai-config`.
 - `quarto-publish` -- render a Quarto site and deploy it to the `gh-pages`
   branch, which GitHub Pages serves. A composite (`quarto-publish/action.yml`)
@@ -217,9 +225,11 @@ below with migration steps.
   and set Pages Source = "Deploy from a branch", branch `gh-pages`. First
   consumer: `Lacaedemon/sparta` (#37).
 
-  **Breaking change for early `@v1` adopters (#117).** An earlier interim
+  **Breaking change for early `@v1` adopters (#117).**
+  An earlier interim
   version deployed via `actions/deploy-pages` and needed Pages Source =
-  "GitHub Actions". That is incompatible with the PR-preview family, which is
+  "GitHub Actions".
+  That is incompatible with the PR-preview family, which is
   branch-based, so previews 404'd. Switching `quarto-publish` to a `gh-pages`
   deploy makes publish and preview consistent. To migrate: (1) set Settings ->
   Pages -> Source = "Deploy from a branch", branch `gh-pages` / `(root)`; and
@@ -229,15 +239,21 @@ below with migration steps.
   pipeline rme carried inline:
   - `preview` composite action + `preview.yml` reusable workflow -- build half;
     renders the Quarto site read-only in the (possibly fork) PR context and
-    uploads it + PR metadata as an artifact. Parameterized for non-rme
+    uploads it + PR metadata as an artifact.
+    Parameterized for non-rme
+
     consumers (R version, apt packages, renv on/off, local-package install,
-    Chrome, submodules, render profile). Writes PR metadata **after** checkout
+    Chrome, submodules, render profile).
+    Writes PR metadata **after** checkout
+
     so `git clean -ffdx` can't wipe it from the artifact (d-morrison/rme#913),
     and keeps the `preview:pdf`/`preview:docx`/`preview:revealjs` and
     `clear freezer` label gates.
   - `preview-deploy.yml` reusable workflow -- deploy half; on `workflow_run`
     completion publishes the artifact to `gh-pages` in the base-repo context
-    and comments the preview link. Kept split from the build half so untrusted
+    and comments the preview link.
+    Kept split from the build half so untrusted
+
     fork code never holds write permissions (the trust boundary).
   - `cleanup-pr-previews.yml` reusable workflow -- scheduled housekeeping that
     deletes preview directories for closed PRs.
@@ -245,8 +261,9 @@ below with migration steps.
   for content that looks like PHI: US Social Security numbers, medical record
   numbers, dates of birth, and PHI-suggestive column headers in delimited data
   files. Matched values are never printed to the log; false positives are
-  suppressed via a `phi-allow` line comment or a regex allowlist file. The
-  `phone`/`email` detectors are available but off by default.
+  suppressed via a `phi-allow` line comment or a regex allowlist file.
+  The `phone`/`email` detectors are available but off by default.
+
 - `CHANGELOG.md` (this file) -- records what changes as the `@v1` tag moves, so
   consumers can see what they picked up.
 - `REVDEPS.md` -- tracks repos that consume these workflows so breaking changes
@@ -280,8 +297,9 @@ below with migration steps.
   🚀 marker, the agent emits a `<!-- claude-absorbed: … -->` marker listing the
   comments it absorbed by polling, and a post-step reacts 🚀 to each so their own
   queued runs short-circuit. A companion step re-dispatches a review for a late
-  `@claude review` that a deduped run would otherwise have dropped. Additive --
-  no consumer input changes (#44, ported from qwt #73/#90/#95).
+  `@claude review` that a deduped run would otherwise have dropped.
+  Additive -- no consumer input changes (#44, ported from qwt #73/#90/#95).
+
 - `claude-code-review` gained an `allowed-bots` input (default
   `github-actions[bot]`, previously hard-coded) so a consumer can widen the
   accepted dispatch actors (e.g. `github-actions[bot],claude`), and a
@@ -325,7 +343,9 @@ below with migration steps.
   Added [`.github/dependabot.yml`](.github/dependabot.yml) (`github-actions`
   ecosystem, weekly, grouped, covering `.github/workflows/` and each composite
   action) so the pins are auto-bumped as upstreams publish releases instead of
-  freezing. First-party `d-morrison/gha/*@v1` self-references and the
+  freezing.
+  First-party `d-morrison/gha/*@v1` self-references and the
+
   `examples/` templates intentionally still track the `@v1` major tag (#48).
 
 ## [v1] -- initial pilot set

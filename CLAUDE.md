@@ -502,7 +502,9 @@ which is why the capabilities above moved to `@v2`.
   (gha#390).
 - `examples/` -- caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` -- top-level project docs;
-  `REVDEPS.md` -- lists registered downstream consumer repos. Every PR that
+  `REVDEPS.md` --
+  lists registered downstream consumer repos. Every PR that
+
   changes user-facing behavior should add a **changelog fragment** under
   `changelog.d/` (a `<slug>.<category>.md` file -- see `changelog.d/README.md`)
   rather than editing `CHANGELOG.md` directly, so parallel PRs never conflict on
@@ -582,7 +584,9 @@ Missing either kind surfaces as a workflow-not-found error for consumers who
 copy that spot literally (gha#148, caught across two review rounds).
 
 **When narrowing an already-fixed blanket claim, re-grep the WHOLE repo after
-every edit -- not just the files you already know about.** The same versioning
+every edit --
+not just the files you already know about.** The same versioning
+
 convention gets restated in multiple, independently-worded spots: not just
 once per file, but in separate sections of the *same* file (e.g. `README.md`'s
 `## Versioning` section and its nested `### Pinning third-party actions`
@@ -1163,7 +1167,9 @@ reusable-workflow layer follows just above.
 
 Claude Code on the web (and other remote/CI sessions) runs in a sandbox where the
 `gh` and `glab` CLIs are **not installed** and there is no direct GitHub API
-access. Skills and built-in commands that tell you to "use `gh`" -- `/review`,
+access. Skills and built-in commands that tell you to "use `gh`" --
+`/review`,
+
 `/code-review --comment`, `/security-review`, `/verify`, PR babysitting, PR
 creation -- only work if their GitHub steps are translated to the GitHub MCP tools
 (`mcp__github__*`). When a skill or command instructs a `gh`/`glab` command in
@@ -1289,7 +1295,9 @@ full mechanism.)
 plus an `@claude review` comment.** Pushing two commits back-to-back (e.g. a
 code fix, then a small follow-up doc/memory commit) triggers two separate
 `pull_request`-type review runs; the second cancels the first via the same
-concurrency group. Don't chase this either -- and don't bother "fixing" the
+concurrency group. Don't chase this either --
+and don't bother "fixing" the
+
 workflow to prevent it: `cancel-in-progress` on a stale commit's review is
 the *correct*, intended behavior (only the latest commit's review matters,
 and canceling a stale run saves CI time), not a defect. A debounce to
@@ -1864,7 +1872,9 @@ differs. This is a global standing rule from the
 ### 9. Challenge unnecessary complexity
 
 When reviewing prose, math, or code, check whether it is more complex than
-the problem requires -- not just whether it's correct or clear. Flag
+the problem requires --
+not just whether it's correct or clear. Flag
+
 needlessly convoluted control flow, abstraction layers that add
 indirection without earning it, an overcomplicated derivation or an
 unnecessarily general result when a simpler equivalent exists, and prose
@@ -1943,12 +1953,15 @@ CRAN package, a vetted, well-maintained GitHub Actions marketplace
 action -- SHA-pinned per `README.md`'s "Pinning third-party actions"
 subsection). Flag a hand-rolled
 equivalent of functionality that already exists: name the existing
-implementation, and prefer depending on it -- or forking and/or
-contributing to it -- over re-building from scratch. Accept the custom
+implementation, and prefer depending on it --
+or forking and/or contributing to it --
+over re-building from scratch. Accept the custom
 version when the existing option is genuinely unfit (wrong API,
 unmaintained, license-incompatible, or a heavy dependency for a
-one-liner), and ask for a note in the PR description or a code comment
--- "checked existing options, nothing fit" -- when it's missing. This is a global standing rule from the
+one-liner), and ask for a note in the PR description or a code comment --
+"checked existing options, nothing fit" --
+when it's missing. This is a global standing rule from the
+
 [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) corpus
 (`shared/coding/prefer-packaged-functions.md` states the R-function
 case); its umbrella statement lives at

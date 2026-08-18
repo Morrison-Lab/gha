@@ -27,4 +27,3 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
           extensions: ${{ inputs.extensions }}
-

@@ -116,7 +116,9 @@ that need to write must have the **caller** grant it on the calling job:
   - **Optional:** if Claude will edit files under `.github/workflows/`, also add
     a `WORKFLOW_TOKEN` secret (a PAT or GitHub App token with `contents:write` +
     `workflows:write`). The integrated `GITHUB_TOKEN` cannot push workflow-file
-    changes -- GitHub rejects them without the `workflows` scope. Repos that never
+    changes --
+    GitHub rejects them without the `workflows` scope. Repos that never
+
     touch `.github/workflows/` can omit it; pushes fall back to `GITHUB_TOKEN`.
     Note that, unlike `GITHUB_TOKEN`, a PAT/App-token push **does** trigger other
     `push`-based workflows, so enabling `WORKFLOW_TOKEN` can set off extra CI runs.
@@ -353,7 +355,9 @@ workflows -- install all four stubs from [`examples/`](examples):
    completion of the build. Downloads the same artifact and crawls it with a
    headless browser, failing when MathJax can't typeset an equation -- a failure
    mode invisible to the Quarto/pandoc build log, since MathJax only runs
-   client-side. Runs independently of the deploy (no `gh-pages` write needed),
+   client-side.
+   Runs independently of the deploy (no `gh-pages` write needed),
+
    not sequenced after it.
 4. **`cleanup-pr-previews.yml`** (housekeeping) -- scheduled. Removes preview
    directories for PRs that have closed. Set `compact-history: true` to also
@@ -382,7 +386,9 @@ to bypass the Quarto freeze cache.
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 
 Three workflows keep a repo current with content that lives elsewhere, without
-hand-bumping. The first two are the two directions of sharing single-source-of-
+hand-bumping.
+The first two are the two directions of sharing single-source-of-
+
 truth content between a pair of repos; the third tracks an upstream a fork was
 cut from.
 
@@ -416,19 +422,26 @@ ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
+release.
+`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
 `quarto-publish` change cut `@v2`, so any capability pinned there has picked up
 no fixes since -- including non-breaking ones, like `cleanup-pr-previews`'s
-`compact-history` input, which does not exist at `@v1` at all. Pin
+`compact-history` input, which does not exist at `@v1` at all.
+Pin
+
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, and `check-secrets.yml` only ever
-shipped at `@v2` (too new to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+shipped at `@v2` (too new to exist at the frozen `@v1` tag).
+`quarto-publish.yml` additionally has a genuine
+
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
 `@v2` deploys to the `gh-pages` branch instead -- required alongside the
 PR-preview family (`preview.yml` / `preview-deploy.yml`), since Pages can only
-have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
+have one Source.
+`check-bibliography-dois.yml`, `check-phi.yml`,
+
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or

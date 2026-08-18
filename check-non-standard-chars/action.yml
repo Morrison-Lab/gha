@@ -23,4 +23,3 @@ runs:
       env:
         EXTENSIONS: ${{ inputs.extensions }}
       run: python3 "$GITHUB_ACTION_PATH/check-non-standard-chars.py"
-
