@@ -3,11 +3,11 @@ name: AI Code Review (reusable)
 # Reusable multi-agent PR review workflow. Picks one of the configured AI
 # agents at random and dispatches that agent's own review workflow for the PR,
 # falling through to the next candidate when one can't be dispatched or fails
-# during execution (#444).
+# during execution (#362, #444).
 #
 # Scope of the fallback: covers agents that cannot be dispatched (no secret
 # configured, or workflow file missing) as well as dispatched runs that fail
-# partway through execution (#444). When a dispatched agent run fails or is
+# partway through execution (#362, #444). When a dispatched agent run fails or is
 # cancelled, the selector falls through to try the next candidate agent.
 #
 # The caller stub (see examples/ai-code-review.yml) holds the `on:` triggers.

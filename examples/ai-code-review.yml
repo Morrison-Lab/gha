@@ -7,7 +7,7 @@
 #
 # Dispatches a review from one of the configured AI agents, chosen at random,
 # falling through to the next candidate when one can't be dispatched or fails
-# during execution ([gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
+# during execution ([gha#362](https://github.com/Morrison-Lab/gha/issues/362), [gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
 # NOTE: requires each agent's own review workflow to exist in your repo --- copy
 # examples/claude-code-review.yml, examples/gemini-code-review.yml, and/or
 # examples/antigravity-code-review.yml too,
