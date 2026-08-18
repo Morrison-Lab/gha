@@ -277,7 +277,7 @@ and departs from it in three that matter.
   sits.
   Narrow it with `log-opts` only deliberately.
 - **It blocks by default** (`fail: true`),
-  where the advisory prose checks warn.
+  where the advisory prose checks are non-blocking.
   A leaked credential is not a style nit.
 - **Its `paths-ignore` patterns are Go regexes, not globs**,
   because they become gitleaks allowlist entries directly,

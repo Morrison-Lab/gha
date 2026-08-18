@@ -34,8 +34,8 @@ inputs:
     default: ''
   fail:
     description: >-
-      Fail the action when a violation is found (else warn only). Defaults
-      to warn-only: a long line can legitimately be un-splittable (a URL, a
+      Fail the action when a violation is found (else non-blocking). Defaults
+      to non-blocking: a long line can legitimately be un-splittable (a URL, a
       citation, a single long clause), so this is a nudge, not a gate.
     default: 'false'
   clause-breaks:
