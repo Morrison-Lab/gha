@@ -44,6 +44,11 @@ jobs:
     # with:
     #   setup-r: false               # skip R setup for non-R repos (default true)
     #   install-quarto: true         # install Quarto so .qmd files can be rendered
+    #   use-renv: true               # restore R packages from renv.lock
+    #   r-extra-packages: covr       # extra R packages to install
+    #   eager-pr: true               # open draft PR up front for issue triggers
+    #   reviewer: d-morrison         # reviewer re-requested when Gemini pushes
+    #   mark-ready-for-review: true  # mark draft PR ready on completion
     #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
     #   apt-packages: libglpk-dev    # system packages installed before setup
     #   pip-packages: sympy          # pip packages installed before setup

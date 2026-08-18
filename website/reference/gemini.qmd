@@ -37,7 +37,6 @@ Requires a `GEMINI_API_KEY` secret.
 | `eager-pr` | boolean | `false` | Open draft PR up front for issue triggers before Gemini runs. |
 | `reviewer` | string | `'d-morrison'` | Reviewer login re-requested when Gemini pushes new commits. |
 | `mark-ready-for-review` | boolean | `true` | Mark draft PR ready for review when Gemini completes successfully. |
-| `report-cost` | boolean | `true` | Surface run status in PR comments. |
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the Gemini CLI prompt. |
 | `gemini-model` | string | `'gemini-2.5-flash'` | Model passed to `run-gemini-cli`. |
 | `review-workflow-file` | string | `'gemini-code-review.yml'` | Caller-repo workflow file dispatched on `@gemini review` mentions. |

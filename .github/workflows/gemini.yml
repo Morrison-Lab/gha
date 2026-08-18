@@ -62,10 +62,6 @@ on:
         description: Mark draft PR ready for review when Gemini completes successfully.
         type: boolean
         default: true
-      report-cost:
-        description: Surface run status in PR comments.
-        type: boolean
-        default: true
       prompt-addendum:
         description: Extra prompt instructions appended to Gemini CLI prompt.
         type: string
@@ -420,13 +416,18 @@ jobs:
                   "run_shell_command(grep)",
                   "run_shell_command(head)",
                   "run_shell_command(tail)",
-                  "run_shell_command(git)",
+                  "run_shell_command(git status)",
+                  "run_shell_command(git diff)",
+                  "run_shell_command(git add)",
+                  "run_shell_command(git commit)",
+                  "run_shell_command(git log)",
+                  "run_shell_command(git checkout)",
+                  "run_shell_command(git branch)",
                   "run_shell_command(pytest)",
                   "run_shell_command(python3)",
                   "run_shell_command(Rscript)",
                   "run_shell_command(touch)",
                   "run_shell_command(mkdir)",
-                  "run_shell_command(rm)",
                   "run_shell_command(sed)"
                 ]
               }
