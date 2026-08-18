@@ -1,8 +1,8 @@
 name: Check AI tells
 description: >-
   Scans narrative prose in Markdown and Quarto files (*.md, *.qmd, *.Rmd) for
-  AI-generated tells, overused vocabulary, and rhetorical templates from the
-  ai-config catalog, reporting density per 1,000 words.
+  AI-generated tells, overused vocabulary, and rhetorical templates, reporting
+  density per 1,000 words.
 inputs:
   paths:
     description: Comma- or space-separated list of files or globs to check. Defaults to all Markdown/Quarto files.
