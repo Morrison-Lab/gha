@@ -41,4 +41,3 @@ jobs:
     with:
       title: Publish workflow is failing
       body: The documentation site did not deploy, so the published site may be stale.
-
