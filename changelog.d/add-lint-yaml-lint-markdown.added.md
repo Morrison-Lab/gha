@@ -1,4 +1,4 @@
-- **`lint-yaml` and `lint-markdown` — style linting for tracked YAML and
+- **`lint-yaml` and `lint-markdown` -- style linting for tracked YAML and
   Markdown** (#192). Two new composites-plus-reusable-workflows, following the
   existing `check-*` pattern: `lint-yaml` runs
   [`yamllint`](https://yamllint.readthedocs.io/) with a bundled default

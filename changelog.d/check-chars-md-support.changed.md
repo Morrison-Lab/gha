@@ -1,0 +1,1 @@
+- **`check-non-standard-chars` action and workflow**: added `.md` files to the default scanned extension list and added configurable `extensions` input (#322).

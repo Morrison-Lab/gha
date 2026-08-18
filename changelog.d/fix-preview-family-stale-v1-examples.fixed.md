@@ -4,13 +4,13 @@
   `examples/cleanup-pr-previews.yml`, `examples/quarto-publish.yml`, and their
   matching `website/reference/*.qmd` pages all pinned `@v1`. `@v1` was frozen
   at the pre-`2.0.0` snapshot and never picked up `cleanup-pr-previews`'s
-  `compact-history` input at all — the example's own commented-out
+  `compact-history` input at all -- the example's own commented-out
   `compact-history: true` line would fail GitHub Actions' `workflow_call`
   input validation if pinned `@v1` and uncommented. `quarto-publish.yml`'s
   reference page described the `gh-pages` branch deploy throughout but pinned
   `@v1`, which actually deploys via the GitHub Actions Pages artifact and
   needs different permissions (`pages: write` + `id-token: write`, not
-  `contents: write`) — confirmed against `d-morrison/rme`, the family's
+  `contents: write`) -- confirmed against `d-morrison/rme`, the family's
   original and most mature consumer, which pins `@v2` throughout. Bumped every
   stale pin to `@v2`, added the missing `compact-history` input row and
   example line to `website/reference/cleanup-pr-previews.qmd`, and reworded

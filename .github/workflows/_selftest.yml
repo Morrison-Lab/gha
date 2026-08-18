@@ -14,8 +14,28 @@ jobs:
     uses: ./.github/workflows/check-links.yml
     with:
       create-issue-on-main: false
+  # check-non-standard-chars's extensions input is brand new, so (like
+  # lint-yaml/lint-markdown below) it isn't at the released `@v2` tag its
+  # reusable workflow's internal `uses: Morrison-Lab/gha/check-non-standard-chars@v2`
+  # step resolves against yet. Exercise the local composite directly.
   chars:
-    uses: ./.github/workflows/check-non-standard-chars.yml
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run check-non-standard-chars unit tests
+        shell: bash
+        run: python3 check-non-standard-chars/tests/test_check_non_standard_chars.py
+
+      - name: Check for non-standard characters
+        uses: ./check-non-standard-chars
+        with:
+          python-version: '3.x'
+          extensions: '.qmd, .R, .md'
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
   # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the

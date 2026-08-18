@@ -13,11 +13,11 @@ This repo is **public** so it can be referenced from repositories across the
 
 Each capability is shipped as two layers:
 
-- **Composite action** (e.g. `check-bibliography-dois/action.yml`) — bundles the
+- **Composite action** (e.g. `check-bibliography-dois/action.yml`) -- bundles the
   real steps and any helper script. Referenced as
   `Morrison-Lab/gha/<name>@vN` (the major tag that capability currently
-  recommends — see [Versioning](#versioning) below).
-- **Reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`) —
+  recommends -- see [Versioning](#versioning) below).
+- **Reusable workflow** (`.github/workflows/<name>.yml`, `on: workflow_call`) --
   wraps the composite, declares permissions, and checks out the caller's repo.
   This is what consumer repos target.
 
@@ -35,7 +35,7 @@ jobs:
 ```
 
 Pin to the major tag that capability currently recommends (`@v2` in the
-example above) — see [Versioning](#versioning) below for the full breakdown,
+example above) -- see [Versioning](#versioning) below for the full breakdown,
 since it varies per capability rather than defaulting uniformly to `@v1`. Do
 not reference `@main` from consumers.
 
@@ -45,8 +45,9 @@ not reference `@main` from consumers.
 |---|---|---|
 | `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `fail` |
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
-| `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd` and `.R` files | `python-version` |
-| `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
+| `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
+
+| `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
@@ -54,10 +55,10 @@ not reference `@main` from consumers.
 | `check-new-line-breaks.yml` | Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `extra-packages`, `install-package`, `fail` |
-| `summary.yml` | AI summary comment on newly opened issues | — |
+| `summary.yml` | AI summary comment on newly opened issues | -- |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
-| `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push — the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
+| `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model` |
 | `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
@@ -69,13 +70,13 @@ not reference `@main` from consumers.
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
 | `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
 | `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `submodules`, `render-profile` |
-| `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | — |
+| `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | -- |
 | `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
 | `altdoc-multiversion-docs.yml` | Render an altdoc-based R package's Quarto docs and deploy multiple versions side by side on `gh-pages` (`/dev/`, `/latest-tag/`, `/vX.Y.Z/`, plus PR previews and a root redirect) | `r-packages`, `needs`, `apt-packages`, `setup-julia`, `checkout-submodules`, `default-branch`, `quarto-config-path`, `docs-base-url`, `preview-branch`, `timeout-minutes`, `rewrite-pr-preview-links`, `rewrite-issue-links`, `dispatch-version`, `dispatch-release-tag`, `legacy-paths`, `version-dropdown-title-template`, `version-in-navbar-title` |
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
-| `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change — avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
-| `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes — keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
+| `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change -- avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
+| `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes -- keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
 | `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run` |
 | `version-check.yml` | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's -- pairs with `bump-dev-version.yml` | `description-path`, `no-version-increment-label`, `bump-branch` |
 
@@ -103,7 +104,7 @@ that need to write must have the **caller** grant it on the calling job:
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
   grant `contents: write`, and set Settings → Pages → Source = "Deploy from a
   branch", branch `gh-pages` / `(root)` once. Grant `contents: write` even with
-  `deploy: false` — the deploy job is part of the workflow, so the caller must
+  `deploy: false` -- the deploy job is part of the workflow, so the caller must
   grant its permissions even when it is skipped.
 - `altdoc-multiversion-docs` (deploys to `gh-pages`, comments PR previews, and
   rewrites rendered links) → grant `contents: write`, `pull-requests: write`,
@@ -116,7 +117,9 @@ that need to write must have the **caller** grant it on the calling job:
   - **Optional:** if Claude will edit files under `.github/workflows/`, also add
     a `WORKFLOW_TOKEN` secret (a PAT or GitHub App token with `contents:write` +
     `workflows:write`). The integrated `GITHUB_TOKEN` cannot push workflow-file
-    changes — GitHub rejects them without the `workflows` scope. Repos that never
+    changes --
+    GitHub rejects them without the `workflows` scope. Repos that never
+
     touch `.github/workflows/` can omit it; pushes fall back to `GITHUB_TOKEN`.
     Note that, unlike `GITHUB_TOKEN`, a PAT/App-token push **does** trigger other
     `push`-based workflows, so enabling `WORKFLOW_TOKEN` can set off extra CI runs.
@@ -167,7 +170,7 @@ that need to write must have the **caller** grant it on the calling job:
   only `pull-requests: read`, `contents: read`.
 
 The stubs in [`examples/`](examples) already include the right `permissions:`
-blocks — copy them as-is.
+blocks -- copy them as-is.
 
 The two Claude workflows are a pair: an `@claude review` mention (or any commit
 Claude pushes) routes through `claude.yml`, which dispatches `claude-code-review.yml`
@@ -182,7 +185,7 @@ stub if you want automatic review on each PR update.
 Do not declare a top-level `concurrency:` block in caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `ai-code-review.yml`). The reusable workflows manage per-PR concurrency internally on their review jobs. A top-level `concurrency:` block in the caller with a PR-scoped group name deadlocks GitHub Actions against the nested job's group and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 
 You can also start a review **directly**, without waking the `@claude` agent, by
-commenting `/review` at the start of a PR comment — but that path is opt-in:
+commenting `/review` at the start of a PR comment -- but that path is opt-in:
 enable the `issue_comment` trigger in `examples/claude-code-review.yml` first.
 Then `claude-code-review.yml` listens for that comment and re-dispatches its own
 `workflow_dispatch` review of the PR, and it works for
@@ -217,18 +220,18 @@ says so.
 
 | Feature | Action argument | Caller-configurable? |
 |---|---|---|
-| Live progress tracking comment on the PR | `track_progress` | Yes — driven by the `track-progress` input of `claude-code-review.yml` (default `false`; tag mode with tracking comment and inline-comment tool when `true`, agent/summary-only mode when `false`). Not used in `claude.yml`. See `track-progress` warning in the inputs table: tag mode exposes git write tools until anthropics/claude-code-action#1415 lands. |
-| Full Claude SDK output in the job log | `show_full_output` | Yes — driven by the `show-full-output` input of `claude-code-review.yml` (note the hyphen; off by default, turn on to diagnose silent auth / quota failures). Not surfaced in `claude.yml`. |
-| Resume a prior session | `session_id` (internal step output of `anthropics/claude-code-action`) + `--resume` in `claude_args` | No — neither reusable workflow declares `session_id` as a `workflow_call` output, so session resume is not available to consumers of `claude.yml` or `claude-code-review.yml`. |
-| Dollar cost of the run | n/a (action *output*, not an argument) — `total_cost_usd` on the execution output's `result` event | Yes, indirectly — verified against `anthropics/claude-code-action` v1.0.162 (the SHA this repo pins): `src/entrypoints/format-turns.ts` writes the cost only to `GITHUB_STEP_SUMMARY`, and `src/github/operations/comment-logic.ts`'s comment builder receives `total_cost_usd` but never reads it when composing the comment. Both workflows extract that output and post it in a comment instead, gated on the `report-cost` input (default `true`). |
+| Live progress tracking comment on the PR | `track_progress` | Yes -- driven by the `track-progress` input of `claude-code-review.yml` (default `false`; tag mode with tracking comment and inline-comment tool when `true`, agent/summary-only mode when `false`). Not used in `claude.yml`. See `track-progress` warning in the inputs table: tag mode exposes git write tools until anthropics/claude-code-action#1415 lands. |
+| Full Claude SDK output in the job log | `show_full_output` | Yes -- driven by the `show-full-output` input of `claude-code-review.yml` (note the hyphen; off by default, turn on to diagnose silent auth / quota failures). Not surfaced in `claude.yml`. |
+| Resume a prior session | `session_id` (internal step output of `anthropics/claude-code-action`) + `--resume` in `claude_args` | No -- neither reusable workflow declares `session_id` as a `workflow_call` output, so session resume is not available to consumers of `claude.yml` or `claude-code-review.yml`. |
+| Dollar cost of the run | n/a (action *output*, not an argument) -- `total_cost_usd` on the execution output's `result` event | Yes, indirectly -- verified against `anthropics/claude-code-action` v1.0.162 (the SHA this repo pins): `src/entrypoints/format-turns.ts` writes the cost only to `GITHUB_STEP_SUMMARY`, and `src/github/operations/comment-logic.ts`'s comment builder receives `total_cost_usd` but never reads it when composing the comment. Both workflows extract that output and post it in a comment instead, gated on the `report-cost` input (default `true`). |
 
 ## PHI scanning (`check-phi`)
 
 `check-phi` is a **heuristic tripwire, not a HIPAA compliance tool.** It flags
-patterns that should almost never be committed — US Social Security numbers,
+patterns that should almost never be committed -- US Social Security numbers,
 medical record numbers, dates of birth, study/participant identifier literals,
 and PHI-suggestive column headers in
-delimited data files (`.csv`/`.tsv`/`.psv`) — so a human reviews before the
+delimited data files (`.csv`/`.tsv`/`.psv`) -- so a human reviews before the
 data merges. It is tuned for high precision (few false positives), so it will
 miss free-text PHI such as patient names. The `phone` and `email` detectors
 exist but are **off by default** (too noisy in source); enable them via the
@@ -238,7 +241,7 @@ exist but are **off by default** (too noisy in source); enable them via the
   fixtures don't re-trip the check on unrelated edits. `push` runs scan the
   whole tracked tree (`git ls-files`).
 - **Values are never printed.** A leaked identifier in a CI log is still a leak,
-  so findings report only `file:line:col` and the detector name — never the
+  so findings report only `file:line:col` and the detector name -- never the
   matched text. Findings appear as inline annotations on the PR.
 - **Suppressing false positives** (e.g. synthetic test data): add a `phi-allow`
   comment on the line, or list a regex matching the value in an allowlist file
@@ -339,23 +342,25 @@ Bump `version` and `checksums-sha256` together.
 
 The PR-preview family publishes a rendered Quarto site for each open PR to a
 `pr-preview/pr-<n>/` directory on `gh-pages`. It is **four** cooperating
-workflows — install all four stubs from [`examples/`](examples):
+workflows -- install all four stubs from [`examples/`](examples):
 
-1. **`preview.yml`** (build) — triggered on `pull_request`. Renders the site and
+1. **`preview.yml`** (build) -- triggered on `pull_request`. Renders the site and
    uploads it plus the PR metadata as a `pr-preview-site` artifact. Runs
    **read-only** in the (possibly fork) PR context, so it can't write to the
    base repo.
-2. **`preview-deploy.yml`** (deploy) — triggered on `workflow_run` completion of
+2. **`preview-deploy.yml`** (deploy) -- triggered on `workflow_run` completion of
    the build. Downloads the artifact and publishes it to `gh-pages` in the
    **base-repo** context (where the token can write), then comments the preview
    link on the PR.
-3. **`check-equation-renders.yml`** — also triggered on `workflow_run`
+3. **`check-equation-renders.yml`** -- also triggered on `workflow_run`
    completion of the build. Downloads the same artifact and crawls it with a
-   headless browser, failing when MathJax can't typeset an equation — a failure
+   headless browser, failing when MathJax can't typeset an equation -- a failure
    mode invisible to the Quarto/pandoc build log, since MathJax only runs
-   client-side. Runs independently of the deploy (no `gh-pages` write needed),
+   client-side.
+   Runs independently of the deploy (no `gh-pages` write needed),
+
    not sequenced after it.
-4. **`cleanup-pr-previews.yml`** (housekeeping) — scheduled. Removes preview
+4. **`cleanup-pr-previews.yml`** (housekeeping) -- scheduled. Removes preview
    directories for PRs that have closed. Set `compact-history: true` to also
    orphan-squash `gh-pages` to a single commit each run, so the deleted
    snapshots don't accumulate and bloat the repo (branch-based Pages only).
@@ -382,23 +387,25 @@ to bypass the Quarto freeze cache.
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 
 Three workflows keep a repo current with content that lives elsewhere, without
-hand-bumping. The first two are the two directions of sharing single-source-of-
+hand-bumping.
+The first two are the two directions of sharing single-source-of-
+
 truth content between a pair of repos; the third tracks an upstream a fork was
 cut from.
 
-- **`bump-submodule`** — for the side that vendors the other repo as a git
+- **`bump-submodule`** -- for the side that vendors the other repo as a git
   submodule. A scheduled run advances the submodule to its upstream HEAD and
   opens a PR when it moved. (Used by `UCD-SERG/lab-manual`, which carries
   `Morrison-Lab/ai-config` as `.ai-config`.)
-- **`sync-shared-fragments`** — for the side that can't add a submodule because
+- **`sync-shared-fragments`** -- for the side that can't add a submodule because
   the other repo already submodules *it* (a mutual submodule would recurse).
   Instead it vendors a pinned **copy** of the named files into a `dest-dir`,
   records the source repo and commit in a JSON manifest, and opens a PR when the
   copy changes. (Used by `Morrison-Lab/ai-config` to vendor the lab manual's
-  authored fragments.) Don't hand-edit the vendored copies — edit them upstream
+  authored fragments.) Don't hand-edit the vendored copies -- edit them upstream
   and let the workflow refresh them; a consumer-side drift check can assert the
   copy matches the pinned commit.
-- **`sync-upstream`** — for a fork that tracks the project it was cut from. A
+- **`sync-upstream`** -- for a fork that tracks the project it was cut from. A
   scheduled run merges the upstream branch into a fork-owned automation branch
   and opens a PR when the merge brings changes, so the fork's own changes are
   preserved and upstream's updates are reviewed before they land. On a clean
@@ -416,30 +423,37 @@ ping-pong.
 ## Versioning
 
 Releases are tagged `vX.Y.Z`; the `vX` major tag moves to the latest compatible
-release. `@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
+release.
+`@v1` was frozen at the pre-`2.0.0` snapshot when the breaking
 `quarto-publish` change cut `@v2`, so any capability pinned there has picked up
-no fixes since — including non-breaking ones, like `cleanup-pr-previews`'s
-`compact-history` input, which does not exist at `@v1` at all. Pin
+no fixes since -- including non-breaking ones, like `cleanup-pr-previews`'s
+`compact-history` input, which does not exist at `@v1` at all.
+Pin
+
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, and `check-secrets.yml` only ever
-shipped at `@v2` (too new to exist at the frozen `@v1` tag). `quarto-publish.yml` additionally has a genuine
+shipped at `@v2` (too new to exist at the frozen `@v1` tag).
+`quarto-publish.yml` additionally has a genuine
+
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
-`@v2` deploys to the `gh-pages` branch instead — required alongside the
+`@v2` deploys to the `gh-pages` branch instead -- required alongside the
 PR-preview family (`preview.yml` / `preview-deploy.yml`), since Pages can only
-have one Source. `check-bibliography-dois.yml`, `check-phi.yml`,
+have one Source.
+`check-bibliography-dois.yml`, `check-phi.yml`,
+
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
 `claude-code-review.yml`, and `update-snapshots.yml` also pin `@v2`: each
 picked up a real fix since the freeze (a dependency-pin bump, a new input, or
 a security fix) that a consumer still on `@v1` would miss (audited in
 [gha#182](https://github.com/Morrison-Lab/gha/issues/182)).
 `request-dependabot-review.yml` only ever shipped at `@v2` too (it postdates
-the freeze — see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as
-does `sync-upstream.yml` (added after the freeze — see
+the freeze -- see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as
+does `sync-upstream.yml` (added after the freeze -- see
 [gha#254](https://github.com/Morrison-Lab/gha/issues/254)),
 `altdoc-multiversion-docs.yml` (added after the freeze), and
-`report-failure.yml` (added after the freeze — see
+`report-failure.yml` (added after the freeze -- see
 [gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added
 in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
@@ -459,7 +473,7 @@ what changes as a major tag moves and for any breaking-change migration steps.
 
 ### Advancing a major tag
 
-A major tag no longer slides automatically on every push to `main` — merging a
+A major tag no longer slides automatically on every push to `main` -- merging a
 change does not, by itself, change what any consumer pinned to `@v1`/`@v2`
 picks up next. Advancing the tag is a deliberate, manual step, so a change can
 be tried out before every consumer has to deal with it:
@@ -470,7 +484,7 @@ be tried out before every consumer has to deal with it:
    at a feature branch of this repo, then let that consumer's own CI run
    against the unreleased change.
 3. Once you're confident, advance the shared major tag to `main`'s current tip
-   — either by running
+   -- either by running
    [`slide-major-tag.yml`](.github/workflows/slide-major-tag.yml) via
    `workflow_dispatch` (Actions tab → "Slide major-version tag" → Run workflow,
    from `main`), or with `git tag -f`/`git push --force` directly (the
@@ -490,7 +504,7 @@ could actually resolve it.)
 
 Changelog entries are added as fragment files under
 [`changelog.d/`](changelog.d) (one per PR, so parallel PRs never conflict on the
-shared changelog) and collated into `CHANGELOG.md` at release time — see
+shared changelog) and collated into `CHANGELOG.md` at release time -- see
 [`changelog.d/README.md`](changelog.d/README.md).
 
 ### Pinning third-party actions
@@ -504,7 +518,7 @@ uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
 This is GitHub's [recommended hardening posture](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions):
 a SHA is immutable, so a re-pointed tag or a compromised upstream can't silently
-change what runs — which matters here because jobs like the preview deploy run
+change what runs -- which matters here because jobs like the preview deploy run
 with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.github/dependabot.yml)
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing. When adding a new third-party action, pin it the same way.
