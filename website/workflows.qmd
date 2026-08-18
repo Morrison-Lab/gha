@@ -104,10 +104,10 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
 - `check-bibliography-dois.yml` confirms BibTeX entries have DOIs that resolve
   and match CrossRef metadata.
 - `check-non-standard-chars.yml` flags curly quotes, en/em dashes, and the
-  multiplication sign in `.qmd`, `.R`, and `.md` files, which can break Quarto and R
-  rendering.
-
+  multiplication sign in `.qmd`, `.R`, and `.md` files, which can break Quarto
+  and R rendering.
   The multiplication sign's ASCII replacement depends on context: `x` or `*` in
+
   code, and `$\times$` or `&times;` in prose, since Pandoc renders a `\uXXXX`
   escape literally rather than decoding it.
 - `check-links.yml` runs a [lychee](https://github.com/lycheeverse/lychee) link
