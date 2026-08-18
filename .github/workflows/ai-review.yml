@@ -1,0 +1,32 @@
+# Active caller for this repo's own reusable multi-agent AI PR review workflow
+# (dogfooding). Distinct filename from the reusable
+# .github/workflows/ai-code-review.yml it calls.
+#
+# Dispatches a review from one of the configured AI agents chosen at random,
+# falling through when one cannot be dispatched or fails during execution.
+name: AI Code Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  ai-review:
+    permissions:
+      contents: read
+      pull-requests: read
+      actions: write
+    uses: Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    with:
+      pr-number: ${{ inputs.pr_number }}
+      claude-review-workflow-file: claude-review.yml
+      gemini-review-workflow-file: gemini-review.yml
+      antigravity-review-workflow-file: antigravity-review.yml
