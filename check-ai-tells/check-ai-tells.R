@@ -3,10 +3,6 @@
 # Scans Markdown and Quarto prose for AI tell patterns and computes tell density.
 # Supports full file scanning or diff-scoped scanning against a base ref (gha#382).
 
-suppressPackageStartupMessages({
-  # Base R only for minimal footprint and maximum speed
-})
-
 # ── Pattern Catalog ──────────────────────────────────────────────────────────
 
 LEXICAL_TELLS <- c(
@@ -30,6 +26,67 @@ RHETORICAL_PATTERNS <- list(
     name = "signposting filler"
   )
 )
+
+# ── Diff Line Extraction ─────────────────────────────────────────────────────
+
+extract_added_lines <- function(patch) {
+  if (is.null(patch) || length(patch) == 0L || is.na(patch)) {
+    return(integer(0))
+  }
+  out <- integer(0)
+  new_line <- NA_integer_
+  for (line in strsplit(patch, "\n", fixed = TRUE)[[1]]) {
+    marker <- substr(line, 1, 1)
+    if (grepl("^(diff |index |\\+\\+\\+ |--- )", line)) {
+      next
+    } else if (startsWith(line, "@@")) {
+      matched <- regmatches(line, regexec("\\+([0-9]+)", line))[[1]]
+      new_line <- as.integer(matched[2])
+    } else if (marker == "+") {
+      out <- c(out, new_line)
+      new_line <- new_line + 1L
+    } else if (marker == "-") {
+      # Deleted line: no counter advance
+    } else if (marker == "\\") {
+      # "\ No newline at end of file"
+    } else {
+      # Context line
+      new_line <- new_line + 1L
+    }
+  }
+  out
+}
+
+parse_git_diff <- function(diff_lines) {
+  if (length(diff_lines) == 0L) return(list())
+  
+  files_map <- list()
+  cur_file <- NULL
+  cur_patch <- character(0)
+
+  for (line in diff_lines) {
+    if (startsWith(line, "diff --git ")) {
+      if (!is.null(cur_file) && length(cur_patch) > 0) {
+        files_map[[cur_file]] <- extract_added_lines(paste(cur_patch, collapse = "\n"))
+      }
+      m <- regmatches(line, regexec("diff --git a/.+ b/(.+)$", line))[[1]]
+      if (length(m) >= 2) {
+        cur_file <- m[2]
+      } else {
+        cur_file <- NULL
+      }
+      cur_patch <- character(0)
+    } else if (!is.null(cur_file)) {
+      cur_patch <- c(cur_patch, line)
+    }
+  }
+
+  if (!is.null(cur_file) && length(cur_patch) > 0) {
+    files_map[[cur_file]] <- extract_added_lines(paste(cur_patch, collapse = "\n"))
+  }
+
+  files_map
+}
 
 # ── Prose Extraction ─────────────────────────────────────────────────────────
 
@@ -110,18 +167,22 @@ scan_file_prose <- function(file_path, added_lines_only = NULL) {
   if (!file.exists(file_path)) return(NULL)
   raw_lines <- readLines(file_path, warn = FALSE)
   prose_lines <- strip_non_prose(raw_lines)
-  word_count <- count_words(prose_lines)
-
-  findings <- list()
-
-  # Build regex for lexical tells
-  lex_pattern <- paste0("(?i)\\b(", paste(LEXICAL_TELLS, collapse = "|"), ")\\b")
 
   lines_to_check <- if (!is.null(added_lines_only)) {
     intersect(seq_along(prose_lines), added_lines_only)
   } else {
     seq_along(prose_lines)
   }
+
+  # Scope word count denominator consistently with checked lines
+  word_count <- if (!is.null(added_lines_only)) {
+    count_words(prose_lines[lines_to_check])
+  } else {
+    count_words(prose_lines)
+  }
+
+  findings <- list()
+  lex_pattern <- paste0("(?i)\\b(", paste(LEXICAL_TELLS, collapse = "|"), ")\\b")
 
   for (line_idx in lines_to_check) {
     line <- prose_lines[line_idx]
@@ -172,6 +233,7 @@ main <- function() {
   args <- commandArgs(trailingOnly = TRUE)
   
   paths_arg <- Sys.getenv("AIT_PATHS", "")
+  paths_ignore_arg <- Sys.getenv("AIT_PATHS_IGNORE", "")
   base_ref <- Sys.getenv("AIT_BASE_REF", "")
   fail_on_high <- tolower(Sys.getenv("AIT_FAIL", "false")) %in% c("true", "1")
   threshold <- as.numeric(Sys.getenv("AIT_THRESHOLD", "10"))
@@ -186,6 +248,17 @@ main <- function() {
   }
 
   files <- files[file.exists(files) & !grepl("^\\./\\.git/", files)]
+
+  # Apply paths-ignore if provided
+  if (nzchar(paths_ignore_arg)) {
+    ignore_patterns <- unlist(strsplit(paths_ignore_arg, "[,\\s]+", perl = TRUE))
+    for (pat in ignore_patterns) {
+      norm_pat <- sub("^\\./", "", pat)
+      files <- files[!grepl(glob2rx(norm_pat), sub("^\\./", "", files)) &
+                     !startsWith(sub("^\\./", "", files), norm_pat)]
+    }
+  }
+
   if (length(files) == 0L) {
     cat("No markdown or Quarto files found to scan.\n")
     quit(status = 0)
@@ -194,39 +267,37 @@ main <- function() {
   # Diff filtering if base_ref provided
   diff_map <- list()
   if (nzchar(base_ref)) {
-    diff_out <- tryCatch(
-      system2("git", c("diff", "--unified=0", "--no-color", paste0(base_ref, "...HEAD")), stdout = TRUE),
+    diff_res <- tryCatch(
+      system2("git", c("diff", "--unified=3", "--no-color", paste0(base_ref, "...HEAD")), stdout = TRUE, stderr = TRUE),
       error = function(e) character(0)
     )
-    if (length(diff_out) > 0) {
-      cur_file <- NULL
-      for (dline in diff_out) {
-        if (startsWith(dline, "+++ b/")) {
-          cur_file <- substr(dline, 7, nchar(dline))
-          diff_map[[cur_file]] <- integer(0)
-        } else if (startsWith(dline, "@@") && !is.null(cur_file)) {
-          m <- regmatches(dline, regexec("\\+([0-9]+)", dline))[[1]]
-          if (length(m) >= 2) {
-            diff_map[[cur_file]] <- c(diff_map[[cur_file]], as.integer(m[2]))
-          }
-        }
-      }
+    diff_status <- attr(diff_res, "status")
+    if (!is.null(diff_status) && diff_status != 0) {
+      cat(sprintf("::warning::Could not compute diff against base ref '%s'; skipping diff-scoped AI tells check.\n", base_ref))
+      quit(status = 0)
+    }
+    diff_map <- parse_git_diff(diff_res)
+    if (length(diff_map) == 0L) {
+      cat(sprintf("::notice::No modified files found in diff against base ref '%s'.\n", base_ref))
+      quit(status = 0)
     }
   }
 
   total_words <- 0L
   all_findings <- list()
+  scanned_files <- 0L
 
   for (f in files) {
     norm_f <- sub("^\\./", "", f)
-    added_lines <- if (nzchar(base_ref) && length(diff_map) > 0) diff_map[[norm_f]] else NULL
-    if (nzchar(base_ref) && is.null(added_lines) && length(diff_map) > 0) {
-      # File not modified in diff
+    added_lines <- if (nzchar(base_ref)) diff_map[[norm_f]] else NULL
+    if (nzchar(base_ref) && is.null(added_lines)) {
+      # File not touched in diff
       next
     }
 
     res <- scan_file_prose(f, added_lines)
     if (!is.null(res)) {
+      scanned_files <- scanned_files + 1L
       total_words <- total_words + res$word_count
       all_findings <- c(all_findings, res$findings)
     }
@@ -236,7 +307,7 @@ main <- function() {
   density <- if (total_words > 0) (total_tells / total_words) * 1000 else 0
 
   cat(sprintf("Scanned %d file(s) (%d prose words). Found %d AI tell(s) (density: %.1f / 1000 words).\n\n",
-              length(files), total_words, total_tells, density))
+              scanned_files, total_words, total_tells, density))
 
   if (total_tells > 0) {
     cat(sprintf("%-35s %-6s %-25s %s\n", "File", "Line", "Tell", "Snippet"))

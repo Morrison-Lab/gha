@@ -7,6 +7,9 @@ inputs:
   paths:
     description: Comma- or space-separated list of files or globs to check. Defaults to all Markdown/Quarto files.
     default: ''
+  paths-ignore:
+    description: Comma- or space-separated list of file paths or globs to exclude from scanning.
+    default: ''
   base-ref:
     description: Git base ref to limit checking to newly added/modified lines in diff.
     default: ''
@@ -28,6 +31,7 @@ runs:
       shell: bash
       env:
         AIT_PATHS: ${{ inputs.paths }}
+        AIT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         AIT_BASE_REF: ${{ inputs.base-ref }}
         AIT_THRESHOLD: ${{ inputs.threshold }}
         AIT_FAIL: ${{ inputs.fail }}

@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-# Offline unit tests for check-ai-tells scanning and extraction logic (gha#382).
+# Offline unit tests for check-ai-tells scanning, extraction, and diff logic (gha#382).
 
 script_dir <- tryCatch({
   args <- commandArgs(trailingOnly = FALSE)
@@ -64,5 +64,27 @@ check("Found foster", "foster" %in% tells_found)
 check("Found landscape", "landscape" %in% tells_found)
 check("Found antithesis", "negation-reversal antithesis" %in% tells_found)
 check("Found signposting", "signposting filler" %in% tells_found)
+
+# Test 4: Unified diff parsing and multi-line additions
+sample_diff <- c(
+  "diff --git a/doc.md b/doc.md",
+  "index 1234567..89abcdef 100644",
+  "--- a/doc.md",
+  "+++ b/doc.md",
+  "@@ -10,3 +10,5 @@",
+  " existing line",
+  "+first added line with delve",
+  "+second added line with robust",
+  " existing end line"
+)
+
+diff_map <- parse_git_diff(sample_diff)
+check("Diff parsed file name", "doc.md" %in% names(diff_map))
+check("Parsed multi-line added lines", identical(diff_map[["doc.md"]], c(11L, 12L)))
+
+# Test 5: Diff-scoped scanning word count and findings scoping
+res_diff_scoped <- scan_file_prose(pos_file, added_lines_only = c(3L, 4L))
+check("Diff-scoped word count only counts scoped lines", res_diff_scoped$word_count < res_pos$word_count)
+check("Diff-scoped only reports tells on scoped lines", all(sapply(res_diff_scoped$findings, function(x) x$line %in% c(3L, 4L))))
 
 cat("\nAll check-ai-tells tests passed successfully.\n")

@@ -112,6 +112,7 @@ jobs:
       - name: Scan repository for AI tells
         uses: ./check-ai-tells
         with:
+          paths-ignore: 'check-ai-tells/tests/positive-control.md'
           fail: false
   bib:
     runs-on: ubuntu-latest

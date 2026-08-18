@@ -7,6 +7,10 @@ on:
         description: Comma- or space-separated list of files or globs to check.
         type: string
         default: ''
+      paths-ignore:
+        description: Comma- or space-separated list of file paths or globs to exclude.
+        type: string
+        default: ''
       base-ref:
         description: Git base ref to limit checking to newly added/modified lines.
         type: string
@@ -36,6 +40,7 @@ jobs:
         uses: Morrison-Lab/gha/check-ai-tells@v2
         with:
           paths: ${{ inputs.paths }}
+          paths-ignore: ${{ inputs.paths-ignore }}
           base-ref: ${{ inputs.base-ref }}
           threshold: ${{ inputs.threshold }}
           fail: ${{ inputs.fail }}
