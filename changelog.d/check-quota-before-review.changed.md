@@ -1,0 +1,1 @@
+- Implemented pre-flight credential-presence checks before review execution in central review workflows, posting a graceful notice and skipping when no review credential is configured ([#396](https://github.com/Morrison-Lab/gha/issues/396)).

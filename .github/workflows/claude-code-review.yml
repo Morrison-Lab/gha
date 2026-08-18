@@ -634,6 +634,23 @@ jobs:
           printf '%s\n' "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
+      # Pre-flight account status and quota check before starting the review
+      # (gha#396). If no secret is configured or pre-check indicates quota
+      # exhaustion, mark quota_exhausted=true early so the workflow can post
+      # a graceful notice and skip without wasting runner time.
+      - name: Pre-flight account status and quota check
+        id: preflight-quota
+        if: steps.selfmod.outputs.self_mod != 'true'
+        env:
+          HAS_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_OAUTH" != "true" ] && [ "$HAS_API_KEY" != "true" ]; then
+            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret available for review execution (gha#396)."
+          fi
+
       # The actual claude-code-action call (allowedTools/disallowedTools,
       # system prompt, review prompt) lives in the run-claude-review-attempt
       # composite action so it can be invoked a second time, unchanged, as a
@@ -643,7 +660,7 @@ jobs:
       # a DRY violation this repo's CLAUDE.md flags).
       - name: Run Claude Code Review
         id: claude-review
-        if: steps.selfmod.outputs.self_mod != 'true'
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true'
         uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -806,6 +823,12 @@ jobs:
           TOTAL_COST: ${{ steps.sum-cost.outputs.total }}
         run: |
           set -euo pipefail
+          if [[ "${{ steps.preflight-quota.outputs.quota_exhausted }}" == "true" ]]; then
+            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
+            echo "Pre-flight account status check detected missing/exhausted quota (gha#396)."
+            exit 0
+          fi
           if [[ "${{ steps.fail-check.outcome }}" == "success" ]]; then
             echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
             echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
@@ -858,7 +881,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
-          > **Claude review skipped — API quota exhausted.** The \`CLAUDE_CODE_OAUTH_TOKEN\` account's API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once the quota resets. [View run]($RUN_URL)"
+          > **Claude review skipped — API credential or quota unavailable.** No \`CLAUDE_CODE_OAUTH_TOKEN\` or \`ANTHROPIC_API_KEY\` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset. [View run]($RUN_URL)"
 
       # In agent mode, display_report writes Claude's output to the step
       # summary, not to the PR. Post it manually here. Tag mode auto-posts
