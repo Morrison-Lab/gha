@@ -250,8 +250,9 @@ secret; the two families are independent, so a repo can install either or both.
 `ai-code-review.yml` sits above whichever review workflows a repo has installed:
 it picks one of the configured agents at random and dispatches that agent's own
 review workflow, falling through to the next candidate when one can't be
-dispatched (no API key secret configured, or its review workflow file missing
-or disabled) or fails during execution ([gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
+dispatched (no API key or token secret configured for it, or its review workflow file missing or
+disabled in the caller repo) as well as an agent run that **fails or is
+cancelled during execution** ([gha#362](https://github.com/Morrison-Lab/gha/issues/362), [gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
 
 ## Content sync {#content-sync}
 
