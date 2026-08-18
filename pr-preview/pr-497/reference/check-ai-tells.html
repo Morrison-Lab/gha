@@ -664,16 +664,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>All <code>*.md</code>, <code>*.qmd</code>, <code>*.Rmd</code></td>
 </tr>
 <tr class="even">
+<td><code>paths-ignore</code></td>
+<td>Comma- or space-separated list of file paths or globs to exclude from scanning.</td>
+<td><code>''</code></td>
+</tr>
+<tr class="odd">
 <td><code>base-ref</code></td>
 <td>Git base ref to limit checking to newly added/modified lines in diff.</td>
 <td><code>''</code> (whole-file scan)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>threshold</code></td>
 <td>Maximum allowed tell density (tells per 1,000 words) before failing when <code>fail: true</code>.</td>
 <td><code>10</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>fail</code></td>
 <td>Whether to fail the workflow if tell density exceeds threshold.</td>
 <td><code>false</code></td>
