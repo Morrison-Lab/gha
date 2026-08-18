@@ -75,7 +75,7 @@ jobs:
       group: gemini-review-${{ inputs.pr-number || github.event.pull_request.number }}
       cancel-in-progress: true
     outputs:
-      quota_skip: ${{ steps.gemini-failure.outputs.kind == 'quota-or-auth' }}
+      quota_skip: ${{ steps.gemini-failure.outputs.kind == 'quota-or-auth' || steps.preflight-gemini-quota.outputs.quota_skip == 'true' }}
       dispatch_guard_blocked: ${{ steps.dispatch-guard.outputs.blocked == 'true' }}
     steps:
       # Passed via env rather than interpolated into the script body: an
@@ -187,6 +187,21 @@ jobs:
       # and neither is optional. run-gemini-cli has NO `github_token` input at
       # all (checked against action.yml at this SHA), and it writes
       # `.gemini/settings.json` only when `settings:` is non-empty --- so
+      # Pre-flight account status and quota check before starting Gemini review
+      # (gha#396). If no GEMINI_API_KEY secret is configured, mark quota_skip=true
+      # early so the workflow skips gracefully without wasting runner time.
+      - name: Pre-flight account status and quota check
+        id: preflight-gemini-quota
+        if: success() && steps.dispatch-guard.outputs.blocked != 'true'
+        env:
+          HAS_KEY: ${{ secrets.GEMINI_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "quota_skip=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::No GEMINI_API_KEY secret available for Gemini review execution (gha#396)."
+          fi
+
       # without both, Gemini has no GitHub tools and no credential, and the job
       # runs, bills the API, and finishes green having posted nothing.
       #
@@ -197,7 +212,7 @@ jobs:
       # merge; `run_shell_command` is likewise limited to read-only commands.
       - name: Run Gemini CLI for PR review
         id: gemini-run
-        if: success() && steps.dispatch-guard.outputs.blocked != 'true'
+        if: success() && steps.dispatch-guard.outputs.blocked != 'true' && steps.preflight-gemini-quota.outputs.quota_skip != 'true'
         continue-on-error: true
         uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489 # v0.1.22
         env:
