@@ -15,9 +15,9 @@ below with migration steps.
 
 - **`claude-code-review` holds PRs to the SERG lab manual, opt-outable via a
   `lab-manual` input** (#170, #171). The reusable review prompt evaluates a PR
-  against the [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) —
+  against the [UCD-SERG lab manual](https://ucd-serg.github.io/lab-manual/) --
   coding style, coding practices (including function decomposition/length
-  limits), and repository conventions — in addition to correctness, so every
+  limits), and repository conventions -- in addition to correctness, so every
   R/Quarto consumer gets this check without needing a `prompt-addendum` (it
   mirrors the wording in this repo's own `CLAUDE.md` "Code review guidelines").
   It is gated behind a `lab-manual` boolean (default `true`, so R/Quarto
@@ -28,10 +28,10 @@ below with migration steps.
 - **`claude-code-review` grants the reviewer `Bash(python3 <file>)`.** The
   review agent could previously only trace a Python script's logic by eye,
   since its `--allowedTools` covered just the inline-comment tool plus the
-  action's base allowlist (Read/Glob/Grep and narrow git-read Bash) — no way
+  action's base allowlist (Read/Glob/Grep and narrow git-read Bash) -- no way
   to actually execute the script under review (rme#970). Scoped to running an
   existing file under the checkout (`-c`/`-m` denied, so inline/module code
-  execution stays blocked) — same-repo PRs give this job
+  execution stays blocked) -- same-repo PRs give this job
   `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY` as secrets, so unrestricted
   `python3:*` would have been a real capability widening beyond the existing
   git-read-only sandbox, not just a git-push question. It can now verify a
@@ -58,7 +58,7 @@ below with migration steps.
 
 ### Added
 
-- **`test-coverage` — R-package test coverage with Codecov upload** (#147). A new
+- **`test-coverage` -- R-package test coverage with Codecov upload** (#147). A new
   composite (`test-coverage/action.yml`) and reusable workflow
   (`.github/workflows/test-coverage.yml`) that set up R and dependencies, run
   `covr::package_coverage()`, and upload the Cobertura report with
@@ -71,7 +71,7 @@ below with migration steps.
   optional `CODECOV_TOKEN` secret is passed through the caller's `secrets:`
   block. See `examples/test-coverage.yml` for the caller stub.
 
-- **`check-equation-renders` — catch equations MathJax can't render in PR previews**
+- **`check-equation-renders` -- catch equations MathJax can't render in PR previews**
   (#159). A new fourth leg of the PR-preview family: a composite
   (`check-equation-renders/action.yml`) that crawls a built Quarto/HTML site with a
   headless Chromium (Playwright), lets MathJax finish typesetting each page, and
@@ -105,7 +105,7 @@ below with migration steps.
 - **`claude-code-review` gains a `track-progress` input** (#134). Consumers
   can now opt into tag mode (live tracking comment + inline-comment tool) by
   setting `track-progress: true`. The default remains `false` (agent mode),
-  which is safe — agent mode never grants git write tools, preventing the
+  which is safe -- agent mode never grants git write tools, preventing the
   review bot from pushing commits to PR branches. Only set `track-progress:
   true` once [anthropics/claude-code-action#1415](https://github.com/anthropics/claude-code-action/issues/1415)
   ships a `read_only` input; until then, tag mode exposes git write tools.
@@ -114,7 +114,7 @@ below with migration steps.
   routing through `claude.yml`'s `@claude` agent. The review caller listens for
   the comment (gated to `OWNER`/`MEMBER`/`COLLABORATOR` authors) and re-dispatches
   its own `workflow_dispatch` review, reusing the existing dispatched-review flow
-  — so the reusable `claude-code-review.yml` is unchanged and consumers get the
+  -- so the reusable `claude-code-review.yml` is unchanged and consumers get the
   tag by updating their `examples/claude-code-review.yml` stub. It's a slash
   command rather than an `@claude review` mention on purpose: any `@claude`
   substring also wakes `claude.yml`, so the slash command keeps the direct path
@@ -127,7 +127,7 @@ below with migration steps.
   (#173). The `### Verdict`-heading check added for the silent-stub problem was
   too strict: the `code-review` plugin states its conclusion as a `Verdict:`
   label (not the `### Verdict` heading the prompt requests), and in agent mode
-  it can land in an earlier assistant message than the last — so every
+  it can land in an earlier assistant message than the last -- so every
   push-triggered review red-X'd (gha#175) even when it posted a full review with
   a verdict. `fail-check` now scans **all** of the run's assistant text (not just
   the final block) and accepts a verdict line in any heading/label/bold form
@@ -144,11 +144,11 @@ below with migration steps.
   reported success while actually exiting on an orchestration placeholder
   (e.g. "Waiting for both background agents... before proceeding to the next
   review steps") still posted that placeholder as the finished review and the
-  check stayed green — the same silent-stub failure mode reported upstream in
+  check stayed green -- the same silent-stub failure mode reported upstream in
   [`Lacaedemon/sparta#590`](https://github.com/Lacaedemon/sparta/issues/590).
   `fail-check` now also extracts the run's final review text and fails the
   check if it's empty (including whitespace-only) or missing the `### Verdict`
-  heading this workflow's own prompt requires of every finished review —
+  heading this workflow's own prompt requires of every finished review --
   a stub is narration, never a finished review, so it can't contain that
   heading, which catches every observed stub phrasing without having to
   enumerate them individually.
@@ -170,7 +170,7 @@ below with migration steps.
 - **`quarto-publish` now deploys to the `gh-pages` branch** instead of the
   GitHub Pages artifact (#118, #120). Consumers must set Settings → Pages →
   Source = "Deploy from a branch", branch `gh-pages` / `(root)`, and grant the
-  caller `contents: write` (dropping `pages: write` + `id-token: write`) — still
+  caller `contents: write` (dropping `pages: write` + `id-token: write`) -- still
   required with `deploy: false`. This makes `quarto-publish` compatible with the
   branch-based PR-preview family, so a repo can ship both a main site and PR
   previews. Full migration steps are in the `quarto-publish` entry under Added.
@@ -179,32 +179,32 @@ below with migration steps.
 
 ### Added
 
-- Dark mode for the documentation website (#114) — `website/_quarto.yml` now
+- Dark mode for the documentation website (#114) -- `website/_quarto.yml` now
   pairs the `cosmo` light theme with the `darkly` dark theme, so the site renders
   a light/dark toggle in the navbar and respects the reader's system preference.
-- Documentation website (#100) — a Quarto site under `website/` that documents
+- Documentation website (#100) -- a Quarto site under `website/` that documents
   every reusable workflow (overview, a per-action reference page with full input
   tables, permissions, and versioning). It is built and shipped by the repo's own
   actions: `quarto-publish` deploys it to GitHub Pages on `main`, and the
   `preview` family renders a per-PR preview.
-- `preview` gains a `path` input (#100) — the project directory to render
+- `preview` gains a `path` input (#100) -- the project directory to render
   (the dir holding `_quarto.yml`), defaulting to the repo root. This brings
   `preview` to parity with `quarto-publish` and lets a site that lives in a
   subdirectory (like this repo's `website/`) get a PR preview. Backward
   compatible: existing callers that render the repo root need no change.
-- Shared-content sync family (#57) — keeps guidance shared between repos current
+- Shared-content sync family (#57) -- keeps guidance shared between repos current
   in both directions, via two reusable workflows and a shared helper:
-  - `bump-submodule.yml` — update a named submodule to its upstream HEAD and open
+  - `bump-submodule.yml` -- update a named submodule to its upstream HEAD and open
     a PR when the pointer moves (one direction; e.g. the lab manual tracking
     `.ai-config`).
-  - `sync-shared-fragments.yml` — vendor a set of files from an upstream repo,
+  - `sync-shared-fragments.yml` -- vendor a set of files from an upstream repo,
     pinned to a commit and recorded in a JSON manifest, and open a PR when they
     change (the other direction; avoids a recursive mutual submodule).
-  - `open-sync-pr` composite — the commit-and-open-PR helper both workflows
+  - `open-sync-pr` composite -- the commit-and-open-PR helper both workflows
     reuse: commits staged changes to a reused automation branch and opens or
     updates the PR, no-op when nothing changed. First consumers:
     `UCD-SERG/lab-manual` and `d-morrison/ai-config`.
-- `quarto-publish` — render a Quarto site and deploy it to the `gh-pages`
+- `quarto-publish` -- render a Quarto site and deploy it to the `gh-pages`
   branch, which GitHub Pages serves. A composite (`quarto-publish/action.yml`)
   sets up Quarto (optionally R/renv and TinyTeX) and renders a project at a
   given `path` into `<path>/<output-dir>` (default `_site`). The reusable
@@ -225,9 +225,9 @@ below with migration steps.
   Pages -> Source = "Deploy from a branch", branch `gh-pages` / `(root)`; and
   (2) change the caller's job permissions from `pages: write` + `id-token:
   write` to `contents: write` (see `examples/quarto-publish.yml`).
-- PR-preview / publish family (#33) — centralizes the three-workflow preview
+- PR-preview / publish family (#33) -- centralizes the three-workflow preview
   pipeline rme carried inline:
-  - `preview` composite action + `preview.yml` reusable workflow — build half;
+  - `preview` composite action + `preview.yml` reusable workflow -- build half;
     renders the Quarto site read-only in the (possibly fork) PR context and
     uploads it + PR metadata as an artifact. Parameterized for non-rme
     consumers (R version, apt packages, renv on/off, local-package install,
@@ -235,23 +235,23 @@ below with migration steps.
     so `git clean -ffdx` can't wipe it from the artifact (d-morrison/rme#913),
     and keeps the `preview:pdf`/`preview:docx`/`preview:revealjs` and
     `clear freezer` label gates.
-  - `preview-deploy.yml` reusable workflow — deploy half; on `workflow_run`
+  - `preview-deploy.yml` reusable workflow -- deploy half; on `workflow_run`
     completion publishes the artifact to `gh-pages` in the base-repo context
     and comments the preview link. Kept split from the build half so untrusted
     fork code never holds write permissions (the trust boundary).
-  - `cleanup-pr-previews.yml` reusable workflow — scheduled housekeeping that
+  - `cleanup-pr-previews.yml` reusable workflow -- scheduled housekeeping that
     deletes preview directories for closed PRs.
-- `check-phi` — scans pull requests (added lines only; whole tree on `push`)
+- `check-phi` -- scans pull requests (added lines only; whole tree on `push`)
   for content that looks like PHI: US Social Security numbers, medical record
   numbers, dates of birth, and PHI-suggestive column headers in delimited data
   files. Matched values are never printed to the log; false positives are
   suppressed via a `phi-allow` line comment or a regex allowlist file. The
   `phone`/`email` detectors are available but off by default.
-- `CHANGELOG.md` (this file) — records what changes as the `@v1` tag moves, so
+- `CHANGELOG.md` (this file) -- records what changes as the `@v1` tag moves, so
   consumers can see what they picked up.
-- `REVDEPS.md` — tracks repos that consume these workflows so breaking changes
+- `REVDEPS.md` -- tracks repos that consume these workflows so breaking changes
   can be announced. See the file for how to register.
-- `.github/actions/checkout-submodules` composite action — centralizes the
+- `.github/actions/checkout-submodules` composite action -- centralizes the
   submodule-init logic (the `SUBMODULES_TOKEN` `insteadOf` rewrite and the
   anonymous-clone fallback) shared by the `claude` and `claude-code-review`
   reusable workflows (#25).
@@ -269,9 +269,9 @@ below with migration steps.
   array, so bibliography paths containing spaces are passed to the checker as
   intact single arguments instead of word-splitting (#30).
 - `claude-code-review`'s prompt now instructs the reviewer to watch for AI
-  hallucinations — fabricated functions/arguments/APIs, invented references,
+  hallucinations -- fabricated functions/arguments/APIs, invented references,
   DOIs, or URLs, plausible-but-unreal file paths and constants, and comments
-  that describe behavior the code doesn't implement — and to verify questionable
+  that describe behavior the code doesn't implement -- and to verify questionable
   symbols against the codebase rather than assuming they exist (#56).
 - `claude` now reproduces qwt's late-comment dedup so a follow-up `@claude`
   comment absorbed by a still-running session isn't double-handled by the
@@ -280,15 +280,15 @@ below with migration steps.
   🚀 marker, the agent emits a `<!-- claude-absorbed: … -->` marker listing the
   comments it absorbed by polling, and a post-step reacts 🚀 to each so their own
   queued runs short-circuit. A companion step re-dispatches a review for a late
-  `@claude review` that a deduped run would otherwise have dropped. Additive —
+  `@claude review` that a deduped run would otherwise have dropped. Additive --
   no consumer input changes (#44, ported from qwt #73/#90/#95).
 - `claude-code-review` gained an `allowed-bots` input (default
   `github-actions[bot]`, previously hard-coded) so a consumer can widen the
   accepted dispatch actors (e.g. `github-actions[bot],claude`), and a
   "Skip self-review when the PR edits this workflow" step that detects (via
   `github.workflow_ref`) a PR modifying the caller's review workflow and skips
-  the review — which would otherwise 401 on the action's workflow-validation
-  until merged — instead of posting a failed check (#45, ported from qwt).
+  the review -- which would otherwise 401 on the action's workflow-validation
+  until merged -- instead of posting a failed check (#45, ported from qwt).
 
 ### Fixed
 
@@ -306,7 +306,7 @@ below with migration steps.
   review `claude.yml` re-dispatches after an `@claude` run pushes commits can
   actually run. The action's agent mode (used by `workflow_dispatch`) blocks
   bot actors by default, so dispatched reviews previously failed with "Workflow
-  initiated by non-human actor" — and, having entered the per-PR concurrency
+  initiated by non-human actor" -- and, having entered the per-PR concurrency
   group, canceled the parallel `synchronize` auto-review on their way out,
   leaving the push with no review at all.
 - `claude-code-review`'s "collapse previous review comments" step is no longer
@@ -320,7 +320,7 @@ below with migration steps.
   human-readable version in a trailing comment), following GitHub's
   [recommended hardening posture](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions).
   A SHA is immutable, so a re-pointed tag or a compromised upstream can no longer
-  silently change what runs — most important for the `preview-deploy` job, which
+  silently change what runs -- most important for the `preview-deploy` job, which
   runs in the base-repo context with `contents: write` + `pull-requests: write`.
   Added [`.github/dependabot.yml`](.github/dependabot.yml) (`github-actions`
   ecosystem, weekly, grouped, covering `.github/workflows/` and each composite
@@ -328,19 +328,19 @@ below with migration steps.
   freezing. First-party `d-morrison/gha/*@v1` self-references and the
   `examples/` templates intentionally still track the `@v1` major tag (#48).
 
-## [v1] — initial pilot set
+## [v1] -- initial pilot set
 
 Reusable workflows + composite actions:
 
-- `check-bibliography-dois` — validate book/article BibTeX entries have
+- `check-bibliography-dois` -- validate book/article BibTeX entries have
   resolvable DOIs matching CrossRef metadata.
-- `check-links` — lychee link check with bundled config, PR skip-label, and
+- `check-links` -- lychee link check with bundled config, PR skip-label, and
   auto-issue on `main`.
-- `check-non-standard-chars` — detect curly quotes / en–em dashes in `.qmd`
+- `check-non-standard-chars` -- detect curly quotes / en-em dashes in `.qmd`
   and `.R` files.
-- `check-news` — enforce a `NEWS.md` changelog entry on PRs (wraps
+- `check-news` -- enforce a `NEWS.md` changelog entry on PRs (wraps
   `UCD-SERG/changelog-check-action`).
-- `summary` — AI summary comment on newly opened issues.
+- `summary` -- AI summary comment on newly opened issues.
 
 [Unreleased]: https://github.com/Morrison-Lab/gha/compare/v1...main
 [v1]: https://github.com/Morrison-Lab/gha/releases/tag/v1

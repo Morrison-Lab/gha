@@ -1,12 +1,15 @@
 name: Check non-standard characters
 description: >-
-  Detect curly quotes, en/em dashes, and the multiplication sign in .qmd and
-  .R files in the caller's repository, which can cause issues in Quarto/R
+  Detect curly quotes, en/em dashes, and the multiplication sign in .qmd, .R,
+  and .md files in the caller's repository, which can cause issues in Quarto/R
   projects.
 inputs:
   python-version:
     description: Python version to set up.
     default: '3.x'
+  extensions:
+    description: Comma- or space-separated list of file extensions to check.
+    default: '.qmd, .R, .md'
 runs:
   using: composite
   steps:
@@ -17,4 +20,7 @@ runs:
 
     - name: Check for non-standard characters
       shell: bash
+      env:
+        EXTENSIONS: ${{ inputs.extensions }}
       run: python3 "$GITHUB_ACTION_PATH/check-non-standard-chars.py"
+

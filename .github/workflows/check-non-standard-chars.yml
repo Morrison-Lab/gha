@@ -7,6 +7,10 @@ on:
         description: Python version to set up.
         type: string
         default: '3.x'
+      extensions:
+        description: Comma- or space-separated list of file extensions to check.
+        type: string
+        default: '.qmd, .R, .md'
 
 jobs:
   check-chars:
@@ -22,3 +26,5 @@ jobs:
         uses: Morrison-Lab/gha/check-non-standard-chars@v2
         with:
           python-version: ${{ inputs.python-version }}
+          extensions: ${{ inputs.extensions }}
+

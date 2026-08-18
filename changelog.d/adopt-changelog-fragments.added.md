@@ -1,4 +1,4 @@
-- **Changelog fragments (`changelog.d/`)** — changelog entries are now added as
+- **Changelog fragments (`changelog.d/`)** -- changelog entries are now added as
   individual files under `changelog.d/` (named `<slug>.<category>.md`) instead of
   by editing `CHANGELOG.md` directly, so two PRs in flight never conflict on the
   same `## [Unreleased]` lines. `changelog.d/assemble.sh` collates the fragments

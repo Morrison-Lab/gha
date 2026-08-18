@@ -1,4 +1,4 @@
-# `news.d/` — R package news fragments
+# `news.d/` -- R package news fragments
 
 Changelog entries for R packages live here as **one file per change**, not as direct
 edits to `NEWS.md`. Each pull request adds a new fragment file, so
@@ -8,8 +8,8 @@ two PRs in flight never touch the same lines and never conflict.
 
 Create a file named `<slug>.<category>.md`:
 
-- `<slug>` — a short dash-separated description (no dots), e.g. `add-plot-function`.
-- `<category>` — one of: `breaking`, `added`, `feature`, `fixed`, `bug`, `changed`, `minor`, `deprecated`, `removed`, `security`.
+- `<slug>` -- a short dash-separated description (no dots), e.g. `add-plot-function`.
+- `<category>` -- one of: `breaking`, `added`, `feature`, `fixed`, `bug`, `changed`, `minor`, `deprecated`, `removed`, `security`.
 
 The file contents are one or more Markdown bullets describing the change:
 
@@ -17,7 +17,7 @@ The file contents are one or more Markdown bullets describing the change:
 - Add `plot_results()` function for visualizing outputs ([#123](https://github.com/foo/bar/issues/123)).
 ```
 
-Do not put section headings (like `## New features`) in the fragment — `assemble-news` groups and adds headings automatically when collating.
+Do not put section headings (like `## New features`) in the fragment -- `assemble-news` groups and adds headings automatically when collating.
 
 ## Assembling at release time
 

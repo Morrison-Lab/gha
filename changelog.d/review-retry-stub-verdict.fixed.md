@@ -6,8 +6,8 @@
   fingerprint (`is_error: false`, `permission_denials_count: 1`, no
   `### Verdict`), red-X'ing `require-review` for a PR that was never actually
   reviewed. `check-review-execution.sh`'s guard now surfaces this specific,
-  retryable signature — real non-empty assistant text, no SDK error, no
-  verdict, AND a low `permission_denials_count` (<= 5 by default) — as a
+  retryable signature -- real non-empty assistant text, no SDK error, no
+  verdict, AND a low `permission_denials_count` (<= 5 by default) -- as a
   `stub_review` output. The denial-count cutoff matters: it's what actually
   keeps this from also firing on #198's textually identical but
   much-higher-denial-count pattern (17-35 vs. #185's 1), which has

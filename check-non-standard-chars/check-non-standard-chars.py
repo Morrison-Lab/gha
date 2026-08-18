@@ -24,6 +24,7 @@ lands. In code and comments, `x` or `*`. In .qmd prose, `$\\times$` or
 than decoding.
 """
 
+import os
 import sys
 from pathlib import Path
 from typing import List, Tuple, Dict
@@ -36,13 +37,16 @@ NON_STANDARD_CHARS = {
     '\u2019': 'Right single quotation mark',
     '\u2013': 'En dash',
     '\u2014': 'Em dash',
-    # Reaches source by the same rendered-text copy-paste as the rest,
-    # typically in a dimension or a rate ("round x month", "365.25 days/year
-    # x 4"). Added in gha#322: the shared ASCII-punctuation convention has
-    # always named it alongside the dashes and quotes, and this set did not
-    # carry it, so consumers had a rule with no instrument behind it.
     '\u00d7': 'Multiplication sign',
 }
+
+
+def parse_extensions(ext_str: str) -> List[str]:
+    """Parse a comma- or space-separated list of extensions into standard leading-dot format."""
+    if not ext_str.strip():
+        return ['.qmd', '.R', '.md']
+    items = [e.strip() for e in ext_str.replace(',', ' ').split() if e.strip()]
+    return [e if e.startswith('.') else f'.{e}' for e in items]
 
 
 def check_file(file_path: Path) -> List[Tuple[int, int, str, str]]:
@@ -81,10 +85,11 @@ def check_file(file_path: Path) -> List[Tuple[int, int, str, str]]:
 def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     """
     Find all files with given extensions in the directory tree.
+    Ignores hidden directories and build artifacts.
     
     Args:
         root_dir: Root directory to search
-        extensions: List of file extensions to search for (e.g., ['.qmd', '.R'])
+        extensions: List of file extensions to search for (e.g., ['.qmd', '.R', '.md'])
         
     Returns:
         List of matching file paths
@@ -92,26 +97,34 @@ def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     files = []
     for ext in extensions:
         files.extend(root_dir.glob(f'**/*{ext}'))
-    return sorted(files)
+    filtered = []
+    for f in files:
+        parts = f.parts
+        if any(p.startswith('.') or p in ('node_modules', 'renv', 'site_libs', '_site', '_freeze') for p in parts[:-1]):
+            continue
+        filtered.append(f)
+    return sorted(filtered)
 
 
 def main() -> int:
     """
-    Main function to check all .qmd and .R files for non-standard characters.
+    Main function to check files for non-standard characters.
     
     Returns:
         0 if no issues found, 1 if issues found
     """
     root_dir = Path('.')
-    extensions = ['.qmd', '.R']
+    ext_env = os.environ.get('EXTENSIONS', '.qmd, .R, .md')
+    extensions = parse_extensions(ext_env)
     
-    print("Checking for non-standard characters in .qmd and .R files...\n")
+    print(f"Checking for non-standard characters in {', '.join(extensions)} files...\n")
     
     files = find_files(root_dir, extensions)
     
     if not files:
-        print("No .qmd or .R files found.")
+        print("No matching files found.")
         return 0
+
     
     total_issues = 0
     files_with_issues: Dict[Path, List[Tuple[int, int, str, str]]] = {}

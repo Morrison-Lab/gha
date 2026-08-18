@@ -1,4 +1,4 @@
-# `changelog.d/` — changelog fragments
+# `changelog.d/` -- changelog fragments
 
 Changelog entries live here as **one file per change**, not as direct edits to
 [`CHANGELOG.md`](../CHANGELOG.md). Each pull request adds a new fragment file, so
@@ -8,7 +8,7 @@ two PRs in flight never touch the same lines and never conflict.
 
 Appending to a shared `## [Unreleased]` section makes sibling PRs collide on
 adjacent lines. `.gitattributes` sets `CHANGELOG.md merge=union`, which resolves
-those collisions — but **only when git does the merge** (a local rebase, or CI
+those collisions -- but **only when git does the merge** (a local rebase, or CI
 running git). GitHub's own mergeability check and web-merge button do **not**
 apply custom merge drivers, so the PR still shows "conflicts must be resolved"
 in the UI. A separate file per PR sidesteps the problem: new files never
@@ -18,9 +18,9 @@ conflict.
 
 Create a file named `<slug>.<category>.md`:
 
-- `<slug>` — a short dash-separated description (no dots), often the PR topic,
+- `<slug>` -- a short dash-separated description (no dots), often the PR topic,
   e.g. `add-foo-input`.
-- `<category>` — one of: `breaking`, `added`, `changed`, `deprecated`,
+- `<category>` -- one of: `breaking`, `added`, `changed`, `deprecated`,
   `removed`, `fixed`, `security`.
 
 The file contents are one or more Markdown bullets in the same
@@ -32,7 +32,7 @@ the PR/issue number where relevant):
   it does and why, matching the tone of existing `CHANGELOG.md` entries.
 ```
 
-Do not put the `### Added` heading in the fragment — the category comes from the
+Do not put the `### Added` heading in the fragment -- the category comes from the
 filename, and `assemble.sh` adds the heading when it collates.
 
 ## Releasing
@@ -48,7 +48,7 @@ into `### <Category>` subsections, and deletes the consumed fragment files.
 Then review the diff, rename `## [Unreleased]` to `## [X.Y.Z] - <date>`, add a
 fresh empty `## [Unreleased]` above it, and commit.
 
-Keep `## [Unreleased]` **fragment-only** — don't hand-edit entries into it — so
+Keep `## [Unreleased]` **fragment-only** -- don't hand-edit entries into it -- so
 `assemble.sh` never places a fragment under a heading that already exists there.
 (Any entries currently sitting under `## [Unreleased]` from before this
 convention are collated at the next release; merge them by hand that one time if
