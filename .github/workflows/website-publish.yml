@@ -29,3 +29,17 @@ jobs:
       # The Quarto project lives in website/; it is pure markdown, so the other
       # defaults (setup-r: false, output-dir: _site, deploy: true) are correct.
       path: website
+
+  report-failure:
+    needs: publish
+    if: >-
+      always()
+      && needs.publish.result == 'failure'
+      && github.event_name != 'pull_request'
+    permissions:
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/report-failure.yml@v2
+    with:
+      title: Documentation site deploy is failing
+      body: The documentation site did not deploy, so the published site may be stale.
+
