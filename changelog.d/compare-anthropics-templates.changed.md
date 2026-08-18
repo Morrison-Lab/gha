@@ -1,0 +1,1 @@
+- Audited central workflows and composite actions against upstream template workflows in `anthropics/claude-code-action` v1.0.191, verifying parameter alignment and documentation sync ([#395](https://github.com/Morrison-Lab/gha/issues/395)).
