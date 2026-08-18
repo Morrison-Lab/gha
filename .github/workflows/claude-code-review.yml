@@ -403,8 +403,8 @@ jobs:
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
             echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
-            mod_wf=$(printf '%s\n' "$files" | grep '^\.github/workflows/' | head -n 1)
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            mod_wf=$(printf '%s\n' "$files" | grep -m1 -E '^\.github/workflows/[^/]+\.ya?ml$')
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "wf_path=$mod_wf" >> "$GITHUB_OUTPUT"
             echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (claude-code-action refuses token exchange on dispatched workflow changes until merged; gha#386)."
@@ -419,6 +419,7 @@ jobs:
         uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
         with:
           workflow-path: ${{ steps.selfmod.outputs.wf_path || steps.caller-wf.outputs.path }}
+          caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Post a notice that self-review was skipped

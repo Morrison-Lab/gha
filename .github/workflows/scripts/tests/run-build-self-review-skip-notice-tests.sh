@@ -12,16 +12,23 @@ build_script="$repo_root/.github/workflows/scripts/build-self-review-skip-notice
 
 failures=0
 
-# Test 1: Standard input formatting and matching contract with collapse step regex
+# Test 1: Standard self-review skip (edits review workflow itself)
 wf_path=".github/workflows/claude-code-review.yml"
 run_url="https://github.com/Morrison-Lab/gha/actions/runs/987654321"
 
-got="$(bash "$build_script" "$wf_path" "$run_url")"
+got="$(bash "$build_script" "$wf_path" "$run_url" "$wf_path")"
 
 if [[ "$got" == *"> [!WARNING]"* ]]; then
   echo "OK   build-self-review-skip-notice.sh contains warning alert header"
 else
   echo "::error::build-self-review-skip-notice.sh output missing '> [!WARNING]'"
+  failures=$((failures + 1))
+fi
+
+if [[ "$got" == *"the review workflow itself"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh contains 'the review workflow itself' phrasing"
+else
+  echo "::error::build-self-review-skip-notice.sh output missing 'the review workflow itself'"
   failures=$((failures + 1))
 fi
 
@@ -52,7 +59,19 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 2: Missing arguments usage check
+# Test 2: Dispatched review skip on other workflow edit (gha#386)
+other_wf=".github/workflows/claude.yml"
+caller_wf=".github/workflows/claude-review.yml"
+got2="$(bash "$build_script" "$other_wf" "$run_url" "$caller_wf")"
+
+if [[ "$got2" == *"dispatched runs"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh contains dispatched runs explanation for other workflow"
+else
+  echo "::error::build-self-review-skip-notice.sh output missing 'dispatched runs' explanation"
+  failures=$((failures + 1))
+fi
+
+# Test 3: Missing arguments usage check
 set +e
 err_output="$(bash "$build_script" 2>&1)"
 exit_code=$?
