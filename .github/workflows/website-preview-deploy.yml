@@ -15,7 +15,9 @@ on:
 
 jobs:
   deploy:
+    timeout-minutes: 15
     permissions:
+
       contents: write
       pull-requests: write
       actions: read

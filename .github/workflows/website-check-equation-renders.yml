@@ -14,7 +14,9 @@ on:
 
 jobs:
   check:
+    timeout-minutes: 15
     permissions:
+
       contents: read
       actions: read
     uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v2

@@ -19,7 +19,9 @@ on:
 
 jobs:
   claude:
+    timeout-minutes: 60
     # Cheap caller-side gate: only invoke the reusable workflow when an @claude
+
     # mention is present AND the author is trusted (OWNER/MEMBER/COLLABORATOR),
     # so an untrusted commenter's mention doesn't even spawn the
     # reusable-workflow run. This mirrors the reusable workflow's own

@@ -102,7 +102,8 @@ def find_files(root_dir: Path, extensions: List[str]) -> List[Path]:
     files = []
     for ext in extensions:
         files.extend(root_dir.glob(f'**/*{ext}'))
-    ignored_dirs = {'.git', '.worktrees', '.Rproj.user', 'node_modules', 'renv', 'site_libs', '_site', '_freeze'}
+    ignored_dirs = {'.git', '.claude', '.worktrees', '.Rproj.user', 'node_modules', 'renv', 'site_libs', '_site', '_freeze'}
+
     filtered = []
     for f in files:
         if any(p in ignored_dirs for p in f.parts[:-1]):

@@ -1,0 +1,1 @@
+- **Security hardening sweep: `timeout-minutes` and SHA-pinning assertions** (#328). Added `timeout-minutes` to 11 caller workflows that were missing it, and added automated CI assertions in `_selftest.yml` ensuring all workflows enforce explicit job timeouts and SHA-pin third-party action refs.
