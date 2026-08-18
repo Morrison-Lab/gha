@@ -12,14 +12,14 @@ if command -v Rscript >/dev/null 2>&1; then
   Rscript -e '
     source("'"$rpkg_dir"'/R/added_lines.R")
     source("'"$rpkg_dir"'/R/version_helpers.R")
-    if (requireNamespace("testthat", quietly = TRUE)) {
-      testthat::test_dir("'"$rpkg_dir"'/tests/testthat", load_package = "none", reporter = "summary")
-    } else {
-      cat("testthat not installed; verified ghatools sources without error.\n")
+    if (!requireNamespace("testthat", quietly = TRUE)) {
+      stop("testthat package is required to run ghatools unit tests")
     }
+    testthat::test_dir("'"$rpkg_dir"'/tests/testthat", load_package = "none", reporter = "summary")
   '
 else
   echo "Rscript not found; skipping offline execution."
+
 fi
 
 echo "All ghatools tests completed successfully."
