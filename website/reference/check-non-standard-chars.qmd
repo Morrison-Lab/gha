@@ -15,7 +15,6 @@ when it finds any, reporting each `file:line:col` so you can fix it.
 
 ## Permissions
 
-
 Only `contents: read` (the default), so no `permissions:` block is needed.
 
 ## Example
