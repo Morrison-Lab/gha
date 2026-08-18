@@ -675,9 +675,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'gemini-2.5-flash'</code></td>
 <td>Antigravity / Gemini model override passed to the SDK (optional).</td>
 </tr>
+<tr class="even">
+<td><code>trigger-policy</code></td>
+<td>string</td>
+<td><code>'any'</code></td>
+<td>Enforcement mode: <code>any</code>, <code>on-push</code>, or <code>on-request</code>.</td>
+</tr>
 </tbody>
 </table>
-<div class="line-block"><code>trigger-policy</code> | string | <code>'any'</code> | Enforcement mode: <code>any</code>, <code>on-push</code>, or <code>on-request</code>. |</div>
 </section>
 <section id="secrets" class="level2">
 <h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
@@ -710,7 +715,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and <code>id-token: write</code>.</p>
+<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and</p>
+<p><code>id-token: write</code>.</p>
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
