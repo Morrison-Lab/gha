@@ -179,14 +179,6 @@ jobs:
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
-      # Pinned to a release SHA per README's "Pinning third-party actions".
-      # run-gemini-cli publishes v0 / v0.1.x and has no v1 tag, so a `@v1` ref
-      # fails to resolve.
-      #
-      # The `settings:` block and the GITHUB_TOKEN env var are both load-bearing
-      # and neither is optional. run-gemini-cli has NO `github_token` input at
-      # all (checked against action.yml at this SHA), and it writes
-      # `.gemini/settings.json` only when `settings:` is non-empty --- so
       # Pre-flight account status and quota check before starting Gemini review
       # (gha#396). If no GEMINI_API_KEY secret is configured, mark quota_skip=true
       # early so the workflow skips gracefully without wasting runner time.
@@ -213,6 +205,14 @@ jobs:
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Gemini review skipped — API key or quota unavailable.** No \`GEMINI_API_KEY\` secret is configured or quota is unavailable for Gemini CLI review. [View run]($RUN_URL)"
 
+      # Pinned to a release SHA per README's "Pinning third-party actions".
+      # run-gemini-cli publishes v0 / v0.1.x and has no v1 tag, so a `@v1` ref
+      # fails to resolve.
+      #
+      # The `settings:` block and the GITHUB_TOKEN env var are both load-bearing
+      # and neither is optional. run-gemini-cli has NO `github_token` input at
+      # all (checked against action.yml at this SHA), and it writes
+      # `.gemini/settings.json` only when `settings:` is non-empty --- so
       # without both, Gemini has no GitHub tools and no credential, and the job
       # runs, bills the API, and finishes green having posted nothing.
       #
