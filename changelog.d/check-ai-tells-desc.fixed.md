@@ -1,0 +1,1 @@
+- **`check-ai-tells` action description & reference doc**: remove inaccurate attribution claiming tell patterns come from the `ai-config` catalog (#497, #502).
