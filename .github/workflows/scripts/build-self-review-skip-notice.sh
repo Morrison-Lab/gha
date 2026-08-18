@@ -12,7 +12,11 @@ WF_PATH="${1:?usage: build-self-review-skip-notice.sh <workflow-path> <run-url>}
 RUN_URL="${2:?usage: build-self-review-skip-notice.sh <workflow-path> <run-url>}"
 
 printf '> [!WARNING]\n'
-printf '> **No review ran --- this PR edits `%s`, the review workflow itself.**\n' "$WF_PATH"
+if [[ "$WF_PATH" == *".github/workflows"* && "$WF_PATH" != *".yml" && "$WF_PATH" != *".yaml" ]]; then
+  printf '> **No review ran --- this PR edits workflow files under `%s`.**\n' "$WF_PATH"
+else
+  printf '> **No review ran --- this PR edits `%s`, the review workflow itself.**\n' "$WF_PATH"
+fi
 printf '> `claude-code-action` requires that file to match the default branch, so its token exchange fails until this change merges.\n'
 printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing that file.\n'
 printf '>\n'

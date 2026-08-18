@@ -1,0 +1,1 @@
+- **claude-code-review.yml**: Detect when a `workflow_dispatch` review is run on a PR editing files under `.github/workflows/` and skip gracefully with a notice comment and gray `require-review` check, preventing false `require-review` failures caused by `claude-code-action` workflow-validation token exchange refusal (#386).

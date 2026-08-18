@@ -395,14 +395,30 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           WF_PATH: ${{ steps.caller-wf.outputs.path }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' 2>/dev/null || true)
+          has_wf_path=false
+          has_any_wf=false
           if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
+            has_wf_path=true
+          fi
+          if printf '%s\n' "$files" | grep -q '^.github/workflows/'; then
+            has_any_wf=true
+          fi
+
+          if [ "$has_wf_path" = "true" ]; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
+            echo "notice_path=$WF_PATH" >> "$GITHUB_OUTPUT"
             echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$has_any_wf" = "true" ]; then
+            echo "self_mod=true" >> "$GITHUB_OUTPUT"
+            echo "notice_path=.github/workflows/" >> "$GITHUB_OUTPUT"
+            echo "::notice::Dispatched review of PR #$PR_NUMBER skipped — PR edits workflow files under .github/workflows/, which prevents claude-code-action token exchange on workflow_dispatch until merged."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
+            echo "notice_path=$WF_PATH" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build self-review skip notice body
@@ -410,7 +426,7 @@ jobs:
         if: steps.selfmod.outputs.self_mod == 'true'
         uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
         with:
-          workflow-path: ${{ steps.caller-wf.outputs.path }}
+          workflow-path: ${{ steps.selfmod.outputs.notice_path || steps.caller-wf.outputs.path }}
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Post a notice that self-review was skipped
