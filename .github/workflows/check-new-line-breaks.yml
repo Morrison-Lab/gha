@@ -19,7 +19,7 @@ on:
         type: string
         default: ''
       fail:
-        description: Fail the workflow when a violation is found (else warn only).
+        description: Fail the workflow when a violation is found (else non-blocking).
         type: boolean
         default: false
       clause-breaks:

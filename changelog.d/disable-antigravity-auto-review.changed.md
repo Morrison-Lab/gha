@@ -1,0 +1,3 @@
+- **Disable automatic `antigravity-review.yml` workflow on PR push**
+  ([#500](https://github.com/Morrison-Lab/gha/issues/500)).
+  Retains `workflow_dispatch` trigger for manual and multi-agent code reviews.

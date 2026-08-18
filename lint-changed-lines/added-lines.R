@@ -7,7 +7,7 @@ file_candidates <- c(
   file.path(here, "..", "..", "ghatools", "R", "added_lines.R"),
   "ghatools/R/added_lines.R"
 )
-rpkg_file <- file_candidates[file.exists(file_candidates)][[1]]
+rpkg_file <- file_candidates[file.exists(file_candidates)][1]
 if (!is.na(rpkg_file) && file.exists(rpkg_file)) {
   source(rpkg_file)
 } else if (requireNamespace("ghatools", quietly = TRUE)) {

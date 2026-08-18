@@ -8,7 +8,7 @@
 
   The new check is **on by default**, so existing callers get the extra
   annotations without changing anything.
-  That is safe because the whole check stays warn-only unless `fail: true` is
+  That is safe because the whole check stays non-blocking unless `fail: true` is
   set: it adds annotations, not build failures.
   Set the new `clause-breaks: false` input to check sentences only, and
   `clause-min-length` (default `80`, the spec's own rule 12) to move the

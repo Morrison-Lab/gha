@@ -43,6 +43,7 @@ not reference `@main` from consumers.
 
 | Workflow | Purpose | Key inputs |
 |---|---|---|
+| `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `fail` |
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd` and `.R` files | `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI — SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
@@ -276,7 +277,7 @@ and departs from it in three that matter.
   sits.
   Narrow it with `log-opts` only deliberately.
 - **It blocks by default** (`fail: true`),
-  where the advisory prose checks warn.
+  where the advisory prose checks are non-blocking.
   A leaked credential is not a style nit.
 - **Its `paths-ignore` patterns are Go regexes, not globs**,
   because they become gitleaks allowlist entries directly,
@@ -446,6 +447,8 @@ in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
 `small-model-agent.yml` postdates the freeze too
 (added in [gha#436](https://github.com/Morrison-Lab/gha/issues/436));
 pin to `@v2`.
+`check-ai-tells.yml` postdates the freeze too (added in
+[gha#382](https://github.com/Morrison-Lab/gha/issues/382)); pin to `@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
@@ -517,8 +520,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-secrets.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`, and
-`version-check.yml` at `@v2` -- see the
+`antigravity-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
+`check-ai-tells.yml`, and `version-check.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

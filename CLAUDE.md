@@ -28,8 +28,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
-`gemini-code-review`, `antigravity-code-review`, `ai-code-review`, `bump-dev-version`, `version-check`, and
-`small-model-agent` -- see
+`gemini-code-review`, `antigravity-code-review`, `ai-code-review`, `bump-dev-version`, `version-check`,
+`small-model-agent`, and `check-ai-tells` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -820,7 +820,7 @@ reaching the uppercase one.
 That second list excludes `no` (a lowercase `no.` is the word, and should
 split) and adds `min`/`hr`/`hrs`; it is curated rather than exhaustive, so an
 unlisted lowercase abbreviation before a lowercase word can still false-split
-on this warn-only check.
+on this non-blocking check.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other (porting gha#425's fix there
