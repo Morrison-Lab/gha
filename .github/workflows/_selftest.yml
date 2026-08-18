@@ -1762,11 +1762,8 @@ jobs:
           fi
           echo "All workflows in .github/workflows/*.yml set timeout-minutes."
 
-
-  # Covers the open-failure-issue action. report-failure.yml is its only
-  # caller so far; check-links.yml's migration onto it is deferred to gha#327,
-  # since a @v2 reference to a not-yet-released action fails at job-prepare
-  # time and check-links runs on every PR here.
+  # Covers the open-failure-issue action used by report-failure.yml and
+  # check-links.yml.
   # The unit tests pin the matching and splitting rules; the end-to-end step
   # proves the composite resolves select-existing-issue.sh through
   # github.action_path, the wiring gha#196 showed a unit test alone does not

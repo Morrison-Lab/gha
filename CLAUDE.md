@@ -440,9 +440,8 @@ which is why the capabilities above moved to `@v2`.
   own split/trim to the same script, so the repo has one CSV splitter rather
   than two. The composite does the
   `gh` calls around it: list open issues, then either comment on the match or
-  file a new issue. `report-failure.yml` calls it;
-  `check-links.yml`'s own inline `gh issue create` is its intended second
-  caller, deferred to gha#327 for the sequencing reason below. Two behaviors
+  file a new issue. `report-failure.yml` and `check-links.yml` both call it.
+  Two behaviors
   worth knowing before changing it: a label the calling repository does not
   define is dropped with a warning and the issue is filed anyway, since losing
   a failure report over a missing label is the worse outcome; and `dry-run`
@@ -563,7 +562,7 @@ inside a reusable workflow it resolves against the *caller's* checkout
 So split the work: land the action plus its non-dogfooded callers first, and
 migrate a per-PR-dogfooded caller in a follow-up once the tag has moved.
 (gha#326: `check-links.yml`'s migration and `website-publish.yml`'s
-dogfood job were both cut from that PR for this reason and moved to gha#327,
+dogfood job were both cut from that PR for this reason and landed in gha#327,
 after `links / link-checker` went red on exactly this.)
 
 **A brand-new capability that ships at a tag newer than `@v1`** (because `@v1`
