@@ -23,14 +23,14 @@ Design notes:
   rule 5 (the SHOULD: break after an independent clause) applies too, and is
   opt-*out* via ``NLB_CLAUSE_BREAKS=false`` -- see ``has_late_semicolon``
   for why that slice is semicolons only, and why it is gated on line length.
-  Defaulting it on is safe because the whole check is warn-only unless
+  Defaulting it on is safe because the check is non-blocking unless
   ``NLB_FAIL`` is set, so it adds annotations rather than build failures.
 
 Configuration (all via environment variables, set by the composite action):
   NLB_BASE_REF      Git ref/SHA to diff against. Empty => skip the check.
   NLB_GLOBS         Space-separated git pathspecs to check (default: '*.md').
   NLB_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  NLB_FAIL          "true" => exit 1 on findings; default "false" => warn only.
+  NLB_FAIL          "true" => exit 1 on findings; default "false" => non-blocking (annotations only).
   NLB_CLAUSE_BREAKS "false" => skip the clause check; default "true" =>
                     also flag long lines carrying a mid-line semicolon.
   NLB_CLAUSE_MIN_LENGTH
@@ -625,10 +625,9 @@ def main() -> int:
         print("No lines missing semantic breaks.")
         return 0
 
-    level = "error" if fail else "warning"
     for violation in violations:
         message = _REASON_MESSAGES[violation.reason]
-        print(f"::{level} file={violation.path},line={violation.line}::"
+        print(f"::error file={violation.path},line={violation.line}::"
               f"{message}: {violation.preview}")
 
     print(
