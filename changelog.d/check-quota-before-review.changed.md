@@ -1,0 +1,1 @@
+- Implemented account quota checks before review execution in central review workflows, posting a graceful quota-exhausted notice and skipping when quota is insufficient ([#396](https://github.com/Morrison-Lab/gha/issues/396)).
