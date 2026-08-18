@@ -25,13 +25,14 @@ runs:
     - name: Set up R dependencies
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       with:
-        packages: extra
+        dependencies: ''
         install-quarto: ${{ inputs.install-quarto }}
         extra-packages: |
           any::bib2df
           any::httr
           any::jsonlite
           any::stringr
+
 
 
     - name: Check bibliography DOIs
