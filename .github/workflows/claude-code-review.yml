@@ -664,8 +664,10 @@ jobs:
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
       # "success" but is_error is true), so without this step a silently-failed
-      # review looks green. Runs only when claude-review exited 0 (outcome ==
-      # 'success'); if the action step itself failed, the job is already red.
+      # review looks green. Runs whenever claude-review was not skipped (gated on
+      # outcome != 'skipped' rather than == 'success') so the guard script can
+      # still evaluate execution output even when the action step failed with exit
+      # code 1 (e.g. quota exhaustion or runtime errors, gha#350).
       # Falls back to the well-known temp path when the action doesn't expose
       # the execution_file output on the pinned version.
       #
@@ -709,7 +711,7 @@ jobs:
       # extracting run-claude-review-attempt, just at a smaller scale).
       - name: Resolve and upload execution file path
         id: exec-file
-        if: steps.claude-review.outcome == 'success'
+        if: always() && steps.claude-review.outcome != 'skipped'
         uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
         with:
           execution-file: ${{ steps.claude-review.outputs.execution_file }}
@@ -721,7 +723,7 @@ jobs:
       # the job for real when neither attempt produces a usable review.
       - name: Fail the check if the review did not complete (attempt 1)
         id: fail-check
-        if: steps.claude-review.outcome == 'success'
+        if: always() && steps.exec-file.outcome == 'success'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
         with:
@@ -760,7 +762,7 @@ jobs:
 
       - name: Resolve and upload execution file path (retry)
         id: exec-file-retry
-        if: steps.claude-review-retry.outcome == 'success'
+        if: always() && steps.claude-review-retry.outcome != 'skipped'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
         with:
@@ -769,7 +771,7 @@ jobs:
 
       - name: Fail the check if the retry also did not complete
         id: fail-check-retry
-        if: steps.exec-file-retry.outcome == 'success'
+        if: always() && steps.exec-file-retry.outcome == 'success'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
         with:
