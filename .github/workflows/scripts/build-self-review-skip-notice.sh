@@ -14,13 +14,16 @@ RUN_URL="${2:?usage: build-self-review-skip-notice.sh <workflow-path> <run-url>}
 printf '> [!WARNING]\n'
 if [[ "$WF_PATH" == *".github/workflows"* && "$WF_PATH" != *".yml" && "$WF_PATH" != *".yaml" ]]; then
   printf '> **No review ran --- this PR edits workflow files under `%s`.**\n' "$WF_PATH"
+  printf '> `claude-code-action` requires workflow files on dispatched runs to match the default branch, so its token exchange fails until this change merges.\n'
+  printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing workflow files.\n'
 else
   printf '> **No review ran --- this PR edits `%s`, the review workflow itself.**\n' "$WF_PATH"
+  printf '> `claude-code-action` requires that file to match the default branch, so its token exchange fails until this change merges.\n'
+  printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing that file.\n'
 fi
-printf '> `claude-code-action` requires that file to match the default branch, so its token exchange fails until this change merges.\n'
-printf '> The review is skipped by design, and re-running or re-dispatching will not change that: the skip lifts only if the PR stops editing that file.\n'
 printf '>\n'
 printf '> `require-review` reports a gray *skipped* rather than green.\n'
+
 printf '> A green there attests that a reviewer ran, never that one approved; here none ran at all.\n'
 printf '> Merge on a self-review or a human review instead.\n'
 printf '>\n'

@@ -404,10 +404,13 @@ jobs:
           if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
             has_wf_path=true
           fi
-          if printf '%s\n' "$files" | grep -q '^.github/workflows/'; then
+          if printf '%s\n' "$files" | grep -q '^\.github/workflows/'; then
             has_any_wf=true
           fi
 
+          # PR editing the review workflow itself 401s on both pull_request and workflow_dispatch.
+          # Additionally, workflow_dispatch on a PR editing ANY file under .github/workflows/
+          # 401s on token exchange (gha#386). Skip gracefully with a notice comment in both cases.
           if [ "$has_wf_path" = "true" ]; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "notice_path=$WF_PATH" >> "$GITHUB_OUTPUT"
@@ -434,6 +437,7 @@ jobs:
         if: steps.selfmod.outputs.self_mod == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           BODY_FILE: ${{ steps.build-notice.outputs.body-file }}

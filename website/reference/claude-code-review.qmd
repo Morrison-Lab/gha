@@ -79,7 +79,8 @@ context-gathering job having been cancelled --- plus two cases where the job
 ran and stopped early:
 
 - the API quota was exhausted before any review work happened;
-- the PR edits the caller's own review workflow file.
+- the PR edits the caller's own review workflow file, or
+  (on `workflow_dispatch`) edits any file under `.github/workflows/`.
 
 That last case deserves care. `claude-code-action` requires the calling
 workflow to match the default branch, so a PR editing it cannot be reviewed by

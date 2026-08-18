@@ -52,8 +52,19 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 2: Missing arguments usage check
+# Test 2: Directory sentinel path formatting (.github/workflows/) (#386)
+dir_path=".github/workflows/"
+got_dir="$(bash "$build_script" "$dir_path" "$run_url")"
+if [[ "$got_dir" == *"edits workflow files under \`.github/workflows/\`"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh formats directory sentinel path correctly (#386)"
+else
+  echo "::error::build-self-review-skip-notice.sh failed to format directory sentinel path; got '$got_dir'"
+  failures=$((failures + 1))
+fi
+
+# Test 3: Missing arguments usage check
 set +e
+
 err_output="$(bash "$build_script" 2>&1)"
 exit_code=$?
 set -e
