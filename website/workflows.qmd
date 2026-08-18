@@ -247,6 +247,11 @@ answered in place. Keep the review stub named `gemini-code-review.yml` (or set
 `gemini.yml`'s `review-workflow-file` to match). Gemini needs a `GEMINI_API_KEY`
 secret; the two families are independent, so a repo can install either or both.
 
+All agent workflows align with upstream action standards (such as
+`anthropics/claude-code-action` v1.0.191 and `run-gemini-cli` v0.1.22, alongside
+the `google-antigravity` Python SDK) for trigger policies, permission
+isolation, and secret handling.
+
 `ai-code-review.yml` sits above whichever review workflows a repo has installed:
 it picks one of the configured agents at random and dispatches that agent's own
 review workflow, falling through to the next candidate when one can't be
