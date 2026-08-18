@@ -1,0 +1,2 @@
+# Allowlist for non-PHI synthetic data or public maintainer emails (gha#383)
+@ucdavis\.edu
