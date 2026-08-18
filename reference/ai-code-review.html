@@ -625,11 +625,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched or fails during execution (<a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
+<p>Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched or fails during execution (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>, <a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
 <p>It sits above whichever per-agent review workflows a repo has installed — <a href="../reference/claude-code-review.html"><code>claude-code-review.yml</code></a>, <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a>, and <a href="../reference/antigravity-code-review.html"><code>antigravity-code-review.yml</code></a> — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the <code>*-review-workflow-file</code> inputs below.</p>
 <section id="what-the-fallback-covers" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-fallback-covers">What the fallback covers</h2>
-<p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong> (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that <strong>fails or is cancelled during execution</strong> (<a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
+<p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong> (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that <strong>fails or is cancelled during execution</strong> (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>, <a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
 <p>When a dispatched agent run fails, <code>ai-code-review.yml</code> detects the failure and falls through to try the next candidate agent in the list.</p>
 </section>
 <section id="inputs" class="level2">
