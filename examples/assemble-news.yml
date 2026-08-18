@@ -1,0 +1,30 @@
+# Copy to .github/workflows/assemble-news.yml in your repo.
+name: Assemble NEWS.md
+
+on:
+  workflow_dispatch:
+
+jobs:
+  assemble:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Assemble news fragments
+        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2
+        with:
+          fragments-dir: news.d
+          news-file: NEWS.md
+
+      - name: Commit assembled NEWS.md
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add NEWS.md news.d/
+          git diff --staged --quiet || git commit -m "chore(release): assemble news fragments into NEWS.md"
+          git push

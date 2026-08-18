@@ -39,6 +39,27 @@ jobs:
     timeout-minutes: 20
     if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
-      - uses: UCD-SERG/changelog-check-action@0189fc7eedec3ef3e9648c713908f6f2a6e99057 # v2 (major-only tag; no vX.Y.Z published)
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Check for added news/changelog fragments
+        id: check-fragments
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: |
+          set -euo pipefail
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF...HEAD" 2>/dev/null || git diff --name-only HEAD~1)
+          if echo "$CHANGED_FILES" | grep -E '^news\.d/|^changelog\.d/' | grep -q '\.md$'; then
+            echo "fragment_found=true" >> "$GITHUB_OUTPUT"
+            echo "Found added news/changelog fragment file in PR."
+          else
+            echo "fragment_found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check Changelog Action
+        if: steps.check-fragments.outputs.fragment_found != 'true'
+        uses: UCD-SERG/changelog-check-action@0189fc7eedec3ef3e9648c713908f6f2a6e99057 # v2 (major-only tag; no vX.Y.Z published)
         with:
           changelog: ${{ inputs.changelog }}

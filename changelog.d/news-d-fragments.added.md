@@ -1,0 +1,1 @@
+- Added support for `news.d/` fragment-based changelog entries in `check-news.yml` and added `assemble-news.sh` for assembling R package `NEWS.md` files ([#394](https://github.com/Morrison-Lab/gha/issues/394)).

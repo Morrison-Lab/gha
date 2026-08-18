@@ -59,6 +59,25 @@ jobs:
         run: |
           bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh --self-test
           bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh
+      - name: Run assemble-news unit tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-assemble-news-tests.sh
+      - name: Prepare assemble-news fixture
+        shell: bash
+        run: |
+          mkdir -p fixture_news.d
+          printf -- '- Test feature ([#1](https://github.com/foo/bar/issues/1)).\n' > fixture_news.d/test.added.md
+          printf '# pkg (dev)\n' > fixture_NEWS.md
+      - name: Exercise assemble-news composite action
+        uses: ./.github/actions/assemble-news
+        with:
+          fragments-dir: fixture_news.d
+          news-file: fixture_NEWS.md
+      - name: Verify assembled fixture output
+        shell: bash
+        run: |
+          grep -q '## New features' fixture_NEWS.md
+          rm -rf fixture_news.d fixture_NEWS.md
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser

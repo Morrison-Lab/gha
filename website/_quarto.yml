@@ -46,6 +46,7 @@ website:
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
           - reference/check-news.qmd
+          - reference/assemble-news.qmd
           - reference/test-coverage.qmd
           - reference/update-snapshots.qmd
           - reference/summary.qmd
