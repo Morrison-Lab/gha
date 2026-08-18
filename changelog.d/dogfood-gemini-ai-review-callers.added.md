@@ -1,0 +1,1 @@
+- Added in-repo dogfooding workflows `.github/workflows/gemini-bot.yml`, `.github/workflows/gemini-review.yml`, and `.github/workflows/ai-review.yml` calling their `@v2` reusable workflows ([#363](https://github.com/Morrison-Lab/gha/issues/363)).
