@@ -250,7 +250,13 @@ secret; the two families are independent, so a repo can install either or both.
 All agent workflows align with upstream action standards (such as
 `anthropics/claude-code-action` v1.0.191 and `run-gemini-cli` v0.1.22, alongside
 the `google-antigravity` Python SDK) for trigger policies, permission
-isolation, and secret handling.
+isolation, and secret handling. In particular, central workflows and composite
+actions (`claude.yml`, `claude-code-review.yml`, and `run-claude-review-attempt`)
+were compared against upstream reference templates in the `anthropics/claude-code-action`
+repository:
+- **Action input wiring**: All upstream inputs (`claude_code_oauth_token`, `anthropic_api_key`, `show_full_output`, `allowed_bots`, `use_sticky_comment`) are forwarded cleanly with fallbacks.
+- **Permission isolation**: Review runs enforce read-only execution by disallowing git-write tools (`git add`, `git commit`, `git rm`, `git push`, `gh pr comment`) while explicitly allowlisting inline commenting and read-only search/diff tools (`gh pr view`, `gh pr diff`, `WebFetch`, `WebSearch`).
+- **Prompt and retry handling**: System prompt addenda enforce non-interactive completion and single-turn verdicts, while pre-flight credential checks gracefully handle missing credentials or quota limits ([#395](https://github.com/Morrison-Lab/gha/issues/395)).
 
 `ai-code-review.yml` sits above whichever review workflows a repo has installed:
 it picks one of the configured agents at random and dispatches that agent's own
