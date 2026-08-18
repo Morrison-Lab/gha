@@ -19,7 +19,7 @@ jobs:
     # with:
     #   globs: '*.md'                          # pathspecs to check (recursive)
     #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
-    #   fail: true                             # block the PR instead of warning
+    #   fail: true                             # block the PR instead of non-blocking annotations
     #   clause-breaks: false                   # sentences only; skip the
     #                                          # semicolon clause check (on by default)
     #   clause-min-length: 100                 # raise the clause check's length gate

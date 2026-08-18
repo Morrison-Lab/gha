@@ -87,7 +87,7 @@ _ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 # abbreviation ending in two lowercase letters -- regardless of its overall case
 # (`Inc.`, `Prof.`, `Mon.`, `Jan.`) -- can still false-split before a lowercase
 # word, which is a disclosed limitation rather than a hard failure on this
-# warn-only check.
+# non-blocking check.
 _ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
 _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))

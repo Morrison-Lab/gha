@@ -166,7 +166,7 @@ so a committed credential passes it cleanly.
   and a shallow clone is refused rather than reported clean on a partial scan.
 - **Values are never printed**, in the log or the run summary.
   Findings report only the rule, `file:line`, and the commit.
-- **It blocks by default**, where the advisory prose checks warn.
+- **It blocks by default**, where the advisory prose checks are non-blocking by default.
 - **Its `paths-ignore` patterns are Go regexes matched unanchored**, not globs,
   so `docs` suppresses every path containing that substring;
   anchor with `^` when that matters.
