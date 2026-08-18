@@ -1,0 +1,28 @@
+---
+title: "check-ai-tells"
+---
+
+Scans narrative prose in Markdown and Quarto files (`*.md`, `*.qmd`, `*.Rmd`)
+for AI tell patterns (e.g. overused vocabulary, negation-reversal antithesis,
+signposting filler) from the `ai-config` catalog, computing tell density
+per 1,000 words.
+
+## Usage
+
+```yaml
+jobs:
+  check-ai-tells:
+    uses: Morrison-Lab/gha/.github/workflows/check-ai-tells.yml@v2
+    with:
+      fail: false
+```
+
+## Inputs
+
+| Input | Description | Default |
+|-------|-------------|---------|
+| `paths` | Comma- or space-separated list of files or globs to scan. | All `*.md`, `*.qmd`, `*.Rmd` |
+| `paths-ignore` | Comma- or space-separated list of file paths or globs to exclude from scanning. | `''` |
+| `base-ref` | Git base ref to limit checking to newly added/modified lines in diff. | `''` (whole-file scan) |
+| `threshold` | Maximum allowed tell density (tells per 1,000 words) before failing when `fail: true`. | `10` |
+| `fail` | Whether to fail the workflow if tell density exceeds threshold. | `false` |

@@ -35,6 +35,7 @@ website:
       - versioning.qmd
       - section: "Reference"
         contents:
+          - reference/check-ai-tells.qmd
           - reference/check-bibliography-dois.qmd
           - reference/check-non-standard-chars.qmd
           - reference/check-phi.qmd
