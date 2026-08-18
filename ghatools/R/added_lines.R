@@ -1,13 +1,16 @@
-# Parse a unified-diff patch into the set of new-file line numbers it adds or
-# modifies. Shared by lint-changed-lines.R and its offline tests, so it stays
-# free of side effects (no I/O, no global state).
-#
-# Part of the ghatools internal R package (ghatools/R/added_lines.R; gha#383).
-
-# added_lines(patch): the new-file line numbers a single file's unified-diff
-# `patch` (as returned in the GitHub "list PR files" API `patch` field) adds
-# or modifies. Returns integer(0) for a NULL/NA/empty patch (binary or
-# too-large files, which the API omits a patch for).
+#' Extract Added or Modified Line Numbers from a Unified Diff Patch
+#'
+#' Parses a single file's unified-diff patch (as returned in the GitHub API
+#' `patch` field or from standard `git diff`) and returns the vector of 1-indexed
+#' new-file line numbers that were added or modified.
+#'
+#' @param patch Character scalar containing the patch string, or `NULL`/`NA`.
+#' @return Integer vector of new-file line numbers. Returns `integer(0)` if
+#'   `patch` is empty, `NULL`, `NA`, or contains no added lines.
+#' @export
+#' @examples
+#' patch <- "@@ -1,3 +1,4 @@\n context\n+new line 2\n context\n+new line 4\n"
+#' added_lines(patch)
 added_lines <- function(patch) {
   if (is.null(patch) || length(patch) == 0L || is.na(patch)) {
     return(integer(0))
