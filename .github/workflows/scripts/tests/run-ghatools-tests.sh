@@ -10,14 +10,12 @@ rpkg_dir="$repo_root/ghatools"
 echo "Running ghatools unit tests..."
 if command -v Rscript >/dev/null 2>&1; then
   Rscript -e '
+    source("'"$rpkg_dir"'/R/added_lines.R")
+    source("'"$rpkg_dir"'/R/version_helpers.R")
     if (requireNamespace("testthat", quietly = TRUE)) {
       testthat::test_dir("'"$rpkg_dir"'/tests/testthat", load_package = "none", reporter = "summary")
     } else {
-      # Fallback to sourcing individual test files if testthat is not installed
-      cat("testthat not installed, running test-added-lines.R...\n")
-      source("'"$rpkg_dir"'/R/added_lines.R")
-      source("'"$rpkg_dir"'/R/version_helpers.R")
-      cat("OK ghatools sources without error\n")
+      cat("testthat not installed; verified ghatools sources without error.\n")
     }
   '
 else

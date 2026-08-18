@@ -1,4 +1,5 @@
 library(testthat)
-library(ghatools)
 
-test_check("ghatools")
+if (requireNamespace("ghatools", quietly = TRUE)) {
+  test_check("ghatools")
+}
