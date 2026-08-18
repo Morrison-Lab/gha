@@ -59,7 +59,7 @@ not reference `@main` from consumers.
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push — the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model` |
-| `gemini.yml` | Gemini CLI question-answering bot: replies to `@gemini` and `@gemini-cli` mentions on issues and PRs; routes `@gemini review` to `gemini-code-review.yml`. Read-only --- it does not edit files, push, or open PRs (see [#367](https://github.com/Morrison-Lab/gha/issues/367)) | `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
+| `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `report-cost`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model` |
 | `antigravity-code-review.yml` | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`) | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model` |
 | `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file` |
@@ -123,6 +123,14 @@ that need to write must have the **caller** grant it on the calling job:
     push is reported as an error naming this secret, and Claude's commits are
     posted to the thread as a `git format-patch` so they survive the run.
   - **Optional:** set `checkout-submodules: true` so Claude can read submodule
+    contents. Public submodules clone anonymously; private ones additionally need
+    a `SUBMODULES_TOKEN` secret.
+- `gemini` (pushes branches, opens PRs, dispatches the review workflow) → grant
+  `contents: write`, `pull-requests: write`, `issues: write`, `id-token: write`,
+  `actions: write`, and add the `GEMINI_API_KEY` secret.
+  - **Optional:** if Gemini will edit files under `.github/workflows/`, also add
+    a `WORKFLOW_TOKEN` secret.
+  - **Optional:** set `checkout-submodules: true` so Gemini can read submodule
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,

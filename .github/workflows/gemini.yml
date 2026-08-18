@@ -63,7 +63,7 @@ on:
         type: boolean
         default: true
       report-cost:
-        description: Extract and surface estimated API run cost in a PR comment.
+        description: Surface run status in PR comments.
         type: boolean
         default: true
       prompt-addendum:
@@ -406,9 +406,7 @@ jobs:
                   "includeTools": [
                     "add_issue_comment",
                     "issue_read",
-                    "pull_request_read",
-                    "create_pull_request",
-                    "update_pull_request"
+                    "pull_request_read"
                   ],
                   "env": {
                     "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
@@ -417,7 +415,19 @@ jobs:
               },
               "tools": {
                 "core": [
-                  "run_shell_command(*)"
+                  "run_shell_command(cat)",
+                  "run_shell_command(echo)",
+                  "run_shell_command(grep)",
+                  "run_shell_command(head)",
+                  "run_shell_command(tail)",
+                  "run_shell_command(git)",
+                  "run_shell_command(pytest)",
+                  "run_shell_command(python3)",
+                  "run_shell_command(Rscript)",
+                  "run_shell_command(touch)",
+                  "run_shell_command(mkdir)",
+                  "run_shell_command(rm)",
+                  "run_shell_command(sed)"
                 ]
               }
             }
@@ -425,13 +435,6 @@ jobs:
             ${{ steps.gate.outputs.thread_line }}
             Read the thread, perform any requested code changes or analysis, commit your changes if appropriate, and reply to the thread.
             ${{ inputs.prompt-addendum }}
-
-      - name: Extract run cost
-        id: cost
-        if: always() && steps.gate.outputs.skip != 'true' && inputs.report-cost
-        uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v2
-        with:
-          execution-file: ${{ steps.gemini-run.outputs.execution_file || '/home/runner/work/_temp/gemini-execution-output.json' }}
 
       - name: Push PR branch if Gemini committed
         id: push_pr
@@ -504,12 +507,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ENTITY_NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          EXECUTION_FILE: ${{ steps.gemini-run.outputs.execution_file }}
+          SUMMARY: ${{ steps.gemini-run.outputs.summary }}
           ISSUE_BRANCH: ${{ steps.issue_branch.outputs.branch }}
           ISSUE_BASELINE_SHA: ${{ steps.eager_pr.outputs.seed_sha || steps.issue_branch.outputs.starting_sha }}
           PR_HEAD_BEFORE: ${{ steps.head_before.outputs.sha }}
           PR_HEAD_AFTER: ${{ steps.head_after.outputs.sha }}
-          COST_USD: ${{ steps.cost.outputs.cost }}
         run: |
           COMMITTED=false
           if [ -n "$ISSUE_BRANCH" ] && [ -n "$ISSUE_BASELINE_SHA" ]; then
@@ -523,21 +525,9 @@ jobs:
             exit 0
           fi
 
-          FILE="${EXECUTION_FILE:-/home/runner/work/_temp/gemini-execution-output.json}"
-          if [ ! -f "$FILE" ]; then
-            echo "::warning::No Gemini execution output at $FILE; nothing to post."
-            exit 0
-          fi
-          RESPONSE=$(jq -rs '
-            flatten(1)
-            | [.[] | select(type == "object" and .type == "assistant")]
-            | last
-            | (.message.content // [])
-            | map(select(.type == "text") | .text)
-            | join("\n\n")
-          ' < "$FILE" || true)
+          RESPONSE="$SUMMARY"
           if [ -z "$RESPONSE" ] || [ "$RESPONSE" = "null" ]; then
-            echo "::warning::No assistant text content; nothing to post."
+            echo "::notice::Gemini CLI completed without summary output text; skipping response post."
             exit 0
           fi
 
@@ -549,10 +539,7 @@ jobs:
           … (response truncated at ${MAX_LEN} bytes; full text in the [workflow run](${RUN_URL}))"
           fi
 
-          COST_LINE=""
-          [ -n "$COST_USD" ] && COST_LINE=$(printf '\n\n💰 **Cost:** $%s' "$COST_USD")
-
-          BODY="$(printf '%s\n\n<sub>— posted by @gemini post-step from [workflow run](%s)</sub>%s\n' "$RESPONSE" "$RUN_URL" "$COST_LINE")"
+          BODY="$(printf '%s\n\n<sub>— posted by @gemini post-step from [workflow run](%s)</sub>\n' "$RESPONSE" "$RUN_URL")"
           REPLY_TARGET_ID="${{ github.event.comment.in_reply_to_id || github.event.comment.id }}"
           if [ "${{ github.event_name }}" = "pull_request_review_comment" ]; then
             if jq -n --arg b "$BODY" '{body: $b}' \
@@ -589,7 +576,6 @@ jobs:
           REVIEWER: ${{ inputs.reviewer }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           GEMINI_OUTCOME: ${{ steps.gemini-run.outcome }}
-          COST_USD: ${{ steps.cost.outputs.cost }}
           REPO: ${{ github.repository }}
         run: |
           PR_NUMBER="${{ github.event.pull_request.number || github.event.issue.number }}"
@@ -602,11 +588,6 @@ jobs:
             if [ "$MARK_READY" = "true" ] && [ "$GEMINI_OUTCOME" = "success" ]; then
               gh pr ready "$PR_NUMBER" \
                 || echo "::warning::Could not mark PR #$PR_NUMBER ready for review."
-            fi
-            if [ -n "$COST_USD" ]; then
-              gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
-                --body "💰 **Cost:** \$${COST_USD}" \
-                || echo "::warning::Could not post cost comment."
             fi
           else
             echo "No new commits on PR head; skipping reviewer re-request."
@@ -632,7 +613,6 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           GEMINI_OUTCOME: ${{ steps.gemini-run.outcome }}
-          COST_USD: ${{ steps.cost.outputs.cost }}
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "gemini[bot]"
@@ -693,7 +673,6 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           GEMINI_OUTCOME: ${{ steps.gemini-run.outcome }}
-          COST_USD: ${{ steps.cost.outputs.cost }}
         run: |
           PR_URL="${EAGER_PR_URL:-$EXISTING_PR_URL}"
 
@@ -720,10 +699,8 @@ jobs:
               echo "::warning::Could not mark PR #${PR_URL##*/} ready for review."
             fi
           fi
-          COST_LINE=""
-          [ -n "$COST_USD" ] && COST_LINE=$(printf '\n\n💰 **Cost:** $%s' "$COST_USD")
           gh issue comment "$ISSUE_NUMBER" --repo "${{ github.repository }}" \
-            --body "Pushed Gemini's commits to \`${BRANCH}\` and ${PR_VERB}: ${PR_URL}${COST_LINE}" \
+            --body "Pushed Gemini's commits to \`${BRANCH}\` and ${PR_VERB}: ${PR_URL}" \
             || echo "::warning::Could not post PR link as issue comment."
 
       - name: Classify and report Gemini CLI failure
