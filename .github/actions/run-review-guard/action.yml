@@ -41,6 +41,20 @@ outputs:
       The permission_denials_count from the execution result (or sentinel
       999999 if missing/unparseable).
     value: ${{ steps.run.outputs.denials }}
+  action_short_circuit:
+    description: >-
+      'true' when the run failed because the action short-circuited before
+      writing an execution result (missing execution file or missing result
+      object in output; gha#368).
+    value: ${{ steps.run.outputs.action_short_circuit }}
+  no_execution_file:
+    description: >-
+      'true' when no execution-output file was created by the action (gha#368).
+    value: ${{ steps.run.outputs.no_execution_file }}
+  no_result:
+    description: >-
+      'true' when the execution-output file contains no result object (gha#368).
+    value: ${{ steps.run.outputs.no_result }}
 
 runs:
   using: composite

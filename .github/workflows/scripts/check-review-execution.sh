@@ -8,8 +8,10 @@
 #
 # Reads a claude-code-action execution-output file (NDJSON stream or a single
 # JSON array of stream-json messages), and:
-#   - fails if the file is missing, has no `result` object, or the result is
-#     an error that isn't a quota/auth pre-processing rejection;
+#   - fails if the file is missing or has no `result` object, writing
+#     action_short_circuit=true alongside no_execution_file=true or no_result=true
+#     to $GITHUB_OUTPUT (gha#368);
+#   - fails if the result is an error that isn't a quota/auth pre-processing rejection;
 #   - writes quota_exhausted=true to $GITHUB_OUTPUT (if set) and exits 0 on a
 #     zero-cost, single-turn error result (quota exhaustion / auth failure);
 #   - passes a run whose result object is self-contradictory --
@@ -55,13 +57,17 @@ EXECUTION_FILE="${1:?usage: check-review-execution.sh <execution-file>}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
 if [[ ! -f "$EXECUTION_FILE" ]]; then
-  echo "::error::Claude review produced no execution output — treating as a failed review."
+  echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
+  echo "no_execution_file=true" >> "$GITHUB_OUTPUT"
+  echo "::error::Claude review produced no execution output (action short-circuit / setup failure; gha#368) — treating as a failed review."
   exit 1
 fi
 # Handles NDJSON stream or a single JSON array; grabs the last result object.
 result="$(jq -s 'flatten | map(select(.type=="result")) | last // empty' "$EXECUTION_FILE")"
 if [[ -z "$result" || "$result" == "null" ]]; then
-  echo "::error::No result object in execution output — review did not finish."
+  echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
+  echo "no_result=true" >> "$GITHUB_OUTPUT"
+  echo "::error::No result object in execution output — review did not finish (action short-circuit; gha#368)."
   exit 1
 fi
 total_cost_usd="$(jq -r '.total_cost_usd // empty' <<< "$result")"
