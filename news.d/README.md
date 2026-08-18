@@ -17,14 +17,18 @@ The file contents are one or more Markdown bullets describing the change:
 - Add `plot_results()` function for visualizing outputs ([#123](https://github.com/foo/bar/issues/123)).
 ```
 
-Do not put section headings (like `## New features`) in the fragment — `assemble-news.sh` groups and adds headings automatically when collating.
+Do not put section headings (like `## New features`) in the fragment — `assemble-news` groups and adds headings automatically when collating.
 
 ## Assembling at release time
 
-At release time (before cutting a release tag), run:
+At release time (before cutting a release tag), collate fragments into `NEWS.md` using the composite action:
 
-```bash
-bash .github/workflows/scripts/assemble-news.sh news.d NEWS.md
+```yaml
+- uses: Morrison-Lab/gha/.github/actions/assemble-news@v2
+  with:
+    fragments-dir: news.d
+    news-file: NEWS.md
 ```
 
-This collates all fragments into `NEWS.md` under standard section headings (`## Breaking changes`, `## New features`, `## Bug fixes`, `## Minor improvements`) and removes the consumed fragment files.
+This collates all fragments into `NEWS.md` under section headings (`## Breaking changes`, `## New features`, `## Bug fixes`, `## Minor improvements`) and removes the consumed fragment files.
+See [`examples/assemble-news.yml`](../examples/assemble-news.yml) for a complete release workflow template.

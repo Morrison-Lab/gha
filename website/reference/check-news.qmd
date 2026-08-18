@@ -5,9 +5,9 @@ title: "check-news.yml"
 Enforce a changelog entry on each pull request (wraps `UCD-SERG/changelog-check-action`).
 Supports both direct changelog edits (`NEWS.md`/`CHANGELOG.md`) and fragment-based
 changelog files (`news.d/` or `changelog.d/` files named `<slug>.<category>.md`).
-R package repos can use `scripts/assemble-news.sh` at release time to collate
-`news.d/` fragments into `NEWS.md` under standard headings (`## New features`,
-`## Bug fixes`, `## Minor improvements`, `## Breaking changes`).
+R package repos can use the [`assemble-news`](https://github.com/Morrison-Lab/gha/tree/main/.github/actions/assemble-news)
+composite action (`uses: Morrison-Lab/gha/.github/actions/assemble-news@v2`) at
+release time to collate `news.d/` fragments into `NEWS.md` under section headings.
 
 ## Inputs
 
