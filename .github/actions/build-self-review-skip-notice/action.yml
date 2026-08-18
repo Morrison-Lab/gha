@@ -11,6 +11,10 @@ inputs:
   workflow-path:
     description: Workflow file path (e.g. .github/workflows/claude-code-review.yml)
     required: true
+  caller-workflow-path:
+    description: Caller review workflow file path (e.g. .github/workflows/claude-code-review.yml)
+    required: false
+    default: ''
   run-url:
     description: Run URL (e.g. https://github.com/.../actions/runs/123)
     required: true
@@ -28,9 +32,10 @@ runs:
       shell: bash
       env:
         WF_PATH: ${{ inputs.workflow-path }}
+        CALLER_WF: ${{ inputs.caller-workflow-path }}
         RUN_URL: ${{ inputs.run-url }}
       run: |
         set -euo pipefail
         BODY_FILE="$(mktemp)"
-        bash "${{ github.action_path }}/../../workflows/scripts/build-self-review-skip-notice.sh" "$WF_PATH" "$RUN_URL" > "$BODY_FILE"
+        bash "${{ github.action_path }}/../../workflows/scripts/build-self-review-skip-notice.sh" "$WF_PATH" "$RUN_URL" "${CALLER_WF:-$WF_PATH}" > "$BODY_FILE"
         echo "body_file=$BODY_FILE" >> "$GITHUB_OUTPUT"

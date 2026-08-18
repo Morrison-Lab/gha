@@ -1501,28 +1501,29 @@ caller included, keep the old both-green behaviour until `@v2` slides past that
 merge, so a green `require-review` on an older run is this case rather than a
 contradiction.
 
-**The guard checks exactly one path, so it doesn't trip for every file this
-section's title mentions.** `WF_PATH` comes from `github.workflow_ref` — in a
-`workflow_call` run that's the CALLER's own workflow file, which in this
-repo's dogfooding setup is `.github/workflows/claude-review.yml` (for a
-downstream consumer, their own copy of the caller stub). Only a PR that
-touches that one file trips `self_mod=true`. `claude.yml` is a separate
-reusable workflow (the agent, not the reviewer) with no analogous self-mod
-check — editing only `claude.yml` doesn't trip this guard at all (see the
-`@v2`-tag paragraph above for that file's own self-verify gap).
+**The guard checks the caller review workflow on all events, plus any top-level
+workflow YAML file on `workflow_dispatch` (gha#386).** `WF_PATH` comes from
+`github.workflow_ref` — in a `workflow_call` run that's the CALLER's own workflow
+file, which in this repo's dogfooding setup is `.github/workflows/claude-review.yml`
+(for a downstream consumer, their own copy of the caller stub). On automatic
+`pull_request` runs, only a PR that touches that one file trips `self_mod=true`.
+On `workflow_dispatch` runs, `claude-code-action`'s token exchange validates that
+all `.github/workflows/*.yml` files match `main` or it skips with an OIDC
+validation error; to prevent false-positive failures, the guard trips `self_mod=true`
+for any touched top-level workflow YAML file on dispatch (gha#386).
 `examples/claude-code-review.yml` lives under `examples/`, not
 `.github/workflows/`, so it never actually executes as a workflow in this
 repo and `github.workflow_ref` can never resolve to it either. Check the
 job's step list, not just its conclusion, before trusting a green
-`claude-review` on a PR that touches `.github/workflows/claude-review.yml`:
-every step after the guard reading `skipped` means no review ran, regardless
-of what `@v2` currently points at. (gha#286: an `@claude review` comment
-produced only a `$0.60` cost comment, no verdict — the guard had set
-`self_mod=true` and skipped straight through, because the PR touched
+`claude-review` on a PR that touches `.github/workflows/claude-review.yml` (or
+any workflow on dispatch): every step after the guard reading `skipped` means no
+review ran, regardless of what `@v2` currently points at. (gha#286: an `@claude
+review` comment produced only a `$0.60` cost comment, no verdict — the guard had
+set `self_mod=true` and skipped straight through, because the PR touched
 `claude-review.yml` itself.)
 
 **This section's title says "a PR fixing" the review workflow, but the guard
-does not check intent -- it checks whether `claude-review.yml` is in the
+does not check intent -- it checks whether workflow files are in the
 changed-file list.** So it also fires on a PR that has nothing to do with the
 review system and touches that file only incidentally: a repo-wide sweep, a
 lint fix, a formatting pass, a dependency bump.
@@ -1533,7 +1534,7 @@ entirely, `claude-review.yml` is one file among dozens, and the check is
 green.
 
 Before trusting a green `claude-review`, run
-`git diff --name-only origin/main | grep claude-review.yml` rather than
+`git diff --name-only origin/main | grep -E '^\.github/workflows/[^/]+\.ya?ml$'` rather than
 asking yourself whether the PR is *about* the review workflow.
 A hit means no review ran, whatever the check says, and the fallback is to
 self-review and say so on the PR (see the "Do the review yourself when the

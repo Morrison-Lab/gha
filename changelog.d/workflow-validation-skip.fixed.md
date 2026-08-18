@@ -1,0 +1,1 @@
+- Fixed false-positive failure in `require-review` when a dispatched Claude review is skipped due to upstream workflow validation errors on PRs that edit `.github/workflows/` ([#386](https://github.com/Morrison-Lab/gha/issues/386)).

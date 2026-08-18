@@ -395,14 +395,22 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           WF_PATH: ${{ steps.caller-wf.outputs.path }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' 2>/dev/null || true)
           if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
+            echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
             echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            mod_wf=$(printf '%s\n' "$files" | grep -m1 -E '^\.github/workflows/[^/]+\.ya?ml$')
+            echo "self_mod=true" >> "$GITHUB_OUTPUT"
+            echo "wf_path=$mod_wf" >> "$GITHUB_OUTPUT"
+            echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (claude-code-action refuses token exchange on dispatched workflow changes until merged; gha#386)."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
+            echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build self-review skip notice body
@@ -410,7 +418,8 @@ jobs:
         if: steps.selfmod.outputs.self_mod == 'true'
         uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
         with:
-          workflow-path: ${{ steps.caller-wf.outputs.path }}
+          workflow-path: ${{ steps.selfmod.outputs.wf_path || steps.caller-wf.outputs.path }}
+          caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
       - name: Post a notice that self-review was skipped
