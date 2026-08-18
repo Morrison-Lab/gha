@@ -239,20 +239,26 @@ main <- function() {
   threshold <- as.numeric(Sys.getenv("AIT_THRESHOLD", "10"))
   if (is.na(threshold)) threshold <- 10
 
-  files <- if (length(args) > 0) {
+  raw_files <- if (length(args) > 0) {
     args
   } else if (nzchar(paths_arg)) {
-    raw_paths <- unlist(strsplit(paths_arg, "[,\\s]+", perl = TRUE))
-    expanded <- unlist(lapply(raw_paths, function(p) {
-      g <- Sys.glob(p)
-      if (length(g) > 0L) g else p
-    }))
-    unique(expanded)
+    unlist(strsplit(paths_arg, "[,\\s]+", perl = TRUE))
   } else {
     list.files(pattern = "\\.(md|qmd|Rmd)$", recursive = TRUE, full.names = TRUE)
   }
 
-  files <- files[file.exists(files) & !grepl("^\\./\\.git/", files)]
+  raw_files <- raw_files[!grepl("(^|/)\\.[^/]+", raw_files)]
+
+  files <- unlist(lapply(raw_files, function(p) {
+    if (grepl("[*?[]", p)) {
+      expanded <- Sys.glob(p)
+      if (length(expanded) > 0) expanded else character(0)
+    } else {
+      p
+    }
+  }))
+
+  files <- files[file.exists(files)]
 
   # Apply paths-ignore if provided
   if (nzchar(paths_ignore_arg)) {
