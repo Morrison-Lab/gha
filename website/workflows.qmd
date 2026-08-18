@@ -255,7 +255,6 @@ or its review workflow file missing or disabled in the caller repo)
 as well as an agent run that **fails or is cancelled during execution**
 ([gha#362](https://github.com/Morrison-Lab/gha/issues/362), [gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
 
-
 ## Content sync {#content-sync}
 
 Three workflows keep a repo current with content that lives elsewhere, without
@@ -264,6 +263,7 @@ single-source-of-truth content between a pair of repos; the third tracks an
 upstream a fork was cut from.
 
 - `bump-submodule.yml` is for the side that vendors the other repo as a git
+
   submodule. A scheduled run advances the submodule to its upstream HEAD and
   opens a PR when it moved.
 - `sync-shared-fragments.yml` is for the side that cannot add a submodule

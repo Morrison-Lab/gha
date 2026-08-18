@@ -5,7 +5,9 @@ title: "ai-code-review.yml"
 Multi-agent PR review.
 Picks one of the configured AI agents at random and dispatches that agent's own
 review workflow for the PR, falling through to the next candidate when one
-can't be dispatched or fails during execution ([gha#362](https://github.com/Morrison-Lab/gha/issues/362), [gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
+can't be dispatched or fails during execution
+([gha#362](https://github.com/Morrison-Lab/gha/issues/362),
+[gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
 
 It sits above whichever per-agent review workflows a repo has installed ---
 [`claude-code-review.yml`](claude-code-review.qmd),
@@ -19,7 +21,9 @@ and be named to match the `*-review-workflow-file` inputs below.
 The fallback covers an agent that is unavailable **at dispatch time** (no API
 key or token secret configured for it, or its review workflow file missing or
 disabled in the caller repo) as well as an agent run that **fails or is
-cancelled during execution** ([gha#362](https://github.com/Morrison-Lab/gha/issues/362), [gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
+cancelled during execution**
+([gha#362](https://github.com/Morrison-Lab/gha/issues/362),
+[gha#444](https://github.com/Morrison-Lab/gha/issues/444)).
 
 When a dispatched agent run fails, `ai-code-review.yml` detects the failure
 and falls through to try the next candidate agent in the list.
@@ -45,6 +49,7 @@ and falls through to try the next candidate agent in the list.
 ## Permissions
 
 Grant `contents: read`, `pull-requests: read`, and `actions: write` (the last
+
 so it can dispatch the selected agent's review workflow).
 
 The dispatch uses `GITHUB_TOKEN`, so no personal access token is needed:
