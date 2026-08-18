@@ -13,16 +13,16 @@ LEXICAL_TELLS <- c(
   "embark", "unlock", "elevate", "game-changer", "gamechanger",
   "cutting-edge", "state-of-the-art", "ever-evolving", "treasure trove",
   "fast-paced", "in the realm of", "at the heart of", "more than just",
-  "shed light", "dive into", "dive in", "deep dive"
+  "shed light", "dive into", "dive in", "deep dive", "actionable"
 )
 
 RHETORICAL_PATTERNS <- list(
   list(
-    pattern = "(?i)\\b(?:it'?s|this is)\\s+not\\s+(?:just|only|merely|about)\\b",
+    pattern = "(?i)\\b(?:it(?:\\s+is|'s)|this\\s+is)\\s+not\\s+(?:just|only|merely|about)\\b",
     name = "negation-reversal antithesis"
   ),
   list(
-    pattern = "(?i)\\b(?:it'?s\\s+worth\\s+noting\\s+that|it'?s\\s+important\\s+to\\s+note|it'?s\\s+essential\\s+to\\s+understand\\s+that)\\b",
+    pattern = "(?i)\\b(?:it(?:\\s+is|'s)\\s+worth\\s+noting\\s+that|it(?:\\s+is|'s)\\s+important\\s+to\\s+note|it(?:\\s+is|'s)\\s+essential\\s+to\\s+understand\\s+that)\\b",
     name = "signposting filler"
   )
 )
@@ -242,7 +242,12 @@ main <- function() {
   files <- if (length(args) > 0) {
     args
   } else if (nzchar(paths_arg)) {
-    unlist(strsplit(paths_arg, "[,\\s]+", perl = TRUE))
+    raw_paths <- unlist(strsplit(paths_arg, "[,\\s]+", perl = TRUE))
+    expanded <- unlist(lapply(raw_paths, function(p) {
+      g <- Sys.glob(p)
+      if (length(g) > 0L) g else p
+    }))
+    unique(expanded)
   } else {
     list.files(pattern = "\\.(md|qmd|Rmd)$", recursive = TRUE, full.names = TRUE)
   }
@@ -267,6 +272,10 @@ main <- function() {
   # Diff filtering if base_ref provided
   diff_map <- list()
   if (nzchar(base_ref)) {
+    if (!grepl("^[a-zA-Z0-9_./@~^ -]+$", base_ref)) {
+      cat(sprintf("::error::Invalid base-ref format '%s'.\n", base_ref))
+      quit(status = 1)
+    }
     diff_res <- tryCatch(
       system2("git", c("diff", "--unified=3", "--no-color", paste0(base_ref, "...HEAD")), stdout = TRUE, stderr = TRUE),
       error = function(e) character(0)
@@ -330,6 +339,7 @@ main <- function() {
   quit(status = 0)
 }
 
-if (!interactive()) {
+# Only run main() when directly executed as top-level script, not when sourced
+if (sys.nframe() == 0L) {
   main()
 }
