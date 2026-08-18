@@ -1,1 +1,1 @@
-- check-ai-tells: clarify description and reference doc to accurately reflect the tell pattern catalog.
+- **`check-ai-tells` action description & reference doc**: remove inaccurate attribution claiming tell patterns come from the `ai-config` catalog (#497, #502).
