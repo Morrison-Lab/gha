@@ -593,7 +593,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#scope-it-answers-it-does-not-edit" id="toc-scope-it-answers-it-does-not-edit" class="nav-link active" data-scroll-target="#scope-it-answers-it-does-not-edit">Scope: it answers, it does not edit</a></li>
+  <li><a href="#scope-agent-mode" id="toc-scope-agent-mode" class="nav-link active" data-scroll-target="#scope-agent-mode">Scope: agent mode</a></li>
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
@@ -624,12 +624,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Gemini CLI question-answering bot. Replies to <code>@gemini</code> and <code>@gemini-cli</code> mentions in issues, issue comments, PR review comments, and PR reviews, and also runs unattended on <code>workflow_dispatch</code> and <code>schedule</code> events.</p>
-<section id="scope-it-answers-it-does-not-edit" class="level2">
-<h2 class="anchored" data-anchor-id="scope-it-answers-it-does-not-edit">Scope: it answers, it does not edit</h2>
-<p>Read this before treating it as the Gemini counterpart to <a href="../reference/claude.html"><code>claude.yml</code></a>. This workflow reads a thread and posts a reply. It does <strong>not</strong> edit files, commit, push, or open pull requests: there is no PR-branch checkout, no issue-branch creation, and no push step, so anything written to the runner’s working tree is discarded at cleanup. Its permissions say the same thing — <code>contents: read</code>, not write — and the GitHub tools it is given are scoped to reading the thread and commenting.</p>
-<p>When a request needs a code change, it replies with the change rather than making it. Bringing it to <code>claude.yml</code>’s agent parity is tracked in <a href="https://github.com/Morrison-Lab/gha/issues/367">gha#367</a>; a half-built version that silently strands commits would be worse than an honest answerer.</p>
-<p>It does borrow <code>claude.yml</code>’s shape where the two genuinely overlap. A mention that appears inside a code block or a blockquote does not wake the agent, because the body is re-tested with <code>detect-bot-mention</code> rather than trusted from the caller’s <code>contains()</code> pre-filter. An <code>@gemini review</code> mention is routed to the dedicated reviewer (<a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a>) instead of being answered in place.</p>
+<p>Agent-mode Gemini CLI bot. Responds to <code>@gemini</code> and <code>@gemini-cli</code> mentions in issues, issue comments, PR review comments, and PR reviews, and also runs unattended on <code>workflow_dispatch</code> and <code>schedule</code> events.</p>
+<section id="scope-agent-mode" class="level2">
+<h2 class="anchored" data-anchor-id="scope-agent-mode">Scope: agent mode</h2>
+<p>Responds to mentions, edits files, commits, pushes, and opens/updates pull requests on dedicated branches (<code>gemini/issue-&lt;N&gt;-&lt;ts&gt;</code>), matching <a href="../reference/claude.html"><code>claude.yml</code></a>.</p>
+<p>Requires <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and <code>actions: write</code> permissions on the calling job.</p>
+<p>An <code>@gemini review</code> mention is routed to the dedicated reviewer (<a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a>) instead of being answered in place.</p>
 <p>Requires a <code>GEMINI_API_KEY</code> secret.</p>
 </section>
 <section id="inputs" class="level2">
@@ -663,22 +663,58 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Install Quarto so Gemini CLI can render <code>.qmd</code> files.</td>
 </tr>
 <tr class="odd">
+<td><code>use-renv</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Restore R dependencies from <code>renv.lock</code>.</td>
+</tr>
+<tr class="even">
+<td><code>renv-cache-version</code></td>
+<td>string</td>
+<td><code>'v1'</code></td>
+<td>Cache version suffix for <code>setup-renv</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>r-extra-packages</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Extra R packages installed alongside DESCRIPTION dependencies.</td>
+</tr>
+<tr class="even">
 <td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Extra apt packages to install before setup.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>pip-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Python packages to install with <code>pip3</code>.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>checkout-submodules</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Check out git submodules.</td>
+</tr>
+<tr class="odd">
+<td><code>eager-pr</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Open draft PR up front for issue triggers before Gemini runs.</td>
+</tr>
+<tr class="even">
+<td><code>reviewer</code></td>
+<td>string</td>
+<td><code>'d-morrison'</code></td>
+<td>Reviewer login re-requested when Gemini pushes new commits.</td>
+</tr>
+<tr class="odd">
+<td><code>mark-ready-for-review</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Mark draft PR ready for review when Gemini completes successfully.</td>
 </tr>
 <tr class="even">
 <td><code>prompt-addendum</code></td>
@@ -723,6 +759,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Gemini API key. Without it the run reaches Gemini CLI and fails there.</td>
 </tr>
 <tr class="even">
+<td><code>WORKFLOW_TOKEN</code></td>
+<td>no</td>
+<td>Secret token for pushing workflow changes (optional; falls back to <code>GITHUB_TOKEN</code>).</td>
+</tr>
+<tr class="odd">
 <td><code>SUBMODULES_TOKEN</code></td>
 <td>no</td>
 <td>Token used to check out private submodules.</td>
@@ -732,7 +773,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and <code>actions: write</code> (the last so an <code>@gemini review</code> mention can dispatch the review workflow). <code>contents</code> stays read-only deliberately — see the scope note above.</p>
+<p>Grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and <code>actions: write</code>.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
@@ -754,7 +795,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">    if</span><span class="kw">: </span><span class="ch">|</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      (github.event_name == 'issue_comment' &amp;&amp; (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) &amp;&amp; contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))</span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span>

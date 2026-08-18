@@ -512,7 +512,7 @@
     "href": "reference/gemini.html",
     "title": "gemini.yml",
     "section": "",
-    "text": "Gemini CLI question-answering bot. Replies to @gemini and @gemini-cli mentions in issues, issue comments, PR review comments, and PR reviews, and also runs unattended on workflow_dispatch and schedule events.",
+    "text": "Agent-mode Gemini CLI bot. Responds to @gemini and @gemini-cli mentions in issues, issue comments, PR review comments, and PR reviews, and also runs unattended on workflow_dispatch and schedule events.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -520,11 +520,11 @@
     ]
   },
   {
-    "objectID": "reference/gemini.html#scope-it-answers-it-does-not-edit",
-    "href": "reference/gemini.html#scope-it-answers-it-does-not-edit",
+    "objectID": "reference/gemini.html#scope-agent-mode",
+    "href": "reference/gemini.html#scope-agent-mode",
     "title": "gemini.yml",
-    "section": "Scope: it answers, it does not edit",
-    "text": "Scope: it answers, it does not edit\nRead this before treating it as the Gemini counterpart to claude.yml. This workflow reads a thread and posts a reply. It does not edit files, commit, push, or open pull requests: there is no PR-branch checkout, no issue-branch creation, and no push step, so anything written to the runner’s working tree is discarded at cleanup. Its permissions say the same thing — contents: read, not write — and the GitHub tools it is given are scoped to reading the thread and commenting.\nWhen a request needs a code change, it replies with the change rather than making it. Bringing it to claude.yml’s agent parity is tracked in gha#367; a half-built version that silently strands commits would be worse than an honest answerer.\nIt does borrow claude.yml’s shape where the two genuinely overlap. A mention that appears inside a code block or a blockquote does not wake the agent, because the body is re-tested with detect-bot-mention rather than trusted from the caller’s contains() pre-filter. An @gemini review mention is routed to the dedicated reviewer (gemini-code-review.yml) instead of being answered in place.\nRequires a GEMINI_API_KEY secret.",
+    "section": "Scope: agent mode",
+    "text": "Scope: agent mode\nResponds to mentions, edits files, commits, pushes, and opens/updates pull requests on dedicated branches (gemini/issue-&lt;N&gt;-&lt;ts&gt;), matching claude.yml.\nRequires contents: write, pull-requests: write, issues: write, id-token: write, and actions: write permissions on the calling job.\nAn @gemini review mention is routed to the dedicated reviewer (gemini-code-review.yml) instead of being answered in place.\nRequires a GEMINI_API_KEY secret.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -536,7 +536,7 @@
     "href": "reference/gemini.html#inputs",
     "title": "gemini.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsetup-r\nboolean\ntrue\nInstall R before running Gemini CLI.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto so Gemini CLI can render .qmd files.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setup.\n\n\npip-packages\nstring\n''\nPython packages to install with pip3.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the Gemini CLI prompt.\n\n\ngemini-model\nstring\n'gemini-2.5-flash'\nModel passed to run-gemini-cli.\n\n\nreview-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched on @gemini review mentions.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsetup-r\nboolean\ntrue\nInstall R before running Gemini CLI.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto so Gemini CLI can render .qmd files.\n\n\nuse-renv\nboolean\nfalse\nRestore R dependencies from renv.lock.\n\n\nrenv-cache-version\nstring\n'v1'\nCache version suffix for setup-renv.\n\n\nr-extra-packages\nstring\n''\nExtra R packages installed alongside DESCRIPTION dependencies.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setup.\n\n\npip-packages\nstring\n''\nPython packages to install with pip3.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\neager-pr\nboolean\nfalse\nOpen draft PR up front for issue triggers before Gemini runs.\n\n\nreviewer\nstring\n'd-morrison'\nReviewer login re-requested when Gemini pushes new commits.\n\n\nmark-ready-for-review\nboolean\ntrue\nMark draft PR ready for review when Gemini completes successfully.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the Gemini CLI prompt.\n\n\ngemini-model\nstring\n'gemini-2.5-flash'\nModel passed to run-gemini-cli.\n\n\nreview-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched on @gemini review mentions.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -548,7 +548,7 @@
     "href": "reference/gemini.html#secrets",
     "title": "gemini.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini API key. Without it the run reaches Gemini CLI and fails there.\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini API key. Without it the run reaches Gemini CLI and fails there.\n\n\nWORKFLOW_TOKEN\nno\nSecret token for pushing workflow changes (optional; falls back to GITHUB_TOKEN).\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -560,7 +560,7 @@
     "href": "reference/gemini.html#permissions",
     "title": "gemini.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: read, pull-requests: write, issues: write, id-token: write, and actions: write (the last so an @gemini review mention can dispatch the review workflow). contents stays read-only deliberately — see the scope note above.",
+    "text": "Permissions\nGrant contents: write, pull-requests: write, issues: write, id-token: write, and actions: write.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -572,7 +572,7 @@
     "href": "reference/gemini.html#example",
     "title": "gemini.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/gemini.yml in your repo.\nname: Gemini CLI\n\non:\n  issue_comment:\n    types: [created]\n  pull_request_review_comment:\n    types: [created]\n  issues:\n    types: [opened, assigned]\n  pull_request_review:\n    types: [submitted]\n\njobs:\n  gemini:\n    if: |\n      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association))\n    permissions:\n      contents: read\n      pull-requests: write\n      issues: write\n      id-token: write\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    # with:\n    #   setup-r: false               # skip R setup for non-R repos\n    #   install-quarto: true         # render .qmd files\n    #   gemini-model: gemini-2.5-flash\n    #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`\nSee the examples/ directory for the full caller stub (gemini.yml), which carries the complete trusted-author if: for all four events.",
+    "text": "Example\n# Copy to .github/workflows/gemini.yml in your repo.\nname: Gemini CLI\n\non:\n  issue_comment:\n    types: [created]\n  pull_request_review_comment:\n    types: [created]\n  issues:\n    types: [opened, assigned]\n  pull_request_review:\n    types: [submitted]\n\njobs:\n  gemini:\n    if: |\n      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association))\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n      id-token: write\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    # with:\n    #   setup-r: false               # skip R setup for non-R repos\n    #   install-quarto: true         # render .qmd files\n    #   gemini-model: gemini-2.5-flash\n    #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`\nSee the examples/ directory for the full caller stub (gemini.yml), which carries the complete trusted-author if: for all four events.",
     "crumbs": [
       "Overview",
       "Reference",
