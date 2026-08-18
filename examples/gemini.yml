@@ -3,9 +3,8 @@
 # explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
 # secrets into a reusable workflow owned by the same org/user, so a
 # cross-owner caller inherits an empty token and the run fails.
-# This bot ANSWERS mentions; it does not edit files, push, or open PRs, so the
-# calling job grants no `contents: write`. Agent parity with claude.yml is
-# tracked in Morrison-Lab/gha#367.
+# This agent edits files, commits, pushes, and opens/updates PRs on dedicated
+# branches (`gemini/issue-<N>-<ts>`), matching claude.yml.
 # An `@gemini review` mention dispatches gemini-code-review.yml instead of
 # being answered here, so copy examples/gemini-code-review.yml too (or set
 # review-workflow-file below to whatever you name it).
@@ -32,7 +31,7 @@ jobs:
       (github.event_name == 'pull_request_review' && (contains(github.event.review.body, '@gemini') || contains(github.event.review.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@gemini') || contains(github.event.issue.body, '@gemini-cli') || contains(github.event.issue.title, '@gemini') || contains(github.event.issue.title, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
       id-token: write
@@ -40,10 +39,16 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}   # optional; needed for pushing workflow edits
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
     # with:
     #   setup-r: false               # skip R setup for non-R repos (default true)
     #   install-quarto: true         # install Quarto so .qmd files can be rendered
+    #   use-renv: true               # restore R packages from renv.lock
+    #   r-extra-packages: covr       # extra R packages to install
+    #   eager-pr: true               # open draft PR up front for issue triggers
+    #   reviewer: d-morrison         # reviewer re-requested when Gemini pushes
+    #   mark-ready-for-review: true  # mark draft PR ready on completion
     #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
     #   apt-packages: libglpk-dev    # system packages installed before setup
     #   pip-packages: sympy          # pip packages installed before setup

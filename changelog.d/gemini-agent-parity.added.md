@@ -1,0 +1,1 @@
+- `gemini.yml`: Brought Gemini CLI reusable workflow to agent parity with `claude.yml` (`contents: write`, PR branch checkout, issue branch creation, draft PR management, push error reporting, and reviewer re-requesting; [#367](https://github.com/Morrison-Lab/gha/issues/367)).

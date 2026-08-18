@@ -2,32 +2,20 @@
 title: "gemini.yml"
 ---
 
-Gemini CLI question-answering bot.
-Replies to `@gemini` and `@gemini-cli` mentions in issues, issue comments, PR
+Agent-mode Gemini CLI bot.
+Responds to `@gemini` and `@gemini-cli` mentions in issues, issue comments, PR
 review comments, and PR reviews, and also runs unattended on
 `workflow_dispatch` and `schedule` events.
 
-## Scope: it answers, it does not edit
+## Scope: agent mode
 
-Read this before treating it as the Gemini counterpart to
+Responds to mentions, edits files, commits, pushes, and opens/updates pull
+requests on dedicated branches (`gemini/issue-<N>-<ts>`), matching
 [`claude.yml`](claude.qmd).
-This workflow reads a thread and posts a reply.
-It does **not** edit files, commit, push, or open pull requests: there is no
-PR-branch checkout, no issue-branch creation, and no push step, so anything
-written to the runner's working tree is discarded at cleanup.
-Its permissions say the same thing --- `contents: read`, not write --- and the
-GitHub tools it is given are scoped to reading the thread and commenting.
 
-When a request needs a code change, it replies with the change rather than
-making it.
-Bringing it to `claude.yml`'s agent parity is tracked in
-[gha#367](https://github.com/Morrison-Lab/gha/issues/367); a half-built version
-that silently strands commits would be worse than an honest answerer.
+Requires `contents: write`, `pull-requests: write`, `issues: write`,
+`id-token: write`, and `actions: write` permissions on the calling job.
 
-It does borrow `claude.yml`'s shape where the two genuinely overlap.
-A mention that appears inside a code block or a blockquote does not wake the
-agent, because the body is re-tested with `detect-bot-mention` rather than
-trusted from the caller's `contains()` pre-filter.
 An `@gemini review` mention is routed to the dedicated reviewer
 ([`gemini-code-review.yml`](gemini-code-review.qmd)) instead of being answered
 in place.
@@ -40,9 +28,15 @@ Requires a `GEMINI_API_KEY` secret.
 |---|---|---|---|
 | `setup-r` | boolean | `true` | Install R before running Gemini CLI. |
 | `install-quarto` | boolean | `false` | Install Quarto so Gemini CLI can render `.qmd` files. |
+| `use-renv` | boolean | `false` | Restore R dependencies from `renv.lock`. |
+| `renv-cache-version` | string | `'v1'` | Cache version suffix for `setup-renv`. |
+| `r-extra-packages` | string | `''` | Extra R packages installed alongside DESCRIPTION dependencies. |
 | `apt-packages` | string | `''` | Extra apt packages to install before setup. |
 | `pip-packages` | string | `''` | Python packages to install with `pip3`. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
+| `eager-pr` | boolean | `false` | Open draft PR up front for issue triggers before Gemini runs. |
+| `reviewer` | string | `'d-morrison'` | Reviewer login re-requested when Gemini pushes new commits. |
+| `mark-ready-for-review` | boolean | `true` | Mark draft PR ready for review when Gemini completes successfully. |
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the Gemini CLI prompt. |
 | `gemini-model` | string | `'gemini-2.5-flash'` | Model passed to `run-gemini-cli`. |
 | `review-workflow-file` | string | `'gemini-code-review.yml'` | Caller-repo workflow file dispatched on `@gemini review` mentions. |
@@ -52,14 +46,13 @@ Requires a `GEMINI_API_KEY` secret.
 | Secret | Required | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | no | Gemini API key. Without it the run reaches Gemini CLI and fails there. |
+| `WORKFLOW_TOKEN` | no | Secret token for pushing workflow changes (optional; falls back to `GITHUB_TOKEN`). |
 | `SUBMODULES_TOKEN` | no | Token used to check out private submodules. |
 
 ## Permissions
 
-Grant `contents: read`, `pull-requests: write`, `issues: write`,
-`id-token: write`, and `actions: write` (the last so an `@gemini review`
-mention can dispatch the review workflow).
-`contents` stays read-only deliberately --- see the scope note above.
+Grant `contents: write`, `pull-requests: write`, `issues: write`,
+`id-token: write`, and `actions: write`.
 
 ## Example
 
@@ -82,7 +75,7 @@ jobs:
     if: |
       (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
       issues: write
       id-token: write
