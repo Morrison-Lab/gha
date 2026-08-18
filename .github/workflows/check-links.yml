@@ -69,24 +69,17 @@ jobs:
 
       - name: Create issue on main branch if links are broken
         if: failure() && github.ref == 'refs/heads/main' && inputs.create-issue-on-main
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          BODY=$(cat <<EOF
-          The link checker found broken links in the main branch.
+        uses: Morrison-Lab/gha/.github/actions/open-failure-issue@v2
+        with:
+          title: "Broken links detected in main branch"
+          labels: "bug,automated,copilot"
+          body: |
+            The link checker found broken links in the main branch.
 
-          **Workflow Run:** $RUN_URL
+            **Workflow Run:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 
-          Please review the workflow logs above for details on which links are broken.
+            Please review the workflow logs above for details on which links are broken.
 
-          This issue was automatically created by the link checker workflow.
+            This issue was automatically created by the link checker workflow.
 
-          @copilot please fix the broken links found in the main branch.
-          EOF
-          )
-          gh issue create \
-            --title "Broken links detected in main branch" \
-            --body "$BODY" \
-            --label "bug,automated,copilot"
+            @copilot please fix the broken links found in the main branch.
