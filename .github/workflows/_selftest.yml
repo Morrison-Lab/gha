@@ -100,11 +100,17 @@ jobs:
       - name: Run ghatools package unit tests
         run: bash .github/workflows/scripts/tests/run-ghatools-tests.sh
   bib:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
-    uses: ./.github/workflows/check-bibliography-dois.yml
-    with:
-      no-metadata-check: true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check bibliography DOIs
+        uses: ./check-bibliography-dois
+        with:
+          no-metadata-check: true
   # check-phi is brand new, so it doesn't exist at the released `@v1` tag the
   # reusable workflow pins yet. Exercise the local composite directly so the
   # selftest covers the actual PR code (and stays green pre-release); consumers
