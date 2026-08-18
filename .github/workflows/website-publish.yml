@@ -19,7 +19,9 @@ concurrency:
 
 jobs:
   publish:
+    timeout-minutes: 20
     permissions:
+
       # Push the rendered site to gh-pages.
       contents: write
     uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2

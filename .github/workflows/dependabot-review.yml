@@ -18,7 +18,9 @@ on:
 
 jobs:
   request-review:
+    timeout-minutes: 10
     permissions:
+
       pull-requests: write
     uses: ./.github/workflows/request-dependabot-review.yml
     with:

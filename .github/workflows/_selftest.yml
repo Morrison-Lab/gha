@@ -1740,6 +1740,29 @@ jobs:
           fi
           echo "No workflow passes SUBMODULES_TOKEN to a top-level checkout token: input."
 
+      - name: Assert all third-party actions in workflows are SHA-pinned
+        shell: bash
+        run: |
+          set -euo pipefail
+          UNPINNED=$(grep -rnE '^\s*uses:' .github/workflows/*.yml | grep -v 'uses:\s*\./' | grep -v 'uses:\s*\.' | grep -v 'Morrison-Lab/gha' | grep -vE '@[0-9a-f]{40}' || true)
+          if [ -n "$UNPINNED" ]; then
+            echo "::error::Unpinned third-party actions found in workflows (see gha#328):\n$UNPINNED"
+            exit 1
+          fi
+          echo "All third-party actions in .github/workflows/*.yml are SHA-pinned."
+
+      - name: Assert all workflows set timeout-minutes
+        shell: bash
+        run: |
+          set -euo pipefail
+          MISSING_TIMEOUT=$(grep -rL 'timeout-minutes' .github/workflows/*.yml || true)
+          if [ -n "$MISSING_TIMEOUT" ]; then
+            echo "::error::Workflows missing timeout-minutes (see gha#328):\n$MISSING_TIMEOUT"
+            exit 1
+          fi
+          echo "All workflows in .github/workflows/*.yml set timeout-minutes."
+
+
   # Covers the open-failure-issue action. report-failure.yml is its only
   # caller so far; check-links.yml's migration onto it is deferred to gha#327,
   # since a @v2 reference to a not-yet-released action fails at job-prepare
