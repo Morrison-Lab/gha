@@ -14,25 +14,25 @@ Requires a `GEMINI_API_KEY` secret.
 ## Inputs
 
 | Input | Type | Default | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `mode` | string | `'code-review'` | Operational mode: `code-review`, `security-audit`, or `test-generation`. |
 | `pr-number` | string | `''` | Pull request number to analyze (required for `workflow_dispatch`). |
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
 | `model` | string | `'gemini-2.5-flash'` | Antigravity / Gemini model override passed to the SDK (optional). |
-
 | `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
 
 ## Secrets
 
 | Secret | Required | Description |
-|---|---|---|
+| --- | --- | --- |
 | `GEMINI_API_KEY` | no | Gemini / Antigravity API key. |
 | `SUBMODULES_TOKEN` | no | Token used to check out private submodules. |
 
 ## Permissions
 
 Grant `contents: read`, `pull-requests: write`, `issues: write`, and
+
 `id-token: write`.
 
 ## Concurrency
