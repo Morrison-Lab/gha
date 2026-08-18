@@ -800,8 +800,8 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li><p><code>check-ai-tells.yml</code> scans narrative prose in Markdown and Quarto files for AI tell patterns and density.</p></li>
 <li><p><code>check-bibliography-dois.yml</code> confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.</p></li>
-<li><p><code>check-non-standard-chars.yml</code> flags curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code>, <code>.R</code>, and <code>.md</code> files, which can break Quarto and R rendering.</p>
-<p>The multiplication sign’s ASCII replacement depends on context: <code>x</code> or <code>*</code> in code, and <code>$\times$</code> or <code>&amp;times;</code> in prose, since Pandoc renders a <code>\uXXXX</code> escape literally rather than decoding it.</p></li>
+<li><p><code>check-non-standard-chars.yml</code> flags curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code>, <code>.R</code>, and <code>.md</code> files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: <code>x</code> or <code>*</code> in</p>
+<p>code, and <code>$\times$</code> or <code>&amp;times;</code> in prose, since Pandoc renders a <code>\uXXXX</code> escape literally rather than decoding it.</p></li>
 <li><p><code>check-links.yml</code> runs a <a href="https://github.com/lycheeverse/lychee">lychee</a> link check with a bundled config, a PR skip-label, and an auto-filed issue when <code>main</code> breaks.</p></li>
 <li><p><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</p></li>
 <li><p><code>lint-yaml.yml</code> runs <a href="https://yamllint.readthedocs.io/">yamllint</a> over tracked YAML with a bundled config, plus a check that flags long <code>run:</code> script blocks as decomposition candidates.</p></li>
