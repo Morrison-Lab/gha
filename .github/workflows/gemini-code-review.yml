@@ -202,6 +202,17 @@ jobs:
             echo "::warning::No GEMINI_API_KEY secret available for Gemini review execution (gha#396)."
           fi
 
+      - name: Post Gemini quota-skip comment
+        if: steps.preflight-gemini-quota.outputs.quota_skip == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
+          > **Gemini review skipped — API key or quota unavailable.** No \`GEMINI_API_KEY\` secret is configured or quota is unavailable for Gemini CLI review. [View run]($RUN_URL)"
+
       # without both, Gemini has no GitHub tools and no credential, and the job
       # runs, bills the API, and finishes green having posted nothing.
       #
