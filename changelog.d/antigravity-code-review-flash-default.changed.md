@@ -1,0 +1,1 @@
+- Default `antigravity-code-review.yml` model input to `gemini-2.5-flash` to reduce token spend, and add `.gitattributes` generated attributes for lockfiles.
