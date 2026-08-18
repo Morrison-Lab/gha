@@ -1534,7 +1534,7 @@ entirely, `claude-review.yml` is one file among dozens, and the check is
 green.
 
 Before trusting a green `claude-review`, run
-`git diff --name-only origin/main | grep -E '^.github/workflows/[^/]+\.ya?ml$'` rather than
+`git diff --name-only origin/main | grep -E '^\.github/workflows/[^/]+\.ya?ml$'` rather than
 asking yourself whether the PR is *about* the review workflow.
 A hit means no review ran, whatever the check says, and the fallback is to
 self-review and say so on the PR (see the "Do the review yourself when the
