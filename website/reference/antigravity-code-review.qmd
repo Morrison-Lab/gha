@@ -19,7 +19,8 @@ Requires a `GEMINI_API_KEY` secret.
 | `pr-number` | string | `''` | Pull request number to analyze (required for `workflow_dispatch`). |
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the agent task prompt. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
-| `model` | string | `''` | Antigravity / Gemini model override passed to the SDK (optional). |
+| `model` | string | `'gemini-2.5-flash'` | Antigravity / Gemini model override passed to the SDK (optional). |
+
 | `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
 
 ## Secrets
@@ -80,7 +81,8 @@ jobs:
       pr-number: ${{ inputs.pr_number }}
       trigger-policy: ${{ github.event_name == 'pull_request' && 'on-push' || 'on-request' }}
       # checkout-submodules: true
-      # model: ''
+      # model: 'gemini-2.5-flash'
+
       # prompt-addendum: |
       #   Repo-specific review guidance.
     secrets:

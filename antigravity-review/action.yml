@@ -16,7 +16,8 @@ inputs:
   model:
     description: 'Antigravity / Gemini model name override (optional)'
     required: false
-    default: ''
+    default: 'gemini-2.5-flash'
+
   prompt-addendum:
     description: 'Extra prompt instructions appended to the agent task prompt'
     required: false
