@@ -253,7 +253,6 @@ the `google-antigravity` Python SDK) for trigger policies, permission
 isolation, and secret handling.
 
 `ai-code-review.yml` sits above whichever review workflows a repo has installed:
-
 it picks one of the configured agents at random and dispatches that agent's own
 review workflow, falling through to the next candidate when one can't be
 dispatched (no API key or token secret configured for it, or its review
