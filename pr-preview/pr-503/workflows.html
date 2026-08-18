@@ -625,8 +625,8 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-non-standard-chars.html"><code>check-non-standard-chars.yml</code></a></td>
-<td>Detect curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code> and <code>.R</code> files</td>
-<td><code>python-version</code></td>
+<td>Detect curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code>, <code>.R</code>, and <code>.md</code> files</td>
+<td><code>python-version</code>, <code>extensions</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/check-phi.html"><code>check-phi.yml</code></a></td>
@@ -798,18 +798,19 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
 <p>These run on pull requests (and often on <code>main</code>) to keep a repo’s content clean.</p>
 <ul>
-<li><code>check-ai-tells.yml</code> scans narrative prose in Markdown and Quarto files for AI tell patterns and density.</li>
-<li><code>check-bibliography-dois.yml</code> confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.</li>
-<li><code>check-non-standard-chars.yml</code> flags curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code> and <code>.R</code> files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: <code>x</code> or <code>*</code> in code, and <code>$\times$</code> or <code>&amp;times;</code> in prose, since Pandoc renders a <code>\uXXXX</code> escape literally rather than decoding it.</li>
-<li><code>check-links.yml</code> runs a <a href="https://github.com/lycheeverse/lychee">lychee</a> link check with a bundled config, a PR skip-label, and an auto-filed issue when <code>main</code> breaks.</li>
-<li><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</li>
-<li><code>lint-yaml.yml</code> runs <a href="https://yamllint.readthedocs.io/">yamllint</a> over tracked YAML with a bundled config, plus a check that flags long <code>run:</code> script blocks as decomposition candidates.</li>
-<li><code>lint-markdown.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint-cli2">markdownlint-cli2</a> over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.</li>
-<li><code>lint-qmd.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint">markdownlint</a> over the prose sections of tracked <code>.qmd</code> Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.</li>
-<li><code>lint-changed-lines.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.</li>
-<li><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</li>
-<li><code>check-secrets.yml</code> scans the repository’s git <strong>history</strong> for committed credentials; see <a href="#secret-scanning">below</a>.</li>
-<li><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</li>
+<li><p><code>check-ai-tells.yml</code> scans narrative prose in Markdown and Quarto files for AI tell patterns and density.</p></li>
+<li><p><code>check-bibliography-dois.yml</code> confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.</p></li>
+<li><p><code>check-non-standard-chars.yml</code> flags curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code>, <code>.R</code>, and <code>.md</code> files, which can break Quarto and R rendering.</p>
+<p>The multiplication sign’s ASCII replacement depends on context: <code>x</code> or <code>*</code> in code, and <code>$\times$</code> or <code>&amp;times;</code> in prose, since Pandoc renders a <code>\uXXXX</code> escape literally rather than decoding it.</p></li>
+<li><p><code>check-links.yml</code> runs a <a href="https://github.com/lycheeverse/lychee">lychee</a> link check with a bundled config, a PR skip-label, and an auto-filed issue when <code>main</code> breaks.</p></li>
+<li><p><code>check-news.yml</code> enforces a <code>NEWS.md</code> changelog entry on each PR.</p></li>
+<li><p><code>lint-yaml.yml</code> runs <a href="https://yamllint.readthedocs.io/">yamllint</a> over tracked YAML with a bundled config, plus a check that flags long <code>run:</code> script blocks as decomposition candidates.</p></li>
+<li><p><code>lint-markdown.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint-cli2">markdownlint-cli2</a> over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.</p></li>
+<li><p><code>lint-qmd.yml</code> runs <a href="https://github.com/DavidAnson/markdownlint">markdownlint</a> over the prose sections of tracked <code>.qmd</code> Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.</p></li>
+<li><p><code>lint-changed-lines.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.</p></li>
+<li><p><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</p></li>
+<li><p><code>check-secrets.yml</code> scans the repository’s git <strong>history</strong> for committed credentials; see <a href="#secret-scanning">below</a>.</p></li>
+<li><p><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</p></li>
 </ul>
 </section>
 <section id="phi-scanning" class="level2">
