@@ -1517,70 +1517,46 @@ Decide it mechanically instead of inferring it from step output: read
 `referenced_workflows[].sha` on the run (`actions_get` `get_workflow_run`)
 and compare it against the tag's current commit.
 
-**Read that tag's commit with `git ls-remote`, never with a plain
-`git fetch --tags` whose output you did not look at.**
+**Read that tag's commit with `git ls-remote`, and do not try to read it off a
+plain `git fetch --tags`.**
 Sliding a major tag force-moves it, and a plain `git fetch --tags` will not
 move an existing local tag, so the one operation this section exists to verify
-is precisely the one it cannot observe.
+is the one it cannot perform.
 
-It does say so, and that is worth stating precisely rather than calling it
-silent.
+git does say so.
 Measured on git 2.43.0 against this repo's own slid `v2`, a plain
 `git fetch origin --tags` printed
+`! [rejected]        v2         -> v2  (would clobber existing tag)`
+on stderr and exited 1.
 
-```text
- ! [rejected]        v2         -> v2  (would clobber existing tag)
-```
-
-on **stderr** and exited **1**, leaving the local tag untouched.
-
-So the refusal is both announced and non-zero, and the stale read needs the
-announcement to be thrown away.
-Two common habits do that, and the second is the one to watch because it looks
-harmless.
-
-**`-q`** suppresses the line outright while still exiting 1.
-
-**`2>&1 | tail -1`** drops it whenever any ref sorts after `refs/tags/v2`,
-because git writes ref-update lines in refname order.
-That is the normal case in exactly the window this section is about: sliding
-`v2` follows cutting a `vX.Y.Z` release, and `v2.6.0` sorts after `v2`, so the
-`[new tag]` line is what survives the `tail`.
-Measured on a throwaway remote carrying both a rejected `v2` and a new
+Both signals are easy to lose, though, and the habits that lose them are
+ordinary ones.
+`-q` suppresses the message.
+Piping the combined output through `tail` can drop it as well, since git prints
+ref-update lines in refname order and a slide follows cutting a `vX.Y.Z` that
+sorts after `v2`.
+And a pipeline reports `tail`'s exit status rather than the fetch's, so `&&`
+guards nothing once a pipe is involved.
+Measured on a throwaway remote carrying a rejected `v2` beside a newly created
 `v2.6.0`:
 
 ```text
-$ git fetch origin --tags            # full output, exit 1
- ! [rejected]        v2         -> v2  (would clobber existing tag)
+$ git fetch origin --tags 2>&1 | tail -1 && git rev-parse 'v2^{}'
  * [new tag]         v2.6.0     -> v2.6.0
-
-$ git fetch origin --tags 2>&1 | tail -1
- * [new tag]         v2.6.0     -> v2.6.0
+3dbbb1e95f5026c06799e548b05b820df0573581     # stale, and the chain did not stop
 ```
 
-A **bare** `| tail -1` is not a suppressor, since it redirects only stdout and
-the rejection is on stderr.
-Nor is a `&&` chain, which stops:
-`git fetch origin main --tags && git rev-parse 'v2^{}'` exited 1 with no sha
-printed.
-
-So the trap is `-q`, or a `2>&1` pipe that keeps too few lines, followed by a
-`;`-separated `git rev-parse` that then reports the old commit as though it
-were current.
-Rather than reasoning about which shell form preserves the warning, read the
-tag with `ls-remote` or update it with `--force`, below.
+So do not reason about which invocation preserves the warning.
+Read the tag directly, or force the local update:
 
 ```bash
-# read-only, always current; ask for both refspecs and take the ^{} line when
-# there is one, since an ANNOTATED tag's bare line is the tag object's sha
-# rather than the commit (see ai-config's memories/git-tags.md).
+# Ask for both refspecs and take the ^{} line when there is one: an ANNOTATED
+# tag's bare line is the tag object's sha rather than the commit. See
+# ai-config's memories/git-tags.md. slide-major-tag.yml writes lightweight
+# tags, so both forms agree for v1/v2 today.
 git ls-remote origin 'refs/tags/v2' 'refs/tags/v2^{}'
 git fetch origin --tags --force        # when the local checkout must be updated
 ```
-
-`slide-major-tag.yml` writes lightweight tags (`git tag -f`), so today both
-forms agree for `v1`/`v2`; the two-refspec form is what keeps the advice
-correct if that ever changes.
 
 Comparing two API-derived values sidesteps the question entirely, since
 `referenced_workflows[].sha` has no local-staleness failure mode.
