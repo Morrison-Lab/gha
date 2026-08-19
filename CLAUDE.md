@@ -1518,26 +1518,50 @@ Decide it mechanically instead of inferring it from step output: read
 and compare it against the tag's current commit.
 
 **Read that tag's commit with `git ls-remote`, never with a plain
-`git fetch --tags`.**
-Sliding a major tag force-moves it, and `git fetch --tags` silently refuses to
-update a local tag that already exists, so the one operation this section
-exists to verify is precisely the one a plain fetch cannot observe.
-The stale value looks like an ordinary answer and re-running the command
-reproduces it, so the wrong conclusion -- "the slide has not happened yet" --
-is self-confirming.
+`git fetch --tags` whose output you did not look at.**
+Sliding a major tag force-moves it, and a plain `git fetch --tags` will not
+move an existing local tag, so the one operation this section exists to verify
+is precisely the one it cannot observe.
+
+It does say so, and that is worth stating precisely rather than calling it
+silent.
+Measured on git 2.43.0 against this repo's own slid `v2`, a plain
+`git fetch origin --tags` printed
+
+```text
+ ! [rejected]        v2         -> v2  (would clobber existing tag)
+```
+
+on **stderr** and exited **1**, leaving the local tag untouched.
+So the refusal is both announced and non-zero, and the stale read comes from
+losing one or the other: `-q`, a pipe that keeps only the last line, or a
+`;`-separated chain all drop it, and the `git rev-parse` that follows then
+reports the old commit as though it were current.
+A `&&` chain would in fact stop, so the trap is the suppressed form rather
+than the chained one.
 
 ```bash
-git ls-remote origin 'refs/tags/v2'    # read-only, always current
+# read-only, always current; ask for both refspecs and take the ^{} line when
+# there is one, since an ANNOTATED tag's bare line is the tag object's sha
+# rather than the commit (see ai-config's memories/git-tags.md).
+git ls-remote origin 'refs/tags/v2' 'refs/tags/v2^{}'
 git fetch origin --tags --force        # when the local checkout must be updated
 ```
 
+`slide-major-tag.yml` writes lightweight tags (`git tag -f`), so today both
+forms agree for `v1`/`v2`; the two-refspec form is what keeps the advice
+correct if that ever changes.
+
 Comparing two API-derived values sidesteps the question entirely, since
 `referenced_workflows[].sha` has no local-staleness failure mode.
-(Measured 2026-08-19, minutes after #521 merged and `v2` slid to `3ec11c0`: a
-`git fetch origin main --tags && git rev-parse 'v2^{}'` returned the previous
-`3b09703`, and that stale read was reported twice as "the fix has not reached
-consumers" while `d-morrison/rme` run 32298939967 was demonstrating the fix
-working.
+(Measured 2026-08-19, minutes after #521 merged and `v2` slid to `3ec11c0`:
+`git rev-parse 'v2^{}'` after a `-q` fetch whose output was piped away
+returned the previous `3b09703`, and that stale read was reported twice as
+"the fix has not reached consumers" while `d-morrison/rme` run 32298939967 was
+demonstrating the fix working -- that run's `referenced_workflows[].sha` reads
+`3ec11c0`, its `claude-review` job's conclusion is `success`, and its
+`Run Claude Code Review` step's conclusion is `success` over an inner step
+that exited 1, which is #521's `continue-on-error`.
 `Morrison-Lab/ai-config`'s `memories/git-tags.md` records the git behavior
 itself, and gha#522 is the pointer from here.)
 To verify a slide, prefer a **fresh** run -- push a commit, open a PR, or
