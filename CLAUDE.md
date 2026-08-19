@@ -1516,6 +1516,29 @@ specifically a change to the reusable workflow's own content.
 Decide it mechanically instead of inferring it from step output: read
 `referenced_workflows[].sha` on the run (`actions_get` `get_workflow_run`)
 and compare it against the tag's current commit.
+
+**Read that tag's commit with `git ls-remote`, never with a plain
+`git fetch --tags`.**
+Sliding a major tag force-moves it, and `git fetch --tags` silently refuses to
+update a local tag that already exists, so the one operation this section
+exists to verify is precisely the one a plain fetch cannot observe.
+The stale value looks like an ordinary answer and re-running the command
+reproduces it, so the wrong conclusion -- "the slide has not happened yet" --
+is self-confirming.
+
+```bash
+git ls-remote origin 'refs/tags/v2'    # read-only, always current
+git fetch origin --tags --force        # when the local checkout must be updated
+```
+
+Comparing two API-derived values sidesteps the question entirely, since
+`referenced_workflows[].sha` has no local-staleness failure mode.
+(Measured 2026-08-19, minutes after #521 merged and `v2` slid to `3ec11c0`: a
+`git fetch origin main --tags && git rev-parse 'v2^{}'` returned the previous
+`3b09703`, and that stale read was reported twice as "the fix has not reached
+consumers" while `d-morrison/rme` run 32298939967 was demonstrating the fix
+working. `Morrison-Lab/ai-config`'s `memories/git-tags.md` records the git
+behavior itself; gha#522 is the pointer from here.)
 To verify a slide, prefer a **fresh** run -- push a commit, open a PR, or
 `workflow_dispatch` -- since it resolves the tag unambiguously and needs no
 reasoning about which re-run mode you are in.
