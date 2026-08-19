@@ -433,6 +433,11 @@ which is why the capabilities above moved to `@v2`.
   Bugbot in the Cursor dashboard instead.
   The key is sent as an `Authorization: Basic` header via curl `--config`,
   not on argv, and the script never prints it.
+  `--header` is not enough: it still puts the base64 credential on curl's
+  argv (`ps` / `/proc/<pid>/cmdline`).
+  jq's `//` treats JSON `false` as empty, so `.dry_run // empty` drops the
+  common `"dry_run":false` response and falls back to the locally requested
+  value (gha#511); parse with a null check instead.
 
 - `.github/actions/build-reviewer-args/` -- wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
@@ -1079,6 +1084,12 @@ a 2xx body with `"outcome":"error"`, and missing `CURSOR_API_KEY` /
 `PR_URL`.
 The stub is the coverage that matters, because `_selftest.yml` cannot call
 `api.cursor.com` and a live queue would bill.
+Two of its cases are the ones to keep if the suite is ever trimmed
+(gha#511):
+a `"dry_run":false` API body must win over a local `DRY_RUN=true`,
+and the stub's captured argv must not contain `Authorization` or the
+raw key -- the `--header` form put the base64 credential on argv even
+though the comments claimed otherwise.
 CI runs the suite as the `cursor-review-check` job, which also calls
 `trigger-bugbot-review` through a real `uses:` step with that same stub on
 `CURL_BIN`, proving `github.action_path` resolution.
