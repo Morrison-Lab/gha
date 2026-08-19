@@ -1536,18 +1536,39 @@ on **stderr** and exited **1**, leaving the local tag untouched.
 
 So the refusal is both announced and non-zero, and the stale read needs the
 announcement to be thrown away.
-Measured against the same force-moved tag, exactly one common habit does that:
-**`-q`**, which suppresses the line entirely while still exiting 1.
-A pipe does not, in either form -- a bare `| tail -1` redirects only stdout and
-leaves the stderr line on the terminal, and `2>&1 | tail -1` keeps it because
-it *is* the last line.
-And a `&&` chain stops rather than continuing:
+Two common habits do that, and the second is the one to watch because it looks
+harmless.
+
+**`-q`** suppresses the line outright while still exiting 1.
+
+**`2>&1 | tail -1`** drops it whenever any ref sorts after `refs/tags/v2`,
+because git writes ref-update lines in refname order.
+That is the normal case in exactly the window this section is about: sliding
+`v2` follows cutting a `vX.Y.Z` release, and `v2.6.0` sorts after `v2`, so the
+`[new tag]` line is what survives the `tail`.
+Measured on a throwaway remote carrying both a rejected `v2` and a new
+`v2.6.0`:
+
+```text
+$ git fetch origin --tags            # full output, exit 1
+ ! [rejected]        v2         -> v2  (would clobber existing tag)
+ * [new tag]         v2.6.0     -> v2.6.0
+
+$ git fetch origin --tags 2>&1 | tail -1
+ * [new tag]         v2.6.0     -> v2.6.0
+```
+
+A **bare** `| tail -1` is not a suppressor, since it redirects only stdout and
+the rejection is on stderr.
+Nor is a `&&` chain, which stops:
 `git fetch origin main --tags && git rev-parse 'v2^{}'` exited 1 with no sha
 printed.
 
-So the trap is narrow and worth stating exactly: `-q` hides the rejection, and
-a `;`-separated (rather than `&&`-chained) `git rev-parse` then reports the old
-commit as though it were current.
+So the trap is `-q`, or a `2>&1` pipe that keeps too few lines, followed by a
+`;`-separated `git rev-parse` that then reports the old commit as though it
+were current.
+Rather than reasoning about which shell form preserves the warning, read the
+tag with `ls-remote` or update it with `--force`, below.
 
 ```bash
 # read-only, always current; ask for both refspecs and take the ^{} line when
