@@ -24,4 +24,3 @@ jobs:
     #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks
     #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs
     #   fail-on-item-splices: true          # fail when a list-item merge splice is detected
-
