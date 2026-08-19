@@ -19,9 +19,11 @@ on:
         type: string
         default: ''
       fail:
-        description: Fail the workflow when a violation is found (else non-blocking).
+        description: >-
+          Fail the workflow when a violation is found (else non-blocking).
+          Defaults to true.
         type: boolean
-        default: false
+        default: true
       clause-breaks:
         description: >-
           Also flag a long line carrying a mid-line semicolon (a narrow slice

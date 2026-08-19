@@ -6,8 +6,8 @@ description: >-
   scoped to the changed sentence instead of a whole reflowed paragraph.
   Scoped to lines a diff adds, so it never reflags a corpus's pre-existing
   long lines -- useful alongside lint-markdown when markdownlint's MD013 is
-  disabled because the corpus already carries long-line drift. Non-blocking
-  by default.
+  disabled because the corpus already carries long-line drift. Blocking by
+  default.
 inputs:
   python-version:
     description: Python version to set up.
@@ -35,9 +35,8 @@ inputs:
   fail:
     description: >-
       Fail the action when a violation is found (else non-blocking). Defaults
-      to non-blocking: a long line can legitimately be un-splittable (a URL, a
-      citation, a single long clause), so this is a nudge, not a gate.
-    default: 'false'
+      to blocking ('true'); set 'false' for non-blocking annotations only.
+    default: 'true'
   clause-breaks:
     description: >-
       Also flag a long line carrying a mid-line semicolon -- a narrow slice of

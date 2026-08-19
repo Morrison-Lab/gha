@@ -15,22 +15,19 @@ Design notes:
   unlike ``check-phi`` -- unlike PHI scanning, this check's entire purpose is
   to avoid ever reflagging pre-existing drift, so a whole-tree scan here
   would defeat the point, not just be less precise.
-- **Non-blocking by default** (``NLB_FAIL`` defaults to false): a long line
-  can legitimately be un-splittable (a URL, a citation, a single genuinely
-  long clause), so this is a nudge to consider a semantic break, not a gate.
+- **Blocking by default** (``NLB_FAIL`` defaults to true): a long line
+  carrying multiple sentences/clauses on one source line fails CI.
 - **Two checks, both on by default.** Rule 4 of the SemBr spec (the
   normative MUST: break after a sentence) always applies. A narrow slice of
   rule 5 (the SHOULD: break after an independent clause) applies too, and is
   opt-*out* via ``NLB_CLAUSE_BREAKS=false`` -- see ``has_late_semicolon``
   for why that slice is semicolons only, and why it is gated on line length.
-  Defaulting it on is safe because the check is non-blocking unless
-  ``NLB_FAIL`` is set, so it adds annotations rather than build failures.
 
 Configuration (all via environment variables, set by the composite action):
   NLB_BASE_REF      Git ref/SHA to diff against. Empty => skip the check.
   NLB_GLOBS         Space-separated git pathspecs to check (default: '*.md').
   NLB_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  NLB_FAIL          "true" => exit 1 on findings; default "false" => non-blocking (annotations only).
+  NLB_FAIL          "false" => non-blocking (annotations only); default "true" => blocking.
   NLB_CLAUSE_BREAKS "false" => skip the clause check; default "true" =>
                     also flag long lines carrying a mid-line semicolon.
   NLB_CLAUSE_MIN_LENGTH
@@ -602,7 +599,7 @@ def main() -> int:
     base_ref = os.environ.get("NLB_BASE_REF", "").strip()
     globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]
     ignore = _compile_ignores(_split_list(os.environ.get("NLB_PATHS_IGNORE", "")))
-    fail = _env_flag("NLB_FAIL", default=False)
+    fail = _env_flag("NLB_FAIL", default=True)
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)
     clause_min_length = _env_int("NLB_CLAUSE_MIN_LENGTH", _DEFAULT_CLAUSE_MIN_LENGTH)
 

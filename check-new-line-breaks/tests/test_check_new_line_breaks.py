@@ -681,13 +681,30 @@ def test_clause_min_length_env_var_reaches_main(tmp_path, monkeypatch):
     assert _main_exit_code(tmp_path, monkeypatch, NLB_CLAUSE_MIN_LENGTH="500") == 0
 
 
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_fail_default_matches_script_default(path):
+    assert _declared_default(path, "fail") == "true"
+
+
 def test_violations_emit_error_annotations_when_fail_false(tmp_path, monkeypatch, capsys):
+    _repo_with_added_clause_line(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("NLB_BASE_REF", "HEAD~1")
+    monkeypatch.setenv("NLB_FAIL", "false")
+    exit_code = nlb.main()
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "::error file=notes.md,line=4::" in out
+    assert "::warning file=" not in out
+
+
+def test_violations_emit_error_annotations_when_fail_unset(tmp_path, monkeypatch, capsys):
     _repo_with_added_clause_line(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("NLB_BASE_REF", "HEAD~1")
     monkeypatch.delenv("NLB_FAIL", raising=False)
     exit_code = nlb.main()
-    assert exit_code == 0
+    assert exit_code == 1
     out = capsys.readouterr().out
     assert "::error file=notes.md,line=4::" in out
     assert "::warning file=" not in out
