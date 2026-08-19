@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Surface when main has drifted ahead of the active major tag (e.g. v2).
+# Surface when main (or a target ref) has drifted ahead of the active major tag (e.g. v2).
 #
 # Derives the major tag from the latest semver release tag (vX.Y.Z) and
-# calculates how many commits HEAD is ahead of that major tag.
+# calculates how many commits target-ref (defaults to origin/main -> main -> HEAD) is ahead of that major tag.
 #
 # Outputs:
-#   drift        - 'true' if HEAD is ahead of the major tag, 'false' otherwise
+#   drift        - 'true' if target-ref is ahead of the major tag, 'false' otherwise
 #   major        - the major tag name (e.g. 'v2')
-#   drift_count  - number of commits HEAD is ahead of the major tag
+#   drift_count  - number of commits target-ref is ahead of the major tag
 
 set -euo pipefail
 
