@@ -37,7 +37,8 @@ on:
       base-ref:
         description: >-
           Git ref/SHA to diff against. If set, only newly added lines in the diff
-          are checked for list-item merge splices. Defaults to empty.
+          are checked for list-item merge splices. Defaults to empty (skips
+          check to avoid whole-tree false-positives).
         type: string
         default: ''
       fail-on-item-splices:
@@ -58,7 +59,6 @@ jobs:
           fetch-depth: 0
 
       - name: Lint Markdown
-
         uses: Morrison-Lab/gha/lint-markdown@v2
         with:
           config-file: ${{ inputs.config-file }}
