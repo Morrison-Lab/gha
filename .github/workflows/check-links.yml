@@ -79,8 +79,5 @@ jobs:
 
             Please review the workflow logs above for details on which links are broken.
 
-            This issue was automatically created by the link checker workflow.
-
             @copilot please fix the broken links found in the main branch.
           labels: 'bug,automated,copilot'
-
