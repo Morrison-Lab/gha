@@ -714,8 +714,8 @@ What actually pins the `env var -> main() -> exit code` path is a set of
 pytest cases that set `NLB_FAIL=true` around a real `main()` call on a
 throwaway git repo, asserting exit 1 with the clause check on and exit 0 both
 with `NLB_CLAUSE_BREAKS=false` and with the length gate raised past the line.
-Each was confirmed to fail when the corresponding env read is stubbed out.
 (gha#337 review round 2: the step's original comment, and this paragraph,
+both claimed the step proved the plumbing; neither could.)
 Round 3 added the converse caveat, since "cannot prove the input arrived" is
 not "proves nothing": the step still pins that `action.yml` parses and that
 the opt-out code path runs to completion, which is why it stayed rather than

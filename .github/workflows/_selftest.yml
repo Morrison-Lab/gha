@@ -265,12 +265,11 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
       # The clause check (#336) is on by default, so the step above already
-      # covers it. This one covers the opt-out, and covers exactly two things:
-      # that `action.yml` parses, and that the clause_breaks=False path runs
-      # to completion. Declaration is pinned by the
-      # defaults-agreement test, which fails outright when the input has no
-      # `default:`. Checks newly added Markdown lines for semantic breaks,
-      # failing on findings (blocking by default).
+      # covers it. This one covers the opt-out, and covers that `action.yml`
+      # parses and that the clause_breaks=False path runs to completion.
+      # Declaration is pinned by the defaults-agreement test, which fails
+      # outright when the input has no `default:`. Checks newly added Markdown
+      # lines for semantic breaks, failing on findings (blocking by default).
       - name: Check again with the clause check opted out
         uses: ./check-new-line-breaks
         with:

@@ -13,7 +13,7 @@
   That needs `fetch-depth: 0`,
   and a shallow clone is refused rather than reported clean on a partial scan.
   Matched values are never printed, in the log or in the run summary.
-  Blocking by default (`fail: true`), unlike the advisory prose checks.
+  Blocking by default (`fail: true`), where non-blocking prose checks only annotate.
   `paths-ignore`, `allowlist-file`, and `config` inputs suppress false
   positives;
   note that gitleaks path patterns are Go regexes, not globs.
