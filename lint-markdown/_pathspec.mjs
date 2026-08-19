@@ -15,7 +15,13 @@ export function trackedFiles(pathspecs, ignores) {
   try {
     const out = execFileSync('git', ['ls-files', '--', ...pathspecs], { encoding: 'utf8' });
     files = out.split('\n').filter(Boolean);
-  } catch {}
+  } catch (err) {
+    const directFiles = pathspecs.filter((p) => existsSync(p));
+    if (directFiles.length > 0) {
+      return directFiles.filter((f) => !isIgnored(f, ignores));
+    }
+    throw err;
+  }
   if (files.length === 0) {
     for (const p of pathspecs) {
       if (existsSync(p)) files.push(p);
@@ -23,6 +29,7 @@ export function trackedFiles(pathspecs, ignores) {
   }
   return files.filter((f) => !isIgnored(f, ignores));
 }
+
 
 
 export function splitList(raw) {

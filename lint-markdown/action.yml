@@ -41,9 +41,11 @@ inputs:
   base-ref:
     description: >-
       Git ref/SHA to diff against. If set, only newly added lines in the diff
-      are checked for list-item merge splices. Defaults to empty (scans all
-      lines in tracked files).
+      are checked for list-item merge splices. Defaults to empty (skips check
+      to avoid whole-tree false-positives on legacy files). Pass 'all' to scan all
+      lines.
     default: ''
+
   fail-on-item-splices:
     description: >-
       Fail the action when a list-item merge splice is detected.

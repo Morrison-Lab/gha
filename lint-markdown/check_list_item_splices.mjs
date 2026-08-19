@@ -42,6 +42,7 @@ function getAddedLines(baseRef, pathspecs) {
         continue;
       }
       if (line.startsWith('+') && !line.startsWith('+++')) {
+
         if (currentFile) {
           added.get(currentFile).add(lineNo);
         }
@@ -57,21 +58,35 @@ function getAddedLines(baseRef, pathspecs) {
 function findListItemSplices(path, addedLinesSet) {
   const lines = readFileSync(path, 'utf8').split('\n');
   const findings = [];
-  let inCodeBlock = false;
+  let fenceStart = null;
+  let fenceChar = null;
+  let fenceLen = 0;
   let prevLine = null;
   let prevLineNo = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const lineNo = i + 1;
     const line = lines[i];
-    const fenceMatch = line.match(/^(`{3,}|~{3,})/);
+    const fenceMatch = line.match(/^\s*(`{3,}|~{3,})/);
+
     if (fenceMatch) {
-      inCodeBlock = !inCodeBlock;
+      const fenceStr = fenceMatch[1];
+      const fl = fenceStr.length;
+      const fc = fenceStr[0];
+      if (fenceStart === null) {
+        fenceStart = i;
+        fenceChar = fc;
+        fenceLen = fl;
+      } else if (fc === fenceChar && fl >= fenceLen) {
+        fenceStart = null;
+        fenceChar = null;
+        fenceLen = 0;
+      }
       prevLine = null;
       prevLineNo = 0;
       continue;
     }
-    if (inCodeBlock) continue;
+    if (fenceStart !== null) continue;
 
     const isListItem = /^\s*([*+-]|\d+\.)\s+/.test(line);
     if (isListItem && prevLine !== null) {
