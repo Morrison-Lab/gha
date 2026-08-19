@@ -38,6 +38,16 @@ inputs:
       heuristic as a provisional trigger to reassess decomposition, not a
       hard constraint.
     default: 'false'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against. If set, only newly added lines in the diff
+      are checked for list-item merge splices. Defaults to empty (scans all
+      lines in tracked files).
+    default: ''
+  fail-on-item-splices:
+    description: >-
+      Fail the action when a list-item merge splice is detected.
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -62,3 +72,12 @@ runs:
         CODEBLOCK_LENGTH_MAX_LINES: ${{ inputs.max-code-block-lines }}
         CODEBLOCK_LENGTH_FAIL: ${{ inputs.fail-on-long-code-blocks }}
       run: node "$GITHUB_ACTION_PATH/check_code_block_length.mjs"
+
+    - name: Check list-item merge splices
+      shell: bash
+      env:
+        MARKDOWNLINT_GLOBS: ${{ inputs.globs }}
+        LIST_ITEM_SPLICE_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        LIST_ITEM_SPLICE_BASE_REF: ${{ inputs.base-ref }}
+        LIST_ITEM_SPLICE_FAIL: ${{ inputs.fail-on-item-splices }}
+      run: node "$GITHUB_ACTION_PATH/check_list_item_splices.mjs"

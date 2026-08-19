@@ -6,12 +6,24 @@
 
 import { execFileSync } from 'node:child_process';
 
+import { existsSync } from 'node:fs';
+
 // Git-tracked files matching any of `pathspecs` (matched at any depth),
 // filtered against `ignores`.
 export function trackedFiles(pathspecs, ignores) {
-  const out = execFileSync('git', ['ls-files', '--', ...pathspecs], { encoding: 'utf8' });
-  return out.split('\n').filter(Boolean).filter((f) => !isIgnored(f, ignores));
+  let files = [];
+  try {
+    const out = execFileSync('git', ['ls-files', '--', ...pathspecs], { encoding: 'utf8' });
+    files = out.split('\n').filter(Boolean);
+  } catch {}
+  if (files.length === 0) {
+    for (const p of pathspecs) {
+      if (existsSync(p)) files.push(p);
+    }
+  }
+  return files.filter((f) => !isIgnored(f, ignores));
 }
+
 
 export function splitList(raw) {
   return raw

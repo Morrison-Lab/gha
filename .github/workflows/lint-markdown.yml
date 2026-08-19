@@ -34,6 +34,16 @@ on:
         description: Fail the workflow when a code block exceeds max-code-block-lines.
         type: boolean
         default: false
+      base-ref:
+        description: >-
+          Git ref/SHA to diff against. If set, only newly added lines in the diff
+          are checked for list-item merge splices. Defaults to empty.
+        type: string
+        default: ''
+      fail-on-item-splices:
+        description: Fail the workflow when a list-item merge splice is detected.
+        type: boolean
+        default: true
 
 jobs:
   lint-markdown:
@@ -54,3 +64,5 @@ jobs:
           fail: ${{ inputs.fail }}
           max-code-block-lines: ${{ inputs.max-code-block-lines }}
           fail-on-long-code-blocks: ${{ inputs.fail-on-long-code-blocks }}
+          base-ref: ${{ inputs.base-ref }}
+          fail-on-item-splices: ${{ inputs.fail-on-item-splices }}
