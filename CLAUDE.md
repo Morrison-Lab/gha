@@ -926,6 +926,30 @@ runtime -- unlike the R-package/PHI-shaped fixtures the rule above warns
 about, they're plain JSON execution-output data with no content that would
 trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
 
+**Quota exhaustion arrives in two shapes, and the second one has real cost
+behind it.**
+The original `quota-exhausted.json` is a request rejected at the door --
+`total_cost_usd: 0`, `num_turns: 1` -- and the guard keys the graceful skip on
+exactly that pair.
+An account can also run out **mid-review**, which the pair cannot see: gha#520
+was observed at 13 turns and $4.10, with `api_error_status: 429` and
+`is_error: true` alongside `subtype: "success"`.
+Before the fix that fell through to the hard `is_error` exit and reddened
+`claude-review` over an account condition the PR's author could not act on,
+with no comment on the thread saying so.
+Two things constrain any change here.
+The detection keys on the structured `api_error_status` field and never on the
+`result` message's prose, for the reason `classify-gemini-failure.sh`'s own
+header gives (gha#380 finding 1) -- that message is ordinary text, and matching
+prose against a transcript is how a genuine failure gets misclassified as a
+graceful skip.
+And the check sits **after** the gha#391 verdict check rather than beside the
+zero-cost one, so a run that stated its verdict and only then hit the limit
+still passes; `quota-exhausted-midrun-with-verdict.json` is the fixture that
+pins that ordering, and it passes with or without the fix by design -- the
+fixture that actually fails when the fix is removed is
+`quota-exhausted-midrun.json`, confirmed by mutation rather than assumed.
+
 `.github/actions/parse-workflow-ref/tests/run-tests.sh` exercises the
 extracted `parse-workflow-ref.sh` (see Layout above) offline against a tag, a
 branch, and a full-SHA ref; CI runs it as a step in the same

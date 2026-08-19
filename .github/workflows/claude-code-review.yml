@@ -728,7 +728,14 @@ jobs:
       # or similar pre-processing rejection). Failing the check in this case is
       # wrong — the PR hasn't been reviewed, but it also hasn't been found to
       # have problems. Skip gracefully instead and post a comment so the author
-      # knows to re-trigger once the quota resets.
+      # knows to re-trigger once the quota resets. The same applies when the
+      # account runs out of quota PART-WAY through a review (gha#520): the
+      # result then carries real turns and real cost alongside
+      # api_error_status:429, so the zero-cost test cannot see it, but the
+      # outcome for the PR is identical -- unreviewed for an account reason its
+      # author cannot act on. The retry below is gated on this step FAILING, so
+      # a graceful skip also avoids re-spending on an attempt the API will
+      # reject again until the limit resets.
       #
       # Second special case (gha#391): is_error:true alongside subtype:"success"
       # is itself self-contradictory -- the turn loop believed it finished
@@ -1237,7 +1244,8 @@ jobs:
     #   - claude-review was skipped, whatever made its own `if:` false --- a
     #     draft, fork, or bot-authored PR; a dispatch blocked by the
     #     fork/Dependabot guard; or gather-context having been cancelled
-    #   - quota_exhausted=true (API rejected the request before any work)
+    #   - quota_exhausted=true (the API rejected the request, either before
+    #     any work or part-way through the review -- gha#520)
     #   - self_mod=true (the PR edits the caller workflow, so the review was
     #     deliberately skipped --- gha#434)
     #

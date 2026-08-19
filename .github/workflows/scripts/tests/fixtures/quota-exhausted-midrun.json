@@ -1,0 +1,25 @@
+[
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Reading the diff and the vendored macros before writing up findings."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": true,
+    "num_turns": 13,
+    "duration_ms": 341777,
+    "total_cost_usd": 4.100043149999999,
+    "permission_denials_count": 42,
+    "terminal_reason": "api_error",
+    "api_error_status": 429,
+    "result": "You've hit your weekly limit · resets Aug 20, 8pm (UTC)"
+  }
+]
