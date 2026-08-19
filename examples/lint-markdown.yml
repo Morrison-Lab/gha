@@ -1,8 +1,9 @@
 # Copy to .github/workflows/lint-markdown.yml in your repo.
 # Lints tracked Markdown files with markdownlint-cli2 (bundled default
-# config), plus a companion check that flags long fenced code blocks as
-# decomposition candidates.
-# Only contents:read is needed (the default), so no permissions block is required.
+# config), plus companion checks that flag long fenced code blocks and
+# list-item merge splices.
+# Only contents:read is needed (the default), so no permissions block is
+# required.
 name: Lint Markdown
 
 on:

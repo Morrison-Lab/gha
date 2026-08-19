@@ -1,9 +1,8 @@
 name: Lint Markdown
 description: >-
   Lint the caller's tracked Markdown files with markdownlint-cli2 (bundled
-  default config, overridable), plus a companion check that flags fenced code
-  blocks longer than a configurable line threshold as decomposition
-  candidates.
+  default config, overridable), plus companion checks that flag long fenced
+  code blocks and list-item merge splices.
 inputs:
   config-file:
     description: >-
@@ -18,9 +17,9 @@ inputs:
     default: '*.md'
   paths-ignore:
     description: >-
-      Comma/newline-separated glob patterns (relative paths) to skip, for
-      both the markdownlint pass and the code-block-length check. Supports
-      `*`, `?`, and recursive `**`.
+      Comma/newline-separated glob patterns (relative paths) to skip, for the
+      markdownlint pass and companion checks. Supports `*`, `?`, and recursive
+      `**`.
     default: ''
   fail:
     description: Fail the action when markdownlint reports an error.
@@ -42,8 +41,8 @@ inputs:
     description: >-
       Git ref/SHA to diff against. If set, only newly added lines in the diff
       are checked for list-item merge splices. Defaults to empty (skips check
-      to avoid whole-tree false-positives on legacy files). Pass 'all' to scan all
-      lines.
+      to avoid whole-tree false-positives on legacy files). Pass 'all' to scan
+      all lines.
     default: ''
 
   fail-on-item-splices:
