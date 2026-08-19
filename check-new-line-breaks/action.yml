@@ -1,13 +1,12 @@
 name: Check new markdown lines for missing semantic line breaks
 description: >-
-  Advisory, diff-scoped check that flags newly-added Markdown lines packing
-  more than one sentence/clause onto a single source line -- the "semantic
-  line breaks" convention (one clause/sentence per line), which keeps a diff
-  scoped to the changed sentence instead of a whole reflowed paragraph.
-  Scoped to lines a diff adds, so it never reflags a corpus's pre-existing
-  long lines -- useful alongside lint-markdown when markdownlint's MD013 is
-  disabled because the corpus already carries long-line drift. Blocking by
-  default.
+  Diff-scoped check that flags newly-added Markdown lines packing more than one
+  sentence/clause onto a single source line -- the "semantic line breaks"
+  convention (one clause/sentence per line), which keeps a diff scoped to the
+  changed sentence instead of a whole reflowed paragraph. Scoped to lines a
+  diff adds, so it never reflags a corpus's pre-existing long lines -- useful
+  alongside lint-markdown when markdownlint's MD013 is disabled because the
+  corpus already carries long-line drift. Blocking by default.
 inputs:
   python-version:
     description: Python version to set up.

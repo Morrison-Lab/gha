@@ -683,7 +683,7 @@ def test_clause_min_length_env_var_reaches_main(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
 def test_declared_fail_default_matches_script_default(path):
-    assert _declared_default(path, "fail") == "true"
+    assert (_declared_default(path, "fail") == "true") is nlb._DEFAULT_FAIL
 
 
 def test_violations_emit_error_annotations_when_fail_false(tmp_path, monkeypatch, capsys):
@@ -727,9 +727,10 @@ def test_violations_emit_error_annotations_when_fail_true(tmp_path, monkeypatch,
 # #337 review round 3: both readers fell back silently. Falling back is right;
 # doing it without a word is what hides a caller's typo.
 
-def test_unrecognized_flag_value_reads_as_false_and_warns(monkeypatch, capsys):
+def test_unrecognized_flag_value_falls_back_to_default_and_warns(monkeypatch, capsys):
     monkeypatch.setenv("NLB_CLAUSE_BREAKS", "yes")
-    assert nlb._env_flag("NLB_CLAUSE_BREAKS", True) is False
+    assert nlb._env_flag("NLB_CLAUSE_BREAKS", True) is True
+    assert nlb._env_flag("NLB_CLAUSE_BREAKS", False) is False
     assert "::warning::" in capsys.readouterr().out
 
 
