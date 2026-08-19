@@ -13,7 +13,7 @@ set -euo pipefail
 
 TARGET_REF="${1:-}"
 
-if [ -z "$TARGET_REF" ] || [ "$TARGET_REF" = "HEAD" ]; then
+if [ -z "$TARGET_REF" ]; then
   if git rev-parse --verify --quiet "refs/remotes/origin/main^{commit}" >/dev/null 2>&1; then
     TARGET_REF="origin/main"
   elif git rev-parse --verify --quiet "refs/heads/main^{commit}" >/dev/null 2>&1; then
@@ -76,7 +76,7 @@ EOF
     printf 'drift=true\nmajor=%s\ndrift_count=%d\n' "$MAJOR" "$DRIFT_COUNT" >> "$GITHUB_OUTPUT"
   fi
 else
-  echo "::notice::$MAJOR is up to date with main."
+  echo "::notice::$MAJOR is up to date with $TARGET_REF."
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
     printf 'drift=false\nmajor=%s\ndrift_count=0\n' "$MAJOR" >> "$GITHUB_OUTPUT"
   fi

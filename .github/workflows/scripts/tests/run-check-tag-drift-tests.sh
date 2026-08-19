@@ -45,7 +45,7 @@ git tag v1
 rm -f "$output_file" "$summary_file"
 GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" > "$tmp_dir/log2.txt"
 
-if grep -q 'drift=false' "$output_file" && grep -q 'drift_count=0' "$output_file"; then
+if grep -q 'drift=false' "$output_file" && grep -q 'drift_count=0' "$output_file" && grep -q 'v1 is up to date with main' "$tmp_dir/log2.txt"; then
   echo "OK   check-tag-drift.sh reports zero drift when tag is up to date"
 else
   echo "::error::check-tag-drift.sh failed on zero drift"
@@ -58,21 +58,32 @@ git commit -am "second commit" -q
 echo "commit 3" >> file.txt
 git commit -am "third commit" -q
 
-# Test Case 3: 2-commit drift (with default and HEAD argument)
+# Test Case 3: 2-commit drift (default invocation resolves main)
 rm -f "$output_file" "$summary_file"
-GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" "HEAD" > "$tmp_dir/log3.txt"
+GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" > "$tmp_dir/log3.txt"
 
-if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind' "$tmp_dir/log3.txt"; then
-  echo "OK   check-tag-drift.sh correctly detects 2-commit drift with HEAD argument"
+if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind main' "$tmp_dir/log3.txt"; then
+  echo "OK   check-tag-drift.sh correctly detects 2-commit drift"
 else
-  echo "::error::check-tag-drift.sh failed to detect 2-commit drift with HEAD argument"
+  echo "::error::check-tag-drift.sh failed to detect 2-commit drift"
   failures=$((failures + 1))
 fi
 
-if grep -q '### 🏷️ Major Tag Drift Notice' "$summary_file" && grep -q '\*\*v1\*\* is \*\*2\*\* commit(s) behind' "$summary_file"; then
+if grep -q '### 🏷️ Major Tag Drift Notice' "$summary_file" && grep -q '\*\*v1\*\* is \*\*2\*\* commit(s) behind \`main\`' "$summary_file"; then
   echo "OK   check-tag-drift.sh correctly formatted GITHUB_STEP_SUMMARY"
 else
   echo "::error::check-tag-drift.sh failed to format GITHUB_STEP_SUMMARY"
+  failures=$((failures + 1))
+fi
+
+# Test Case 3b: Explicit HEAD argument preserves HEAD in notice
+rm -f "$output_file" "$summary_file"
+GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" "HEAD" > "$tmp_dir/log3b.txt"
+
+if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind HEAD' "$tmp_dir/log3b.txt"; then
+  echo "OK   check-tag-drift.sh preserves explicit HEAD target ref"
+else
+  echo "::error::check-tag-drift.sh failed to preserve explicit HEAD target ref"
   failures=$((failures + 1))
 fi
 
