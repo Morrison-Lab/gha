@@ -514,10 +514,12 @@ which is why the capabilities above moved to `@v2`.
   `RMI-PACTA/actions`-derived `version-check.yaml` copies each repo used to
   carry, so no PR branch ever holds a competing version to conflict on
   (gha#390).
+
 - `.github/actions/check-tag-drift/` -- composite action wrapping
   `check-tag-drift.sh` via `github.action_path`, deriving the active major tag
   from the latest semver release tag (`vX.Y.Z`) and emitting a GitHub Actions notice
   and job summary when `main` has unreleased commits ahead of the major tag (gha#309).
+
 - `examples/` -- caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` -- top-level project docs;
   `REVDEPS.md` --
