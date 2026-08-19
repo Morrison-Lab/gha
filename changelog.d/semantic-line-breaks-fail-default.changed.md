@@ -1,0 +1,1 @@
+- Change `check-new-line-breaks` default `fail` input from `false` to `true`, making missing semantic line breaks blocking by default on added lines (#508).

@@ -640,10 +640,8 @@ def test_declared_clause_min_length_default_matches_script_default(path):
 # ── the env var -> main() -> exit code path ──────────────────────────────────
 
 # #337 round 2: `_selftest.yml` calls the composite with `clause-breaks:
-# 'false'`, but that step sets no `fail:`, and main() returns 0 on every path
-# unless NLB_FAIL is true -- so it stays green whether the input reaches the
-# script, is dropped, or was never declared. These two cases are what actually
-# prove the plumbing, by making the exit code depend on it.
+# 'false'`, which proves `action.yml` parses and the opt-out path runs. These
+# cases are what actually prove the plumbing, by making the exit code depend on it.
 
 def _main_exit_code(tmp_path, monkeypatch, **env) -> int:
     monkeypatch.chdir(tmp_path)
@@ -681,13 +679,30 @@ def test_clause_min_length_env_var_reaches_main(tmp_path, monkeypatch):
     assert _main_exit_code(tmp_path, monkeypatch, NLB_CLAUSE_MIN_LENGTH="500") == 0
 
 
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_fail_default_matches_script_default(path):
+    assert (_declared_default(path, "fail") == "true") is nlb._DEFAULT_FAIL
+
+
 def test_violations_emit_error_annotations_when_fail_false(tmp_path, monkeypatch, capsys):
+    _repo_with_added_clause_line(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("NLB_BASE_REF", "HEAD~1")
+    monkeypatch.setenv("NLB_FAIL", "false")
+    exit_code = nlb.main()
+    assert exit_code == 0
+    out = capsys.readouterr().out
+    assert "::error file=notes.md,line=4::" in out
+    assert "::warning file=" not in out
+
+
+def test_violations_emit_error_annotations_when_fail_unset(tmp_path, monkeypatch, capsys):
     _repo_with_added_clause_line(tmp_path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("NLB_BASE_REF", "HEAD~1")
     monkeypatch.delenv("NLB_FAIL", raising=False)
     exit_code = nlb.main()
-    assert exit_code == 0
+    assert exit_code == 1
     out = capsys.readouterr().out
     assert "::error file=notes.md,line=4::" in out
     assert "::warning file=" not in out
@@ -710,9 +725,10 @@ def test_violations_emit_error_annotations_when_fail_true(tmp_path, monkeypatch,
 # #337 review round 3: both readers fell back silently. Falling back is right;
 # doing it without a word is what hides a caller's typo.
 
-def test_unrecognized_flag_value_reads_as_false_and_warns(monkeypatch, capsys):
+def test_unrecognized_flag_value_falls_back_to_default_and_warns(monkeypatch, capsys):
     monkeypatch.setenv("NLB_CLAUSE_BREAKS", "yes")
-    assert nlb._env_flag("NLB_CLAUSE_BREAKS", True) is False
+    assert nlb._env_flag("NLB_CLAUSE_BREAKS", True) is True
+    assert nlb._env_flag("NLB_CLAUSE_BREAKS", False) is False
     assert "::warning::" in capsys.readouterr().out
 
 
@@ -749,7 +765,7 @@ def test_unset_min_length_falls_back_silently(monkeypatch, capsys):
 
 def test_negative_min_length_falls_back_to_the_default_and_warns(monkeypatch, capsys):
     # A negative gate admits every line, so it is invalid rather than merely
-    # unusual -- and turning an advisory check into a firehose is exactly the
+    # unusual -- and turning the check into a firehose is exactly the
     # failure a silent fallback would hide.
     monkeypatch.setenv("NLB_CLAUSE_MIN_LENGTH", "-5")
     assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80

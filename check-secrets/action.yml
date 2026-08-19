@@ -9,9 +9,10 @@ description: >-
   see the `log-opts` input. That needs the caller to check out with
   `fetch-depth: 0`;
   a shallow clone is refused rather than silently scanned in part. Matched
-  values are never printed to the log. Blocking by default, unlike the advisory
-  prose checks, because a leaked credential should stop a merge rather than
-  nudge one. Complements, and does not replace, GitHub's own secret scanning
+  values are never printed to the log.
+  Blocking by default, where non-blocking prose checks only annotate,
+  because a leaked credential should stop a merge rather than nudge one.
+  Complements, and does not replace, GitHub's own secret scanning
   (a repository setting that evaluates pushes, not a PR check) -- and neither
   substitutes for rotating an exposed credential.
 inputs:

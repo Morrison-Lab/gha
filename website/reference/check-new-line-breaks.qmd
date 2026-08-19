@@ -2,7 +2,7 @@
 title: "check-new-line-breaks.yml"
 ---
 
-Advisory, diff-scoped check that flags newly-added Markdown lines packing
+Diff-scoped check that flags newly-added Markdown lines packing
 more than one sentence/clause onto a single source line -- the "semantic
 line breaks" convention (one clause/sentence per line), which keeps a diff
 scoped to the changed sentence instead of a whole reflowed paragraph. Scoped
@@ -40,7 +40,7 @@ Set `clause-breaks: false` to check sentences only.
 | `python-version` | string  | `'3.x'` | Python version to set up.                                                             |
 | `globs`          | string  | `'*.md'` | Space-separated git pathspecs of tracked files to check (recursive by default).      |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
-| `fail`           | boolean | `false` | Fail the workflow when a violation is found; otherwise non-blocking.                    |
+| `fail`           | boolean | `true`  | Fail the workflow when a violation is found; otherwise non-blocking.                    |
 | `clause-breaks`  | boolean | `true`  | Also flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set `false` to check sentences only. |
 | `clause-min-length` | string | `'80'` | Minimum line length before `clause-breaks` applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when `clause-breaks` is `false`. |
 
@@ -52,7 +52,7 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 
 ```yaml
 # Copy to .github/workflows/check-new-line-breaks.yml in your repo.
-# Advisory check: flags newly-added Markdown lines packing more than one
+# Diff-scoped check: flags newly-added Markdown lines packing more than one
 # sentence/clause onto one source line. Diff-scoped, so it only ever flags
 # what a PR itself adds -- pairs well with lint-markdown when MD013
 # (line-length) is disabled because the corpus already has long-line drift.
@@ -72,7 +72,7 @@ jobs:
     # with:
     #   globs: '*.md'                          # pathspecs to check (recursive)
     #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
-    #   fail: true                             # block the PR instead of only annotating
+    #   fail: false                            # warn-only instead of blocking (defaults to true)
     #   clause-breaks: false                   # sentences only; skip the
     #                                          # semicolon clause check (on by default)
     #   clause-min-length: 100                 # raise the clause check's length gate

@@ -723,14 +723,12 @@ because the `new-line-breaks-tests` job installs only pytest.
 script, however it is worded.**
 `_selftest.yml`'s `new-line-breaks` job does call the composite a second time
 with `clause-breaks: 'false'`, and that is worth having as a real `uses:`
-exercise -- but `main()` returns 0 on every path unless `NLB_FAIL` is set, so
-the step stays green whether the input arrives, is dropped, or was never
-declared at all (an undeclared composite input is only an Actions warning).
+exercise -- but `main()` now returns 1 by default when violations are found (NLB_FAIL defaults to true),
+so the step fails on findings rather than proving whether a specific input arrived or was dropped.
 What actually pins the `env var -> main() -> exit code` path is a set of
 pytest cases that set `NLB_FAIL=true` around a real `main()` call on a
 throwaway git repo, asserting exit 1 with the clause check on and exit 0 both
 with `NLB_CLAUSE_BREAKS=false` and with the length gate raised past the line.
-Each was confirmed to fail when the corresponding env read is stubbed out.
 (gha#337 review round 2: the step's original comment, and this paragraph,
 both claimed the step proved the plumbing; neither could.)
 Round 3 added the converse caveat, since "cannot prove the input arrived" is
@@ -738,11 +736,10 @@ not "proves nothing": the step still pins that `action.yml` parses and that
 the opt-out code path runs to completion, which is why it stayed rather than
 being deleted as dead weight.
 Round 5 narrowed that caveat in turn -- it had also claimed the step pins
-that the input is *declared*, contradicting this paragraph's own point two
-sentences earlier that an undeclared input is only a warning.
-Declaration is pinned by the defaults-agreement test instead, which reads
-each YAML file for the input's `default:` and fails outright when there is
-none (gha#337 review round 5).
+that the input is *declared*.
+Declaration is pinned by the defaults-agreement test instead, which reads each
+YAML file for the input's `default:` and fails outright when there is none
+(gha#337 review round 5).
 
 **Markup stripping is where this check's false verdicts come from, in both
 directions.**
@@ -838,7 +835,7 @@ reaching the uppercase one.
 That second list excludes `no` (a lowercase `no.` is the word, and should
 split) and adds `min`/`hr`/`hrs`; it is curated rather than exhaustive, so an
 unlisted lowercase abbreviation before a lowercase word can still false-split
-on this non-blocking check.
+on this check.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other (porting gha#425's fix there

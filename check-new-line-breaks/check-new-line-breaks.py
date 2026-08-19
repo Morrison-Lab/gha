@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 Flag newly-added Markdown lines that pack more than one sentence/clause onto
-a single source line -- an advisory nudge toward semantic line breaks (one
-clause/sentence per line), not a hard style gate.
+a single source line -- a diff-scoped check for semantic line breaks (one
+clause/sentence per line).
 
 Design notes:
 - **Diff-scoped, always.** Only lines *added* since ``NLB_BASE_REF`` (a PR's
@@ -15,22 +15,19 @@ Design notes:
   unlike ``check-phi`` -- unlike PHI scanning, this check's entire purpose is
   to avoid ever reflagging pre-existing drift, so a whole-tree scan here
   would defeat the point, not just be less precise.
-- **Non-blocking by default** (``NLB_FAIL`` defaults to false): a long line
-  can legitimately be un-splittable (a URL, a citation, a single genuinely
-  long clause), so this is a nudge to consider a semantic break, not a gate.
+- **Blocking by default** (``NLB_FAIL`` defaults to true): a long line
+  carrying multiple sentences/clauses on one source line fails CI.
 - **Two checks, both on by default.** Rule 4 of the SemBr spec (the
   normative MUST: break after a sentence) always applies. A narrow slice of
   rule 5 (the SHOULD: break after an independent clause) applies too, and is
   opt-*out* via ``NLB_CLAUSE_BREAKS=false`` -- see ``has_late_semicolon``
   for why that slice is semicolons only, and why it is gated on line length.
-  Defaulting it on is safe because the check is non-blocking unless
-  ``NLB_FAIL`` is set, so it adds annotations rather than build failures.
 
 Configuration (all via environment variables, set by the composite action):
   NLB_BASE_REF      Git ref/SHA to diff against. Empty => skip the check.
   NLB_GLOBS         Space-separated git pathspecs to check (default: '*.md').
   NLB_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  NLB_FAIL          "true" => exit 1 on findings; default "false" => non-blocking (annotations only).
+  NLB_FAIL          "false" => non-blocking (annotations only); default "true" => blocking.
   NLB_CLAUSE_BREAKS "false" => skip the clause check; default "true" =>
                     also flag long lines carrying a mid-line semicolon.
   NLB_CLAUSE_MIN_LENGTH
@@ -86,8 +83,7 @@ _ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 # lookbehind only inspects the two trailing characters, ANY unlisted
 # abbreviation ending in two lowercase letters -- regardless of its overall case
 # (`Inc.`, `Prof.`, `Mon.`, `Jan.`) -- can still false-split before a lowercase
-# word, which is a disclosed limitation rather than a hard failure on this
-# non-blocking check.
+# word, which is a disclosed limitation.
 _ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
 _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
@@ -199,7 +195,8 @@ _ENTITY_RE = re.compile(
     r"&(?:[A-Za-z][A-Za-z0-9]{1,31}|#[0-9]{1,7}|#[xX][0-9A-Fa-f]{1,6});"
 )
 # One home for each default; action.yml and the reusable workflow declare
-# the same two values, and a test pins all of them together.
+# the same values, and a test pins all of them together.
+_DEFAULT_FAIL = True
 _DEFAULT_CLAUSE_BREAKS = True
 _DEFAULT_CLAUSE_MIN_LENGTH = 80
 
@@ -218,7 +215,7 @@ def strip_inline_markup(text: str) -> str:
     lower bound on a line's visible length: an entity renders as one glyph and
     a code span as its contents, and both are removed outright. Under-counting
     can only suppress a flag, never invent one, which is the safe direction for
-    an advisory check.
+    the check.
 
     Punctuation *adjacent* to a stripped construct is prose, and is kept -- the
     bare-URL pattern deliberately stops short of it, so
@@ -260,8 +257,8 @@ def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) 
 
     The remaining 0.7% still includes hits rule 5 does not cover -- a
     semicolon-delimited list whose items carry their own commas is rule 8's
-    MAY -- so what this returns is "worth a second look", which is what an
-    advisory check reports.
+    MAY -- so what this returns is "worth a second look", which is what this
+    check reports.
 
     The length gate is what separates a genuinely overlong clause chain from
     an ordinary short line that merely contains a semicolon, and it degrades
@@ -562,10 +559,8 @@ def _split_list(value: str) -> List[str]:
 def _env_flag(name: str, default: bool) -> bool:
     """Read a boolean env var, falling back to ``default`` when unset/empty.
 
-    An unrecognized value warns rather than failing silently. Treating it as
-    false is fail-safe for ``NLB_FAIL``, where the fallback is "don't block the
-    PR", but inverts for an input that defaults to *on*: ``clause-breaks: yes``
-    would quietly turn off the check the caller was trying to keep.
+    An unrecognized value warns and falls back to ``default`` rather than
+    silently defaulting to false.
     """
     raw = os.environ.get(name, "").strip().lower()
     if not raw:
@@ -573,8 +568,9 @@ def _env_flag(name: str, default: bool) -> bool:
     if raw not in ("true", "false"):
         print(
             f"::warning::{name}={raw!r} is not 'true' or 'false'; "
-            "reading it as false."
+            f"using default ({default})."
         )
+        return default
     return raw == "true"
 
 
@@ -602,7 +598,7 @@ def main() -> int:
     base_ref = os.environ.get("NLB_BASE_REF", "").strip()
     globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]
     ignore = _compile_ignores(_split_list(os.environ.get("NLB_PATHS_IGNORE", "")))
-    fail = _env_flag("NLB_FAIL", default=False)
+    fail = _env_flag("NLB_FAIL", default=_DEFAULT_FAIL)
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)
     clause_min_length = _env_int("NLB_CLAUSE_MIN_LENGTH", _DEFAULT_CLAUSE_MIN_LENGTH)
 
