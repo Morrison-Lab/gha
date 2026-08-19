@@ -4,9 +4,9 @@ title: "lint-markdown.yml"
 
 Lint tracked Markdown files with
 [`markdownlint-cli2`](https://github.com/DavidAnson/markdownlint-cli2) using a
-bundled default config (overridable), plus a companion check that flags fenced
-code blocks longer than a configurable line threshold as decomposition
-candidates.
+bundled default config (overridable), plus companion checks that flag fenced
+code blocks longer than a configurable line threshold and list-item merge
+splices.
 
 ## Inputs
 
@@ -14,10 +14,12 @@ candidates.
 | -------------------------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `config-file`              | string  | `''`     | Path (in the caller repo) to a markdownlint config file (`.jsonc`/`.json`/`.yaml`/`.cjs`). Falls back to the bundled default when empty or the file does not exist.                                              |
 | `globs`                    | string  | `'*.md'` | Space-separated git pathspecs of tracked files to lint (recursive by default).                                                                                                                                   |
-| `paths-ignore`             | string  | `''`     | Comma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports `*`, `?`, and recursive `**`.                                                                                          |
+| `paths-ignore`             | string  | `''`     | Comma/newline-separated glob patterns (relative paths) to skip, for markdownlint and companion checks. Supports `*`, `?`, and recursive `**`.                                    |
 | `fail`                     | boolean | `true`   | Fail the workflow when markdownlint reports an error.                                                                                                                                                            |
 | `max-code-block-lines`     | string  | `'150'`  | Flag a fenced code block longer than this many lines. Matches the [lab manual's](https://ucd-serg.github.io/lab-manual/coding-practices.html) `<150`-line function-length heuristic.                             |
 | `fail-on-long-code-blocks` | boolean | `false`  | Fail when a code block exceeds `max-code-block-lines`. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint. |
+| `base-ref`                 | string  | `''`     | Git ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives). Pass 'all' to scan all lines. |
+| `fail-on-item-splices`     | boolean | `true`   | Fail the workflow when a list-item merge splice is detected.                                                                                                                                                     |
 
 ## Permissions
 
@@ -26,10 +28,11 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 ## Example
 
 ```yaml
+
 # Copy to .github/workflows/lint-markdown.yml in your repo.
 # Lints tracked Markdown files with markdownlint-cli2 (bundled default
-# config), plus a companion check that flags long fenced code blocks as
-# decomposition candidates.
+# config), plus companion checks that flag long fenced code blocks and
+# list-item merge splices.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Lint Markdown
 
@@ -45,8 +48,13 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2
     # with:
     #   config-file: '.markdownlint.jsonc'  # override the bundled default config
+    #   globs: '*.md'                       # git pathspecs to lint (recursive)
     #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths
     #   fail: false                         # warn instead of failing on markdownlint errors
+    #   max-code-block-lines: '150'         # fenced code block line-count threshold
+    #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks
+    #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs
+    #   fail-on-item-splices: true          # fail when a list-item merge splice is detected
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

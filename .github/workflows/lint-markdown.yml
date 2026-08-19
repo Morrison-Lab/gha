@@ -31,9 +31,23 @@ on:
         type: string
         default: '150'
       fail-on-long-code-blocks:
-        description: Fail the workflow when a code block exceeds max-code-block-lines.
+        description: >-
+          Fail the workflow when a code block exceeds max-code-block-lines.
         type: boolean
         default: false
+      base-ref:
+        description: >-
+          Git ref/SHA to diff against. If set, only newly added lines in the
+          diff are checked for list-item merge splices. Defaults to empty
+          (skips check to avoid whole-tree false-positives). Pass 'all' to
+          scan all lines.
+        type: string
+        default: ''
+      fail-on-item-splices:
+        description: >-
+          Fail the workflow when a list-item merge splice is detected.
+        type: boolean
+        default: true
 
 jobs:
   lint-markdown:
@@ -44,6 +58,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Lint Markdown
         uses: Morrison-Lab/gha/lint-markdown@v2
@@ -54,3 +70,5 @@ jobs:
           fail: ${{ inputs.fail }}
           max-code-block-lines: ${{ inputs.max-code-block-lines }}
           fail-on-long-code-blocks: ${{ inputs.fail-on-long-code-blocks }}
+          base-ref: ${{ inputs.base-ref }}
+          fail-on-item-splices: ${{ inputs.fail-on-item-splices }}

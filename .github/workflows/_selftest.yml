@@ -59,9 +59,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
       - name: Lint Markdown
         uses: ./lint-markdown
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+      - name: Run list-item merge splice detector unit tests
+        run: node lint-markdown/tests/test_list_item_splices.mjs
+
   lint-qmd:
+
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:

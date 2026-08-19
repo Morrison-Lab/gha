@@ -1,9 +1,8 @@
 name: Lint Markdown
 description: >-
   Lint the caller's tracked Markdown files with markdownlint-cli2 (bundled
-  default config, overridable), plus a companion check that flags fenced code
-  blocks longer than a configurable line threshold as decomposition
-  candidates.
+  default config, overridable), plus companion checks that flag long fenced
+  code blocks and list-item merge splices.
 inputs:
   config-file:
     description: >-
@@ -18,9 +17,9 @@ inputs:
     default: '*.md'
   paths-ignore:
     description: >-
-      Comma/newline-separated glob patterns (relative paths) to skip, for
-      both the markdownlint pass and the code-block-length check. Supports
-      `*`, `?`, and recursive `**`.
+      Comma/newline-separated glob patterns (relative paths) to skip, for the
+      markdownlint pass and companion checks. Supports `*`, `?`, and recursive
+      `**`.
     default: ''
   fail:
     description: Fail the action when markdownlint reports an error.
@@ -38,6 +37,18 @@ inputs:
       heuristic as a provisional trigger to reassess decomposition, not a
       hard constraint.
     default: 'false'
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against. If set, only newly added lines in the diff
+      are checked for list-item merge splices. Defaults to empty (skips check
+      to avoid whole-tree false-positives on legacy files). Pass 'all' to scan
+      all lines.
+    default: ''
+
+  fail-on-item-splices:
+    description: >-
+      Fail the action when a list-item merge splice is detected.
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -62,3 +73,12 @@ runs:
         CODEBLOCK_LENGTH_MAX_LINES: ${{ inputs.max-code-block-lines }}
         CODEBLOCK_LENGTH_FAIL: ${{ inputs.fail-on-long-code-blocks }}
       run: node "$GITHUB_ACTION_PATH/check_code_block_length.mjs"
+
+    - name: Check list-item merge splices
+      shell: bash
+      env:
+        MARKDOWNLINT_GLOBS: ${{ inputs.globs }}
+        LIST_ITEM_SPLICE_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        LIST_ITEM_SPLICE_BASE_REF: ${{ inputs.base-ref }}
+        LIST_ITEM_SPLICE_FAIL: ${{ inputs.fail-on-item-splices }}
+      run: node "$GITHUB_ACTION_PATH/check_list_item_splices.mjs"
