@@ -52,6 +52,10 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Verify Node.js version
+      shell: bash
+      run: bash "$GITHUB_ACTION_PATH/../.github/workflows/scripts/check-node-version.sh" 18
+
     - name: Install markdownlint-cli2
       shell: bash
       run: npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund
