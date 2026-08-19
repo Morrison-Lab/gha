@@ -13,10 +13,11 @@ set -euo pipefail
 
 TARGET_REF="${1:-HEAD}"
 
-# 1. Find latest semver release tag (vX.Y.Z)
-LATEST=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
-  | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-  | head -n1 || true)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/resolve-major-tag.sh"
+
+# 1. Resolve latest semver release tag (vX.Y.Z) and major tag (vX)
+resolve_major_tag
 
 if [ -z "$LATEST" ]; then
   echo "::notice::No vX.Y.Z release tag found; tag drift check skipped."
@@ -25,8 +26,6 @@ if [ -z "$LATEST" ]; then
   fi
   exit 0
 fi
-
-MAJOR="${LATEST%%.*}" # e.g. v1.0.1 -> v1
 
 # 2. Check if major tag exists in git repository
 TAG_COMMIT=$(git rev-parse --verify --quiet "refs/tags/$MAJOR^{commit}" || true)

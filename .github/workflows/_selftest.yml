@@ -992,6 +992,9 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - name: Run resolve-major-tag offline tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-resolve-major-tag-tests.sh
       - name: Run check-tag-drift offline tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-tag-drift-tests.sh

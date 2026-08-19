@@ -516,9 +516,10 @@ which is why the capabilities above moved to `@v2`.
   (gha#390).
 
 - `.github/actions/check-tag-drift/` -- composite action wrapping
-  `check-tag-drift.sh` via `github.action_path`, deriving the active major tag
-  from the latest semver release tag (`vX.Y.Z`) and emitting a GitHub Actions notice
-  and job summary when `main` has unreleased commits ahead of the major tag (gha#309).
+  `check-tag-drift.sh` (which sources shared `resolve-major-tag.sh`) via
+  `github.action_path`, deriving the active major tag from the latest semver release
+  tag (`vX.Y.Z`) and emitting a GitHub Actions notice and job summary when `main`
+  has unreleased commits ahead of the major tag (gha#309).
 
 - `examples/` -- caller stubs consumers copy into their own repos.
 - `README.md`, `CHANGELOG.md` -- top-level project docs;
@@ -1085,10 +1086,12 @@ CI runs the suite as the `cursor-review-check` job, which also calls
 not covered here -- it does not resolve until `@v2` is advanced past this
 capability's merge.
 
+`.github/workflows/scripts/tests/run-resolve-major-tag-tests.sh` exercises
+`resolve-major-tag.sh` (see Layout above) offline against throwaway git repos;
 `.github/workflows/scripts/tests/run-check-tag-drift-tests.sh` exercises
 `check-tag-drift.sh` (see Layout above) offline against throwaway git repos,
 asserting zero-drift, N-commit-drift, no-semver-tag, and missing-major-tag behavior;
-CI runs it in the `tag-drift` job of `_selftest.yml`.
+CI runs both in the `tag-drift` job of `_selftest.yml`.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of

@@ -33,17 +33,12 @@ jobs:
 
       - name: Move major tag to this commit
         run: |
-          # Latest semver release tag (vX.Y.Z) decides which major to slide.
-          # The grep excludes pre-release tags (e.g. v2.0.0-rc1), which the glob
-          # would otherwise match and version-sort could rank above a stable tag.
-          LATEST=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | head -n1)
+          source .github/workflows/scripts/resolve-major-tag.sh
+          resolve_major_tag
           if [ -z "$LATEST" ]; then
             echo "::notice::No vX.Y.Z tag found; nothing to slide."
             exit 0
           fi
-          MAJOR="${LATEST%%.*}"          # e.g. v1.0.1 -> v1
           echo "Sliding $MAJOR to $GITHUB_SHA (latest release: $LATEST)"
 
           if [ "$(git rev-parse --verify --quiet "refs/tags/$MAJOR^{commit}")" = "$GITHUB_SHA" ]; then
