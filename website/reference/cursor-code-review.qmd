@@ -1,0 +1,101 @@
+---
+title: "cursor-code-review.yml"
+---
+
+Queue a [Cursor Bugbot](https://cursor.com/docs/bugbot.md) review for a pull
+request.
+Bugbot posts its own inline comments and the `Cursor Bugbot` check;
+this workflow's success means the review was **queued**, not that findings
+have already landed.
+
+It calls Cursor's Enterprise Bugbot API (`POST /bugbot/review`) with a
+`CURSOR_API_KEY` that has `admin:*` scope.
+Team and individual Cursor plans should enable Bugbot in the
+[Cursor dashboard](https://cursor.com/automations/from-cursor/bugbot)
+instead of this workflow.
+Once the GitHub App is connected, Bugbot can run on every PR update, or
+on a PR comment `cursor review` / `bugbot run`.
+Customize that path with `.cursor/BUGBOT.md`; this workflow has no
+prompt-addendum input because the trigger API does not take one.
+
+The default caller stub is dispatch-triggered.
+Add a `pull_request` trigger in the caller if you also want this workflow
+to queue a review on every PR update (in addition to, or instead of, the
+GitHub App's own automatic reviews).
+
+Requires a `CURSOR_API_KEY` secret.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `pr-number` | string | `''` | Pull request number to review. Required on `workflow_dispatch`; taken from the event on `pull_request`. |
+| `dry-run` | boolean | `false` | Queue analysis without posting comments or checks. Still billed. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `CURSOR_API_KEY` | no | Cursor Enterprise API key (`admin:*`). Without it the queue step fails. |
+
+## Permissions
+
+Grant `contents: read` and `pull-requests: read`.
+Bugbot posts with the Cursor GitHub App, not this workflow's token.
+
+## What it refuses to review
+
+The automatic `pull_request` path skips draft PRs, PRs from forks, and PRs
+opened by a bot, using the event payload.
+
+A `workflow_dispatch` run carries none of that payload, only `pr-number`, so
+it re-checks the same two conditions over the API and skips a fork or
+Dependabot PR. A lookup that fails outright also skips, and fails the run
+rather than reviewing a PR whose provenance it could not establish.
+
+Only one queue attempt runs per PR at a time:
+a newer run cancels an older one.
+
+## Concurrency
+
+Do not declare a top-level `concurrency:` block in your caller workflow.
+`cursor-code-review.yml` manages per-PR concurrency internally on its
+`review` job (`group: cursor-review-<PR>`).
+Adding a top-level `concurrency:` block in the caller with a PR-scoped group
+name causes GitHub Actions to detect a deadlock between the top-level workflow
+and the nested job, cancelling the run immediately
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+
+## Example
+
+```yaml
+# Copy to .github/workflows/cursor-code-review.yml in your repo.
+name: Cursor Code Review
+
+on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: Morrison-Lab/gha/.github/workflows/cursor-code-review.yml@v2
+    secrets:
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+    with:
+      pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   dry-run: true
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory
+for the full caller stub (`cursor-code-review.yml`).

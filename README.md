@@ -64,7 +64,8 @@ not reference `@main` from consumers.
 | `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model` |
 | `antigravity-code-review.yml` | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`) | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model` |
-| `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file` |
+| `cursor-code-review.yml` | Queue a Cursor Bugbot PR review via the Enterprise Bugbot API (`POST /bugbot/review`); success means queued | `pr-number`, `dry-run` |
+| `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file` |
 | `small-model-agent.yml` | Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (`wai#39`, `ai-config#1292`) | `pr-number`, `endpoint-url`, `model`, `max-iterations`, `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `run-gates`, `dry-run` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
@@ -144,6 +145,10 @@ that need to write must have the **caller** grant it on the calling job:
     submodule contents instead of reporting them as uninitialized. Public
     submodules clone anonymously; private ones additionally need a
     `SUBMODULES_TOKEN` secret.
+- `cursor-code-review` (queues a Cursor Bugbot review) → grant
+  `contents: read`, `pull-requests: read`, and add the `CURSOR_API_KEY`
+  secret (Enterprise, `admin:*` scope). Bugbot posts with the Cursor GitHub
+  App; this workflow does not need write permission on the PR.
 - `preview` (build half, read-only) → only `contents: read` (the default).
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
@@ -182,7 +187,7 @@ The `examples/claude-code-review.yml` stub defaults to this mention-triggered
 path only (no automatic `pull_request` trigger). Add `pull_request` in that
 stub if you want automatic review on each PR update.
 
-Do not declare a top-level `concurrency:` block in caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `ai-code-review.yml`). The reusable workflows manage per-PR concurrency internally on their review jobs. A top-level `concurrency:` block in the caller with a PR-scoped group name deadlocks GitHub Actions against the nested job's group and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+Do not declare a top-level `concurrency:` block in caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `cursor-code-review.yml`, `ai-code-review.yml`). The reusable workflows manage per-PR concurrency internally on their review jobs. A top-level `concurrency:` block in the caller with a PR-scoped group name deadlocks GitHub Actions against the nested job's group and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
@@ -463,6 +468,8 @@ in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
 pin to `@v2`.
 `check-ai-tells.yml` postdates the freeze too (added in
 [gha#382](https://github.com/Morrison-Lab/gha/issues/382)); pin to `@v2`.
+`cursor-code-review.yml` postdates the freeze too (added in
+[gha#510](https://github.com/Morrison-Lab/gha/issues/510)); pin to `@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
@@ -534,7 +541,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-secrets.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
+`antigravity-code-review.yml`, `cursor-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, and `version-check.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 

@@ -952,6 +952,41 @@ jobs:
           fi
           echo "report-gemini-failure handled the genuine-failure fixture correctly"
 
+  # cursor-code-review's reusable workflow calls trigger-bugbot-review via
+  # @v2, which does not resolve until the tag slides past this merge. Test
+  # the script offline and the local composite via ./ so the PR covers the
+  # actual code (same bootstrap gap as report-gemini-failure / dependabot).
+  cursor-review-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run trigger-bugbot-review tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh
+      - name: Exercise trigger-bugbot-review composite action
+        id: bugbot-e2e
+        env:
+          CURL_BIN: ${{ github.workspace }}/.github/workflows/scripts/tests/stubs/curl-bugbot-success.sh
+        uses: ./.github/actions/trigger-bugbot-review
+        with:
+          pr-url: https://github.com/Morrison-Lab/gha/pull/1
+          api-key: test-key
+      - name: Assert the composite surfaced request-id
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.bugbot-e2e.outputs.request-id }}
+        run: |
+          set -euo pipefail
+          if [[ "$REQUEST_ID" != "selftest-request-id" ]]; then
+            echo "::error::trigger-bugbot-review request-id was '$REQUEST_ID', expected selftest-request-id"
+            exit 1
+          fi
+          echo "trigger-bugbot-review composite resolved github.action_path and returned request-id"
+
   # Kept as its own job (not folded into review-fail-check) so a failure here is
   # attributable at a glance (gha#436, gha#415, CLAUDE.md convention).
   small-model-agent-tests:

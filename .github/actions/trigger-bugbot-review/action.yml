@@ -1,0 +1,40 @@
+name: Trigger a Cursor Bugbot review
+description: >-
+  Queue a Cursor Bugbot review for a pull request via the Bugbot API
+  (POST /bugbot/review). Located via github.action_path so a reusable
+  workflow can call it without the caller's checkout containing this
+  repo's scripts.
+
+inputs:
+  pr-url:
+    description: Full GitHub pull request or GitLab merge request URL.
+    required: true
+  api-key:
+    description: Cursor API key with admin:* scope (Enterprise).
+    required: true
+  dry-run:
+    description: >-
+      Queue analysis without posting to the SCM provider. Still billed.
+    required: false
+    default: 'false'
+
+outputs:
+  request-id:
+    description: Bugbot request_id for the queued review.
+    value: ${{ steps.run.outputs.request_id }}
+  dry-run:
+    description: Whether the queued review was a dry run.
+    value: ${{ steps.run.outputs.dry_run }}
+
+runs:
+  using: composite
+  steps:
+    - name: Queue Bugbot review
+      id: run
+      shell: bash
+      env:
+        CURSOR_API_KEY: ${{ inputs.api-key }}
+        PR_URL: ${{ inputs.pr-url }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        CURL_BIN: ${{ env.CURL_BIN }}
+      run: bash "${{ github.action_path }}/../../workflows/scripts/trigger-bugbot-review.sh"

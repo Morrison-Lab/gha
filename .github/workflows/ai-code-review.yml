@@ -16,7 +16,7 @@ on:
   workflow_call:
     inputs:
       agents:
-        description: Comma-separated list of AI agents to select from (e.g. 'claude, gemini').
+        description: Comma-separated list of AI agents to select from (e.g. 'claude, gemini, cursor').
         type: string
         default: 'claude, gemini'
       pr-number:
@@ -41,12 +41,20 @@ on:
           the name examples/antigravity-code-review.yml is copied to.
         type: string
         default: 'antigravity-code-review.yml'
+      cursor-review-workflow-file:
+        description: >-
+          Caller-repo workflow file dispatched for a Cursor Bugbot review. Defaults to
+          the name examples/cursor-code-review.yml is copied to.
+        type: string
+        default: 'cursor-code-review.yml'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false
       ANTHROPIC_API_KEY:
         required: false
       GEMINI_API_KEY:
+        required: false
+      CURSOR_API_KEY:
         required: false
 
 jobs:
@@ -95,6 +103,7 @@ jobs:
           CLAUDE_WF: ${{ inputs.claude-review-workflow-file }}
           GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
           ANTIGRAVITY_WF: ${{ inputs.antigravity-review-workflow-file }}
+          CURSOR_WF: ${{ inputs.cursor-review-workflow-file }}
           PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
           PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
@@ -104,6 +113,7 @@ jobs:
           # the runner.
           HAS_CLAUDE_SECRET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
           HAS_GEMINI_SECRET: ${{ secrets.GEMINI_API_KEY != '' }}
+          HAS_CURSOR_SECRET: ${{ secrets.CURSOR_API_KEY != '' }}
         run: |
           set -euo pipefail
 
@@ -151,6 +161,7 @@ jobs:
               claude) has_secret="$HAS_CLAUDE_SECRET"; agent_wf="$CLAUDE_WF" ;;
               gemini) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$GEMINI_WF" ;;
               antigravity) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$ANTIGRAVITY_WF" ;;
+              cursor) has_secret="$HAS_CURSOR_SECRET"; agent_wf="$CURSOR_WF" ;;
               *)
                 echo "::warning::Unknown agent '$agent'; trying the next candidate."
                 continue

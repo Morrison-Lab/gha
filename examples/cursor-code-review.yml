@@ -1,0 +1,44 @@
+# Copy to .github/workflows/cursor-code-review.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
+# The reusable workflow manages per-PR concurrency internally on its job
+# (`group: cursor-review-<PR>`). A top-level `concurrency:` block with a PR-scoped
+# group name deadlocks GitHub Actions against the nested job and cancels the run
+# ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+#
+# Queues a Cursor Bugbot review via the Bugbot API. Requires CURSOR_API_KEY
+# (Enterprise, admin:* scope). Pass secrets explicitly rather than via
+# `secrets: inherit`: GitHub only inherits secrets into a reusable workflow
+# owned by the same org/user, so a cross-owner caller inherits an empty token
+# and the run fails.
+#
+# Team and individual Cursor plans should enable Bugbot in the dashboard
+# instead of this workflow: https://cursor.com/docs/bugbot.md
+# Manual trigger there is a PR comment `cursor review` or `bugbot run`.
+#
+# Default: dispatch-triggered only. Optional: uncomment pull_request for
+# automatic review on every PR.
+name: Cursor Code Review
+
+on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: Morrison-Lab/gha/.github/workflows/cursor-code-review.yml@v2
+    secrets:
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+    with:
+      pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   dry-run: true    # analyze without posting; still billed
