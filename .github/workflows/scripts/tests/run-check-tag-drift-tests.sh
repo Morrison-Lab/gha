@@ -15,31 +15,35 @@ tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
 cd "$tmp_dir"
-git init -q
-git config user.email "selftest@example.invalid"  # phi-allow
-git config user.name "selftest"
+git init -b main -q 2>/dev/null || { git init -q && git branch -m main; }
 
-# Test Case 1: No semver tag
+# phi-allow
+git config user.name "Test User"
+# phi-allow
+git config user.email "test@example.com"
+
+echo "initial" > file.txt
+git add file.txt
+git commit -m "initial commit" -q
+
 output_file="$tmp_dir/output.txt"
-summary_file="$tmp_dir/summary.txt"
+summary_file="$tmp_dir/summary.md"
 
+# Test Case 1: No vX.Y.Z release tag
 GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" > "$tmp_dir/log1.txt"
 
-if grep -q 'drift=false' "$output_file"; then
+if grep -q 'drift=false' "$output_file" && grep -q 'No vX.Y.Z release tag found' "$tmp_dir/log1.txt"; then
   echo "OK   check-tag-drift.sh handles no semver tag gracefully"
 else
   echo "::error::check-tag-drift.sh failed on no semver tag"
   failures=$((failures + 1))
 fi
 
-# Initial commit and tag v1.0.0 & v1
-echo "initial" > file.txt
-git add file.txt
-git commit -m "initial commit" -q
+# Create release tag v1.0.0 and major tag v1
 git tag v1.0.0
 git tag v1
 
-# Test Case 2: Zero drift (v1 points at HEAD)
+# Test Case 2: Zero drift
 rm -f "$output_file" "$summary_file"
 GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" > "$tmp_dir/log2.txt"
 
@@ -60,7 +64,7 @@ git commit -am "third commit" -q
 rm -f "$output_file" "$summary_file"
 GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" "HEAD" > "$tmp_dir/log3.txt"
 
-if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind main' "$tmp_dir/log3.txt"; then
+if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind' "$tmp_dir/log3.txt"; then
   echo "OK   check-tag-drift.sh correctly detects 2-commit drift with HEAD argument"
 else
   echo "::error::check-tag-drift.sh failed to detect 2-commit drift with HEAD argument"
