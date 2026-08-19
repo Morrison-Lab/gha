@@ -640,10 +640,8 @@ def test_declared_clause_min_length_default_matches_script_default(path):
 # ── the env var -> main() -> exit code path ──────────────────────────────────
 
 # #337 round 2: `_selftest.yml` calls the composite with `clause-breaks:
-# 'false'`, but that step sets no `fail:`, and main() returns 0 on every path
-# unless NLB_FAIL is true -- so it stays green whether the input reaches the
-# script, is dropped, or was never declared. These two cases are what actually
-# prove the plumbing, by making the exit code depend on it.
+# 'false'`, which proves `action.yml` parses and the opt-out path runs. These
+# cases are what actually prove the plumbing, by making the exit code depend on it.
 
 def _main_exit_code(tmp_path, monkeypatch, **env) -> int:
     monkeypatch.chdir(tmp_path)
@@ -767,7 +765,7 @@ def test_unset_min_length_falls_back_silently(monkeypatch, capsys):
 
 def test_negative_min_length_falls_back_to_the_default_and_warns(monkeypatch, capsys):
     # A negative gate admits every line, so it is invalid rather than merely
-    # unusual -- and turning an advisory check into a firehose is exactly the
+    # unusual -- and turning the check into a firehose is exactly the
     # failure a silent fallback would hide.
     monkeypatch.setenv("NLB_CLAUSE_MIN_LENGTH", "-5")
     assert nlb._env_int("NLB_CLAUSE_MIN_LENGTH", 80) == 80
