@@ -22,14 +22,14 @@ try {
 `;
   writeFileSync(spliceFile, spliceContent);
 
-  // Run check_list_item_splices.mjs
+  // Run check_list_item_splices.mjs with base-ref='all'
   const scriptPath = join(process.cwd(), 'lint-markdown', 'check_list_item_splices.mjs');
 
   let failed = false;
   let stdout = '';
   try {
     stdout = execFileSync('node', [scriptPath], {
-      env: { ...process.env, MARKDOWNLINT_GLOBS: spliceFile },
+      env: { ...process.env, MARKDOWNLINT_GLOBS: spliceFile, LIST_ITEM_SPLICE_BASE_REF: 'all' },
       encoding: 'utf8',
     });
   } catch (err) {
@@ -40,6 +40,13 @@ try {
   assert.strictEqual(failed, true, 'Expected check_list_item_splices.mjs to fail on splice.md');
   assert.match(stdout, /Found 1 list-item merge splice/);
   assert.match(stdout, /splice\.md,line=7/);
+
+  // Test empty base-ref skip
+  stdout = execFileSync('node', [scriptPath], {
+    env: { ...process.env, MARKDOWNLINT_GLOBS: spliceFile, LIST_ITEM_SPLICE_BASE_REF: '' },
+    encoding: 'utf8',
+  });
+  assert.match(stdout, /Skipping list-item merge splice check/);
 
   // 2. Negative control: clean fixture
   const cleanFile = join(testDir, 'clean.md');
@@ -73,7 +80,7 @@ try {
   failed = false;
   try {
     stdout = execFileSync('node', [scriptPath], {
-      env: { ...process.env, MARKDOWNLINT_GLOBS: cleanFile },
+      env: { ...process.env, MARKDOWNLINT_GLOBS: cleanFile, LIST_ITEM_SPLICE_BASE_REF: 'all' },
       encoding: 'utf8',
     });
   } catch (err) {
@@ -85,6 +92,7 @@ try {
   assert.match(stdout, /No list-item merge splices found/);
 
   console.log('✓ All list-item merge splice tests passed!');
+
 } finally {
   rmSync(testDir, { recursive: true, force: true });
 }

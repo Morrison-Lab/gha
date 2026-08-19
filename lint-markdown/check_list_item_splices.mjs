@@ -6,8 +6,9 @@
 //   MARKDOWNLINT_GLOBS             Space-separated git pathspecs of tracked
 //                                  files to check (default "*.md").
 //   LIST_ITEM_SPLICE_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-//   LIST_ITEM_SPLICE_BASE_REF      Git ref to diff against. If set, only added
-//                                  lines in the diff are checked.
+//   LIST_ITEM_SPLICE_BASE_REF      Git ref to diff against. If empty, the check
+//                                  is skipped (avoiding whole-tree false-positives
+//                                  on legacy files). Set to "all" to force a full scan.
 //   LIST_ITEM_SPLICE_FAIL          "true" (default) => exit 1 on findings;
 //                                  "false" => warn only.
 
@@ -111,11 +112,17 @@ function main() {
   const baseRef = (process.env.LIST_ITEM_SPLICE_BASE_REF || '').trim();
   const fail = (process.env.LIST_ITEM_SPLICE_FAIL || 'true').trim().toLowerCase() !== 'false';
 
+  if (!baseRef) {
+    console.log('::warning::Skipping list-item merge splice check (no base-ref given; not falling back to a whole-tree scan, which would reflag pre-existing list items).');
+    return;
+  }
+
   let addedLinesMap = null;
-  if (baseRef) {
+  if (baseRef.toLowerCase() !== 'all') {
     addedLinesMap = getAddedLines(baseRef, pathspecs);
     if (!addedLinesMap) {
-      console.log(`::warning::Could not compute diff against base-ref '${baseRef}'; scanning all lines in tracked files.`);
+      console.log(`::warning::Could not compute diff against base-ref '${baseRef}'; skipping list-item merge splice check.`);
+      return;
     }
   }
 
