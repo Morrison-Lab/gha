@@ -21,7 +21,6 @@ splices.
 | `base-ref`                 | string  | `''`     | Git ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives).                             |
 | `fail-on-item-splices`     | boolean | `true`   | Fail the workflow when a list-item merge splice is detected.                                                                                                                                                     |
 
-
 ## Permissions
 
 Only `contents: read` (the default), so no `permissions:` block is needed.
@@ -29,6 +28,7 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 ## Example
 
 ```yaml
+
 # Copy to .github/workflows/lint-markdown.yml in your repo.
 # Lints tracked Markdown files with markdownlint-cli2 (bundled default
 # config), plus a companion check that flags long fenced code blocks as
