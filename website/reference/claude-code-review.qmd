@@ -78,7 +78,9 @@ bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the
 context-gathering job having been cancelled --- plus two cases where the job
 ran and stopped early:
 
-- the API quota was exhausted before any review work happened;
+- the API quota was exhausted --- either before any review work happened, or
+  part-way through the run, which leaves a `429` behind after real turns and
+  real cost ([#520](https://github.com/Morrison-Lab/gha/issues/520));
 - the PR edits the caller's own review workflow file.
 
 That last case deserves care. `claude-code-action` requires the calling
