@@ -1516,6 +1516,60 @@ specifically a change to the reusable workflow's own content.
 Decide it mechanically instead of inferring it from step output: read
 `referenced_workflows[].sha` on the run (`actions_get` `get_workflow_run`)
 and compare it against the tag's current commit.
+
+**Read that tag's commit with `git ls-remote`, and do not try to read it off a
+plain `git fetch --tags`.**
+Sliding a major tag force-moves it, and a plain `git fetch --tags` will not
+move an existing local tag, so the one operation this section exists to verify
+is the one it cannot perform.
+
+git does say so.
+Measured on git 2.43.0 against this repo's own slid `v2`, a plain
+`git fetch origin --tags` printed
+`! [rejected]        v2         -> v2  (would clobber existing tag)`
+on stderr and exited 1.
+
+Both signals are easy to lose, though, and the habits that lose them are
+ordinary ones.
+`-q` suppresses the message.
+Piping the combined output through `tail` can drop it as well, since git prints
+ref-update lines in refname order and a slide follows cutting a `vX.Y.Z` that
+sorts after `v2`.
+And a pipeline reports `tail`'s exit status rather than the fetch's, so `&&`
+guards nothing once a pipe is involved.
+Measured on a throwaway remote carrying a rejected `v2` beside a newly created
+`v2.6.0`:
+
+```text
+$ git fetch origin --tags 2>&1 | tail -1 && git rev-parse 'v2^{}'
+ * [new tag]         v2.6.0     -> v2.6.0
+3dbbb1e95f5026c06799e548b05b820df0573581     # stale, and the chain did not stop
+```
+
+So do not reason about which invocation preserves the warning.
+Read the tag directly, or force the local update:
+
+```bash
+# Ask for both refspecs and take the ^{} line when there is one: an ANNOTATED
+# tag's bare line is the tag object's sha rather than the commit. See
+# ai-config's memories/git-tags.md. slide-major-tag.yml writes lightweight
+# tags, so both forms agree for v1/v2 today.
+git ls-remote origin 'refs/tags/v2' 'refs/tags/v2^{}'
+git fetch origin --tags --force        # when the local checkout must be updated
+```
+
+Comparing two API-derived values sidesteps the question entirely, since
+`referenced_workflows[].sha` has no local-staleness failure mode.
+(Measured 2026-08-19, minutes after #521 merged and `v2` slid to `3ec11c0`:
+`git rev-parse 'v2^{}'` after a `-q` fetch returned the previous `3b09703`,
+and that stale read was reported twice as
+"the fix has not reached consumers" while `d-morrison/rme` run 32298939967 was
+demonstrating the fix working -- that run's `referenced_workflows[].sha` reads
+`3ec11c0`, its `claude-review` job's conclusion is `success`, and its
+`Run Claude Code Review` step's conclusion is `success` over an inner step
+that exited 1, which is #521's `continue-on-error`.
+`Morrison-Lab/ai-config`'s `memories/git-tags.md` records the git behavior
+itself, and gha#522 is the pointer from here.)
 To verify a slide, prefer a **fresh** run -- push a commit, open a PR, or
 `workflow_dispatch` -- since it resolves the tag unambiguously and needs no
 reasoning about which re-run mode you are in.
