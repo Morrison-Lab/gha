@@ -83,8 +83,7 @@ _ABBREV_RE = re.compile(_abbrev_pattern(_ABBREVS))
 # lookbehind only inspects the two trailing characters, ANY unlisted
 # abbreviation ending in two lowercase letters -- regardless of its overall case
 # (`Inc.`, `Prof.`, `Mon.`, `Jan.`) -- can still false-split before a lowercase
-# word, which is a disclosed limitation rather than a hard failure on this
-# non-blocking check.
+# word, which is a disclosed limitation.
 _ABBREV_LOWER = {a.lower() for a in _ABBREVS if a != "No"} | {"min", "hr", "hrs"}
 _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
@@ -216,7 +215,7 @@ def strip_inline_markup(text: str) -> str:
     lower bound on a line's visible length: an entity renders as one glyph and
     a code span as its contents, and both are removed outright. Under-counting
     can only suppress a flag, never invent one, which is the safe direction for
-    an advisory check.
+    the check.
 
     Punctuation *adjacent* to a stripped construct is prose, and is kept -- the
     bare-URL pattern deliberately stops short of it, so
@@ -258,8 +257,8 @@ def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) 
 
     The remaining 0.7% still includes hits rule 5 does not cover -- a
     semicolon-delimited list whose items carry their own commas is rule 8's
-    MAY -- so what this returns is "worth a second look", which is what an
-    advisory check reports.
+    MAY -- so what this returns is "worth a second look", which is what this
+    check reports.
 
     The length gate is what separates a genuinely overlong clause chain from
     an ordinary short line that merely contains a semicolon, and it degrades

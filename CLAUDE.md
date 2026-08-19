@@ -708,9 +708,8 @@ because the `new-line-breaks-tests` job installs only pytest.
 script, however it is worded.**
 `_selftest.yml`'s `new-line-breaks` job does call the composite a second time
 with `clause-breaks: 'false'`, and that is worth having as a real `uses:`
-exercise -- but `main()` returns 0 on every path unless `NLB_FAIL` is set, so
-the step stays green whether the input arrives, is dropped, or was never
-declared at all (an undeclared composite input is only an Actions warning).
+exercise -- but `main()` now returns 1 by default when violations are found (NLB_FAIL defaults to true),
+so the step fails on findings rather than proving whether a specific input arrived or was dropped.
 What actually pins the `env var -> main() -> exit code` path is a set of
 pytest cases that set `NLB_FAIL=true` around a real `main()` call on a
 throwaway git repo, asserting exit 1 with the clause check on and exit 0 both
