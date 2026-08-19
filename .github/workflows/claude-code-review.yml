@@ -507,10 +507,34 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
         run: |
-          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha')
+          retry_gh_api() {
+            local desc="$1"
+            shift
+            local out=""
+            for attempt in 1 2 3; do
+              if out=$(gh api "$@") && [ -n "$out" ] && echo "$out" | jq empty 2>/dev/null; then
+                echo "$out"
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::Failed to $desc (attempt $attempt/3); retrying in 2s..." >&2
+                sleep 2
+              else
+                echo "::error::Failed to $desc after 3 attempts." >&2
+                return 1
+              fi
+            done
+          }
+
+          PR_JSON=$(retry_gh_api "fetch PR details" "repos/$REPO/pulls/$PR_NUMBER")
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head.sha')
+          if [ -z "$HEAD_SHA" ] || [ "$HEAD_SHA" = "null" ]; then
+            echo "::error::Retrieved invalid or empty head SHA for PR #$PR_NUMBER." >&2
+            exit 1
+          fi
           echo "head_before=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
-          REVIEWERS_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
+          REVIEWERS_JSON=$(retry_gh_api "fetch requested reviewers" "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
           USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[].login]')
           TEAMS=$(echo "$REVIEWERS_JSON" | jq -c '[.teams[].slug]')
           # Capture AI reviewers (bot-type users, e.g. Copilot) separately so
@@ -519,9 +543,11 @@ jobs:
           # derived from USERS_BEFORE minus AI_USERS_BEFORE.
           # (`user.type` is always present in the REST user object.)
           AI_USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[] | select(.type == "Bot") | .login]')
-          echo "users=$USERS" >> "$GITHUB_OUTPUT"
-          echo "teams=$TEAMS" >> "$GITHUB_OUTPUT"
-          echo "ai_users=$AI_USERS" >> "$GITHUB_OUTPUT"
+          {
+            echo "users=$USERS"
+            echo "teams=$TEAMS"
+            echo "ai_users=$AI_USERS"
+          } >> "$GITHUB_OUTPUT"
           if [ "$USERS" != "[]" ] || [ "$TEAMS" != "[]" ]; then
             # `|| true` is intentional and asymmetric with the restore step: a
             # failed stash leaves reviewers in place (recoverable); a failed
@@ -1097,7 +1123,26 @@ jobs:
           TEAMS_BEFORE: ${{ steps.stash.outputs.teams }}
           AI_USERS_BEFORE: ${{ steps.stash.outputs.ai_users }}
         run: |
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          retry_gh_api() {
+            local desc="$1"
+            shift
+            local out=""
+            for attempt in 1 2 3; do
+              if out=$(gh api "$@") && [ -n "$out" ] && echo "$out" | jq empty 2>/dev/null; then
+                echo "$out"
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::Failed to $desc (attempt $attempt/3); retrying in 2s..." >&2
+                sleep 2
+              else
+                echo "::error::Failed to $desc after 3 attempts." >&2
+                return 1
+              fi
+            done
+          }
+
+          PR_JSON=$(retry_gh_api "fetch PR details in restore step" "repos/$REPO/pulls/$PR_NUMBER")
           HEAD_AFTER=$(echo "$PR_JSON" | jq -r '.head.sha')
 
           if [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
