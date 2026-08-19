@@ -13,7 +13,11 @@
 #     to $GITHUB_OUTPUT (gha#368);
 #   - fails if the result is an error that isn't a quota/auth pre-processing rejection;
 #   - writes quota_exhausted=true to $GITHUB_OUTPUT (if set) and exits 0 on a
-#     zero-cost, single-turn error result (quota exhaustion / auth failure);
+#     zero-cost, single-turn error result (quota exhaustion / auth failure),
+#     and likewise on an error result carrying api_error_status:429, which is
+#     the same exhaustion reached part-way through a review rather than at the
+#     door (gha#520) -- that one has real turns and real cost behind it, so the
+#     zero-cost test cannot see it;
 #   - passes a run whose result object is self-contradictory --
 #     is_error:true alongside subtype:"success" -- when the transcript
 #     already carries a genuine, complete verdict (gha#391). subtype:"success"
@@ -252,6 +256,31 @@ if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
     echo "::warning::Claude review reported is_error=true with subtype=success, but a complete verdict was already posted -- treating as a completed review rather than failing the check (gha#391; the is_error cause is unestablished)."
     echo "review_text_file=$review_text_file" >> "$GITHUB_OUTPUT"
     echo "Claude review completed with an anomalous is_error flag (subtype=success); a verdict was posted."
+    exit 0
+  fi
+  # gha#520: the account can run OUT of quota part-way through a review, which
+  # the zero-cost/turn-1 branch above cannot see -- that one only recognizes a
+  # request rejected before any work, and this shape has real turns and real
+  # cost behind it (13 turns / $4.10 when first observed). It is still quota
+  # exhaustion rather than a defect in the PR under review, so skip gracefully
+  # here exactly as that branch does, instead of reddening the check over an
+  # account condition the author cannot act on.
+  #
+  # Key on the structured `api_error_status` field, never on the free-text
+  # `result` message: that message is ordinary prose ("You've hit your weekly
+  # limit ..."), and matching prose against a transcript is how
+  # classify-gemini-failure.sh misclassified genuine failures as graceful skips
+  # (gha#380 finding 1).
+  #
+  # This sits AFTER the gha#391 verdict check on purpose. A run that stated its
+  # verdict and only then hit the limit did its job, so it must still pass; only
+  # a run that died without one skips.
+  api_error_status="$(jq -r '.api_error_status // empty' <<< "$result")"
+  if [[ "$api_error_status" == "429" ]]; then
+    # Single-line, so the annotation can't be broken up by an embedded newline.
+    api_error_message="$(jq -r '(.result // "") | tostring | gsub("[\n\r]"; " ")' <<< "$result")"
+    echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+    echo "::warning::Claude review skipped -- the API returned 429 part-way through the review (quota or rate limit exhausted mid-run; gha#520). Re-trigger the review once the quota resets. API message: ${api_error_message:-<none>}"
     exit 0
   fi
   echo "::error::Claude review ended in an error state (is_error=$is_error, subtype=$subtype)."

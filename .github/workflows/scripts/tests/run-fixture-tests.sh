@@ -53,6 +53,15 @@ declare -A expected=(
   [is-error-success-denied-comment-null-denials.json]=fail
   [denied-comment-null-denials-not-trusted.json]=fail
   [quota-exhausted.json]=skip
+  # gha#520: the same exhaustion reached part-way through a review instead of at
+  # the door -- real turns, real cost, api_error_status:429. The zero-cost /
+  # turn-1 branch cannot see it, so before the fix this fell through to the hard
+  # is_error exit and reddened the check over an account condition. The
+  # with-verdict variant pins the ordering against gha#391: a run that stated
+  # its verdict and only then hit the limit already did its job, so it must
+  # still `pass` rather than being swallowed as a skip.
+  [quota-exhausted-midrun.json]=skip
+  [quota-exhausted-midrun-with-verdict.json]=pass
   [verdict-label-format.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
@@ -94,6 +103,9 @@ declare -A must_contain=(
   # comes out with the carriage returns stripped rather than carrying them
   # into the PR comment (gha#318 review round 2).
   [verdict-via-gh-comment-heredoc-crlf.json]='**Ready for merge**'
+  # gha#520: the verdict survives the 429 -- review_text_file must carry the
+  # posted verdict rather than an empty fallback from the error path.
+  [quota-exhausted-midrun-with-verdict.json]='Ready for merge'
 )
 declare -A must_not_contain=(
   [verdict-not-last-block.json]="I've posted my findings"
@@ -122,6 +134,8 @@ declare -A expected_cost=(
   [is-error-success-denied-comment-null-denials.json]=1.1
   [denied-comment-null-denials-not-trusted.json]=1.1
   [quota-exhausted.json]=0
+  [quota-exhausted-midrun.json]=4.100043149999999
+  [quota-exhausted-midrun-with-verdict.json]=4.31
   [verdict-label-format.json]=0.31
   [verdict-not-last-block.json]=0.37
   [verdict-via-inline-comment-tool.json]=0.55
