@@ -507,34 +507,34 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
         run: |
-          HEAD_SHA=""
-          for attempt in 1 2 3; do
-            if HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha') && [ -n "$HEAD_SHA" ]; then
-              break
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "::warning::Failed to fetch PR head SHA (attempt $attempt/3); retrying in 2s..."
-              sleep 2
-            else
-              echo "::error::Failed to fetch PR head SHA after 3 attempts."
-              exit 1
-            fi
-          done
+          retry_gh_api() {
+            local desc="$1"
+            shift
+            local out=""
+            for attempt in 1 2 3; do
+              if out=$(gh api "$@") && [ -n "$out" ] && echo "$out" | jq empty 2>/dev/null; then
+                echo "$out"
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::Failed to $desc (attempt $attempt/3); retrying in 2s..." >&2
+                sleep 2
+              else
+                echo "::error::Failed to $desc after 3 attempts." >&2
+                return 1
+              fi
+            done
+          }
+
+          PR_JSON=$(retry_gh_api "fetch PR details" "repos/$REPO/pulls/$PR_NUMBER")
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head.sha')
+          if [ -z "$HEAD_SHA" ] || [ "$HEAD_SHA" = "null" ]; then
+            echo "::error::Retrieved invalid or empty head SHA for PR #$PR_NUMBER." >&2
+            exit 1
+          fi
           echo "head_before=$HEAD_SHA" >> "$GITHUB_OUTPUT"
 
-          REVIEWERS_JSON=""
-          for attempt in 1 2 3; do
-            if REVIEWERS_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers") && echo "$REVIEWERS_JSON" | jq empty 2>/dev/null; then
-              break
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "::warning::Failed to fetch requested reviewers (attempt $attempt/3); retrying in 2s..."
-              sleep 2
-            else
-              echo "::error::Failed to fetch requested reviewers after 3 attempts."
-              exit 1
-            fi
-          done
+          REVIEWERS_JSON=$(retry_gh_api "fetch requested reviewers" "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
           USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[].login]')
           TEAMS=$(echo "$REVIEWERS_JSON" | jq -c '[.teams[].slug]')
           # Capture AI reviewers (bot-type users, e.g. Copilot) separately so
@@ -1123,19 +1123,26 @@ jobs:
           TEAMS_BEFORE: ${{ steps.stash.outputs.teams }}
           AI_USERS_BEFORE: ${{ steps.stash.outputs.ai_users }}
         run: |
-          PR_JSON=""
-          for attempt in 1 2 3; do
-            if PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER") && echo "$PR_JSON" | jq -e '.head.sha' >/dev/null 2>&1; then
-              break
-            fi
-            if [ "$attempt" -lt 3 ]; then
-              echo "::warning::Failed to fetch PR details in restore step (attempt $attempt/3); retrying in 2s..."
-              sleep 2
-            else
-              echo "::error::Failed to fetch PR details in restore step after 3 attempts."
-              exit 1
-            fi
-          done
+          retry_gh_api() {
+            local desc="$1"
+            shift
+            local out=""
+            for attempt in 1 2 3; do
+              if out=$(gh api "$@") && [ -n "$out" ] && echo "$out" | jq empty 2>/dev/null; then
+                echo "$out"
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::Failed to $desc (attempt $attempt/3); retrying in 2s..." >&2
+                sleep 2
+              else
+                echo "::error::Failed to $desc after 3 attempts." >&2
+                return 1
+              fi
+            done
+          }
+
+          PR_JSON=$(retry_gh_api "fetch PR details in restore step" "repos/$REPO/pulls/$PR_NUMBER")
           HEAD_AFTER=$(echo "$PR_JSON" | jq -r '.head.sha')
 
           if [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
