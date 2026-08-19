@@ -820,7 +820,7 @@ reaching the uppercase one.
 That second list excludes `no` (a lowercase `no.` is the word, and should
 split) and adds `min`/`hr`/`hrs`; it is curated rather than exhaustive, so an
 unlisted lowercase abbreviation before a lowercase word can still false-split
-on this non-blocking check.
+on this check.
 The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other (porting gha#425's fix there
