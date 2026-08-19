@@ -37,6 +37,19 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Verify Node.js version
+      shell: bash
+      run: |
+        if ! command -v node >/dev/null 2>&1; then
+          echo "::error::Node.js is not installed on the runner. Node.js >= 18 is required."
+          exit 1
+        fi
+        NODE_MAJOR=$(node -v | sed -E 's/^v([0-9]+).*/\1/')
+        if [ "$NODE_MAJOR" -lt 18 ]; then
+          echo "::error::Node.js version $(node -v) is insufficient. Node.js >= 18 is required."
+          exit 1
+        fi
+
     - name: Install markdownlint
       shell: bash
       run: npm ci --prefix "$GITHUB_ACTION_PATH" --no-audit --no-fund

@@ -1,0 +1,1 @@
+Added Node.js version preflight check (>= 18) to `lint-markdown` and `lint-qmd` composite actions to fail fast with a clear error message on incompatible runners (gha#283).
