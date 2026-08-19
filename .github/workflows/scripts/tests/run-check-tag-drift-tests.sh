@@ -17,10 +17,8 @@ trap 'rm -rf "$tmp_dir"' EXIT
 cd "$tmp_dir"
 git init -b main -q 2>/dev/null || { git init -q && git branch -m main; }
 
-# phi-allow
-git config user.name "Test User"
-# phi-allow
-git config user.email "test@example.com"
+git config user.email "selftest@example.invalid"  # phi-allow
+git config user.name "selftest"
 
 echo "initial" > file.txt
 git add file.txt
