@@ -979,9 +979,9 @@ jobs:
           fi
           echo "trigger-bugbot-review composite resolved github.action_path and returned request-id"
 
-  # check-tag-drift is brand new, so its reusable workflow layer isn't at a
-  # released tag yet. Test the script offline and exercise the local composite
-  # directly so the selftest covers the PR code (same bootstrap gap precedent).
+  # check-tag-drift is an internal-only capability (like open-sync-pr) with no
+  # wrapping reusable workflow or example stub. Test the script offline and
+  # exercise the local composite directly.
   tag-drift:
     runs-on: ubuntu-latest
     timeout-minutes: 20

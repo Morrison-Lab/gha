@@ -33,7 +33,9 @@ runs:
     - name: Run check-tag-drift.sh
       id: run
       shell: bash
+      env:
+        TARGET_REF: ${{ inputs.target-ref }}
       run: |
         set -euo pipefail
         SCRIPT="${{ github.action_path }}/../../workflows/scripts/check-tag-drift.sh"
-        bash "$SCRIPT" "${{ inputs.target-ref }}"
+        bash "$SCRIPT" "$TARGET_REF"

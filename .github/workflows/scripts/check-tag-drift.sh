@@ -11,7 +11,15 @@
 
 set -euo pipefail
 
-TARGET_REF="${1:-HEAD}"
+DEFAULT_REF="origin/main"
+if ! git rev-parse --verify --quiet "$DEFAULT_REF^{commit}" >/dev/null 2>&1; then
+  if git rev-parse --verify --quiet "main^{commit}" >/dev/null 2>&1; then
+    DEFAULT_REF="main"
+  else
+    DEFAULT_REF="HEAD"
+  fi
+fi
+TARGET_REF="${1:-$DEFAULT_REF}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/resolve-major-tag.sh"
@@ -49,7 +57,7 @@ fi
 DRIFT_COUNT=$(git rev-list --count "$TAG_COMMIT..$HEAD_COMMIT")
 
 if [ "$DRIFT_COUNT" -gt 0 ]; then
-  MSG="$MAJOR is $DRIFT_COUNT commit(s) behind main ($TAG_COMMIT..$HEAD_COMMIT). Run slide-major-tag.yml when ready to publish."
+  MSG="$MAJOR is $DRIFT_COUNT commit(s) behind $TARGET_REF ($TAG_COMMIT..$HEAD_COMMIT). Run slide-major-tag.yml when ready to publish."
   echo "::notice title=Major Tag Drift Notice::$MSG"
 
   if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
@@ -57,7 +65,7 @@ if [ "$DRIFT_COUNT" -gt 0 ]; then
 
 ### 🏷️ Major Tag Drift Notice
 
-**$MAJOR** is **$DRIFT_COUNT** commit(s) behind \`main\`.
+**$MAJOR** is **$DRIFT_COUNT** commit(s) behind \`$TARGET_REF\`.
 Run [\`slide-major-tag.yml\`](https://github.com/Morrison-Lab/gha/actions/workflows/slide-major-tag.yml) when ready to publish.
 EOF
   fi
