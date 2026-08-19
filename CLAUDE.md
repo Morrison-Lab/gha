@@ -28,7 +28,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
-`gemini-code-review`, `antigravity-code-review`, `ai-code-review`, `bump-dev-version`, `version-check`,
+`gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `bump-dev-version`, `version-check`,
 `small-model-agent`, and `check-ai-tells` -- see
 the Versioning section
 of `README.md`).
@@ -419,6 +419,21 @@ which is why the capabilities above moved to `@v2`.
   Gemini Project" API-key suspension incident, 2026-07-30, gha#379 -- see the
   Tests section below for the offline coverage and the `_selftest.yml`
   end-to-end proof.)
+
+- `.github/actions/trigger-bugbot-review/` -- wraps
+  `scripts/trigger-bugbot-review.sh`, which POSTs a PR URL to
+  `https://api.cursor.com/bugbot/review` and fails unless the API returns
+  `"outcome":"success"` plus a `request_id`.
+  `cursor-code-review.yml` calls it so the reusable workflow can queue a
+  Cursor Bugbot review without the caller's checkout containing this repo's
+  scripts (`github.action_path`, same reason as `build-reviewer-args`).
+  Success means queued: Bugbot posts comments and the `Cursor Bugbot` check
+  itself, asynchronously.
+  The API is Enterprise-scoped (`admin:*`); Team/individual installs enable
+  Bugbot in the Cursor dashboard instead.
+  The key is sent as an `Authorization: Basic` header via curl `--config`,
+  not on argv, and the script never prints it.
+
 - `.github/actions/build-reviewer-args/` -- wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -1051,6 +1066,21 @@ split `phi-tests`/`new-line-breaks-tests` already use.
 As with `report-push-failure`, `gemini.yml`'s/`gemini-code-review.yml`'s own
 consumption of this composite via `@v2` is not covered here -- it does not
 resolve until `@v2` is advanced past this capability's merge.
+
+`.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
+exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
+stub `curl`: a successful queue, `DRY_RUN=true` in the JSON body, HTTP 400
+when Bugbot is disabled for the repo, HTTP 401, a curl transport failure,
+a 2xx body with `"outcome":"error"`, and missing `CURSOR_API_KEY` /
+`PR_URL`.
+The stub is the coverage that matters, because `_selftest.yml` cannot call
+`api.cursor.com` and a live queue would bill.
+CI runs the suite as the `cursor-review-check` job, which also calls
+`trigger-bugbot-review` through a real `uses:` step with that same stub on
+`CURL_BIN`, proving `github.action_path` resolution.
+`cursor-code-review.yml`'s own consumption of the composite via `@v2` is
+not covered here -- it does not resolve until `@v2` is advanced past this
+capability's merge.
 
 `.github/workflows/scripts/tests/run-build-reviewer-args-tests.sh` exercises
 `build-reviewer-args.sh` (see Layout above) offline against a table of

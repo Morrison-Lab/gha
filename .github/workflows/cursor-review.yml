@@ -1,0 +1,28 @@
+# Active caller for this repo's own reusable Cursor Bugbot review workflow
+# (dogfooding). Distinct filename from the reusable
+# .github/workflows/cursor-code-review.yml it calls.
+#
+# workflow_dispatch only: the reusable workflow's nested
+# `uses: .../trigger-bugbot-review@v2` does not resolve until @v2 slides past
+# the merge that introduced the composite (CLAUDE.md bootstrapping gap).
+name: Cursor Code Review
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/cursor-code-review.yml
+    with:
+      pr-number: ${{ inputs.pr_number }}
+    secrets:
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}

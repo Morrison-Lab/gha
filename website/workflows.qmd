@@ -34,7 +34,8 @@ input tables and a copy-paste example.
 | [`gemini.yml`](reference/gemini.qmd)                                       | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli`, edits files, opens/updates PRs                                                                                                                 | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file` |
 | [`gemini-code-review.yml`](reference/gemini-code-review.qmd)               | Read-only Gemini PR review (default stub is mention-triggered via `workflow_dispatch`; add `pull_request` for automatic reviews)                                                                                                   | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model`                                                                                                               |
 | [`antigravity-code-review.yml`](reference/antigravity-code-review.qmd)     | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`)                                                                                                        | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model`                                                                                            |
-| [`ai-code-review.yml`](reference/ai-code-review.qmd)                       | Multi-agent PR review: picks one configured agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution                                                             | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`                                                                                                 |
+| [`cursor-code-review.yml`](reference/cursor-code-review.qmd)               | Queue a Cursor Bugbot PR review via the Enterprise Bugbot API; success means the review was queued                                                                                                                               | `pr-number`, `dry-run`                                                                                                                                                              |
+| [`ai-code-review.yml`](reference/ai-code-review.qmd)                       | Multi-agent PR review: picks one configured agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution                                                             | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file`                              |
 | [`small-model-agent.yml`](reference/small-model-agent.qmd)                 | Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (`wai#39`, `ai-config#1292`)                                                                                    | `pr-number`, `endpoint-url`, `model`, `max-iterations`, `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `run-gates`, `dry-run`                                 |
 | [`bump-submodule.yml`](reference/bump-submodule.qmd)                       | Update a submodule to upstream HEAD and open a PR when the pointer moves                                                                                                                                                          | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch`                                                                                                                       |
 | [`sync-shared-fragments.yml`](reference/sync-shared-fragments.qmd)         | Vendor files from an upstream repo (pinned to a commit) and open a PR when they change                                                                                                                                            | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path`                                                                                                            |
@@ -73,9 +74,11 @@ freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `report-failure.yml` (added after the freeze - see
 [gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `gemini.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, and `ai-code-review.yml` likewise only
+`antigravity-code-review.yml`, `cursor-code-review.yml`,
+and `ai-code-review.yml` likewise only
 ever shipped at `@v2`, having been added well after the freeze - see
-[gha#357](https://github.com/Morrison-Lab/gha/pull/357).
+[gha#357](https://github.com/Morrison-Lab/gha/pull/357)
+and [gha#510](https://github.com/Morrison-Lab/gha/issues/510).
 `bump-dev-version.yml` and `version-check.yml` postdate the freeze too (added
 in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
 `@v2`.
@@ -254,6 +257,15 @@ mentions, and an `@gemini review` dispatches the reviewer rather than being
 answered in place. Keep the review stub named `gemini-code-review.yml` (or set
 `gemini.yml`'s `review-workflow-file` to match). Gemini needs a `GEMINI_API_KEY`
 secret; the two families are independent, so a repo can install either or both.
+
+`cursor-code-review.yml` queues a [Cursor Bugbot](https://cursor.com/docs/bugbot.md)
+review through the Enterprise Bugbot API.
+It is not a mention bot: there is no `cursor.yml` counterpart.
+Team and individual Cursor plans should enable Bugbot in the dashboard
+(automatic reviews, or a PR comment `cursor review` / `bugbot run`) instead
+of this workflow.
+Add `cursor` to `ai-code-review.yml`'s `agents` input when `CURSOR_API_KEY`
+is set and the caller stub is installed.
 
 All agent workflows align with upstream action standards (such as
 `anthropics/claude-code-action` v1.0.191 and `run-gemini-cli` v0.1.22, alongside
