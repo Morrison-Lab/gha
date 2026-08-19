@@ -1,0 +1,39 @@
+name: Check major tag drift
+description: >-
+  Checks whether main has drifted ahead of the active major tag (e.g. v2) and
+  outputs a notice and job summary when tag advancement is pending. Wraps
+  .github/workflows/scripts/check-tag-drift.sh located via
+  github.action_path.
+
+inputs:
+  target-ref:
+    description: >-
+      Target commit or ref to compare against the active major tag (defaults to
+      HEAD).
+    required: false
+    default: 'HEAD'
+
+outputs:
+  drift:
+    description: >-
+      `true` if target-ref is ahead of the active major tag, `false` otherwise.
+    value: ${{ steps.run.outputs.drift }}
+  major:
+    description: >-
+      The active major tag name (e.g. 'v2').
+    value: ${{ steps.run.outputs.major }}
+  drift-count:
+    description: >-
+      Number of commits target-ref is ahead of the active major tag.
+    value: ${{ steps.run.outputs.drift_count }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run check-tag-drift.sh
+      id: run
+      shell: bash
+      run: |
+        set -euo pipefail
+        SCRIPT="${{ github.action_path }}/../../workflows/scripts/check-tag-drift.sh"
+        bash "$SCRIPT" "${{ inputs.target-ref }}"

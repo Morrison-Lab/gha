@@ -979,6 +979,38 @@ jobs:
           fi
           echo "trigger-bugbot-review composite resolved github.action_path and returned request-id"
 
+  # check-tag-drift is brand new, so its reusable workflow layer isn't at a
+  # released tag yet. Test the script offline and exercise the local composite
+  # directly so the selftest covers the PR code (same bootstrap gap precedent).
+  tag-drift:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Run check-tag-drift offline tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-tag-drift-tests.sh
+      - name: Exercise check-tag-drift composite action end-to-end
+        id: drift-e2e
+        uses: ./.github/actions/check-tag-drift
+      - name: Assert check-tag-drift composite returned outputs
+        shell: bash
+        env:
+          DRIFT: ${{ steps.drift-e2e.outputs.drift }}
+          MAJOR: ${{ steps.drift-e2e.outputs.major }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$MAJOR" ]]; then
+            echo "::error::check-tag-drift composite action did not return a major tag"
+            exit 1
+          fi
+          echo "check-tag-drift composite resolved major=$MAJOR drift=$DRIFT"
+
   # Kept as its own job (not folded into review-fail-check) so a failure here is
   # attributable at a glance (gha#436, gha#415, CLAUDE.md convention).
   small-model-agent-tests:

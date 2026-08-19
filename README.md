@@ -511,6 +511,14 @@ not a stale-but-working reference. ([gha#300](https://github.com/Morrison-Lab/gh
 the tag had to be slid via step 3 above before ai-config's own migration PR
 could actually resolve it.)
 
+**Tag drift staleness signal.** To prevent the manual slide step from going
+unnoticed when `main` moves ahead of the major tag, a tag drift check
+(`check-tag-drift`) runs as part of CI to surface when `main` has unreleased
+commits ahead of the active major tag (e.g. `v2`). It emits a GitHub Actions
+notice and job summary pointing to
+[`slide-major-tag.yml`](.github/workflows/slide-major-tag.yml) whenever tag
+advancement is pending.
+
 Changelog entries are added as fragment files under
 [`changelog.d/`](changelog.d) (one per PR, so parallel PRs never conflict on the
 shared changelog) and collated into `CHANGELOG.md` at release time -- see

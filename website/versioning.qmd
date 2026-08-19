@@ -50,6 +50,13 @@ workflow at `@v2` right away, check whether `@v2` has actually been advanced
 past that merge first (step 3 above), or the consumer's reference resolves
 to a workflow-not-found error rather than a stale-but-working one.
 
+To prevent manual tag advancement from being forgotten when `main` moves ahead
+of the major tag, a tag drift check (`check-tag-drift`) runs as part of CI to
+surface when `main` has unreleased commits ahead of the active major tag (e.g. `v2`).
+It emits a GitHub Actions notice and job summary pointing to
+[`slide-major-tag.yml`](https://github.com/Morrison-Lab/gha/blob/main/.github/workflows/slide-major-tag.yml)
+whenever tag advancement is pending.
+
 See [`CHANGELOG.md`](https://github.com/Morrison-Lab/gha/blob/main/CHANGELOG.md)
 for what changes as a major tag moves.
 
