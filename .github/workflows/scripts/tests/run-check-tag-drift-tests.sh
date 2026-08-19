@@ -69,7 +69,7 @@ else
   failures=$((failures + 1))
 fi
 
-if grep -q '### 🏷️ Major Tag Drift Notice' "$summary_file" && grep -q '\*\*v1\*\* is \*\*2\*\* commit(s) behind \`main\`' "$summary_file"; then
+if grep -q '### 🏷️ Major Tag Drift Notice' "$summary_file" && grep -q "\*\*v1\*\* is \*\*2\*\* commit(s) behind \`main\`" "$summary_file"; then
   echo "OK   check-tag-drift.sh correctly formatted GITHUB_STEP_SUMMARY"
 else
   echo "::error::check-tag-drift.sh failed to format GITHUB_STEP_SUMMARY"
@@ -80,7 +80,7 @@ fi
 rm -f "$output_file" "$summary_file"
 GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" "HEAD" > "$tmp_dir/log3b.txt"
 
-if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind HEAD' "$tmp_dir/log3b.txt"; then
+if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q "v1 is 2 commit(s) behind HEAD" "$tmp_dir/log3b.txt"; then
   echo "OK   check-tag-drift.sh preserves explicit HEAD target ref"
 else
   echo "::error::check-tag-drift.sh failed to preserve explicit HEAD target ref"
