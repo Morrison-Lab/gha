@@ -11,7 +11,7 @@ have already landed.
 It calls Cursor's Enterprise Bugbot API (`POST /bugbot/review`) with a
 `CURSOR_API_KEY` that has `admin:*` scope.
 Team and individual Cursor plans should enable Bugbot in the
-[Cursor dashboard](https://cursor.com/automations/from-cursor/bugbot)
+[Cursor dashboard](https://cursor.com/docs/bugbot.md)
 instead of this workflow.
 Once the GitHub App is connected, Bugbot can run on every PR update, or
 on a PR comment `cursor review` / `bugbot run`.

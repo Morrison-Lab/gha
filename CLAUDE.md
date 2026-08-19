@@ -419,6 +419,7 @@ which is why the capabilities above moved to `@v2`.
   Gemini Project" API-key suspension incident, 2026-07-30, gha#379 -- see the
   Tests section below for the offline coverage and the `_selftest.yml`
   end-to-end proof.)
+
 - `.github/actions/trigger-bugbot-review/` -- wraps
   `scripts/trigger-bugbot-review.sh`, which POSTs a PR URL to
   `https://api.cursor.com/bugbot/review` and fails unless the API returns
@@ -432,6 +433,7 @@ which is why the capabilities above moved to `@v2`.
   Bugbot in the Cursor dashboard instead.
   The key is sent as an `Authorization: Basic` header, never on curl's argv,
   and the script never prints it.
+
 - `.github/actions/build-reviewer-args/` -- wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.

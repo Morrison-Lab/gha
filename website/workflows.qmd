@@ -74,7 +74,8 @@ freeze - see [gha#252](https://github.com/Morrison-Lab/gha/issues/252)), as does
 `report-failure.yml` (added after the freeze - see
 [gha#325](https://github.com/Morrison-Lab/gha/issues/325)).
 `gemini.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, `cursor-code-review.yml`, and `ai-code-review.yml` likewise only
+`antigravity-code-review.yml`, `cursor-code-review.yml`,
+and `ai-code-review.yml` likewise only
 ever shipped at `@v2`, having been added well after the freeze - see
 [gha#357](https://github.com/Morrison-Lab/gha/pull/357)
 and [gha#510](https://github.com/Morrison-Lab/gha/issues/510).

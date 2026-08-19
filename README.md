@@ -145,10 +145,12 @@ that need to write must have the **caller** grant it on the calling job:
     submodule contents instead of reporting them as uninitialized. Public
     submodules clone anonymously; private ones additionally need a
     `SUBMODULES_TOKEN` secret.
+
 - `cursor-code-review` (queues a Cursor Bugbot review) → grant
   `contents: read`, `pull-requests: read`, and add the `CURSOR_API_KEY`
   secret (Enterprise, `admin:*` scope). Bugbot posts with the Cursor GitHub
   App; this workflow does not need write permission on the PR.
+
 - `preview` (build half, read-only) → only `contents: read` (the default).
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
