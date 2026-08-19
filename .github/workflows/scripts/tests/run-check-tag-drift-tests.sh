@@ -56,14 +56,14 @@ git commit -am "second commit" -q
 echo "commit 3" >> file.txt
 git commit -am "third commit" -q
 
-# Test Case 3: 2-commit drift
+# Test Case 3: 2-commit drift (with default and HEAD argument)
 rm -f "$output_file" "$summary_file"
-GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" > "$tmp_dir/log3.txt"
+GITHUB_OUTPUT="$output_file" GITHUB_STEP_SUMMARY="$summary_file" bash "$drift_script" "HEAD" > "$tmp_dir/log3.txt"
 
-if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind' "$tmp_dir/log3.txt"; then
-  echo "OK   check-tag-drift.sh correctly detects 2-commit drift"
+if grep -q 'drift=true' "$output_file" && grep -q 'drift_count=2' "$output_file" && grep -q 'v1 is 2 commit(s) behind main' "$tmp_dir/log3.txt"; then
+  echo "OK   check-tag-drift.sh correctly detects 2-commit drift with HEAD argument"
 else
-  echo "::error::check-tag-drift.sh failed to detect 2-commit drift"
+  echo "::error::check-tag-drift.sh failed to detect 2-commit drift with HEAD argument"
   failures=$((failures + 1))
 fi
 

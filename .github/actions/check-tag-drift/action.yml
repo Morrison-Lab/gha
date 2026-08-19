@@ -9,9 +9,9 @@ inputs:
   target-ref:
     description: >-
       Target commit or ref to compare against the active major tag (defaults to
-      HEAD).
+      origin/main, falling back to main or HEAD).
     required: false
-    default: 'HEAD'
+    default: ''
 
 outputs:
   drift:

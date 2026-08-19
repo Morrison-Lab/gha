@@ -11,15 +11,17 @@
 
 set -euo pipefail
 
-DEFAULT_REF="origin/main"
-if ! git rev-parse --verify --quiet "$DEFAULT_REF^{commit}" >/dev/null 2>&1; then
-  if git rev-parse --verify --quiet "main^{commit}" >/dev/null 2>&1; then
-    DEFAULT_REF="main"
+TARGET_REF="${1:-}"
+
+if [ -z "$TARGET_REF" ] || [ "$TARGET_REF" = "HEAD" ]; then
+  if git rev-parse --verify --quiet "refs/remotes/origin/main^{commit}" >/dev/null 2>&1; then
+    TARGET_REF="origin/main"
+  elif git rev-parse --verify --quiet "refs/heads/main^{commit}" >/dev/null 2>&1; then
+    TARGET_REF="main"
   else
-    DEFAULT_REF="HEAD"
+    TARGET_REF="HEAD"
   fi
 fi
-TARGET_REF="${1:-$DEFAULT_REF}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/resolve-major-tag.sh"
