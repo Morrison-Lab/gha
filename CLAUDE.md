@@ -431,8 +431,8 @@ which is why the capabilities above moved to `@v2`.
   itself, asynchronously.
   The API is Enterprise-scoped (`admin:*`); Team/individual installs enable
   Bugbot in the Cursor dashboard instead.
-  The key is sent as an `Authorization: Basic` header, never on curl's argv,
-  and the script never prints it.
+  The key is sent as an `Authorization: Basic` header via curl `--config`,
+  not on argv, and the script never prints it.
 
 - `.github/actions/build-reviewer-args/` -- wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers

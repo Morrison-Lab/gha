@@ -21,12 +21,14 @@ install_stub() {
 set -euo pipefail
 outfile=""
 data=""
+printf '%s\n' "\$@" > "$stub_dir/argv"
 while [[ \$# -gt 0 ]]; do
   case "\$1" in
     -o) outfile="\$2"; shift 2 ;;
     -w) shift 2 ;;
     --data) data="\$2"; shift 2 ;;
     --header) shift 2 ;;
+    --config) shift 2 ;;
     -sS) shift ;;
     *) shift ;;
   esac
@@ -116,6 +118,37 @@ else
   fail "dry-run did not set dryRun true in the request or output"
   echo "$out"
   cat "$stub_dir/last-data" || true
+fi
+
+# Server-reported false must win over a local DRY_RUN=true. jq `// empty`
+# would drop JSON false and fall back to the requested true.
+install_stub 200 "$success_body"
+out="$(CURSOR_API_KEY="test-key" PR_URL="https://github.com/Morrison-Lab/gha/pull/42" \
+  DRY_RUN=true \
+  CURL_BIN="$stub_dir/curl" CURSOR_API_BASE="https://api.example.invalid" \
+  bash "$trigger")"
+if echo "$out" | grep -qx 'dry_run=false'; then
+  ok "JSON dry_run=false is reported even when DRY_RUN=true was requested"
+else
+  fail "JSON false dry_run was not reported (got: $out)"
+fi
+
+no_dry_body='{"outcome":"success","message":"Bugbot review queued","request_id":"bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee"}'
+install_stub 200 "$no_dry_body"
+out="$(CURSOR_API_KEY="test-key" PR_URL="https://github.com/Morrison-Lab/gha/pull/42" \
+  DRY_RUN=true \
+  CURL_BIN="$stub_dir/curl" CURSOR_API_BASE="https://api.example.invalid" \
+  bash "$trigger")"
+if echo "$out" | grep -qx 'dry_run=true'; then
+  ok "absent dry_run falls back to the locally requested value"
+else
+  fail "absent dry_run did not fall back to DRY_RUN=true (got: $out)"
+fi
+
+if grep -qiE 'Authorization|test-key' "$stub_dir/argv"; then
+  fail "credential-shaped argv reached the curl stub"
+else
+  ok "curl argv does not carry the Authorization header or the raw key"
 fi
 
 install_stub 400 "$disabled_body"

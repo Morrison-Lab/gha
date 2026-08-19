@@ -11,7 +11,8 @@
 #
 # Env:
 #   CURSOR_API_KEY   required. Used as HTTP Basic username with an empty
-#                    password. Never passed on argv, never printed.
+#                    password. Never printed. Passed to curl via --config,
+#                    not on argv.
 #   PR_URL           required. Full GitHub PR or GitLab MR URL.
 #   DRY_RUN          optional. `true` queues analysis without SCM side
 #                    effects. Default false. Still billed, per Cursor's docs.
@@ -60,16 +61,22 @@ payload="$(jq -cn --arg url "$PR_URL" --argjson dry "$dry_json" \
   '{prUrl: $url, dryRun: $dry}')"
 
 # Basic auth with an empty password, as Cursor's docs show (`-u KEY:`).
-# Encode into a header so the key is not on curl's argv.
+# Write headers through --config so the encoded credential is not on
+# curl's argv (`ps` / `/proc/<pid>/cmdline`).
 auth="$(printf '%s:' "$CURSOR_API_KEY" | base64 | tr -d '\n')"
 url="${CURSOR_API_BASE%/}/bugbot/review"
 body_file="$(mktemp)"
-trap 'rm -f "$body_file"' EXIT
+curl_cfg="$(mktemp)"
+chmod 600 "$curl_cfg"
+trap 'rm -f "$body_file" "$curl_cfg"' EXIT
+cat > "$curl_cfg" <<EOF
+header = "Authorization: Basic ${auth}"
+header = "Content-Type: application/json"
+EOF
 
 set +e
 http_code="$("$CURL_BIN" -sS -o "$body_file" -w "%{http_code}" \
-  --header "Authorization: Basic ${auth}" \
-  --header "Content-Type: application/json" \
+  --config "$curl_cfg" \
   --data "$payload" \
   "$url")"
 curl_status=$?
@@ -101,7 +108,10 @@ fi
 
 outcome="$(printf '%s' "$body" | jq -r '.outcome // empty')"
 request_id="$(printf '%s' "$body" | jq -r '.request_id // empty')"
-dry_out="$(printf '%s' "$body" | jq -r '.dry_run // empty')"
+# jq's `//` treats JSON false as empty, so `.dry_run // empty` drops
+# `"dry_run": false` and we would fall back to the locally requested
+# value. Distinguish absent from false.
+dry_out="$(printf '%s' "$body" | jq -r 'if .dry_run == null then empty else (.dry_run | tostring) end')"
 
 if [[ "$outcome" != "success" ]]; then
   api_message="$(printf '%s' "$body" | jq -r '.message // empty')"
