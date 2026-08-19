@@ -1533,12 +1533,21 @@ Measured on git 2.43.0 against this repo's own slid `v2`, a plain
 ```
 
 on **stderr** and exited **1**, leaving the local tag untouched.
-So the refusal is both announced and non-zero, and the stale read comes from
-losing one or the other: `-q`, a pipe that keeps only the last line, or a
-`;`-separated chain all drop it, and the `git rev-parse` that follows then
-reports the old commit as though it were current.
-A `&&` chain would in fact stop, so the trap is the suppressed form rather
-than the chained one.
+
+So the refusal is both announced and non-zero, and the stale read needs the
+announcement to be thrown away.
+Measured against the same force-moved tag, exactly one common habit does that:
+**`-q`**, which suppresses the line entirely while still exiting 1.
+A pipe does not, in either form -- a bare `| tail -1` redirects only stdout and
+leaves the stderr line on the terminal, and `2>&1 | tail -1` keeps it because
+it *is* the last line.
+And a `&&` chain stops rather than continuing:
+`git fetch origin main --tags && git rev-parse 'v2^{}'` exited 1 with no sha
+printed.
+
+So the trap is narrow and worth stating exactly: `-q` hides the rejection, and
+a `;`-separated (rather than `&&`-chained) `git rev-parse` then reports the old
+commit as though it were current.
 
 ```bash
 # read-only, always current; ask for both refspecs and take the ^{} line when
@@ -1555,8 +1564,8 @@ correct if that ever changes.
 Comparing two API-derived values sidesteps the question entirely, since
 `referenced_workflows[].sha` has no local-staleness failure mode.
 (Measured 2026-08-19, minutes after #521 merged and `v2` slid to `3ec11c0`:
-`git rev-parse 'v2^{}'` after a `-q` fetch whose output was piped away
-returned the previous `3b09703`, and that stale read was reported twice as
+`git rev-parse 'v2^{}'` after a `-q` fetch returned the previous `3b09703`,
+and that stale read was reported twice as
 "the fix has not reached consumers" while `d-morrison/rme` run 32298939967 was
 demonstrating the fix working -- that run's `referenced_workflows[].sha` reads
 `3ec11c0`, its `claude-review` job's conclusion is `success`, and its
