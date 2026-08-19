@@ -950,6 +950,24 @@ pins that ordering, and it passes with or without the fix by design -- the
 fixture that actually fails when the fix is removed is
 `quota-exhausted-midrun.json`, confirmed by mutation rather than assumed.
 
+**Fixing the guard alone leaves the check red, which is why gha#520 touched the
+workflow too.**
+`claude-code-action` exits 1 on any `is_error` result, quota exhaustion
+included, and the `Run Claude Code Review` step carried no
+`continue-on-error` -- so the job failed on that step regardless of what the
+guard concluded afterwards.
+gha#350 had already made the guard *run* in this case; what it did not do was
+stop the step's own failure from deciding the job.
+Read a green `fail-check` step alongside a red `claude-review` job as this
+shape rather than as a contradiction: the guard's verdict and the job's
+conclusion were reached by different steps.
+`Resolve final review outcome` is documented as the only step that genuinely
+fails the job, and the retry attempt already carried the flag, so attempt 1
+was the odd one out.
+Note that `outcome` is read *before* `continue-on-error` applies, which is what
+lets the retry keep gating on `steps.claude-review.outcome == 'success'`
+unchanged.
+
 `.github/actions/parse-workflow-ref/tests/run-tests.sh` exercises the
 extracted `parse-workflow-ref.sh` (see Layout above) offline against a tag, a
 branch, and a full-SHA ref; CI runs it as a step in the same

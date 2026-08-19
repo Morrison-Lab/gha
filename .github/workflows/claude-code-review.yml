@@ -696,6 +696,22 @@ jobs:
       - name: Run Claude Code Review
         id: claude-review
         if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true'
+        # gha#520: the action exits 1 on any is_error result, including quota
+        # exhaustion -- so without this, a failed step reddens the job no matter
+        # what the guard below concludes, and the graceful-skip path is
+        # unreachable for every exhaustion that gets past the pre-flight check.
+        # gha#350 made the guard *run* in that case; the job still went red.
+        # "Resolve final review outcome" is documented as the only step that
+        # genuinely fails the job, and the retry attempt already carries this
+        # flag -- attempt 1 was the odd one out.
+        #
+        # This does not weaken the guard. `outcome` is read BEFORE
+        # continue-on-error is applied, so the retry's own
+        # `steps.claude-review.outcome == 'success'` gate keeps its exact
+        # meaning, and a genuine failure still reaches resolve-final through
+        # fail-check (as action_short_circuit when no execution file was
+        # written, or as a hard error otherwise).
+        continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
