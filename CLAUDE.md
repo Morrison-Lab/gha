@@ -1537,8 +1537,9 @@ Comparing two API-derived values sidesteps the question entirely, since
 `git fetch origin main --tags && git rev-parse 'v2^{}'` returned the previous
 `3b09703`, and that stale read was reported twice as "the fix has not reached
 consumers" while `d-morrison/rme` run 32298939967 was demonstrating the fix
-working. `Morrison-Lab/ai-config`'s `memories/git-tags.md` records the git
-behavior itself; gha#522 is the pointer from here.)
+working.
+`Morrison-Lab/ai-config`'s `memories/git-tags.md` records the git behavior
+itself, and gha#522 is the pointer from here.)
 To verify a slide, prefer a **fresh** run -- push a commit, open a PR, or
 `workflow_dispatch` -- since it resolves the tag unambiguously and needs no
 reasoning about which re-run mode you are in.
