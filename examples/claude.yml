@@ -43,6 +43,10 @@ jobs:
     # all - it can only exist because someone with write access committed the
     # cron: config to the default branch.
     #   || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    #
+    # To also admit a GitHub App bot (author_association is usually NONE), OR
+    # in a login check and pass the same JSON array as trusted-bot-logins:
+    #   || contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login)
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
@@ -72,6 +76,7 @@ jobs:
     #   mark-ready-for-review: false # keep Claude's PRs as drafts
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
     #   report-cost: false          # suppress the dollar-cost comment (default true)
+    #   trusted-bot-logins: '["cursor[bot]"]'  # admit App bots the caller if: also allows
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources

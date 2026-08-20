@@ -204,6 +204,19 @@ on:
           On by default; set false to suppress it.
         type: boolean
         default: true
+      trusted-bot-logins:
+        description: >-
+          JSON array of GitHub bot logins that may trigger this workflow even
+          when their comment/issue/review author_association is not
+          OWNER/MEMBER/COLLABORATOR (those associations are usually NONE for
+          GitHub Apps). Use for automation that posts `@claude` / `@claude
+          review` under a bot identity -- e.g. `["cursor[bot]"]` for Cursor
+          Cloud Agents. Empty (`[]`) by default so consumers keep the
+          human-collaborator-only gate unless they opt in. The caller-side
+          job `if:` must mirror this allowlist or the reusable workflow is
+          never invoked.
+        type: string
+        default: '[]'
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
@@ -229,6 +242,12 @@ jobs:
     # who can comment on a public issue or PR could trigger an LLM run with a
     # write-scoped GITHUB_TOKEN.
     #
+    # trusted-bot-logins is the opt-in escape hatch for GitHub App bots whose
+    # author_association is NONE (e.g. cursor[bot] posting `@claude review`
+    # from a Cloud Agent session). A login match alone is enough -- do not
+    # also require type == 'Bot' here: that field is not always present on
+    # every event payload shape, and the allowlist is already closed.
+    #
     # workflow_dispatch/schedule events have no comment/issue body or
     # author_association to gate on, but need no such gate: workflow_dispatch
     # requires the dispatching actor to have repo write access, and a
@@ -236,10 +255,10 @@ jobs:
     # exist because someone with write access committed its `cron:` config to
     # the default branch. Both are trusted by construction (gha#245).
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.comment.user.login))) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.comment.user.login))) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.review.user.login))) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.issue.user.login))) ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule'
 

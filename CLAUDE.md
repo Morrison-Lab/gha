@@ -1290,6 +1290,22 @@ though they are the same repository:
 So read the allowed-repositories list in the session's own context before
 assuming an owner, and if the scoped name is the old one, keep using it.
 
+**A Cursor Cloud Agent's `@claude review` / `/review` comment is not a
+human collaborator comment.**
+It posts as `cursor[bot]` with `author_association: NONE`, so the default
+OWNER/MEMBER/COLLABORATOR gate skips the run (the workflow may still wake
+and report every job `skipped`).
+This repo's dogfood callers admit `cursor[bot]` on the caller-side `if:`;
+`claude.yml`'s `trusted-bot-logins` input is the matching reusable-workflow
+allowlist (default `[]`).
+Until `@v2` carries that input, do not pass it in `with:` -- an unknown
+`workflow_call` input fails the job at the call gate for every mention.
+Prefer `/review` from `cursor[bot]` once `claude-review.yml` on `main`
+admits that login: that path is entirely in the caller and does not wait
+on a tag slide.
+A human OWNER/MEMBER/COLLABORATOR `/review` or `@claude review` remains
+the reliable workaround on any older pin.
+
 **Some of these sessions have no local git checkout at all** (not just a missing
 `gh` CLI) -- there is no working tree to run `git commit`/`git push` against, so
 every change (branch, file edit, PR) must go through the MCP write tools below.

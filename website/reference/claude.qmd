@@ -61,6 +61,7 @@ grants to persist output (e.g. `gh issue create`).
 | `claude-args`            | string  | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all `git push` and write-API forms denied.                                                                                                                                                                                   |
 | `runs-on`                | string  | `'ubuntu-latest'`           | Runner for the job.                                                                                                                                                                                                                                                                                                                   |
 | `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/Morrison-Lab/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
+| `trusted-bot-logins`     | string  | `'[]'`                      | JSON array of GitHub bot logins allowed to trigger the workflow even when `author_association` is not OWNER/MEMBER/COLLABORATOR (App comments are usually `NONE`). Example: `'["cursor[bot]"]'`. Default `[]` keeps the human-collaborator-only gate. Mirror the same logins in the caller job `if:`, or the reusable workflow is never invoked. |
 
 ## Secrets
 
@@ -110,6 +111,8 @@ jobs:
     # so an untrusted commenter's mention doesn't even spawn the
     # reusable-workflow run. This mirrors the reusable workflow's own
     # trusted-author gate as defense-in-depth.
+    # To also admit a GitHub App bot, OR in a login check here and pass the
+    # same JSON array as trusted-bot-logins (see examples/claude.yml).
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
@@ -139,6 +142,7 @@ jobs:
     #   mark-ready-for-review: false # keep Claude's PRs as drafts
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
     #   report-cost: false          # suppress the dollar-cost comment (default true)
+    #   trusted-bot-logins: '["cursor[bot]"]'  # admit App bots the caller if: also allows
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources
