@@ -336,11 +336,11 @@ runs:
           chaining with `wc`, `grep`, or anything else, even to save or count
           a large diff. A command combining an allowed pattern with a
           redirect, pipe, or chain is rejected as a whole, and writing the
-          diff to a file YOURSELF -- anywhere, including /tmp or a directory
-          you create with mkdir -- is a hard block in this sandbox that no
-          retry or different path will get past. If a redirected or piped
-          attempt is denied, do not try another variant of the same idea:
-          switch immediately to the bare, unredirected form.
+          diff to a file YOURSELF -- /tmp and a directory you create with
+          mkdir have both been tried and both blocked -- has not worked in
+          this sandbox. If a redirected or piped attempt is denied, do not
+          try another variant of the same idea: switch immediately to the
+          bare, unredirected form.
 
           The bare command's result is not always the complete diff inline:
           past roughly 30,000 characters, the tool result becomes a preview
