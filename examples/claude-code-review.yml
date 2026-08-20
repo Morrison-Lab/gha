@@ -66,6 +66,10 @@ jobs:
   # skipped and nothing posted, which is indistinguishable from a broken bot
   # (gha#447).
   dispatch-on-comment:
+    # OWNER/MEMBER/COLLABORATOR only by default. To also admit a GitHub App
+    # bot (author_association is usually NONE), OR in a login check -- e.g.
+    #   || contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login)
+    # -- and mirror the same logins in claude.yml's trusted-bot-logins.
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&

@@ -37,11 +37,16 @@ jobs:
   # `gh workflow run` needs the workflow present on the default branch, so
   # `/review` works once this file is merged there.
   dispatch-on-comment:
+    # OWNER/MEMBER/COLLABORATOR, or cursor[bot] (Cloud Agents post /review
+    # and @claude review under that App login with author_association NONE).
+    # This gate lives entirely in the caller, so it takes effect on merge to
+    # main without waiting for an @v2 slide.
     if: >-
       github.event_name == 'issue_comment' &&
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/review') &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
+      contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
