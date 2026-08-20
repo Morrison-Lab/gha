@@ -158,7 +158,22 @@ fi
 # far above any real denial count instead, so unknown denials read as unsafe
 # on both gates rather than as zero.
 max_denials="${STUB_RETRY_MAX_DENIALS:-5}"
-raw_denials="$(jq -r '.permission_denials_count // "MISSING"' <<< "$result")"
+# `.permission_denials_count` is the scalar this script has always read, but a
+# real production run (gha#531) carried NO such key -- only `permission_denials`,
+# an array of per-denial detail objects, with the scalar count nowhere in the
+# saved execution file. (`claude-code-action` prints a formatted
+# "permission_denials_count": N line to the job log in that case, but that's a
+# display value it computes itself, not a field literally present in the JSON
+# it writes to disk.) Falling straight to the MISSING sentinel there forces
+# denials=999999, which wrongly excludes a run from the gha#185 stub-retry
+# even when the real count is well within max_denials. Fall back to the
+# array's length before giving up -- .permission_denials_count is tried
+# first so every existing (scalar-only) fixture is unaffected.
+raw_denials="$(jq -r '
+  .permission_denials_count
+  // (if (.permission_denials | type) == "array" then (.permission_denials | length) else null end)
+  // "MISSING"
+' <<< "$result")"
 if [[ "$raw_denials" =~ ^[0-9]+$ ]]; then
   denials="$raw_denials"
 else

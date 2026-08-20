@@ -1,0 +1,32 @@
+[
+  {"type": "system", "subtype": "init"},
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "I keep hitting permission denials on tool calls the code-review plugin's sub-agents rely on. Continuing to work through the remaining files."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 22,
+    "duration_ms": 180000,
+    "total_cost_usd": 3.5,
+    "permission_denials": [
+      {"tool_name": "Bash", "tool_use_id": "toolu_1", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_2", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_3", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_4", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_5", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_6", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_7", "tool_input": {"command": "gh api repos/x/y"}},
+      {"tool_name": "Bash", "tool_use_id": "toolu_8", "tool_input": {"command": "gh api repos/x/y"}}
+    ]
+  }
+]
