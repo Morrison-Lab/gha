@@ -109,6 +109,138 @@ jobs:
         run: |
           grep -q '## New features' fixture_NEWS.md
           rm -rf fixture_news.d fixture_NEWS.md
+  # Throwaway fixture, generated at runtime rather than committed (per
+  # CLAUDE.md's "Generate selftest fixtures at runtime" rule): a deliberately
+  # flawed workflow (unpinned third-party action, untrusted-input template
+  # injection) that both actionlint and zizmor should flag, plus a clean one
+  # as the negative control -- a sweep with no negative control can't tell a
+  # working detector from one that never ran.
+  lint-workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create flawed and clean fixture repos
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The fixture files below need a literal, un-evaluated GitHub
+          # Actions expression sequence on disk (that's the untrusted-input
+          # pattern zizmor and actionlint are meant to catch) -- but this
+          # step's OWN run: block is itself scanned for that same sequence by
+          # the Actions runner before bash ever sees it, so writing it
+          # directly here would make THIS workflow evaluate it instead of the
+          # fixture (even inside a comment -- the scanner doesn't know what a
+          # shell comment is). D/OPEN/CLOSE split the trigger sequence across
+          # two shell variables so it never appears contiguously in this
+          # file's source, including in this comment.
+          D='$'
+          OPEN="${D}{{"
+          CLOSE='}}'
+
+          mkdir -p _ci-lint-workflows-flawed/.github/workflows
+          cat > _ci-lint-workflows-flawed/.github/workflows/bad.yml <<EOF
+          name: Bad Workflow
+          on:
+            push:
+              branches: [main]
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - run: echo "Building ${OPEN} github.event.head_commit.message ${CLOSE}"
+          EOF
+          git -C _ci-lint-workflows-flawed init -q
+          git -C _ci-lint-workflows-flawed config user.email "ci@example.com" # phi-allow (synthetic fixture address, not real PHI)
+          git -C _ci-lint-workflows-flawed config user.name "CI"
+          git -C _ci-lint-workflows-flawed add -A
+          git -C _ci-lint-workflows-flawed commit -q -m fixture
+
+          mkdir -p _ci-lint-workflows-clean/.github/workflows
+          cat > _ci-lint-workflows-clean/.github/workflows/good.yml <<EOF
+          name: Good Workflow
+          on:
+            push:
+              branches: [main]
+          permissions:
+            contents: read
+          jobs:
+            build:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+                  with:
+                    persist-credentials: false
+                - env:
+                    COMMIT_MESSAGE: ${OPEN} github.event.head_commit.message ${CLOSE}
+                  run: echo "Building \$COMMIT_MESSAGE"
+          EOF
+          git -C _ci-lint-workflows-clean init -q
+          git -C _ci-lint-workflows-clean config user.email "ci@example.com" # phi-allow (synthetic fixture address, not real PHI)
+          git -C _ci-lint-workflows-clean config user.name "CI"
+          git -C _ci-lint-workflows-clean add -A
+          git -C _ci-lint-workflows-clean commit -q -m fixture
+      - name: Exercise lint-workflows on the flawed fixture (fail=false)
+        id: flawed-warn
+        uses: ./lint-workflows
+        with:
+          path: _ci-lint-workflows-flawed
+          fail: 'false'
+      - name: Assert both tools flagged the flawed fixture
+        shell: bash
+        env:
+          ACTIONLINT_FOUND: ${{ steps.flawed-warn.outputs.actionlint-found }}
+          ZIZMOR_FOUND: ${{ steps.flawed-warn.outputs.zizmor-found }}
+        run: |
+          set -euo pipefail
+          if [[ "$ACTIONLINT_FOUND" != "true" ]]; then
+            echo "::error::expected actionlint-found=true on the flawed fixture, got '$ACTIONLINT_FOUND'"
+            exit 1
+          fi
+          if [[ "$ZIZMOR_FOUND" != "true" ]]; then
+            echo "::error::expected zizmor-found=true on the flawed fixture, got '$ZIZMOR_FOUND'"
+            exit 1
+          fi
+      - name: Exercise lint-workflows on the flawed fixture (fail=true, the default)
+        id: flawed-fail
+        continue-on-error: true
+        uses: ./lint-workflows
+        with:
+          path: _ci-lint-workflows-flawed
+      - name: Assert fail=true actually fails the action
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.flawed-fail.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected the fail=true (default) exercise to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      - name: Exercise lint-workflows on the clean fixture (negative control)
+        id: clean
+        uses: ./lint-workflows
+        with:
+          path: _ci-lint-workflows-clean
+      - name: Assert the clean fixture reports no findings
+        shell: bash
+        env:
+          ACTIONLINT_FOUND: ${{ steps.clean.outputs.actionlint-found }}
+          ZIZMOR_FOUND: ${{ steps.clean.outputs.zizmor-found }}
+        run: |
+          set -euo pipefail
+          if [[ "$ACTIONLINT_FOUND" != "false" ]]; then
+            echo "::error::expected actionlint-found=false on the clean fixture, got '$ACTIONLINT_FOUND'"
+            exit 1
+          fi
+          if [[ "$ZIZMOR_FOUND" != "false" ]]; then
+            echo "::error::expected zizmor-found=false on the clean fixture, got '$ZIZMOR_FOUND'"
+            exit 1
+          fi
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser

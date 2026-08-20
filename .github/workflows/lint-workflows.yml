@@ -1,0 +1,56 @@
+name: Lint Workflows (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Root path (relative to the caller repo) to audit.
+        type: string
+        default: '.'
+      actionlint-version:
+        description: actionlint release tag to install.
+        type: string
+        default: 'v1.7.12'
+      actionlint-checksum:
+        description: >-
+          Expected SHA-256 of the pinned actionlint-version's linux_amd64
+          release tarball. Update alongside actionlint-version.
+        type: string
+        default: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+      zizmor-version:
+        description: zizmor PyPI package version to install.
+        type: string
+        default: '1.28.0'
+      python-version:
+        description: Python version to set up (for installing zizmor via pip).
+        type: string
+        default: '3.x'
+      pedantic:
+        description: Run zizmor with --pedantic (also emit code-smell findings).
+        type: boolean
+        default: false
+      fail:
+        description: Fail the workflow when either tool reports a finding.
+        type: boolean
+        default: true
+
+jobs:
+  lint-workflows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Lint Workflows
+        uses: Morrison-Lab/gha/lint-workflows@v2
+        with:
+          path: ${{ inputs.path }}
+          actionlint-version: ${{ inputs.actionlint-version }}
+          actionlint-checksum: ${{ inputs.actionlint-checksum }}
+          zizmor-version: ${{ inputs.zizmor-version }}
+          python-version: ${{ inputs.python-version }}
+          pedantic: ${{ inputs.pedantic }}
+          fail: ${{ inputs.fail }}

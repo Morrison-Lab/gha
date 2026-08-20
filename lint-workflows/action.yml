@@ -1,0 +1,133 @@
+name: Lint Workflows
+description: >-
+  Audit the caller's GitHub Actions workflows and composite actions with
+  actionlint (syntax/semantics -- unknown keys, bad `runs-on` labels, invalid
+  `${{ }}` expressions, shellcheck over `run:` blocks) and zizmor (security --
+  template-injection sinks, credential persistence, overly broad permissions,
+  unpinned actions). The two tools check different things and both are worth
+  running; see https://github.com/rhysd/actionlint and
+  https://github.com/zizmorcore/zizmor.
+
+inputs:
+  path:
+    description: >-
+      Root path (relative to the caller repo) to audit. zizmor collects both
+      workflows and composite actions under it, respecting .gitignore.
+    default: '.'
+  actionlint-version:
+    description: actionlint release tag to install (e.g. "v1.7.12").
+    default: 'v1.7.12'
+  actionlint-checksum:
+    description: >-
+      Expected SHA-256 of the pinned actionlint-version's
+      linux_amd64 release tarball, verified before extracting it. Update
+      this alongside actionlint-version (find it in that release's own
+      *_checksums.txt asset).
+    default: '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8'
+  zizmor-version:
+    description: zizmor PyPI package version to install (e.g. "1.28.0").
+    default: '1.28.0'
+  python-version:
+    description: Python version to set up (for installing zizmor via pip).
+    default: '3.x'
+  pedantic:
+    description: >-
+      Run zizmor with --pedantic (also emit code-smell findings, not just
+      security issues). Off by default -- pedantic mode is noisy and better
+      opted into deliberately once the security findings are under control.
+    default: 'false'
+  fail:
+    description: >-
+      Fail the action when either tool reports a finding. A fresh consumer
+      with a clean workflow set should leave this at the default; a repo
+      with a pre-existing backlog of findings may want 'false' while
+      working through them (see this action's own reference docs for the
+      "land with a baseline, tighten later" rationale).
+    default: 'true'
+
+outputs:
+  actionlint-found:
+    description: "'true' if actionlint reported any finding."
+    value: ${{ steps.actionlint.outputs.found }}
+  zizmor-found:
+    description: "'true' if zizmor reported any finding."
+    value: ${{ steps.zizmor.outputs.found }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install actionlint
+      shell: bash
+      env:
+        ACTIONLINT_VERSION: ${{ inputs.actionlint-version }}
+        ACTIONLINT_CHECKSUM: ${{ inputs.actionlint-checksum }}
+      run: |
+        set -euo pipefail
+        VER="${ACTIONLINT_VERSION#v}"
+        TARBALL="actionlint_${VER}_linux_amd64.tar.gz"
+        URL="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}/${TARBALL}"
+        TMPDIR=$(mktemp -d)
+        curl -fsSL -o "$TMPDIR/$TARBALL" "$URL"
+        echo "${ACTIONLINT_CHECKSUM}  $TMPDIR/$TARBALL" | sha256sum -c -
+        tar -xzf "$TMPDIR/$TARBALL" -C "$TMPDIR" actionlint
+        install -m 755 "$TMPDIR/actionlint" /usr/local/bin/actionlint
+        actionlint -version
+
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install zizmor
+      shell: bash
+      env:
+        ZIZMOR_VERSION: ${{ inputs.zizmor-version }}
+      run: pip install --quiet "zizmor==${ZIZMOR_VERSION}"
+
+    - name: Run actionlint
+      id: actionlint
+      shell: bash
+      working-directory: ${{ inputs.path }}
+      run: |
+        set +e
+        actionlint
+        status=$?
+        set -e
+        if [ "$status" -ne 0 ]; then
+          echo "::warning::actionlint reported findings (see above)."
+          echo "found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Run zizmor
+      id: zizmor
+      shell: bash
+      env:
+        AUDIT_PATH: ${{ inputs.path }}
+        PEDANTIC: ${{ inputs.pedantic }}
+      run: |
+        set +e
+        if [ "$PEDANTIC" = "true" ]; then
+          zizmor --pedantic "$AUDIT_PATH"
+        else
+          zizmor "$AUDIT_PATH"
+        fi
+        status=$?
+        set -e
+        # zizmor exits non-zero on findings (as well as on tool errors); a
+        # tool error would already have printed to stderr above, so treat
+        # any non-zero exit as "findings reported" for the fail gate below.
+        if [ "$status" -ne 0 ]; then
+          echo "::warning::zizmor reported findings (see above)."
+          echo "found=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "found=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Fail on findings
+      if: inputs.fail == 'true' && (steps.actionlint.outputs.found == 'true' || steps.zizmor.outputs.found == 'true')
+      shell: bash
+      run: |
+        echo "::error::actionlint and/or zizmor reported findings; see the steps above for details."
+        exit 1
