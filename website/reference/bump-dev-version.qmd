@@ -30,6 +30,7 @@ message.
 | `pr-branch`         | string  | `automated/bump-dev-version`  | Head branch for the automation PR.                                           |
 | `auto-merge`        | boolean | `true`                         | Enable GitHub's native auto-merge (squash) on the bump PR. In a repo with required status checks, needs `WORKFLOW_TOKEN` (see Secrets).       |
 | `dry-run`           | boolean | `false`                        | Bump but skip opening/merging a PR. Not yet exercised by this repo's own CI (its `dev-version` selftest job calls the `bump-dev-version` composite directly instead of this reusable workflow -- see the bootstrapping-gap note in `CLAUDE.md`); meant for a consumer to smoke-test the bump logic. |
+| `pr-labels`         | string  | *(empty)*                      | Comma-separated labels applied to the bump PR on create and update. Set to `no changelog` when the repo runs `check-news.yml` on automation PRs. |
 
 ## Secrets
 
@@ -95,6 +96,7 @@ jobs:
     with:
       # description-path: DESCRIPTION   # default
       # auto-merge: true                 # default; set false to review by hand
+      # pr-labels: no changelog          # when check-news.yml runs on automation PRs
     secrets:
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
 ```

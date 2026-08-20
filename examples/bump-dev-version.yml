@@ -21,6 +21,7 @@ jobs:
     with:
       # description-path: DESCRIPTION   # default
       # auto-merge: true                 # default; set false to review by hand
+      # pr-labels: no changelog          # when check-news.yml runs on automation PRs
     secrets:
       # A PAT or App token, needed for two independent reasons:
       #   1. To push the bump commit when pr-branch is protected by a ruleset
