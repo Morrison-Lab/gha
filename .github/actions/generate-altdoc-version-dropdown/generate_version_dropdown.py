@@ -154,6 +154,13 @@ if release_tags_env.strip():
     all_tags = re.split(r"[\n,]+", release_tags_env)
     release_tags = [t.strip() for t in all_tags if re.match(r"^v\d+\.\d+\.\d+$", t.strip())]
     release_query_succeeded = True
+    if not release_tags:
+        print(
+            "release-tags was set but contained no vX.Y.Z entries after filtering; "
+            "treating this as zero published releases rather than falling back to "
+            "gh api/git tag discovery (the caller's list is authoritative).",
+            file=sys.stderr,
+        )
 
 gh_token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 github_repository = os.environ.get("GITHUB_REPOSITORY")
