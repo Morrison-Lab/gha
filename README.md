@@ -202,8 +202,9 @@ Then `claude-code-review.yml` listens for that comment and re-dispatches its own
 `workflow_dispatch` review of the PR, and it works for
 `OWNER`/`MEMBER`/`COLLABORATOR` commenters once the workflow is on your default
 branch (widen the caller `if:` with a bot-login allowlist if a GitHub App such
-as `cursor[bot]` should be able to post `/review` -- App comments usually have
-`author_association: NONE`). It's a slash command rather than an `@claude review` mention on
+as `cursor[bot]` should be able to post `/review`.
+App comments usually have `author_association: NONE`).
+It's a slash command rather than an `@claude review` mention on
 purpose: any `@claude` substring would also trigger `claude.yml`, so the slash
 command keeps the direct path independent.
 
