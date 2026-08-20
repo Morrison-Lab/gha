@@ -10,5 +10,7 @@
   was exhausted with no verdict
   (33 denials measured on ucdavis/win#78).
   The system prompt now tells it to call
-  `gh pr diff <n> --repo <owner>/<repo>` bare
-  and read the returned text directly instead.
+  `gh pr diff <n> --repo <owner>/<repo>` bare instead of redirecting or
+  piping it, and -- since a diff that large still exceeds the Bash tool's
+  inline output ceiling -- to Read the file path the harness already saves
+  for it, rather than trying to recreate that file itself.
