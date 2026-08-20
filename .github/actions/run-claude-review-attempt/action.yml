@@ -271,6 +271,24 @@ runs:
         # `Agent` calls, `is_error: false`, `stop_reason: end_turn`,
         # $9.76, and a final message reading "Waiting for the remaining
         # background agents to complete." in place of a verdict.
+        #
+        # A fourth stub-review cause, gha#541, needs no new tool grant —
+        # `Bash(gh pr diff:*)` above already covers it; the failure is in HOW
+        # the reviewer used it. On a large diff, the agent reached for
+        # `gh pr diff ... > /tmp/pr.diff; wc -l ...` (or `gh pr diff ... |
+        # grep ...`) to chunk the output, and every variant was denied: a
+        # command chaining an allowed pattern with `;`/`&&`/`|`/a redirect is
+        # rejected as a WHOLE command even though the allowed part matches
+        # exactly, and writing to a file — `/tmp`, or a `mkdir`-created
+        # subdirectory of the checkout — is a hard block in this sandbox, not
+        # a permission prompt, so no allowlist entry can satisfy it. Measured
+        # on ucdavis/win#78, run 32415477507: 15+ redirect/pipe/mkdir variants
+        # denied, `permission_denials_count:33`, `total_cost_usd:2.29`, no
+        # verdict. A BARE, unredirected `gh pr diff <n> --repo <owner>/<repo>`
+        # needs none of that: its full output returns as the Bash tool's own
+        # result text, already matches the allowlist, and needs no file at
+        # all — the prompt below tells the reviewer to use exactly that form
+        # instead of trying to save/count/grep the diff.
         claude_args: >-
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,WebSearch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
@@ -297,6 +315,19 @@ runs:
           have and still finish by writing out your findings and the explicit
           ### Verdict line required below -- do not end the run silently or
           wait for approval.
+
+          To read the PR diff, call `gh pr diff <number> --repo
+          <owner>/<repo>` BARE -- no `>` redirect, no `|` pipe, no `;`/`&&`
+          chaining with `wc`, `grep`, or anything else, even to save or count
+          a large diff. Its full output comes back as this tool call's own
+          result text; read it directly from there, however large it is. A
+          command combining an allowed pattern with a redirect, pipe, or
+          chain is rejected as a whole, and writing the diff to a file --
+          anywhere, including /tmp or a directory you create yourself with
+          mkdir -- is a hard block in this sandbox that no retry or different
+          path will get past. If a redirected or piped attempt is denied,
+          do not try another variant of the same idea: switch immediately to
+          the bare, unredirected form and read its output inline.
 
           Do NOT post a top-level PR comment yourself: the `gh pr comment`
           tool is intentionally disallowed, and the workflow posts your
