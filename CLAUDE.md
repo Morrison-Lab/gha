@@ -956,10 +956,12 @@ a display value the action computes, not a field it always writes to disk.**
 gha#531 was observed on a real run: the printed log read
 `"permission_denials_count": 5`, but the saved execution file's `result`
 object carried no such key at all -- only `permission_denials`, an array of
-5 denial-detail objects. Reading `.permission_denials_count // "MISSING"`
+5 denial-detail objects.
+Reading `.permission_denials_count // "MISSING"`
 alone therefore read `MISSING` and defaulted to the 999999 sentinel, which
 wrongly excluded the run from the gha#185 stub-retry even though the real
-count (5) sat right at the threshold. The fix falls back to
+count (5) sat right at the threshold.
+The fix falls back to
 `permission_denials | length` when the scalar is absent/null but the array
 is present, tried only after the scalar so every scalar-only fixture is
 unaffected; `permission-denials-array-only-low-count.json` and
