@@ -78,7 +78,7 @@ not reference `@main` from consumers.
 | `bump-submodule.yml` | Update a named submodule to its upstream HEAD and open a PR when the pointer moves | `submodule-path`, `remote-branch`, `base-branch`, `pr-branch` |
 | `sync-shared-fragments.yml` | Vendor files from an upstream repo (pinned to a commit, recorded in a manifest) and open a PR when they change -- avoids a recursive mutual submodule | `source-repo`, `source-ref`, `source-paths`, `dest-dir`, `manifest-path` |
 | `sync-upstream.yml` | Merge an upstream repo's branch into a fork and open a PR when the merge brings changes -- keeps a fork current while preserving its own changes | `upstream-repo`, `upstream-branch`, `base-branch`, `pr-branch`, `fail-on-conflict` |
-| `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run` |
+| `bump-dev-version.yml` | Bump an R package's `DESCRIPTION` dev-version counter after every merge to `main`, and open/auto-merge a PR to carry it in -- so PRs never need to touch `Version:` themselves | `description-path`, `base-branch`, `pr-branch`, `auto-merge`, `dry-run`, `pr-labels` |
 | `version-check.yml` | Fail a PR whose `DESCRIPTION` `Version:` differs from the base branch's -- pairs with `bump-dev-version.yml` | `description-path`, `no-version-increment-label`, `bump-branch` |
 
 ## Permissions

@@ -30,6 +30,12 @@ inputs:
   pr-body:
     description: Pull request body.
     default: ''
+  labels:
+    description: >-
+      Comma-separated labels to apply when the PR is opened or updated. Each
+      name is trimmed; a label the repository does not define produces a
+      warning rather than failing the step.
+    default: ''
   token:
     description: >-
       Token for the gh PR operations (open/update the PR). The branch push uses
@@ -87,8 +93,10 @@ runs:
         BASE: ${{ inputs.base }}
         PR_TITLE: ${{ inputs.pr-title != '' && inputs.pr-title || inputs.commit-message }}
         PR_BODY: ${{ inputs.pr-body }}
+        LABELS: ${{ inputs.labels }}
         GH_TOKEN: ${{ inputs.token }}
         REPO: ${{ github.repository }}
+        SPLIT_SCRIPT: ${{ github.action_path }}/../.github/workflows/scripts/split-csv-list.sh
       run: |
         set -euo pipefail
         # Force-push (the branch is bot-owned and reset each run) using the
@@ -97,11 +105,18 @@ runs:
         git push --force origin "HEAD:refs/heads/${BRANCH}"
         existing=$(gh pr list --repo "$REPO" --head "$BRANCH" --base "$BASE" --state open --json url --jq '.[0].url // ""')
         if [ -n "$existing" ]; then
-          echo "::notice::Updated existing PR: ${existing}"
-          echo "pr-url=${existing}" >> "$GITHUB_OUTPUT"
+          url="$existing"
+          echo "::notice::Updated existing PR: ${url}"
         else
           url=$(gh pr create --repo "$REPO" --base "$BASE" --head "$BRANCH" \
             --title "$PR_TITLE" --body "$PR_BODY")
           echo "::notice::Opened PR: ${url}"
-          echo "pr-url=${url}" >> "$GITHUB_OUTPUT"
+        fi
+        echo "pr-url=${url}" >> "$GITHUB_OUTPUT"
+        if [ -n "$LABELS" ]; then
+          while IFS= read -r label; do
+            if ! gh pr edit "$url" --repo "$REPO" --add-label "$label"; then
+              echo "::warning title=open-sync-pr::Could not add label '${label}' to ${url} (the label may not exist in this repository)."
+            fi
+          done < <(bash "$SPLIT_SCRIPT" "$LABELS")
         fi
