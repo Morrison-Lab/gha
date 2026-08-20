@@ -310,5 +310,12 @@ if ! has_verdict "$all_text_file"; then
   echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
   exit 1
 fi
+# gha#527: a session-lock claim comment blocks parallel *write* sessions, not
+# read-only automated review. A verdict that defers because of "back off" /
+# "paws off" / "hold off" language is an incomplete review, not a clean pass.
+if grep -qiE 'deferred[^[:print:]]{0,40}(hold off|reviewers hold off)|honoring that request and stopping here without conducting|without conducting the review' "$all_text_file"; then
+  echo "::error::Claude review deferred because of a session-lock claim comment — claim comments block parallel pushes, not automated review (gha#527)."
+  exit 1
+fi
 echo "review_text_file=$review_text_file" >> "$GITHUB_OUTPUT"
 echo "Claude review completed cleanly (subtype=$subtype)."
