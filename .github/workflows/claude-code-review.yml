@@ -532,7 +532,16 @@ jobs:
             echo "::error::Retrieved invalid or empty head SHA for PR #$PR_NUMBER." >&2
             exit 1
           fi
-          echo "head_before=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          # Surfaced to the reviewer prompt (run-claude-review-attempt's
+          # pr-state/pr-merged inputs) as an authoritative fact, so it can't
+          # mistake a commit message on the PR's own branch (e.g. a "Merge
+          # origin/main into <branch>" conflict-resolution commit) for
+          # evidence the PR itself was merged (gha#295).
+          {
+            echo "head_before=$HEAD_SHA"
+            echo "pr_state=$(echo "$PR_JSON" | jq -r '.state')"
+            echo "pr_merged=$(echo "$PR_JSON" | jq -r '.merged')"
+          } >> "$GITHUB_OUTPUT"
 
           REVIEWERS_JSON=$(retry_gh_api "fetch requested reviewers" "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
           USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[].login]')
@@ -720,6 +729,8 @@ jobs:
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
+          pr-state: ${{ steps.stash.outputs.pr_state }}
+          pr-merged: ${{ steps.stash.outputs.pr_merged }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}
@@ -825,6 +836,8 @@ jobs:
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
+          pr-state: ${{ steps.stash.outputs.pr_state }}
+          pr-merged: ${{ steps.stash.outputs.pr_merged }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}

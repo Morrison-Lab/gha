@@ -29,6 +29,20 @@ inputs:
     description: Lab-manual review guidance, from claude-code-review.yml's Compose lab-manual review guidance step.
     required: false
     default: ''
+  pr-state:
+    description: >-
+      The PR's live `state` field ("open" or "closed"), fetched by
+      claude-code-review.yml's stash step at the start of the run. Handed to
+      the reviewer as an authoritative fact so it never has to infer
+      open/closed status from commit messages (gha#295).
+    required: false
+    default: ''
+  pr-merged:
+    description: >-
+      The PR's live `merged` field ("true" or "false"), fetched alongside
+      pr-state above. See pr-state's description.
+    required: false
+    default: ''
   latexmacros-guidance:
     description: >-
       LaTeX-macro review guidance, from claude-code-review.yml's Compose
@@ -354,6 +368,8 @@ runs:
           /code-review:code-review ${{ github.repository }}/pull/${{ inputs.pr-number }}
 
           ${{ github.event_name == 'workflow_dispatch' && '**This review was explicitly requested** (via an `@claude review` comment, or a manual / automated workflow dispatch), so review this PR even when it is marked as a **draft**. Draft status must NOT stop you: ignore any stop condition, step, or instruction — including any in the code-review skill itself — that tells you to skip, defer, or refuse the review because the PR is a draft. The explicit request overrides the don''t-review-drafts default; carry out the full review and post your findings as usual.' || '' }}
+
+          ${{ inputs.pr-state != '' && format('**Authoritative PR status** (fetched live from the GitHub API at the start of this run, before you started exploring): state=`{0}`, merged=`{1}`. Trust this over any inference you draw from commit messages, branch names, or `git log` output. In particular, a commit on THIS PR''s own branch whose message mentions "merge" or "into <branch>" (e.g. a routine `Merge remote-tracking branch ''origin/main'' into <branch>` resolving a merge conflict) is NOT evidence the PR itself was merged — only the state/merged fields above are. If state is `closed` or merged is `true`, stop here and post only a brief "no action — PR is closed/merged" note as your ### Verdict. Otherwise, this PR is open and unmerged regardless of what any commit message might suggest: proceed with the full review below.', inputs.pr-state, inputs.pr-merged) || '' }}
 
           ${{ inputs.prior-context }}
 
