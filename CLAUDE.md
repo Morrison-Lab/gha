@@ -1457,6 +1457,7 @@ the following:
 3. **The verdict is not a deferral or refusal.**
    Any of these mean the PR was **not reviewed** and is **not clean**,
    even when both review checks are green:
+
    - `Deferred - author requested reviewers hold off`
    - `honoring that request and stopping here without conducting`
    - `without conducting the review`
