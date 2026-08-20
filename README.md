@@ -173,7 +173,11 @@ that need to write must have the **caller** grant it on the calling job:
   its default `auto-merge: true`. Add a `WORKFLOW_TOKEN` to push to a protected
   branch, and -- when `auto-merge` runs against required status checks -- to let
   the bump PR's checks run so it can merge at all (a `GITHUB_TOKEN`-authored PR's
-  checks never report; see the reference page). `version-check` (read-only) →
+  checks never report; see the reference page).
+  A fine-grained PAT needs **Pull requests: Read and write** on that secret in
+  addition to **Contents: write**.
+  The workflow probes pull-request write access before any bump work.
+  `version-check` (read-only) →
   only `pull-requests: read`, `contents: read`.
 
 The stubs in [`examples/`](examples) already include the right `permissions:`

@@ -33,6 +33,9 @@ jobs:
       #      merge is blocked forever. Authoring the PR with a real user's token
       #      makes its checks run. Required checks block manual merges too, so
       #      turning off auto-merge does not avoid this.
+      # A fine-grained PAT needs Pull requests: Read and write in addition to
+      # Contents: write; the workflow probes pull-request write access before
+      # any bump work (via a POST that expects validation failure).
       # Omit the token only when neither applies: an unprotected pr-branch and
       # no required checks.
       WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}
