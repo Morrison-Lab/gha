@@ -1429,11 +1429,11 @@ triggered exactly this on `require-review`; confirmed via `actions_get`
 `get_workflow_run` that the failing check's conclusion was `cancelled` on
 the non-head SHA, matching this pattern.)
 
-## Green `require-review` is not fully clean — read the review comment body
+## Green `require-review` is not fully clean - read the review comment body
 
 **Fully clean** (the bar for standing `mwc` merge and for ARDI/GII session
 summaries) requires **both** green CI **and** a substantive clean review on
-the PR's **current head SHA** — see
+the PR's **current head SHA** - see
 [`Morrison-Lab/ai-config`'s `shared/workflow/fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md).
 Green `review / claude-review` plus green `review / require-review` satisfies
 criterion 1's review *job* half only. It is **not** sufficient for criterion 2.
@@ -1443,37 +1443,42 @@ read the latest `@claude` review comment on the thread and confirm all of
 the following:
 
 1. **The comment's `created_at` brackets inside the review job that ran on
-   the current head commit** (use `created_at`, not `updated_at` — later
+   the current head commit** (use `created_at`, not `updated_at` - later
    rounds fold earlier verdict comments and advance `updated_at` without
    editing their bodies; see
    [`review-verdict-pitfalls.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/review-verdict-pitfalls.md)).
 2. **The body contains a real `### Verdict` (or `Verdict:`) line** naming
-   approval — not a stub, not a quota skip, not a self-mod skip.
+   approval - not a stub, not a quota skip, not a self-mod skip.
 3. **The verdict is not a deferral or refusal.** Any of these mean the PR was
    **not reviewed** and is **not clean**, even when both review checks are
    green:
-   - `Deferred — author requested reviewers hold off`
+   - `Deferred - author requested reviewers hold off`
    - `honoring that request and stopping here without conducting`
    - `without conducting the review`
-   - No verdict section at all (stub review — gha#185)
+   - No verdict section at all (stub review - gha#185)
 4. **Read to the end of the comment and count findings under every heading.**
    Criterion 2's test is the **absence of findings**, not the presence of a
-   positive verdict line — a "Ready" verdict above a findings list loses to
-   the findings. Zero **inline** review threads is not a substitute; deferrals
-   and stubs often post as **top-level** comments only.
+   positive verdict line - a "Ready" verdict above a findings list loses to
+   the findings.
+   Zero **inline** review threads is not a substitute.
+   Deferrals and stubs often post as **top-level** comments only.
 
 **Session-lock claim comments are not a reason to skip review or call a PR
-clean.** Comments such as `Driving this PR to clean — back off until done` or
+clean.**
+Comments such as `Driving this PR to clean - back off until done` or
 `paws off until I'm done` (from the `claim-pr` / `ardi` rituals) tell **other
-write sessions** not to push in parallel. They do **not** instruct automated
-review to stand down, and they do **not** mean a review already ran. An agent
-that posted such a claim and then saw green review checks must still read the
-review body; mistaking the claim for "don't review" produced gha#527 (PR
-#527 declared clean with zero findings while the bot posted only
-`Deferred — author requested reviewers hold off` and never reviewed the
-diff). `#528` hardens the reviewer prompt and fails that deferral pattern in
-`check-review-execution.sh`; this paragraph is the matching guardrail for
-**agent sessions** driving ARDI/GII loops in this repo.
+write sessions** not to push in parallel.
+They do **not** instruct automated review to stand down.
+They do **not** mean a review already ran.
+An agent that posted such a claim and then saw green review checks must still
+read the review body.
+Mistaking the claim for "don't review" produced gha#527:
+PR 527 was declared clean with zero findings while the bot posted only
+`Deferred - author requested reviewers hold off` and never reviewed the diff.
+PR #528 hardens the reviewer prompt and fails that deferral pattern in
+`check-review-execution.sh`.
+This paragraph is the matching guardrail for **agent sessions** driving
+ARDI/GII loops in this repo.
 
 **Cheap self-check before marking ✅ Clean in a GII summary or invoking
 `mwc`:**
@@ -1490,9 +1495,9 @@ gh pr view <N> --json comments \
 ```
 
 An empty `last` or a body matching the deferral patterns above means **not
-clean** — re-trigger review (`@claude review` after the in-flight run
-finishes, or a no-op push) and read the new comment before merging or
-advancing the loop.
+clean**.
+Re-trigger review (`@claude review` after the in-flight run finishes, or a
+no-op push) and read the new comment before merging or advancing the loop.
 
 ## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
