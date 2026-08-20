@@ -1436,26 +1436,32 @@ summaries) requires **both** green CI **and** a substantive clean review on
 the PR's **current head SHA** - see
 [`Morrison-Lab/ai-config`'s `shared/workflow/fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md).
 Green `review / claude-review` plus green `review / require-review` satisfies
-criterion 1's review *job* half only. It is **not** sufficient for criterion 2.
+criterion 1's review *job* half only.
+It is **not** sufficient for criterion 2.
 
 **Before declaring a PR clean, zero findings, or ready to merge**, fetch and
 read the latest `@claude` review comment on the thread and confirm all of
 the following:
 
 1. **The comment's `created_at` brackets inside the review job that ran on
-   the current head commit** (use `created_at`, not `updated_at` - later
-   rounds fold earlier verdict comments and advance `updated_at` without
-   editing their bodies; see
+   the current head commit.**
+   Use `created_at`, not `updated_at`.
+   Later rounds fold earlier verdict comments and advance `updated_at`
+   without editing their bodies; see
    [`review-verdict-pitfalls.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/review-verdict-pitfalls.md)).
+
 2. **The body contains a real `### Verdict` (or `Verdict:`) line** naming
-   approval - not a stub, not a quota skip, not a self-mod skip.
-3. **The verdict is not a deferral or refusal.** Any of these mean the PR was
-   **not reviewed** and is **not clean**, even when both review checks are
-   green:
+   approval.
+   It must not be a stub, a quota skip, or a self-mod skip.
+
+3. **The verdict is not a deferral or refusal.**
+   Any of these mean the PR was **not reviewed** and is **not clean**,
+   even when both review checks are green:
    - `Deferred - author requested reviewers hold off`
    - `honoring that request and stopping here without conducting`
    - `without conducting the review`
    - No verdict section at all (stub review - gha#185)
+
 4. **Read to the end of the comment and count findings under every heading.**
    Criterion 2's test is the **absence of findings**, not the presence of a
    positive verdict line - a "Ready" verdict above a findings list loses to
