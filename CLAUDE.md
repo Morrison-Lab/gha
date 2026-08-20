@@ -1492,16 +1492,24 @@ ARDI/GII loops in this repo.
 
 ```bash
 HEAD=$(gh pr view <N> --json headRefOid --jq .headRefOid)
-gh pr view <N> --json comments \
-  --jq --arg head "$HEAD" '
+REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+REVIEW_OK=$(gh api "repos/$REPO/commits/$HEAD/check-runs" --paginate \
+  --jq '[.check_runs[] | select(.name == "review / claude-review" and .conclusion == "success")] | length')
+gh pr view <N> --json comments --jq --arg head "$HEAD" --argjson reviewOk "$REVIEW_OK" '
+  if ($reviewOk | tonumber) == 0 then empty
+  else
     [.comments[]
      | select(.author.login | test("claude|github-actions"; "i"))
      | select(.body | test("### Verdict|Verdict:"))
      | select(.body | test("Deferred.*hold off|without conducting the review"; "i") | not)
-    ] | last | {createdAt, bodyPreview: (.body[:200])}'
+    ] | last | {createdAt, bodyPreview: (.body[:200]), head: $head}
+  end'
 ```
 
-An empty `last` or a body matching the deferral patterns above means **not
+`REVIEW_OK` is zero when no successful `review / claude-review` check ran on
+the current head commit, so an empty result means **not clean** even if an
+older verdict comment exists on the thread.
+An empty `last` or a body matching the deferral patterns above also means **not
 clean**.
 Re-trigger review (`@claude review` after the in-flight run finishes, or a
 no-op push) and read the new comment before merging or advancing the loop.

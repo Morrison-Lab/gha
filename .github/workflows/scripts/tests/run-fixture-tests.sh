@@ -71,6 +71,7 @@ declare -A expected=(
   [verdict-via-gh-comment-heredoc-crlf.json]=pass
   [denied-bash-comment-not-trusted.json]=fail-stub
   [claim-comment-deferred-review.json]=fail
+  [claim-comment-deferred-verdict-only.json]=fail
   [short-circuit-no-result.json]=fail-short-circuit
 )
 
@@ -146,6 +147,7 @@ declare -A expected_cost=(
   [verdict-via-gh-comment-heredoc-crlf.json]=0.94
   [denied-bash-comment-not-trusted.json]=0.4
   [claim-comment-deferred-review.json]=0.67
+  [claim-comment-deferred-verdict-only.json]=0.42
   [short-circuit-no-result.json]=""
 )
 

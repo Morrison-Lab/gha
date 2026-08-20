@@ -313,7 +313,12 @@ fi
 # gha#527: a session-lock claim comment blocks parallel *write* sessions, not
 # read-only automated review. A verdict that defers because of "back off" /
 # "paws off" / "hold off" language is an incomplete review, not a clean pass.
-if grep -qiE 'deferred[^[:print:]]{0,40}(hold off|reviewers hold off)|honoring that request and stopping here without conducting|without conducting the review' "$all_text_file"; then
+# Scan only from the verdict marker onward so a substantive review that quotes
+# these phrases in its findings does not false-positive (gha#528 review).
+verdict_section_file="$(mktemp)"
+awk 'BEGIN{found=0} tolower($0) ~ /^[[:space:]>*_#-]*verdict/ {found=1} found' \
+  "$review_text_file" > "$verdict_section_file"
+if grep -qiE 'deferred.{0,40}hold off|honoring that request and stopping here without conducting|without conducting the review' "$verdict_section_file"; then
   echo "::error::Claude review deferred because of a session-lock claim comment — claim comments block parallel pushes, not automated review (gha#527)."
   exit 1
 fi
