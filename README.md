@@ -176,7 +176,7 @@ that need to write must have the **caller** grant it on the calling job:
   checks never report; see the reference page).
   A fine-grained PAT needs **Pull requests: Read and write** on that secret in
   addition to **Contents: write**.
-  The workflow probes pull-request access before any bump work.
+  The workflow probes pull-request write access before any bump work.
   `version-check` (read-only) →
   only `pull-requests: read`, `contents: read`.
 
