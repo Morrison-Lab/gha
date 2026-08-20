@@ -4,8 +4,9 @@
   `gh pr diff ... > file; wc -l file` (or a similar pipe) to chunk the diff.
   A compound command combining an allowed pattern with a redirect, pipe, or
   `;`/`&&` chain is denied as a whole,
-  and writing to any file -- `/tmp` included -- is a hard sandbox block,
-  not a permission prompt.
+  and writing to any file -- `/tmp` and a `mkdir`-created directory were
+  both tried and both blocked -- is a hard sandbox block, not a permission
+  prompt.
   The reviewer would retry variant after variant until the denial budget
   was exhausted with no verdict
   (33 denials measured on ucdavis/win#78).
