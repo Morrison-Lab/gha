@@ -18,8 +18,8 @@ so it has picked up no fixes since - not even non-breaking ones. Pin
 `altdoc-multiversion-docs.yml`, `report-failure.yml`, `gemini.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
 `cursor-code-review.yml`,
-`ai-code-review.yml`, `bump-dev-version.yml`, and
-`version-check.yml` only ever shipped at
+`ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`, and
+`lint-workflows.yml` only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
 capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,
@@ -100,7 +100,8 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
 `cursor-code-review.yml`,
 `ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
-`small-model-agent.yml`, and `check-ai-tells.yml` at `@v2` - see the
+`small-model-agent.yml`, `check-ai-tells.yml`, and `lint-workflows.yml` at
+`@v2` - see the
 versioning note above), so
 they are **not** SHA-pinned.
 

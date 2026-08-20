@@ -29,7 +29,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, and `check-ai-tells` -- see
+`small-model-agent`, `check-ai-tells`, and `lint-workflows` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,

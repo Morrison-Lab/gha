@@ -1,0 +1,76 @@
+---
+title: "lint-workflows.yml"
+---
+
+Audit the caller's GitHub Actions workflows and composite actions with
+[`actionlint`](https://github.com/rhysd/actionlint) (syntax/semantics --
+unknown keys, bad `runs-on` labels, invalid expression syntax, shellcheck
+over `run:` blocks) and [`zizmor`](https://github.com/zizmorcore/zizmor)
+(security -- template-injection sinks, credential persistence, overly broad
+permissions, unpinned actions). The two tools check different things and both
+are worth running.
+
+## Inputs
+
+| Input                 | Type    | Default                                                            | Description                                                                                                     |
+| ---------------------- | ------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `path`                 | string  | `'.'`                                                                 | Root path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting `.gitignore`. |
+| `actionlint-version`   | string  | `'v1.7.12'`                                                           | actionlint release tag to install.                                                                                |
+| `actionlint-checksum`  | string  | (pinned SHA-256 for the default version's `linux_amd64` tarball)     | Expected SHA-256 of the pinned `actionlint-version`'s `linux_amd64` release tarball, verified before extracting it. Update alongside `actionlint-version`. |
+| `zizmor-version`       | string  | `'1.28.0'`                                                            | zizmor PyPI package version to install.                                                                           |
+| `python-version`       | string  | `'3.x'`                                                               | Python version to set up (for installing zizmor via pip).                                                         |
+| `pedantic`             | boolean | `false`                                                               | Run zizmor with `--pedantic` (also emit code-smell findings, not just security issues).                           |
+| `fail`                 | boolean | `true`                                                                | Fail the workflow when either tool reports a finding.                                                             |
+
+## Outputs
+
+| Output              | Description                                          |
+| -------------------- | ------------------------------------------------------- |
+| `actionlint-found`   | `'true'` if actionlint reported any finding.           |
+| `zizmor-found`       | `'true'` if zizmor reported any finding.               |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Landing on a repo with pre-existing findings
+
+A repo that has never run either tool before will likely see a real backlog
+of findings on the first run -- neither tool is diff-scoped, so both audit
+every workflow and action file in `path`, not just what a given PR touches.
+Rather than block adoption on fixing everything at once, set `fail: false`
+to land the capability as a warn-only baseline, then work through the
+backlog and flip `fail` back to `true` (the default) once it's clean. The
+`actionlint-found`/`zizmor-found` outputs let a caller track progress (e.g.
+by asserting they eventually both come back `'false'`) without hand-parsing
+either tool's own output.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/lint-workflows.yml in your repo.
+# Audits GitHub Actions workflows and composite actions with actionlint
+# (syntax/semantics) and zizmor (security). Only contents:read is needed
+# (the default), so no permissions block is required.
+name: Lint Workflows
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    uses: Morrison-Lab/gha/.github/workflows/lint-workflows.yml@v2
+    # with:
+    #   path: '.'                       # root path to audit
+    #   pedantic: true                  # also emit zizmor code-smell findings
+    #   fail: false                     # warn instead of failing on findings --
+    #                                   # useful while working through a
+    #                                   # pre-existing backlog
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for the full caller stub (`lint-workflows.yml`).

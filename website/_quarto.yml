@@ -46,6 +46,7 @@ website:
           - reference/check-new-line-breaks.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
+          - reference/lint-workflows.qmd
           - reference/check-news.qmd
           - reference/assemble-news.qmd
           - reference/test-coverage.qmd
