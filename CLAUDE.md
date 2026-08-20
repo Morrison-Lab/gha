@@ -950,6 +950,23 @@ pins that ordering, and it passes with or without the fix by design -- the
 fixture that actually fails when the fix is removed is
 `quota-exhausted-midrun.json`, confirmed by mutation rather than assumed.
 
+**`permission_denials_count` can be absent from the real execution file even
+though `claude-code-action` prints it to the job log, because the log line is
+a display value the action computes, not a field it always writes to disk.**
+gha#531 was observed on a real run: the printed log read
+`"permission_denials_count": 5`, but the saved execution file's `result`
+object carried no such key at all -- only `permission_denials`, an array of
+5 denial-detail objects. Reading `.permission_denials_count // "MISSING"`
+alone therefore read `MISSING` and defaulted to the 999999 sentinel, which
+wrongly excluded the run from the gha#185 stub-retry even though the real
+count (5) sat right at the threshold. The fix falls back to
+`permission_denials | length` when the scalar is absent/null but the array
+is present, tried only after the scalar so every scalar-only fixture is
+unaffected; `permission-denials-array-only-low-count.json` and
+`permission-denials-array-only-high-count.json` pin both directions (within
+and above `max_denials`), confirmed to fail pre-fix by running them against
+the pre-#531 script.
+
 **Fixing the guard alone leaves the check red, which is why gha#520 touched the
 workflow too.**
 `claude-code-action` exits 1 on any `is_error` result, quota exhaustion
