@@ -271,6 +271,39 @@ runs:
         # `Agent` calls, `is_error: false`, `stop_reason: end_turn`,
         # $9.76, and a final message reading "Waiting for the remaining
         # background agents to complete." in place of a verdict.
+        #
+        # A fourth stub-review cause, gha#541, needs no new tool grant —
+        # `Bash(gh pr diff:*)` above already covers it; the failure is in HOW
+        # the reviewer used it. On a large diff, the agent reached for
+        # `gh pr diff ... > /tmp/pr.diff; wc -l ...` (or `gh pr diff ... |
+        # grep ...`) to chunk the output, and every variant was denied: a
+        # command chaining an allowed pattern with `;`/`&&`/`|`/a redirect is
+        # rejected as a WHOLE command even though the allowed part matches
+        # exactly, and writing to a file — `/tmp`, or a `mkdir`-created
+        # subdirectory of the checkout — is a hard block in this sandbox, not
+        # a permission prompt, so no allowlist entry can satisfy it. Measured
+        # on ucdavis/win#78, run 32415477507: 15+ redirect/pipe/mkdir variants
+        # denied, `permission_denials_count:33`, `total_cost_usd:2.29`, no
+        # verdict. A BARE, unredirected `gh pr diff <n> --repo <owner>/<repo>`
+        # needs none of that: it already matches the allowlist and needs no
+        # file write by the agent at all — the prompt below tells the
+        # reviewer to use exactly that form instead of trying to save/count/
+        # grep the diff itself.
+        #
+        # That bare call's own OUTPUT can still exceed Claude Code's Bash
+        # tool's ~30,000-character inline ceiling on a genuinely large diff —
+        # ucdavis/win#78's own diff measures 114,587 bytes / 2,464 lines,
+        # about 3.8x that ceiling.
+        # Past it, a valid (exit 0) result comes back as a preview plus the
+        # path of a file the HARNESS already saved, not the full text inline
+        # (code.claude.com/docs/en/tools-reference).
+        # That harness-written file sits in the session's own working
+        # directory, unlike the agent's own redirect/mkdir attempts above, so
+        # Reading it back is not subject to the same hard block — Read is
+        # already in the action's base allowlist (see the top-of-file
+        # comment).
+        # The prompt below tells the reviewer to Read that path rather than
+        # trying to redirect/pipe its way to the same information.
         claude_args: >-
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,WebSearch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
@@ -297,6 +330,27 @@ runs:
           have and still finish by writing out your findings and the explicit
           ### Verdict line required below -- do not end the run silently or
           wait for approval.
+
+          To read the PR diff, call `gh pr diff <number> --repo
+          <owner>/<repo>` BARE -- no `>` redirect, no `|` pipe, no `;`/`&&`
+          chaining with `wc`, `grep`, or anything else, even to save or count
+          a large diff. A command combining an allowed pattern with a
+          redirect, pipe, or chain is rejected as a whole, and writing the
+          diff to a file YOURSELF -- /tmp and a directory you create with
+          mkdir have both been tried and both blocked -- has not worked in
+          this sandbox. If a redirected or piped attempt is denied, do not
+          try another variant of the same idea: switch immediately to the
+          bare, unredirected form.
+
+          The bare command's result is not always the complete diff inline:
+          past roughly 30,000 characters, the tool result becomes a preview
+          plus the path of a file already saved for you, and you can Read
+          that path for the rest. That saved file is NOT the same thing as a
+          file you redirect or mkdir yourself -- it is written by the
+          harness, to this session's own working directory, so reading it
+          back is not blocked the way your own redirect is. Never try to
+          recreate or replace it with your own redirect or pipe; just Read
+          the path the tool result already gives you.
 
           Do NOT post a top-level PR comment yourself: the `gh pr comment`
           tool is intentionally disallowed, and the workflow posts your
