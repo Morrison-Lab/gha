@@ -125,11 +125,17 @@ jobs:
             probe_status=$?
             set -e
             probe_log="$(cat "$probe_err" "$probe_out")"
-            rm -f "$probe_err" "$probe_out"
             if [ "$probe_status" -eq 0 ]; then
-              echo "::warning title=bump-dev-version::WORKFLOW_TOKEN pull-request write probe unexpectedly succeeded; continuing."
+              probe_url="$(jq -r '.html_url // empty' "$probe_out")"
+              rm -f "$probe_err" "$probe_out"
+              if [ -n "$probe_url" ]; then
+                gh pr close "$probe_url" --comment "Closed automatically: bump-dev-version WORKFLOW_TOKEN write probe."
+              else
+                echo "::warning title=bump-dev-version::WORKFLOW_TOKEN pull-request write probe succeeded but returned no PR URL; continuing."
+              fi
               exit 0
             fi
+            rm -f "$probe_err" "$probe_out"
             if printf '%s' "$probe_log" | grep -qiE 'Resource not accessible|403.*personal access token|403.*Forbidden'; then
               msg="WORKFLOW_TOKEN cannot create pull requests on $GITHUB_REPOSITORY. A fine-grained PAT needs 'Pull requests: Read and write' (read to find an existing bump PR, write to open one and enable auto-merge) in addition to 'Contents: write'. Grant it, or drop the secret to fall back to GITHUB_TOKEN."
               echo "::error title=bump-dev-version::$msg"
