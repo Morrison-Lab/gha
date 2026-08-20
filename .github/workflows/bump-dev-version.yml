@@ -57,6 +57,13 @@ on:
           bump logic without pushing a real branch/PR.
         type: boolean
         default: false
+      pr-labels:
+        description: >-
+          Comma-separated labels to apply to the bump PR on create and update.
+          Empty by default; set to `no changelog` when the repo runs
+          check-news.yml on automation PRs.
+        type: string
+        default: ''
     secrets:
       WORKFLOW_TOKEN:
         required: false
@@ -196,6 +203,7 @@ jobs:
           branch: ${{ inputs.pr-branch }}
           base: ${{ inputs.base-branch }}
           paths: ${{ inputs.description-path }}
+          labels: ${{ inputs.pr-labels }}
           commit-message: >-
             chore: bump dev version to ${{ steps.bump.outputs.new-version }}
             [skip bump-dev-version]
