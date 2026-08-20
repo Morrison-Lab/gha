@@ -147,10 +147,17 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout-minutes }}
-    # Only restrict concurrency for non-PR jobs; PR builds/previews are keyed
-    # by run id so concurrent PRs don't block each other.
+    # PR builds/previews are keyed by PR number, so different PRs never block
+    # each other but a newer push to the SAME PR cancels its own still-running
+    # build (gha#306/#311). Keying by github.run_id instead -- every run is its
+    # own group -- made cancel-in-progress a no-op for a PR's own superseded
+    # runs: several full renders would race to deploy to the same
+    # pr-preview/pr-<N>/ path on gh-pages, sometimes leaving it mid-rebase
+    # (JamesIves/github-pages-deploy-action add/add conflicts) and sometimes
+    # letting an older commit's run finish last and overwrite a newer one's
+    # preview.
     concurrency:
-      group: altdoc-multiversion-docs-${{ github.event_name == 'pull_request' && github.run_id || github.ref }}
+      group: altdoc-multiversion-docs-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
