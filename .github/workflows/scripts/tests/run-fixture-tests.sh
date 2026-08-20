@@ -73,6 +73,13 @@ declare -A expected=(
   [claim-comment-deferred-review.json]=fail
   [claim-comment-deferred-verdict-only.json]=fail
   [short-circuit-no-result.json]=fail-short-circuit
+  # gha#531: a real execution file can carry `permission_denials` (an array
+  # of denial-detail objects) with NO `permission_denials_count` scalar at
+  # all -- the count must fall back to the array's length rather than
+  # defaulting to the MISSING sentinel, which would wrongly force `fail`
+  # (no retry) even when the true count is within the stub-retry threshold.
+  [permission-denials-array-only-low-count.json]=fail-stub
+  [permission-denials-array-only-high-count.json]=fail
 )
 
 # For `pass` fixtures where the posted review_text_file's content matters
@@ -149,6 +156,8 @@ declare -A expected_cost=(
   [claim-comment-deferred-review.json]=0.67
   [claim-comment-deferred-verdict-only.json]=0.42
   [short-circuit-no-result.json]=""
+  [permission-denials-array-only-low-count.json]=4.21
+  [permission-denials-array-only-high-count.json]=3.5
 )
 
 assert_cost() {
