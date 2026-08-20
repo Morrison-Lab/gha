@@ -4,7 +4,7 @@ title: "lint-workflows.yml"
 
 Audit the caller's GitHub Actions workflows and composite actions with
 [`actionlint`](https://github.com/rhysd/actionlint) (syntax/semantics --
-unknown keys, bad `runs-on` labels, invalid `${{ }}` expressions, shellcheck
+unknown keys, bad `runs-on` labels, invalid expression syntax, shellcheck
 over `run:` blocks) and [`zizmor`](https://github.com/zizmorcore/zizmor)
 (security -- template-injection sinks, credential persistence, overly broad
 permissions, unpinned actions). The two tools check different things and both

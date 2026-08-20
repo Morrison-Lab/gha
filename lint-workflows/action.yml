@@ -2,7 +2,7 @@ name: Lint Workflows
 description: >-
   Audit the caller's GitHub Actions workflows and composite actions with
   actionlint (syntax/semantics -- unknown keys, bad `runs-on` labels, invalid
-  `${{ }}` expressions, shellcheck over `run:` blocks) and zizmor (security --
+  expression syntax, shellcheck over `run:` blocks) and zizmor (security --
   template-injection sinks, credential persistence, overly broad permissions,
   unpinned actions). The two tools check different things and both are worth
   running; see https://github.com/rhysd/actionlint and
