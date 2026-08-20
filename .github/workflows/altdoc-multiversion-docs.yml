@@ -173,6 +173,15 @@ jobs:
           # composite needs to discover all release tags.
           fetch-depth: 0
 
+      # Single source of truth for "given a repo, what's the latest published
+      # non-prerelease vX.Y.Z tag" (gha#287): this step's full sorted list is
+      # what generate-altdoc-version-dropdown's release-tags input consumes
+      # below, instead of that composite re-deriving the same list itself via
+      # its own gh api/git tag fallback. Keeping the discovery here (rather
+      # than moving it into the composite) is what lets the early gates below
+      # -- workflow_dispatch validation, release-event subdir routing -- see
+      # the latest tag before the composite (which needs the fully checked-out
+      # docs source dir) ever runs.
       - name: Determine latest stable release tag
         id: latest-stable-tag
         if: github.event.action != 'closed'
@@ -180,14 +189,20 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          LATEST_STABLE_TAG=$(
+          RELEASE_TAGS=$(
             gh api repos/${{ github.repository }}/releases --paginate \
               --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' \
               | awk '/^v[0-9]+\.[0-9]+\.[0-9]+$/' \
-              | sort -V \
-              | tail -n 1
+              | sort -V -r
           )
-          echo "latest_stable_tag=$LATEST_STABLE_TAG" >> "$GITHUB_OUTPUT"
+          LATEST_STABLE_TAG=$(head -n 1 <<< "$RELEASE_TAGS")
+          DELIMITER="eof_$(openssl rand -hex 8)"
+          {
+            echo "latest_stable_tag=$LATEST_STABLE_TAG"
+            echo "release_tags<<${DELIMITER}"
+            echo "$RELEASE_TAGS"
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Validate stable workflow_dispatch input
         if: github.event_name == 'workflow_dispatch' && inputs.dispatch-version == 'stable'
@@ -287,6 +302,10 @@ jobs:
           default-branch: ${{ inputs.default-branch }}
           base-url: ${{ inputs.docs-base-url }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Reuse the "Determine latest stable release tag" step's already-
+          # fetched list (gha#287) instead of having the composite re-query
+          # the same releases endpoint itself.
+          release-tags: ${{ steps.latest-stable-tag.outputs.release_tags }}
           # Which version this build renders, for the dropdown label and the
           # navbar badge. A release build renders its tag; a dispatched
           # stable build renders the tag it validated above; everything else

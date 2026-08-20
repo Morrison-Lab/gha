@@ -141,9 +141,30 @@ if local_version is None:
 release_tags = []
 release_query_succeeded = False
 
+# RELEASE_TAGS (gha#287): when the caller already resolved the release list
+# itself -- altdoc-multiversion-docs.yml's "Determine latest stable release
+# tag" step does, for its own early gates -- reuse it instead of re-querying
+# the releases endpoint here too. That keeps a single implementation of
+# "given a repo, what's the latest published non-prerelease vX.Y.Z tag" on
+# the production path; this script's own gh api/git tag discovery below stays
+# available as a fallback for standalone use (e.g. _selftest.yml's direct
+# composite exercises, which pass no release-tags).
+release_tags_env = os.environ.get("RELEASE_TAGS", "")
+if release_tags_env.strip():
+    all_tags = re.split(r"[\n,]+", release_tags_env)
+    release_tags = [t.strip() for t in all_tags if re.match(r"^v\d+\.\d+\.\d+$", t.strip())]
+    release_query_succeeded = True
+    if not release_tags:
+        print(
+            "release-tags was set but contained no vX.Y.Z entries after filtering; "
+            "treating this as zero published releases rather than falling back to "
+            "gh api/git tag discovery (the caller's list is authoritative).",
+            file=sys.stderr,
+        )
+
 gh_token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 github_repository = os.environ.get("GITHUB_REPOSITORY")
-if gh_token and github_repository:
+if not release_query_succeeded and gh_token and github_repository:
     try:
         result = subprocess.run(
             [

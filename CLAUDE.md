@@ -1234,7 +1234,7 @@ package directory (not this checkout) with two release tags, asserting the
 composite picks the correct latest/previous tags and dev version and rewrites
 the navbar "Versions" block and root-redirect HTML correctly.
 
-It calls `generate-altdoc-version-dropdown` three times, over two fixtures.
+It calls `generate-altdoc-version-dropdown` four times, over three fixtures.
 Twice over the one above: first with no `current-version`, covering the
 inference path and the dev-build labeling, then with
 `current-version: v0.1.0`, covering an explicit release build. That second
@@ -1254,6 +1254,21 @@ itself (gha#308 review). `navbar_version.py`'s own pytest suite
 (`generate-altdoc-version-dropdown/tests/test_navbar_version.py`) covers the
 label resolution and YAML rewriting offline; the job runs it alongside
 `generate-altdoc-landing-page`'s.
+
+A fourth call, over a fresh clone of the same fixture, pins the
+`release-tags` input (gha#287): passed `v9.9.9` (a tag the fixture repo was
+never actually tagged with, alongside its real `v0.1.0`), the composite must
+use that list as-is rather than falling back to its own `gh api`/`git tag`
+discovery, so `latest-tag` comes back `v9.9.9`.
+This is what proves the `release-tags` passthrough is load-bearing rather
+than a no-op default: every other call in this job leaves `release-tags`
+empty and no `github-token`, so it exercises the composite's own `git tag`
+fallback instead -- a different mechanism from `altdoc-multiversion-docs.yml`'s
+"Determine latest stable release tag" step, which only ever calls `gh api`
+with no `git tag` fallback of its own.
+On the production path (the real workflow calling the real composite) only
+the workflow step's `gh api` call ever runs; the composite's own discovery,
+in either form, never fires there once `release-tags` is set.
 
 The same job also covers the `legacy-paths` 404 redirect at three levels:
 `generate-altdoc-landing-page/tests/test_legacy_redirects.py` (pytest, the
