@@ -1445,6 +1445,91 @@ triggered exactly this on `require-review`; confirmed via `actions_get`
 `get_workflow_run` that the failing check's conclusion was `cancelled` on
 the non-head SHA, matching this pattern.)
 
+## Green `require-review` is not fully clean - read the review comment body
+
+**Fully clean** (the bar for standing `mwc` merge and for ARDI/GII session
+summaries) requires **both** green CI **and** a substantive clean review on
+the PR's **current head SHA** - see
+[`Morrison-Lab/ai-config`'s `shared/workflow/fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md).
+Green `review / claude-review` plus green `review / require-review` satisfies
+criterion 1's review *job* half only.
+It is **not** sufficient for criterion 2.
+
+**Before declaring a PR clean, zero findings, or ready to merge**, fetch and
+read the latest `@claude` review comment on the thread and confirm all of
+the following:
+
+1. **The comment's `created_at` brackets inside the review job that ran on
+   the current head commit.**
+   Use `created_at`, not `updated_at`.
+   Later rounds fold earlier verdict comments and advance `updated_at`
+   without editing their bodies; see
+   [`review-verdict-pitfalls.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/review-verdict-pitfalls.md)).
+
+2. **The body contains a real `### Verdict` (or `Verdict:`) line** naming
+   approval.
+   It must not be a stub, a quota skip, or a self-mod skip.
+
+3. **The verdict is not a deferral or refusal.**
+   Any of these mean the PR was **not reviewed** and is **not clean**,
+   even when both review checks are green:
+
+   - `Deferred - author requested reviewers hold off`
+   - `honoring that request and stopping here without conducting`
+   - `without conducting the review`
+   - No verdict section at all (stub review - gha#185)
+
+4. **Read to the end of the comment and count findings under every heading.**
+   Criterion 2's test is the **absence of findings**, not the presence of a
+   positive verdict line - a "Ready" verdict above a findings list loses to
+   the findings.
+   Zero **inline** review threads is not a substitute.
+   Deferrals and stubs often post as **top-level** comments only.
+
+**Session-lock claim comments are not a reason to skip review or call a PR
+clean.**
+Comments such as `Driving this PR to clean - back off until done` or
+`paws off until I'm done` (from the `claim-pr` / `ardi` rituals) tell **other
+write sessions** not to push in parallel.
+They do **not** instruct automated review to stand down.
+They do **not** mean a review already ran.
+An agent that posted such a claim and then saw green review checks must still
+read the review body.
+Mistaking the claim for "don't review" produced gha#527:
+PR 527 was declared clean with zero findings while the bot posted only
+`Deferred - author requested reviewers hold off` and never reviewed the diff.
+PR #528 hardens the reviewer prompt and fails that deferral pattern in
+`check-review-execution.sh`.
+This paragraph is the matching guardrail for **agent sessions** driving
+ARDI/GII loops in this repo.
+
+**Cheap self-check before marking ✅ Clean in a GII summary or invoking
+`mwc`:**
+
+```bash
+HEAD=$(gh pr view <N> --json headRefOid --jq .headRefOid)
+REPO=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+REVIEW_OK=$(gh api "repos/$REPO/commits/$HEAD/check-runs" --paginate \
+  --jq '[.check_runs[] | select(.name == "review / claude-review" and .conclusion == "success")] | length')
+gh pr view <N> --json comments --jq --arg head "$HEAD" --argjson reviewOk "$REVIEW_OK" '
+  if ($reviewOk | tonumber) == 0 then empty
+  else
+    [.comments[]
+     | select(.author.login | test("claude|github-actions"; "i"))
+     | select(.body | test("### Verdict|Verdict:"))
+     | select(.body | test("Deferred.*hold off|without conducting the review"; "i") | not)
+    ] | last | {createdAt, bodyPreview: (.body[:200]), head: $head}
+  end'
+```
+
+`REVIEW_OK` is zero when no successful `review / claude-review` check ran on
+the current head commit, so an empty result means **not clean** even if an
+older verdict comment exists on the thread.
+An empty `last` or a body matching the deferral patterns above also means **not
+clean**.
+Re-trigger review (`@claude review` after the in-flight run finishes, or a
+no-op push) and read the new comment before merging or advancing the loop.
+
 ## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
 This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
