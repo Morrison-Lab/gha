@@ -38,6 +38,20 @@ inputs:
     description: >-
       Token used to query `gh api repos/<repo>/releases` for published
       release tags. Falls back to `git tag` if empty or the API call fails.
+      Ignored when release-tags is set.
+    default: ''
+  release-tags:
+    description: >-
+      Pre-resolved list of published non-prerelease vX.Y.Z tags
+      (newline- or comma-separated, any order). When set, this composite uses
+      the list as-is instead of running its own gh api/git tag discovery --
+      the caller becomes the single source of truth for "what's the latest
+      stable tag", avoiding two independent implementations that can drift
+      (gha#287). altdoc-multiversion-docs.yml's "Determine latest stable
+      release tag" step already computes this list for its own early gates
+      (workflow_dispatch validation, release-event subdir routing) and passes
+      it through here. Leave empty to have this composite discover tags
+      itself -- the default, for standalone use.
     default: ''
   current-version:
     description: >-
@@ -105,6 +119,7 @@ runs:
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         DOCS_BASE_URL: ${{ steps.base-url.outputs.base-url }}
         GH_TOKEN: ${{ inputs.github-token }}
+        RELEASE_TAGS: ${{ inputs.release-tags }}
         CURRENT_VERSION: ${{ inputs.current-version }}
         DROPDOWN_TITLE_TEMPLATE: ${{ inputs.dropdown-title-template }}
         VERSION_IN_NAVBAR_TITLE: ${{ inputs.version-in-navbar-title }}

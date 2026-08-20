@@ -1318,6 +1318,37 @@ jobs:
           if ! grep -q 'navbar-version.*>0.2.0.9000</small>' "$config"; then
             echo "::error::navbar badge should name the branch version"; cat "$config"; exit 1
           fi
+      # gha#287: when release-tags is passed, the composite must use that
+      # list as-is rather than deriving its own from gh api/git tag -- proven
+      # here by passing a tag (v9.9.9) the fixture repo was never actually
+      # tagged with (it only has v0.0.9/v0.1.0) and asserting it wins.
+      - name: Create a fresh fixture copy for the release-tags passthrough
+        shell: bash
+        run: git clone -q _ci-altdoc-pkg _ci-altdoc-pkg-release-tags
+      - name: Exercise generate-altdoc-version-dropdown with release-tags set
+        id: dropdown-release-tags
+        uses: ./.github/actions/generate-altdoc-version-dropdown
+        with:
+          docs-source-dir: _ci-altdoc-pkg-release-tags
+          release-tags: |
+            v9.9.9
+            v0.1.0
+      - name: Assert release-tags won over the fixture's own git tags
+        shell: bash
+        env:
+          LATEST_TAG: ${{ steps.dropdown-release-tags.outputs.latest-tag }}
+        run: |
+          set -euo pipefail
+          if [[ "$LATEST_TAG" != "v9.9.9" ]]; then
+            echo "::error::expected latest-tag=v9.9.9 (from release-tags input, not the fixture's own v0.1.0 git tag), got '$LATEST_TAG'"
+            exit 1
+          fi
+          config=_ci-altdoc-pkg-release-tags/altdoc/quarto_website.yml
+          if ! grep -q 'v9.9.9 (stable)' "$config"; then
+            echo "::error::rewritten quarto_website.yml missing the release-tags-supplied stable entry"
+            cat "$config"
+            exit 1
+          fi
       - name: Exercise generate-altdoc-landing-page composite end-to-end
         uses: ./.github/actions/generate-altdoc-landing-page
         with:

@@ -1255,6 +1255,18 @@ itself (gha#308 review). `navbar_version.py`'s own pytest suite
 label resolution and YAML rewriting offline; the job runs it alongside
 `generate-altdoc-landing-page`'s.
 
+A fourth call, over a fresh clone of the same fixture, pins the
+`release-tags` input (gha#287): passed `v9.9.9` (a tag the fixture repo was
+never actually tagged with, alongside its real `v0.1.0`), the composite must
+use that list as-is rather than falling back to its own `gh api`/`git tag`
+discovery, so `latest-tag` comes back `v9.9.9`. This is what proves the
+`release-tags` passthrough is load-bearing rather than a no-op default: every
+other call in this job leaves `release-tags` empty and exercises the
+composite's own discovery fallback instead (the same discovery
+`altdoc-multiversion-docs.yml`'s "Determine latest stable release tag" step
+now performs once and reuses, rather than both independently re-deriving the
+same answer).
+
 The same job also covers the `legacy-paths` 404 redirect at three levels:
 `generate-altdoc-landing-page/tests/test_legacy_redirects.py` (pytest, the
 `old=new` parsing and its fail-fast validation), a real `uses:` call to the
