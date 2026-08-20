@@ -5,13 +5,8 @@
 #  - eager-pr: true — open the draft PR up front (Copilot-style).
 #  - review-workflow-file points at this repo's review caller (claude-review.yml),
 #    not the reusable file, so the @claude-review dispatch resolves.
-#  - trusted-bot-logins: the caller-side `if:` below already admits cursor[bot].
-#    Do NOT pass `trusted-bot-logins:` in `with:` until `@v2` has slid past the
-#    merge that added that input to the reusable workflow -- an unknown
-#    `workflow_call` input fails the job at the call gate for every @claude
-#    mention. Follow-up after the slide: add
-#      trusted-bot-logins: '["cursor[bot]"]'
-#    under `with:` so the reusable gate matches the caller gate.
+#  - trusted-bot-logins admits cursor[bot] into the reusable workflow's own
+#    trusted-author gate (matching the caller-side `if:` allowlist below).
 name: Claude Code
 
 on:
@@ -36,9 +31,7 @@ jobs:
     # that was granted elevated permissions and passed secrets.
     #
     # cursor[bot] is allowlisted so Cursor Cloud Agent sessions can post
-    # `@claude review` (their author_association is NONE). Until `@v2` carries
-    # the matching reusable-workflow allowlist input, those runs still skip
-    # inside claude.yml@v2 -- the caller gate alone is not enough.
+    # `@claude review` (their author_association is NONE).
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) || contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login))) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) || contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login))) ||
@@ -61,3 +54,4 @@ jobs:
       setup-r: false
       eager-pr: true
       review-workflow-file: claude-review.yml
+      trusted-bot-logins: '["cursor[bot]"]'
