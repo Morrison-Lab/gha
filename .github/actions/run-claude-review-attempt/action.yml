@@ -272,6 +272,38 @@ runs:
         # $9.76, and a final message reading "Waiting for the remaining
         # background agents to complete." in place of a verdict.
         #
+        # gha#532: that prompt mitigation RECURRED, on ai-config#1744 run
+        # 32347489886 -- four background agents spawned and the turn ended
+        # waiting on them, with the synchronous-only instruction verbatim in
+        # the prompt at the time. A prompt is a request, not a constraint, so
+        # `Agent(run_in_background:true)` and its `Task` alias are DENIED
+        # below. That is the narrower mechanical constraint gha#392's own
+        # "Suggested direction" asked for and its follow-up could not reach by
+        # denying `Agent` outright, which would also have broken the plugin's
+        # legitimate synchronous fan-out.
+        #
+        # The syntax is Claude Code's parameter-scoped rule form, documented at
+        # code.claude.com/docs/en/permissions under "Match by input parameter":
+        # "Deny and ask rules can match a top-level input parameter on any tool
+        # with `Tool(param:value)`", whose own example table names
+        # `Agent(model:opus)` and `Bash(run_in_background:true)`. Note it is a
+        # DENY on `true`, not the allow-on-`false` gha#532's body guesses at:
+        # the same section rules that shape out, since "allow rules continue to
+        # use each tool's own specifier syntax".
+        #
+        # **This closes one of two routes, not both.** That same section says
+        # "A parameter the model omits is never matched", and `Agent`'s
+        # `run_in_background` DEFAULTS to true -- so a call that simply omits
+        # the parameter still backgrounds, and this rule does not match it. The
+        # prompt instruction above therefore stays: it is what covers the
+        # omission route, and the deny is what covers the explicit-`true` one.
+        # Neither is redundant. Do not remove the prompt text on the strength
+        # of this rule.
+        #
+        # Both `Agent` and `Task` are listed because the two names have both
+        # been observed for this tool across versions, and an unmatched deny
+        # rule costs nothing while a missing one costs the whole mitigation.
+        #
         # A fourth stub-review cause, gha#541, needs no new tool grant —
         # `Bash(gh pr diff:*)` above already covers it; the failure is in HOW
         # the reviewer used it. On a large diff, the agent reached for
@@ -308,7 +340,7 @@ runs:
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,WebSearch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and

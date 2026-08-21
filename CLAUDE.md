@@ -2261,6 +2261,58 @@ and no `github_token` input is wired up in `run-claude-review-attempt` today.
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
 section reaches the same OIDC content-validation from the testing angle.
 
+## A prompt instruction is a request; a permission rule is a constraint
+
+`run-claude-review-attempt`'s `--append-system-prompt` tells the reviewer to
+pass `run_in_background: false` on every `Agent`/`Task` call, because a
+background spawn in a headless CI run ends the turn waiting for completion
+notifications that no later turn will deliver (gha#392).
+That instruction was live, verbatim, when the same failure recurred on
+`Morrison-Lab/ai-config#1744` (run 32347489886): four background agents
+spawned, turn ended, no verdict, $4.21 (gha#532).
+
+The general point is worth keeping separate from the incident.
+**A prompt tells the model what to do, and the model may not.**
+When a constraint matters, look for a mechanical form of it before concluding
+that a better-worded prompt is the ceiling.
+
+Claude Code has one here, and it is easy to miss because it is newer than the
+tool-name and command-prefix rules everyone knows.
+Per
+[code.claude.com/docs/en/permissions](https://code.claude.com/docs/en/permissions),
+"Match by input parameter":
+
+> Deny and ask rules can match a top-level input parameter on any tool with
+> `Tool(param:value)`.
+
+So `Agent(run_in_background:true)` is a well-formed deny rule, and it is
+narrower than denying `Agent` outright -- which gha#392's follow-up rejected
+precisely because it would also break the `code-review` plugin's legitimate
+*synchronous* fan-out.
+
+Three things constrain any change here.
+
+**It is a DENY on `true`, not an allow on `false`.**
+The same section rules the allow shape out: "allow rules continue to use each
+tool's own specifier syntax."
+gha#532's body guesses at `Agent(run_in_background:false)` as an allow rule;
+that does not work.
+
+**It closes one of two routes, and the prompt still covers the other.**
+"A parameter the model omits is never matched", and `Agent`'s
+`run_in_background` defaults to true -- so a call that omits the parameter
+still backgrounds and this rule does not see it.
+The prompt instruction is therefore not redundant, and must not be deleted on
+the strength of the rule.
+Read the two as covering different halves.
+
+**A parameter rule cannot reach a tool's primary content field.**
+The same section lists them (`command` for Bash, `file_path` for Read, `url`
+for WebFetch, and so on) and says Claude Code ignores such a rule and warns at
+startup, because `Bash(command:rm *)` would be bypassable by a compound
+command.
+Use the tool's own specifier for those.
+
 ## Never just theorize -- investigate empirically
 
 A hypothesis that is cheap to test must be tested before it is asserted, and
