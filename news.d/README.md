@@ -53,8 +53,10 @@ A repo whose `NEWS.md` uses a different taxonomy passes its own map through the
       docs = Documentation
 ```
 
-When set, this **replaces** the built-in map rather than extending it: it defines
-both the complete set of recognized categories and the order the headings are
-written in. Several categories may map to the same heading -- as `added` and
-`feature` do by default -- and that heading then takes the position of its
-first-listed category. Leaving the input empty keeps the built-in behavior.
+When set, this **replaces** the built-in map rather than extending it:
+it defines both the complete set of recognized categories
+and the order the headings are written in.
+Several categories may map to the same heading -- as `added` and `feature` do
+by default -- and that heading then takes the position of its first-listed
+category.
+Leaving the input empty keeps the built-in behavior.
