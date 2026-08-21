@@ -238,6 +238,13 @@ on:
           Purely additive: an assigned issue whose body or title mentions
           `@claude` already dispatches through the clause below, and still
           does regardless of this input.
+
+          The caller-side job `if:` must admit the assignment case too, or the
+          reusable workflow is never invoked and this input does nothing --
+          the same requirement `trusted-bot-logins` above carries, and for the
+          same reason: every clause in the stock caller gate requires a
+          mention. The caller also needs `assigned` in its `on: issues:
+          types:`. See `examples/claude.yml` for the literal clause.
         type: string
         default: '[]'
     secrets:

@@ -15,3 +15,8 @@
   Purely additive.
   An assigned issue whose body or title mentions `@claude` already dispatched
   before this and still does.
+
+  Two halves are required, the same way `trusted-bot-logins` needs both.
+  Setting the input alone does nothing, because every clause in the stock
+  caller gate requires a mention, so the reusable workflow is never invoked.
+  `examples/claude.yml` carries the literal caller clause to add.
