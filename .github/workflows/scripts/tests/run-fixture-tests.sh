@@ -80,6 +80,18 @@ declare -A expected=(
   # (no retry) even when the true count is within the stub-retry threshold.
   [permission-denials-array-only-low-count.json]=fail-stub
   [permission-denials-array-only-high-count.json]=fail
+  # gha#540: a mixed-tool, high-count denial array -- the case the count alone
+  # cannot explain. Its outcome is the same `fail` as the fixture above; what
+  # it exists to pin is the LOG, via must_log below.
+  [permission-denials-mixed-tools.json]=fail
+  # gha#540: a denial array carrying entries the summarizer cannot index -- a
+  # string `tool_input`, and a bare string where an object belongs. The
+  # OUTCOME is the point here: without `?`-suppressed lookups the jq filter
+  # raises "Cannot index string with string", `set -e` aborts the script at
+  # exit 5, and the review is never classified at all -- so this fixture
+  # asserts the ordinary `fail-stub` verdict is still reached (3 denials, at
+  # or under the threshold), not merely that some log line appeared.
+  [permission-denials-malformed-entries.json]=fail-stub
 )
 
 # For `pass` fixtures where the posted review_text_file's content matters
@@ -125,6 +137,75 @@ declare -A must_not_contain=(
   [verdict-via-gh-comment-heredoc-crlf.json]=$'\r'
 )
 
+# gha#540: what the script LOGS, as distinct from what it posts or how it
+# exits. The count on its own sent two readers to a wrong cause for the same
+# failure, so the denied tool NAMES are behaviour worth pinning rather than
+# incidental output -- and every direction below fails silently if it
+# regresses (a missing name reads as a quiet log, not as a broken check).
+#
+# Each entry is a substring the script's combined stdout/stderr must contain.
+declare -A must_log=(
+  # Grouping, count-descending ordering, and one argument sample PER TOOL --
+  # the six Task denials must appear in their own sample rather than being
+  # crowded out by alphabetically-earlier arguments from other tools.
+  [permission-denials-mixed-tools.json]='Denied tools: Taskx6 Bashx3 WebFetchx2 (sample: Task: review one file; Bash: gh api repos/Morrison-Lab/gha/pulls/1; WebFetch: https://example.invalid/spec)'
+  # The array-length fallback path (no scalar count) still names the tools.
+  [permission-denials-array-only-high-count.json]='Denied tools: Bashx8 (sample: Bash: gh api repos/x/y)'
+  # NOT gated on the over-threshold branch: a low-count run is retried and can
+  # stub again, so it needs the same diagnostic.
+  [permission-denials-array-only-low-count.json]='Denied tools: Bashx5 (sample: Bash: gh pr diff 1744)'
+  # The mirror of the gha#531 case: a scalar count with NO array. Saying so
+  # explicitly matters -- an empty list would read as "nothing was denied",
+  # which is the fail-open direction.
+  # Anchored on the whole log line, not the bare phrase "names unavailable":
+  # the over-threshold annotation carries that phrase too, as its own
+  # ${denied_summary:-...} fallback, so a shorter needle passes even when this
+  # log line is deleted -- confirmed by mutation, which is how the first draft
+  # of this assertion was caught passing vacuously.
+  # A malformed entry degrades to `unknown` / the tool name rather than
+  # taking the summary (or the script) down with it.
+  [permission-denials-malformed-entries.json]='Denied tools: Bashx1 WebFetchx1 unknownx1'
+  [stub-gha198-high-denial-count.json]='Denied tools: names unavailable -- the execution result carries no permission_denials array'
+  # An UNPARSEABLE count is a different fact from a known-positive count with
+  # no array, and must not borrow its wording: the first says nothing about
+  # whether any denial occurred (gha#544 review).
+  [denied-comment-null-denials-not-trusted.json]='Denied tools: unknown -- the denial count itself could not be parsed'
+)
+declare -A must_not_log=(
+  # The redaction case is NOT here -- it is generated at runtime below, since a
+  # committed credential-shaped literal would trip the `secrets` job's own
+  # history scan forever after.
+  # A clean run must not gain a "Denied tools:" line at all -- the summary is
+  # a diagnostic for denials, not noise on every review.
+  #
+  # TWO fixtures, and the second is the one that matters: `denials` is
+  # three-valued (a real 0, a real positive count, or the 999999 UNKNOWN
+  # sentinel), so a guard written as `denials != 0` treats unknown as
+  # positive. genuine-finished-review.json cannot catch that -- its count is
+  # a literal 0, so the branch never fires for it either way, and the first
+  # draft of this map passed while a CLEAN PASS was being told it had
+  # denials. is-error-success-with-verdict.json carries
+  # `permission_denials_count: null`, which is the case that discriminates.
+  [genuine-finished-review.json]='Denied tools'
+  [is-error-success-with-verdict.json]='Denied tools'
+  # Same sentinel, reaching the over-threshold annotation instead of the log
+  # line: it must say "unknown", never the no-array wording.
+  [denied-comment-null-denials-not-trusted.json]='names unavailable'
+)
+
+assert_log() {
+  local fixture="$1" log_file="$2"
+  if [[ -n "${must_log[$fixture]:-}" ]] && ! grep -qF "${must_log[$fixture]}" "$log_file"; then
+    echo "::error::fixture $fixture: log is missing expected text: ${must_log[$fixture]}"
+    return 1
+  fi
+  if [[ -n "${must_not_log[$fixture]:-}" ]] && grep -qF "${must_not_log[$fixture]}" "$log_file"; then
+    echo "::error::fixture $fixture: log contains text it must not: ${must_not_log[$fixture]}"
+    return 1
+  fi
+  return 0
+}
+
 # total_cost_usd is written unconditionally whenever a result object is
 # parsed (gha#219) — every fixture below has one, so every fixture asserts
 # an exact cost regardless of its pass/fail/fail-stub/skip outcome. Values
@@ -158,6 +239,8 @@ declare -A expected_cost=(
   [short-circuit-no-result.json]=""
   [permission-denials-array-only-low-count.json]=4.21
   [permission-denials-array-only-high-count.json]=3.5
+  [permission-denials-mixed-tools.json]=2.75
+  [permission-denials-malformed-entries.json]=1.25
 )
 
 assert_cost() {
@@ -228,6 +311,10 @@ for fixture in "${!expected[@]}"; do
     echo "::error::fixture $fixture: total_cost_usd mismatch (want ${expected_cost[$fixture]}, got $(sed -n 's/^total_cost_usd=//p' "$output_file"))"
   fi
 
+  if [[ "$ok" == "true" ]] && ! assert_log "$fixture" "$log_file"; then
+    ok=false
+  fi
+
   if [[ "$ok" == "true" ]]; then
     echo "OK   $fixture (expected $want, exit=$exit_code)"
   else
@@ -254,6 +341,53 @@ else
   failures=$((failures + 1))
 fi
 rm -f "$output_file"
+
+# gha#540: the denied-command sample redacts token-shaped literals, because
+# Actions masks a configured `secrets.*` value in a run log but not a
+# credential the agent constructed itself.
+#
+# This fixture is BUILT HERE rather than committed, and the token is assembled
+# from fragments rather than written out, because `check-secrets` scans this
+# repo's own history -- a realistic dummy token in a committed file would trip
+# that scan forever after, and no amount of later deletion undoes the commit
+# that introduced it (see CLAUDE.md's "Its fixtures carry no credential-shaped
+# strings, deliberately"). Generating it at test time is the same rule the
+# `test-coverage` R-package fixture follows, applied to the one input that
+# cannot be committed at all.
+redaction_fixture="$(mktemp)"
+# Only the 4-character prefix is a literal; the 36-character body -- the part
+# that makes a string token-SHAPED rather than merely token-prefixed -- is
+# generated, so nothing matching a credential pattern is ever committed.
+fake_token="ghp_$(printf 'A%.0s' {1..36})"
+cat > "$redaction_fixture" <<REDACTION_FIXTURE
+[
+  {"type": "system", "subtype": "init"},
+  {"type": "assistant", "message": {"content": [{"type": "text",
+    "text": "A tool call was denied while fetching the diff."}]}},
+  {"type": "result", "subtype": "success", "is_error": false,
+   "num_turns": 9, "duration_ms": 60000, "total_cost_usd": 1.5,
+   "permission_denials": [
+     {"tool_name": "Bash", "tool_use_id": "toolu_1",
+      "tool_input": {"command": "curl -H 'Authorization: Bearer ${fake_token}' https://api.github.com/x"}}
+   ]}
+]
+REDACTION_FIXTURE
+output_file="$(mktemp)"
+log_file="$(mktemp)"
+set +e
+GITHUB_OUTPUT="$output_file" bash "$check_script" "$redaction_fixture" >"$log_file" 2>&1
+set -e
+if grep -qF "$fake_token" "$log_file"; then
+  echo "::error::redaction fixture: the denied command's token reached the log unredacted"
+  failures=$((failures + 1))
+elif ! grep -qF "Bearer ***" "$log_file"; then
+  echo "::error::redaction fixture: expected the token to be replaced with '***'; log said:"
+  grep -i 'Denied tools' "$log_file" || cat "$log_file"
+  failures=$((failures + 1))
+else
+  echo "OK   <runtime redaction fixture> (token redacted from the denied-command sample)"
+fi
+rm -f "$redaction_fixture" "$output_file" "$log_file"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of ${#expected[@]} fixture(s) did not behave as expected"

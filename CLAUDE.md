@@ -969,6 +969,123 @@ unaffected; `permission-denials-array-only-low-count.json` and
 and above `max_denials`), confirmed to fail pre-fix by running them against
 the pre-#531 script.
 
+**That same array is what the log was throwing away, and the count alone reads
+as a different failure than it is.**
+gha#540: a `permission_denials_count=24` warning names no tool, so two readers
+of one log reached a wrong cause for the same failure
+(Morrison-Lab/ai-config#1773), and a 12-denial run on Morrison-Lab/wai#83 left
+a hypothesis -- sub-agent spawns, or file reads? -- that one line of log would
+have settled.
+A red check with only a number on it reads as "the reviewer gave up" rather
+than as a permissions gap with a specific fix.
+So `check-review-execution.sh` now summarizes `permission_denials` beside the
+count (`Denied tools: Taskx6 Bashx3 WebFetchx2`) with one argument sample per
+tool, and repeats both in the over-threshold annotation, which is the line a
+triager reads without opening the job log.
+Four things constrain any change to it.
+The summary is emitted **where the count is computed**, not inside the
+over-threshold branch the issue proposed: the low-count case is retried and can
+stub a second time, so it needs the same diagnostic.
+Summary and sample come from **one** jq pass emitting two lines, because they
+share the grouping and the ordering -- computing them separately meant two
+traversals and two copies of `group_by | sort_by` that could drift into
+disagreeing about which tool leads, which is `detect-review-request`'s
+two-copies-of-one-pattern problem at expression scale.
+The sample takes one entry **per tool group**, ordered like the summary and
+capped at the leading three groups, rather than the first three distinct
+arguments overall -- a globally-unique list is ordered by the argument text, so
+the commonest tool can drop out of its own sample entirely (the first draft
+summarized six `Task` denials and then showed none of them).
+The summary itself stays uncapped, so a fourth tool is still counted even
+though it is not quoted.
+Token-shaped literals are redacted from the sample, because Actions masks a
+configured `secrets.*` value in a run log but not a credential the agent
+constructed itself.
+And a result carrying a scalar count with **no** array -- the exact mirror of
+the gha#531 case above, and what `stub-gha198-high-denial-count.json` already
+was -- reports `names unavailable` rather than an empty list, which would read
+as "nothing was denied".
+
+**`denials` is three-valued, and the reporting is the first consumer that has
+to care.**
+It is a real `0`, a real positive count, or the `999999` sentinel, which means
+**unknown** rather than "a great many".
+Both pre-existing gates want unknown to read as unsafe, so collapsing it into
+the positive case is exactly right for them -- which is what makes the
+conflation invisible to a reader of that code, and what the gha#540 reporting
+then inherited by writing its own guard as `denials != 0`.
+The two gates ask "may this be trusted?", where erring toward no is free.
+A log line asserts something *about* the run, and there erring is not free:
+an unparseable count says nothing about whether any denial occurred, so
+reporting it as the no-array case told a **clean passing run** it had denials
+(`is-error-success-with-verdict.json`, whose count is JSON `null`).
+So knownness is tracked as its own `denials_known` flag rather than
+re-derived from the magic number, the unknown case gets its own wording, and
+one `denied_note` feeds both the log line and the annotation so they cannot
+describe the same run differently.
+Note what the negative test could not see: `must_not_log`'s original entry was
+`genuine-finished-review.json`, whose count is a literal `0`, so the branch
+never fired for it under either version and the assertion passed while the bug
+was live.
+A fixture with a **null** count is the one that discriminates, which is the
+same lesson as the vacuous `names unavailable` needle below -- a negative
+assertion is only worth the fixture that can actually reach the branch.
+(gha#544 review, caught by the reviewer rather than by this suite.)
+
+**Its coverage needed a new kind of assertion, and the first draft of one
+passed vacuously.**
+Everything `run-fixture-tests.sh` asserted before keyed on the exit code, a
+`GITHUB_OUTPUT` line, or the posted `review_text_file`; what gha#540 changed is
+what the script **logs**, which none of those can see.
+`must_log`/`must_not_log` are that assertion -- substrings the combined
+stdout/stderr must and must not contain -- and they matter more than their
+size suggests, since a dropped tool name regresses into a quiet log rather
+than a broken check.
+All five mutations were confirmed to turn the suite red (dropping the
+redaction, sorting alphabetically instead of by count, making the sample
+globally unique, deleting the `names unavailable` line, and emitting the
+summary only above the threshold), which is how the fourth one was caught not
+being: the assertion had been the bare phrase `names unavailable`, and the
+over-threshold annotation carries that phrase too as its own
+`${denied_summary:-...}` fallback, so it passed with the log line deleted.
+It is anchored on the whole line now.
+Read that as the general shape rather than as one fixture's detail: a needle
+short enough to appear in a second, unrelated code path tests neither.
+
+**The redaction mutation is the one whose fixture cannot be committed**, so
+`run-fixture-tests.sh` builds that one at run time and assembles the token from
+a literal prefix plus a generated body.
+The committed-fixture rule two paragraphs down is the reason, in the form that
+has no undo: `check-secrets` scans this repo's own **history**, so a
+credential-shaped string in a committed file trips that scan for good, and
+deleting the file later does not reach the commit that introduced it.
+Generating it is the same move the `test-coverage` R-package fixture makes for
+a different scanner, applied to the one input that must never land in a commit
+at all.
+
+**A sixth mutation is about the summarizer itself rather than its output, and
+it is the one worth reading if only one is.**
+Every `jq` lookup in both filters is `?`-suppressed.
+That is not defensive habit: a denial entry whose `tool_input` is a **string**
+rather than an object makes a bare `.tool_input.command` raise
+`Cannot index string with string`, and under this script's `set -e` that aborts
+the whole run at exit 5 -- before the verdict check, before `review_text_file`,
+before anything.
+So the check goes red carrying a jq error in place of whatever the review
+actually concluded, which is strictly worse than the missing-names problem
+gha#540 set out to fix.
+Reproduced directly (exit 5, empty `GITHUB_OUTPUT` past the count) rather than
+reasoned about, and pinned by `permission-denials-malformed-entries.json`,
+whose expected outcome is the ordinary `fail-stub` -- the assertion is that the
+review still gets classified, not that some log line appears.
+The general shape is the one `detect-review-request` already records for its
+oversized-body E2BIG: an optional diagnostic must not be able to redden the job
+it is diagnosing.
+One further constraint follows from where those comments live.
+Both filters are single-quoted shell strings, so a comment inside them must
+carry **no apostrophe** -- one closes the string, and the first draft of that
+very comment failed `bash -n` by writing a possessive.
+
 **Fixing the guard alone leaves the check red, which is why gha#520 touched the
 workflow too.**
 `claude-code-action` exits 1 on any `is_error` result, quota exhaustion
