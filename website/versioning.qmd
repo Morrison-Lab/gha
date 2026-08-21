@@ -10,7 +10,8 @@ so it has picked up no fixes since - not even non-breaking ones. Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `quarto-publish.yml`, `check-bibliography-dois.yml`, `check-phi.yml`,
 `check-links.yml`, `check-non-standard-chars.yml`, `claude.yml`,
-`claude-code-review.yml`, and `update-snapshots.yml` to `@v2`;
+`claude-code-review.yml`, `update-snapshots.yml`, and `check-news.yml`
+to `@v2`;
 `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`,
@@ -18,8 +19,9 @@ so it has picked up no fixes since - not even non-breaking ones. Pin
 `altdoc-multiversion-docs.yml`, `report-failure.yml`, `gemini.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
 `cursor-code-review.yml`,
-`ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`, and
-`lint-workflows.yml` only ever shipped at
+`ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
+`small-model-agent.yml`, `check-ai-tells.yml`, and `lint-workflows.yml`
+only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
 capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,
