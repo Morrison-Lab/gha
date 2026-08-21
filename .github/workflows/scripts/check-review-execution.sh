@@ -215,37 +215,22 @@ echo "permission_denials_count=$denials (max_denials=$max_denials)"
 denied_summary=""
 denied_sample=""
 if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
-  # Newlines are stripped from every field because both strings reach a
-  # single-line `::warning::` annotation below, which an embedded newline
-  # would truncate (the same reason `api_error_message` is flattened).
-  denied_summary="$(jq -r '
-    [ .permission_denials[]? | (.tool_name? // "unknown") | tostring | gsub("[\n\r]"; " ") ]
-    | if length == 0 then empty
-      else
-        group_by(.) | map({tool: .[0], n: length})
-        # Commonest first, then alphabetically, so the ordering is stable
-        # across runs rather than dependent on transcript order.
-        | sort_by(-.n, .tool) | map("\(.tool)x\(.n)") | join(" ")
-      end
-  ' <<< "$result")"
-  # A bare tool name answers nothing when every denial is `Bash` (12x Bash was
-  # exactly the wai#83 case), so carry one argument string per tool alongside
-  # the counts.
+  # ONE jq pass emitting two lines: the summary, then the sample. They share
+  # the grouping and the ordering, so computing them separately meant two
+  # traversals of the same array and two copies of `group_by | sort_by` that
+  # could drift into disagreeing about which tool leads -- the same DRY
+  # reasoning this repo applies to composite actions, at expression scale
+  # (gha#544 review).
   #
-  # One sample PER TOOL GROUP, ordered like the summary, rather than the first
-  # three distinct arguments overall: a globally-unique list is ordered by the
-  # argument text, so a tool whose arguments happen to sort late drops out of
-  # the sample entirely even when it is the commonest denial. The first draft
-  # did exactly that -- six `Task` denials were summarized and then absent from
-  # their own sample.
-  #
-  # Actions masks configured `secrets.*` values in a run log, but not a
-  # credential the agent happened to construct itself, so token-shaped
-  # literals are redacted before they are printed. Truncation bounds the rest:
-  # a denied command can be arbitrarily long, and this is a diagnostic hint
-  # rather than a transcript.
-  denied_sample="$(jq -r '
+  # Line-oriented rather than @tsv because @tsv escapes a literal tab into a
+  # visible `\t`; both fields are already newline-free (see below), so a line
+  # split is unambiguous.
+  denied_lines="$(jq -r '
     [ .permission_denials[]?
+      # Newlines are stripped from both fields because each reaches a
+      # single-line `::warning::` annotation below, which an embedded newline
+      # would truncate (the same reason `api_error_message` is flattened), and
+      # because the two output lines are split on newlines here.
       | { tool: ((.tool_name? // "unknown") | tostring | gsub("[\n\r]"; " ")),
           # One field per tool shape, most specific first: a Bash denial is its
           # command, a Task denial its description. Falling all the way back to
@@ -262,6 +247,12 @@ if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
           # oversized-body E2BIG in detect-review-request, which reddened a
           # calling job over an optional nicety. Confirmed by reproduction,
           # and pinned by permission-denials-malformed-entries.json.
+          #
+          # Actions masks configured `secrets.*` values in a run log, but not a
+          # credential the agent happened to construct itself, so token-shaped
+          # literals are redacted before they are printed. Truncation bounds
+          # the rest: a denied command can be arbitrarily long, and this is a
+          # diagnostic hint rather than a transcript.
           arg: ( ( .tool_input?.command? // .tool_input?.file_path? // .tool_input?.url?
                    // .tool_input?.pattern? // .tool_input?.description?
                    // (.tool_name? // "unknown") )
@@ -271,14 +262,32 @@ if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
                  | gsub("github_pat_[A-Za-z0-9_]{16,}"; "***")
                  | if (. | length) > 120 then (.[0:117] + "...") else . end ) }
     ]
-    | if length == 0 then empty
-      else
-        group_by(.tool)
-        | map({tool: .[0].tool, n: length, arg: .[0].arg})
-        | sort_by(-.n, .tool) | .[0:3]
-        | map("\(.tool): \(.arg)") | join("; ")
+    | group_by(.tool)
+    | map({tool: .[0].tool, n: length, arg: .[0].arg})
+    # Commonest first, then alphabetically, so the ordering is stable across
+    # runs rather than dependent on transcript order.
+    | sort_by(-.n, .tool)
+    | if length == 0 then ["", ""]
+      else [ ( map("\(.tool)x\(.n)") | join(" ") ),
+             # A bare tool name answers nothing when every denial is `Bash`
+             # (12x Bash was exactly the wai#83 case), so carry one argument
+             # string per tool as well.
+             #
+             # One sample per tool group, ordered like the summary and capped
+             # at the leading THREE groups, rather than the first three
+             # distinct arguments overall: a globally-unique list is ordered
+             # by the argument text, so a tool whose arguments happen to sort
+             # late drops out of the sample entirely even when it is the
+             # commonest denial. The first draft did exactly that -- six
+             # `Task` denials were summarized and then absent from their own
+             # sample. The summary above stays complete; only the sample is
+             # capped, so a fourth tool is still counted, just not quoted.
+             ( .[0:3] | map("\(.tool): \(.arg)") | join("; ") ) ]
       end
+    | .[]
   ' <<< "$result")"
+  denied_summary="$(sed -n 1p <<< "$denied_lines")"
+  denied_sample="$(sed -n 2p <<< "$denied_lines")"
 fi
 # One note, computed once, so the log line below and the over-threshold
 # annotation further down cannot describe the same run differently.

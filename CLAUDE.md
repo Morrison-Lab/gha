@@ -985,14 +985,19 @@ triager reads without opening the job log.
 Four things constrain any change to it.
 The summary is emitted **where the count is computed**, not inside the
 over-threshold branch the issue proposed: the low-count case is retried and can
-stub a second time, so it needs the same diagnostic, and one extraction site is
-what stops the two jq filters drifting apart the way `detect-review-request`'s
-two copies of one pattern did.
-The sample takes one entry **per tool group**, ordered like the summary, rather
-than the first three distinct arguments overall -- a globally-unique list is
-ordered by the argument text, so the commonest tool can drop out of its own
-sample entirely (the first draft summarized six `Task` denials and then showed
-none of them).
+stub a second time, so it needs the same diagnostic.
+Summary and sample come from **one** jq pass emitting two lines, because they
+share the grouping and the ordering -- computing them separately meant two
+traversals and two copies of `group_by | sort_by` that could drift into
+disagreeing about which tool leads, which is `detect-review-request`'s
+two-copies-of-one-pattern problem at expression scale.
+The sample takes one entry **per tool group**, ordered like the summary and
+capped at the leading three groups, rather than the first three distinct
+arguments overall -- a globally-unique list is ordered by the argument text, so
+the commonest tool can drop out of its own sample entirely (the first draft
+summarized six `Task` denials and then showed none of them).
+The summary itself stays uncapped, so a fourth tool is still counted even
+though it is not quoted.
 Token-shaped literals are redacted from the sample, because Actions masks a
 configured `secrets.*` value in a run log but not a credential the agent
 constructed itself.
