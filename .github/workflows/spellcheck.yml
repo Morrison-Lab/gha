@@ -10,15 +10,24 @@ on:
       exclude:
         description: >-
           Comma-separated files or folders to exclude from the spellcheck.
-          Accepts globs.
+          Accepts globs. The upstream action implements this by DELETING the
+          matched files from the runner's checkout and never restoring them,
+          so do not add steps after this job's spellcheck that read or publish
+          the working tree.
         type: string
         default: ''
       additional-options:
-        description: Additional options passed to Rscript by the upstream action.
+        description: >-
+          Additional options passed to Rscript by the upstream action. The
+          upstream default is --vanilla; pass an empty string to let R read
+          the site and user profiles instead.
         type: string
         default: '--vanilla'
       install-quarto:
-        description: Install Quarto when setting up R dependencies.
+        description: >-
+          Whether setup-r-dependencies installs Quarto ('true', 'false',
+          'auto'). Defaults to 'false' because {spelling} reads vignette
+          sources and never renders them.
         type: string
         default: 'false'
       runs-on:

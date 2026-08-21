@@ -11,41 +11,59 @@ inputs:
   exclude:
     description: >-
       Comma-separated files or folders to exclude from the spellcheck.
-      Accepts globs.
+      Accepts globs. The upstream action implements this by DELETING the
+      matched files from the runner's checkout and never restoring them, so
+      do not run this capability in a job that later reads or publishes the
+      working tree.
     default: ''
   additional-options:
-    description: Additional options passed to Rscript by the upstream action.
+    description: >-
+      Additional options passed to Rscript by the upstream action. The
+      upstream default is --vanilla; pass an empty string to let R read the
+      site and user profiles instead.
     default: '--vanilla'
   install-quarto:
-    description: Install Quarto when setting up R dependencies.
+    description: >-
+      Whether setup-r-dependencies installs Quarto ('true', 'false', 'auto').
+      Defaults to 'false' because {spelling} reads vignette SOURCES and never
+      renders them, so no Quarto is needed even for a .qmd vignette. Raise it
+      to 'auto' only if a consumer's own dependency resolution needs Quarto.
     default: 'false'
 runs:
   using: composite
   steps:
     # R is set up here rather than left to a container, which is the deliberate
-    # difference from the bespoke workflows this capability replaces. Those run
-    # `rocker/tidyverse`, but every other R capability in this repo uses
-    # r-lib/actions (see check-bibliography-dois), and matching the neighbours
-    # matters more than matching the thing being migrated: a consumer already
-    # paying for setup-r in its other jobs gets a warm cache here, and a
-    # container image does not.
+    # difference from the bespoke workflows this capability replaces (ucdavis/win
+    # and Morrison-Lab/wai both run rocker images). Every other R capability in
+    # this repo uses r-lib/actions -- see check-bibliography-dois -- and matching
+    # the neighbours matters more than matching the thing being migrated: a
+    # consumer already paying for setup-r in its other jobs gets a warm toolchain
+    # cache here, and a container image does not.
     #
-    # The upstream action's own steps run under `shell: Rscript {0}`, so R has
-    # to be on PATH before it is reached -- it installs {spelling} itself but
-    # cannot install R.
+    # The upstream action's first step runs under `shell: Rscript {0}`, so R has
+    # to be on PATH before that step is reached. It installs {spelling} itself
+    # but it cannot install R.
     - name: Set up R
       uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       with:
         use-public-rspm: true
 
-    # {spelling} is declared here rather than left to the upstream action's own
-    # `if (!require("spelling")) install.packages(...)`. Both work; this one
-    # goes through setup-r-dependencies, so it is cached across runs and uses
-    # the public RSPM binaries rather than compiling from CRAN source on every
-    # invocation. The upstream install then finds it present and no-ops.
+    # {spelling} is installed here rather than left to the upstream action's own
+    # `if (!require("spelling")) install.packages(...)`, because that call sets
+    # `options(repos = c(CRAN = "https://cloud.r-project.org/"))` first -- which
+    # serves SOURCE packages for Linux, so it compiles {spelling} and its
+    # {hunspell} C++ dependency on every run. Going through setup-r-dependencies
+    # instead takes the public RSPM binaries and caches them across runs, and the
+    # upstream install then finds the package present and no-ops.
+    #
+    # `packages:` REPLACES the action's own `deps::.` default rather than adding
+    # to it, which is the point: spell_check_package() reads the package's files
+    # without loading it, so resolving the consumer's whole dependency tree would
+    # be pure cost.
     - name: Set up R dependencies
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       with:
+        working-directory: ${{ inputs.path }}
         install-quarto: ${{ inputs.install-quarto }}
         packages: |
           any::spelling

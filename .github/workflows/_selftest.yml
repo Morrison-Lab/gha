@@ -2162,6 +2162,54 @@ jobs:
           fi
           echo "junit.xml produced ($(wc -l < "${RUNNER_TEMP}/junit.xml") lines):"
           head -n 20 "${RUNNER_TEMP}/junit.xml"
+  # Exercises the spellcheck composite through a real `uses: ./spellcheck` call
+  # against a generated R package fixture, not the @v2-pinned reusable-workflow
+  # chain -- a brand-new capability is not at the tag yet, and a `@v2` reference
+  # would fail the whole job at preparation time. Same "local composite, not the
+  # full reusable-workflow chain" precedent `coverage` above uses.
+  #
+  # The two fixtures differ in exactly one thing: whether inst/WORDLIST exists.
+  # Asserting that the first passes and the second fails therefore pins both
+  # halves of what this capability is for -- unknown words are detected, and the
+  # package's own wordlist is what accepts the ones it lists. Verified locally
+  # before it was written (spell_check_package reports 0 words for the fixture
+  # with the wordlist and 1, `seroincidence`, for the one without), so a red
+  # assertion here means a regression rather than a fixture that never worked.
+  spellcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate the R package fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-listed
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-unlisted --no-wordlist
+      - name: Spellcheck the fixture whose inst/WORDLIST lists the term
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-listed
+      - name: Spellcheck the fixture with no inst/WORDLIST
+        id: unlisted
+        continue-on-error: true
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-unlisted
+      - name: Assert the unlisted term fails the check
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.unlisted.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected the fixture with no inst/WORDLIST to fail the spellcheck, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "The fixture with no inst/WORDLIST failed the spellcheck, as expected."
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't

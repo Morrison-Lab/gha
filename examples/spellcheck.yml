@@ -17,6 +17,7 @@ jobs:
     # All inputs are optional; the defaults spellcheck the repository root.
     # with:
     #   path: '.'                       # package root, if not the repo root
-    #   exclude: 'vignettes/*.Rmd'      # comma-separated, accepts globs
-    #   install-quarto: 'true'          # if the package needs Quarto to install
+    #   exclude: 'vignettes/*.Rmd'      # comma-separated globs; DELETES matches
+    #   additional-options: ''          # drop --vanilla, so R reads its profiles
+    #   install-quarto: 'auto'          # only if dependency resolution needs it
     #   runs-on: ubuntu-latest
