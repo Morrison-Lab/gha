@@ -66,4 +66,3 @@ A category may not contain a dot:
 it is a single segment of `<slug>.<category>.md`,
 and a dotted one collates the same fragment twice
 when its suffix is also configured.
-
