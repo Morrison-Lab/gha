@@ -109,6 +109,26 @@ jobs:
         run: |
           grep -q '## New features' fixture_NEWS.md
           rm -rf fixture_news.d fixture_NEWS.md
+      # The unit tests above cover the script; this covers the composite's own
+      # plumbing of the `headings` input through to it, which they cannot see.
+      - name: Prepare assemble-news custom-headings fixture
+        shell: bash
+        run: |
+          mkdir -p fixture_news.d
+          printf -- '- Test infra change.\n' > fixture_news.d/test.infrastructure.md
+          printf '# pkg (dev)\n' > fixture_NEWS.md
+      - name: Exercise assemble-news composite action with custom headings
+        uses: ./.github/actions/assemble-news
+        with:
+          fragments-dir: fixture_news.d
+          news-file: fixture_NEWS.md
+          headings: |
+            infrastructure = Infrastructure
+      - name: Verify custom-headings fixture output
+        shell: bash
+        run: |
+          grep -q '^## Infrastructure$' fixture_NEWS.md
+          rm -rf fixture_news.d fixture_NEWS.md
   # Throwaway fixture, generated at runtime rather than committed (per
   # CLAUDE.md's "Generate selftest fixtures at runtime" rule): a deliberately
   # flawed workflow (unpinned third-party action, untrusted-input template

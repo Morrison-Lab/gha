@@ -3,7 +3,7 @@ title: "assemble-news"
 ---
 
 Collate `news.d/` fragment files into `NEWS.md` under section headings
-(`## Breaking changes`, `## New features`, `## Bug fixes`,
+(by default `## Breaking changes`, `## New features`, `## Bug fixes`,
 `## Minor improvements`) and delete consumed fragment files.
 
 Pairs with [`check-news.yml`](check-news.qmd), allowing pull requests to add
@@ -16,6 +16,7 @@ eliminating merge conflicts between concurrent PRs.
 |---|---|---|---|
 | `fragments-dir` | string | `'news.d'` | Directory containing fragment files (`<slug>.<category>.md`). |
 | `news-file` | string | `'NEWS.md'` | Target `NEWS.md` file path. |
+| `headings` | string | `''` | Category-to-heading map, as newline-separated `category = Heading` pairs. Empty keeps the built-in map. |
 
 ## Example
 
@@ -51,6 +52,36 @@ jobs:
           git diff --staged --quiet || git commit -m "chore(release): assemble news fragments into NEWS.md"
           git push
 ```
+
+## Custom headings
+
+The built-in map is `breaking` to Breaking changes; `added` and `feature` to New
+features; `fixed` and `bug` to Bug fixes; and `changed`, `minor`, `deprecated`,
+`removed`, and `security` to Minor improvements.
+
+A repo whose `NEWS.md` uses a different taxonomy supplies its own:
+
+```yaml
+      - name: Assemble news fragments
+        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2
+        with:
+          fragments-dir: news.d
+          headings: |
+            breaking = Breaking changes
+            added = New features
+            fixed = Bug fixes
+            infrastructure = Infrastructure
+            docs = Documentation
+```
+
+When set, `headings` **replaces** the built-in map rather than extending it,
+defining both the complete set of recognized categories and the order the
+headings are written in. Several categories may share a heading, which then
+takes the position of its first-listed category.
+
+A fragment whose category is outside the active map fails the step, naming the
+offending files, rather than being skipped -- the check runs before anything is
+consumed, so a mixed batch fails without deleting the valid fragments beside it.
 
 See `assemble-news.yml` in
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)

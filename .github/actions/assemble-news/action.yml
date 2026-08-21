@@ -1,8 +1,8 @@
 name: Assemble R Package NEWS.md
 description: >-
-  Collates news.d/ fragment files into NEWS.md under standard R package section
-  headings (## Breaking changes, ## New features, ## Bug fixes, ## Minor improvements)
-  and deletes the consumed fragment files.
+  Collates news.d/ fragment files into NEWS.md under R package section headings
+  (by default ## Breaking changes, ## New features, ## Bug fixes,
+  ## Minor improvements) and deletes the consumed fragment files.
 
 inputs:
   fragments-dir:
@@ -13,11 +13,29 @@ inputs:
     description: Target NEWS.md file path.
     required: false
     default: 'NEWS.md'
+  headings:
+    description: >-
+      Optional category-to-heading mapping, as newline-separated
+      "category = Heading" pairs. When empty (the default), the built-in map is
+      used: breaking -> Breaking changes; added/feature -> New features;
+      fixed/bug -> Bug fixes; changed/minor/deprecated/removed/security ->
+      Minor improvements. When set, it replaces that map entirely, defining both
+      the complete set of recognized categories and the order the headings are
+      written in; several categories may share a heading, which then takes the
+      position of its first-listed category. A fragment whose category is
+      outside the active map fails the step rather than being skipped.
+    required: false
+    default: ''
 
 runs:
   using: composite
   steps:
     - name: Run assemble-news.sh
       shell: bash
+      env:
+        FRAGMENTS_DIR: ${{ inputs.fragments-dir }}
+        NEWS_FILE: ${{ inputs.news-file }}
+        ASSEMBLE_NEWS_HEADINGS: ${{ inputs.headings }}
       run: |
-        bash "${{ github.action_path }}/../../workflows/scripts/assemble-news.sh" "${{ inputs.fragments-dir }}" "${{ inputs.news-file }}"
+        bash "$GITHUB_ACTION_PATH/../../workflows/scripts/assemble-news.sh" \
+          "$FRAGMENTS_DIR" "$NEWS_FILE"
