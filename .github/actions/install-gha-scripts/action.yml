@@ -1,0 +1,83 @@
+name: Install Morrison-Lab/gha helper scripts onto the runner
+description: >-
+  Copies named scripts out of this repo's .github/workflows/scripts/ directory
+  into a temp directory on the runner and outputs that directory, so a reusable
+  workflow can call them from inside a `run:` block.
+
+  Why this exists rather than a per-script composite. Every other helper here
+  (run-review-guard, detect-review-request, sum-costs) is wrapped in a
+  composite that both locates AND runs its script, which works because each is
+  called at a point where a `uses:` step can stand. ai-code-review.yml's
+  candidate loop is different: the decision it needs the script for is made
+  *inside* a shell loop over a dynamic agent list, and a composite cannot be
+  invoked mid-loop. Inlining the logic instead would put it beyond the reach of
+  the offline table tests this repo relies on for exactly this class of
+  matcher, which is the trade this action avoids.
+
+  It resolves the scripts through github.action_path for the same reason those
+  composites do: a reusable workflow's steps run against the CALLER's checkout,
+  not Morrison-Lab/gha's own tree, and #191 showed that resolving this repo's
+  ref from github.job_workflow_ref comes back empty at runtime on real consumer
+  runs (gha#196). A composite action's own files are always reachable through
+  github.action_path regardless of checkout state.
+
+inputs:
+  scripts:
+    description: >-
+      Comma-separated script filenames to install, relative to
+      .github/workflows/scripts/ (e.g. 'classify-review-delivery.sh').
+    required: true
+
+outputs:
+  dir:
+    description: Directory the requested scripts were installed into.
+    value: ${{ steps.install.outputs.dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install the requested scripts
+      id: install
+      shell: bash
+      env:
+        RAW_SCRIPTS: ${{ inputs.scripts }}
+      run: |
+        set -euo pipefail
+        SRC="${{ github.action_path }}/../../workflows/scripts"
+        DEST="${RUNNER_TEMP:-/tmp}/gha-scripts"
+        mkdir -p "$DEST"
+
+        # Split on commas and trim, the same contract split-csv-list.sh applies
+        # to every other comma-separated input in this repo. Inlined rather
+        # than shelled out to because that script lives in the very directory
+        # this action exists to reach, so depending on it here would be
+        # circular.
+        mapfile -t NAMES < <(tr ',' '\n' <<< "$RAW_SCRIPTS" \
+          | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+          | grep -v '^$')
+
+        if [ "${#NAMES[@]}" -eq 0 ]; then
+          echo "::error::install-gha-scripts: the 'scripts' input named no files."
+          exit 1
+        fi
+
+        for name in "${NAMES[@]}"; do
+          # A path separator would let a caller reach outside the scripts
+          # directory. Refuse rather than sanitize: every real caller names a
+          # bare filename, so anything else is a caller bug worth failing on.
+          case "$name" in
+            */*|..*)
+              echo "::error::install-gha-scripts: '$name' is not a bare filename."
+              exit 1
+              ;;
+          esac
+          if [ ! -f "$SRC/$name" ]; then
+            echo "::error::install-gha-scripts: no such script '$name' in this repo's scripts directory."
+            exit 1
+          fi
+          cp "$SRC/$name" "$DEST/$name"
+          chmod +x "$DEST/$name"
+          echo "Installed $name -> $DEST/$name"
+        done
+
+        echo "dir=$DEST" >> "$GITHUB_OUTPUT"

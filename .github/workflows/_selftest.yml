@@ -2391,3 +2391,69 @@ jobs:
             exit 1
           fi
           echo "open-failure-issue correctly reported it would file a new issue."
+
+  review-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run classify-review-delivery tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-review-delivery-tests.sh
+
+      # The offline table calls the script directly, so it cannot see whether
+      # the installer resolves the script at all. This step is that proof --
+      # the same github.action_path resolution run-review-guard's own e2e steps
+      # give -- and it is the only coverage of the mechanism ai-code-review.yml
+      # will use to reach the script from inside its candidate loop.
+      - name: Install the classifier via the composite
+        id: install
+        uses: ./.github/actions/install-gha-scripts
+        with:
+          scripts: 'classify-review-delivery.sh'
+
+      - name: Assert the installed script exists and classifies a marker
+        shell: bash
+        env:
+          DIR: ${{ steps.install.outputs.dir }}
+        run: |
+          set -euo pipefail
+          if [ ! -x "$DIR/classify-review-delivery.sh" ]; then
+            echo "::error::install-gha-scripts did not produce an executable script in '$DIR'."
+            exit 1
+          fi
+          RUN_URL='https://github.com/Morrison-Lab/gha/actions/runs/1'
+          OUT="$(printf '%s\0' \
+            "> **Claude review skipped — API credential or quota unavailable.** [View run]($RUN_URL)" \
+            | RUN_URL="$RUN_URL" bash "$DIR/classify-review-delivery.sh")"
+          if [ "$(sed -n '1s/^delivered=//p' <<<"$OUT")" != "false" ]; then
+            echo "::error::expected delivered=false for a quota-skip marker, got: $OUT"
+            exit 1
+          fi
+          echo "install-gha-scripts resolved and ran the classifier: $OUT"
+
+      # The path guard is the one behaviour that must fail rather than degrade:
+      # a name reaching outside the scripts directory is a caller bug, and
+      # silently copying nothing would leave the loop calling a missing file.
+      - name: Assert a non-bare filename is refused
+        id: traversal
+        continue-on-error: true
+        uses: ./.github/actions/install-gha-scripts
+        with:
+          scripts: '../../../etc/passwd'
+
+      - name: Assert that refusal actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.traversal.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected install-gha-scripts to refuse a non-bare filename, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "install-gha-scripts correctly refused a path-bearing name."
