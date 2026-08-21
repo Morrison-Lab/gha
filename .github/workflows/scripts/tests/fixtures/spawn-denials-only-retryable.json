@@ -1,0 +1,99 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Waiting for the remaining background agents to complete."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 19,
+    "duration_ms": 240000,
+    "total_cost_usd": 4.21,
+    "permission_denials": [
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s1",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s2",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s3",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s4",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s5",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s6",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s7",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s8",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      }
+    ]
+  }
+]

@@ -28,6 +28,13 @@ declare -A expected=(
   [stub-sparta590-scheduled-wakeup.json]=fail-stub
   [stub-sparta590-unnecessary-call.json]=fail-stub
   [stub-gha198-high-denial-count.json]=fail
+  # gha#550: a fan-out stopped by the deliberate background-spawn deny
+  # rules. The raw denial count (8) is over the threshold; the
+  # starvation-relevant count is 0, so the retry must survive.
+  [spawn-denials-only-retryable.json]=fail-stub
+  # The same 8 intended denials beside 6 genuinely-starved calls, which
+  # is what keeps the exclusion from blinding the gha#198 gate.
+  [spawn-denials-plus-starved-calls.json]=fail
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
   # gha#391: is_error:true alongside subtype:"success" is a self-contradictory
@@ -212,6 +219,8 @@ assert_log() {
 # are each fixture's result.total_cost_usd, verbatim as `jq -r` prints it.
 declare -A expected_cost=(
   [genuine-finished-review.json]=0.42
+  [spawn-denials-only-retryable.json]=4.21
+  [spawn-denials-plus-starved-calls.json]=3.9
   [stub-pr171-waiting-background-agents.json]=0.05
   [stub-pr171-remaining-review-agents.json]=0.08
   [stub-sparta590-scheduled-wakeup.json]=0.03
@@ -263,6 +272,8 @@ declare -A expected_kind=(
   [permission-denials-array-only-low-count.json]=stub
   [permission-denials-malformed-entries.json]=stub
   [stub-gha198-high-denial-count.json]=high-denial
+  [spawn-denials-only-retryable.json]=stub
+  [spawn-denials-plus-starved-calls.json]=high-denial
   [permission-denials-array-only-high-count.json]=high-denial
   [permission-denials-mixed-tools.json]=high-denial
   # A denied `gh pr comment` leaves the count non-zero but unparseable/known

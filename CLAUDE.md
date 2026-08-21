@@ -1252,6 +1252,17 @@ Note that `outcome` is read *before* `continue-on-error` applies, which is what
 lets the retry keep gating on `steps.claude-review.outcome == 'success'`
 unchanged.
 
+**Two fixtures pin the gha#550 spawn-denial exclusion, and the pair is the
+point rather than either one.**
+`spawn-denials-only-retryable.json` carries an 8-spawn fan-out whose denials
+are all deliberate: the raw count clears the threshold while the
+starvation-relevant count is zero, so it must stay a retryable `stub`.
+`spawn-denials-plus-starved-calls.json` carries those same 8 beside 6
+genuinely-starved `gh api` calls and must still classify `high-denial`.
+Without the second, an exclusion that simply zeroed the count would pass.
+Confirmed by mutation rather than assumed: reverting the gate to the raw count
+turns the first red and leaves the second green.
+
 `.github/actions/parse-workflow-ref/tests/run-tests.sh` exercises the
 extracted `parse-workflow-ref.sh` (see Layout above) offline against a tag, a
 branch, and a full-SHA ref; CI runs it as a step in the same
@@ -2260,6 +2271,95 @@ check -- but that is untested: PR #420 only showed that bypassing `self_mod`
 and no `github_token` input is wired up in `run-claude-review-attempt` today.
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
 section reaches the same OIDC content-validation from the testing angle.
+
+## A prompt instruction is a request; a permission rule is a constraint
+
+`run-claude-review-attempt`'s `--append-system-prompt` tells the reviewer to
+pass `run_in_background: false` on every `Agent`/`Task` call, because a
+background spawn in a headless CI run ends the turn waiting for completion
+notifications that no later turn will deliver (gha#392).
+That instruction was live, verbatim, when the same failure recurred on
+`Morrison-Lab/ai-config#1744` (run 32347489886): four background agents
+spawned, turn ended, no verdict, $4.21 (gha#532).
+
+The general point is worth keeping separate from the incident.
+**A prompt tells the model what to do, and the model may not.**
+When a constraint matters, look for a mechanical form of it before concluding
+that a better-worded prompt is the ceiling.
+
+Claude Code has one here, and it is easy to miss because it is newer than the
+tool-name and command-prefix rules everyone knows.
+Per
+[code.claude.com/docs/en/permissions](https://code.claude.com/docs/en/permissions),
+"Match by input parameter":
+
+> Deny and ask rules can match a top-level input parameter on any tool with
+> `Tool(param:value)`.
+
+So `Agent(run_in_background:true)` is a well-formed deny rule, and it is
+narrower than denying `Agent` outright -- which gha#392's follow-up rejected
+precisely because it would also break the `code-review` plugin's legitimate
+*synchronous* fan-out.
+
+Five things constrain any change here.
+
+**It is a DENY on `true`, not an allow on `false`.**
+The same section rules the allow shape out: "allow rules continue to use each
+tool's own specifier syntax."
+gha#532's body guesses at `Agent(run_in_background:false)` as an allow rule;
+that does not work.
+
+**It closes one of two routes, and the prompt still covers the other.**
+"A parameter the model omits is never matched", and `Agent`'s
+`run_in_background` defaults to true -- so a call that omits the parameter
+still backgrounds and this rule does not see it.
+The prompt instruction is therefore not redundant, and must not be deleted on
+the strength of the rule.
+Read the two as covering different halves.
+
+**A parameter rule cannot reach a tool's primary content field.**
+The same section lists them (`command` for Bash, `file_path` for Read, `url`
+for WebFetch, and so on) and says Claude Code ignores such a rule and warns at
+startup, because `Bash(command:rm *)` would be bypassable by a compound
+command.
+Use the tool's own specifier for those.
+
+**The CLI flag parses this form, and that was measured rather than assumed.**
+The documentation describes `Tool(param:value)` as a permission-rule syntax and
+never says that `--disallowedTools` accepts it, so a rule that silently failed
+to parse would make the mitigation a no-op that looks shipped.
+On Claude Code 2.1.238, `Agent(run_in_background:true)` and
+`Task(run_in_background:true)` were accepted with no warning.
+The negative control is what makes that silence informative: the same CLI
+answered `Bash(command:rm *)` -- a rule the docs say is ignored -- with
+`Permission deny rule "Bash(command:rm *)" targets command as a raw string and
+will not match`.
+This establishes that the rules parse, not that they match at call time.
+
+**The denials these rules produce are excluded from the stub-retry gate, and
+that exclusion is part of the fix rather than a refinement of it.**
+`check-review-execution.sh`'s threshold treats a high denial count as evidence
+the reviewer was **starved** of tools it needed -- its own comment says
+gha#198's pattern "has repeatedly NOT recovered", which is why crossing the
+threshold withholds the retry.
+A denial produced by a rule this repo added on purpose is not evidence for
+that, and it is not a small distortion at the sizes actually observed: the two
+incidents motivating these rules were a 4-spawn and an 8-spawn fan-out, so the
+second alone clears the default threshold of 5 before any genuinely-starved
+call is counted.
+Shipping the deny without the exclusion would therefore flip a retryable
+gha#185 stub into a hard-failed gha#198 classification in precisely the
+scenario the deny exists to serve.
+So the gate reads a count with the intended denials removed, while every
+reporting path keeps the true total -- a PR comment saying the reviewer was
+denied nothing when it was denied eight times would be false, and the
+denied-tools summary is what a triager acts on.
+The subtraction needs the `permission_denials` array, since that is what names
+tools; where only the scalar count survives (the gha#531 shape) no subtraction
+is possible and the gate falls back to the raw count, classifying such a run
+exactly as it is classified today.
+That direction is deliberate, since assuming unnamed denials were ours would
+weaken the gha#198 gate on evidence we do not have.
 
 ## Never just theorize -- investigate empirically
 

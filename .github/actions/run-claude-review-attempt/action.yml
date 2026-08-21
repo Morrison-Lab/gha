@@ -272,6 +272,41 @@ runs:
         # $9.76, and a final message reading "Waiting for the remaining
         # background agents to complete." in place of a verdict.
         #
+        # gha#532: that prompt mitigation RECURRED, on ai-config#1744 run
+        # 32347489886 -- four background agents spawned and the turn ended
+        # waiting on them, with the synchronous-only instruction verbatim in
+        # the prompt at the time. A prompt is a request, not a constraint, so
+        # `Agent(run_in_background:true)` and its `Task` alias are DENIED
+        # below, using Claude Code's parameter-scoped rule form. That is
+        # narrower than denying `Agent` outright, which gha#392's follow-up
+        # rejected because it would also break the plugin's legitimate
+        # synchronous fan-out.
+        #
+        # **This closes one of two routes, not both.** A parameter the model
+        # omits is never matched, and `run_in_background` DEFAULTS to true, so
+        # a call that simply omits it still backgrounds and this rule does not
+        # see it. The prompt instruction below therefore stays: it covers the
+        # omission route, the deny covers the explicit-`true` one, and neither
+        # is redundant. Do not remove the prompt text on the strength of this
+        # rule.
+        #
+        # `Task` is listed beside `Agent` defensively rather than on evidence
+        # both names are live: the CLI version is not pinned here, and a deny
+        # rule matching nothing costs nothing while a missing one costs the
+        # whole mitigation.
+        #
+        # The denials these rules produce are excluded from the stub-retry
+        # gate in check-review-execution.sh -- see gha#550 review finding 1
+        # there. A denial we engineered is not evidence the reviewer was
+        # starved, which is what that threshold infers.
+        #
+        # CLAUDE.md's "A prompt instruction is a request; a permission rule is
+        # a constraint" carries the docs citations, the deny-not-allow
+        # correction, and the CLI verification (with its negative control) --
+        # kept there rather than restated here, matching how
+        # compose-review-failure-report.sh stays terse beside its own CLAUDE.md
+        # section.
+        #
         # A fourth stub-review cause, gha#541, needs no new tool grant —
         # `Bash(gh pr diff:*)` above already covers it; the failure is in HOW
         # the reviewer used it. On a large diff, the agent reached for
@@ -308,7 +343,7 @@ runs:
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash(python3:*),Bash(maxima:*),WebFetch,WebSearch,Bash(curl:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*)"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(python3 -m:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and
