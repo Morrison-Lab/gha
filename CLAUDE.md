@@ -1439,8 +1439,8 @@ As with `report-push-failure`, `claude-code-review.yml`'s own consumption of
 this composite via `@v2` is not covered here -- it does not resolve until `@v2`
 is advanced past this capability's merge.
 
-`run-fixture-tests.sh` gained two assertions alongside it, and the second is
-the one worth reading.
+`run-fixture-tests.sh` gained three assertions alongside it, and the last two
+are the ones worth reading.
 `failure_kind` is asserted for **every** fixture rather than only the failing
 ones, because a stale kind left on a clean run is what would let the comment
 describe a failure that did not happen; the exit code and `stub_review` are
@@ -1456,6 +1456,18 @@ rather than on a live review.
 The first draft asserted `failure_kind` alone, and dropping the `max_denials`
 write was confirmed to pass under it -- an unasserted new output is exactly
 what regresses in silence.
+
+`assert_denied_tools_presence` is the third, and it pins a contract that had
+been asserted only in prose, and asserted wrongly: `run-review-guard`'s docs
+claimed `denied_tools` was set on every exit path, which is false for the two
+short-circuit exits that return before the denial count exists.
+It asserts presence rather than content -- the value is legitimately empty on
+a zero-denial run, so `denied_tools` must be present exactly when `denials` is,
+and writing it on the short-circuit path turns the suite red.
+The distinction it protects reaches the PR comment: an ABSENT value means
+"never counted", an EMPTY-but-present one means "counted, and there were none",
+and only the second licenses saying the reviewer was not blocked by
+permissions.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

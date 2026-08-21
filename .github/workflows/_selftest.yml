@@ -621,6 +621,38 @@ jobs:
           echo "run-review-guard correctly surfaced stub_review=true"
       # total_cost_usd is written regardless of outcome (gha#219), so a stub
       # result must surface it too — not just the passing case above.
+      # gha#548 added three outputs to this composite (max_denials,
+      # failure_kind, denied_tools), each a `value: ${{ steps.run.outputs.X }}`
+      # mapping. run-fixture-tests.sh covers them, but it calls
+      # check-review-execution.sh DIRECTLY and so never touches action.yml --
+      # a typo in one of those three expressions would silently yield an empty
+      # output and no test would notice. That is precisely the gap this
+      # composite's e2e steps were added for after gha#191/#196: the sed logic
+      # was unit-tested while nothing exercised the real `uses:` call
+      # (gha#548 review round 2).
+      - name: Assert run-review-guard surfaced the gha#543 diagnostic outputs
+        shell: bash
+        env:
+          FAILURE_KIND: ${{ steps.guard-e2e-stub.outputs.failure_kind }}
+          MAX_DENIALS: ${{ steps.guard-e2e-stub.outputs.max_denials }}
+          DENIED_TOOLS: ${{ steps.guard-e2e-stub.outputs.denied_tools }}
+        run: |
+          set -euo pipefail
+          if [[ "$FAILURE_KIND" != "stub" ]]; then
+            echo "::error::expected failure_kind=stub from the composite, got '$FAILURE_KIND'"
+            exit 1
+          fi
+          if [[ "$MAX_DENIALS" != "5" ]]; then
+            echo "::error::expected max_denials=5 from the composite, got '$MAX_DENIALS'"
+            exit 1
+          fi
+          # denied_tools is legitimately EMPTY on this fixture (it has no
+          # denials), so its value is not the assertion -- the two above are
+          # what prove the passthrough wiring. Asserting emptiness here would
+          # pass just as well with the output mapping deleted, which is the
+          # vacuous shape this suite has already been caught by.
+          echo "run-review-guard passed through failure_kind and max_denials correctly"
+
       - name: Assert run-review-guard surfaced total_cost_usd (stub fixture)
         shell: bash
         env:

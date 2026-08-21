@@ -954,9 +954,13 @@ jobs:
           # separate questions, and only the first is this step's to answer.
           if [[ "${{ steps.fail-check-retry.outcome }}" == "failure" ]]; then
             attempt_kind="$FCR_KIND"
-            attempt_denials="$FCR_DENIALS"
-            attempt_denied_tools="$FCR_DENIED_TOOLS"
-            attempt_max_denials="$FCR_MAX_DENIALS"
+            # Fall back to attempt 1's figures when the retry has none of its
+            # own -- it can short-circuit or error before the guard parses a
+            # result, and dropping the data then loses a diagnostic that
+            # exists, for the same reason as the branch below.
+            attempt_denials="${FCR_DENIALS:-$FC_DENIALS}"
+            attempt_denied_tools="${FCR_DENIED_TOOLS:-$FC_DENIED_TOOLS}"
+            attempt_max_denials="${FCR_MAX_DENIALS:-$FC_MAX_DENIALS}"
             if [[ "${{ steps.fail-check-retry.outputs.stub_review }}" == "true" ]]; then
               echo "::error::Attempt 1 failed and the retry ALSO ended without a verdict with a low denial count — treating as a failed review."
             elif [[ "${{ steps.fail-check-retry.outputs.action_short_circuit }}" == "true" ]]; then
@@ -971,9 +975,16 @@ jobs:
             # the short-circuit signature (gha#368), and this is the one branch
             # where the workflow knows that and the guard could not.
             attempt_kind="short-circuit"
-            attempt_denials=""
-            attempt_denied_tools=""
-            attempt_max_denials=""
+            # The KIND is the retry's; the denial data is not. Blanking these
+            # threw away whatever attempt 1 actually recorded, so a run whose
+            # first attempt reported `Taskx6 Bashx3 (sample: ...)` posted
+            # "Denied tools: not recorded" instead -- a false statement about
+            # the run, made because the LATER attempt is the one being blamed
+            # (gha#548 review round 2). Attribution of the failure and
+            # availability of the diagnostic are different questions.
+            attempt_denials="$FC_DENIALS"
+            attempt_denied_tools="$FC_DENIED_TOOLS"
+            attempt_max_denials="$FC_MAX_DENIALS"
             echo "::error::Attempt 1 produced a stub review or short-circuited and the retry ran but never produced a checkable execution file — treating as a failed review."
           else
             attempt_kind="$FC_KIND"
@@ -1196,13 +1207,28 @@ jobs:
       # around -- a newer commit's review is already in flight, and the
       # "Explain and fold tracking comment when canceled" step below owns that
       # case.
+      #
+      # The relaxed check is scoped to the failure-notice disjunct ALONE, and
+      # the other two keep an explicit `success()`. A first draft put
+      # `!cancelled()` in front of the whole expression, which relaxed all
+      # three -- and `steps.<id>.outcome` freezes when its step completes, so
+      # `resolve-final.outcome == 'success'` stays true even after a LATER
+      # step fails. "Post review comment" carries no `continue-on-error`, so a
+      # 422 or a rate limit there would have left this step folding the
+      # previous round's review while the current round posted nothing: zero
+      # expanded review comments on the thread, which is the very
+      # silent-thread class this PR exists to close, reopened on a different
+      # step (gha#548 review round 2).
+      #
+      # An `if:` containing any status function suppresses the implicit
+      # `success()`, so the explicit one is doing real work here rather than
+      # restating a default.
       - name: Collapse previous Claude review comments
         if: >-
-          !cancelled() && (
-          steps.skip-notice.outputs.posted == 'true' ||
-          steps.failure-notice.outputs.posted == 'true' ||
+          (!cancelled() && steps.failure-notice.outputs.posted == 'true') ||
+          (success() && (steps.skip-notice.outputs.posted == 'true' ||
           (steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true'))
+          steps.resolve-final.outputs.quota_exhausted != 'true')))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

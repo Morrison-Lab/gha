@@ -86,6 +86,25 @@ check_contains "body starts at line 4" "has not been reviewed" "$(tail -n +4 <<<
 # nothing after it on that line wrapped.
 check "exactly one headline line" "1" "$(grep -c '^headline=' <<<"$out")"
 
+# --- the `stub` kind must not claim two attempts when only one ran ---------
+# `stub` is reachable with ONE attempt behind it: attempt 1 classifies as a
+# stub and the retry then fails its own gate and never runs. Claiming "two
+# independent attempts agreeing" there contradicts the workflow's own
+# annotation AND this report's own cost line on the same run -- the
+# confidently-wrong-story failure the kind vocabulary exists to prevent
+# (gha#548 review round 2).
+out="$(run_compose stub 1 'Bashx1' 5 3.20 2)"
+check_contains "two attempts: says so" 'and again on the automatic same-prompt retry' "$out"
+check_contains "two attempts: draws the inference" 'Two independent attempts agreeing' "$out"
+
+out="$(run_compose stub 1 'Bashx1' 5 0.90 1)"
+check_not_contains "one attempt: does not claim a retry ran" 'and again on the automatic same-prompt retry' "$out"
+check_not_contains "one attempt: does not claim two attempts agreed" 'Two independent attempts agreeing' "$out"
+check_contains "one attempt: says the retry did not complete" 'did not run to completion' "$out"
+# The headline is what a reader sees first, so it must agree with the body
+# rather than only the body being fixed.
+check_contains "one attempt: headline agrees with the body" 'headline=Claude review did not finish: no verdict, and the retry never ran to completion.' "$out"
+
 # --- the denied-tools trio --------------------------------------------------
 # 1. Names known: render them. This is the gha#540 payload, and carrying it to
 #    the PR is the reason this report was worth building.

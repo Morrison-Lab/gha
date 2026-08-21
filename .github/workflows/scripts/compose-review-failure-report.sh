@@ -99,7 +99,17 @@ case "$kind" in
     headline="Claude review did not finish: no verdict, and the denial count was too high to retry."
     ;;
   stub)
-    headline="Claude review did not finish: no verdict, on the first attempt and again on the retry."
+    # ATTEMPTS decides the wording, because the `stub` kind is reachable with
+    # only ONE attempt behind it: attempt 1 classifies as a stub, and the retry
+    # then fails its own gate and never runs. Saying "and again on the retry"
+    # there contradicts the workflow's own annotation on the same run, which
+    # says the retry did not complete -- and contradicts this report's own cost
+    # line, which says "across 1 attempt" (gha#548 review round 2).
+    if [[ "$ATTEMPTS" == "2" ]]; then
+      headline="Claude review did not finish: no verdict, on the first attempt and again on the retry."
+    else
+      headline="Claude review did not finish: no verdict, and the retry never ran to completion."
+    fi
     ;;
   short-circuit)
     headline="Claude review did not finish: the action exited without writing an execution result."
@@ -145,12 +155,21 @@ case "$kind" in
     printf 'Re-running this review unchanged is not the fix. Either widen the reviewer allowlist in `run-claude-review-attempt` so the denied calls are permitted, or adjust the review prompt so the reviewer stops attempting them.\n\n'
     ;;
   stub)
-    printf 'The reviewer produced text but no verdict, on the first attempt and again on the automatic same-prompt retry'
-    if [[ -n "$denials_phrase" ]]; then
-      printf ' (%s)' "$denials_phrase"
+    if [[ "$ATTEMPTS" == "2" ]]; then
+      printf 'The reviewer produced text but no verdict, on the first attempt and again on the automatic same-prompt retry'
+      if [[ -n "$denials_phrase" ]]; then
+        printf ' (%s)' "$denials_phrase"
+      fi
+      printf '. Two independent attempts agreeing makes a one-off unlikely.\n\n'
+      printf 'Pushing a new commit re-triggers the review, and is worth one try. If it stubs a third time, treat the reviewer as unreachable for this PR and fall back to a self-review plus a cross-vendor reviewer.\n\n'
+    else
+      printf 'The reviewer produced text but no verdict on its first attempt'
+      if [[ -n "$denials_phrase" ]]; then
+        printf ' (%s)' "$denials_phrase"
+      fi
+      printf ', and the automatic same-prompt retry did not run to completion, so there is only ONE attempt behind this result rather than two.\n\n'
+      printf 'That makes a one-off more plausible than it would be after two agreeing attempts. Pushing a new commit re-triggers the review and is worth a try.\n\n'
     fi
-    printf '. Two independent attempts agreeing makes a one-off unlikely.\n\n'
-    printf 'Pushing a new commit re-triggers the review, and is worth one try. If it stubs a third time, treat the reviewer as unreachable for this PR and fall back to a self-review plus a cross-vendor reviewer.\n\n'
     ;;
   short-circuit)
     printf 'The action exited before writing an execution-output file, so there is no transcript to check for a verdict (gha#368). Nothing can be concluded about the diff from this run.\n\n'
