@@ -515,6 +515,7 @@ which is why the capabilities above moved to `@v2`.
   coverage instead of only being exercised by a live Dependabot PR (gha#253
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
+
 - `.github/actions/install-gha-scripts/` -- copies named scripts out of
   `.github/workflows/scripts/` into a runner temp directory and outputs that
   directory, so a reusable workflow can call one from inside a `run:` block.
