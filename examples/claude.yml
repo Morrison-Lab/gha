@@ -17,6 +17,8 @@ on:
     # `assigned` lets an issue that already mentions @claude kick off a run when
     # it's assigned (handy with eager-pr). The trusted-author gate keys on the
     # issue *author*, so this only fires for issues opened by a collaborator.
+    # To make assignment a trigger on its own, with no mention anywhere in the
+    # issue, see the dispatch-on-assignee clause in the job `if:` below.
     types: [opened, assigned]
   pull_request_review:
     types: [submitted]
@@ -47,6 +49,13 @@ jobs:
     # To also admit a GitHub App bot (author_association is usually NONE), OR
     # in a login check and pass the same JSON array as trusted-bot-logins:
     #   || contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login)
+    #
+    # To let ASSIGNING an issue dispatch a run with no @claude mention at all,
+    # OR in an assignment clause and pass the same JSON array as
+    # dispatch-on-assignee. Both halves are required: without the caller
+    # clause the reusable workflow is never invoked, and without the input it
+    # stands down at its own gate.
+    #   || (github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON('["claude"]'), github.event.assignee.login))
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
@@ -77,6 +86,7 @@ jobs:
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
     #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   trusted-bot-logins: '["cursor[bot]"]'  # admit App bots the caller if: also allows
+    #   dispatch-on-assignee: '["claude"]'     # assigning an issue dispatches a run, no mention needed
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources
