@@ -505,6 +505,7 @@ which is why the capabilities above moved to `@v2`.
   `DESCRIPTION` therefore shows its own version in the navbar while the
   menu still points `/dev/` at what is actually deployed there -- both
   correct, since the reader is looking at the PR's build, not `/dev/`.
+
 - `.github/actions/inject-canonical-urls/` -- wraps
   `inject_canonical_urls.py`, which adds a `<link rel="canonical">` to every
   indexable page of a rendered altdoc/Quarto tree before
@@ -531,6 +532,7 @@ which is why the capabilities above moved to `@v2`.
   obvious spot, right after the sibling "Report an issue" rewrite) `env.subdir`
   is not yet set, so the self-canonical fallback silently receives an empty
   path.
+
 - `.github/actions/bump-dev-version/` and `.github/actions/check-dev-version/`
   -- composite actions wrapping `description-version.R`'s pure
   `read_version`/`versions_equal`/`bump_dev_version` logic via the
