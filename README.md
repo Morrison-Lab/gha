@@ -46,7 +46,6 @@ not reference `@main` from consumers.
 | `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `fail` |
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
-
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
