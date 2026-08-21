@@ -20,3 +20,9 @@
   That the `--disallowedTools` flag parses the parameter-scoped rule form at
   all was measured on Claude Code 2.1.238 rather than assumed, against a
   known-unparseable rule as a negative control.
+
+  The denials these rules produce are excluded from `check-review-execution`'s
+  stub-retry gate, which infers reviewer starvation from a high denial count.
+  Without that, an 8-agent fan-out stopped exactly as intended would clear the
+  threshold on its own and lose the retry, in the scenario the deny exists to
+  serve.

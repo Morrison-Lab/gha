@@ -1,0 +1,141 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Several tool calls were denied; continuing with what I can read."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 22,
+    "duration_ms": 240000,
+    "total_cost_usd": 3.9,
+    "permission_denials": [
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s1",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s2",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s3",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s4",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s5",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s6",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s7",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_s8",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_b1",
+        "tool_input": {
+          "command": "gh api repos/o/r/issues/1/comments --paginate"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_b2",
+        "tool_input": {
+          "command": "gh api repos/o/r/issues/2/comments --paginate"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_b3",
+        "tool_input": {
+          "command": "gh api repos/o/r/issues/3/comments --paginate"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_b4",
+        "tool_input": {
+          "command": "gh api repos/o/r/issues/4/comments --paginate"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_b5",
+        "tool_input": {
+          "command": "gh api repos/o/r/issues/5/comments --paginate"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_b6",
+        "tool_input": {
+          "command": "gh api repos/o/r/issues/6/comments --paginate"
+        }
+      }
+    ]
+  }
+]

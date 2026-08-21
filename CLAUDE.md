@@ -1252,6 +1252,17 @@ Note that `outcome` is read *before* `continue-on-error` applies, which is what
 lets the retry keep gating on `steps.claude-review.outcome == 'success'`
 unchanged.
 
+**Two fixtures pin the gha#550 spawn-denial exclusion, and the pair is the
+point rather than either one.**
+`spawn-denials-only-retryable.json` carries an 8-spawn fan-out whose denials
+are all deliberate: the raw count clears the threshold while the
+starvation-relevant count is zero, so it must stay a retryable `stub`.
+`spawn-denials-plus-starved-calls.json` carries those same 8 beside 6
+genuinely-starved `gh api` calls and must still classify `high-denial`.
+Without the second, an exclusion that simply zeroed the count would pass.
+Confirmed by mutation rather than assumed: reverting the gate to the raw count
+turns the first red and leaves the second green.
+
 `.github/actions/parse-workflow-ref/tests/run-tests.sh` exercises the
 extracted `parse-workflow-ref.sh` (see Layout above) offline against a tag, a
 branch, and a full-SHA ref; CI runs it as a step in the same
@@ -2290,7 +2301,7 @@ narrower than denying `Agent` outright -- which gha#392's follow-up rejected
 precisely because it would also break the `code-review` plugin's legitimate
 *synchronous* fan-out.
 
-Four things constrain any change here.
+Five things constrain any change here.
 
 **It is a DENY on `true`, not an allow on `false`.**
 The same section rules the allow shape out: "allow rules continue to use each
@@ -2324,6 +2335,31 @@ answered `Bash(command:rm *)` -- a rule the docs say is ignored -- with
 `Permission deny rule "Bash(command:rm *)" targets command as a raw string and
 will not match`.
 This establishes that the rules parse, not that they match at call time.
+
+**The denials these rules produce are excluded from the stub-retry gate, and
+that exclusion is part of the fix rather than a refinement of it.**
+`check-review-execution.sh`'s threshold treats a high denial count as evidence
+the reviewer was **starved** of tools it needed -- its own comment says
+gha#198's pattern "has repeatedly NOT recovered", which is why crossing the
+threshold withholds the retry.
+A denial produced by a rule this repo added on purpose is not evidence for
+that, and it is not a small distortion at the sizes actually observed: the two
+incidents motivating these rules were a 4-spawn and an 8-spawn fan-out, so the
+second alone clears the default threshold of 5 before any genuinely-starved
+call is counted.
+Shipping the deny without the exclusion would therefore flip a retryable
+gha#185 stub into a hard-failed gha#198 classification in precisely the
+scenario the deny exists to serve.
+So the gate reads a count with the intended denials removed, while every
+reporting path keeps the true total -- a PR comment saying the reviewer was
+denied nothing when it was denied eight times would be false, and the
+denied-tools summary is what a triager acts on.
+The subtraction needs the `permission_denials` array, since that is what names
+tools; where only the scalar count survives (the gha#531 shape) no subtraction
+is possible and the gate falls back to the raw count, classifying such a run
+exactly as it is classified today.
+That direction is deliberate, since assuming unnamed denials were ours would
+weaken the gha#198 gate on evidence we do not have.
 
 ## Never just theorize -- investigate empirically
 

@@ -209,6 +209,51 @@ else
   denials_known=false
 fi
 echo "denials=$denials" >> "$GITHUB_OUTPUT"
+# gha#550 review finding 1: the stub-retry gate far below treats every denial
+# as evidence the reviewer was STARVED of tools it needed -- its own comment
+# says gha#198's pattern "has repeatedly NOT recovered", which is why crossing
+# the threshold withholds the retry. A denial produced by a rule this repo
+# added ON PURPOSE is not evidence for that. `Agent(run_in_background:true)`
+# and its `Task` alias are denied deliberately (gha#532), so a run that fans
+# out and is correctly stopped generates denials by design.
+#
+# That interaction is not hypothetical at the sizes actually observed: the
+# incidents motivating the deny rules were a 4-spawn (ai-config#1744) and an
+# 8-spawn (ai-config#986) fan-out, and the second alone exceeds the default
+# threshold of 5 before any genuinely-starved call is counted. It would flip a
+# retryable gha#185 stub into a hard-failed gha#198 classification -- losing
+# the retry in precisely the scenario the deny rules exist to serve.
+#
+# So the GATE reads a count with the intended denials removed, while every
+# REPORTING path keeps the true total: a PR comment saying the reviewer was
+# denied nothing when it was denied eight times would be a lie, and the
+# denied-tools summary is what a triager acts on.
+#
+# The subtraction needs the array, since that is what names tools. When only
+# the scalar count is present (the gha#531 shape) no subtraction is possible,
+# and the gate falls back to the raw count -- classifying such a run exactly as
+# it is classified today. That direction is deliberate: assuming some unnamed
+# denials were ours would weaken the gha#198 gate on evidence we do not have.
+intended_denials=0
+if [[ "$denials_known" == "true" ]]; then
+  # Every lookup `?`-suppressed for the same reason the summary block below
+  # gives: a denial entry whose `tool_input` is a string rather than an object
+  # must not abort the script under `set -e` and take down the classification
+  # it exists to refine. Pinned by permission-denials-malformed-entries.json.
+  intended_denials="$(jq -r '
+    [ .permission_denials[]?
+      | select(((.tool_name? // "") | tostring) == "Agent"
+               or ((.tool_name? // "") | tostring) == "Task")
+      | select((.tool_input?.run_in_background?) == true)
+    ] | length
+  ' <<< "$result" 2>/dev/null || echo 0)"
+  [[ "$intended_denials" =~ ^[0-9]+$ ]] || intended_denials=0
+fi
+starvation_denials="$denials"
+if (( intended_denials > 0 )) && (( denials >= intended_denials )); then
+  starvation_denials=$(( denials - intended_denials ))
+  echo "Excluding $intended_denials deliberate background-spawn denial(s) from the stub-retry gate (gha#550); starvation-relevant count is $starvation_denials of $denials."
+fi
 # The threshold is emitted rather than left for a caller to restate. It is
 # overridable via STUB_RETRY_MAX_DENIALS, so a caller hard-coding "5" to quote
 # it in a report would be right only while nobody overrides it -- the
@@ -544,11 +589,11 @@ if ! has_verdict "$all_text_file"; then
   # rather than let a caller retry (and re-spend $2-4/attempt) on a known
   # non-recovering pattern. (denials was already computed above, where it
   # also gates the Bash-tool-use blocks candidate.)
-  echo "permission_denials_count=$denials (stub-retry max_denials=$max_denials)"
-  if [[ "$denials" -le "$max_denials" ]]; then
+  echo "permission_denials_count=$denials (stub-retry max_denials=$max_denials, starvation-relevant=$starvation_denials)"
+  if [[ "$starvation_denials" -le "$max_denials" ]]; then
     echo "stub_review=true" >> "$GITHUB_OUTPUT"
     echo "failure_kind=stub" >> "$GITHUB_OUTPUT"
-    echo "Claude review produced no verdict with low permission_denials_count ($denials <= $max_denials) — marking as a retryable stub review (gha#185)."
+    echo "Claude review produced no verdict with low permission_denials_count ($starvation_denials <= $max_denials, excluding $intended_denials deliberate spawn denial(s)) — marking as a retryable stub review (gha#185)."
   else
     echo "failure_kind=high-denial" >> "$GITHUB_OUTPUT"
     # The names ride along in the annotation itself, not just the log:
@@ -556,7 +601,16 @@ if ! has_verdict "$all_text_file"; then
     # opening the job log, and the count alone is what sent two readers to
     # the wrong cause (gha#540). Both strings are newline-free by
     # construction above, so the annotation cannot be split.
-    echo "::warning::permission_denials_count=$denials exceeds the stub-retry threshold ($max_denials) — this looks like gha#198's pattern, not gha#185's; not marking as retryable. Denied tools: ${denied_note:-none reported}"
+    # The starvation-relevant count is what the gate compared, so it is what
+    # the annotation must quote -- naming only the raw total would send a
+    # triager looking for eight starved calls when three crossed the line.
+    # Both are printed when they differ, since the total is what the denied
+    # tools list below is counted from.
+    denial_figure="$starvation_denials"
+    if (( intended_denials > 0 )); then
+      denial_figure="$starvation_denials of $denials, after excluding $intended_denials deliberate background-spawn denial(s)"
+    fi
+    echo "::warning::permission_denials_count=$denial_figure exceeds the stub-retry threshold ($max_denials) — this looks like gha#198's pattern, not gha#185's; not marking as retryable. Denied tools: ${denied_note:-none reported}"
   fi
   echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
   exit 1
