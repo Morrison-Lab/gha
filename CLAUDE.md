@@ -505,6 +505,32 @@ which is why the capabilities above moved to `@v2`.
   `DESCRIPTION` therefore shows its own version in the navbar while the
   menu still points `/dev/` at what is actually deployed there -- both
   correct, since the reader is looking at the PR's build, not `/dev/`.
+- `.github/actions/inject-canonical-urls/` -- wraps
+  `inject_canonical_urls.py`, which adds a `<link rel="canonical">` to every
+  indexable page of a rendered altdoc/Quarto tree before
+  `altdoc-multiversion-docs.yml` deploys it (gha#332).
+  That workflow publishes the same site to `/dev/`, `/latest-tag/`,
+  `/vX.Y.Z/`, and `/pr-preview/pr-<N>/`, so without this every page exists N
+  times with nothing naming the authoritative copy.
+  Four things constrain any change to it.
+  A canonical is emitted **only when the target exists**: the composite reads
+  the pages currently under `/latest-tag/` off the deploy branch
+  (`git ls-tree`, the same interrogation the `/latest-tag/` bootstrap step
+  already does) and a page with no counterpart there self-canonicalizes,
+  because a canonical pointing at a 404 asks the indexer to credit a page that
+  is not there -- strictly worse than emitting none.
+  PR previews get `noindex` rather than a canonical, since a preview is
+  ephemeral and is not the authoritative copy of anything.
+  `404.html` is excluded from the indexable set, as canonicalizing the page
+  served for missing URLs would point every miss at a real page.
+  And the verification pass re-**reads** the files rather than trusting the
+  insertion pass's own report, because an off-by-one in the insertion index
+  produces a plausible log and a broken page; only a re-read separates them.
+  The step is wired in after every `subdir=` assignment and before every
+  deploy, which is load-bearing rather than incidental -- placed earlier (the
+  obvious spot, right after the sibling "Report an issue" rewrite) `env.subdir`
+  is not yet set, so the self-canonical fallback silently receives an empty
+  path.
 - `.github/actions/bump-dev-version/` and `.github/actions/check-dev-version/`
   -- composite actions wrapping `description-version.R`'s pure
   `read_version`/`versions_equal`/`bump_dev_version` logic via the
@@ -1372,6 +1398,29 @@ covers the composites directly rather than the reusable workflows as a
 whole, which is exactly the gap gha#390's own review found in
 `version-check.yml` (a checkout resolving against the *calling* repo rather
 than gha's own; see Layout above).
+
+`.github/actions/inject-canonical-urls/tests/test_inject_canonical_urls.py`
+covers the canonical injector (see Layout above) offline, generating its HTML
+fixtures into `tmp_path` rather than committing them -- committed HTML under a
+tests directory gets swept into the `bib` and `phi` jobs' repo-wide scans, the
+same trap the `test-coverage` R-package fixture records below.
+CI runs it as the `canonical-urls` job in `_selftest.yml`, kept separate from
+`altdoc-docs` so a failure is attributable at a glance.
+That job also calls the composite through two real `uses: ./...` steps -- one
+release-style, one preview-style -- the `github.action_path`-resolution proof
+`run-review-guard`'s own e2e steps give, and the one thing the unit tests
+cannot reach, since they call the script directly and so cannot see whether
+`action.yml` wires its inputs through at all.
+Six mutations were confirmed to turn the suite red, and the first is the one to
+keep if it is ever trimmed: making the canonical always point at `/latest-tag/`
+regardless of whether the page exists there.
+That is the issue's own open decision point, and the failure it produces is
+silent -- a canonical to a 404 looks fine in the generated HTML and is only
+wrong at the indexer.
+The others cover dropping the `404.html` exclusion, dropping the
+already-tagged skip, canonicalizing a preview instead of marking it `noindex`,
+dropping the base-URL trailing-slash normalization, and dropping the `https://`
+guard.
 
 The `altdoc-docs` job in `_selftest.yml` exercises
 `generate-altdoc-version-dropdown`, `generate-altdoc-landing-page`, and
