@@ -10,7 +10,8 @@ already include the right `permissions:` blocks; copy them as-is.
 
 ## Per-workflow grants
 
-- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi` need only
+- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
+  `spellcheck` need only
   `contents: read` (the default), so no `permissions:` block is needed.
 - `check-links` opens an issue on `main` failures, so grant `issues: write`,
   `pull-requests: read`, `contents: read`.

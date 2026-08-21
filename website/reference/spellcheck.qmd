@@ -43,9 +43,8 @@ jobs:
     #   install-quarto: 'auto'
 ```
 
-See
-[`examples/spellcheck.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/spellcheck.yml)
-for the full caller stub.
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for the full caller stub (`spellcheck.yml`).
 
 ## Why it sets up R instead of running in a container
 

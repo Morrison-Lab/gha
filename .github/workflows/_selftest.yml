@@ -313,10 +313,10 @@ jobs:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
           # test fixtures that carry synthetic PHI-shaped strings by design (the
-          # detector unit tests, the coverage fixture generator's synthetic
-          # maintainer email, and check-new-line-breaks' throwaway git-repo
-          # test fixtures' placeholder git config email), which are skipped
-          # via paths-ignore below.
+          # detector unit tests, the coverage and spellcheck fixture
+          # generators' synthetic maintainer emails, and check-new-line-breaks'
+          # throwaway git-repo test fixtures' placeholder git config email),
+          # which are skipped via paths-ignore below.
           # This input REPLACES the default set rather than extending it, so a
           # detector added to DEFAULT_DETECTORS and not added here gets no
           # end-to-end coverage at all and the comment above quietly stops
@@ -326,6 +326,7 @@ jobs:
             check-phi/tests/**
             test-coverage/tests/**
             check-new-line-breaks/tests/**
+            spellcheck/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
