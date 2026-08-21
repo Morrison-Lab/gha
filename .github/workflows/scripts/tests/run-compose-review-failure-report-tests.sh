@@ -137,6 +137,22 @@ check_not_contains "one denial is not pluralized" '1 denied tool calls' "$out"
 out="$(run_compose high-denial 2 'Bashx2' 5)"
 check_contains "two denials are plural" '2 denied tool calls' "$out"
 
+# --- shell metacharacters in a denied command are inert and preserved -------
+# DENIED_TOOLS is assembled from the COMMANDS the reviewer attempted, so it is
+# agent-authored free text and routinely contains quotes, `$`, `;`, and
+# redirects -- gha#541's whole subject was a reviewer reaching for
+# `gh pr diff ... > /tmp/pr.diff`. The first draft of the calling workflow
+# interpolated it straight into a `run:` body with `${{ }}`, where a sample
+# carrying `$(...)` executed inside a job holding CLAUDE_CODE_OAUTH_TOKEN;
+# that is fixed by passing it through `env:` instead, which YAML cannot express
+# a test for here. What this case pins is the half that IS testable: the script
+# must render such a value verbatim, neither executing nor mangling it, so a
+# future rewrite reaching for `eval` or an unquoted expansion is caught.
+hostile='Bashx1 (sample: Bash: gh pr diff 1 > /tmp/d; echo $(id -un) & rm -rf "x")'
+out="$(run_compose high-denial 1 "$hostile" 5)"
+check_contains "shell metacharacters survive verbatim" "$hostile" "$out"
+check_not_contains "command substitution is not evaluated" "$(id -un 2>/dev/null)x_MARKER" "$out"
+
 # --- the report must stay ASCII ---------------------------------------------
 # check-non-standard-chars scans .qmd/.R/.md and so does not reach this script,
 # but the body it emits is posted as Markdown and its siblings

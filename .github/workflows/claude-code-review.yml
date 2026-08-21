@@ -892,6 +892,30 @@ jobs:
         shell: bash
         env:
           TOTAL_COST: ${{ steps.sum-cost.outputs.total }}
+          # The guard's diagnostic outputs reach the script through `env:`,
+          # NEVER through `${{ }}` interpolated into the run body beside the
+          # `outcome`/`stub_review` reads below. Those two are constrained to
+          # 'success'/'failure'/'true'/'' by the runner and by the guard, so
+          # inlining them is safe. `denied_tools` is not: it is assembled from
+          # the DENIED COMMANDS the reviewer attempted (`gh pr diff 1 > /tmp/d`
+          # and the like), so it is agent-authored free text, and inlining it
+          # would let a denied command carrying `"` or `$(...)` break or
+          # execute inside a job that holds CLAUDE_CODE_OAUTH_TOKEN. An env
+          # assignment is substituted by the runner rather than parsed by
+          # bash, so the value cannot escape its variable.
+          #
+          # `denials`/`max_denials` are numeric and `failure_kind` is a fixed
+          # vocabulary, so neither needs this; they ride along so that one rule
+          # covers the whole group and nobody has to re-derive which member was
+          # the dangerous one.
+          FC_KIND: ${{ steps.fail-check.outputs.failure_kind }}
+          FC_DENIALS: ${{ steps.fail-check.outputs.denials }}
+          FC_DENIED_TOOLS: ${{ steps.fail-check.outputs.denied_tools }}
+          FC_MAX_DENIALS: ${{ steps.fail-check.outputs.max_denials }}
+          FCR_KIND: ${{ steps.fail-check-retry.outputs.failure_kind }}
+          FCR_DENIALS: ${{ steps.fail-check-retry.outputs.denials }}
+          FCR_DENIED_TOOLS: ${{ steps.fail-check-retry.outputs.denied_tools }}
+          FCR_MAX_DENIALS: ${{ steps.fail-check-retry.outputs.max_denials }}
         run: |
           set -euo pipefail
           if [[ "${{ steps.preflight-quota.outputs.quota_exhausted }}" == "true" ]]; then
@@ -929,10 +953,10 @@ jobs:
           # classified the run (gha#543). Attribution and classification are
           # separate questions, and only the first is this step's to answer.
           if [[ "${{ steps.fail-check-retry.outcome }}" == "failure" ]]; then
-            attempt_kind="${{ steps.fail-check-retry.outputs.failure_kind }}"
-            attempt_denials="${{ steps.fail-check-retry.outputs.denials }}"
-            attempt_denied_tools="${{ steps.fail-check-retry.outputs.denied_tools }}"
-            attempt_max_denials="${{ steps.fail-check-retry.outputs.max_denials }}"
+            attempt_kind="$FCR_KIND"
+            attempt_denials="$FCR_DENIALS"
+            attempt_denied_tools="$FCR_DENIED_TOOLS"
+            attempt_max_denials="$FCR_MAX_DENIALS"
             if [[ "${{ steps.fail-check-retry.outputs.stub_review }}" == "true" ]]; then
               echo "::error::Attempt 1 failed and the retry ALSO ended without a verdict with a low denial count — treating as a failed review."
             elif [[ "${{ steps.fail-check-retry.outputs.action_short_circuit }}" == "true" ]]; then
@@ -952,10 +976,10 @@ jobs:
             attempt_max_denials=""
             echo "::error::Attempt 1 produced a stub review or short-circuited and the retry ran but never produced a checkable execution file — treating as a failed review."
           else
-            attempt_kind="${{ steps.fail-check.outputs.failure_kind }}"
-            attempt_denials="${{ steps.fail-check.outputs.denials }}"
-            attempt_denied_tools="${{ steps.fail-check.outputs.denied_tools }}"
-            attempt_max_denials="${{ steps.fail-check.outputs.max_denials }}"
+            attempt_kind="$FC_KIND"
+            attempt_denials="$FC_DENIALS"
+            attempt_denied_tools="$FC_DENIED_TOOLS"
+            attempt_max_denials="$FC_MAX_DENIALS"
             if [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
               echo "::error::Attempt 1 produced a stub review (gha#185's low-denial signature) but the retry itself did not run to completion — treating as a failed review."
             elif [[ "${{ steps.fail-check.outputs.action_short_circuit }}" == "true" ]]; then

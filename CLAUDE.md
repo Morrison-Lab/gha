@@ -460,6 +460,25 @@ which is why the capabilities above moved to `@v2`.
   problem gha#303 pinned a test against.
   The guard emits `max_denials`, and an empty value drops the threshold clause
   rather than substituting a number nobody compared against.
+  **`denied_tools` reaches the calling script through `env:`, never through
+  `${{ }}` in a `run:` body.**
+  It is assembled from the commands the reviewer attempted, so it is
+  agent-authored free text that routinely carries quotes, `$`, `;`, and
+  redirects -- gha#541's whole subject was a reviewer reaching for
+  `gh pr diff ... > /tmp/pr.diff`.
+  The first draft of `Resolve final review outcome` interpolated it inline
+  beside the `outcome` and `stub_review` reads already there, which is safe for
+  those two (the runner and the guard constrain them to a fixed vocabulary) and
+  is arbitrary command execution for this one: a sample carrying `$(...)` runs
+  inside a job holding `CLAUDE_CODE_OAUTH_TOKEN`, and needs no quote-breaking to
+  do it, since command substitution happens inside the double-quoted assignment.
+  Reproduced directly rather than reasoned about, and closed by an `env:`
+  assignment, which the runner substitutes rather than bash parsing it.
+  `denials`, `max_denials`, and `failure_kind` ride along under the same rule
+  even though none of them needs it, so nobody has to re-derive which member of
+  the group was the dangerous one.
+  The YAML half cannot be unit-tested, so the composer's suite pins the half
+  that can: such a value must render verbatim, neither executed nor mangled.
   **The run URL is load-bearing rather than decoration.**
   `claude-code-review.yml`'s collapse step matches comments by the
   `actions/runs/<id>` link in their body, so without it every failed round
