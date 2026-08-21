@@ -77,6 +77,7 @@ jobs:
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
     #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   trusted-bot-logins: '["cursor[bot]"]'  # admit App bots the caller if: also allows
+    #   dispatch-on-assignee: '["claude"]'     # assigning an issue dispatches a run, no mention needed
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources

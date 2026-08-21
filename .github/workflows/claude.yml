@@ -217,6 +217,29 @@ on:
           never invoked.
         type: string
         default: '[]'
+      dispatch-on-assignee:
+        description: >-
+          JSON array of GitHub logins for which an `issues.assigned` event
+          dispatches a run on its own, with NO `@claude` mention required
+          anywhere in the issue -- the assignment IS the request, the way
+          Copilot's assign-to-agent flow works (gha#298). Empty (`[]`) by
+          default, so assignment changes nothing for a consumer that does not
+          opt in.
+
+          Gates on the ASSIGNEE rather than on whoever did the assigning,
+          because the `issues.assigned` payload carries no
+          `author_association` for the sender -- checking the assigner's
+          write access would need an API call from inside the job, after the
+          gate has already let the run start. Note that GitHub lets a `triage`
+          collaborator assign, so this admits a slightly wider set of actors
+          than the OWNER/MEMBER/COLLABORATOR gate the mention path uses; the
+          allowlist is what bounds it.
+
+          Purely additive: an assigned issue whose body or title mentions
+          `@claude` already dispatches through the clause below, and still
+          does regardless of this input.
+        type: string
+        default: '[]'
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
@@ -259,6 +282,7 @@ jobs:
       (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.comment.user.login))) ||
       (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.review.user.login))) ||
       (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association) || contains(fromJSON(inputs.trusted-bot-logins), github.event.issue.user.login))) ||
+      (github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON(inputs.dispatch-on-assignee), github.event.assignee.login)) ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule'
 
@@ -402,16 +426,35 @@ jobs:
       # means that step did not run (workflow_dispatch/schedule, or a step
       # failure), and the run must proceed: a genuine request that goes
       # unanswered is a far worse outcome than an unnecessary run.
+      #
+      # An allowlisted `issues.assigned` run is exempt from the mention check,
+      # and the exemption is load-bearing rather than tidy-up (gha#298).
+      # `detect-bot-mention` is fed the issue body and title on `issues`
+      # events, and an assigned issue that never mentions the bot has no
+      # mention to find -- so it returns exactly the `false` this gate skips
+      # on. Measured, not assumed: piping a mention-free body to
+      # detect-bot-mention.sh prints `false`. Splitting the job-level `if:`
+      # WITHOUT this would admit the event at the gate and then discard it one
+      # step later, silently, with no comment on the issue -- a trigger that
+      # can never fire.
+      #
+      # Scoped to the assignment case alone: the quoted-mention gate this
+      # exempts from exists to stop a code span dispatching a run (gha#342,
+      # gha#343), and it keeps that job unchanged for every other event.
       - name: Decide whether this run should proceed
         id: gate
         env:
           DEDUP_SKIP: ${{ steps.dedup.outputs.skip }}
           MENTION_MATCH: ${{ steps.mention.outputs.match }}
+          ASSIGNMENT_TRIGGER: ${{ github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON(inputs.dispatch-on-assignee), github.event.assignee.login) }}
         run: |
           set -euo pipefail
           if [ "$DEDUP_SKIP" = "true" ]; then
             echo "Standing down: this comment was already handled by an active run."
             echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ "$ASSIGNMENT_TRIGGER" = "true" ]; then
+            echo "Proceeding: this issue was assigned to an allowlisted assignee, which is itself the request -- no @claude mention is expected or required."
+            echo "skip=false" >> "$GITHUB_OUTPUT"
           elif [ "$MENTION_MATCH" = "false" ]; then
             echo "Standing down: every @claude mention here sits inside a code span, a fenced block, or a blockquote, so it is being quoted rather than invoked."
             echo "skip=true" >> "$GITHUB_OUTPUT"
