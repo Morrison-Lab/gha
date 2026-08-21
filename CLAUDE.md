@@ -716,9 +716,9 @@ reusable-workflow chain" precedent `phi` uses above.
 
 **Running that check locally before a push proves nothing about files you have
 not committed yet, and it reports them as clean rather than as unchecked.**
-`find_added_lines` diffs `"$base_ref"..."HEAD"`, so its population is the
-**commit graph** -- a staged file is invisible to it, and an untracked one
-doubly so.
+`_added_line_numbers` (called from `find_violations`) diffs
+`"$base_ref"..."HEAD"`, so its population is the **commit graph** -- a staged
+file is invisible to it, and an untracked one doubly so.
 Nothing in the output distinguishes "checked, no violations" from "there was
 nothing to check", which is what makes it misread rather than merely miss:
 
@@ -728,9 +728,11 @@ NLB_BASE_REF=origin/main python3 check-new-line-breaks/check-new-line-breaks.py
 # -> No lines missing semantic breaks.        (it examined zero added lines)
 ```
 
-So commit first, then run it with `NLB_BASE_REF=$(git merge-base origin/main HEAD)`
--- which is also the ref the `new-line-breaks` job passes, so a local pass then
-means what the CI pass will mean.
+So commit first.
+The ref itself needs no special care: `A...HEAD` is three-dot, which git
+resolves to the merge-base of `A` and `HEAD`, so `NLB_BASE_REF=origin/main`
+already means what the `new-line-breaks` job's own merge-base SHA means.
+Committing is the whole of the fix.
 Measured on gha#544: a local run over a staged changelog fragment reported
 clean, and CI flagged three lines in that same file on the very next push.
 This is the general verify-the-right-artifact trap in
