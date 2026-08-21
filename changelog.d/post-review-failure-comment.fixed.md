@@ -8,9 +8,11 @@
   thread it was indistinguishable from a reviewer that had not started yet.
   The new comment names the failure, the denied tools, and the cost, and links
   the run.
+
 - `claude-code-review`: record the cost of a review that produced no verdict.
   It was written only on the paths where a review succeeded, so the spend on
   exactly the runs that wasted it was the spend that went unrecorded.
+
 - `check-review-execution.sh`: add `failure_kind`, `denied_tools`, and
   `max_denials` outputs.
   The denied tool names reached the job log and an annotation in
