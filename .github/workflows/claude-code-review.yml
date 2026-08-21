@@ -494,6 +494,58 @@ jobs:
           apt-packages: ${{ inputs.apt-packages }}
           pip-packages: ${{ inputs.pip-packages }}
 
+      # Hand the reviewer the diff as a FILE, so it never has to build one.
+      #
+      # `Bash(gh pr diff:*)` is allowed, but a command chaining it with a
+      # redirect or pipe is rejected as a whole, and the agent cannot write a
+      # file itself -- /tmp and a mkdir-created directory are both hard blocks
+      # in that sandbox, not permission prompts. So a reviewer that wants the
+      # diff in a file to chunk or count it has no route to one, and what it
+      # does instead is retry variants of the same redirect until the denial
+      # count crosses the stub-retry threshold and the run ends with no
+      # verdict. Measured three times: ucdavis/win#78 run 32415477507 (15+
+      # variants, 33 denials, $2.29), gha#543's own reproduction (6 denials,
+      # $3.42), and gha#555 run 32526051617 (8 denials, $4.95) -- the last of
+      # these with the prompt paragraph forbidding exactly that construction
+      # already live at @v2, which is why this is a step rather than another
+      # rewording (gha#541, gha#543; CLAUDE.md's "A prompt instruction is a
+      # request; a permission rule is a constraint").
+      #
+      # Written into the workspace rather than $RUNNER_TEMP because the agent
+      # reads relative to its working directory, and dot-prefixed so it reads
+      # as tooling rather than as repository content; the prompt tells the
+      # reviewer to ignore it when listing changed files.
+      #
+      # A failure here is NOT fatal: the reviewer keeps the bare `gh pr diff`
+      # route it has today, so the worst case is the behaviour that exists now
+      # rather than a red check. The partial file is removed first, so a
+      # truncated diff can never be read as a complete one, and `path` stays
+      # empty so the prompt falls back instead of naming a file that is not
+      # there.
+      - name: Save the PR diff for the reviewer
+        id: prdiff
+        if: steps.selfmod.outputs.self_mod != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          DIFF_NAME: .claude-review-pr.diff
+        run: |
+          set -uo pipefail
+          target="$GITHUB_WORKSPACE/$DIFF_NAME"
+          if gh pr diff "$PR_NUMBER" --repo "$REPO" > "$target" && [ -s "$target" ]; then
+            # ABSOLUTE, because Claude Code's Read tool requires an absolute
+            # `file_path`. A workspace-relative path would cost the reviewer a
+            # resolution step to reach the file this whole change exists to put
+            # in front of it (gha#567 review).
+            echo "path=$target" >> "$GITHUB_OUTPUT"
+            echo "Saved the PR diff for the reviewer: $target ($(wc -c < "$target") bytes)."
+          else
+            rm -f "$target"
+            echo "path=" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not save the PR diff to $target; the reviewer will fall back to calling gh pr diff itself."
+          fi
+
       # Clear the requested reviewers (human and AI, e.g. Copilot) before
       # Claude runs so they aren't notified mid-run, then re-add them when
       # Claude finishes so the re-add fires a fresh notification — letting a
@@ -731,6 +783,7 @@ jobs:
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
+          pr-diff-file: ${{ steps.prdiff.outputs.path }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}
@@ -838,6 +891,7 @@ jobs:
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
+          pr-diff-file: ${{ steps.prdiff.outputs.path }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
           show-full-output: ${{ inputs.show-full-output }}

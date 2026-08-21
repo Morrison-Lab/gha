@@ -43,6 +43,18 @@ inputs:
       pr-state above. See pr-state's description.
     required: false
     default: ''
+  pr-diff-file:
+    description: >-
+      Absolute path of a file holding the PR's diff, written by
+      claude-code-review.yml before this action runs. Absolute because Claude
+      Code's Read tool requires an absolute `file_path`. Naming it in the prompt
+      is the point: the reviewer wants the diff in a file so it can chunk or
+      count a large one, and its only route to that was a redirect the sandbox
+      rejects, so it spent whole runs retrying variants until the denial count
+      starved it (gha#541, gha#543). Empty when the write failed, in which
+      case the prompt falls back to the bare-command instructions below.
+    required: false
+    default: ''
   latexmacros-guidance:
     description: >-
       LaTeX-macro review guidance, from claude-code-review.yml's Compose
@@ -365,6 +377,16 @@ runs:
           have and still finish by writing out your findings and the explicit
           ### Verdict line required below -- do not end the run silently or
           wait for approval.
+
+          ${{ inputs.pr-diff-file != '' && format('The complete PR diff has
+          already been saved for you at `{0}`, an absolute path you can
+          pass straight to Read. READ THAT FILE. It is the whole diff, it costs no Bash
+          call, and you can read it in parts if it is large. The workflow
+          wrote it before you started, so it is not yours to create and it is
+          not part of the change under review -- ignore it when listing
+          changed files. Reach for the `gh pr diff` command below only if you
+          need something this file does not contain, such as a diff against a
+          different base.', inputs.pr-diff-file) || '' }}
 
           To read the PR diff, call `gh pr diff <number> --repo
           <owner>/<repo>` BARE -- no `>` redirect, no `|` pipe, no `;`/`&&`
