@@ -10,8 +10,9 @@
   reviewer gave up" rather than as a permissions gap with a specific fix.
   Token-shaped literals in the sample are redacted.
   A result carrying a positive count but no array reports that the names are
-  unavailable, and one whose count could not be parsed at all reports that
-  instead, rather than either being described as a run with named denials.
+  unavailable; one whose count could not be parsed at all reports that the
+  count itself is unknown.
+  Neither is described as a run with named denials.
   The summarizer's jq lookups are `?`-suppressed against a malformed denial
   entry (for example a string `tool_input`), which would otherwise abort the
   whole script before it classified the review at all.
