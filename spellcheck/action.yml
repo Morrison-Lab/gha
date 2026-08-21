@@ -1,0 +1,58 @@
+name: Spellcheck R package prose
+description: >-
+  Spellcheck an R package's prose (DESCRIPTION, .Rd, vignettes, NEWS) with the
+  {spelling} package, using the package's own inst/WORDLIST as the accepted
+  vocabulary. Wraps insightsengineering/r-spellcheck-action so consumers can
+  drop their bespoke check-spelling workflows.
+inputs:
+  path:
+    description: Path to the package root, relative to the repository.
+    default: '.'
+  exclude:
+    description: >-
+      Comma-separated files or folders to exclude from the spellcheck.
+      Accepts globs.
+    default: ''
+  additional-options:
+    description: Additional options passed to Rscript by the upstream action.
+    default: '--vanilla'
+  install-quarto:
+    description: Install Quarto when setting up R dependencies.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    # R is set up here rather than left to a container, which is the deliberate
+    # difference from the bespoke workflows this capability replaces. Those run
+    # `rocker/tidyverse`, but every other R capability in this repo uses
+    # r-lib/actions (see check-bibliography-dois), and matching the neighbours
+    # matters more than matching the thing being migrated: a consumer already
+    # paying for setup-r in its other jobs gets a warm cache here, and a
+    # container image does not.
+    #
+    # The upstream action's own steps run under `shell: Rscript {0}`, so R has
+    # to be on PATH before it is reached -- it installs {spelling} itself but
+    # cannot install R.
+    - name: Set up R
+      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        use-public-rspm: true
+
+    # {spelling} is declared here rather than left to the upstream action's own
+    # `if (!require("spelling")) install.packages(...)`. Both work; this one
+    # goes through setup-r-dependencies, so it is cached across runs and uses
+    # the public RSPM binaries rather than compiling from CRAN source on every
+    # invocation. The upstream install then finds it present and no-ops.
+    - name: Set up R dependencies
+      uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        install-quarto: ${{ inputs.install-quarto }}
+        packages: |
+          any::spelling
+
+    - name: Spellcheck
+      uses: insightsengineering/r-spellcheck-action@33b8e19df4227812758fadd88d50b710c7620e1f # v3.0.3
+      with:
+        path: ${{ inputs.path }}
+        exclude: ${{ inputs.exclude }}
+        additional_options: ${{ inputs.additional-options }}

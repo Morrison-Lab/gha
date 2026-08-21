@@ -1,0 +1,45 @@
+name: Spellcheck (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Path to the package root, relative to the repository.
+        type: string
+        default: '.'
+      exclude:
+        description: >-
+          Comma-separated files or folders to exclude from the spellcheck.
+          Accepts globs.
+        type: string
+        default: ''
+      additional-options:
+        description: Additional options passed to Rscript by the upstream action.
+        type: string
+        default: '--vanilla'
+      install-quarto:
+        description: Install Quarto when setting up R dependencies.
+        type: string
+        default: 'false'
+      runs-on:
+        description: Runner label for the job.
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  spellcheck:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Spellcheck
+        uses: Morrison-Lab/gha/spellcheck@v2
+        with:
+          path: ${{ inputs.path }}
+          exclude: ${{ inputs.exclude }}
+          additional-options: ${{ inputs.additional-options }}
+          install-quarto: ${{ inputs.install-quarto }}
