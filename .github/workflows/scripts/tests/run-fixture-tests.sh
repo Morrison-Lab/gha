@@ -243,6 +243,76 @@ declare -A expected_cost=(
   [permission-denials-malformed-entries.json]=1.25
 )
 
+# gha#543: which failure each non-zero exit reports. claude-code-review.yml's
+# review-failure comment is written from this, so a wrong kind produces a
+# confidently wrong explanation on the PR -- a worse outcome than the silence
+# it replaced, and one nothing else in this suite can see (the exit code and
+# stub_review are identical across `hard-error`, `no-output`, and
+# `high-denial`).
+#
+# Asserted for EVERY fixture, not only the failing ones: a `pass` or `skip`
+# fixture must write no failure_kind at all, since a stale kind left on a
+# clean run is what would let the comment describe a failure that did not
+# happen.
+declare -A expected_kind=(
+  [stub-pr171-waiting-background-agents.json]=stub
+  [stub-pr171-remaining-review-agents.json]=stub
+  [stub-sparta590-scheduled-wakeup.json]=stub
+  [stub-sparta590-unnecessary-call.json]=stub
+  [denied-bash-comment-not-trusted.json]=stub
+  [permission-denials-array-only-low-count.json]=stub
+  [permission-denials-malformed-entries.json]=stub
+  [stub-gha198-high-denial-count.json]=high-denial
+  [permission-denials-array-only-high-count.json]=high-denial
+  [permission-denials-mixed-tools.json]=high-denial
+  # A denied `gh pr comment` leaves the count non-zero but unparseable/known
+  # -- these reach the no-verdict branch, and which side of the threshold
+  # they land on is what decides the kind. Both carry the 999999 sentinel,
+  # which is above it.
+  [is-error-success-denied-comment-null-denials.json]=hard-error
+  [denied-comment-null-denials-not-trusted.json]=high-denial
+  [is-error-result.json]=hard-error
+  [is-error-success-no-verdict.json]=hard-error
+  [empty-review-text.json]=no-output
+  [short-circuit-no-result.json]=short-circuit
+  [claim-comment-deferred-review.json]=deferred
+  [claim-comment-deferred-verdict-only.json]=deferred
+)
+
+# gha#543: `max_denials` is emitted so the review-failure comment can quote
+# the threshold this run actually compared against, instead of restating the
+# script's default in a second file (the two-declarations-of-one-default
+# problem gha#303 pinned a test against).
+#
+# Asserted as an INVARIANT rather than per fixture: it is written immediately
+# after `denials`, unconditionally, so the two must always co-occur. Keying on
+# that relationship rather than on a per-fixture table means a fixture added
+# later cannot forget to declare it -- and it pins the value, so a caller
+# reading an empty output and silently falling back to a hard-coded 5 would
+# still be caught here rather than on a live review.
+assert_max_denials() {
+  local output_file="$1"
+  local denials max_denials
+  denials="$(sed -n 's/^denials=//p' "$output_file" | tail -1)"
+  max_denials="$(sed -n 's/^max_denials=//p' "$output_file" | tail -1)"
+  if [[ -z "$denials" ]]; then
+    # Exited before the denial count was computed (no result object, or an
+    # early quota skip). Neither output should be present.
+    [[ -z "$max_denials" ]]
+  else
+    [[ "$max_denials" == "5" ]]
+  fi
+}
+
+assert_kind() {
+  local fixture="$1" output_file="$2"
+  local want="${expected_kind[$fixture]:-}" got
+  # tail -1: the script appends, and a fixture that trips two branches would
+  # otherwise compare against the first. Only the last write is the verdict.
+  got="$(sed -n 's/^failure_kind=//p' "$output_file" | tail -1)"
+  [[ "$got" == "$want" ]]
+}
+
 assert_cost() {
   local fixture="$1" output_file="$2"
   local want="${expected_cost[$fixture]:-}" got
@@ -309,6 +379,16 @@ for fixture in "${!expected[@]}"; do
   if [[ "$ok" == "true" ]] && ! assert_cost "$fixture" "$output_file"; then
     ok=false
     echo "::error::fixture $fixture: total_cost_usd mismatch (want ${expected_cost[$fixture]}, got $(sed -n 's/^total_cost_usd=//p' "$output_file"))"
+  fi
+
+  if [[ "$ok" == "true" ]] && ! assert_max_denials "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: max_denials must accompany denials (denials=[$(sed -n 's/^denials=//p' "$output_file" | tail -1)], max_denials=[$(sed -n 's/^max_denials=//p' "$output_file" | tail -1)])"
+  fi
+
+  if [[ "$ok" == "true" ]] && ! assert_kind "$fixture" "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: failure_kind mismatch (want [${expected_kind[$fixture]:-}], got [$(sed -n 's/^failure_kind=//p' "$output_file" | tail -1)])"
   fi
 
   if [[ "$ok" == "true" ]] && ! assert_log "$fixture" "$log_file"; then

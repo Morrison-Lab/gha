@@ -41,6 +41,30 @@ outputs:
       The permission_denials_count from the execution result (or sentinel
       999999 if missing/unparseable).
     value: ${{ steps.run.outputs.denials }}
+  max_denials:
+    description: >-
+      The stub-retry threshold this run actually compared its denial count
+      against (STUB_RETRY_MAX_DENIALS, default 5). Emitted so a caller quoting
+      the threshold in a report cannot restate a default that was overridden.
+    value: ${{ steps.run.outputs.max_denials }}
+  failure_kind:
+    description: >-
+      Which failure this attempt hit, on every path that exits non-zero:
+      `short-circuit`, `hard-error`, `no-output`, `stub`, `high-denial`, or
+      `deferred`. Per-attempt, like `stub_review` and `action_short_circuit`
+      beside it -- deciding which attempt's kind stands is the caller's job
+      (gha#543).
+    value: ${{ steps.run.outputs.failure_kind }}
+  denied_tools:
+    description: >-
+      Single-line summary of WHICH tools were denied, in the same wording
+      gha#544 added to the job log ("Taskx6 Bashx3 (sample: ...)"), or one of
+      the two wordings meaning the names could not be recovered. Empty means
+      the run had zero denials -- a different fact from "denials occurred and
+      could not be named", so a caller must not collapse the two. Set on every
+      exit path, so a caller gated on this step having FAILED can still read
+      it (gha#543).
+    value: ${{ steps.run.outputs.denied_tools }}
   action_short_circuit:
     description: >-
       'true' when the run failed because the action short-circuited before

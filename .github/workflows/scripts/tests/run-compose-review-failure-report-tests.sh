@@ -1,0 +1,170 @@
+#!/usr/bin/env bash
+# Offline table tests for compose-review-failure-report.sh (gha#543).
+#
+# What is worth testing here, and what is not. The script emits prose, and
+# asserting prose word-for-word produces a suite that fails on every wording
+# change while catching nothing. So the table asserts two things only:
+#
+#   1. The OUTPUT CONTRACT, by fixed line offset -- `kind=`, `headline=`, a
+#      blank line, then the body. report-review-failure/action.yml reads those
+#      three by `sed -n '1s/...'`, `sed -n '2s/...'`, and `tail -n +4`, so a
+#      reordering breaks it silently, exactly as
+#      run-classify-push-failure-tests.sh says of its own four-part contract.
+#   2. The CLAIMS a reader would act on -- which failure kind was chosen, and
+#      whether the denied-tool line says names / none / not recorded. Those are
+#      the sentences that send a triager somewhere, and getting one wrong is
+#      the whole failure mode this report exists to prevent.
+#
+# The denied-tools trio is the part to keep if this suite is ever trimmed. Its
+# three cases are one fact each, and the middle one is the trap: DENIALS empty
+# (a short-circuited run, where the guard exited before counting) must NOT
+# render as "none", which would assert the reviewer was not blocked by
+# permissions on a run where nothing about permissions is known.
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPOSE="$SCRIPT_DIR/../compose-review-failure-report.sh"
+
+failures=0
+checks=0
+
+check() {
+  local label="$1" expected="$2" actual="$3"
+  checks=$((checks + 1))
+  if [[ "$expected" != "$actual" ]]; then
+    printf 'FAIL: %s\n  expected: %s\n  actual:   %s\n' "$label" "$expected" "$actual"
+    failures=$((failures + 1))
+  fi
+}
+
+check_contains() {
+  local label="$1" needle="$2" haystack="$3"
+  checks=$((checks + 1))
+  if [[ "$haystack" != *"$needle"* ]]; then
+    printf 'FAIL: %s\n  missing: %s\n' "$label" "$needle"
+    failures=$((failures + 1))
+  fi
+}
+
+check_not_contains() {
+  local label="$1" needle="$2" haystack="$3"
+  checks=$((checks + 1))
+  if [[ "$haystack" == *"$needle"* ]]; then
+    printf 'FAIL: %s\n  unexpectedly present: %s\n' "$label" "$needle"
+    failures=$((failures + 1))
+  fi
+}
+
+run_compose() {
+  FAILURE_KIND="${1:-}" DENIALS="${2:-}" DENIED_TOOLS="${3:-}" \
+  MAX_DENIALS="${4:-}" TOTAL_COST="${5:-}" ATTEMPTS="${6:-}" \
+    bash "$COMPOSE"
+}
+
+# --- kind normalization -----------------------------------------------------
+# Every kind check-review-execution.sh can emit must survive unchanged; only a
+# value it cannot emit normalizes. A kind silently rewritten to `unknown` would
+# print generic advice under a specific headline, which is worse than either.
+for kind in high-denial stub short-circuit hard-error no-output deferred; do
+  out="$(run_compose "$kind" 0)"
+  check "kind passthrough: $kind" "kind=$kind" "$(sed -n 1p <<<"$out")"
+done
+for bogus in "" "nonsense" "HIGH-DENIAL"; do
+  out="$(run_compose "$bogus" 0)"
+  check "kind normalizes: '${bogus}'" "kind=unknown" "$(sed -n 1p <<<"$out")"
+done
+
+# --- output contract, by fixed line offset ---------------------------------
+out="$(run_compose high-denial 12 'Taskx6 Bashx3' 5 1.77 1)"
+check "line 1 is kind=" "kind=high-denial" "$(sed -n 1p <<<"$out")"
+check_contains "line 2 is headline=" "headline=Claude review did not finish" "$(sed -n 2p <<<"$out")"
+check "line 3 is blank" "" "$(sed -n 3p <<<"$out")"
+check_contains "body starts at line 4" "has not been reviewed" "$(tail -n +4 <<<"$out")"
+
+# The headline reaches a Markdown alert title (`> **...**`), which a newline
+# would break out of. Assert there is exactly one headline= line and that
+# nothing after it on that line wrapped.
+check "exactly one headline line" "1" "$(grep -c '^headline=' <<<"$out")"
+
+# --- the denied-tools trio --------------------------------------------------
+# 1. Names known: quote them. This is the gha#540 payload, and carrying it to
+#    the PR is the reason this report was worth building.
+out="$(run_compose high-denial 12 'Taskx6 Bashx3' 5)"
+check_contains "denied names are quoted" '**Denied tools:** `Taskx6 Bashx3`' "$out"
+
+# 2. A real zero: say none, positively.
+out="$(run_compose hard-error 0 '')"
+check_contains "zero denials says none" '**Denied tools:** none.' "$out"
+
+# 3. No denial data at all (the short-circuit path, where the guard exits
+#    before counting). Must NOT claim none -- that is a false statement about
+#    permissions on a run that never measured them.
+out="$(run_compose short-circuit '' '')"
+check_contains "absent denial data is reported as unrecorded" '**Denied tools:** not recorded.' "$out"
+check_not_contains "absent denial data does not claim none" '**Denied tools:** none.' "$out"
+
+# --- the 999999 sentinel is not a number of denials -------------------------
+# The guard hands over a non-empty DENIED_TOOLS wording for the unparseable
+# case, so the sentinel must never be printed as a count.
+out="$(run_compose high-denial 999999 'unknown -- the denial count itself could not be parsed' 5)"
+check_not_contains "sentinel is never printed as a count" '999999 denied tool calls' "$out"
+
+# --- the threshold is quoted only when it is known --------------------------
+# Restating the guard's default here would print a threshold nobody compared
+# against whenever STUB_RETRY_MAX_DENIALS was overridden and the value failed
+# to arrive.
+out="$(run_compose high-denial 12 'Taskx6' 9)"
+check_contains "threshold quotes the value passed" 'threshold of `9`' "$out"
+out="$(run_compose high-denial 12 'Taskx6' '')"
+check_not_contains "no threshold clause when unknown" 'stub-retry threshold' "$out"
+check_contains "denial count still reported without a threshold" '12 denied tool calls' "$out"
+
+# --- cost -------------------------------------------------------------------
+out="$(run_compose stub 1 'Bashx1' 5 3.20 2)"
+check_contains "cost is reported" 'across 2 attempts' "$out"
+out="$(run_compose stub 1 'Bashx1' 5 1.00 1)"
+check_contains "single attempt is not pluralized" 'across 1 attempt,' "$out"
+out="$(run_compose stub 1 'Bashx1' 5 '' '')"
+check_not_contains "no cost line when cost is unknown" '**Cost:**' "$out"
+
+# --- singular/plural on the denial count ------------------------------------
+# Asserted as "not plural" rather than as a fixed following character: what
+# follows the count depends on whether a threshold clause comes next, so
+# anchoring on the punctuation would test the threshold branch by accident.
+out="$(run_compose high-denial 1 'Bashx1' 5)"
+check_contains "one denial is singular" '1 denied tool call' "$out"
+check_not_contains "one denial is not pluralized" '1 denied tool calls' "$out"
+out="$(run_compose high-denial 2 'Bashx2' 5)"
+check_contains "two denials are plural" '2 denied tool calls' "$out"
+
+# --- the report must stay ASCII ---------------------------------------------
+# check-non-standard-chars scans .qmd/.R/.md and so does not reach this script,
+# but the body it emits is posted as Markdown and its siblings
+# (classify-push-failure.sh, classify-gemini-failure.sh) are ASCII-only. Pin it
+# rather than leaving it to a checker that does not run here.
+out="$(run_compose high-denial 12 'Taskx6' 5 1.77 1)"
+checks=$((checks + 1))
+if LC_ALL=C grep -q '[^[:print:][:space:]]' <<<"$out"; then
+  printf 'FAIL: report body contains non-ASCII characters\n'
+  failures=$((failures + 1))
+fi
+
+# --- every kind produces a non-empty, distinct headline ---------------------
+# A kind whose headline duplicated another's would misdescribe the failure
+# while looking fine in isolation.
+seen=""
+for kind in high-denial stub short-circuit hard-error no-output deferred unknown; do
+  headline="$(run_compose "$kind" 0 | sed -n '2s/^headline=//p')"
+  checks=$((checks + 1))
+  if [[ -z "$headline" ]]; then
+    printf 'FAIL: %s has an empty headline\n' "$kind"
+    failures=$((failures + 1))
+  elif [[ "$seen" == *"|$headline|"* ]]; then
+    printf 'FAIL: %s reuses another kind'"'"'s headline: %s\n' "$kind" "$headline"
+    failures=$((failures + 1))
+  fi
+  seen="$seen|$headline|"
+done
+
+printf '\n%d checks, %d failures\n' "$checks" "$failures"
+[[ "$failures" -eq 0 ]]

@@ -992,6 +992,125 @@ jobs:
   # failure here is attributable at a glance, matching this file's existing
   # one-capability-per-job granularity (phi-tests/new-line-breaks-tests are
   # already split from their parent jobs the same way).
+  # gha#543: the review-failure comment claude-code-review.yml posts when a
+  # review run finishes without a usable verdict. Kept as its own job rather
+  # than folded into review-fail-check, so a failure here is attributable at a
+  # glance -- the same one-capability-per-job split phi-tests /
+  # new-line-breaks-tests / gemini-review-fail-check already use.
+  review-failure-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run compose-review-failure-report tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-compose-review-failure-report-tests.sh
+      # Two real `uses:` calls, proving report-review-failure's own
+      # github.action_path resolution of compose-review-failure-report.sh works
+      # end-to-end. The offline table above calls the script directly, so it
+      # cannot see whether action.yml wires its inputs through at all -- the
+      # gap that let #191's job_workflow_ref regression through fixture tests
+      # (gha#196), and the reason every sibling composite here has an e2e step
+      # beside its unit tests.
+      #
+      # dry-run: true so this neither comments on a real PR nor stamps an
+      # annotation onto a passing selftest job, the same reasoning
+      # report-push-failure's and report-gemini-failure's e2e steps give.
+      #
+      # claude-code-review.yml's own consumption of this action via @v2 is not
+      # exercised here -- the documented, accepted bootstrap gap
+      # run-claude-review-attempt and request-dependabot-review also have
+      # (CLAUDE.md): @v2 does not resolve until advanced past this PR's merge.
+      - name: Exercise report-review-failure on a high-denial failure
+        id: failure-high-denial
+        uses: ./.github/actions/report-review-failure
+        with:
+          failure-kind: high-denial
+          pr-number: '1'
+          denials: '12'
+          denied-tools: 'Taskx6 Bashx3 WebFetchx3 (sample: Task: review one file)'
+          max-denials: '5'
+          total-cost-usd: '1.77551245'
+          attempts: '1'
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert the high-denial report named its tools and its cost
+        shell: bash
+        env:
+          KIND: ${{ steps.failure-high-denial.outputs.kind }}
+          BODY_FILE: ${{ steps.failure-high-denial.outputs.body-file }}
+          POSTED: ${{ steps.failure-high-denial.outputs.posted }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "high-denial" ]]; then
+            echo "::error::expected kind=high-denial, got '$KIND'"
+            exit 1
+          fi
+          if [[ "$POSTED" != "false" ]]; then
+            echo "::error::a dry run must report posted=false, got '$POSTED'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-review-failure produced no comment body"
+            exit 1
+          fi
+          # The three things the comment exists to carry, checked on the real
+          # composed body rather than on the script's stdout: the CAUTION alert
+          # the caller renders, the denied tool names (gha#540's payload, and
+          # the reason carrying this to the PR is worth the plumbing), and the
+          # run link -- which is not decoration, since claude-code-review.yml's
+          # collapse step matches comments by their `actions/runs/<id>` link
+          # and would otherwise never fold this one.
+          for needle in '> [!CAUTION]' 'Taskx6 Bashx3 WebFetchx3' '1.77551245' 'https://example.invalid/run'; do
+            if ! grep -qF "$needle" "$BODY_FILE"; then
+              echo "::error::composed body is missing: $needle"
+              cat "$BODY_FILE"
+              exit 1
+            fi
+          done
+          echo "report-review-failure composed the high-denial report correctly"
+      # The second call is not a duplicate of the first: it pins the
+      # normalization path, which is the only judgment the composite makes for
+      # itself. An unrecognized kind must come back as `unknown` and get
+      # generic advice, rather than being echoed into a headline that
+      # confidently misdescribes the failure.
+      - name: Exercise report-review-failure on an unrecognized kind
+        id: failure-unknown
+        uses: ./.github/actions/report-review-failure
+        with:
+          failure-kind: not-a-real-kind
+          pr-number: '1'
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert an unrecognized kind normalizes rather than being echoed
+        shell: bash
+        env:
+          KIND: ${{ steps.failure-unknown.outputs.kind }}
+          BODY_FILE: ${{ steps.failure-unknown.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "unknown" ]]; then
+            echo "::error::expected an unrecognized kind to normalize to 'unknown', got '$KIND'"
+            exit 1
+          fi
+          if grep -qF 'not-a-real-kind' "$BODY_FILE"; then
+            echo "::error::the unrecognized kind was echoed into the comment body"
+            cat "$BODY_FILE"
+            exit 1
+          fi
+          # No denial data was passed, so the report must not claim there were
+          # none -- that would assert the reviewer was not blocked by tool
+          # permissions on a run that never measured them.
+          if ! grep -qF '**Denied tools:** not recorded.' "$BODY_FILE"; then
+            echo "::error::absent denial data must be reported as unrecorded, not as none"
+            cat "$BODY_FILE"
+            exit 1
+          fi
+          echo "report-review-failure normalized the unrecognized kind correctly"
+
   gemini-review-fail-check:
     runs-on: ubuntu-latest
     timeout-minutes: 20

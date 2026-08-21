@@ -420,6 +420,55 @@ which is why the capabilities above moved to `@v2`.
   Tests section below for the offline coverage and the `_selftest.yml`
   end-to-end proof.)
 
+- `.github/actions/report-review-failure/` -- wraps
+  `scripts/compose-review-failure-report.sh`, which builds the comment
+  `claude-code-review.yml` posts when a review run finishes without a usable
+  verdict (gha#543).
+  Before it, every posting step in that workflow was gated on
+  `steps.resolve-final.outcome == 'success'`, so a no-verdict review skipped
+  all four together -- the quota notice, the review comment, the cost comment,
+  and the collapse step.
+  The run spent real money, reddened `require-review`, and left the PR thread
+  silent, which from the thread is indistinguishable from a reviewer that has
+  not started yet.
+  The same silent-thread class gha#360 fixed for the push path and gha#379 for
+  the Gemini path.
+  Four things constrain any change to it.
+  **The script composes; it does not classify.**
+  Its two siblings are handed raw error text and must work out what happened,
+  whereas here `check-review-execution.sh` has already decided and
+  `Resolve final review outcome` has already picked which attempt's decision
+  stands.
+  So `failure_kind` is an input, and re-deriving it in the workflow would be a
+  second copy of one classification, free to drift out of step with the first.
+  The script's only judgment about the kind is to normalize an unrecognized
+  value to `unknown`, which is why `kind=` is echoed back rather than dropped:
+  the caller reports the kind actually used, so a normalization is visible
+  instead of silent.
+  **The denied-tool line is three-valued, not two.**
+  Names known, a real zero, and no denial data at all are different facts, and
+  only the middle one licenses the sentence a reader will act on.
+  A short-circuited run exits before the guard ever counts denials, so the
+  count arrives empty there -- rendering that as "none" would assert the
+  reviewer was not blocked by permissions on a run where nothing about
+  permissions is known, and would send a triager to the wrong place.
+  This is the same distinction `check-review-execution.sh` draws with its own
+  `denials_known` flag.
+  **The threshold is passed through, never restated.**
+  `STUB_RETRY_MAX_DENIALS` is overridable, so a hard-coded `5` here would be
+  right only until someone overrode it -- the two-declarations-of-one-default
+  problem gha#303 pinned a test against.
+  The guard emits `max_denials`, and an empty value drops the threshold clause
+  rather than substituting a number nobody compared against.
+  **The run URL is load-bearing rather than decoration.**
+  `claude-code-review.yml`'s collapse step matches comments by the
+  `actions/runs/<id>` link in their body, so without it every failed round
+  would leave its own permanent, unfoldable copy on the PR.
+  That collapse step is gated on this action's `posted` output rather than on
+  the failure itself, mirroring gha#434's own fix: folding the previous run's
+  notice after a failed post would leave the PR with no explanation at all,
+  which is the outcome this action exists to prevent.
+
 - `.github/actions/trigger-bugbot-review/` -- wraps
   `scripts/trigger-bugbot-review.sh`, which POSTs a PR URL to
   `https://api.cursor.com/bugbot/review` and fails unless the API returns
@@ -1311,6 +1360,54 @@ split `phi-tests`/`new-line-breaks-tests` already use.
 As with `report-push-failure`, `gemini.yml`'s/`gemini-code-review.yml`'s own
 consumption of this composite via `@v2` is not covered here -- it does not
 resolve until `@v2` is advanced past this capability's merge.
+
+`.github/workflows/scripts/tests/run-compose-review-failure-report-tests.sh`
+exercises `compose-review-failure-report.sh` (see Layout above) offline.
+The script emits prose, and asserting prose word-for-word produces a suite that
+fails on every wording change while catching nothing, so the table asserts two
+things only: the four-part output contract by fixed line offset (the same
+reasoning `run-classify-push-failure-tests.sh` gives for its own), and the
+claims a reader would act on -- which kind was chosen, and whether the
+denied-tool line says names, none, or not recorded.
+The denied-tools trio is the group to keep if the suite is ever trimmed, and
+its middle case is the trap: an empty denial count must not render as "none",
+since that asserts something about permissions on a run that never measured
+them.
+Six mutations were confirmed to turn it red rather than assumed to -- collapsing
+"not recorded" into "none", dropping the contract's blank line, restoring the
+duplicated `5` default, accepting any kind verbatim, giving two kinds the same
+headline, and printing the 999999 sentinel as a count.
+CI runs it as the `review-failure-report` job in `_selftest.yml`, kept separate
+from `review-fail-check` so a failure is attributable at a glance -- the same
+one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.
+That job also calls `report-review-failure` through two real `uses:` steps with
+`dry-run: true`, for the `github.action_path`-resolution proof the other
+composite e2e steps give plus the one thing the offline table cannot reach,
+since it calls the script directly and so cannot see whether `action.yml` wires
+its inputs through at all.
+The second of those two steps is not a duplicate of the first: it pins
+normalization, the only judgment the composite makes for itself.
+As with `report-push-failure`, `claude-code-review.yml`'s own consumption of
+this composite via `@v2` is not covered here -- it does not resolve until `@v2`
+is advanced past this capability's merge.
+
+`run-fixture-tests.sh` gained two assertions alongside it, and the second is
+the one worth reading.
+`failure_kind` is asserted for **every** fixture rather than only the failing
+ones, because a stale kind left on a clean run is what would let the comment
+describe a failure that did not happen; the exit code and `stub_review` are
+identical across `hard-error`, `no-output`, and `high-denial`, so nothing else
+in that suite can tell those three apart.
+`max_denials` is asserted as an **invariant** instead of per fixture -- it is
+written immediately after `denials`, unconditionally, so the two must always
+co-occur.
+Keying on that relationship rather than on a table means a fixture added later
+cannot forget to declare it, and it pins the value, so a caller reading an
+empty output and silently falling back to a hard-coded `5` is caught here
+rather than on a live review.
+The first draft asserted `failure_kind` alone, and dropping the `max_denials`
+write was confirmed to pass under it -- an unasserted new output is exactly
+what regresses in silence.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
