@@ -86,8 +86,15 @@ saw_run_comment=false
 matched_reason=""
 
 while IFS= read -r -d '' body; do
+  # Anchored on a NON-DIGIT boundary, not a bare substring. A run URL ends in a
+  # plain numeric id, and one id can be a numeric prefix of another --
+  # `.../runs/325256962` is a substring of `.../runs/3252569628` -- so an
+  # unanchored match lets a failure comment about a DIFFERENT run decide this
+  # one. The test table's prefix-collision case is the regression guard;
+  # the older `another run is ignored` case cannot catch it, since its run id
+  # shares no prefix with ours (gha#571 review).
   case "$body" in
-    *"$RUN_URL"*) ;;
+    *"$RUN_URL"|*"$RUN_URL"[!0-9]*) ;;
     *) continue ;;
   esac
   saw_run_comment=true

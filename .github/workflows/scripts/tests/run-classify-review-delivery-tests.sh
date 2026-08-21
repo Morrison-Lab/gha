@@ -11,6 +11,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$HERE/../classify-review-delivery.sh"
 RUN_URL="https://github.com/Morrison-Lab/gha/actions/runs/32525696286"
 OTHER_RUN="https://github.com/Morrison-Lab/gha/actions/runs/99999999999"
+# A run id that has ours as a numeric PREFIX. An unanchored substring match
+# treats a comment about this run as a comment about ours (gha#571 review).
+PREFIX_RUN="${RUN_URL}7"
 
 failures=0
 checked=0
@@ -94,6 +97,18 @@ check "previous round failure plus this round verdict" true no-failure-marker \
 ### Verdict
 
 **Ready for merge.**"
+
+# --- the prefix collision the older negative cannot reach: this run id has
+#     ours as a numeric prefix, so an unanchored match would let its failure
+#     marker decide our run.
+check "failure marker on a numerically-prefixed run is ignored" true no-comment-names-this-run \
+  "> **Claude review skipped --- API credential or quota unavailable.** [View run]($PREFIX_RUN)"
+
+# --- and the boundary must still admit our own run when the URL ends the line
+check "run URL at end of body still matches" true no-failure-marker \
+  "Some report text.
+
+[View run]($RUN_URL)"
 
 # --- an agent that emits no marker at all (cursor) is indistinguishable from a
 #     run that posted nothing, and must keep today's accept-on-success behaviour
