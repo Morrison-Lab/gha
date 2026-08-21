@@ -1,0 +1,176 @@
+name: Report a review that produced no verdict
+
+description: >-
+  Post a comment on the PR when a Claude review run finished without a usable
+  verdict, so the failure is visible from the thread rather than only from the
+  run log (gha#543). claude-code-review.yml gates every one of its posting
+  steps on "Resolve final review outcome" having succeeded, so before this
+  action a no-verdict review left the PR completely silent -- indistinguishable
+  from a reviewer that had not started yet, while `require-review` went red and
+  the spend went unrecorded. The same silent-thread class gha#360 fixed for the
+  push path and gha#379 for the Gemini path.
+
+  Meant to be called from a step gated on the resolve step having FAILED, e.g.
+  `if: always() && steps.resolve-final.outcome == 'failure'`. Requires
+  `pull-requests: write` (or `issues: write`) on the calling job.
+
+inputs:
+  failure-kind:
+    description: >-
+      Which failure the caller resolved: `high-denial` (gha#198's signature --
+      no verdict, denial count above the stub-retry threshold, deliberately not
+      retried), `stub` (gha#185's -- no verdict on both attempts at a low denial
+      count), `short-circuit` (gha#368 -- no execution file or no result
+      object), or `hard-error` (an SDK-level error state). Anything else is
+      normalized to `unknown` and gets generic advice rather than a wrong story.
+    required: true
+  pr-number:
+    description: >-
+      PR number to comment on. Goes through `gh pr comment`, matching the
+      sibling posting steps in claude-code-review.yml. Leave empty to skip the
+      comment and report only through the run log.
+    required: false
+    default: ''
+  denials:
+    description: >-
+      run-review-guard's `denials` output. May be the 999999 sentinel, which
+      means the count could not be PARSED rather than "a great many" -- the
+      report renders that as unknown rather than as a number.
+    required: false
+    default: ''
+  denied-tools:
+    description: >-
+      run-review-guard's `denied_tools` output: which tools were denied, and a
+      sample argument per tool. This is the single most useful field in the
+      report, and the reason gha#544's names are worth carrying past the job
+      log (gha#540).
+    required: false
+    default: ''
+  max-denials:
+    description: >-
+      run-review-guard's `max_denials` output: the stub-retry threshold the
+      guard actually compared this run's denial count against. Passed through
+      rather than restated so the report cannot quote a default that
+      STUB_RETRY_MAX_DENIALS overrode. Empty is fine -- the report then omits
+      the threshold clause instead of substituting a number nobody used.
+    required: false
+    default: ''
+  total-cost-usd:
+    description: Cost summed across attempts, from the caller's "Sum attempt costs" step.
+    required: false
+    default: ''
+  attempts:
+    description: How many review attempts ran ('1' or '2').
+    required: false
+    default: ''
+  run-url:
+    description: Link to the workflow run, included in the comment.
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used to post the comment. Needs `pull-requests: write`.'
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: >-
+      Compose the report and write it to `body-file` without posting it. Exists
+      so `_selftest.yml` can exercise this action end to end -- proving it
+      resolves compose-review-failure-report.sh through `github.action_path` --
+      without commenting on a real PR, the same reasoning report-push-failure's
+      and report-gemini-failure's own `dry-run` inputs give.
+    required: false
+    default: 'false'
+
+outputs:
+  kind:
+    description: >-
+      The NORMALIZED kind actually used, which differs from `failure-kind` when
+      the caller passed something unrecognized. Surfaced so that normalization
+      is visible rather than silent.
+    value: ${{ steps.report.outputs.kind }}
+  body-file:
+    description: Path to the composed comment body.
+    value: ${{ steps.report.outputs.body-file }}
+  posted:
+    description: >-
+      'true' when a comment was actually posted. The caller's collapse step
+      gates on this rather than on the failure itself, mirroring how gha#434's
+      own fix gates on `skip-notice.outputs.posted`: folding the previous run's
+      comment after a FAILED post would leave the PR with no explanation at
+      all, which is the outcome this action exists to prevent.
+    value: ${{ steps.report.outputs.posted }}
+
+runs:
+  using: composite
+  steps:
+    - name: Compose and post the review-failure report
+      id: report
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        # Named explicitly rather than inferred from a git remote, matching
+        # report-push-failure/report-gemini-failure/open-failure-issue: the
+        # caller's checkout need not be the repository being commented on, and
+        # on this path there may be no checkout at all.
+        GH_REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        RUN_URL: ${{ inputs.run-url }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        FAILURE_KIND: ${{ inputs.failure-kind }}
+        DENIALS: ${{ inputs.denials }}
+        DENIED_TOOLS: ${{ inputs.denied-tools }}
+        MAX_DENIALS: ${{ inputs.max-denials }}
+        TOTAL_COST: ${{ inputs.total-cost-usd }}
+        ATTEMPTS: ${{ inputs.attempts }}
+        # Callers run against their own checkout, not Morrison-Lab/gha's tree,
+        # so the helper is located through github.action_path -- the same
+        # resolution run-review-guard/report-push-failure/report-gemini-failure
+        # use, and the one gha#196 showed job_workflow_ref cannot be trusted for.
+        COMPOSE_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/compose-review-failure-report.sh
+      run: |
+        set -euo pipefail
+
+        composed="$(bash "$COMPOSE_SCRIPT")"
+        kind="$(sed -n '1s/^kind=//p' <<<"$composed")"
+        headline="$(sed -n '2s/^headline=//p' <<<"$composed")"
+        advice="$(tail -n +4 <<<"$composed")"
+        echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+        body_file="$(mktemp)"
+        echo "body-file=$body_file" >> "$GITHUB_OUTPUT"
+        {
+          printf '> [!CAUTION]\n> **%s**\n\n' "$headline"
+          printf '%s\n' "$advice"
+          if [[ -n "$RUN_URL" ]]; then
+            # The run URL is not decoration here: claude-code-review.yml's
+            # collapse step matches comments by the `actions/runs/<id>` link in
+            # their body, so without it this comment would never be folded and
+            # every failed round would leave its own permanent copy on the PR.
+            printf '\n[View run](%s)\n' "$RUN_URL"
+          fi
+        } > "$body_file"
+
+        # Default the output explicitly. An unset `posted` and a `posted=false`
+        # read the same to the caller's `== 'true'` gate, but only one of them
+        # is a statement; writing it keeps the dry-run and no-PR-number paths
+        # from looking like a step that never ran.
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo "posted=false" >> "$GITHUB_OUTPUT"
+          echo "::notice::[dry-run] Would comment on #${PR_NUMBER:-<none>} (kind=$kind); body written to $body_file"
+          exit 0
+        fi
+        if [[ -z "$PR_NUMBER" ]]; then
+          echo "posted=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::No PR number given; the review failure is reported only in this run log."
+          exit 0
+        fi
+        # A failed comment must not mask the underlying review failure. The
+        # caller's own resolve step has already emitted the `::error::` and
+        # already failed the job, so this action never decides the outcome --
+        # exactly the split report-gemini-failure documents for its own post.
+        if gh pr comment "$PR_NUMBER" --body-file "$body_file"; then
+          echo "posted=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "posted=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Could not post the review-failure report to #${PR_NUMBER}."
+        fi

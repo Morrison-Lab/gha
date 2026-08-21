@@ -243,6 +243,101 @@ declare -A expected_cost=(
   [permission-denials-malformed-entries.json]=1.25
 )
 
+# gha#543: which failure each non-zero exit reports. claude-code-review.yml's
+# review-failure comment is written from this, so a wrong kind produces a
+# confidently wrong explanation on the PR -- a worse outcome than the silence
+# it replaced, and one nothing else in this suite can see (the exit code and
+# stub_review are identical across `hard-error`, `no-output`, and
+# `high-denial`).
+#
+# Asserted for EVERY fixture, not only the failing ones: a `pass` or `skip`
+# fixture must write no failure_kind at all, since a stale kind left on a
+# clean run is what would let the comment describe a failure that did not
+# happen.
+declare -A expected_kind=(
+  [stub-pr171-waiting-background-agents.json]=stub
+  [stub-pr171-remaining-review-agents.json]=stub
+  [stub-sparta590-scheduled-wakeup.json]=stub
+  [stub-sparta590-unnecessary-call.json]=stub
+  [denied-bash-comment-not-trusted.json]=stub
+  [permission-denials-array-only-low-count.json]=stub
+  [permission-denials-malformed-entries.json]=stub
+  [stub-gha198-high-denial-count.json]=high-denial
+  [permission-denials-array-only-high-count.json]=high-denial
+  [permission-denials-mixed-tools.json]=high-denial
+  # A denied `gh pr comment` leaves the count non-zero but unparseable/known
+  # -- these reach the no-verdict branch, and which side of the threshold
+  # they land on is what decides the kind. Both carry the 999999 sentinel,
+  # which is above it.
+  [is-error-success-denied-comment-null-denials.json]=hard-error
+  [denied-comment-null-denials-not-trusted.json]=high-denial
+  [is-error-result.json]=hard-error
+  [is-error-success-no-verdict.json]=hard-error
+  [empty-review-text.json]=no-output
+  [short-circuit-no-result.json]=short-circuit
+  [claim-comment-deferred-review.json]=deferred
+  [claim-comment-deferred-verdict-only.json]=deferred
+)
+
+# gha#543: `max_denials` is emitted so the review-failure comment can quote
+# the threshold this run actually compared against, instead of restating the
+# script's default in a second file (the two-declarations-of-one-default
+# problem gha#303 pinned a test against).
+#
+# Asserted as an INVARIANT rather than per fixture: it is written immediately
+# after `denials`, unconditionally, so the two must always co-occur. Keying on
+# that relationship rather than on a per-fixture table means a fixture added
+# later cannot forget to declare it -- and it pins the value, so a caller
+# reading an empty output and silently falling back to a hard-coded 5 would
+# still be caught here rather than on a live review.
+assert_max_denials() {
+  local output_file="$1"
+  local denials max_denials
+  denials="$(sed -n 's/^denials=//p' "$output_file" | tail -1)"
+  max_denials="$(sed -n 's/^max_denials=//p' "$output_file" | tail -1)"
+  if [[ -z "$denials" ]]; then
+    # Exited before the denial count was computed (no result object, or an
+    # early quota skip). Neither output should be present.
+    [[ -z "$max_denials" ]]
+  else
+    [[ "$max_denials" == "5" ]]
+  fi
+}
+
+# gha#548 review, finding 8: `denied_tools` is written immediately after
+# `denials`, so the two must co-occur -- present together, or absent together.
+#
+# This pins a CONTRACT that was previously only asserted in prose, and asserted
+# wrongly: run-review-guard's own docs claimed the output was "set on every
+# exit path", which is false for the two short-circuit exits that return before
+# the denial count exists. Prose cannot be run; this can. The distinction
+# matters to a caller, because an ABSENT value means "never counted" while an
+# EMPTY-but-present one means "counted, and there were none" -- and only the
+# second licenses saying the reviewer was not blocked by permissions.
+#
+# Note `grep -q '^denied_tools='` rather than a non-empty check: the value is
+# legitimately empty on a zero-denial run, so presence and content are
+# different questions and only presence is the invariant here.
+assert_denied_tools_presence() {
+  local output_file="$1"
+  local denials
+  denials="$(sed -n 's/^denials=//p' "$output_file" | tail -1)"
+  if [[ -z "$denials" ]]; then
+    ! grep -q '^denied_tools=' "$output_file"
+  else
+    grep -q '^denied_tools=' "$output_file"
+  fi
+}
+
+assert_kind() {
+  local fixture="$1" output_file="$2"
+  local want="${expected_kind[$fixture]:-}" got
+  # tail -1: the script appends, and a fixture that trips two branches would
+  # otherwise compare against the first. Only the last write is the verdict.
+  got="$(sed -n 's/^failure_kind=//p' "$output_file" | tail -1)"
+  [[ "$got" == "$want" ]]
+}
+
 assert_cost() {
   local fixture="$1" output_file="$2"
   local want="${expected_cost[$fixture]:-}" got
@@ -311,6 +406,21 @@ for fixture in "${!expected[@]}"; do
     echo "::error::fixture $fixture: total_cost_usd mismatch (want ${expected_cost[$fixture]}, got $(sed -n 's/^total_cost_usd=//p' "$output_file"))"
   fi
 
+  if [[ "$ok" == "true" ]] && ! assert_max_denials "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: max_denials must accompany denials (denials=[$(sed -n 's/^denials=//p' "$output_file" | tail -1)], max_denials=[$(sed -n 's/^max_denials=//p' "$output_file" | tail -1)])"
+  fi
+
+  if [[ "$ok" == "true" ]] && ! assert_denied_tools_presence "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: denied_tools must be present exactly when denials is (denials=[$(sed -n 's/^denials=//p' "$output_file" | tail -1)], denied_tools present=[$(grep -c '^denied_tools=' "$output_file")])"
+  fi
+
+  if [[ "$ok" == "true" ]] && ! assert_kind "$fixture" "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: failure_kind mismatch (want [${expected_kind[$fixture]:-}], got [$(sed -n 's/^failure_kind=//p' "$output_file" | tail -1)])"
+  fi
+
   if [[ "$ok" == "true" ]] && ! assert_log "$fixture" "$log_file"; then
     ok=false
   fi
@@ -354,12 +464,64 @@ rm -f "$output_file"
 # strings, deliberately"). Generating it at test time is the same rule the
 # `test-coverage` R-package fixture follows, applied to the one input that
 # cannot be committed at all.
-redaction_fixture="$(mktemp)"
-# Only the 4-character prefix is a literal; the 36-character body -- the part
-# that makes a string token-SHAPED rather than merely token-prefixed -- is
-# generated, so nothing matching a credential pattern is ever committed.
-fake_token="ghp_$(printf 'A%.0s' {1..36})"
-cat > "$redaction_fixture" <<REDACTION_FIXTURE
+# Each credential shape gets its OWN run rather than sharing one fixture,
+# because the sample quotes one entry per tool GROUP capped at three groups --
+# so several denials sharing a tool name would leave all but the first unquoted,
+# and the assertion would pass without the pattern ever being exercised. That is
+# the vacuous-assertion shape this suite has already been caught by twice.
+#
+# Every secret is assembled from fragments at run time and none is committed:
+# `check-secrets` scans this repo's own history, so a credential-shaped literal
+# in a committed file trips that scan permanently, and deleting the file later
+# does not reach the commit that introduced it.
+#
+# The four shapes below the first two were added in gha#548 review round 2,
+# each measured leaking before the fix and redacted after. gha#543 is what made
+# them matter: this string now reaches an unmasked PR comment, where Actions'
+# secret masking -- the backstop that made GitHub-only coverage defensible when
+# the destination was a run log -- does not apply at all.
+_ghp="ghp_$(printf 'A%.0s' {1..36})"
+_ant="sk-ant-$(printf 'B%.0s' {1..40})"
+_finegrained="github_pat_$(printf 'C%.0s' {1..30})"
+_opaque="Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA=="
+_hexpat="$(printf 'a1b2c3d4%.0s' {1..5})"
+_urlpw="s3cr3tpassw0rdvalue"
+# The "@" is assembled at run time for the same reason the credentials are,
+# one layer over: `check-phi` runs across this repo's tree with the email
+# detector on, and a committed `<word>@<host>.<tld>` literal is email-shaped
+# whether or not it is a real address -- so the userinfo case below tripped
+# that job even though every secret in it is generated. Splitting the "@" out
+# keeps the committed file free of the shape, without blinding the phi scan to
+# this whole directory via paths-ignore. Measured: reproduced locally with
+# CI's own full detector set, fixed, re-run clean.
+_at="@"
+
+# label | secret that must not appear | the denied command carrying it
+redaction_cases=(
+  # These two carry their credential in a form NO other pattern can reach: not
+  # an Authorization header (the generic backstop would catch it) and not URL
+  # userinfo (the userinfo pattern would).
+  # Written that way, the generic header backstop below catches them, so
+  # deleting the vendor-prefix pattern they exist to test leaves the assertion
+  # passing -- confirmed by mutation, which is how this exact confound was
+  # caught here after being caught once already in a by-hand check. A test for
+  # pattern X must be reachable ONLY by pattern X.
+  "modern GitHub PAT|$_ghp|printf %s $_ghp > /tmp/token.txt"
+  "Anthropic key|$_ant|ANTHROPIC_API_KEY=$_ant python3 probe.py"
+  # Pre-existing pattern, previously untested -- the mutation sweep that
+  # isolated the new shapes found it had no case at all, so deleting it turned
+  # nothing red.
+  "fine-grained GitHub PAT|$_finegrained|printf %s $_finegrained > /tmp/pat.txt"
+  "lowercase scheme|$_opaque|curl -H 'authorization: bearer $_opaque' https://api.example.com"
+  "uppercase header|$_opaque|curl -H 'AUTHORIZATION: Bearer $_opaque' https://api.example.com"
+  "token scheme, legacy 40-hex PAT|$_hexpat|curl -H 'Authorization: token $_hexpat' https://api.github.com/x"
+  "URL userinfo|$_urlpw|git clone https://alice:${_urlpw}${_at}github.com/o/r.git"
+)
+
+for case in "${redaction_cases[@]}"; do
+  IFS='|' read -r label secret command <<< "$case"
+  fixture="$(mktemp)"; output_file="$(mktemp)"; log_file="$(mktemp)"
+  cat > "$fixture" <<REDACTION_FIXTURE
 [
   {"type": "system", "subtype": "init"},
   {"type": "assistant", "message": {"content": [{"type": "text",
@@ -368,26 +530,55 @@ cat > "$redaction_fixture" <<REDACTION_FIXTURE
    "num_turns": 9, "duration_ms": 60000, "total_cost_usd": 1.5,
    "permission_denials": [
      {"tool_name": "Bash", "tool_use_id": "toolu_1",
-      "tool_input": {"command": "curl -H 'Authorization: Bearer ${fake_token}' https://api.github.com/x"}}
+      "tool_input": {"command": "$command"}}
    ]}
 ]
 REDACTION_FIXTURE
-output_file="$(mktemp)"
-log_file="$(mktemp)"
+  set +e
+  GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixture" >"$log_file" 2>&1
+  set -e
+  if grep -qF "$secret" "$log_file"; then
+    echo "::error::redaction ($label): the credential reached the log unredacted"
+    grep -i 'Denied tools' "$log_file" || cat "$log_file"
+    failures=$((failures + 1))
+  elif ! grep -qF '***' "$log_file"; then
+    echo "::error::redaction ($label): expected a '***' marker in the denied-command sample; log said:"
+    grep -i 'Denied tools' "$log_file" || cat "$log_file"
+    failures=$((failures + 1))
+  else
+    echo "OK   <runtime redaction: $label>"
+  fi
+  rm -f "$fixture" "$output_file" "$log_file"
+done
+
+# The counterweight. Redaction that ate the diagnostic would pass every
+# assertion above while destroying the thing gha#540 added the names for, so
+# pin that an ordinary denied command survives untouched.
+fixture="$(mktemp)"; output_file="$(mktemp)"; log_file="$(mktemp)"
+cat > "$fixture" <<'BENIGN_FIXTURE'
+[
+  {"type": "system", "subtype": "init"},
+  {"type": "assistant", "message": {"content": [{"type": "text",
+    "text": "A tool call was denied while fetching the diff."}]}},
+  {"type": "result", "subtype": "success", "is_error": false,
+   "num_turns": 9, "duration_ms": 60000, "total_cost_usd": 1.5,
+   "permission_denials": [
+     {"tool_name": "Bash", "tool_use_id": "toolu_1",
+      "tool_input": {"command": "gh pr diff 548 --repo Morrison-Lab/gha"}}
+   ]}
+]
+BENIGN_FIXTURE
 set +e
-GITHUB_OUTPUT="$output_file" bash "$check_script" "$redaction_fixture" >"$log_file" 2>&1
+GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixture" >"$log_file" 2>&1
 set -e
-if grep -qF "$fake_token" "$log_file"; then
-  echo "::error::redaction fixture: the denied command's token reached the log unredacted"
-  failures=$((failures + 1))
-elif ! grep -qF "Bearer ***" "$log_file"; then
-  echo "::error::redaction fixture: expected the token to be replaced with '***'; log said:"
+if ! grep -qF 'gh pr diff 548 --repo Morrison-Lab/gha' "$log_file"; then
+  echo "::error::redaction over-reached: a benign denied command was altered"
   grep -i 'Denied tools' "$log_file" || cat "$log_file"
   failures=$((failures + 1))
 else
-  echo "OK   <runtime redaction fixture> (token redacted from the denied-command sample)"
+  echo "OK   <runtime redaction: benign command survives>"
 fi
-rm -f "$redaction_fixture" "$output_file" "$log_file"
+rm -f "$fixture" "$output_file" "$log_file"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of ${#expected[@]} fixture(s) did not behave as expected"

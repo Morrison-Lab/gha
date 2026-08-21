@@ -52,6 +52,24 @@
 #     error alike), also writes total_cost_usd=<value> to $GITHUB_OUTPUT —
 #     the run incurs cost regardless of how it concluded, and the caller
 #     (claude-code-review.yml) surfaces it in a PR comment (gha#219).
+#   - on every path that exits 1, first writes failure_kind=<kind> to
+#     $GITHUB_OUTPUT: `short-circuit`, `hard-error`, `no-output`, `stub`,
+#     `high-denial`, or `deferred`. This script is the thing that KNOWS which
+#     one happened, so it says so, rather than leaving claude-code-review.yml
+#     to re-derive it from the other outputs -- a second copy of one
+#     classification, free to drift out of step with this one, which is the
+#     problem detect-review-request.sh records at pattern scale. The kinds are
+#     per-ATTEMPT, like stub_review and action_short_circuit beside them; which
+#     attempt's kind stands is the caller's decision (gha#543).
+#   - whenever the denial count is readable, also writes denied_tools=<note>
+#     to $GITHUB_OUTPUT: the same single-line summary gha#544 added to the log
+#     ("Taskx6 Bashx3 (sample: ...)"), or one of the two wordings that mean the
+#     names could not be recovered. Empty means EITHER zero denials or a
+#     short-circuit exit that returned before anything was counted -- see the
+#     comment at the write site. claude-code-review.yml's review-failure comment
+#     carries it to the PR, so a recurrence of gha#198's signature names its
+#     denied tools on the thread rather than only in a downloaded execution
+#     artifact (gha#543).
 #
 # $GITHUB_OUTPUT is optional so this can run standalone in a test harness;
 # when unset, output assignments are silently dropped.
@@ -63,6 +81,7 @@ GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 if [[ ! -f "$EXECUTION_FILE" ]]; then
   echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
   echo "no_execution_file=true" >> "$GITHUB_OUTPUT"
+  echo "failure_kind=short-circuit" >> "$GITHUB_OUTPUT"
   echo "::error::Claude review produced no execution output (action short-circuit / setup failure; gha#368) — treating as a failed review."
   exit 1
 fi
@@ -71,6 +90,7 @@ result="$(jq -s 'flatten | map(select(.type=="result")) | last // empty' "$EXECU
 if [[ -z "$result" || "$result" == "null" ]]; then
   echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
   echo "no_result=true" >> "$GITHUB_OUTPUT"
+  echo "failure_kind=short-circuit" >> "$GITHUB_OUTPUT"
   echo "::error::No result object in execution output — review did not finish (action short-circuit; gha#368)."
   exit 1
 fi
@@ -189,6 +209,12 @@ else
   denials_known=false
 fi
 echo "denials=$denials" >> "$GITHUB_OUTPUT"
+# The threshold is emitted rather than left for a caller to restate. It is
+# overridable via STUB_RETRY_MAX_DENIALS, so a caller hard-coding "5" to quote
+# it in a report would be right only while nobody overrides it -- the
+# two-declarations-of-one-default problem gha#303 pinned a test against. Here
+# the fix is cheaper than a test: emit the value, and there is only one.
+echo "max_denials=$max_denials" >> "$GITHUB_OUTPUT"
 echo "permission_denials_count=$denials (max_denials=$max_denials)"
 # gha#540: the count on its own is not actionable. Two readers of the same
 # `permission_denials_count=24` warning reached a wrong cause for the failure
@@ -258,8 +284,48 @@ if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
                    // (.tool_name? // "unknown") )
                  | tostring
                  | gsub("[\n\r]"; " ")
+                 # Userinfo credentials first, because they are the one shape
+                 # reachable through the `.tool_input?.url?` fallback above
+                 # rather than through a command string, and nothing
+                 # downstream redacts -- the composer only fences and
+                 # truncates. `[^/@[:space:]]+` cannot cross a path separator,
+                 # so an ordinary URL carrying an `@` later in its path (a
+                 # `...@v2` action ref, a raw.githubusercontent path) is left
+                 # alone; verified against both directions rather than assumed.
+                 | gsub("://[^/@[:space:]]+@"; "://***@")
                  | gsub("gh[pousr]_[A-Za-z0-9_]{16,}"; "***")
                  | gsub("github_pat_[A-Za-z0-9_]{16,}"; "***")
+                 # The two patterns above were scoped for this string reaching
+                 # a run LOG, where Actions masking is a backstop. gha#543
+                 # changed the destination: it is now also posted to a PR
+                 # comment, which is not masked at all. So the shapes this very
+                 # job holds have to be covered too -- it carries
+                 # CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY, and a reviewer
+                 # attempting `curl -H "Authorization: Bearer sk-ant-..."` would
+                 # otherwise publish one verbatim (gha#548 review, finding 6).
+                 | gsub("sk-ant-[A-Za-z0-9_-]{16,}"; "***")
+                 # A generic backstop for a credential shape not enumerated
+                 # above, keyed on the header rather than on any vendor prefix.
+                 # Deliberately narrow -- an Authorization value specifically,
+                 # not any long token-ish string -- because over-redacting the
+                 # denied command destroys the diagnostic this line exists to
+                 # carry. Erring toward publishing a redaction marker is
+                 # cheap; erring toward publishing a live credential is not.
+                 #
+                 # The "i" flag is load-bearing, not tidiness. HTTP header
+                 # names and auth schemes are both case-insensitive (RFC 9110
+                 # / 7235), and the first draft wrote `[Aa]uthorization` with a
+                 # case-SENSITIVE `(Bearer|Basic)` -- which tolerated exactly
+                 # one letter of variation and leaked on `authorization:
+                 # bearer` and on `AUTHORIZATION:`. Measured, both before and
+                 # after (gha#548 review, round 2).
+                 #
+                 # `token` is in the alternation because it is the standard
+                 # GitHub PAT header form. The `gh[pousr]_` pattern above
+                 # already covers a modern PAT wherever it appears, so what
+                 # this adds is the LEGACY 40-hex PAT, which carries no prefix
+                 # for any vendor pattern to key on.
+                 | gsub("(?<h>authorization: *(bearer|basic|token) +)[A-Za-z0-9._~+/=-]{16,}"; "\(.h)***"; "i")
                  | if (. | length) > 120 then (.[0:117] + "...") else . end ) }
     ]
     | group_by(.tool)
@@ -313,6 +379,36 @@ elif [[ "$denials" != "0" ]]; then
   fi
   echo "Denied tools: $denied_note"
 fi
+# The same note, handed to the CALLER rather than only to the log. gha#544 put
+# the tool names in the job log and in the over-threshold `::warning::`; both
+# are places you have to open the run to reach. gha#543 is the case where that
+# is not enough: a no-verdict review posts nothing to the PR at all, so from
+# the thread there is no way to tell a reviewer that failed from one that has
+# not run yet. claude-code-review.yml's review-failure comment carries this
+# string, which is what makes the next recurrence answerable from the PR page
+# instead of from a downloaded execution artifact.
+#
+# Written unconditionally once the result has been parsed, which puts it before
+# every exit that reports on a review -- including the two that matter most
+# here, the no-verdict branch and the hard-error branch.
+#
+# NOT before every exit in the file, and the difference is worth stating rather
+# than rounding off. The two short-circuit exits at the top (no execution file,
+# no result object) return before the denial count exists at all, so they leave
+# this unset. That is correct: nothing about the run was parsed, so there is no
+# denial data to report -- but it does mean an empty value carries TWO
+# readings, "zero denials" and "never counted", where the "unknown" / "names
+# unavailable" wordings above carry a third, "denials occurred and could not be
+# named". A caller separates the first two by reading `denials`, which is `0`
+# in one and absent in the other; compose-review-failure-report.sh does exactly
+# that. (An earlier version of this comment claimed every exit path carries it,
+# which was false for those two -- gha#548 review, finding 8.)
+#
+# Single-line by construction: every branch feeding $denied_note either is a
+# literal above or comes out of the jq program, which gsubs newlines out of
+# both fields for exactly this reason. A multi-line value here would corrupt
+# $GITHUB_OUTPUT rather than merely look wrong.
+echo "denied_tools=$denied_note" >> "$GITHUB_OUTPUT"
 # review_text_file (posted to the PR) and all_text_file (the pass/fail scan
 # below) must draw from the exact same candidate blocks, or a verdict this
 # script recognizes as "posted" can differ from what the PR actually shows
@@ -429,11 +525,13 @@ if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
     echo "::warning::Claude review skipped -- the API returned 429 part-way through the review (quota or rate limit exhausted mid-run; gha#520). Re-trigger the review once the quota resets. API message: ${api_error_message:-<none>}"
     exit 0
   fi
+  echo "failure_kind=hard-error" >> "$GITHUB_OUTPUT"
   echo "::error::Claude review ended in an error state (is_error=$is_error, subtype=$subtype)."
   jq '.' <<< "$result" || true
   exit 1
 fi
 if [[ -z "$(tr -d '[:space:]' < "$all_text_file")" ]]; then
+  echo "failure_kind=no-output" >> "$GITHUB_OUTPUT"
   echo "::error::Claude review produced no review text — treating as a failed review."
   exit 1
 fi
@@ -449,8 +547,10 @@ if ! has_verdict "$all_text_file"; then
   echo "permission_denials_count=$denials (stub-retry max_denials=$max_denials)"
   if [[ "$denials" -le "$max_denials" ]]; then
     echo "stub_review=true" >> "$GITHUB_OUTPUT"
+    echo "failure_kind=stub" >> "$GITHUB_OUTPUT"
     echo "Claude review produced no verdict with low permission_denials_count ($denials <= $max_denials) — marking as a retryable stub review (gha#185)."
   else
+    echo "failure_kind=high-denial" >> "$GITHUB_OUTPUT"
     # The names ride along in the annotation itself, not just the log:
     # this is the one line a person triaging a red check reads without
     # opening the job log, and the count alone is what sent two readers to
@@ -470,6 +570,7 @@ verdict_section_file="$(mktemp)"
 awk 'BEGIN{found=0} tolower($0) ~ /^[[:space:]>*_#-]*verdict/ {found=1} found' \
   "$review_text_file" > "$verdict_section_file"
 if grep -qiE 'deferred.{0,40}hold off|honoring that request and stopping here without conducting|without conducting the review' "$verdict_section_file"; then
+  echo "failure_kind=deferred" >> "$GITHUB_OUTPUT"
   echo "::error::Claude review deferred because of a session-lock claim comment — claim comments block parallel pushes, not automated review (gha#527)."
   exit 1
 fi

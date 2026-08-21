@@ -892,6 +892,30 @@ jobs:
         shell: bash
         env:
           TOTAL_COST: ${{ steps.sum-cost.outputs.total }}
+          # The guard's diagnostic outputs reach the script through `env:`,
+          # NEVER through `${{ }}` interpolated into the run body beside the
+          # `outcome`/`stub_review` reads below. Those two are constrained to
+          # 'success'/'failure'/'true'/'' by the runner and by the guard, so
+          # inlining them is safe. `denied_tools` is not: it is assembled from
+          # the DENIED COMMANDS the reviewer attempted (`gh pr diff 1 > /tmp/d`
+          # and the like), so it is agent-authored free text, and inlining it
+          # would let a denied command carrying `"` or `$(...)` break or
+          # execute inside a job that holds CLAUDE_CODE_OAUTH_TOKEN. An env
+          # assignment is substituted by the runner rather than parsed by
+          # bash, so the value cannot escape its variable.
+          #
+          # `denials`/`max_denials` are numeric and `failure_kind` is a fixed
+          # vocabulary, so neither needs this; they ride along so that one rule
+          # covers the whole group and nobody has to re-derive which member was
+          # the dangerous one.
+          FC_KIND: ${{ steps.fail-check.outputs.failure_kind }}
+          FC_DENIALS: ${{ steps.fail-check.outputs.denials }}
+          FC_DENIED_TOOLS: ${{ steps.fail-check.outputs.denied_tools }}
+          FC_MAX_DENIALS: ${{ steps.fail-check.outputs.max_denials }}
+          FCR_KIND: ${{ steps.fail-check-retry.outputs.failure_kind }}
+          FCR_DENIALS: ${{ steps.fail-check-retry.outputs.denials }}
+          FCR_DENIED_TOOLS: ${{ steps.fail-check-retry.outputs.denied_tools }}
+          FCR_MAX_DENIALS: ${{ steps.fail-check-retry.outputs.max_denials }}
         run: |
           set -euo pipefail
           if [[ "${{ steps.preflight-quota.outputs.quota_exhausted }}" == "true" ]]; then
@@ -921,7 +945,22 @@ jobs:
           # empty result, or another stub that this time exceeded the
           # denial-count threshold), and misattributing that undercuts this
           # PR's own diagnosability goal (gha#201 review finding 2).
+          #
+          # Each branch also records which ATTEMPT's diagnosis stands, so the
+          # review-failure comment below describes the same failure this
+          # annotation does. The kind itself is never re-derived here: it comes
+          # from check-review-execution.sh, which is the thing that actually
+          # classified the run (gha#543). Attribution and classification are
+          # separate questions, and only the first is this step's to answer.
           if [[ "${{ steps.fail-check-retry.outcome }}" == "failure" ]]; then
+            attempt_kind="$FCR_KIND"
+            # Fall back to attempt 1's figures when the retry has none of its
+            # own -- it can short-circuit or error before the guard parses a
+            # result, and dropping the data then loses a diagnostic that
+            # exists, for the same reason as the branch below.
+            attempt_denials="${FCR_DENIALS:-$FC_DENIALS}"
+            attempt_denied_tools="${FCR_DENIED_TOOLS:-$FC_DENIED_TOOLS}"
+            attempt_max_denials="${FCR_MAX_DENIALS:-$FC_MAX_DENIALS}"
             if [[ "${{ steps.fail-check-retry.outputs.stub_review }}" == "true" ]]; then
               echo "::error::Attempt 1 failed and the retry ALSO ended without a verdict with a low denial count — treating as a failed review."
             elif [[ "${{ steps.fail-check-retry.outputs.action_short_circuit }}" == "true" ]]; then
@@ -930,14 +969,48 @@ jobs:
               echo "::error::Attempt 1 failed but the retry failed for a different reason (hard SDK error, empty output, or a no-verdict result above the denial-count threshold) — treating as a failed review."
             fi
           elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" ]]; then
+            # The retry ran but wrote no checkable execution file, so the guard
+            # never classified it and has no kind to offer. Name it here rather
+            # than letting it normalize to `unknown`: "no execution file" IS
+            # the short-circuit signature (gha#368), and this is the one branch
+            # where the workflow knows that and the guard could not.
+            attempt_kind="short-circuit"
+            # The KIND is the retry's; the denial data is not. Blanking these
+            # threw away whatever attempt 1 actually recorded, so a run whose
+            # first attempt reported `Taskx6 Bashx3 (sample: ...)` posted
+            # "Denied tools: not recorded" instead -- a false statement about
+            # the run, made because the LATER attempt is the one being blamed
+            # (gha#548 review round 2). Attribution of the failure and
+            # availability of the diagnostic are different questions.
+            attempt_denials="$FC_DENIALS"
+            attempt_denied_tools="$FC_DENIED_TOOLS"
+            attempt_max_denials="$FC_MAX_DENIALS"
             echo "::error::Attempt 1 produced a stub review or short-circuited and the retry ran but never produced a checkable execution file — treating as a failed review."
-          elif [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
-            echo "::error::Attempt 1 produced a stub review (gha#185's low-denial signature) but the retry itself did not run to completion — treating as a failed review."
-          elif [[ "${{ steps.fail-check.outputs.action_short_circuit }}" == "true" ]]; then
-            echo "::error::Attempt 1 failed due to action short-circuit / missing execution file (gha#368) but the retry itself did not run to completion — treating as a failed review."
           else
-            echo "::error::Claude review did not complete successfully and was not eligible for a stub-review retry (either a hard SDK error, empty output, or a no-verdict result above the denial-count threshold — see gha#198)."
+            attempt_kind="$FC_KIND"
+            attempt_denials="$FC_DENIALS"
+            attempt_denied_tools="$FC_DENIED_TOOLS"
+            attempt_max_denials="$FC_MAX_DENIALS"
+            if [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
+              echo "::error::Attempt 1 produced a stub review (gha#185's low-denial signature) but the retry itself did not run to completion — treating as a failed review."
+            elif [[ "${{ steps.fail-check.outputs.action_short_circuit }}" == "true" ]]; then
+              echo "::error::Attempt 1 failed due to action short-circuit / missing execution file (gha#368) but the retry itself did not run to completion — treating as a failed review."
+            else
+              echo "::error::Claude review did not complete successfully and was not eligible for a stub-review retry (either a hard SDK error, empty output, or a no-verdict result above the denial-count threshold — see gha#198)."
+            fi
           fi
+          {
+            echo "failure_kind=$attempt_kind"
+            echo "denials=$attempt_denials"
+            echo "denied_tools=$attempt_denied_tools"
+            echo "max_denials=$attempt_max_denials"
+            # Cost is written on THIS path too, not only on the three success
+            # paths above. A run that produced no review still spent the money,
+            # and "Post cost comment" is gated on resolve-final succeeding, so
+            # without this the spend on exactly the runs that wasted it is the
+            # spend that goes unrecorded (gha#543).
+            echo "total_cost_usd=$TOTAL_COST"
+          } >> "$GITHUB_OUTPUT"
           exit 1
 
       # When the API rejected the request before Claude could review (quota
@@ -953,6 +1026,48 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Claude review skipped — API credential or quota unavailable.** No \`CLAUDE_CODE_OAUTH_TOKEN\` or \`ANTHROPIC_API_KEY\` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset. [View run]($RUN_URL)"
+
+      # The mirror of the quota-exhausted notice above, for the case where the
+      # review RAN and still produced nothing usable. Without it every posting
+      # step downstream of "Resolve final review outcome" is gated on that step
+      # having succeeded, so a no-verdict review left the PR thread completely
+      # silent: no review, no cost record, and the previous round's review
+      # comment still expanded and reading like a current verdict. From the PR
+      # page that is indistinguishable from a reviewer that has not started yet
+      # (gha#543, reproduced on Morrison-Lab/wai#83).
+      #
+      # A status-check function is what makes this reachable at all:
+      # resolve-final exits 1, so an `if:` with none is implicitly ANDed with
+      # `success()` and would be skipped along with the rest.
+      #
+      # `!cancelled()` rather than `always()`, which also fires on a cancelled
+      # run. That case is the documented `cancel-in-progress` race, where a
+      # newer commit superseded this review and its own run is already under
+      # way -- so a "the review failed" comment there is noise about a run
+      # nobody is waiting on, and this repo double-pushes often enough
+      # (CLAUDE.md's own race section) that it would be frequent noise. Posting
+      # nothing on a supersede is the pre-existing, correct behaviour; the
+      # silence this action fixes is the one on a run that finished.
+      #
+      # This step never decides the job's outcome. resolve-final has already
+      # emitted the `::error::` and already failed it, and `require-review`
+      # stays red -- which is correct, and is the point. The comment explains
+      # the red check rather than clearing it, the same split
+      # report-gemini-failure documents for its own post.
+      - name: Post review-failure comment
+        id: failure-notice
+        if: "!cancelled() && steps.resolve-final.outcome == 'failure'"
+        uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
+        with:
+          failure-kind: ${{ steps.resolve-final.outputs.failure_kind }}
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          denials: ${{ steps.resolve-final.outputs.denials }}
+          denied-tools: ${{ steps.resolve-final.outputs.denied_tools }}
+          max-denials: ${{ steps.resolve-final.outputs.max_denials }}
+          total-cost-usd: ${{ steps.resolve-final.outputs.total_cost_usd }}
+          attempts: ${{ steps.claude-review-retry.outcome == 'skipped' && '1' || '2' }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       # In agent mode, display_report writes Claude's output to the step
       # summary, not to the PR. Post it manually here. Tag mode auto-posts
@@ -1076,11 +1191,44 @@ jobs:
       # post is best-effort, so folding the previous run's notice after a failed
       # post would leave the PR gray with no explanation at all -- gha#434's own
       # symptom, reproduced in one run.
+      #
+      # `!cancelled()` is load-bearing rather than tidiness. An `if:` carrying
+      # no status-check function is implicitly ANDed with `success()`, and the
+      # failure-notice disjunct is by construction only true once
+      # `Resolve final review outcome` has FAILED -- that step has no
+      # `continue-on-error`, so the job is already failing whenever the notice
+      # posts. Without a status function the new disjunct was therefore dead
+      # code, and every failed round would have left its own permanent,
+      # unfoldable comment beside the previous round's stale one: the exact
+      # accumulation this step exists to prevent (gha#548 review, finding 1).
+      #
+      # `!cancelled()` rather than `always()`, because a cancelled run is the
+      # documented `cancel-in-progress` race, not a failure worth folding
+      # around -- a newer commit's review is already in flight, and the
+      # "Explain and fold tracking comment when canceled" step below owns that
+      # case.
+      #
+      # The relaxed check is scoped to the failure-notice disjunct ALONE, and
+      # the other two keep an explicit `success()`. A first draft put
+      # `!cancelled()` in front of the whole expression, which relaxed all
+      # three -- and `steps.<id>.outcome` freezes when its step completes, so
+      # `resolve-final.outcome == 'success'` stays true even after a LATER
+      # step fails. "Post review comment" carries no `continue-on-error`, so a
+      # 422 or a rate limit there would have left this step folding the
+      # previous round's review while the current round posted nothing: zero
+      # expanded review comments on the thread, which is the very
+      # silent-thread class this PR exists to close, reopened on a different
+      # step (gha#548 review round 2).
+      #
+      # An `if:` containing any status function suppresses the implicit
+      # `success()`, so the explicit one is doing real work here rather than
+      # restating a default.
       - name: Collapse previous Claude review comments
         if: >-
-          steps.skip-notice.outputs.posted == 'true' ||
+          (!cancelled() && steps.failure-notice.outputs.posted == 'true') ||
+          (success() && (steps.skip-notice.outputs.posted == 'true' ||
           (steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true')
+          steps.resolve-final.outputs.quota_exhausted != 'true')))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
