@@ -14,7 +14,9 @@
 #
 # A consumer whose changelog uses a different taxonomy overrides the whole map
 # via ASSEMBLE_NEWS_HEADINGS (or a third positional argument): newline-separated
-# "category = Heading" pairs. When set, it defines the complete recognized
+# "category = Heading" pairs. A '#' comments out a line only when it starts the
+# line, so a heading may contain one. A category may not contain a dot, being a
+# single filename segment. When set, it defines the complete recognized
 # category set and the heading display order; several categories may share a
 # heading, which then takes the position of its first-listed category.
 #
@@ -40,10 +42,12 @@ declare -A heading_for=()
 parse_headings_spec() {
   local line category heading
   while IFS= read -r line; do
-    line="${line%%#*}"
     line="${line#"${line%%[![:space:]]*}"}"
     line="${line%"${line##*[![:space:]]}"}"
-    [ -n "$line" ] || continue
+    # Only a whole-line comment is a comment. Stripping from any '#' would
+    # truncate a heading that legitimately contains one ("C# interop" -> "C"),
+    # silently and with the fragment still collated.
+    case "$line" in ''|'#'*) continue ;; esac
 
     case "$line" in
       *=*) ;;
@@ -63,6 +67,17 @@ parse_headings_spec() {
       echo "::error::Malformed headings entry '$line'; expected 'category = Heading'." >&2
       exit 1
     fi
+
+    # A category is one segment of <slug>.<category>.md, so a dot in it is
+    # ambiguous: the pre-flight scan reads the last dot-segment while the
+    # collation glob matches the whole string, and a dotted category whose
+    # suffix is also configured collates the same fragment under both.
+    case "$category" in
+      *.*)
+        echo "::error::Category '$category' contains a dot; a category is a single filename segment." >&2
+        exit 1
+        ;;
+    esac
 
     if [ -n "${heading_for["$category"]:-}" ]; then
       echo "::error::Category '$category' is mapped more than once in the headings input." >&2
@@ -120,7 +135,12 @@ for f in "$frags_dir"/*.*.md; do
   base="${f##*/}"
   stem="${base%.md}"
   category="${stem##*.}"
-  [ -n "${heading_for["$category"]:-}" ] || unknown+=( "$f" )
+  # An empty category segment (`<slug>..md`) matches the glob above, and an
+  # empty associative-array subscript is a bash-internal fatal error rather
+  # than a lookup miss -- so it has to be caught before the lookup, not by it.
+  if [ -z "$category" ] || [ -z "${heading_for["$category"]:-}" ]; then
+    unknown+=( "$f" )
+  fi
 done
 shopt -u nullglob
 

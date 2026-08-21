@@ -79,6 +79,11 @@ defining both the complete set of recognized categories and the order the
 headings are written in. Several categories may share a heading, which then
 takes the position of its first-listed category.
 
+A `#` comments out a line only when it starts the line, so a heading may
+contain one (`csharp = C# interop`). A category may not contain a dot -- it is
+a single segment of `<slug>.<category>.md`, and a dotted one would collate the
+same fragment twice whenever its suffix is also configured.
+
 A fragment whose category is outside the active map fails the step, naming the
 offending files, rather than being skipped -- the check runs before anything is
 consumed, so a mixed batch fails without deleting the valid fragments beside it.

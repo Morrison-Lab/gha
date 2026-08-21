@@ -60,3 +60,10 @@ Several categories may map to the same heading -- as `added` and `feature` do
 by default -- and that heading then takes the position of its first-listed
 category.
 Leaving the input empty keeps the built-in behavior.
+A `#` comments out a line only when it **starts** the line,
+so a heading may contain one (`csharp = C# interop`).
+A category may not contain a dot:
+it is a single segment of `<slug>.<category>.md`,
+and a dotted one collates the same fragment twice
+when its suffix is also configured.
+

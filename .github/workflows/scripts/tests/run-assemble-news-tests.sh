@@ -161,4 +161,64 @@ fi
 
 echo "PASS: Test 7 - Malformed and duplicated headings entries are rejected"
 
+# Test 8: An empty category segment reports cleanly instead of crashing bash
+# (review round 1: an empty associative-array subscript is a fatal bash error,
+# not a lookup miss, so it must be caught before the lookup).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Orphan bullet.\n' > news.d/slug..md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+NEWS
+
+err="$(bash "$assemble_script" news.d NEWS.md 2>&1 1>/dev/null || true)"
+case "$err" in
+  *"bad array subscript"*) echo "FAIL: empty category crashed bash instead of reporting"; exit 1 ;;
+  *"unrecognized category"*) : ;;
+  *) echo "FAIL: empty category produced no unrecognized-category error: $err"; exit 1 ;;
+esac
+[ -f news.d/slug..md ] || { echo "FAIL: fragment consumed despite the failure"; exit 1; }
+
+echo "PASS: Test 8 - An empty category segment reports rather than crashing"
+
+# Test 9: A dotted category is rejected, since the pre-flight scan reads the
+# last dot-segment while the collation glob matches the whole string -- a
+# dotted category whose suffix is also configured collated the file twice.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Dotted.\n' > news.d/slug.my.fixed.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+NEWS
+
+if ASSEMBLE_NEWS_HEADINGS='my.fixed = Dotted
+fixed = Bug fixes' bash "$assemble_script" news.d NEWS.md 2>/dev/null; then
+  echo "FAIL: Expected a dotted category to be rejected"
+  exit 1
+fi
+[ "$(grep -c '^- Dotted\.$' NEWS.md || true)" -eq 0 ] || { echo "FAIL: fragment collated despite the failure"; exit 1; }
+
+echo "PASS: Test 9 - A dotted category is rejected before it can double-collate"
+
+# Test 10: '#' comments only a whole line, so a heading may contain one
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Interop change.\n' > news.d/x.csharp.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+NEWS
+
+ASSEMBLE_NEWS_HEADINGS='  # a whole-line comment, ignored
+csharp = C# interop
+' bash "$assemble_script" news.d NEWS.md
+
+grep -q '^## C# interop$' NEWS.md || {
+  echo "FAIL: a '#' inside a heading was stripped: $(grep '^## ' NEWS.md)"; exit 1; }
+grep -q 'whole-line comment' NEWS.md && { echo "FAIL: a comment line became a heading"; exit 1; }
+
+echo "PASS: Test 10 - '#' comments a whole line only; a heading may contain one"
+
 echo "=== All assemble-news.sh tests passed! ==="

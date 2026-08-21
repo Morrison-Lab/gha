@@ -22,8 +22,10 @@ inputs:
       Minor improvements. When set, it replaces that map entirely, defining both
       the complete set of recognized categories and the order the headings are
       written in; several categories may share a heading, which then takes the
-      position of its first-listed category. A fragment whose category is
-      outside the active map fails the step rather than being skipped.
+      position of its first-listed category. A '#' comments out a line only
+      when it starts the line, so a heading may contain one; a category may not
+      contain a dot, being a single filename segment. A fragment whose category
+      is outside the active map fails the step rather than being skipped.
     required: false
     default: ''
 
