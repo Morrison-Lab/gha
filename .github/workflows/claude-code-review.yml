@@ -529,17 +529,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          DIFF_PATH: .claude-review-pr.diff
+          DIFF_NAME: .claude-review-pr.diff
         run: |
           set -uo pipefail
-          target="$GITHUB_WORKSPACE/$DIFF_PATH"
+          target="$GITHUB_WORKSPACE/$DIFF_NAME"
           if gh pr diff "$PR_NUMBER" --repo "$REPO" > "$target" && [ -s "$target" ]; then
-            echo "path=$DIFF_PATH" >> "$GITHUB_OUTPUT"
-            echo "Saved the PR diff for the reviewer: $DIFF_PATH ($(wc -c < "$target") bytes)."
+            # ABSOLUTE, because Claude Code's Read tool requires an absolute
+            # `file_path`. A workspace-relative path would cost the reviewer a
+            # resolution step to reach the file this whole change exists to put
+            # in front of it (gha#567 review).
+            echo "path=$target" >> "$GITHUB_OUTPUT"
+            echo "Saved the PR diff for the reviewer: $target ($(wc -c < "$target") bytes)."
           else
             rm -f "$target"
             echo "path=" >> "$GITHUB_OUTPUT"
-            echo "::warning::Could not save the PR diff to $DIFF_PATH; the reviewer will fall back to calling gh pr diff itself."
+            echo "::warning::Could not save the PR diff to $target; the reviewer will fall back to calling gh pr diff itself."
           fi
 
       # Clear the requested reviewers (human and AI, e.g. Copilot) before
