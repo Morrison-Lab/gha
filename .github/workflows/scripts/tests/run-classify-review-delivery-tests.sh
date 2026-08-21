@@ -53,6 +53,24 @@ check "gemini other-failure headline" false gemini-failure \
   "> [!CAUTION]
 > **Gemini CLI failed for a reason other than quota/auth/suspension.** [run]($RUN_URL)"
 
+# --- the self-mod skip (gha#571 review). The job reports `success` and every
+#     step after the guard reads `skipped`, so nothing about this looks like a
+#     failure -- which is why the marker list omitted it. Both wordings
+#     build-self-review-skip-notice.sh can emit are pinned, since they differ
+#     after the shared leading phrase.
+check "self-mod skip, caller-workflow wording" false self-mod-skip \
+  "> [!WARNING]
+> **No review ran --- this PR edits \`.github/workflows/claude-review.yml\`, the review workflow itself.**
+> \`claude-code-action\` requires that file to match the default branch.
+>
+> [View run]($RUN_URL)"
+
+check "self-mod skip, other-workflow wording" false self-mod-skip \
+  "> [!WARNING]
+> **No review ran --- this PR edits \`.github/workflows/_selftest.yml\`.**
+>
+> [View run]($RUN_URL)"
+
 # --- delivered: a real verdict comment naming this run
 check "verdict comment naming this run" true no-failure-marker \
   "**Claude finished review** — [View run]($RUN_URL)

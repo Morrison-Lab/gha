@@ -65,7 +65,22 @@ MARKERS=(
   'Claude review skipped|claude-skipped'
   'Gemini review skipped|gemini-skipped'
   'Gemini CLI failed|gemini-failure'
+  'No review ran|self-mod-skip'
 )
+
+# That last marker is the self-mod skip, and it is the one this list most
+# easily omits, because nothing about it looks like a failure: the job reports
+# `success` and every step after the guard simply reads `skipped`.
+# `build-self-review-skip-notice.sh` posts it when a PR edits the review
+# workflow itself, in two wordings that share the leading phrase, and it
+# carries the run URL -- so without this entry such a run reaches
+# `saw_run_comment=true` with no marker matched and classifies as delivered,
+# which is exactly the green-check-no-verdict case gha#362 exists to close.
+#
+# Gemini's dispatch-guard skip (fork or Dependabot PR) has NO counterpart here,
+# because that path posts no comment at all -- only a `::warning::` in the log
+# and a `dispatch_guard_blocked` job output. It is therefore invisible to a
+# comment-based classifier by construction. gha#573 tracks that residual.
 
 saw_run_comment=false
 matched_reason=""

@@ -1542,9 +1542,21 @@ The case to keep if the suite is ever trimmed is the discriminating negative:
 a failure marker on a **different** run must not decide this one.
 Without it, scoping the match to comments naming this run could be dropped and
 every other case would still pass.
-Three mutations were confirmed to turn the suite red rather than assumed to --
+Four mutations were confirmed to turn the suite red rather than assumed to --
 dropping the run-URL scoping, collapsing the two `delivered=true` reasons into
-one, and deleting a marker from the table.
+one, deleting a marker from the table, and dropping the self-mod marker
+specifically.
+**That last marker is the one the list most easily omits**, and #571's review
+caught it missing: the `self_mod` skip reports a job conclusion of `success`
+with every post-guard step `skipped`, so nothing about it looks like a failure,
+and `build-self-review-skip-notice.sh`'s notice carries the run URL without
+matching any failure wording.
+The pre-fix classification was `delivered=true reason=no-failure-marker`, which
+is the green-check-no-verdict case the capability exists to close.
+Gemini's dispatch-guard skip has no counterpart marker because that path posts
+no comment at all, only a log warning and a job output;
+gha#573 tracks that residual, and the script names it above the marker list so
+a later widener finds the known exclusion rather than assuming completeness.
 CI runs the suite as the `review-delivery` job in `_selftest.yml`, which also
 calls `install-gha-scripts` through two real `uses: ./...` steps: one
 installing the classifier and running it on a marker body, for the
