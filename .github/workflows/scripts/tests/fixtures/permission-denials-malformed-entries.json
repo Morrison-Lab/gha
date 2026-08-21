@@ -1,0 +1,40 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Some tool calls were denied. Continuing with what I can read."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 7,
+    "duration_ms": 50000,
+    "total_cost_usd": 1.25,
+    "permission_denials": [
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_1",
+        "tool_input": "gh pr diff 1"
+      },
+      "denied",
+      {
+        "tool_name": "WebFetch",
+        "tool_use_id": "toolu_3",
+        "tool_input": {
+          "url": "https://example.invalid/spec"
+        }
+      }
+    ]
+  }
+]

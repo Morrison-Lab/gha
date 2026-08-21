@@ -1,0 +1,110 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Several tool calls were denied while fanning out the review. Continuing with what I can read directly."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 18,
+    "duration_ms": 150000,
+    "total_cost_usd": 2.75,
+    "permission_denials": [
+      {
+        "tool_name": "Task",
+        "tool_use_id": "toolu_1",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose"
+        }
+      },
+      {
+        "tool_name": "Task",
+        "tool_use_id": "toolu_2",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose"
+        }
+      },
+      {
+        "tool_name": "Task",
+        "tool_use_id": "toolu_3",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose"
+        }
+      },
+      {
+        "tool_name": "Task",
+        "tool_use_id": "toolu_4",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose"
+        }
+      },
+      {
+        "tool_name": "Task",
+        "tool_use_id": "toolu_5",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose"
+        }
+      },
+      {
+        "tool_name": "Task",
+        "tool_use_id": "toolu_6",
+        "tool_input": {
+          "description": "review one file",
+          "subagent_type": "general-purpose"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_7",
+        "tool_input": {
+          "command": "gh api repos/Morrison-Lab/gha/pulls/1"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_8",
+        "tool_input": {
+          "command": "gh api repos/Morrison-Lab/gha/pulls/1"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_9",
+        "tool_input": {
+          "command": "gh api repos/Morrison-Lab/gha/pulls/1"
+        }
+      },
+      {
+        "tool_name": "WebFetch",
+        "tool_use_id": "toolu_10",
+        "tool_input": {
+          "url": "https://example.invalid/spec"
+        }
+      },
+      {
+        "tool_name": "WebFetch",
+        "tool_use_id": "toolu_11",
+        "tool_input": {
+          "url": "https://example.invalid/other"
+        }
+      }
+    ]
+  }
+]
