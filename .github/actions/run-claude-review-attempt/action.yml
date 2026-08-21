@@ -300,9 +300,31 @@ runs:
         # Neither is redundant. Do not remove the prompt text on the strength
         # of this rule.
         #
-        # Both `Agent` and `Task` are listed because the two names have both
-        # been observed for this tool across versions, and an unmatched deny
-        # rule costs nothing while a missing one costs the whole mitigation.
+        # Both `Agent` and `Task` are listed defensively, not on evidence
+        # that both names are live right now: the subagent tool has carried
+        # each name at different points, this action does not pin the CLI
+        # version its reviewer runs on, and a deny rule that matches nothing
+        # costs nothing while a missing one costs the whole mitigation.
+        #
+        # VERIFIED on Claude Code 2.1.238 that `--disallowedTools` -- the flag
+        # used below, rather than a settings `permissions.deny` array -- does
+        # parse this rule form. Worth measuring rather than assuming, because
+        # the docs describe the syntax for permission rules in general and
+        # never state that the CLI flag accepts it; if it did not, this whole
+        # change would be a silent no-op. `Agent(run_in_background:true)` and
+        # `Task(run_in_background:true)` were both accepted with no warning,
+        # as were the doc's own `Agent(model:opus)` and
+        # `Agent(isolation:worktree)` examples.
+        #
+        # The negative control is what makes that silence mean something. On
+        # the same CLI, `Bash(command:rm *)` -- which the docs say is ignored
+        # -- printed `Permission deny rule "Bash(command:rm *)" targets
+        # command as a raw string and will not match`. So the detector fires
+        # when a rule is unparseable, and it stayed quiet for these.
+        #
+        # That establishes the rules PARSE. It does not establish that they
+        # MATCH at call time, which needs a run where the reviewer actually
+        # attempts a background spawn and cannot be staged here.
         #
         # A fourth stub-review cause, gha#541, needs no new tool grant —
         # `Bash(gh pr diff:*)` above already covers it; the failure is in HOW

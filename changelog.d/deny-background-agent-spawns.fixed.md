@@ -16,3 +16,7 @@
   It closes one of two routes rather than both: a call that omits the parameter
   still backgrounds by default, and an omitted parameter never matches a rule.
   The prompt instruction stays, and covers that half.
+
+  That the `--disallowedTools` flag parses the parameter-scoped rule form at
+  all was measured on Claude Code 2.1.238 rather than assumed, against a
+  known-unparseable rule as a negative control.

@@ -2290,7 +2290,7 @@ narrower than denying `Agent` outright -- which gha#392's follow-up rejected
 precisely because it would also break the `code-review` plugin's legitimate
 *synchronous* fan-out.
 
-Three things constrain any change here.
+Four things constrain any change here.
 
 **It is a DENY on `true`, not an allow on `false`.**
 The same section rules the allow shape out: "allow rules continue to use each
@@ -2312,6 +2312,18 @@ for WebFetch, and so on) and says Claude Code ignores such a rule and warns at
 startup, because `Bash(command:rm *)` would be bypassable by a compound
 command.
 Use the tool's own specifier for those.
+
+**The CLI flag parses this form, and that was measured rather than assumed.**
+The documentation describes `Tool(param:value)` as a permission-rule syntax and
+never says that `--disallowedTools` accepts it, so a rule that silently failed
+to parse would make the mitigation a no-op that looks shipped.
+On Claude Code 2.1.238, `Agent(run_in_background:true)` and
+`Task(run_in_background:true)` were accepted with no warning.
+The negative control is what makes that silence informative: the same CLI
+answered `Bash(command:rm *)` -- a rule the docs say is ignored -- with
+`Permission deny rule "Bash(command:rm *)" targets command as a raw string and
+will not match`.
+This establishes that the rules parse, not that they match at call time.
 
 ## Never just theorize -- investigate empirically
 
