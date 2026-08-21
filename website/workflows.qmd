@@ -20,7 +20,7 @@ input tables and a copy-paste example.
 | [`lint-qmd.yml`](reference/lint-qmd.qmd)                                   | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length`                                                                                                                   |
 | [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `extra-packages`, `install-package`, `fail`                                                                                                               |
 | [`lint-workflows.yml`](reference/lint-workflows.qmd)                       | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions                                                                                                              | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail`                                                                         |
-| [`spellcheck.yml`](reference/spellcheck.qmd)                               | Spellcheck an R package's prose (DESCRIPTION, `.Rd`, vignettes, `NEWS.md`) with {spelling}, accepting the package's own `inst/WORDLIST`                          | `path`, `exclude`, `additional-options`, `install-quarto`                                                                                                       |
+| [`spellcheck.yml`](reference/spellcheck.qmd)                               | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `additional-options`, `install-quarto`                                                                                                       |
 | [`check-news.yml`](reference/check-news.qmd)                               | Enforce a `NEWS.md` changelog entry on PRs                                                                                                                                                                                        | `changelog`, `no-changelog-label`                                                                                                                                                   |
 | [`test-coverage.yml`](reference/test-coverage.qmd)                         | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov                                                                                                                                            | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`                                                                                               |
 | [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`                                                                                                       |
@@ -139,12 +139,15 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   information; see [below](#phi-scanning).
 - `check-secrets.yml` scans the repository's git **history** for committed
   credentials; see [below](#secret-scanning).
-- `spellcheck.yml` spellchecks an R package's prose -- `DESCRIPTION`, `.Rd`
-  help pages, vignette sources, and `NEWS.md` -- with the
+- `spellcheck.yml` spellchecks an R package's prose with the
   [{spelling}](https://docs.ropensci.org/spelling/) package, treating the
-  package's own `inst/WORDLIST` as the accepted vocabulary. It replaces the
-  bespoke `check-spelling.yaml` several lab repos carry, and needs no
-  wordlist migration, since that file is {spelling}'s own format.
+  package's own `inst/WORDLIST` as the accepted vocabulary. It reads
+  `DESCRIPTION`'s `Title` and `Description` fields, `man/*.Rd`, vignette
+  sources (`.Rmd`, `.qmd`, `.Rnw`), and root `README`/`NEWS`/`CHANGES`/`index`
+  Markdown -- so a Quarto site's other pages, and any repo that is not an R
+  package, are out of its reach. It replaces the bespoke `check-spelling.yaml`
+  several lab repos carry, and needs no wordlist migration, since that file is
+  {spelling}'s own format.
 - `test-coverage.yml` measures R-package test coverage with `covr` and uploads
   the Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the
   caller's `secrets:` block (optional for public repos, but recommended).

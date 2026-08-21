@@ -1,7 +1,8 @@
 - **New `spellcheck` capability** (composite action + `spellcheck.yml`
   reusable workflow) (#257, #555).
   Spellchecks an R package's prose --
-  `DESCRIPTION` fields, `.Rd` help pages, vignette sources, and `NEWS.md` --
+  `DESCRIPTION`'s `Title` and `Description`, `man/*.Rd`, vignette sources, and
+  root `README`/`NEWS`/`CHANGES`/`index` Markdown --
   with the [{spelling}](https://docs.ropensci.org/spelling/) package,
   wrapping
   [`insightsengineering/r-spellcheck-action`](https://github.com/insightsengineering/r-spellcheck-action).
@@ -20,5 +21,6 @@
   papered over (#556):
   `exclude` deletes the files it matches and never restores them,
   and a count of exactly 256 misspelled words exits `0`.
-  Prose outside an R package -- `README.md`, non-vignette `.qmd` pages --
+  Prose outside an R package -- a Quarto site's non-vignette pages,
+  `CONTRIBUTING.md`, and any repo that is not a package at all --
   is still unchecked; #557 tracks that separately.

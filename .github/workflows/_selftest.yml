@@ -2176,6 +2176,11 @@ jobs:
   # before it was written (spell_check_package reports 0 words for the fixture
   # with the wordlist and 1, `seroincidence`, for the one without), so a red
   # assertion here means a regression rather than a fixture that never worked.
+  #
+  # The term sits in both the DESCRIPTION and a root README.md, so the pair also
+  # pins that spell_check_package() reads root readme/news/changes/index
+  # Markdown. That surface was documented wrong in this PR's first draft and
+  # only a fixture caught it, which is why it is asserted rather than described.
   spellcheck:
     runs-on: ubuntu-latest
     timeout-minutes: 30

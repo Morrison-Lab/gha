@@ -1,9 +1,11 @@
 name: Spellcheck R package prose
 description: >-
-  Spellcheck an R package's prose (DESCRIPTION, .Rd, vignettes, NEWS) with the
-  {spelling} package, using the package's own inst/WORDLIST as the accepted
-  vocabulary. Wraps insightsengineering/r-spellcheck-action so consumers can
-  drop their bespoke check-spelling workflows.
+  Spellcheck an R package's prose with the {spelling} package, using the
+  package's own inst/WORDLIST as the accepted vocabulary. Covers the
+  DESCRIPTION Title and Description fields, man/*.Rd, vignette sources, and
+  root README/NEWS/CHANGES/index Markdown. Wraps
+  insightsengineering/r-spellcheck-action so consumers can drop their bespoke
+  check-spelling workflows.
 inputs:
   path:
     description: Path to the package root, relative to the repository.

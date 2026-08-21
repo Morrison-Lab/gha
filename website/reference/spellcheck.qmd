@@ -3,11 +3,34 @@ title: "spellcheck.yml"
 ---
 
 Spellcheck an R package's prose with the
-[{spelling}](https://docs.ropensci.org/spelling/) package: the `DESCRIPTION`
-fields, the `.Rd` help pages, the vignette sources, and `NEWS.md`.
+[{spelling}](https://docs.ropensci.org/spelling/) package.
 The package's own `inst/WORDLIST` is the accepted vocabulary, so a repo
 migrating from a bespoke `check-spelling.yaml` keeps its wordlist unchanged --
 that file is {spelling}'s own format.
+
+## What it reads
+
+`spell_check_package()` decides the population, and it is narrower than "the
+repo's prose" in one direction and wider in another.
+Read off `spell_check_package()`'s source at {spelling} 2.3.2 and confirmed
+against a fixture (2026-08-21):
+
+- `DESCRIPTION`'s `Title` and `Description` fields, and no other field.
+- Every `man/*.Rd` help page.
+- Vignette sources under `vignettes/`, matched as `.md`/`.Rmd`/`.qmd`, plus
+  `.Rnw`/`.Snw`. These are parsed as text, never rendered, which is why
+  `install-quarto` defaults to `'false'` even for a `.qmd` vignette.
+- Root-level Markdown whose name matches `readme`, `news`, `changes`, or
+  `index`, case-insensitively. So a package's own `README.md` and `NEWS.md`
+  **are** checked.
+
+Everything else is out of reach: a Quarto site's other pages, `CONTRIBUTING.md`,
+code comments, YAML, and any repository that is not an R package at all.
+[gha#557](https://github.com/Morrison-Lab/gha/issues/557) tracks covering those
+with a separate tool.
+
+The package's own name and its authors' names are added to the accepted
+vocabulary automatically, so neither needs a `WORDLIST` entry.
 
 Add a newly-accepted word with `spelling::update_wordlist()` in the package,
 and commit the result.

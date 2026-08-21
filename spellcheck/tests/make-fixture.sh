@@ -9,13 +9,19 @@
 # in CLAUDE.md.
 #
 # Two variants, differing in EXACTLY ONE thing: whether inst/WORDLIST exists.
-# Both DESCRIPTIONs carry the same domain term, `seroincidence`, which hunspell's
-# en_US dictionary does not know (measured 2026-08-21: hunspell_check() returns
-# FALSE for it, and TRUE for "spellcheck", which is why that more obvious
-# candidate was not used). So the clean variant passing and the dirty variant
-# failing together pin two things at once -- that unknown words are detected at
-# all, and that inst/WORDLIST is what suppresses them -- rather than only the
-# first, which a fixture carrying a plain misspelling would leave untested.
+# Both carry the same domain term, `seroincidence`, which hunspell's en_US
+# dictionary does not know (measured 2026-08-21: hunspell_check() returns FALSE
+# for it, and TRUE for "spellcheck", which is why that more obvious candidate
+# was not used). So the clean variant passing and the dirty variant failing
+# together pin two things at once -- that unknown words are detected at all, and
+# that inst/WORDLIST is what suppresses them -- rather than only the first,
+# which a fixture carrying a plain misspelling would leave untested.
+#
+# The term appears in the DESCRIPTION's Description field AND in a root
+# README.md, because spell_check_package() reads root readme/news/changes/index
+# Markdown as well as DESCRIPTION, man/*.Rd, and vignettes. That surface is easy
+# to document wrong -- this capability's own docs did, until a fixture showed
+# otherwise -- so the fixture pins it rather than leaving it to prose.
 set -euo pipefail
 
 usage() {
@@ -60,6 +66,13 @@ cat > "$dest/R/add.R" <<'EOF'
 add <- function(x, y) {
   x + y
 }
+EOF
+
+cat > "$dest/README.md" <<'EOF'
+# spellfixture
+
+A minimal package used to exercise the spellcheck composite.
+It reports seroincidence, so this file is a second surface the check must read.
 EOF
 
 cat > "$dest/man/add.Rd" <<'EOF'
