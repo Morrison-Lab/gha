@@ -99,6 +99,40 @@ The pairs are explicit rather than derived from whichever version this build
 deployed, so `/main/` resolves to the same place after a release build as
 after a default-branch build.
 
+## Canonical URLs
+
+This workflow deploys the same rendered site to several paths --- `/dev/`,
+`/latest-tag/`, `/vX.Y.Z/`, and `/pr-preview/pr-<N>/`.
+Without a signal saying which copy is authoritative, a search engine sees the
+same page many times over, and an archive or `/dev/` can outrank
+`/latest-tag/` --- landing a reader on documentation for a version they are not
+running.
+
+Every indexable page therefore gets a `<link rel="canonical">` pointing at its
+`/latest-tag/` equivalent, injected after the render and before any deploy.
+Nothing needs configuring; the URL is derived from `docs-base-url` (or from the
+repository, when that input is empty).
+
+Two behaviours are worth knowing about.
+
+**A canonical is only emitted when the target exists.**
+A page that is new on the default branch has no `/latest-tag/` counterpart yet,
+so it names its own deployed URL instead.
+Pointing a canonical at a URL that 404s is worse than emitting none: it asks
+the indexer to credit a page that is not there.
+The set of pages currently under `/latest-tag/` is read from the deploy branch
+at build time rather than assumed.
+
+**PR previews are marked `noindex` rather than canonicalized.**
+A preview is ephemeral and is not the authoritative copy of anything, so the
+correct request is "do not index this" rather than "index that other page
+instead".
+
+`404.html` is left untagged, since canonicalizing the page served for missing
+URLs would point every miss at a real page.
+A page that already carries a canonical --- one written by hand, or emitted by a
+future Quarto release --- is left alone rather than double-tagged.
+
 ## Permissions
 
 Grant `contents: write` (deploys push to `gh-pages`), `pull-requests: write`,

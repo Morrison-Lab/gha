@@ -1245,6 +1245,103 @@ jobs:
   # a write side effect selftest can't run); it's validated by real consumer
   # usage once merged and released, the same precedent `dependabot-review`'s
   # reusable-workflow layer follows above (see this repo's own CLAUDE.md).
+  # gha#332. Kept as its own job rather than folded into altdoc-docs below, so
+  # a failure here is attributable at a glance -- the same one-capability-per-job
+  # split phi-tests / new-line-breaks-tests already use.
+  canonical-urls:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run inject-canonical-urls unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest .github/actions/inject-canonical-urls/tests/ -q
+
+      # The unit tests call the script directly, so they cannot see whether
+      # action.yml resolves it via github.action_path or wires its inputs
+      # through correctly -- the gap that let gha#191's job_workflow_ref
+      # regression (gha#196) reach production with its logic unit-tested. These
+      # two steps close it with real `uses:` calls, the same proof
+      # run-review-guard's own e2e steps give.
+      #
+      # The fixture is generated here rather than committed, per CLAUDE.md's
+      # "Generate selftest fixtures at runtime" rule: committed HTML under a
+      # tests/ dir gets swept into the bib and phi jobs' repo-wide scans.
+      - name: Build a throwaway rendered-docs fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fixture-docs/ref
+          printf '%s\n' '<html><head><title>Home</title></head><body>x</body></html>' \
+            > fixture-docs/index.html
+          printf '%s\n' '<html><head><title>API</title></head><body>x</body></html>' \
+            > fixture-docs/ref/api.html
+          printf '%s\n' '<html><head><title>Gone</title></head><body>x</body></html>' \
+            > fixture-docs/404.html
+
+      - name: Inject canonical URLs (release-style build)
+        uses: ./.github/actions/inject-canonical-urls
+        with:
+          docs-dir: fixture-docs
+          deploy-kind: release
+          deploy-subdir: v9.9.9
+          base-url: https://example.invalid/repo/
+
+      - name: Assert the release build tagged every indexable page
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No /latest-tag/ exists on this repo's gh-pages, so every page must
+          # SELF-canonicalize rather than point at a URL that would 404 -- the
+          # gha#332 decision point, asserted end to end rather than only in the
+          # unit tests.
+          grep -q 'rel="canonical" href="https://example.invalid/repo/v9.9.9/index.html"' \
+            fixture-docs/index.html
+          grep -q 'rel="canonical" href="https://example.invalid/repo/v9.9.9/ref/api.html"' \
+            fixture-docs/ref/api.html
+          if grep -q canonical fixture-docs/404.html; then
+            echo "::error::404.html must stay untagged; canonicalizing it would point every miss at a real page."
+            exit 1
+          fi
+          echo "Release-style canonical injection verified."
+
+      - name: Build a throwaway preview fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fixture-preview
+          printf '%s\n' '<html><head><title>Home</title></head><body>x</body></html>' \
+            > fixture-preview/index.html
+
+      - name: Inject noindex (PR-preview-style build)
+        uses: ./.github/actions/inject-canonical-urls
+        with:
+          docs-dir: fixture-preview
+          deploy-kind: preview
+          deploy-subdir: pr-preview/pr-1
+          base-url: https://example.invalid/repo/
+
+      - name: Assert the preview build is noindex and carries no canonical
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'name="robots" content="noindex"' fixture-preview/index.html
+          if grep -q 'rel="canonical"' fixture-preview/index.html; then
+            echo "::error::a PR preview must be noindex, not canonicalized to another page."
+            exit 1
+          fi
+          echo "Preview noindex injection verified."
+
   altdoc-docs:
     runs-on: ubuntu-latest
     timeout-minutes: 45

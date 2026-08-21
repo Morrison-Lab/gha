@@ -393,7 +393,6 @@ jobs:
           find "$DOCS_SOURCE_DIR/docs" -name '*.html' -exec \
             sed -i -E 's#href="https://github\.com/[^"]*/issues/new[^"]*"#href="'"$ISSUES_URL"'"#g' {} +
           echo "Repointed 'Report an issue' links to $ISSUES_URL"
-
       # If event is workflow_dispatch with stable selected, deploy to /latest-tag/
       - name: '[dispatch stable] Set documentation subdirectory to /latest-tag/'
         if: github.event_name == 'workflow_dispatch' && inputs.dispatch-version == 'stable'
@@ -424,6 +423,41 @@ jobs:
 
       # On first rollout, /latest-tag/ may not exist yet on gh-pages.
       # Bootstrap it once from the archived latest stable release directory.
+
+      # gha#332: this workflow deploys the same rendered site to /dev/,
+      # /latest-tag/, /vX.Y.Z/ and /pr-preview/pr-<N>/, so without this every
+      # page exists N times with nothing saying which copy is authoritative --
+      # and an archive or /dev/ outranking /latest-tag/ lands a reader on docs
+      # for a version they are not running.
+      #
+      # Runs after the render and before every deploy step, so all four
+      # targets are covered by one call rather than one per deploy.
+      #
+      # `deploy-subdir` supplies the SELF-canonical fallback -- the URL a page
+      # names when it has no `/latest-tag/` counterpart -- so it has to be
+      # where this build actually deploys, or the fallback credits the wrong
+      # page. Two cases where `env.subdir` alone is not that:
+      #
+      #   - PR previews, where it is never set. The literal is inert rather
+      #     than merely unused-for-anything-but-logging: the preview path
+      #     marks pages `noindex` and never reads the subdir at all. It is
+      #     passed for shape, not effect.
+      #   - A `release` for a tag that is NOT the latest stable one. Only
+      #     the matching-tag case sets `subdir`, but "[release] Deploy to
+      #     version subdirectory" below deploys EVERY non-prerelease release
+      #     to /<tag>/ -- so without the `github.ref_name` fallback such a
+      #     build self-canonicalizes to the site root while its content sits
+      #     at /<tag>/ (gha#547 review).
+      - name: Inject canonical URLs
+        if: github.event.action != 'closed'
+        uses: Morrison-Lab/gha/.github/actions/inject-canonical-urls@v2
+        with:
+          docs-dir: ${{ env.DOCS_SOURCE_DIR }}/docs
+          deploy-kind: ${{ github.event_name == 'pull_request' && 'preview' || 'release' }}
+          deploy-subdir: ${{ github.event_name == 'pull_request' && 'pr-preview' || env.subdir || github.ref_name }}
+          base-url: ${{ inputs.docs-base-url }}
+          preview-branch: ${{ inputs.preview-branch }}
+
       - name: "[default branch] Resolve base URL for bootstrap"
         id: bootstrap-base-url
         if: github.event_name == 'push' && github.ref == format('refs/heads/{0}', inputs.default-branch)

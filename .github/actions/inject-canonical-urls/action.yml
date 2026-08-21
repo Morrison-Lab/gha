@@ -1,0 +1,98 @@
+name: Inject canonical URLs into altdoc multiversion docs
+description: >-
+  Add a `<link rel="canonical">` to every indexable page of a rendered
+  altdoc/Quarto docs tree, pointing at the page's `/latest-tag/` equivalent so
+  the several version directories a multiversion site deploys (`/dev/`,
+  `/latest-tag/`, `/vX.Y.Z/`) stop reading as duplicate content with no
+  authoritative copy (gha#332). PR previews are marked `noindex` instead.
+  Shared internal helper for the altdoc-multiversion-docs reusable workflow.
+inputs:
+  docs-dir:
+    description: Rendered site root to rewrite in place.
+    required: true
+  deploy-kind:
+    description: >-
+      "preview" for a PR-preview build, which is marked `noindex` rather than
+      canonicalized. Any other value canonicalizes.
+    default: ''
+  deploy-subdir:
+    description: >-
+      Path this build deploys to (e.g. "dev", "latest-tag", "v1.2.0"), without
+      leading/trailing slashes. Used for the self-canonical fallback on pages
+      that have no `/latest-tag/` equivalent.
+    default: ''
+  base-url:
+    description: >-
+      Override the docs base URL (e.g. "https://owner.github.io/repo/").
+      Leave empty to derive it from GITHUB_REPOSITORY.
+    default: ''
+  preview-branch:
+    description: >-
+      Branch the docs are deployed to, read to discover which pages currently
+      exist under `/latest-tag/`. When it or that directory is missing, every
+      page self-canonicalizes rather than pointing at a URL that would 404.
+    default: 'gh-pages'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: '3.x'
+
+    # See generate-altdoc-version-dropdown/action.yml's identical step for why
+    # this calls resolve_base_url.py directly via github.action_path instead
+    # of nesting a `uses: ./...` step.
+    - name: Resolve base URL
+      id: base-url
+      shell: bash
+      env:
+        DOCS_BASE_URL: ${{ inputs.base-url }}
+      run: python3 "${{ github.action_path }}/../resolve-altdoc-base-url/resolve_base_url.py"
+
+    # Which pages actually exist under /latest-tag/ right now. Read from the
+    # deploy branch rather than assumed, because the whole point of the
+    # existence check is that a canonical pointing at a 404 is worse than
+    # none: it asks the indexer to credit a page that is not there.
+    #
+    # `git ls-tree` against the fetched ref, rather than a worktree: only the
+    # file list is needed, and the bootstrap step further down already
+    # establishes that this is enough to interrogate the branch. A missing
+    # branch or missing directory is a normal first-rollout state, not an
+    # error -- it leaves the manifest absent, which the script reads as
+    # "self-canonicalize everything".
+    - name: List pages currently deployed under /latest-tag/
+      id: manifest
+      if: inputs.deploy-kind != 'preview'
+      shell: bash
+      env:
+        PREVIEW_BRANCH: ${{ inputs.preview-branch }}
+      run: |
+        set -euo pipefail
+        manifest="$(mktemp)"
+        echo "path=$manifest" >> "$GITHUB_OUTPUT"
+        if ! git fetch origin "$PREVIEW_BRANCH" --depth=1 2>/dev/null; then
+          echo "No $PREVIEW_BRANCH branch yet; every page will self-canonicalize."
+          exit 0
+        fi
+        # `|| true` is scoped to the ls-tree alone and its emptiness is
+        # reported below, so a genuine failure still shows as an empty
+        # manifest with a stated reason rather than a silent pass.
+        git ls-tree -r --name-only "origin/$PREVIEW_BRANCH" latest-tag/ 2>/dev/null \
+          | sed -n 's#^latest-tag/##p' > "$manifest" || true
+        count="$(wc -l < "$manifest" | tr -d ' ')"
+        if [[ "$count" == "0" ]]; then
+          echo "/latest-tag/ is absent or empty on $PREVIEW_BRANCH; every page will self-canonicalize."
+        else
+          echo "Found $count file(s) under /latest-tag/ on $PREVIEW_BRANCH."
+        fi
+
+    - name: Inject canonical URLs
+      shell: bash
+      env:
+        DOCS_DIR: ${{ inputs.docs-dir }}
+        DOCS_BASE_URL: ${{ steps.base-url.outputs.base-url }}
+        DEPLOY_KIND: ${{ inputs.deploy-kind }}
+        DEPLOY_SUBDIR: ${{ inputs.deploy-subdir }}
+        LATEST_TAG_MANIFEST: ${{ steps.manifest.outputs.path }}
+      run: python3 "$GITHUB_ACTION_PATH/inject_canonical_urls.py"
