@@ -285,6 +285,23 @@ if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
                  | gsub("[\n\r]"; " ")
                  | gsub("gh[pousr]_[A-Za-z0-9_]{16,}"; "***")
                  | gsub("github_pat_[A-Za-z0-9_]{16,}"; "***")
+                 # The two patterns above were scoped for this string reaching
+                 # a run LOG, where Actions masking is a backstop. gha#543
+                 # changed the destination: it is now also posted to a PR
+                 # comment, which is not masked at all. So the shapes this very
+                 # job holds have to be covered too -- it carries
+                 # CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY, and a reviewer
+                 # attempting `curl -H "Authorization: Bearer sk-ant-..."` would
+                 # otherwise publish one verbatim (gha#548 review, finding 6).
+                 | gsub("sk-ant-[A-Za-z0-9_-]{16,}"; "***")
+                 # A generic backstop for a credential shape not enumerated
+                 # above, keyed on the header rather than on any vendor prefix.
+                 # Deliberately narrow -- an Authorization value specifically,
+                 # not any long token-ish string -- because over-redacting the
+                 # denied command destroys the diagnostic this line exists to
+                 # carry. Erring toward publishing a redaction marker is
+                 # cheap; erring toward publishing a live credential is not.
+                 | gsub("(?<h>[Aa]uthorization: *(Bearer|Basic) +)[A-Za-z0-9._~+/=-]{16,}"; "\(.h)***")
                  | if (. | length) > 120 then (.[0:117] + "...") else . end ) }
     ]
     | group_by(.tool)

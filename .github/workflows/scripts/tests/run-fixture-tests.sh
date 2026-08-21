@@ -439,6 +439,14 @@ redaction_fixture="$(mktemp)"
 # that makes a string token-SHAPED rather than merely token-prefixed -- is
 # generated, so nothing matching a credential pattern is ever committed.
 fake_token="ghp_$(printf 'A%.0s' {1..36})"
+# gha#543 changed where this string can end up: it is now posted to a PR
+# comment as well as the run log, and a comment body is not masked at all. So
+# the credential shapes THIS JOB holds have to be covered, not just GitHub's --
+# the review job carries CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY
+# (gha#548 review, finding 6). Assembled from fragments for the same reason as
+# the token above: `check-secrets` scans this repo's own history, so a
+# credential-shaped literal in a committed file trips that scan permanently.
+fake_anthropic="sk-ant-$(printf 'B%.0s' {1..40})"
 cat > "$redaction_fixture" <<REDACTION_FIXTURE
 [
   {"type": "system", "subtype": "init"},
@@ -448,7 +456,9 @@ cat > "$redaction_fixture" <<REDACTION_FIXTURE
    "num_turns": 9, "duration_ms": 60000, "total_cost_usd": 1.5,
    "permission_denials": [
      {"tool_name": "Bash", "tool_use_id": "toolu_1",
-      "tool_input": {"command": "curl -H 'Authorization: Bearer ${fake_token}' https://api.github.com/x"}}
+      "tool_input": {"command": "curl -H 'Authorization: Bearer ${fake_token}' https://api.github.com/x"}},
+     {"tool_name": "WebFetch", "tool_use_id": "toolu_2",
+      "tool_input": {"url": "https://api.anthropic.com/v1/x?key=${fake_anthropic}"}}
    ]}
 ]
 REDACTION_FIXTURE
@@ -459,6 +469,9 @@ GITHUB_OUTPUT="$output_file" bash "$check_script" "$redaction_fixture" >"$log_fi
 set -e
 if grep -qF "$fake_token" "$log_file"; then
   echo "::error::redaction fixture: the denied command's token reached the log unredacted"
+  failures=$((failures + 1))
+elif grep -qF "$fake_anthropic" "$log_file"; then
+  echo "::error::redaction fixture: the Anthropic-shaped credential reached the log unredacted"
   failures=$((failures + 1))
 elif ! grep -qF "Bearer ***" "$log_file"; then
   echo "::error::redaction fixture: expected the token to be replaced with '***'; log said:"

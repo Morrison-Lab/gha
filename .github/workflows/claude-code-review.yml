@@ -1025,8 +1025,18 @@ jobs:
       # page that is indistinguishable from a reviewer that has not started yet
       # (gha#543, reproduced on Morrison-Lab/wai#83).
       #
-      # `always()` is what makes this reachable at all: resolve-final exits 1,
-      # so an ungated step here would be skipped along with the rest.
+      # A status-check function is what makes this reachable at all:
+      # resolve-final exits 1, so an `if:` with none is implicitly ANDed with
+      # `success()` and would be skipped along with the rest.
+      #
+      # `!cancelled()` rather than `always()`, which also fires on a cancelled
+      # run. That case is the documented `cancel-in-progress` race, where a
+      # newer commit superseded this review and its own run is already under
+      # way -- so a "the review failed" comment there is noise about a run
+      # nobody is waiting on, and this repo double-pushes often enough
+      # (CLAUDE.md's own race section) that it would be frequent noise. Posting
+      # nothing on a supersede is the pre-existing, correct behaviour; the
+      # silence this action fixes is the one on a run that finished.
       #
       # This step never decides the job's outcome. resolve-final has already
       # emitted the `::error::` and already failed it, and `require-review`
@@ -1035,7 +1045,7 @@ jobs:
       # report-gemini-failure documents for its own post.
       - name: Post review-failure comment
         id: failure-notice
-        if: always() && steps.resolve-final.outcome == 'failure'
+        if: "!cancelled() && steps.resolve-final.outcome == 'failure'"
         uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         with:
           failure-kind: ${{ steps.resolve-final.outputs.failure_kind }}
@@ -1170,12 +1180,29 @@ jobs:
       # post is best-effort, so folding the previous run's notice after a failed
       # post would leave the PR gray with no explanation at all -- gha#434's own
       # symptom, reproduced in one run.
+      #
+      # `!cancelled()` is load-bearing rather than tidiness. An `if:` carrying
+      # no status-check function is implicitly ANDed with `success()`, and the
+      # failure-notice disjunct is by construction only true once
+      # `Resolve final review outcome` has FAILED -- that step has no
+      # `continue-on-error`, so the job is already failing whenever the notice
+      # posts. Without a status function the new disjunct was therefore dead
+      # code, and every failed round would have left its own permanent,
+      # unfoldable comment beside the previous round's stale one: the exact
+      # accumulation this step exists to prevent (gha#548 review, finding 1).
+      #
+      # `!cancelled()` rather than `always()`, because a cancelled run is the
+      # documented `cancel-in-progress` race, not a failure worth folding
+      # around -- a newer commit's review is already in flight, and the
+      # "Explain and fold tracking comment when canceled" step below owns that
+      # case.
       - name: Collapse previous Claude review comments
         if: >-
+          !cancelled() && (
           steps.skip-notice.outputs.posted == 'true' ||
           steps.failure-notice.outputs.posted == 'true' ||
           (steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true')
+          steps.resolve-final.outputs.quota_exhausted != 'true'))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}

@@ -983,15 +983,6 @@ jobs:
             exit 1
           fi
           echo "report-push-failure withheld the patch for a secret-scanning rejection"
-  # gemini.yml/gemini-code-review.yml had no error handling at all before
-  # this: a run-gemini-cli failure (quota exhaustion, an auth rejection, a
-  # suspended project) just red-X'd the job with the raw error in the log --
-  # no PR-visible explanation, indistinguishable from a genuine bug, and
-  # nothing stopping a reflexive re-run against a key that cannot currently
-  # be used. Separate job (not folded into review-fail-check above) so a
-  # failure here is attributable at a glance, matching this file's existing
-  # one-capability-per-job granularity (phi-tests/new-line-breaks-tests are
-  # already split from their parent jobs the same way).
   # gha#543: the review-failure comment claude-code-review.yml posts when a
   # review run finishes without a usable verdict. Kept as its own job rather
   # than folded into review-fail-check, so a failure here is attributable at a
@@ -1111,6 +1102,15 @@ jobs:
           fi
           echo "report-review-failure normalized the unrecognized kind correctly"
 
+  # gemini.yml/gemini-code-review.yml had no error handling at all before
+  # this: a run-gemini-cli failure (quota exhaustion, an auth rejection, a
+  # suspended project) just red-X'd the job with the raw error in the log --
+  # no PR-visible explanation, indistinguishable from a genuine bug, and
+  # nothing stopping a reflexive re-run against a key that cannot currently
+  # be used. Separate job (not folded into review-fail-check above) so a
+  # failure here is attributable at a glance, matching this file's existing
+  # one-capability-per-job granularity (phi-tests/new-line-breaks-tests are
+  # already split from their parent jobs the same way).
   gemini-review-fail-check:
     runs-on: ubuntu-latest
     timeout-minutes: 20

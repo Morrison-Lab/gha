@@ -87,10 +87,28 @@ check_contains "body starts at line 4" "has not been reviewed" "$(tail -n +4 <<<
 check "exactly one headline line" "1" "$(grep -c '^headline=' <<<"$out")"
 
 # --- the denied-tools trio --------------------------------------------------
-# 1. Names known: quote them. This is the gha#540 payload, and carrying it to
+# 1. Names known: render them. This is the gha#540 payload, and carrying it to
 #    the PR is the reason this report was worth building.
 out="$(run_compose high-denial 12 'Taskx6 Bashx3' 5)"
-check_contains "denied names are quoted" '**Denied tools:** `Taskx6 Bashx3`' "$out"
+check_contains "denied names are labelled" '**Denied tools:**' "$out"
+check_contains "denied names are rendered" 'Taskx6 Bashx3' "$out"
+
+# The value is FENCED rather than wrapped in a fixed one-backtick span,
+# because it is agent-authored command text and a literal backtick in it is
+# ordinary. A fixed delimiter closes early and mangles the rest of the posted
+# comment (gha#548 review, finding 2).
+#
+# Both directions are pinned. A value with no backticks takes the minimum
+# three-backtick fence; a value carrying a DOUBLE backtick run must widen past
+# it, since a fence is closed by a run of equal length -- so a three-backtick
+# fence would still be correct there and a naive one-backtick span would not,
+# which is why the widening case uses a run long enough to discriminate.
+out="$(run_compose high-denial 2 'Bashx2 plain' 5)"
+check_contains "a backtick-free value takes the minimum fence" '```text' "$out"
+backticky='Bashx2 (sample: Bash: echo `date` && x=```y```)'
+out="$(run_compose high-denial 2 "$backticky" 5)"
+check_contains "a value carrying a 3-run widens the fence" '````text' "$out"
+check_contains "the backtick-carrying value survives intact" "$backticky" "$out"
 
 # 2. A real zero: say none, positively.
 out="$(run_compose hard-error 0 '')"
@@ -148,10 +166,19 @@ check_contains "two denials are plural" '2 denied tool calls' "$out"
 # a test for here. What this case pins is the half that IS testable: the script
 # must render such a value verbatim, neither executing nor mangling it, so a
 # future rewrite reaching for `eval` or an unquoted expansion is caught.
+#
+# ONE assertion, deliberately. A `check_not_contains` was tried here and
+# removed: any needle naming the substituted result had to be either the bare
+# username (which can legitimately appear elsewhere in a report) or a marker
+# string that no version of the script could ever emit -- and the marker form
+# passes under every mutation including the one it was written for, which is
+# the vacuous-negative shape CLAUDE.md already records for `must_not_log`.
+# The positive check is what actually pins this: under an `eval` regression the
+# literal `$(id -un)` is replaced by its output, so the verbatim match fails.
+# Confirmed by mutation rather than assumed (gha#548 review, finding 3).
 hostile='Bashx1 (sample: Bash: gh pr diff 1 > /tmp/d; echo $(id -un) & rm -rf "x")'
 out="$(run_compose high-denial 1 "$hostile" 5)"
 check_contains "shell metacharacters survive verbatim" "$hostile" "$out"
-check_not_contains "command substitution is not evaluated" "$(id -un 2>/dev/null)x_MARKER" "$out"
 
 # --- the report must stay ASCII ---------------------------------------------
 # check-non-standard-chars scans .qmd/.R/.md and so does not reach this script,

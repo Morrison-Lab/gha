@@ -433,7 +433,7 @@ which is why the capabilities above moved to `@v2`.
   not started yet.
   The same silent-thread class gha#360 fixed for the push path and gha#379 for
   the Gemini path.
-  Four things constrain any change to it.
+  Five things constrain any change to it.
   **The script composes; it does not classify.**
   Its two siblings are handed raw error text and must work out what happened,
   whereas here `check-review-execution.sh` has already decided and
@@ -1392,10 +1392,17 @@ The denied-tools trio is the group to keep if the suite is ever trimmed, and
 its middle case is the trap: an empty denial count must not render as "none",
 since that asserts something about permissions on a run that never measured
 them.
-Six mutations were confirmed to turn it red rather than assumed to -- collapsing
-"not recorded" into "none", dropping the contract's blank line, restoring the
-duplicated `5` default, accepting any kind verbatim, giving two kinds the same
-headline, and printing the 999999 sentinel as a count.
+Seven mutations were confirmed to turn it red rather than assumed to --
+collapsing "not recorded" into "none", dropping the contract's blank line,
+restoring the duplicated `5` default, accepting any kind verbatim, giving two
+kinds the same headline, printing the 999999 sentinel as a count, and `eval`-ing
+the denied-command text instead of rendering it verbatim.
+That last one is pinned by a single POSITIVE assertion.
+A negative counterpart was written and removed: a needle naming the substituted
+result is either the bare username, which may legitimately appear elsewhere in
+a report, or a marker string no version of the script can emit -- and the
+marker form passes under every mutation, which is the same vacuous shape this
+file records two paragraphs down for `must_not_log`.
 CI runs it as the `review-failure-report` job in `_selftest.yml`, kept separate
 from `review-fail-check` so a failure is attributable at a glance -- the same
 one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.

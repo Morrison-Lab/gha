@@ -50,6 +50,15 @@
 #   ATTEMPTS      how many review attempts ran ("1" or "2"; may be empty)
 set -euo pipefail
 
+# fence_for() lives in the helper report-push-failure and report-gemini-failure
+# already share, for exactly this reason: it counts the longest backtick run in
+# a block of arbitrary text and opens with one more, since a fence is closed by
+# a run of EQUAL length. Reused rather than re-implemented, per this repo's own
+# "factor shared logic into reusable units" guidance (gha#380 finding 3).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=fence-and-truncate.sh
+source "$SCRIPT_DIR/fence-and-truncate.sh"
+
 FAILURE_KIND="${FAILURE_KIND:-}"
 DENIALS="${DENIALS:-}"
 DENIED_TOOLS="${DENIED_TOOLS:-}"
@@ -183,8 +192,18 @@ esac
 # known about permissions at all, and would send a triager looking in the wrong
 # place. The unknown-count sentinel does not reach this branch: the guard sets a
 # non-empty DENIED_TOOLS wording for it.
+#
+# Fenced rather than wrapped in a fixed one-backtick span. DENIED_TOOLS is
+# agent-authored command text, so a literal backtick in it is entirely
+# plausible (`echo `date`` is an ordinary thing for a reviewer to try), and the
+# 120-character truncation upstream can even split a backtick pair. A fixed
+# delimiter closes early there and mangles the rest of the posted comment --
+# the same failure report-push-failure hit with its patch bodies, which is why
+# fence_for exists (gha#548 review, finding 2).
 if [[ -n "$DENIED_TOOLS" ]]; then
-  printf '**Denied tools:** `%s`\n\n' "$DENIED_TOOLS"
+  denied_fence="$(fence_for "$DENIED_TOOLS")"
+  printf '**Denied tools:**\n\n%stext\n%s\n%s\n\n' \
+    "$denied_fence" "$DENIED_TOOLS" "$denied_fence"
 elif [[ "$DENIALS" == "0" ]]; then
   printf '**Denied tools:** none. The reviewer was not blocked by tool permissions, so the cause lies elsewhere.\n\n'
 else
