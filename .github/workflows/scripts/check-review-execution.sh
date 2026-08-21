@@ -64,11 +64,12 @@
 #   - whenever the denial count is readable, also writes denied_tools=<note>
 #     to $GITHUB_OUTPUT: the same single-line summary gha#544 added to the log
 #     ("Taskx6 Bashx3 (sample: ...)"), or one of the two wordings that mean the
-#     names could not be recovered. Empty means zero denials, which is NOT the
-#     same fact -- see the comment at the write site. claude-code-review.yml's
-#     review-failure comment carries it to the PR, so a recurrence of gha#198's
-#     signature names its denied tools on the thread rather than only in a
-#     downloaded execution artifact (gha#543).
+#     names could not be recovered. Empty means EITHER zero denials or a
+#     short-circuit exit that returned before anything was counted -- see the
+#     comment at the write site. claude-code-review.yml's review-failure comment
+#     carries it to the PR, so a recurrence of gha#198's signature names its
+#     denied tools on the thread rather than only in a downloaded execution
+#     artifact (gha#543).
 #
 # $GITHUB_OUTPUT is optional so this can run standalone in a test harness;
 # when unset, output assignments are silently dropped.
@@ -364,12 +365,21 @@ fi
 # string, which is what makes the next recurrence answerable from the PR page
 # instead of from a downloaded execution artifact.
 #
-# Written unconditionally, and BEFORE any of the failure exits below, so every
-# exit path carries it -- including the two that matter most here, the
-# no-verdict branch and the hard-error branch. An empty value is meaningful
-# and distinct from an absent one: it means the run had zero denials, whereas
-# the "unknown"/"names unavailable" wordings above mean it had denials whose
-# names could not be recovered. The caller must not collapse those.
+# Written unconditionally once the result has been parsed, which puts it before
+# every exit that reports on a review -- including the two that matter most
+# here, the no-verdict branch and the hard-error branch.
+#
+# NOT before every exit in the file, and the difference is worth stating rather
+# than rounding off. The two short-circuit exits at the top (no execution file,
+# no result object) return before the denial count exists at all, so they leave
+# this unset. That is correct: nothing about the run was parsed, so there is no
+# denial data to report -- but it does mean an empty value carries TWO
+# readings, "zero denials" and "never counted", where the "unknown" / "names
+# unavailable" wordings above carry a third, "denials occurred and could not be
+# named". A caller separates the first two by reading `denials`, which is `0`
+# in one and absent in the other; compose-review-failure-report.sh does exactly
+# that. (An earlier version of this comment claimed every exit path carries it,
+# which was false for those two -- gha#548 review, finding 8.)
 #
 # Single-line by construction: every branch feeding $denied_note either is a
 # literal above or comes out of the jq program, which gsubs newlines out of

@@ -304,6 +304,31 @@ assert_max_denials() {
   fi
 }
 
+# gha#548 review, finding 8: `denied_tools` is written immediately after
+# `denials`, so the two must co-occur -- present together, or absent together.
+#
+# This pins a CONTRACT that was previously only asserted in prose, and asserted
+# wrongly: run-review-guard's own docs claimed the output was "set on every
+# exit path", which is false for the two short-circuit exits that return before
+# the denial count exists. Prose cannot be run; this can. The distinction
+# matters to a caller, because an ABSENT value means "never counted" while an
+# EMPTY-but-present one means "counted, and there were none" -- and only the
+# second licenses saying the reviewer was not blocked by permissions.
+#
+# Note `grep -q '^denied_tools='` rather than a non-empty check: the value is
+# legitimately empty on a zero-denial run, so presence and content are
+# different questions and only presence is the invariant here.
+assert_denied_tools_presence() {
+  local output_file="$1"
+  local denials
+  denials="$(sed -n 's/^denials=//p' "$output_file" | tail -1)"
+  if [[ -z "$denials" ]]; then
+    ! grep -q '^denied_tools=' "$output_file"
+  else
+    grep -q '^denied_tools=' "$output_file"
+  fi
+}
+
 assert_kind() {
   local fixture="$1" output_file="$2"
   local want="${expected_kind[$fixture]:-}" got
@@ -384,6 +409,11 @@ for fixture in "${!expected[@]}"; do
   if [[ "$ok" == "true" ]] && ! assert_max_denials "$output_file"; then
     ok=false
     echo "::error::fixture $fixture: max_denials must accompany denials (denials=[$(sed -n 's/^denials=//p' "$output_file" | tail -1)], max_denials=[$(sed -n 's/^max_denials=//p' "$output_file" | tail -1)])"
+  fi
+
+  if [[ "$ok" == "true" ]] && ! assert_denied_tools_presence "$output_file"; then
+    ok=false
+    echo "::error::fixture $fixture: denied_tools must be present exactly when denials is (denials=[$(sed -n 's/^denials=//p' "$output_file" | tail -1)], denied_tools present=[$(grep -c '^denied_tools=' "$output_file")])"
   fi
 
   if [[ "$ok" == "true" ]] && ! assert_kind "$fixture" "$output_file"; then

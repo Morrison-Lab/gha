@@ -59,11 +59,20 @@ outputs:
     description: >-
       Single-line summary of WHICH tools were denied, in the same wording
       gha#544 added to the job log ("Taskx6 Bashx3 (sample: ...)"), or one of
-      the two wordings meaning the names could not be recovered. Empty means
-      the run had zero denials -- a different fact from "denials occurred and
-      could not be named", so a caller must not collapse the two. Set on every
-      exit path, so a caller gated on this step having FAILED can still read
-      it (gha#543).
+      the two wordings meaning the names could not be recovered.
+
+      Written once the execution result has been parsed, which is BEFORE every
+      exit that reports on a review -- so a caller gated on this step having
+      FAILED can still read it (gha#543). It is NOT written on the two
+      short-circuit exits (no execution file, no result object), which return
+      before the denial count is computed; there is no denial data to report on
+      those, since nothing about the run was ever parsed.
+
+      So empty is two facts, not one: the run had zero denials, or the run
+      short-circuited before anything could be counted. `denials` separates
+      them -- it is `0` in the first case and absent in the second -- and a
+      caller must branch on both rather than reading empty as "no denials"
+      (gha#548 review, finding 8).
     value: ${{ steps.run.outputs.denied_tools }}
   action_short_circuit:
     description: >-
