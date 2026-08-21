@@ -486,6 +486,15 @@ _finegrained="github_pat_$(printf 'C%.0s' {1..30})"
 _opaque="Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA=="
 _hexpat="$(printf 'a1b2c3d4%.0s' {1..5})"
 _urlpw="s3cr3tpassw0rdvalue"
+# The "@" is assembled at run time for the same reason the credentials are,
+# one layer over: `check-phi` runs across this repo's tree with the email
+# detector on, and a committed `<word>@<host>.<tld>` literal is email-shaped
+# whether or not it is a real address -- so the userinfo case below tripped
+# that job even though every secret in it is generated. Splitting the "@" out
+# keeps the committed file free of the shape, without blinding the phi scan to
+# this whole directory via paths-ignore. Measured: reproduced locally with
+# CI's own full detector set, fixed, re-run clean.
+_at="@"
 
 # label | secret that must not appear | the denied command carrying it
 redaction_cases=(
@@ -506,7 +515,7 @@ redaction_cases=(
   "lowercase scheme|$_opaque|curl -H 'authorization: bearer $_opaque' https://api.example.com"
   "uppercase header|$_opaque|curl -H 'AUTHORIZATION: Bearer $_opaque' https://api.example.com"
   "token scheme, legacy 40-hex PAT|$_hexpat|curl -H 'Authorization: token $_hexpat' https://api.github.com/x"
-  "URL userinfo|$_urlpw|git clone https://alice:$_urlpw@github.com/o/r.git"
+  "URL userinfo|$_urlpw|git clone https://alice:${_urlpw}${_at}github.com/o/r.git"
 )
 
 for case in "${redaction_cases[@]}"; do
