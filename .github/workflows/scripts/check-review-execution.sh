@@ -174,11 +174,19 @@ raw_denials="$(jq -r '
   // (if (.permission_denials | type) == "array" then (.permission_denials | length) else null end)
   // "MISSING"
 ' <<< "$result")"
+# `denials` alone cannot answer "were there denials?", because the 999999
+# sentinel below means UNKNOWN rather than "a great many". That conflation is
+# safe for the two gates it was designed for (both want unknown to read as
+# unsafe), and unsafe for any statement ABOUT the denials -- so the reporting
+# added for gha#540 tracks knownness separately rather than re-deriving it
+# from a magic number (gha#544 review).
+denials_known=true
 if [[ "$raw_denials" =~ ^[0-9]+$ ]]; then
   denials="$raw_denials"
 else
   echo "::warning::permission_denials_count could not be parsed from execution result (got '$raw_denials'); defaulting to sentinel 999999 (gha#370)."
   denials=999999
+  denials_known=false
 fi
 echo "denials=$denials" >> "$GITHUB_OUTPUT"
 echo "permission_denials_count=$denials (max_denials=$max_denials)"
@@ -206,7 +214,7 @@ echo "permission_denials_count=$denials (max_denials=$max_denials)"
 # same fail-open shape this script's null-coalescing comments guard against.
 denied_summary=""
 denied_sample=""
-if [[ "$denials" != "0" ]]; then
+if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
   # Newlines are stripped from every field because both strings reach a
   # single-line `::warning::` annotation below, which an embedded newline
   # would truncate (the same reason `api_error_message` is flattened).
@@ -272,10 +280,29 @@ if [[ "$denials" != "0" ]]; then
       end
   ' <<< "$result")"
 fi
-if [[ -n "$denied_summary" ]]; then
-  echo "Denied tools: $denied_summary (sample: ${denied_sample:-none})"
+# One note, computed once, so the log line below and the over-threshold
+# annotation further down cannot describe the same run differently.
+#
+# The unknown case gets its OWN wording rather than borrowing the
+# no-array wording. They are different facts: "the count is positive and the
+# names are missing" is a statement about a run that had denials, whereas
+# an unparseable count says nothing about whether any occurred. Reporting
+# the second as the first asserted denials on a CLEAN PASS -- observed on
+# is-error-success-with-verdict.json, whose `permission_denials_count` is
+# JSON null (gha#544 review).
+denied_note=""
+if [[ "$denials_known" != "true" ]]; then
+  # Deliberately silent at this call site: the sentinel `::warning::` above
+  # already reports the unparseable count, and repeating it here as a
+  # denial-shaped line is what made it read as a finding.
+  denied_note="unknown -- the denial count itself could not be parsed (see the warning above)"
 elif [[ "$denials" != "0" ]]; then
-  echo "Denied tools: names unavailable -- the execution result carries no permission_denials array (gha#540)."
+  if [[ -n "$denied_summary" ]]; then
+    denied_note="$denied_summary (sample: ${denied_sample:-none})"
+  else
+    denied_note="names unavailable -- the execution result carries no permission_denials array (gha#540)"
+  fi
+  echo "Denied tools: $denied_note"
 fi
 # review_text_file (posted to the PR) and all_text_file (the pass/fail scan
 # below) must draw from the exact same candidate blocks, or a verdict this
@@ -420,7 +447,7 @@ if ! has_verdict "$all_text_file"; then
     # opening the job log, and the count alone is what sent two readers to
     # the wrong cause (gha#540). Both strings are newline-free by
     # construction above, so the annotation cannot be split.
-    echo "::warning::permission_denials_count=$denials exceeds the stub-retry threshold ($max_denials) — this looks like gha#198's pattern, not gha#185's; not marking as retryable. Denied tools: ${denied_summary:-names unavailable}${denied_sample:+ (sample: $denied_sample)}"
+    echo "::warning::permission_denials_count=$denials exceeds the stub-retry threshold ($max_denials) — this looks like gha#198's pattern, not gha#185's; not marking as retryable. Denied tools: ${denied_note:-none reported}"
   fi
   echo "::error::Claude review states no verdict (no '### Verdict' heading or 'Verdict:' line anywhere in its output) — looks like an incomplete/stub review, not a finished one (gha#173, Lacaedemon/sparta#590)."
   exit 1

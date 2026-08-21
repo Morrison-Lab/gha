@@ -166,6 +166,10 @@ declare -A must_log=(
   # taking the summary (or the script) down with it.
   [permission-denials-malformed-entries.json]='Denied tools: Bashx1 WebFetchx1 unknownx1'
   [stub-gha198-high-denial-count.json]='Denied tools: names unavailable -- the execution result carries no permission_denials array'
+  # An UNPARSEABLE count is a different fact from a known-positive count with
+  # no array, and must not borrow its wording: the first says nothing about
+  # whether any denial occurred (gha#544 review).
+  [denied-comment-null-denials-not-trusted.json]='Denied tools: unknown -- the denial count itself could not be parsed'
 )
 declare -A must_not_log=(
   # The redaction case is NOT here -- it is generated at runtime below, since a
@@ -173,7 +177,20 @@ declare -A must_not_log=(
   # history scan forever after.
   # A clean run must not gain a "Denied tools:" line at all -- the summary is
   # a diagnostic for denials, not noise on every review.
+  #
+  # TWO fixtures, and the second is the one that matters: `denials` is
+  # three-valued (a real 0, a real positive count, or the 999999 UNKNOWN
+  # sentinel), so a guard written as `denials != 0` treats unknown as
+  # positive. genuine-finished-review.json cannot catch that -- its count is
+  # a literal 0, so the branch never fires for it either way, and the first
+  # draft of this map passed while a CLEAN PASS was being told it had
+  # denials. is-error-success-with-verdict.json carries
+  # `permission_denials_count: null`, which is the case that discriminates.
   [genuine-finished-review.json]='Denied tools'
+  [is-error-success-with-verdict.json]='Denied tools'
+  # Same sentinel, reaching the over-threshold annotation instead of the log
+  # line: it must say "unknown", never the no-array wording.
+  [denied-comment-null-denials-not-trusted.json]='names unavailable'
 )
 
 assert_log() {

@@ -1001,6 +1001,32 @@ the gha#531 case above, and what `stub-gha198-high-denial-count.json` already
 was -- reports `names unavailable` rather than an empty list, which would read
 as "nothing was denied".
 
+**`denials` is three-valued, and the reporting is the first consumer that has
+to care.**
+It is a real `0`, a real positive count, or the `999999` sentinel, which means
+**unknown** rather than "a great many".
+Both pre-existing gates want unknown to read as unsafe, so collapsing it into
+the positive case is exactly right for them -- which is what makes the
+conflation invisible to a reader of that code, and what the gha#540 reporting
+then inherited by writing its own guard as `denials != 0`.
+The two gates ask "may this be trusted?", where erring toward no is free.
+A log line asserts something *about* the run, and there erring is not free:
+an unparseable count says nothing about whether any denial occurred, so
+reporting it as the no-array case told a **clean passing run** it had denials
+(`is-error-success-with-verdict.json`, whose count is JSON `null`).
+So knownness is tracked as its own `denials_known` flag rather than
+re-derived from the magic number, the unknown case gets its own wording, and
+one `denied_note` feeds both the log line and the annotation so they cannot
+describe the same run differently.
+Note what the negative test could not see: `must_not_log`'s original entry was
+`genuine-finished-review.json`, whose count is a literal `0`, so the branch
+never fired for it under either version and the assertion passed while the bug
+was live.
+A fixture with a **null** count is the one that discriminates, which is the
+same lesson as the vacuous `names unavailable` needle below -- a negative
+assertion is only worth the fixture that can actually reach the branch.
+(gha#544 review, caught by the reviewer rather than by this suite.)
+
 **Its coverage needed a new kind of assertion, and the first draft of one
 passed vacuously.**
 Everything `run-fixture-tests.sh` asserted before keyed on the exit code, a
