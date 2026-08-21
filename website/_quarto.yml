@@ -73,6 +73,7 @@ website:
           - reference/altdoc-multiversion-docs.qmd
           - reference/bump-dev-version.qmd
           - reference/version-check.qmd
+          - reference/spellcheck.qmd
 
 format:
   html:

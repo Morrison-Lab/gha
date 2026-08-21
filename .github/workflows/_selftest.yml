@@ -313,10 +313,10 @@ jobs:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
           # test fixtures that carry synthetic PHI-shaped strings by design (the
-          # detector unit tests, the coverage fixture generator's synthetic
-          # maintainer email, and check-new-line-breaks' throwaway git-repo
-          # test fixtures' placeholder git config email), which are skipped
-          # via paths-ignore below.
+          # detector unit tests, the coverage and spellcheck fixture
+          # generators' synthetic maintainer emails, and check-new-line-breaks'
+          # throwaway git-repo test fixtures' placeholder git config email),
+          # which are skipped via paths-ignore below.
           # This input REPLACES the default set rather than extending it, so a
           # detector added to DEFAULT_DETECTORS and not added here gets no
           # end-to-end coverage at all and the comment above quietly stops
@@ -326,6 +326,7 @@ jobs:
             check-phi/tests/**
             test-coverage/tests/**
             check-new-line-breaks/tests/**
+            spellcheck/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
@@ -2162,6 +2163,103 @@ jobs:
           fi
           echo "junit.xml produced ($(wc -l < "${RUNNER_TEMP}/junit.xml") lines):"
           head -n 20 "${RUNNER_TEMP}/junit.xml"
+  # Exercises the spellcheck composite through a real `uses: ./spellcheck` call
+  # against a generated R package fixture, not the @v2-pinned reusable-workflow
+  # chain -- a brand-new capability is not at the tag yet, and a `@v2` reference
+  # would fail the whole job at preparation time. Same "local composite, not the
+  # full reusable-workflow chain" precedent `coverage` above uses.
+  #
+  # The two fixtures differ in exactly one thing: whether inst/WORDLIST exists.
+  # Asserting that the first passes and the second fails therefore pins both
+  # halves of what this capability is for -- unknown words are detected, and the
+  # package's own wordlist is what accepts the ones it lists. Verified locally
+  # before it was written (spell_check_package reports 0 words for the fixture
+  # with the wordlist and 1, `seroincidence`, for the one without), so a red
+  # assertion here means a regression rather than a fixture that never worked.
+  #
+  # The term sits in both the DESCRIPTION and a root README.md, so the pair also
+  # pins that spell_check_package() reads root readme/news/changes/index
+  # Markdown. That surface was documented wrong in this PR's first draft and
+  # only a fixture caught it, which is why it is asserted rather than described.
+  spellcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate the R package fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-listed
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-unlisted --no-wordlist
+      - name: Spellcheck the fixture whose inst/WORDLIST lists the term
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-listed
+      - name: Spellcheck the fixture with no inst/WORDLIST
+        id: unlisted
+        continue-on-error: true
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-unlisted
+      - name: Assert the unlisted term fails the check
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.unlisted.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected the fixture with no inst/WORDLIST to fail the spellcheck, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "The fixture with no inst/WORDLIST failed the spellcheck, as expected."
+
+      # The `exclude` pair (gha#555 review). Two vignettes each carry a
+      # different unlisted term, and the composite is called twice over
+      # identical copies -- once without `exclude`, once with a lone glob.
+      #
+      # The first call proves the vignettes are genuinely checked, without
+      # which the second would pass vacuously. The second is the regression
+      # guard for the normalize step: upstream expands `exclude` unquoted and
+      # then reads only its first argument, so before that step a lone glob
+      # excluded only `first.Rmd` and `serostatus` in `second.Rmd` was still
+      # reported. Measured against upstream's own spellcheck.R -- no exclude
+      # exits 2, the un-normalized glob exits 1, the normalized value exits 0
+      # -- so removing the step turns this step red rather than quiet.
+      #
+      # Each call gets its own copy because the upstream action DELETES the
+      # files it excludes and never restores them.
+      - name: Generate the exclude fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-vign-checked --vignette-typos
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-vign-excluded --vignette-typos
+      - name: Spellcheck the vignette fixture with no exclude
+        id: vignettes-checked
+        continue-on-error: true
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-vign-checked
+      - name: Spellcheck the vignette fixture, excluding both vignettes by glob
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-vign-excluded
+          exclude: 'vignettes/*.Rmd'
+      - name: Assert the vignettes are checked when not excluded
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.vignettes-checked.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected the vignette fixture to fail without 'exclude', got outcome='$OUTCOME'; the exclude assertion above would then be vacuous"
+            exit 1
+          fi
+          echo "The vignette fixture failed without 'exclude', so the exclude assertion is not vacuous."
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't

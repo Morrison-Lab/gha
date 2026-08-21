@@ -1,0 +1,122 @@
+name: Spellcheck R package prose
+description: >-
+  Spellcheck an R package's prose with the {spelling} package, using the
+  package's own inst/WORDLIST as the accepted vocabulary. Covers the
+  DESCRIPTION Title and Description fields, man/*.Rd, vignette sources, and
+  root README/NEWS/CHANGES/index Markdown. Wraps
+  insightsengineering/r-spellcheck-action so consumers can drop their bespoke
+  check-spelling workflows.
+inputs:
+  path:
+    description: Path to the package root, relative to the repository.
+    default: '.'
+  exclude:
+    description: >-
+      Comma-separated files or folders to exclude from the spellcheck.
+      Accepts globs, which are expanded by R rather than by the shell (see
+      the normalize step below). The upstream action implements exclusion by
+      DELETING the matched files from the runner's checkout and never
+      restoring them, so do not run this capability in a job that later reads
+      or publishes the working tree. An entry containing whitespace is
+      rejected rather than silently mangled.
+    default: ''
+  additional-options:
+    description: >-
+      Additional options passed to Rscript by the upstream action. The
+      upstream default is --vanilla; pass an empty string to let R read the
+      site and user profiles instead.
+    default: '--vanilla'
+  install-quarto:
+    description: >-
+      Whether setup-r-dependencies installs Quarto ('true', 'false', 'auto').
+      Defaults to 'false' because {spelling} reads vignette SOURCES and never
+      renders them, so no Quarto is needed even for a .qmd vignette. Raise it
+      to 'auto' only if a consumer's own dependency resolution needs Quarto.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    # R is set up here rather than left to a container, which is the deliberate
+    # difference from the bespoke workflows this capability replaces (ucdavis/win
+    # and Morrison-Lab/wai both run rocker images). Every other R capability in
+    # this repo uses r-lib/actions -- see check-bibliography-dois -- and matching
+    # the neighbours matters more than matching the thing being migrated: a
+    # consumer already paying for setup-r in its other jobs gets a warm toolchain
+    # cache here, and a container image does not.
+    #
+    # The upstream action's first step runs under `shell: Rscript {0}`, so R has
+    # to be on PATH before that step is reached. It installs {spelling} itself
+    # but it cannot install R.
+    - name: Set up R
+      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        use-public-rspm: true
+
+    # {spelling} is installed here rather than left to the upstream action's own
+    # `if (!require("spelling")) install.packages(...)`, because that call sets
+    # `options(repos = c(CRAN = "https://cloud.r-project.org/"))` first -- which
+    # serves SOURCE packages for Linux, so it compiles {spelling} and its
+    # {hunspell} C++ dependency on every run. Going through setup-r-dependencies
+    # instead takes the public RSPM binaries and caches them across runs, and the
+    # upstream install then finds the package present and no-ops.
+    #
+    # `packages:` REPLACES the action's own `deps::.` default rather than adding
+    # to it, which is the point: spell_check_package() reads the package's files
+    # without loading it, so resolving the consumer's whole dependency tree would
+    # be pure cost.
+    - name: Set up R dependencies
+      uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        working-directory: ${{ inputs.path }}
+        install-quarto: ${{ inputs.install-quarto }}
+        packages: |
+          any::spelling
+
+    # Upstream interpolates `exclude` UNQUOTED into a bash `run:` body, and its
+    # spellcheck.R reads only `args[1]` -- so bash pathname-expands a lone glob
+    # into N argv words and R silently drops all but the first. Measured
+    # 2026-08-21 against three vignettes: `vignettes/*.Rmd` excluded only
+    # `vignettes/a.Rmd`, and the other two were still checked.
+    #
+    # A whitespace-free, comma-joined value with a TRAILING COMMA is one bash
+    # word that cannot pathname-expand, because no path ends in a comma. R's
+    # `strsplit(args[1], ",")` then drops the empty tail and `Sys.glob` does
+    # the matching -- which is what this input has always promised. Verified
+    # for the empty value (upstream is passed nothing, so the no-exclusions
+    # path is untouched), a lone glob, a comma-joined list, padded entries,
+    # doubled commas, and an already-trailing comma.
+    #
+    # An entry containing whitespace cannot survive upstream's unquoted
+    # expansion in any form, so it fails here with a message naming the entry
+    # rather than silently excluding the wrong thing. Reported in gha#556.
+    - name: Normalize the exclude list
+      id: exclude
+      shell: bash
+      env:
+        RAW_EXCLUDE: ${{ inputs.exclude }}
+      run: |
+        set -euo pipefail
+        normalized=""
+        if [ -n "$RAW_EXCLUDE" ]; then
+          IFS=',' read -ra entries <<< "$RAW_EXCLUDE"
+          for entry in ${entries[@]+"${entries[@]}"}; do
+            entry="${entry#"${entry%%[![:space:]]*}"}"
+            entry="${entry%"${entry##*[![:space:]]}"}"
+            [ -n "$entry" ] || continue
+            case "$entry" in
+              *[[:space:]]*)
+                echo "::error::spellcheck: the 'exclude' entry '$entry' contains whitespace. The upstream action expands this input unquoted in a shell, so such an entry cannot reach it as a single argument. Rename the path, or drop it from 'exclude'."
+                exit 1
+                ;;
+            esac
+            normalized="${normalized}${entry},"
+          done
+        fi
+        printf 'value=%s\n' "$normalized" >> "$GITHUB_OUTPUT"
+
+    - name: Spellcheck
+      uses: insightsengineering/r-spellcheck-action@33b8e19df4227812758fadd88d50b710c7620e1f # v3.0.3
+      with:
+        path: ${{ inputs.path }}
+        exclude: ${{ steps.exclude.outputs.value }}
+        additional_options: ${{ inputs.additional-options }}
