@@ -464,20 +464,55 @@ rm -f "$output_file"
 # strings, deliberately"). Generating it at test time is the same rule the
 # `test-coverage` R-package fixture follows, applied to the one input that
 # cannot be committed at all.
-redaction_fixture="$(mktemp)"
-# Only the 4-character prefix is a literal; the 36-character body -- the part
-# that makes a string token-SHAPED rather than merely token-prefixed -- is
-# generated, so nothing matching a credential pattern is ever committed.
-fake_token="ghp_$(printf 'A%.0s' {1..36})"
-# gha#543 changed where this string can end up: it is now posted to a PR
-# comment as well as the run log, and a comment body is not masked at all. So
-# the credential shapes THIS JOB holds have to be covered, not just GitHub's --
-# the review job carries CLAUDE_CODE_OAUTH_TOKEN / ANTHROPIC_API_KEY
-# (gha#548 review, finding 6). Assembled from fragments for the same reason as
-# the token above: `check-secrets` scans this repo's own history, so a
-# credential-shaped literal in a committed file trips that scan permanently.
-fake_anthropic="sk-ant-$(printf 'B%.0s' {1..40})"
-cat > "$redaction_fixture" <<REDACTION_FIXTURE
+# Each credential shape gets its OWN run rather than sharing one fixture,
+# because the sample quotes one entry per tool GROUP capped at three groups --
+# so several denials sharing a tool name would leave all but the first unquoted,
+# and the assertion would pass without the pattern ever being exercised. That is
+# the vacuous-assertion shape this suite has already been caught by twice.
+#
+# Every secret is assembled from fragments at run time and none is committed:
+# `check-secrets` scans this repo's own history, so a credential-shaped literal
+# in a committed file trips that scan permanently, and deleting the file later
+# does not reach the commit that introduced it.
+#
+# The four shapes below the first two were added in gha#548 review round 2,
+# each measured leaking before the fix and redacted after. gha#543 is what made
+# them matter: this string now reaches an unmasked PR comment, where Actions'
+# secret masking -- the backstop that made GitHub-only coverage defensible when
+# the destination was a run log -- does not apply at all.
+_ghp="ghp_$(printf 'A%.0s' {1..36})"
+_ant="sk-ant-$(printf 'B%.0s' {1..40})"
+_finegrained="github_pat_$(printf 'C%.0s' {1..30})"
+_opaque="Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MA=="
+_hexpat="$(printf 'a1b2c3d4%.0s' {1..5})"
+_urlpw="s3cr3tpassw0rdvalue"
+
+# label | secret that must not appear | the denied command carrying it
+redaction_cases=(
+  # These two carry their credential in a form NO other pattern can reach: not
+  # an Authorization header (the generic backstop would catch it) and not URL
+  # userinfo (the userinfo pattern would).
+  # Written that way, the generic header backstop below catches them, so
+  # deleting the vendor-prefix pattern they exist to test leaves the assertion
+  # passing -- confirmed by mutation, which is how this exact confound was
+  # caught here after being caught once already in a by-hand check. A test for
+  # pattern X must be reachable ONLY by pattern X.
+  "modern GitHub PAT|$_ghp|printf %s $_ghp > /tmp/token.txt"
+  "Anthropic key|$_ant|ANTHROPIC_API_KEY=$_ant python3 probe.py"
+  # Pre-existing pattern, previously untested -- the mutation sweep that
+  # isolated the new shapes found it had no case at all, so deleting it turned
+  # nothing red.
+  "fine-grained GitHub PAT|$_finegrained|printf %s $_finegrained > /tmp/pat.txt"
+  "lowercase scheme|$_opaque|curl -H 'authorization: bearer $_opaque' https://api.example.com"
+  "uppercase header|$_opaque|curl -H 'AUTHORIZATION: Bearer $_opaque' https://api.example.com"
+  "token scheme, legacy 40-hex PAT|$_hexpat|curl -H 'Authorization: token $_hexpat' https://api.github.com/x"
+  "URL userinfo|$_urlpw|git clone https://alice:$_urlpw@github.com/o/r.git"
+)
+
+for case in "${redaction_cases[@]}"; do
+  IFS='|' read -r label secret command <<< "$case"
+  fixture="$(mktemp)"; output_file="$(mktemp)"; log_file="$(mktemp)"
+  cat > "$fixture" <<REDACTION_FIXTURE
 [
   {"type": "system", "subtype": "init"},
   {"type": "assistant", "message": {"content": [{"type": "text",
@@ -486,31 +521,55 @@ cat > "$redaction_fixture" <<REDACTION_FIXTURE
    "num_turns": 9, "duration_ms": 60000, "total_cost_usd": 1.5,
    "permission_denials": [
      {"tool_name": "Bash", "tool_use_id": "toolu_1",
-      "tool_input": {"command": "curl -H 'Authorization: Bearer ${fake_token}' https://api.github.com/x"}},
-     {"tool_name": "WebFetch", "tool_use_id": "toolu_2",
-      "tool_input": {"url": "https://api.anthropic.com/v1/x?key=${fake_anthropic}"}}
+      "tool_input": {"command": "$command"}}
    ]}
 ]
 REDACTION_FIXTURE
-output_file="$(mktemp)"
-log_file="$(mktemp)"
+  set +e
+  GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixture" >"$log_file" 2>&1
+  set -e
+  if grep -qF "$secret" "$log_file"; then
+    echo "::error::redaction ($label): the credential reached the log unredacted"
+    grep -i 'Denied tools' "$log_file" || cat "$log_file"
+    failures=$((failures + 1))
+  elif ! grep -qF '***' "$log_file"; then
+    echo "::error::redaction ($label): expected a '***' marker in the denied-command sample; log said:"
+    grep -i 'Denied tools' "$log_file" || cat "$log_file"
+    failures=$((failures + 1))
+  else
+    echo "OK   <runtime redaction: $label>"
+  fi
+  rm -f "$fixture" "$output_file" "$log_file"
+done
+
+# The counterweight. Redaction that ate the diagnostic would pass every
+# assertion above while destroying the thing gha#540 added the names for, so
+# pin that an ordinary denied command survives untouched.
+fixture="$(mktemp)"; output_file="$(mktemp)"; log_file="$(mktemp)"
+cat > "$fixture" <<'BENIGN_FIXTURE'
+[
+  {"type": "system", "subtype": "init"},
+  {"type": "assistant", "message": {"content": [{"type": "text",
+    "text": "A tool call was denied while fetching the diff."}]}},
+  {"type": "result", "subtype": "success", "is_error": false,
+   "num_turns": 9, "duration_ms": 60000, "total_cost_usd": 1.5,
+   "permission_denials": [
+     {"tool_name": "Bash", "tool_use_id": "toolu_1",
+      "tool_input": {"command": "gh pr diff 548 --repo Morrison-Lab/gha"}}
+   ]}
+]
+BENIGN_FIXTURE
 set +e
-GITHUB_OUTPUT="$output_file" bash "$check_script" "$redaction_fixture" >"$log_file" 2>&1
+GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixture" >"$log_file" 2>&1
 set -e
-if grep -qF "$fake_token" "$log_file"; then
-  echo "::error::redaction fixture: the denied command's token reached the log unredacted"
-  failures=$((failures + 1))
-elif grep -qF "$fake_anthropic" "$log_file"; then
-  echo "::error::redaction fixture: the Anthropic-shaped credential reached the log unredacted"
-  failures=$((failures + 1))
-elif ! grep -qF "Bearer ***" "$log_file"; then
-  echo "::error::redaction fixture: expected the token to be replaced with '***'; log said:"
+if ! grep -qF 'gh pr diff 548 --repo Morrison-Lab/gha' "$log_file"; then
+  echo "::error::redaction over-reached: a benign denied command was altered"
   grep -i 'Denied tools' "$log_file" || cat "$log_file"
   failures=$((failures + 1))
 else
-  echo "OK   <runtime redaction fixture> (token redacted from the denied-command sample)"
+  echo "OK   <runtime redaction: benign command survives>"
 fi
-rm -f "$redaction_fixture" "$output_file" "$log_file"
+rm -f "$fixture" "$output_file" "$log_file"
 
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of ${#expected[@]} fixture(s) did not behave as expected"

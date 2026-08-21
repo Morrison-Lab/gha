@@ -1178,6 +1178,28 @@ It is anchored on the whole line now.
 Read that as the general shape rather than as one fixture's detail: a needle
 short enough to appear in a second, unrelated code path tests neither.
 
+**A test for one redaction pattern must be reachable by ONLY that pattern, and
+getting this wrong three times in one session is what makes it worth a rule.**
+gha#543 moved `denied_tools` from a masked run log to an unmasked PR comment,
+so gha#548's review round 2 widened the chain to six patterns.
+Each new one was measured leaking before the fix and redacted after.
+The hard part was not the patterns; it was the tests.
+A credential written into an `Authorization:` header is caught by the generic
+header backstop whatever vendor prefix it carries, and one written into URL
+userinfo is caught by the userinfo pattern -- so a case built either way passes
+with the pattern it exists to test deleted.
+That happened to the Anthropic case, then again to the modern-PAT case after
+the first fix, then again when the PAT was moved into userinfo.
+Only a mutation sweep found it each time, because every version looked
+plausible and every version passed.
+So carry each credential in a form no other pattern can reach: a bare
+assignment or a file write, never a header and never a URL.
+The same sweep found `github_pat_` had no case at all -- a pre-existing pattern
+whose deletion turned nothing red.
+And pair the set with a benign command that must survive untouched, since a
+redaction that ate the diagnostic would satisfy every leak assertion while
+destroying what gha#540 added the names for.
+
 **The redaction mutation is the one whose fixture cannot be committed**, so
 `run-fixture-tests.sh` builds that one at run time and assembles the token from
 a literal prefix plus a generated body.

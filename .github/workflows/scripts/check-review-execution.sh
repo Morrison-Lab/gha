@@ -284,6 +284,15 @@ if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
                    // (.tool_name? // "unknown") )
                  | tostring
                  | gsub("[\n\r]"; " ")
+                 # Userinfo credentials first, because they are the one shape
+                 # reachable through the `.tool_input?.url?` fallback above
+                 # rather than through a command string, and nothing
+                 # downstream redacts -- the composer only fences and
+                 # truncates. `[^/@[:space:]]+` cannot cross a path separator,
+                 # so an ordinary URL carrying an `@` later in its path (a
+                 # `...@v2` action ref, a raw.githubusercontent path) is left
+                 # alone; verified against both directions rather than assumed.
+                 | gsub("://[^/@[:space:]]+@"; "://***@")
                  | gsub("gh[pousr]_[A-Za-z0-9_]{16,}"; "***")
                  | gsub("github_pat_[A-Za-z0-9_]{16,}"; "***")
                  # The two patterns above were scoped for this string reaching
@@ -302,7 +311,21 @@ if [[ "$denials_known" == "true" && "$denials" != "0" ]]; then
                  # denied command destroys the diagnostic this line exists to
                  # carry. Erring toward publishing a redaction marker is
                  # cheap; erring toward publishing a live credential is not.
-                 | gsub("(?<h>[Aa]uthorization: *(Bearer|Basic) +)[A-Za-z0-9._~+/=-]{16,}"; "\(.h)***")
+                 #
+                 # The "i" flag is load-bearing, not tidiness. HTTP header
+                 # names and auth schemes are both case-insensitive (RFC 9110
+                 # / 7235), and the first draft wrote `[Aa]uthorization` with a
+                 # case-SENSITIVE `(Bearer|Basic)` -- which tolerated exactly
+                 # one letter of variation and leaked on `authorization:
+                 # bearer` and on `AUTHORIZATION:`. Measured, both before and
+                 # after (gha#548 review, round 2).
+                 #
+                 # `token` is in the alternation because it is the standard
+                 # GitHub PAT header form. The `gh[pousr]_` pattern above
+                 # already covers a modern PAT wherever it appears, so what
+                 # this adds is the LEGACY 40-hex PAT, which carries no prefix
+                 # for any vendor pattern to key on.
+                 | gsub("(?<h>authorization: *(bearer|basic|token) +)[A-Za-z0-9._~+/=-]{16,}"; "\(.h)***"; "i")
                  | if (. | length) > 120 then (.[0:117] + "...") else . end ) }
     ]
     | group_by(.tool)
