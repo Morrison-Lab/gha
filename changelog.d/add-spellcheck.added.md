@@ -17,8 +17,14 @@
   which is what the upstream action's own installer would do.
   Only {spelling} is resolved, not the consumer package's dependency tree,
   since `spell_check_package()` reads a package's files without loading it.
-  Two upstream quirks are documented on the reference page rather than
-  papered over (#556):
+  Three upstream quirks are handled rather than papered over (#556).
+  A lone glob in `exclude` used to exclude only its first match --
+  upstream expands the input unquoted in a shell and then reads only the
+  first argument --
+  so the composite normalizes the value into a single unexpandable word
+  and lets R's own `Sys.glob()` match;
+  an entry containing whitespace is rejected rather than silently mangled.
+  The other two are documented on the reference page:
   `exclude` deletes the files it matches and never restores them,
   and a count of exactly 256 misspelled words exits `0`.
   Prose outside an R package -- a Quarto site's non-vignette pages,

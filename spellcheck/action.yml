@@ -13,10 +13,12 @@ inputs:
   exclude:
     description: >-
       Comma-separated files or folders to exclude from the spellcheck.
-      Accepts globs. The upstream action implements this by DELETING the
-      matched files from the runner's checkout and never restoring them, so
-      do not run this capability in a job that later reads or publishes the
-      working tree.
+      Accepts globs, which are expanded by R rather than by the shell (see
+      the normalize step below). The upstream action implements exclusion by
+      DELETING the matched files from the runner's checkout and never
+      restoring them, so do not run this capability in a job that later reads
+      or publishes the working tree. An entry containing whitespace is
+      rejected rather than silently mangled.
     default: ''
   additional-options:
     description: >-
@@ -70,9 +72,51 @@ runs:
         packages: |
           any::spelling
 
+    # Upstream interpolates `exclude` UNQUOTED into a bash `run:` body, and its
+    # spellcheck.R reads only `args[1]` -- so bash pathname-expands a lone glob
+    # into N argv words and R silently drops all but the first. Measured
+    # 2026-08-21 against three vignettes: `vignettes/*.Rmd` excluded only
+    # `vignettes/a.Rmd`, and the other two were still checked.
+    #
+    # A whitespace-free, comma-joined value with a TRAILING COMMA is one bash
+    # word that cannot pathname-expand, because no path ends in a comma. R's
+    # `strsplit(args[1], ",")` then drops the empty tail and `Sys.glob` does
+    # the matching -- which is what this input has always promised. Verified
+    # for the empty value (upstream is passed nothing, so the no-exclusions
+    # path is untouched), a lone glob, a comma-joined list, padded entries,
+    # doubled commas, and an already-trailing comma.
+    #
+    # An entry containing whitespace cannot survive upstream's unquoted
+    # expansion in any form, so it fails here with a message naming the entry
+    # rather than silently excluding the wrong thing. Reported in gha#556.
+    - name: Normalize the exclude list
+      id: exclude
+      shell: bash
+      env:
+        RAW_EXCLUDE: ${{ inputs.exclude }}
+      run: |
+        set -euo pipefail
+        normalized=""
+        if [ -n "$RAW_EXCLUDE" ]; then
+          IFS=',' read -ra entries <<< "$RAW_EXCLUDE"
+          for entry in ${entries[@]+"${entries[@]}"}; do
+            entry="${entry#"${entry%%[![:space:]]*}"}"
+            entry="${entry%"${entry##*[![:space:]]}"}"
+            [ -n "$entry" ] || continue
+            case "$entry" in
+              *[[:space:]]*)
+                echo "::error::spellcheck: the 'exclude' entry '$entry' contains whitespace. The upstream action expands this input unquoted in a shell, so such an entry cannot reach it as a single argument. Rename the path, or drop it from 'exclude'."
+                exit 1
+                ;;
+            esac
+            normalized="${normalized}${entry},"
+          done
+        fi
+        printf 'value=%s\n' "$normalized" >> "$GITHUB_OUTPUT"
+
     - name: Spellcheck
       uses: insightsengineering/r-spellcheck-action@33b8e19df4227812758fadd88d50b710c7620e1f # v3.0.3
       with:
         path: ${{ inputs.path }}
-        exclude: ${{ inputs.exclude }}
+        exclude: ${{ steps.exclude.outputs.value }}
         additional_options: ${{ inputs.additional-options }}

@@ -2216,6 +2216,50 @@ jobs:
             exit 1
           fi
           echo "The fixture with no inst/WORDLIST failed the spellcheck, as expected."
+
+      # The `exclude` pair (gha#555 review). Two vignettes each carry a
+      # different unlisted term, and the composite is called twice over
+      # identical copies -- once without `exclude`, once with a lone glob.
+      #
+      # The first call proves the vignettes are genuinely checked, without
+      # which the second would pass vacuously. The second is the regression
+      # guard for the normalize step: upstream expands `exclude` unquoted and
+      # then reads only its first argument, so before that step a lone glob
+      # excluded only `first.Rmd` and `serostatus` in `second.Rmd` was still
+      # reported. Measured against upstream's own spellcheck.R -- no exclude
+      # exits 2, the un-normalized glob exits 1, the normalized value exits 0
+      # -- so removing the step turns this step red rather than quiet.
+      #
+      # Each call gets its own copy because the upstream action DELETES the
+      # files it excludes and never restores them.
+      - name: Generate the exclude fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-vign-checked --vignette-typos
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-vign-excluded --vignette-typos
+      - name: Spellcheck the vignette fixture with no exclude
+        id: vignettes-checked
+        continue-on-error: true
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-vign-checked
+      - name: Spellcheck the vignette fixture, excluding both vignettes by glob
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-vign-excluded
+          exclude: 'vignettes/*.Rmd'
+      - name: Assert the vignettes are checked when not excluded
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.vignettes-checked.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected the vignette fixture to fail without 'exclude', got outcome='$OUTCOME'; the exclude assertion above would then be vacuous"
+            exit 1
+          fi
+          echo "The vignette fixture failed without 'exclude', so the exclude assertion is not vacuous."
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't

@@ -25,7 +25,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: make-fixture.sh <dest-dir> [--no-wordlist]" >&2
+  echo "usage: make-fixture.sh <dest-dir> [--no-wordlist|--vignette-typos]" >&2
   exit 2
 }
 
@@ -33,7 +33,7 @@ dest="${1:-}"
 [ -n "$dest" ] || usage
 variant="${2:-}"
 case "$variant" in
-  ''|--no-wordlist) ;;
+  ''|--no-wordlist|--vignette-typos) ;;
   *) usage ;;
 esac
 
@@ -96,9 +96,45 @@ EOF
 
 if [ "$variant" = "--no-wordlist" ]; then
   echo "Created R package fixture WITHOUT inst/WORDLIST at: $dest"
-else
-  cat > "$dest/inst/WORDLIST" <<'EOF'
+  exit 0
+fi
+
+cat > "$dest/inst/WORDLIST" <<'EOF'
 seroincidence
 EOF
+
+if [ "$variant" != "--vignette-typos" ]; then
   echo "Created R package fixture with inst/WORDLIST at: $dest"
+  exit 0
 fi
+
+# The --vignette-typos variant exists to exercise the `exclude` input, and it
+# needs TWO offending vignettes rather than one. Upstream expands `exclude`
+# unquoted in a shell and then reads only the first argument, so a lone glob
+# used to exclude only its first match. A single-vignette fixture would pass
+# either way and prove nothing; with two, dropping the composite's normalize
+# step leaves the second vignette reported and turns the selftest red.
+#
+# Each vignette carries a DIFFERENT unlisted term so a failure names which one
+# survived. Both are absent from hunspell's en_US dictionary and from the
+# WORDLIST above (measured 2026-08-21: hunspell_check() returns FALSE for
+# "seroreversion" and "serostatus").
+mkdir -p "$dest/vignettes"
+
+cat > "$dest/vignettes/first.Rmd" <<'EOF'
+---
+title: "First"
+---
+
+This vignette discusses seroreversion at some length.
+EOF
+
+cat > "$dest/vignettes/second.Rmd" <<'EOF'
+---
+title: "Second"
+---
+
+This vignette discusses serostatus at some length.
+EOF
+
+echo "Created R package fixture with inst/WORDLIST and two offending vignettes at: $dest"

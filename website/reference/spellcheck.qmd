@@ -92,13 +92,29 @@ resolving its dependency tree would be pure cost.
 For the same reason `install-quarto` defaults to `'false'` -- {spelling} reads
 vignette *sources* and never renders them.
 
-## Two upstream behaviours worth knowing
+## Three upstream behaviours worth knowing
 
 This capability wraps
 [`insightsengineering/r-spellcheck-action`](https://github.com/insightsengineering/r-spellcheck-action),
-which carries two quirks a caller can be bitten by.
-Both were confirmed by reading and running its `spellcheck.R` at `v3.0.3`
-(2026-08-21), not inferred from its documentation.
+which carries three quirks a caller can be bitten by.
+All were confirmed by reading and running its `action.yaml` and `spellcheck.R`
+at `v3.0.3` (2026-08-21), not inferred from its documentation.
+
+**A lone glob in `exclude` used to exclude only its first match -- this
+capability works around that.**
+Upstream interpolates `exclude` unquoted into a `bash` `run:` body, so the
+shell pathname-expands it into separate arguments before R sees it, and
+`spellcheck.R` reads only the first.
+Measured over three vignettes: `vignettes/*.Rmd` excluded
+`vignettes/a.Rmd` and left the other two checked, silently.
+The composite therefore normalizes the value first -- entries trimmed,
+rejoined with commas, and given a trailing comma -- which the shell cannot
+expand, since no path ends in a comma.
+R's own `Sys.glob()` then does the matching, so a glob excludes every file it
+matches, as the input has always claimed.
+The one shape that cannot be supported is an entry containing whitespace: the
+shell splits on it whatever we do, so such an entry is rejected with an error
+naming it.
 
 **`exclude` deletes the files it matches.**
 The script calls `file.remove()` on each glob match, and the branch meant to
