@@ -714,6 +714,36 @@ job that exercises the real composite (`base-ref` diff mode) against this
 repo's own tree, the same "local composite, not yet the `@v1`-pinned
 reusable-workflow chain" precedent `phi` uses above.
 
+**Running that check locally before a push proves nothing about files you have
+not committed yet, and it reports them as clean rather than as unchecked.**
+`_added_line_numbers` (called from `find_violations`) diffs
+`"$base_ref"..."HEAD"`, so its population is the **commit graph** -- a staged
+file is invisible to it, and an untracked one doubly so.
+Nothing in the output distinguishes "checked, no violations" from "there was
+nothing to check", which is what makes it misread rather than merely miss:
+
+```bash
+git add -A
+NLB_BASE_REF=origin/main python3 check-new-line-breaks/check-new-line-breaks.py
+# -> No lines missing semantic breaks.        (it examined zero added lines)
+```
+
+So commit first.
+The ref itself needs no special care: `A...HEAD` is three-dot, which git
+resolves to the merge-base of `A` and `HEAD`, so `NLB_BASE_REF=origin/main`
+already means what the `new-line-breaks` job's own merge-base SHA means.
+Committing is the whole of the fix.
+Measured on gha#544: a local run over a staged changelog fragment reported
+clean, and CI flagged three lines in that same file on the very next push.
+This is the general verify-the-right-artifact trap in
+[`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/verify-the-right-artifact.md)
+wearing local clothes: the working tree is an adjacent artifact to the one the
+instrument actually reads, and checking it thoroughly is still checking the
+wrong thing.
+The same reasoning applies to every diff-scoped check here -- `check-phi` and
+`check-new-line-breaks` take a `base-ref`, and `check-secrets` scans history --
+so none of them can see an uncommitted change either.
+
 The suite also covers the gha#336 clause check (a long line carrying a
 mid-line semicolon, as a proxy for SemBr rule 5), including that it is
 **on by default** -- and pins the two defaults that are declared in three
