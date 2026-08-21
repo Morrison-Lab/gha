@@ -20,3 +20,8 @@
   Setting the input alone does nothing, because every clause in the stock
   caller gate requires a mention, so the reusable workflow is never invoked.
   `examples/claude.yml` carries the literal caller clause to add.
+
+  The agent's own prompt is told which of the two it was: an
+  assignment-dispatched run is framed as "the assignment IS the request"
+  rather than as a mention to react to, since there may be no mention
+  anywhere in the issue.
