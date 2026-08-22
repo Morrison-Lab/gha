@@ -95,6 +95,7 @@ that need to write must have the **caller** grant it on the calling job:
   its own permissions.
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
+
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
   `check-equation-renders`, `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
@@ -162,9 +163,11 @@ that need to write must have the **caller** grant it on the calling job:
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
   The `preview` build half is read-only, above.
+
 - `check-equation-renders` downloads the build artifact, so a caller that
   narrows below the read-only default token still needs `actions: read`
   alongside `contents: read`.
+
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant

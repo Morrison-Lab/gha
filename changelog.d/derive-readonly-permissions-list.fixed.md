@@ -8,6 +8,7 @@
   Both lists are backfilled, and
   `.github/workflows/scripts/tests/run-permissions-docs-tests.py` now derives
   the set from those blocks and fails when either list disagrees.
+
 - **`check-news.yml` declares `contents: read` explicitly.**
   It was the one reusable workflow declaring no permissions anywhere, so it
   inherited whatever the caller granted.
