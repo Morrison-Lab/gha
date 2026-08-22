@@ -2,7 +2,7 @@ name: Lint Markdown
 description: >-
   Lint the caller's tracked Markdown files with markdownlint-cli2 (bundled
   default config, overridable), plus companion checks that flag long fenced
-  code blocks and list-item merge splices.
+  code blocks, list-item merge splices, and blank lines that split a table.
 inputs:
   config-file:
     description: >-
@@ -49,6 +49,15 @@ inputs:
     description: >-
       Fail the action when a list-item merge splice is detected.
     default: 'true'
+  fail-on-table-splits:
+    description: >-
+      Fail the action when a blank line splits a GFM table, orphaning the rows
+      below it so they render as literal text. Defaults to failing, and scans
+      the whole tree rather than diff-scoping like the item-splice check
+      above, because a split table is an unambiguous rendering defect with no
+      legitimate form -- a pre-existing hit is a bug to fix, not a legacy
+      style difference to tolerate.
+    default: 'true'
 runs:
   using: composite
   steps:
@@ -86,3 +95,11 @@ runs:
         LIST_ITEM_SPLICE_BASE_REF: ${{ inputs.base-ref }}
         LIST_ITEM_SPLICE_FAIL: ${{ inputs.fail-on-item-splices }}
       run: node "$GITHUB_ACTION_PATH/check_list_item_splices.mjs"
+
+    - name: Check for blank lines splitting a table
+      shell: bash
+      env:
+        MARKDOWNLINT_GLOBS: ${{ inputs.globs }}
+        TABLE_SPLIT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        TABLE_SPLIT_FAIL: ${{ inputs.fail-on-table-splits }}
+      run: node "$GITHUB_ACTION_PATH/check_table_splits.mjs"
