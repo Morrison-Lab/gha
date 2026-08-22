@@ -20,6 +20,21 @@ capability sees that a check is watching::
     - <!--readonly-workflows:begin-->`check-phi`, `lint-yaml`,
       `spellcheck`<!--readonly-workflows:end--> need only `contents: read` ...
 
+**What it does not cover.** It checks the marked list, and nothing outside it.
+A doc can still carry a per-workflow caveat -- "this one also needs
+``actions: read`` if you narrow below the default token" -- that its counterpart
+omits, and this guard will not see the difference. The review of the PR that
+added this script caught exactly that, in the same diff: ``README.md`` gained
+such a caveat for ``check-equation-renders`` and ``website/permissions.qmd``
+did not. Widening the guard to compare free prose is a much larger job than
+comparing a delimited list, so the list is what is mechanized and the caveats
+remain a human check.
+
+PyYAML is required. It ships preinstalled on the GitHub-hosted Ubuntu runner
+image, which is where ``_selftest.yml`` runs this; the import is guarded so a
+runner that ever drops it fails with an actionable message rather than a
+traceback.
+
 Usage::
 
     python3 run-permissions-docs-tests.py [--workflows-dir DIR] [--doc PATH ...]
@@ -52,7 +67,15 @@ def die(message: str) -> None:
 
 
 def load_yaml(path: pathlib.Path):
-    import yaml  # imported lazily so --help works without PyYAML installed
+    # Imported lazily so --help works without PyYAML, and guarded so its
+    # absence names the fix instead of surfacing as an ImportError traceback.
+    try:
+        import yaml
+    except ImportError:  # pragma: no cover - depends on the runner image
+        die(
+            "PyYAML is required to derive permissions from the workflows "
+            "(install it with `python3 -m pip install pyyaml`)."
+        )
 
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
