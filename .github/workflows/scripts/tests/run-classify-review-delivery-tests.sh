@@ -56,6 +56,24 @@ check "gemini other-failure headline" false gemini-failure \
   "> [!CAUTION]
 > **Gemini CLI failed for a reason other than quota/auth/suspension.** [run]($RUN_URL)"
 
+# --- opencode's two reporters (gha#586)
+check "opencode failure headline (empty output)" false opencode-failure \
+  "> [!CAUTION]
+> **OpenCode review failed: the agent exited successfully but produced no review.**
+>
+> Common causes: the model returned an empty response ...
+
+[View run]($RUN_URL)"
+
+check "opencode failure headline (non-zero exit)" false opencode-failure \
+  "> [!CAUTION]
+> **OpenCode review failed: the CLI exited 1 without completing the review.**
+
+[View run]($RUN_URL)"
+
+check "opencode secret-skip notice" false opencode-skipped \
+  "> **OpenCode review skipped — API key unavailable.** No \`OPENCODE_API_KEY\` secret is configured for this repository. [View run]($RUN_URL)"
+
 # --- the self-mod skip (gha#571 review). The job reports `success` and every
 #     step after the guard reads `skipped`, so nothing about this looks like a
 #     failure -- which is why the marker list omitted it. Both wordings

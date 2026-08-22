@@ -1,0 +1,179 @@
+name: Report OpenCode review run
+
+description: >-
+  Classify an opencode review run's outcome and post the resulting PR
+  comment (gha#586). A completed run posts the agent's review text with a
+  run link; a failed or empty run posts a "> [!CAUTION] **OpenCode review
+  failed:**" comment carrying the classifier's advice and the raw CLI
+  output. The failure marker phrase is load-bearing --
+  classify-review-delivery.sh keys on it -- so it is composed here, in one
+  place. Meant to be called from opencode-code-review.yml right after the
+  headless `opencode run` step. Requires `issues: write` on the calling job
+  (which also covers PR conversation comments).
+
+inputs:
+  exit-code:
+    description: The `opencode run` step's exit code.
+    required: true
+  review-file:
+    description: >-
+      Path to the file holding the run's stdout (the review text). May be
+      missing or empty; its byte count feeds classify-opencode-run.sh.
+    required: true
+  error-file:
+    description: >-
+      Path to a file holding the run's stderr, rendered into failure
+      comments under a fence. Kept out of the classifier for the reason
+      recorded there; passed as a path because the composite runs on the
+      same runner as the calling step.
+    required: false
+    default: ''
+  model:
+    description: Model label shown in the review footer.
+    required: false
+    default: 'opencode/big-pickle'
+  entity-number:
+    description: >-
+      PR number to comment on (`gh issue comment` accepts PR numbers).
+      Leave empty to skip posting and report only through the run log.
+    required: false
+    default: ''
+  run-url:
+    description: Link to the workflow run, included in every comment body.
+    required: false
+    default: ''
+  github-token:
+    description: 'Token used to post the comment. Needs `issues: write`.'
+    required: false
+    default: ${{ github.token }}
+  dry-run:
+    description: >-
+      Build the body and write it to `body-file` without posting or emitting
+      an annotation, so `_selftest.yml` can exercise this action end to end
+      without commenting on real threads (the same reasoning
+      report-gemini-failure's own `dry-run` input gives). A `::notice::`
+      summarizing the dry run is still emitted either way.
+    required: false
+    default: 'false'
+
+outputs:
+  kind:
+    description: '`review` when the run delivered text, else `failed`.'
+    value: ${{ steps.report.outputs.kind }}
+  body-file:
+    description: Path to the composed comment body.
+    value: ${{ steps.report.outputs.body-file }}
+  posted:
+    description: "'true' only when a comment was actually posted."
+    value: ${{ steps.report.outputs.posted }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify and report the OpenCode review run
+      id: report
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        # Named explicitly rather than inferred from a git remote, matching
+        # report-gemini-failure/report-push-failure: the caller's checkout
+        # need not be the repository being commented on.
+        GH_REPO: ${{ github.repository }}
+        EXIT_CODE: ${{ inputs.exit-code }}
+        REVIEW_FILE: ${{ inputs.review-file }}
+        ERROR_FILE: ${{ inputs.error-file }}
+        MODEL: ${{ inputs.model }}
+        ENTITY_NUMBER: ${{ inputs.entity-number }}
+        RUN_URL: ${{ inputs.run-url }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        # Callers run against their own checkout, not Morrison-Lab/gha's
+        # tree, so both scripts are located through github.action_path --
+        # the same resolution report-gemini-failure uses.
+        CLASSIFY_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/classify-opencode-run.sh
+        FENCE_TRUNCATE_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/fence-and-truncate.sh
+        # GitHub caps comments at 65,536 characters. A review near this
+        # budget is already far past useful reading length; the raw-error
+        # budget matches report-gemini-failure's.
+        MAX_REVIEW_BYTES: '50000'
+        MAX_ERROR_BYTES: '4000'
+      run: |
+        set -euo pipefail
+
+        # shellcheck source=../../workflows/scripts/fence-and-truncate.sh
+        source "$FENCE_TRUNCATE_SCRIPT"
+
+        if [[ -f "$REVIEW_FILE" ]]; then
+          review_bytes="$(wc -c < "$REVIEW_FILE")"
+          review_text="$(cat "$REVIEW_FILE")"
+        else
+          review_bytes=0
+          review_text=''
+        fi
+        if [[ -n "$ERROR_FILE" && -f "$ERROR_FILE" ]]; then
+          ERROR_OUTPUT="$(cat "$ERROR_FILE")"
+        else
+          ERROR_OUTPUT=''
+        fi
+
+        classified="$(bash "$CLASSIFY_SCRIPT" "$EXIT_CODE" "$review_bytes")"
+        kind="$(sed -n '1s/^kind=//p' <<<"$classified")"
+        headline="$(sed -n '2s/^headline=//p' <<<"$classified")"
+        advice="$(tail -n +4 <<<"$classified")"
+        echo "kind=$kind" >> "$GITHUB_OUTPUT"
+
+        if [[ "$kind" != "review" && "$DRY_RUN" != "true" ]]; then
+          # headline is composed here from fixed strings plus the numeric
+          # exit code, so it is annotation-safe by construction.
+          echo "::error::$headline"
+        fi
+
+        body_file="$(mktemp)"
+        echo "body-file=$body_file" >> "$GITHUB_OUTPUT"
+
+        {
+          if [[ "$kind" == "review" ]]; then
+            printf '## OpenCode review (`%s`)\n\n' "$MODEL"
+            review_body="$(truncate_to_bytes "$review_text" "$MAX_REVIEW_BYTES")"
+            if [[ "$review_bytes" -gt "$MAX_REVIEW_BYTES" ]]; then
+              review_body="$review_body"$'\n\n... (truncated; full output in the workflow run)'
+            fi
+            printf '%s\n' "$review_body"
+            printf '\n---\n\nReviewed by [opencode](https://opencode.ai)'
+            if [[ -n "$RUN_URL" ]]; then
+              printf ' | [View run](%s)' "$RUN_URL"
+            fi
+            printf '\n'
+          else
+            printf '> [!CAUTION]\n> **%s**\n\n' "$headline"
+            printf '%s\n\n' "$advice"
+            if [[ -n "$ERROR_OUTPUT" ]]; then
+              error_body="$(truncate_to_bytes "$ERROR_OUTPUT" "$MAX_ERROR_BYTES")"
+              error_fence="$(fence_for "$error_body")"
+              printf '<details><summary>Raw CLI output</summary>\n\n%stext\n%s\n%s\n\n</details>\n\n' \
+                "$error_fence" "$error_body" "$error_fence"
+            fi
+            if [[ -n "$RUN_URL" ]]; then
+              printf '[View run](%s)\n' "$RUN_URL"
+            fi
+          fi
+        } > "$body_file"
+
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo "::notice::[dry-run] Would comment on #${ENTITY_NUMBER:-<none>} (kind=$kind); body written to $body_file"
+          echo "posted=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [[ -z "$ENTITY_NUMBER" ]]; then
+          echo "::warning::No entity number given; the result ($kind) is reported only in this run log."
+          echo "posted=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        # A failed comment must not mask the underlying outcome -- the job
+        # log carries the same report either way (same reasoning as
+        # report-gemini-failure).
+        if gh issue comment "$ENTITY_NUMBER" --body-file "$body_file"; then
+          echo "posted=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "posted=false" >> "$GITHUB_OUTPUT"
+          echo "::warning::Could not post the OpenCode result to #${ENTITY_NUMBER}."
+        fi

@@ -10,9 +10,16 @@ already include the right `permissions:` blocks; copy them as-is.
 
 ## Per-workflow grants
 
-- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
-  `spellcheck` need only
+- <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
+  `check-equation-renders`, `check-new-line-breaks`, `check-news`,
+  `check-non-standard-chars`, `check-phi`, `check-secrets`,
+  `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
+  `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
+  `version-check`<!--readonly-workflows:end--> need only
   `contents: read` (the default), so no `permissions:` block is needed.
+  This list is checked against the workflows' own `permissions:` blocks by
+  `.github/workflows/scripts/tests/run-permissions-docs-tests.py`; keep the
+  markers around it.
 - `check-links` opens an issue on `main` failures, so grant `issues: write`,
   `pull-requests: read`, `contents: read`.
 - `summary` comments on issues and calls the models API, so grant
@@ -24,9 +31,12 @@ already include the right `permissions:` blocks; copy them as-is.
   `gh-pages` / `(root)` once. Grant `contents: write` even with `deploy: false`:
   the deploy job is part of the workflow, so the caller must grant its
   permissions even when it is skipped.
-- `preview` (build half, read-only) needs only `contents: read` (the default).
 - `preview-deploy` (deploy half) pushes `gh-pages` and comments, so grant
   `contents: write`, `pull-requests: write`, `actions: read`.
+  The `preview` build half is read-only, above.
+- `check-equation-renders` downloads the build artifact.
+  It is read-only, above, but a caller that narrows below the read-only
+  default token still needs `actions: read` alongside `contents: read`.
 - `cleanup-pr-previews` commits deletions to `gh-pages`, so grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` open a PR, so grant
@@ -43,16 +53,19 @@ already include the right `permissions:` blocks; copy them as-is.
 - `claude-code-review` (read-only review) grants `contents: read`,
   `pull-requests: write`, `issues: write`, `id-token: write`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
-- `cursor-code-review` queues a Cursor Bugbot review, so grant
-  `contents: read`, `pull-requests: read`, and add the `CURSOR_API_KEY`
-  secret (Enterprise, `admin:*` scope).
+- `cursor-code-review` queues a Cursor Bugbot review.
+  It is read-only, above, but does need the `CURSOR_API_KEY` secret
+  (Enterprise, `admin:*` scope).
+- `opencode-code-review` is a read-only review that posts its own comment, so
+  grant `contents: read`, `pull-requests: write`, `issues: write`, and set the
+  `OPENCODE_API_KEY` secret ([OpenCode Zen](https://opencode.ai/docs/zen/)).
 - `request-dependabot-review` requests a reviewer on the PR, so grant
   `pull-requests: write`.
 - `bump-dev-version` opens (or auto-merges) a PR, so grant `contents: write`,
   `pull-requests: write`, enable the same "Allow GitHub Actions to create and
   approve pull requests" setting as above, and (for its default
-  `auto-merge: true`) "Allow auto-merge" too. `version-check` is read-only, so
-  grant only `pull-requests: read`, `contents: read`.
+  `auto-merge: true`) "Allow auto-merge" too. Its `version-check` counterpart
+  is read-only, above.
 
 ## Optional secrets
 
