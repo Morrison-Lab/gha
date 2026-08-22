@@ -6,9 +6,14 @@
   six read-only `gh` subcommands.
   Bash is allowlist-gated, so everything else was refused -- no `git` at all,
   no `bash`, not even a `for` loop -- and five measured runs died that way
-  without producing a verdict, at 11 to 37 denials and $4.68 to $9.87 each.
-  `Bash` is now granted whole, and `Write` is allowed under `/tmp` so the
-  reviewer can stage a scratch script.
+  without producing a verdict, at 11 to 37 denials.
+  The four with a recorded cost spent between $4.68 and $9.87, none of which
+  bought a review.
+  `Bash` is now granted whole, and `Edit(//tmp/**)` lets the reviewer stage a
+  scratch script.
+  That rule is spelled `Edit` rather than `Write` deliberately: Claude Code
+  consults `Edit(path)` and `Read(path)` rules only, so a `Write(path)` rule is
+  accepted and then ignored.
 
 - **The deny list grew to match, and is documented as guard rails rather than
   a boundary.**

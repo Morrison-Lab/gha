@@ -166,23 +166,40 @@ def main() -> int:
     if not missing and not unexpected:
         check(True, f"the deny list matches its inventory exactly ({len(denied)} rules)")
 
-    # 4. Write is granted, and only under a scratch prefix -- the checkout
-    #    under review must stay untouched, since this is a review-only run.
-    writes = [t for t in allowed if t == "Write" or t.startswith("Write(")]
-    check(bool(writes), "Write is granted for scratch files (gha#572)")
+    # 4. The scratch-write grant must be spelled `Edit(//tmp/**)`.
+    #    Two independent ways to get this wrong, and each produces a rule that
+    #    is accepted and then never consulted -- which reads as a working grant
+    #    in the config, so nothing surfaces the mistake. The docs say Claude
+    #    Code "checks file permissions against Edit(path) and Read(path) rules
+    #    only", so a `Write(...)` path rule is inert; and `//` is the absolute
+    #    form, where a single leading `/` anchors at the project instead.
+    #    This shipped as `Write(//tmp/**)` and a reviewer caught it.
+    inert = [t for t in allowed if re.match(r"(Write|MultiEdit|NotebookEdit|Glob)\(", t)]
     check(
-        "Write" not in allowed,
-        "Write is not granted unscoped (it would reach the checkout)",
+        not inert,
+        "no path rule uses a tool name Claude Code never consults"
+        + (f" (found: {', '.join(inert)}; use Edit(...) or Read(...))" if inert else ""),
     )
+
+    edits = [t for t in allowed if t == "Edit" or t.startswith("Edit(")]
+    check(bool(edits), "a scratch-write grant is present (gha#572)")
+    check("Edit" not in allowed, "Edit is not granted unscoped (it would reach the checkout)")
     check(
-        all(w.startswith("Write(//tmp/") for w in writes),
-        f"every Write grant is scoped under /tmp (found: {', '.join(writes) or 'none'})",
+        all(e.startswith("Edit(//tmp/") for e in edits),
+        f"every scratch-write grant is scoped under /tmp (found: {', '.join(edits) or 'none'})",
     )
 
     # 5. Parameter-scoped rules are valid in deny/ask rules only, never in an
     #    allow rule -- an allow rule for one parameter would not establish the
     #    call is safe overall, so Claude Code does not accept the form there.
-    param_allows = [t for t in allowed if re.search(r"\([a-z_]+:[^*]", t)]
+    # `WebFetch(domain:...)` is WebFetch's OWN specifier syntax, not a
+    # parameter rule, and the docs say allow rules "continue to use each
+    # tool's own specifier syntax" -- so it must not be flagged here.
+    param_allows = [
+        t
+        for t in allowed
+        if re.search(r"\([a-z_]+:[^*]", t) and not t.startswith("WebFetch(")
+    ]
     check(
         not param_allows,
         "no parameter-scoped rules in the allow list"

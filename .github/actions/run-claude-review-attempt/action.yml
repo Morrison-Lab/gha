@@ -52,7 +52,7 @@ inputs:
       count a large one, and at the time it had no route to that, so it spent
       whole runs retrying redirect variants until the denial count starved it
       (gha#541, gha#543). It could write one for itself now (gha#572 granted
-      `Write(//tmp/**)`), but handing it the file costs the reviewer nothing
+      `Edit(//tmp/**)`), but handing it the file costs the reviewer nothing
       and is still the better default. Empty when the write failed, in which
       case the prompt falls back to the bare-command instructions below.
     required: false
@@ -170,6 +170,14 @@ runs:
         # comment. Disallow the git-write tools (disallowed beats the action's
         # generated allow-list) and tell the agent up front not to attempt
         # edits, so it folds any would-be fix into its review instead.
+        #
+        # NOTE: the paragraph below describes the allowlist as it stood
+        # BEFORE gha#566/gha#572, when Bash was granted command by command.
+        # `Bash` is granted whole now and `Bash(python3 -m:*)` is no longer
+        # denied -- see the gha#566/gha#572 block further down, which is the
+        # current state. This is kept because it records WHY the CAS tools
+        # were wanted, which is still the reason the `pip-packages` /
+        # `apt-packages` inputs exist.
         #
         # `Bash(python3:*)` and `Bash(maxima:*)` let the reviewer actually
         # run the computer-algebra tools the `pip-packages` / `apt-packages`
@@ -346,7 +354,7 @@ runs:
         # `permission_denials`, which is the permission layer rather than a
         # sandbox: a `Write` grant is precisely what they lacked.
         #
-        # Both are moot now that Bash is granted whole and `Write(//tmp/**)`
+        # Both are moot now that Bash is granted whole and `Edit(//tmp/**)`
         # is allowed, but the correction matters more than the moot-ness — a
         # wrong mechanism recorded in a comment is what makes the next reader
         # rule out the real fix. A bare `gh pr diff <n> --repo <owner>/<repo>`
@@ -408,7 +416,7 @@ runs:
         # **These denials are guard rails against an accident, NOT a security
         # boundary, and the difference is worth stating because the list looks
         # like one.** A prefix rule cannot contain a general shell: the model
-        # could reach a denied command by wrapping it, and the `Write(//tmp)`
+        # could reach a denied command by wrapping it, and the `Edit(//tmp)`
         # scope constrains the Write TOOL while a redirect or `sed -i` writes
         # wherever the runner account can.
         #
@@ -448,16 +456,32 @@ runs:
         # suites, so the deny starved the reviewer on exactly the tests it is
         # asked to verify. That is gha#572's defect in miniature.
         #
-        # `Write(//tmp/**)` is the other half of gha#572. A reviewer that
+        # `Edit(//tmp/**)` is the other half of gha#572. A reviewer that
         # wants to check something programmatically has to be able to stage a
         # scratch script; denying that pushes it toward eyeballing, which is
         # the opposite of what this repo's "Never just theorize -- investigate
-        # empirically" section asks for. It is scoped to `/tmp` (the `//`
-        # prefix is the documented spelling for an absolute path) so the
-        # checkout under review stays untouched and the run stays review-only.
+        # empirically" section asks for.
+        #
+        # Two spelling details, and BOTH are needed -- getting either wrong
+        # produces a rule that is accepted and then silently never consulted,
+        # which is worse than no rule because it reads as a working grant.
+        # The `//` prefix is the documented form for a filesystem-absolute
+        # path; a single leading `/` is anchored at the project instead. And
+        # the tool name must be `Edit`, not `Write`: the docs say Claude Code
+        # "checks file permissions against `Edit(path)` and `Read(path)` rules
+        # only", and to "use `Edit(docs/**)` in place of `Write(docs/**)`" --
+        # so `Edit` is what governs the Write, MultiEdit and NotebookEdit
+        # tools too. This shipped as `Write(//tmp/**)` first and a reviewer
+        # caught it; the `//` fix is what made the wrong tool name easy to
+        # miss.
+        #
+        # Scoping it to `/tmp` keeps the reviewer's own scratch work out of
+        # the checkout. It does NOT make the checkout unwritable -- see the
+        # guard-rails paragraph above; a general shell writes wherever the
+        # runner account can, and the prompt asks the reviewer not to.
         claude_args: >-
           --allowedTools
-          "mcp__github_inline_comment__create_inline_comment,Bash,Write(//tmp/**),WebFetch,WebSearch"
+          "mcp__github_inline_comment__create_inline_comment,Bash,Edit(//tmp/**),WebFetch,WebSearch"
           --disallowedTools
           "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
