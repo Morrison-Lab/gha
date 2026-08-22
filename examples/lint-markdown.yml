@@ -1,7 +1,7 @@
 # Copy to .github/workflows/lint-markdown.yml in your repo.
 # Lints tracked Markdown files with markdownlint-cli2 (bundled default
-# config), plus companion checks that flag long fenced code blocks and
-# list-item merge splices.
+# config), plus companion checks that flag long fenced code blocks,
+# list-item merge splices, and blank lines that split a table.
 # Only contents:read is needed (the default), so no permissions block is
 # required.
 name: Lint Markdown
@@ -25,3 +25,4 @@ jobs:
     #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks
     #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs
     #   fail-on-item-splices: true          # fail when a list-item merge splice is detected
+    #   fail-on-table-splits: true          # fail when a blank line splits a GFM table
