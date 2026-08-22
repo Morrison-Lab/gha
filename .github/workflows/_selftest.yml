@@ -90,6 +90,11 @@ jobs:
         run: |
           bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh --self-test
           bash .github/workflows/scripts/tests/run-website-reference-sidebar-tests.sh
+      - name: Run permissions-docs guard unit tests and repo verification
+        shell: bash
+        run: |
+          python3 .github/workflows/scripts/tests/run-permissions-docs-tests.py --self-test
+          python3 .github/workflows/scripts/tests/run-permissions-docs-tests.py
       - name: Run assemble-news unit tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-assemble-news-tests.sh
