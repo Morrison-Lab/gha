@@ -9,6 +9,7 @@
   without producing a verdict, at 11 to 37 denials and $4.68 to $9.87 each.
   `Bash` is now granted whole, and `Write` is allowed under `/tmp` so the
   reviewer can stage a scratch script.
+
 - **The deny list grew to match, preserving every write restriction the narrow
   allowlist used to imply.**
   `gh pr merge`, `gh pr edit`, `gh issue comment`, `gh api` and their siblings
@@ -18,6 +19,7 @@
   `Bash(python3 -m:*)` is no longer denied, since
   `python3 -m pytest check-phi/tests/` is how this repo's own docs say to run
   its Python suites.
+
 - **The reviewer prompt no longer tells the reviewer it cannot redirect, pipe,
   or write files.**
   Those instructions were true when written and would have defeated the grant.
@@ -25,6 +27,7 @@
   command on shell operators and matches each segment, so a chained call was
   never rejected "as a whole", and the blocked file writes were permission
   denials rather than a sandbox limit.
+
 - **The verdict instruction no longer invites a doubled heading**
   ([#564](https://github.com/Morrison-Lab/gha/issues/564)).
   Asking for the conclusion under a `### Verdict` heading put the marker inside
