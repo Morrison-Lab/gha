@@ -48,6 +48,14 @@ on:
           Fail the workflow when a list-item merge splice is detected.
         type: boolean
         default: true
+      fail-on-table-splits:
+        description: >-
+          Fail the workflow when a blank line splits a GFM table, orphaning
+          the rows below it so they render as literal text. Scans the whole
+          tree rather than diff-scoping, since a split table has no
+          legitimate form.
+        type: boolean
+        default: true
 
 jobs:
   lint-markdown:
@@ -72,3 +80,4 @@ jobs:
           fail-on-long-code-blocks: ${{ inputs.fail-on-long-code-blocks }}
           base-ref: ${{ inputs.base-ref }}
           fail-on-item-splices: ${{ inputs.fail-on-item-splices }}
+          fail-on-table-splits: ${{ inputs.fail-on-table-splits }}

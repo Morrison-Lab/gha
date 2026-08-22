@@ -5,8 +5,8 @@ title: "lint-markdown.yml"
 Lint tracked Markdown files with
 [`markdownlint-cli2`](https://github.com/DavidAnson/markdownlint-cli2) using a
 bundled default config (overridable), plus companion checks that flag fenced
-code blocks longer than a configurable line threshold and list-item merge
-splices.
+code blocks longer than a configurable line threshold, list-item merge
+splices, and blank lines that split a GFM table.
 
 ## Inputs
 
@@ -20,6 +20,7 @@ splices.
 | `fail-on-long-code-blocks` | boolean | `false`  | Fail when a code block exceeds `max-code-block-lines`. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint. |
 | `base-ref`                 | string  | `''`     | Git ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives). Pass 'all' to scan all lines. |
 | `fail-on-item-splices`     | boolean | `true`   | Fail the workflow when a list-item merge splice is detected.                                                                                                                                                     |
+| `fail-on-table-splits`     | boolean | `true`   | Fail the workflow when a blank line splits a GFM table, orphaning the rows below it so they render as literal text. Scans the whole tree rather than diff-scoping, since a split table has no legitimate form. |
 
 ## Permissions
 
@@ -31,8 +32,8 @@ Only `contents: read` (the default), so no `permissions:` block is needed.
 
 # Copy to .github/workflows/lint-markdown.yml in your repo.
 # Lints tracked Markdown files with markdownlint-cli2 (bundled default
-# config), plus companion checks that flag long fenced code blocks and
-# list-item merge splices.
+# config), plus companion checks that flag long fenced code blocks,
+# list-item merge splices, and blank lines that split a table.
 # Only contents:read is needed (the default), so no permissions block is required.
 name: Lint Markdown
 
@@ -55,6 +56,7 @@ jobs:
     #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks
     #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs
     #   fail-on-item-splices: true          # fail when a list-item merge splice is detected
+    #   fail-on-table-splits: true          # fail when a blank line splits a GFM table
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
