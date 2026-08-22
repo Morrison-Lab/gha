@@ -18,9 +18,8 @@ on:
 
 jobs:
   request-review:
-    timeout-minutes: 10
+    # timeout-minutes is defined in the reusable workflow
     permissions:
-
       pull-requests: write
     uses: ./.github/workflows/request-dependabot-review.yml
     with:
