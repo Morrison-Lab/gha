@@ -32,8 +32,8 @@ already include the right `permissions:` blocks; copy them as-is.
   the deploy job is part of the workflow, so the caller must grant its
   permissions even when it is skipped.
 - `preview-deploy` (deploy half) pushes `gh-pages` and comments, so grant
-  `contents: write`, `pull-requests: write`, `actions: read`. The `preview`
-  build half is read-only, above.
+  `contents: write`, `pull-requests: write`, `actions: read`.
+  The `preview` build half is read-only, above.
 - `cleanup-pr-previews` commits deletions to `gh-pages`, so grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` open a PR, so grant
@@ -50,8 +50,9 @@ already include the right `permissions:` blocks; copy them as-is.
 - `claude-code-review` (read-only review) grants `contents: read`,
   `pull-requests: write`, `issues: write`, `id-token: write`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
-- `cursor-code-review` queues a Cursor Bugbot review. It is read-only, above,
-  but does need the `CURSOR_API_KEY` secret (Enterprise, `admin:*` scope).
+- `cursor-code-review` queues a Cursor Bugbot review.
+  It is read-only, above, but does need the `CURSOR_API_KEY` secret
+  (Enterprise, `admin:*` scope).
 - `request-dependabot-review` requests a reviewer on the PR, so grant
   `pull-requests: write`.
 - `bump-dev-version` opens (or auto-merges) a PR, so grant `contents: write`,

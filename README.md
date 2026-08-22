@@ -104,9 +104,10 @@ that need to write must have the **caller** grant it on the calling job:
   `contents: read` (the default), so no `permissions:` block is needed.
   This list is checked against the workflows' own `permissions:` blocks by
   `.github/workflows/scripts/tests/run-permissions-docs-tests.py`; keep the
-  markers around it. `test-coverage` additionally takes an optional
-  `CODECOV_TOKEN` secret, and `cursor-code-review` a `CURSOR_API_KEY` secret,
-  each passed through the caller's `secrets:` block.
+  markers around it.
+  `test-coverage` additionally takes an optional `CODECOV_TOKEN` secret, and
+  `cursor-code-review` a `CURSOR_API_KEY` secret, each passed through the
+  caller's `secrets:` block.
 - `update-snapshots` (pushes the snapshot-update commit back to the branch) →
   grant `contents: write`.
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
@@ -159,8 +160,8 @@ that need to write must have the **caller** grant it on the calling job:
   permission on the PR.
 
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
-  `contents: write`, `pull-requests: write`, `actions: read`. The `preview`
-  build half is read-only, above.
+  `contents: write`, `pull-requests: write`, `actions: read`.
+  The `preview` build half is read-only, above.
 - `check-equation-renders` downloads the build artifact, so a caller that
   narrows below the read-only default token still needs `actions: read`
   alongside `contents: read`.
