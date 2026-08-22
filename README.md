@@ -164,13 +164,16 @@ that need to write must have the **caller** grant it on the calling job:
 - `opencode-code-review` (read-only OpenCode PR review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, and set an `OPENCODE_API_KEY`
   secret (an [OpenCode Zen](https://opencode.ai/docs/zen/) API key; free-tier
-  models are available). Without the secret, reviews skip gracefully with a
-  warning comment on each PR. The agent runs with edit/bash/webfetch denied,
-  reads the diff as an attachment and the checkout for context, and posts its
-  review through the workflow -- it never touches git or `gh`.
+  models are available).
+  Without the secret, reviews skip gracefully with a warning comment on each
+  PR.
+  The agent runs with edit/bash/webfetch denied, reads the diff as an
+  attachment and the checkout for context, and posts its review through the
+  workflow -- it never touches git or `gh`.
+
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
-    submodule contents instead of reporting them as uninitialized. Public
-    submodules clone anonymously; private ones additionally need a
+    submodule contents instead of reporting them as uninitialized.
+    Public submodules clone anonymously; private ones additionally need a
     `SUBMODULES_TOKEN` secret.
 
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
@@ -217,7 +220,15 @@ The `examples/claude-code-review.yml` stub defaults to this mention-triggered
 path only (no automatic `pull_request` trigger). Add `pull_request` in that
 stub if you want automatic review on each PR update.
 
-Do not declare a top-level `concurrency:` block in caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`). The reusable workflows manage per-PR concurrency internally on their review jobs. A top-level `concurrency:` block in the caller with a PR-scoped group name deadlocks GitHub Actions against the nested job's group and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+Do not declare a top-level `concurrency:` block in caller stubs for review
+workflows (`claude-code-review.yml`, `gemini-code-review.yml`,
+`antigravity-code-review.yml`, `cursor-code-review.yml`,
+`opencode-code-review.yml`, `ai-code-review.yml`).
+The reusable workflows manage per-PR concurrency internally on their review
+jobs.
+A top-level `concurrency:` block in the caller with a PR-scoped group name
+deadlocks GitHub Actions against the nested job's group and cancels the run
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
