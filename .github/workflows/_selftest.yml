@@ -2439,21 +2439,62 @@ jobs:
       # The path guard is the one behaviour that must fail rather than degrade:
       # a name reaching outside the scripts directory is a caller bug, and
       # silently copying nothing would leave the loop calling a missing file.
-      - name: Assert a non-bare filename is refused
+      #
+      # The guard is `case "$name" in */*|..*)`, two alternatives, and each
+      # needs a case only IT can reach -- the same "a test for one pattern must
+      # be reachable by ONLY that pattern" rule this repo's CLAUDE.md records
+      # for check-secrets' redaction chain. A single `../../../etc/passwd`
+      # input is caught by `*/*` alone, so deleting `..*` would leave the step
+      # green (gha#571 review).
+      - name: Assert a path-bearing filename is refused
         id: traversal
         continue-on-error: true
         uses: ./.github/actions/install-gha-scripts
         with:
           scripts: '../../../etc/passwd'
 
-      - name: Assert that refusal actually failed
+      # The file has to EXIST for the next step to discriminate. Without it,
+      # deleting the `..*` alternative still fails the call -- on the
+      # "no such script" branch instead -- so the assertion passes either way
+      # and tests nothing. Verified by simulating the guard both ways: with the
+      # file present it is REFUSED with the alternative and COPIED without;
+      # with the file absent both variants fail.
+      - name: Plant a dot-dot-named script the guard must still refuse
         shell: bash
-        env:
-          OUTCOME: ${{ steps.traversal.outcome }}
         run: |
           set -euo pipefail
-          if [ "$OUTCOME" != "failure" ]; then
-            echo "::error::expected install-gha-scripts to refuse a non-bare filename, got outcome='$OUTCOME'"
-            exit 1
+          : > .github/workflows/scripts/..evil.sh
+          echo "Planted .github/workflows/scripts/..evil.sh for the guard test."
+
+      # No slash, so `*/*` cannot match: this is the case that actually
+      # exercises the `..*` alternative.
+      - name: Assert a dot-dot filename with no slash is refused
+        id: dotdot
+        continue-on-error: true
+        uses: ./.github/actions/install-gha-scripts
+        with:
+          scripts: '..evil.sh'
+
+      - name: Remove the planted script
+        if: always()
+        shell: bash
+        run: rm -f .github/workflows/scripts/..evil.sh
+
+      - name: Assert both refusals actually failed
+        shell: bash
+        env:
+          SLASH_OUTCOME: ${{ steps.traversal.outcome }}
+          DOTDOT_OUTCOME: ${{ steps.dotdot.outcome }}
+        run: |
+          set -euo pipefail
+          rc=0
+          if [ "$SLASH_OUTCOME" != "failure" ]; then
+            echo "::error::expected install-gha-scripts to refuse a path-bearing name, got outcome='$SLASH_OUTCOME'"
+            rc=1
           fi
-          echo "install-gha-scripts correctly refused a path-bearing name."
+          if [ "$DOTDOT_OUTCOME" != "failure" ]; then
+            echo "::error::expected install-gha-scripts to refuse '..evil.sh', got outcome='$DOTDOT_OUTCOME'"
+            rc=1
+          fi
+          [ "$rc" -eq 0 ] || exit 1
+          echo "install-gha-scripts refused both a path-bearing name and a bare dot-dot name."
