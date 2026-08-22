@@ -112,7 +112,21 @@ def main() -> int:
     parser.add_argument("--action", default=DEFAULT_ACTION)
     args = parser.parse_args()
 
-    import yaml
+    # Guarded, matching run-permissions-docs-tests.py. PyYAML ships
+    # preinstalled on the GitHub-hosted Ubuntu image and this step runs under
+    # the runner's system python3 with no setup-python, so it is present in
+    # practice -- unlike lint-yaml, which installs it because setup-python
+    # gives that job a fresh interpreter. The guard is so that a runner image
+    # which ever drops it names the fix instead of raising ImportError.
+    try:
+        import yaml
+    except ImportError:  # pragma: no cover - depends on the runner image
+        print(
+            "::error::PyYAML is required to parse the action manifest "
+            "(install it with `python3 -m pip install pyyaml`).",
+            file=sys.stderr,
+        )
+        return 2
 
     path = pathlib.Path(args.action)
     if not path.is_file():
