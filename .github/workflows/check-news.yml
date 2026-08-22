@@ -37,6 +37,15 @@ jobs:
     name: Check Changelog Action
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # Declared explicitly, as every sibling reusable workflow does. Without it
+    # this job inherits whatever the caller granted, so a caller that needs
+    # `contents: write` elsewhere would hand it to a check that only reads.
+    # `contents: read` is sufficient and verified: the job checks out, diffs
+    # locally, and the wrapped UCD-SERG/changelog-check-action does the same
+    # (its `check.sh` is a `git diff` and makes no API calls), reading
+    # everything else from the event payload.
+    permissions:
+      contents: read
     if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
       - name: Checkout repository

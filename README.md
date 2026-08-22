@@ -95,13 +95,18 @@ that need to write must have the **caller** grant it on the calling job:
   its own permissions.
 - `summary` (comments on issues, calls the models API) → grant `issues: write`,
   `models: read`, `contents: read`.
-- `check-bibliography-dois`, `check-non-standard-chars`, `check-phi`,
-  `check-secrets`,
-  `check-new-line-breaks`, `test-coverage`, `lint-workflows`, `spellcheck` → only
-  `contents: read` (the
-  default), so no `permissions:` block is needed. `test-coverage`
-  additionally takes an optional `CODECOV_TOKEN` secret, passed through the
-  caller's `secrets:` block.
+- <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
+  `check-equation-renders`, `check-new-line-breaks`, `check-news`,
+  `check-non-standard-chars`, `check-phi`, `check-secrets`,
+  `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
+  `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
+  `version-check`<!--readonly-workflows:end--> → only
+  `contents: read` (the default), so no `permissions:` block is needed.
+  This list is checked against the workflows' own `permissions:` blocks by
+  `.github/workflows/scripts/tests/run-permissions-docs-tests.py`; keep the
+  markers around it. `test-coverage` additionally takes an optional
+  `CODECOV_TOKEN` secret, and `cursor-code-review` a `CURSOR_API_KEY` secret,
+  each passed through the caller's `secrets:` block.
 - `update-snapshots` (pushes the snapshot-update commit back to the branch) →
   grant `contents: write`.
 - `quarto-publish` (deploys to the `gh-pages` branch, which Pages serves) →
@@ -148,16 +153,17 @@ that need to write must have the **caller** grant it on the calling job:
     submodules clone anonymously; private ones additionally need a
     `SUBMODULES_TOKEN` secret.
 
-- `cursor-code-review` (queues a Cursor Bugbot review) → grant
-  `contents: read`, `pull-requests: read`, and add the `CURSOR_API_KEY`
-  secret (Enterprise, `admin:*` scope). Bugbot posts with the Cursor GitHub
-  App; this workflow does not need write permission on the PR.
+- `cursor-code-review` (queues a Cursor Bugbot review) is read-only, above,
+  but does need the `CURSOR_API_KEY` secret (Enterprise, `admin:*` scope).
+  Bugbot posts with the Cursor GitHub App, so this workflow needs no write
+  permission on the PR.
 
-- `preview` (build half, read-only) → only `contents: read` (the default).
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
-  `contents: write`, `pull-requests: write`, `actions: read`.
-- `check-equation-renders` (downloads the build artifact, read-only) → grant
-  `contents: read`, `actions: read`.
+  `contents: write`, `pull-requests: write`, `actions: read`. The `preview`
+  build half is read-only, above.
+- `check-equation-renders` downloads the build artifact, so a caller that
+  narrows below the read-only default token still needs `actions: read`
+  alongside `contents: read`.
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant
@@ -179,8 +185,7 @@ that need to write must have the **caller** grant it on the calling job:
   A fine-grained PAT needs **Pull requests: Read and write** on that secret in
   addition to **Contents: write**.
   The workflow probes pull-request write access before any bump work.
-  `version-check` (read-only) →
-  only `pull-requests: read`, `contents: read`.
+  Its `version-check` counterpart is read-only, above.
 
 The stubs in [`examples/`](examples) already include the right `permissions:`
 blocks -- copy them as-is.
