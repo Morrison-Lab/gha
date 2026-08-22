@@ -38,10 +38,18 @@
 // rate for a much smaller gain.
 //
 // Unlike the list-item merge splice check, this one scans the whole tree
-// rather than diff-scoping. That check diff-scopes because a splice is a
-// style judgment a legacy file may reasonably be full of; a split table is an
-// unambiguous rendering defect with no legitimate form, so a pre-existing hit
-// is a bug to fix rather than a false positive to suppress.
+// rather than diff-scoping. That check diff-scopes because a splice is a style
+// judgment a legacy file may reasonably be full of, whereas a split table is a
+// rendering defect: the rows below the blank line come out as literal text.
+// So a pre-existing hit is worth reporting rather than grandfathering.
+//
+// That is a claim about how tightly the rule matches, not a claim of
+// infallibility, and the cross-vendor review of #576 was right to press on it.
+// The merge-and-width test above is what earns it: a finding needs a block
+// that is not a table, blank-adjacent to one that becomes a table when the
+// blank line goes, with every orphan row at the table's own width. `fail` and
+// `paths-ignore` remain the escape hatches if a corpus finds a shape this
+// still gets wrong.
 //
 // Configuration (env vars, set by the composite action):
 //   MARKDOWNLINT_GLOBS         Space-separated git pathspecs of tracked files
@@ -58,11 +66,52 @@ import { compileIgnores, splitList, trackedFiles } from './_pathspec.mjs';
 const PIPE_ROW = /^ {0,3}\|/;
 
 // A GFM delimiter row: one or more hyphen cells, each optionally anchored with
-// a colon on either side. Only ever tested against a line already known to be
-// a pipe row, so it cannot be confused with a `---` thematic break.
+// a colon on either side. GFM makes the outer pipes optional on ANY row, so a
+// delimiter can legitimately be written `--- | ---`; that form is accepted here
+// only when it contains a pipe, which keeps a bare `---` reading as the
+// thematic break or setext underline it usually is.
 const DELIMITER_ROW = /^ {0,3}\|?[ \t]*:?-+:?[ \t]*(?:\|[ \t]*:?-+:?[ \t]*)*\|?[ \t]*$/;
 
-// Maximal runs of consecutive pipe rows, skipping fenced code blocks.
+// A line that can be part of a table: a leading-pipe row, or a pipe-bearing
+// delimiter row written without its outer pipes.
+function isTableLine(line) {
+  return PIPE_ROW.test(line) || (line.includes('|') && DELIMITER_ROW.test(line));
+}
+
+// GFM cell count. Cells are separated by unescaped pipes, and the outer pipes
+// (when present) produce a leading and trailing empty cell that is not a cell.
+function cellCount(line) {
+  const text = line.trim();
+  const cells = [];
+  let current = '';
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\\' && text[i + 1] === '|') {
+      current += '|';
+      i++;
+    } else if (text[i] === '|') {
+      cells.push(current);
+      current = '';
+    } else {
+      current += text[i];
+    }
+  }
+  cells.push(current);
+  if (cells.length && cells[0].trim() === '') cells.shift();
+  if (cells.length && cells[cells.length - 1].trim() === '') cells.pop();
+  return cells.length;
+}
+
+// GFM recognizes a table only when a delimiter row follows the header AND the
+// two agree on cell count; a mismatch means the whole thing is a paragraph.
+// Returns the delimiter's cell count, or 0 when these lines are not a table.
+function tableWidth(lines) {
+  if (lines.length < 2) return 0;
+  if (!DELIMITER_ROW.test(lines[1])) return 0;
+  const width = cellCount(lines[1]);
+  return width > 0 && cellCount(lines[0]) === width ? width : 0;
+}
+
+// Maximal runs of consecutive table lines, skipping fenced code blocks.
 // Returns 0-indexed inclusive `{ start, end }` ranges.
 function collectPipeBlocks(lines) {
   const blocks = [];
@@ -72,23 +121,29 @@ function collectPipeBlocks(lines) {
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
 
-    if (fenceMatch) {
-      const fenceStr = fenceMatch[1];
-      if (fenceChar === null) {
-        fenceChar = fenceStr[0];
-        fenceLen = fenceStr.length;
-      } else if (fenceStr[0] === fenceChar && fenceStr.length >= fenceLen) {
+    if (fenceChar !== null) {
+      // A CLOSING fence may be followed only by whitespace -- an info string is
+      // allowed on the opener alone. Matching openers and closers with one
+      // pattern let a content line like `~~~ not a closing fence` end the block
+      // early, exposing the code inside it to the scan below.
+      const closer = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+      if (closer && closer[1][0] === fenceChar && closer[1].length >= fenceLen) {
         fenceChar = null;
         fenceLen = 0;
       }
+      continue;
+    }
+
+    const opener = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (opener) {
+      fenceChar = opener[1][0];
+      fenceLen = opener[1].length;
       current = null;
       continue;
     }
-    if (fenceChar !== null) continue;
 
-    if (PIPE_ROW.test(line)) {
+    if (isTableLine(line)) {
       if (current === null) {
         current = { start: i, end: i };
         blocks.push(current);
@@ -102,12 +157,8 @@ function collectPipeBlocks(lines) {
   return blocks;
 }
 
-function isRealTable(lines, block) {
-  return block.end > block.start && DELIMITER_ROW.test(lines[block.start + 1]);
-}
-
-// True when every line strictly between the two indices is blank. Pipe blocks
-// are maximal, so there is always at least one line between two of them.
+// True when every line strictly between the two indices is blank. Blocks are
+// maximal, so there is always at least one line between two of them.
 function separatedByBlanksOnly(lines, endOfFirst, startOfSecond) {
   for (let i = endOfFirst + 1; i < startOfSecond; i++) {
     if (lines[i].trim() !== '') return false;
@@ -115,20 +166,42 @@ function separatedByBlanksOnly(lines, endOfFirst, startOfSecond) {
   return true;
 }
 
+// A split table is a block that is not a table on its own, sitting blank-line
+// adjacent to another block, where deleting the blank lines would produce one
+// real table AND every row of the orphan matches that table's width.
+//
+// Both conditions are load-bearing, and each rules out a false positive the
+// other admits. Without the merge test, two unrelated pipe-prefixed paragraphs
+// are reported. Without the width test, a real table followed by an unrelated
+// pipe-prefixed line is reported, since merging anything onto a real table
+// still parses as a table. Requiring the orphan not to be a table already
+// exempts two deliberately adjacent tables, which are valid and common.
 function findTableSplits(path) {
   const lines = readFileSync(path, 'utf8').split('\n');
   const blocks = collectPipeBlocks(lines);
   const findings = [];
 
+  const linesOf = (block) => lines.slice(block.start, block.end + 1);
+  const rowsMatch = (block, width) =>
+    linesOf(block).every((line) => cellCount(line) === width);
+
   for (let b = 0; b < blocks.length; b++) {
     const block = blocks[b];
-    if (isRealTable(lines, block)) continue;
+    if (tableWidth(linesOf(block)) > 0) continue;
 
     const previous = blocks[b - 1];
     const next = blocks[b + 1];
-    const adjacentAbove = previous && separatedByBlanksOnly(lines, previous.end, block.start);
-    const adjacentBelow = next && separatedByBlanksOnly(lines, block.end, next.start);
-    if (!adjacentAbove && !adjacentBelow) continue;
+    let merged = null;
+
+    if (previous && separatedByBlanksOnly(lines, previous.end, block.start)) {
+      merged = linesOf(previous).concat(linesOf(block));
+    } else if (next && separatedByBlanksOnly(lines, block.end, next.start)) {
+      merged = linesOf(block).concat(linesOf(next));
+    }
+    if (!merged) continue;
+
+    const width = tableWidth(merged);
+    if (width === 0 || !rowsMatch(block, width)) continue;
 
     findings.push({
       path,

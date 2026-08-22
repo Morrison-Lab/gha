@@ -131,6 +131,159 @@ Done.
   res = run(indented);
   assert.strictEqual(res.failed, false, 'Four-space-indented pipe lines must not be flagged');
 
+  // --- Cases from the cross-vendor (codex) review of #576. Each reproduced a
+  // --- real defect before the detection rule was rewritten.
+
+  // 9. A tilde fence whose content includes a same-character run followed by
+  //    text. GFM lets only whitespace follow a CLOSING fence, so this line is
+  //    content; matching openers and closers with one pattern ended the block
+  //    early and exposed the code inside it to the scan.
+  const fenceTrailing = fixture('fence-trailing.md', `# Fixture
+
+~~~markdown
+~~~ not a closing fence
+| A | B |
+|---|---|
+| x | y |
+
+| z | w |
+~~~
+
+Prose.
+`);
+
+  res = run(fenceTrailing);
+  assert.strictEqual(res.failed, false, 'A run followed by text must not close a fence');
+
+  // 10. A GFM table whose delimiter row omits its outer pipes, followed by an
+  //     unrelated table. GFM makes outer pipes optional on any row, so this is
+  //     one valid table; requiring a leading pipe on every row split it and
+  //     reported its own body as an orphan.
+  const mixedPipes = fixture('mixed-pipes.md', `# Fixture
+
+| A | B |
+--- | ---
+| x | y |
+
+| C | D |
+|---|---|
+| 1 | 2 |
+`);
+
+  res = run(mixedPipes);
+  assert.strictEqual(res.failed, false, 'A delimiter row without outer pipes must not split the table');
+
+  //     The case above passes with or without the outer-pipe fix, because the
+  //     merge test alone already keeps it quiet -- so it is kept as a guard
+  //     rather than as proof. THIS is the discriminating case: the same table
+  //     genuinely split, which is a false NEGATIVE unless the pipe-less
+  //     delimiter row is recognized as part of the table.
+  const mixedPipesSplit = fixture('mixed-pipes-split.md', `# Fixture
+
+| A | B |
+--- | ---
+| x | y |
+
+| z | w |
+`);
+
+  res = run(mixedPipesSplit);
+  assert.strictEqual(res.failed, true, 'A split of a table with a pipe-less delimiter row must be caught');
+  assert.match(res.stdout, /Found 1 split GFM table/);
+
+  // 11. A header and delimiter disagreeing on cell count is not a table at all
+  //     per GFM, so it must not be credited as one.
+  const widthMismatch = fixture('width-mismatch.md', `# Fixture
+
+| A | B |
+|---|---|
+| 1 | 2 |
+
+| C | D |
+|---|
+| E |
+`);
+
+  res = run(widthMismatch);
+  assert.strictEqual(res.failed, false, 'A header/delimiter width mismatch is not a split table');
+
+  //     That case is quiet with or without the width-equality check, so it is
+  //     a guard rather than proof. The discriminating case is a MERGED pair
+  //     whose header and delimiter disagree: GFM recognizes no table there, so
+  //     there is no table to have been split, and crediting it as one reports
+  //     an ordinary paragraph as a defect.
+  const mergedWidthMismatch = fixture('merged-width-mismatch.md', `# Fixture
+
+| X |
+|---|---|
+
+| 1 | 2 |
+`);
+
+  res = run(mergedWidthMismatch);
+  assert.strictEqual(res.failed, false, 'A merged header/delimiter width mismatch must not be flagged');
+
+  // 12. A real table followed by an unrelated pipe-prefixed literal line.
+  //     Merging anything onto a real table still parses as a table, so the
+  //     width test is what keeps this quiet.
+  const literalAfterTable = fixture('literal-after-table.md', `# Fixture
+
+| A | B | C |
+|---|---|---|
+| 1 | 2 | 3 |
+
+| a single pipe-prefixed literal line
+`);
+
+  res = run(literalAfterTable);
+  assert.strictEqual(res.failed, false, 'A literal pipe line after a table must not be flagged');
+
+  // 13. Two unrelated pipe-prefixed paragraphs, neither a table. Without the
+  //     merge test these were reported as a split of each other.
+  const twoLiterals = fixture('two-literals.md', `# Fixture
+
+| first alternative
+
+| second alternative
+`);
+
+  res = run(twoLiterals);
+  assert.strictEqual(res.failed, false, 'Two literal pipe paragraphs must not be flagged');
+
+  // 14. An unclosed fence swallows the rest of the file, so a split inside it
+  //     is code rather than a defect.
+  const unclosed = fixture('unclosed.md', `# Fixture
+
+\`\`\`text
+| A | B |
+|---|---|
+| 1 | 2 |
+
+| 3 | 4 |
+`);
+
+  res = run(unclosed);
+  assert.strictEqual(res.failed, false, 'An unclosed fence must swallow the rest of the file');
+
+  // 15. A longer closer legitimately closes a shorter fence, so a split AFTER
+  //     the block is still a real finding.
+  const longerCloser = fixture('longer-closer.md', `# Fixture
+
+\`\`\`text
+not markdown
+\`\`\`\`
+
+| A | B |
+|---|---|
+| 1 | 2 |
+
+| 3 | 4 |
+`);
+
+  res = run(longerCloser);
+  assert.strictEqual(res.failed, true, 'A longer closer must close the fence, exposing a later split');
+  assert.match(res.stdout, /Found 1 split GFM table/);
+
   // 7. The fail input downgrades a finding to a warning: same report, exit 0.
   res = run(split, { TABLE_SPLIT_FAIL: 'false' });
   assert.strictEqual(res.failed, false, 'TABLE_SPLIT_FAIL=false must not fail the check');
