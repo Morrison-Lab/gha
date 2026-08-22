@@ -515,6 +515,23 @@ which is why the capabilities above moved to `@v2`.
   coverage instead of only being exercised by a live Dependabot PR (gha#253
   review: a bare `IFS=',' read -ra` doesn't trim whitespace, so `"alice,
   bob"` sent an invalid `reviewers[]= bob` and failed the job).
+
+- `.github/actions/install-gha-scripts/` -- copies named scripts out of
+  `.github/workflows/scripts/` into a runner temp directory and outputs that
+  directory, so a reusable workflow can call one from inside a `run:` block.
+  The deliberate exception to the wrap-and-run shape every other helper here
+  uses: `ai-code-review.yml`'s candidate loop makes its decision *inside* a
+  shell loop over a dynamic agent list, and a composite cannot be invoked
+  mid-loop, so the alternative was inlining the matcher beyond the reach of the
+  offline table tests this repo relies on for exactly that class of logic
+  (gha#362).
+  It resolves via `github.action_path` for the same reason `run-review-guard`
+  does.
+  Two behaviours are load-bearing: a name carrying a path separator is refused
+  rather than sanitized, since every real caller names a bare filename; and a
+  missing script is an error rather than a silent no-op, which would leave the
+  calling loop invoking a file that is not there.
+
 - `.github/actions/open-failure-issue/` -- wraps two scripts:
   `scripts/select-existing-issue.sh`, which picks the open issue an automated
   failure report should be appended to (exact, case-sensitive title match;
@@ -1500,6 +1517,54 @@ CI runs the suite as the `cursor-review-check` job, which also calls
 `cursor-code-review.yml`'s own consumption of the composite via `@v2` is
 not covered here -- it does not resolve until `@v2` is advanced past this
 capability's merge.
+
+`.github/workflows/scripts/tests/run-classify-review-delivery-tests.sh`
+exercises `classify-review-delivery.sh` (gha#362) offline against a table of
+comment bodies.
+That script decides whether a dispatched review actually produced a verdict,
+because a run CONCLUSION of `success` is not the same as "produced a verdict"
+-- `claude-code-review.yml` deliberately succeeds on a graceful quota skip
+(gha#520) and surfaces the skip through a comment, so the run-level conclusion
+cannot see the commonest runtime failure there is.
+**It tests for FAILURE markers rather than for a positive verdict, and that
+direction is the design rather than caution.**
+Requiring each agent's success marker means a wrong pattern makes every review
+by that agent fall through to a second agent, which costs a duplicate paid
+review and, on workflows sharing a per-PR `cancel-in-progress` group, can
+cancel the review it was checking.
+The failure direction degrades to today's accept-on-success behaviour instead.
+It is also complete for the two agents that emit markers, which is what makes
+the safe direction the correct one: gha#548 made every no-verdict path in
+`claude-code-review.yml` post a failure comment, and `report-gemini-failure`
+(gha#379) does the equivalent, so "no failure marker" and "produced a verdict"
+coincide there.
+The case to keep if the suite is ever trimmed is the discriminating negative:
+a failure marker on a **different** run must not decide this one.
+Without it, scoping the match to comments naming this run could be dropped and
+every other case would still pass.
+Four mutations were confirmed to turn the suite red rather than assumed to --
+dropping the run-URL scoping, collapsing the two `delivered=true` reasons into
+one, deleting a marker from the table, and dropping the self-mod marker
+specifically.
+**That last marker is the one the list most easily omits**, and #571's review
+caught it missing: the `self_mod` skip reports a job conclusion of `success`
+with every post-guard step `skipped`, so nothing about it looks like a failure,
+and `build-self-review-skip-notice.sh`'s notice carries the run URL without
+matching any failure wording.
+The pre-fix classification was `delivered=true reason=no-failure-marker`, which
+is the green-check-no-verdict case the capability exists to close.
+Gemini's dispatch-guard skip has no counterpart marker because that path posts
+no comment at all, only a log warning and a job output;
+gha#573 tracks that residual, and the script names it above the marker list so
+a later widener finds the known exclusion rather than assuming completeness.
+CI runs the suite as the `review-delivery` job in `_selftest.yml`, which also
+calls `install-gha-scripts` through two real `uses: ./...` steps: one
+installing the classifier and running it on a marker body, for the
+`github.action_path`-resolution proof the other composite e2e steps give, and
+one asserting a path-bearing filename is refused.
+`ai-code-review.yml` does not call any of this yet -- a new composite cannot
+gain its first `@v2` caller in the PR that introduces it, so the wiring waits
+on the tag slide and is tracked in gha#569.
 
 `.github/workflows/scripts/tests/run-resolve-major-tag-tests.sh` exercises
 `resolve-major-tag.sh` (see Layout above) offline against throwaway git repos;

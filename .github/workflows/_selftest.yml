@@ -2411,3 +2411,110 @@ jobs:
             exit 1
           fi
           echo "open-failure-issue correctly reported it would file a new issue."
+
+  review-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run classify-review-delivery tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-review-delivery-tests.sh
+
+      # The offline table calls the script directly, so it cannot see whether
+      # the installer resolves the script at all. This step is that proof --
+      # the same github.action_path resolution run-review-guard's own e2e steps
+      # give -- and it is the only coverage of the mechanism ai-code-review.yml
+      # will use to reach the script from inside its candidate loop.
+      - name: Install the classifier via the composite
+        id: install
+        uses: ./.github/actions/install-gha-scripts
+        with:
+          scripts: 'classify-review-delivery.sh'
+
+      - name: Assert the installed script exists and classifies a marker
+        shell: bash
+        env:
+          DIR: ${{ steps.install.outputs.dir }}
+        run: |
+          set -euo pipefail
+          if [ ! -x "$DIR/classify-review-delivery.sh" ]; then
+            echo "::error::install-gha-scripts did not produce an executable script in '$DIR'."
+            exit 1
+          fi
+          RUN_URL='https://github.com/Morrison-Lab/gha/actions/runs/1'
+          OUT="$(printf '%s\0' \
+            "> **Claude review skipped — API credential or quota unavailable.** [View run]($RUN_URL)" \
+            | RUN_URL="$RUN_URL" bash "$DIR/classify-review-delivery.sh")"
+          if [ "$(sed -n '1s/^delivered=//p' <<<"$OUT")" != "false" ]; then
+            echo "::error::expected delivered=false for a quota-skip marker, got: $OUT"
+            exit 1
+          fi
+          echo "install-gha-scripts resolved and ran the classifier: $OUT"
+
+      # The path guard is the one behaviour that must fail rather than degrade:
+      # a name reaching outside the scripts directory is a caller bug, and
+      # silently copying nothing would leave the loop calling a missing file.
+      #
+      # The guard is `case "$name" in */*|..*)`, two alternatives, and each
+      # needs a case only IT can reach -- the same "a test for one pattern must
+      # be reachable by ONLY that pattern" rule this repo's CLAUDE.md records
+      # for check-secrets' redaction chain. A single `../../../etc/passwd`
+      # input is caught by `*/*` alone, so deleting `..*` would leave the step
+      # green (gha#571 review).
+      - name: Assert a path-bearing filename is refused
+        id: traversal
+        continue-on-error: true
+        uses: ./.github/actions/install-gha-scripts
+        with:
+          scripts: '../../../etc/passwd'
+
+      # The file has to EXIST for the next step to discriminate. Without it,
+      # deleting the `..*` alternative still fails the call -- on the
+      # "no such script" branch instead -- so the assertion passes either way
+      # and tests nothing. Verified by simulating the guard both ways: with the
+      # file present it is REFUSED with the alternative and COPIED without;
+      # with the file absent both variants fail.
+      - name: Plant a dot-dot-named script the guard must still refuse
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > .github/workflows/scripts/..evil.sh
+          echo "Planted .github/workflows/scripts/..evil.sh for the guard test."
+
+      # No slash, so `*/*` cannot match: this is the case that actually
+      # exercises the `..*` alternative.
+      - name: Assert a dot-dot filename with no slash is refused
+        id: dotdot
+        continue-on-error: true
+        uses: ./.github/actions/install-gha-scripts
+        with:
+          scripts: '..evil.sh'
+
+      - name: Remove the planted script
+        if: always()
+        shell: bash
+        run: rm -f .github/workflows/scripts/..evil.sh
+
+      - name: Assert both refusals actually failed
+        shell: bash
+        env:
+          SLASH_OUTCOME: ${{ steps.traversal.outcome }}
+          DOTDOT_OUTCOME: ${{ steps.dotdot.outcome }}
+        run: |
+          set -euo pipefail
+          rc=0
+          if [ "$SLASH_OUTCOME" != "failure" ]; then
+            echo "::error::expected install-gha-scripts to refuse a path-bearing name, got outcome='$SLASH_OUTCOME'"
+            rc=1
+          fi
+          if [ "$DOTDOT_OUTCOME" != "failure" ]; then
+            echo "::error::expected install-gha-scripts to refuse '..evil.sh', got outcome='$DOTDOT_OUTCOME'"
+            rc=1
+          fi
+          [ "$rc" -eq 0 ] || exit 1
+          echo "install-gha-scripts refused both a path-bearing name and a bare dot-dot name."
