@@ -284,6 +284,43 @@ not markdown
   assert.strictEqual(res.failed, true, 'A longer closer must close the fence, exposing a later split');
   assert.match(res.stdout, /Found 1 split GFM table/);
 
+  // --- From the Claude review of #576, round 2. Both directions of the merge
+  // --- must be tried: an unrelated pipe block above the header half of a
+  // --- split makes the `previous` merge fail, and committing to it means the
+  // --- `next` merge that would have validated is never tried.
+
+  // 16. Under-report: the lower half still self-reports via its own previous
+  //     merge, so the split is found but the header half is missed.
+  const strayAbove = fixture('stray-above.md', `# Fixture
+
+| stray
+
+| A | B |
+
+|---|---|
+| 1 | 2 |
+`);
+
+  res = run(strayAbove);
+  assert.strictEqual(res.failed, true, 'A split below a stray pipe block must be caught');
+  assert.match(res.stdout, /Found 2 split GFM table/);
+
+  // 17. Total miss: widen a trailing row so the lower half cannot validate
+  //     either, and the whole split disappears unless both directions are tried.
+  const strayAboveTotalMiss = fixture('stray-above-total-miss.md', `# Fixture
+
+| stray
+
+| A | B |
+
+|---|---|
+| 1 | 2 | 3 |
+`);
+
+  res = run(strayAboveTotalMiss);
+  assert.strictEqual(res.failed, true, 'A split whose lower half cannot self-report must still be caught');
+  assert.match(res.stdout, /Found 1 split GFM table/);
+
   // 7. The fail input downgrades a finding to a warning: same report, exit 0.
   res = run(split, { TABLE_SPLIT_FAIL: 'false' });
   assert.strictEqual(res.failed, false, 'TABLE_SPLIT_FAIL=false must not fail the check');

@@ -189,19 +189,28 @@ function findTableSplits(path) {
     const block = blocks[b];
     if (tableWidth(linesOf(block)) > 0) continue;
 
+    // Both directions are tried, and whichever validates wins. Committing to
+    // the `previous` merge whenever one exists loses a real split: an
+    // unrelated pipe block sitting above the header half of a split table
+    // makes that merge fail, and the header half is then never tested against
+    // the delimiter rows below it -- which is the merge that would have
+    // validated. Depending on the row widths below, that under-reports the
+    // split by one block or misses it entirely.
     const previous = blocks[b - 1];
     const next = blocks[b + 1];
-    let merged = null;
+    const candidates = [];
 
     if (previous && separatedByBlanksOnly(lines, previous.end, block.start)) {
-      merged = linesOf(previous).concat(linesOf(block));
-    } else if (next && separatedByBlanksOnly(lines, block.end, next.start)) {
-      merged = linesOf(block).concat(linesOf(next));
+      candidates.push(linesOf(previous).concat(linesOf(block)));
     }
-    if (!merged) continue;
+    if (next && separatedByBlanksOnly(lines, block.end, next.start)) {
+      candidates.push(linesOf(block).concat(linesOf(next)));
+    }
 
-    const width = tableWidth(merged);
-    if (width === 0 || !rowsMatch(block, width)) continue;
+    const width = candidates
+      .map((merged) => tableWidth(merged))
+      .find((candidate) => candidate > 0 && rowsMatch(block, candidate));
+    if (!width) continue;
 
     findings.push({
       path,
