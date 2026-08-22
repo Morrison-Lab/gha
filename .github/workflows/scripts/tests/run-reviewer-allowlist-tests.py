@@ -52,9 +52,33 @@ REQUIRED_DENIALS = {
     "Bash(gh issue comment:*)": "comment on an issue",
     "Bash(gh issue close:*)": "close an issue",
     "Bash(gh issue edit:*)": "rewrite an issue",
+    "Bash(gh pr ready:*)": "flip a draft to ready for review",
+    "Bash(gh pr reopen:*)": "reopen a closed pull request",
+    "Bash(gh pr lock:*)": "lock the PR conversation",
+    "Bash(gh pr unlock:*)": "unlock a deliberately locked conversation",
+    "Bash(gh pr update-branch:*)": "push a merge onto the branch under review",
+    "Bash(gh pr revert:*)": "open a revert of the change under review",
+    "Bash(gh issue create:*)": "file an issue",
+    "Bash(gh issue reopen:*)": "reopen a closed issue",
+    "Bash(gh issue delete:*)": "delete an issue outright",
+    "Bash(gh issue develop:*)": "create a branch attached to an issue",
+    "Bash(gh issue lock:*)": "lock an issue conversation",
+    "Bash(gh issue unlock:*)": "unlock a deliberately locked issue",
+    "Bash(gh issue pin:*)": "pin an issue to the repository",
+    "Bash(gh issue unpin:*)": "unpin a pinned issue",
+    "Bash(gh issue transfer:*)": "move an issue to another repository",
     "Bash(gh api:*)": "reach any mutation the subcommand denials above cover",
     "Bash(gh workflow run:*)": "dispatch a workflow",
-    "Bash(gh secret:*)": "read or write repository secrets",
+    "Bash(gh run cancel:*)": "cancel a running workflow, including its own",
+    "Bash(gh run rerun:*)": "re-run a workflow and spend the budget again",
+    "Bash(gh release:*)": "create, edit, or delete a release",
+    "Bash(gh label:*)": "create, rename, or delete repository labels",
+    "Bash(gh cache delete:*)": "evict the Actions cache",
+    "Bash(gh repo edit:*)": "change repository settings",
+    "Bash(gh repo delete:*)": "delete the repository",
+    "Bash(gh variable:*)": "read or write repository variables",
+    "Bash(gh secret:*)": "list secret metadata, or set and delete secrets",
+    "Bash(*git-push.sh*)": "push through the action's own push wrapper",
     # Not forge mutations, but the same load-bearing-after-widening argument:
     # these have no synchronous form in a one-shot CI run (gha#392, gha#532).
     "ScheduleWakeup": "end the turn waiting for a wakeup that never fires",
@@ -114,17 +138,33 @@ def main() -> int:
     # 2. No leftover per-command Bash allow entries. Under a blanket grant they
     #    are dead weight that reads as though the grant were still narrow,
     #    which is the misreading gha#566 was filed about.
-    leftovers = [t for t in allowed if t.startswith("Bash(")]
+    leftovers = [t for t in allowed if t.startswith("Bash(") and t != "Bash(*)"]
     check(
         not leftovers,
         "no redundant per-command Bash allow entries remain"
         + (f" (found: {', '.join(leftovers)})" if leftovers else ""),
     )
 
-    # 3. Every capability the narrow allowlist used to make unreachable is now
-    #    explicitly denied. This is the assertion the whole file exists for.
-    for rule, consequence in sorted(REQUIRED_DENIALS.items()):
-        check(rule in denied, f"denied: {rule}  (else the reviewer could {consequence})")
+    # 3. The deny set must match EXACTLY. Asserting only that each required
+    #    rule is present leaves every other production rule unpinned -- the
+    #    cross-vendor review of #578 found that dropping `gh pr ready`,
+    #    `gh release`, `gh label` and a dozen others left this suite green,
+    #    which is precisely the load-bearing coverage it claims to provide.
+    #    Equality also forces a deliberate edit here when a rule is added, so
+    #    the table below stays an inventory rather than drifting into a
+    #    sample.
+    missing = sorted(set(REQUIRED_DENIALS) - set(denied))
+    unexpected = sorted(set(denied) - set(REQUIRED_DENIALS))
+    for rule in missing:
+        check(False, f"denied rule missing: {rule}  (else the reviewer could {REQUIRED_DENIALS[rule]})")
+    for rule in unexpected:
+        check(
+            False,
+            f"deny rule not accounted for here: {rule} -- add it to REQUIRED_DENIALS "
+            "with the consequence it prevents, so the inventory stays complete",
+        )
+    if not missing and not unexpected:
+        check(True, f"the deny list matches its inventory exactly ({len(denied)} rules)")
 
     # 4. Write is granted, and only under a scratch prefix -- the checkout
     #    under review must stay untouched, since this is a review-only run.

@@ -397,16 +397,35 @@ runs:
         # So the realistic failure this list guards against is the reviewer
         # doing something careless, not an attacker doing something clever.
         #
-        # The deny list therefore grew, and every addition PRESERVES a
-        # restriction the narrow allowlist used to imply rather than imposing
-        # a new one: `gh pr merge`, `gh pr edit`, `gh issue comment`, `gh api`
-        # and friends were all unreachable before, because they were simply
-        # not on the allowlist. Blanket Bash would newly permit them, so they
-        # are named. `gh api` is denied wholesale rather than by method,
+        # The deny list therefore grew: `gh pr merge`, `gh pr edit`,
+        # `gh issue comment`, `gh api` and their siblings were not on the old
+        # allowlist, so a blanket Bash grant would newly permit them in their
+        # plainest form. `gh api` is denied wholesale rather than by method,
         # because `gh api repos/o/r -X POST` puts the verb after the path and
         # no prefix pattern can catch both orderings; the read-only `gh pr` /
-        # `gh issue` / `gh search` subcommands remain available for what it
-        # was used for.
+        # `gh issue` / `gh search` subcommands remain available.
+        #
+        # **These denials are guard rails against an accident, NOT a security
+        # boundary, and the difference is worth stating because the list looks
+        # like one.** A prefix rule cannot contain a general shell: the model
+        # could reach a denied command by wrapping it, and the `Write(//tmp)`
+        # scope constrains the Write TOOL while a redirect or `sed -i` writes
+        # wherever the runner account can.
+        #
+        # Note what that does and does not say about this change. It is not a
+        # regression, because the hole predates it: `Bash(python3:*)` was
+        # already granted, and `python3 -c "subprocess.run(['gh','pr','merge'
+        # ,...])"` matched the allowlist and no deny prefix, so every mutation
+        # named above was already reachable and the old deny list was already
+        # advisory. Blanket Bash shortens the route rather than opening it.
+        #
+        # It is also not a reason to skip the denials. The failure actually
+        # worth preventing here is the reviewer helpfully doing something
+        # destructive in good faith, and a prefix rule stops exactly that,
+        # because a model acting in good faith issues the plain command. What
+        # the list cannot do is stop a model acting against instructions --
+        # and only an architectural split (a read-only model job handing its
+        # output to a separate trusted posting job) would, which is gha#580.
         #
         # Two properties of Claude Code's permission model make this sound,
         # both from code.claude.com/docs/en/permissions rather than assumed:
@@ -440,7 +459,7 @@ runs:
           --allowedTools
           "mcp__github_inline_comment__create_inline_comment,Bash,Write(//tmp/**),WebFetch,WebSearch"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and
@@ -461,9 +480,16 @@ runs:
           A short list stays denied, and none of it is needed for a review:
           the git write commands (`git add`/`commit`/`rm`/`push`), the
           forge-mutating `gh` subcommands (`gh pr merge`/`edit`/`comment`,
-          `gh issue comment`, and the rest), and `gh api`. Writing outside
-          `/tmp` is denied too, so do not edit the checkout. If you would
-          have changed something, describe the change in your review.
+          `gh issue comment`, and the rest), and `gh api`.
+
+          Treat that list as the boundary even where it is not enforceable.
+          It is a set of command-prefix rules, not a filesystem sandbox: a
+          general shell can obviously write to the checkout with a redirect
+          or `sed -i`, and could reach a denied command by wrapping it. None
+          of that is permitted merely because it is possible. This is a
+          review-only run --- confine your writes to `/tmp`, leave the
+          checkout as you found it, and if you would have changed something,
+          describe the change in your review instead of making it.
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
           curl to verify a computed value or figure against rendered

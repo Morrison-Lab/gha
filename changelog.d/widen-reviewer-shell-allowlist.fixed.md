@@ -10,12 +10,18 @@
   `Bash` is now granted whole, and `Write` is allowed under `/tmp` so the
   reviewer can stage a scratch script.
 
-- **The deny list grew to match, preserving every write restriction the narrow
-  allowlist used to imply.**
+- **The deny list grew to match, and is documented as guard rails rather than
+  a boundary.**
   `gh pr merge`, `gh pr edit`, `gh issue comment`, `gh api` and their siblings
   were unreachable only because they were absent from the allowlist; a blanket
   `Bash` grant would newly permit them, so they are denied by name and pinned
-  by `run-reviewer-allowlist-tests.py`.
+  by `run-reviewer-allowlist-tests.py`, which asserts the deny set exactly so
+  dropping any single rule turns the check red.
+  A prefix rule cannot contain a general shell, so these stop a reviewer acting
+  in good faith and not one acting against instructions --- an exposure that
+  predates this change, since `Bash(python3:*)` already reached the same
+  commands, and that only an architectural split closes
+  ([#580](https://github.com/Morrison-Lab/gha/issues/580)).
   `Bash(python3 -m:*)` is no longer denied, since
   `python3 -m pytest check-phi/tests/` is how this repo's own docs say to run
   its Python suites.
