@@ -1,0 +1,133 @@
+---
+title: "opencode-code-review.yml"
+---
+
+Read-only OpenCode PR code review, run through the
+[opencode](https://opencode.ai) CLI headless.
+The agent receives the PR diff as an attachment and may read the checked-out
+repository for context; it runs with file edits, shell commands, and web
+fetches denied, so the workflow itself posts whatever review the model
+produces.
+
+The default caller stub is `workflow_dispatch`-triggered.
+Add a `pull_request` trigger in the caller if you want automatic reviews on
+PR updates. There is no `opencode.yml` mention bot yet, so unlike
+[`gemini-code-review.yml`](gemini-code-review.qmd) there is no
+comment-triggered re-dispatch path to keep names in sync with.
+
+Requires an `OPENCODE_API_KEY` secret
+([OpenCode Zen](https://opencode.ai/docs/zen/); free-tier models are
+available). Without it, each run posts a skip notice on the PR instead of a
+review.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `pr-number` | string | `''` | Pull request number to review. Required on `workflow_dispatch`; taken from the event on `pull_request`. |
+| `prompt-addendum` | string | `''` | Extra prompt instructions appended to the review prompt. |
+| `checkout-submodules` | boolean | `false` | Check out git submodules. |
+| `opencode-model` | string | `'opencode/big-pickle'` | Model passed to `opencode run -m`. |
+| `opencode-version` | string | `'1.18.21'` | opencode CLI release installed at run time. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `OPENCODE_API_KEY` | no | [OpenCode Zen](https://opencode.ai/docs/zen/) API key. Without it the workflow skips gracefully with a warning comment on the PR. |
+| `SUBMODULES_TOKEN` | no | Token used to check out private submodules. |
+
+## Permissions
+
+Grant `contents: read`, `pull-requests: write`, and `issues: write`.
+No `id-token: write` is needed: the agent is invoked directly rather than
+through an action that exchanges an OIDC token.
+
+## What it refuses to review
+
+The automatic `pull_request` path skips draft PRs, PRs from forks, and PRs
+opened by a bot, using the event payload.
+
+A `workflow_dispatch` run carries none of that payload, only `pr-number`, so
+it re-checks the same two conditions over the API and skips a fork or
+Dependabot PR. A lookup that fails outright (rate limit, a bad `pr-number`)
+also skips, and fails the run rather than reviewing a PR whose provenance it
+could not establish.
+
+Only one review runs per PR at a time:
+a newer run cancels an older one, so a verdict on a superseded commit cannot
+land after the current one.
+
+## Untrusted-repository hardening
+
+A pull request's tree is attacker-controlled input, so before the CLI starts
+the workflow deletes any project-level opencode configuration files from the
+checkout (`opencode.json`, `opencode.jsonc`, `.opencode/config.json`,
+`.opencode/opencode.json`). Without that, a PR could carry its own config
+overriding the deny rules this workflow relies on and re-enabling shell or
+edit permissions for the reviewer.
+
+The remaining surface is instruction-file injection (a PR editing
+`AGENTS.md`), which every AI reviewer here shares: the agent reads repo files,
+so a malicious diff can try to steer its prose. Reviews are read-only and the
+verdict contract is stated after any repository-controlled content, which
+bounds what such an attempt can achieve.
+
+## Failure reporting
+
+The workflow classifies each run's outcome into two kinds:
+
+- **review** --- the agent exited 0 with non-empty output, posted as a comment.
+- **failed** --- anything else (non-zero exit, empty output). The failure
+  comment always begins `OpenCode review failed:` and includes the raw CLI
+  stderr for triage.
+
+A missing API key skips with an `OpenCode review skipped` notice instead.
+
+## Concurrency
+
+Do not declare a top-level `concurrency:` block in your caller workflow.
+`opencode-code-review.yml` manages per-PR concurrency internally on its
+`review` job (`group: opencode-review-<PR>`).
+Adding a top-level `concurrency:` block in the caller with a PR-scoped group
+name causes GitHub Actions to detect a deadlock between the top-level workflow
+and the nested job, cancelling the run immediately
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+
+## Example
+
+```yaml
+# Copy to .github/workflows/opencode-code-review.yml in your repo.
+name: OpenCode Review
+
+on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/opencode-code-review.yml@v2
+    secrets:
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+    with:
+      pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   checkout-submodules: true
+    #   opencode-model: opencode/big-pickle
+    #   prompt-addendum: |
+    #     Repo-specific review guidance.
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory
+for the full caller stub (`opencode-code-review.yml`).

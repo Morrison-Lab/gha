@@ -66,7 +66,8 @@ not reference `@main` from consumers.
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model` |
 | `antigravity-code-review.yml` | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`) | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model` |
 | `cursor-code-review.yml` | Queue a Cursor Bugbot PR review via the Enterprise Bugbot API (`POST /bugbot/review`); success means queued | `pr-number`, `dry-run` |
-| `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file` |
+| `opencode-code-review.yml` | Read-only OpenCode PR code review running the opencode CLI headless (default stub runs on `workflow_dispatch`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `opencode-model`, `opencode-version` |
+| `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file`, `opencode-review-workflow-file` |
 | `small-model-agent.yml` | Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (`wai#39`, `ai-config#1292`) | `pr-number`, `endpoint-url`, `model`, `max-iterations`, `setup-r`, `install-quarto`, `apt-packages`, `pip-packages`, `checkout-submodules`, `run-gates`, `dry-run` |
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `tinytex`, `apt-packages`, `output-dir`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `deploy` |
@@ -160,6 +161,21 @@ that need to write must have the **caller** grant it on the calling job:
   Bugbot posts with the Cursor GitHub App, so this workflow needs no write
   permission on the PR.
 
+- `opencode-code-review` (read-only OpenCode PR review) → grant `contents: read`,
+  `pull-requests: write`, `issues: write`, and set an `OPENCODE_API_KEY`
+  secret (an [OpenCode Zen](https://opencode.ai/docs/zen/) API key; free-tier
+  models are available).
+  Without the secret, reviews skip gracefully with a warning comment on each
+  PR.
+  The agent runs with edit/bash/webfetch denied, reads the diff as an
+  attachment and the checkout for context, and posts its review through the
+  workflow -- it never touches git or `gh`.
+
+  - **Optional:** set `checkout-submodules: true` so the reviewer can read
+    submodule contents instead of reporting them as uninitialized.
+    Public submodules clone anonymously; private ones additionally need a
+    `SUBMODULES_TOKEN` secret.
+
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
   The `preview` build half is read-only, above.
@@ -204,7 +220,15 @@ The `examples/claude-code-review.yml` stub defaults to this mention-triggered
 path only (no automatic `pull_request` trigger). Add `pull_request` in that
 stub if you want automatic review on each PR update.
 
-Do not declare a top-level `concurrency:` block in caller stubs for review workflows (`claude-code-review.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, `cursor-code-review.yml`, `ai-code-review.yml`). The reusable workflows manage per-PR concurrency internally on their review jobs. A top-level `concurrency:` block in the caller with a PR-scoped group name deadlocks GitHub Actions against the nested job's group and cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+Do not declare a top-level `concurrency:` block in caller stubs for review
+workflows (`claude-code-review.yml`, `gemini-code-review.yml`,
+`antigravity-code-review.yml`, `cursor-code-review.yml`,
+`opencode-code-review.yml`, `ai-code-review.yml`).
+The reusable workflows manage per-PR concurrency internally on their review
+jobs.
+A top-level `concurrency:` block in the caller with a PR-scoped group name
+deadlocks GitHub Actions against the nested job's group and cancels the run
+([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
@@ -495,6 +519,9 @@ pin to `@v2`.
 [gha#382](https://github.com/Morrison-Lab/gha/issues/382)); pin to `@v2`.
 `cursor-code-review.yml` postdates the freeze too (added in
 [gha#510](https://github.com/Morrison-Lab/gha/issues/510)); pin to `@v2`.
+`opencode-code-review.yml` postdates the freeze as well
+(added in [gha#586](https://github.com/Morrison-Lab/gha/issues/586)); pin to
+`@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
 remains current for them. `check-news.yml` was initially grouped with them,
@@ -575,7 +602,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-secrets.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, `cursor-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
+`antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`, and
 `spellcheck.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.

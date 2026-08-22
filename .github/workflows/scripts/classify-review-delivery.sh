@@ -56,6 +56,10 @@ fi
 #       verdict.
 #   `Gemini CLI failed`
 #       classify-gemini-failure.sh's `other` headline.
+#   `OpenCode review failed:` / `OpenCode review skipped`
+#       classify-opencode-run.sh's failure headline (gha#586) and the
+#       missing-key preflight notice opencode-code-review.yml posts; both are
+#       composed by report-opencode-run / the workflow in one place each.
 #
 # A marker is matched only inside a comment that names THIS run, so a previous
 # round's failure comment on the same PR cannot decide this round.
@@ -65,6 +69,8 @@ MARKERS=(
   'Claude review skipped|claude-skipped'
   'Gemini review skipped|gemini-skipped'
   'Gemini CLI failed|gemini-failure'
+  'OpenCode review failed:|opencode-failure'
+  'OpenCode review skipped|opencode-skipped'
   'No review ran|self-mod-skip'
 )
 

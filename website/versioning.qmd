@@ -18,7 +18,7 @@ to `@v2`;
 `request-dependabot-review.yml`, `sync-upstream.yml`,
 `altdoc-multiversion-docs.yml`, `report-failure.yml`, `gemini.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
-`cursor-code-review.yml`,
+`cursor-code-review.yml`, `opencode-code-review.yml`,
 `ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
 `small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`, and
 `spellcheck.yml`
@@ -101,7 +101,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `request-dependabot-review.yml`, `sync-upstream.yml`, `check-news.yml`,
 `altdoc-multiversion-docs.yml`, `report-failure.yml`, `gemini.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
-`cursor-code-review.yml`,
+`cursor-code-review.yml`, `opencode-code-review.yml`,
 `ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
 `small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`, and
 `spellcheck.yml` at

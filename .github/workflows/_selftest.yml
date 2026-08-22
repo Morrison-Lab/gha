@@ -1261,6 +1261,114 @@ jobs:
           fi
           echo "report-gemini-failure handled the genuine-failure fixture correctly"
 
+  # opencode-code-review's reusable workflow calls report-opencode-run via
+  # @v2, which does not resolve until the tag slides past this merge. Test
+  # the classifier offline and the local composite via ./ so the PR covers
+  # the actual code (same bootstrap gap as report-gemini-failure /
+  # trigger-bugbot-review).
+  opencode-review-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run classify-opencode-run tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-classify-opencode-run-tests.sh
+      - name: Prepare run fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '## Findings\n\n- The loop bound is off by one.\n' > review-ok.md
+          printf 'opencode: error: model "opencode/nope" not found\n' > review-error.log
+      # Two real `uses:` calls, proving report-opencode-run's own
+      # github.action_path resolution of classify-opencode-run.sh and
+      # fence-and-truncate.sh actually works end-to-end -- a unit test of
+      # the classifier alone would not catch a wiring regression the way
+      # gha#191's went undetected by fixture tests alone (gha#196).
+      # dry-run: true so this doesn't comment on a real thread or stamp a
+      # red/yellow annotation onto a passing selftest job (same reasoning as
+      # report-gemini-failure's e2e steps above).
+      #
+      # opencode-code-review.yml's own consumption of this action via @v2
+      # isn't exercised end-to-end here -- the same documented, accepted
+      # bootstrap gap run-claude-review-attempt and request-dependabot-review
+      # have (CLAUDE.md): @v2 doesn't resolve until advanced past this PR's
+      # merge.
+      - name: Exercise report-opencode-run on a failed run
+        id: opencode-failed
+        uses: ./.github/actions/report-opencode-run
+        with:
+          exit-code: '1'
+          review-file: review-missing.md
+          error-file: review-error.log
+          entity-number: '1'
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert the failed run classified and reported
+        shell: bash
+        env:
+          KIND: ${{ steps.opencode-failed.outputs.kind }}
+          BODY_FILE: ${{ steps.opencode-failed.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "failed" ]]; then
+            echo "::error::a non-zero exit classified as '$KIND', expected 'failed'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-opencode-run produced no comment body for the failed fixture"
+            exit 1
+          fi
+          # The marker phrase is load-bearing: classify-review-delivery.sh
+          # keys on it to recognize the run as not delivered.
+          if ! grep -qF 'OpenCode review failed:' "$BODY_FILE"; then
+            echo "::error::the failure report lacks the 'OpenCode review failed:' marker"
+            exit 1
+          fi
+          if ! grep -qF 'model "opencode/nope"' "$BODY_FILE"; then
+            echo "::error::the failure report does not include the raw CLI output"
+            exit 1
+          fi
+          echo "report-opencode-run handled the failed fixture correctly"
+      - name: Exercise report-opencode-run on a completed review
+        id: opencode-review
+        uses: ./.github/actions/report-opencode-run
+        with:
+          exit-code: '0'
+          review-file: review-ok.md
+          error-file: ''
+          model: opencode/big-pickle
+          entity-number: '1'
+          run-url: https://example.invalid/run
+          dry-run: 'true'
+      - name: Assert the completed review classified as review
+        shell: bash
+        env:
+          KIND: ${{ steps.opencode-review.outputs.kind }}
+          BODY_FILE: ${{ steps.opencode-review.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if [[ "$KIND" != "review" ]]; then
+            echo "::error::a completed run with output classified as '$KIND', expected 'review'"
+            exit 1
+          fi
+          if [[ -z "$BODY_FILE" || ! -s "$BODY_FILE" ]]; then
+            echo "::error::report-opencode-run produced no comment body for the success fixture"
+            exit 1
+          fi
+          if ! grep -qF 'The loop bound is off by one.' "$BODY_FILE"; then
+            echo "::error::the review body does not include the agent's review text verbatim"
+            exit 1
+          fi
+          if grep -qE 'OpenCode review (failed|skipped)' "$BODY_FILE"; then
+            echo "::error::a successful review was reported with a failure/skip framing"
+            exit 1
+          fi
+          echo "report-opencode-run handled the success fixture correctly"
+
   # cursor-code-review's reusable workflow calls trigger-bugbot-review via
   # @v2, which does not resolve until the tag slides past this merge. Test
   # the script offline and the local composite via ./ so the PR covers the

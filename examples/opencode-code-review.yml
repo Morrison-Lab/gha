@@ -1,0 +1,53 @@
+# Copy to .github/workflows/opencode-code-review.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block in this caller workflow.
+# The reusable workflow manages per-PR concurrency internally on its job
+# (`group: opencode-review-<PR>`). A top-level `concurrency:` block with a
+# PR-scoped group name deadlocks GitHub Actions against the nested job and
+# cancels the run ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+#
+# NOTE: requires OPENCODE_API_KEY (an OpenCode Zen API key,
+# https://opencode.ai/docs/zen/) stored as a GitHub secret. Pass secrets
+# explicitly (below) rather than via `secrets: inherit`: GitHub only inherits
+# secrets into a reusable workflow owned by the same org/user, so a
+# cross-owner caller inherits an empty token and the run fails. Without the
+# secret, reviews skip gracefully with a warning comment on each PR.
+# Default: dispatch-triggered only.
+# Optional: uncomment pull_request for automatic review on every PR.
+#
+# There is deliberately no issue_comment path here: a future opencode.yml
+# mention wrapper (the `@opencode review` analog of gemini.yml) will own
+# comment-triggered re-dispatch via workflow_dispatch, so a second
+# comment-triggered dispatch job here would double-review.
+name: OpenCode Code Review
+
+on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/opencode-code-review.yml@v2
+    secrets:
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}   # optional; empty when unset
+    with:
+      # Wires the workflow_dispatch input through so a mention-wrapper
+      # workflow can dispatch a review; empty (and ignored) on pull_request
+      # runs.
+      pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
+    #   opencode-model: opencode/big-pickle   # OpenCode Zen model; free tier available
+    #   prompt-addendum: |
+    #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).
