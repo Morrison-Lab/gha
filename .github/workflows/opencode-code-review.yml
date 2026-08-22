@@ -179,7 +179,11 @@ jobs:
       # The PR's checked-out tree is untrusted PR-controlled content, and
       # project-level opencode config (opencode.json / .opencode/) overrides
       # global config -- so a malicious PR could re-enable the bash/edit tools
-      # our own config denies. Remove any such files before the agent runs;
+      # our own config denies. Worse, opencode AUTO-LOADS anything under
+      # .opencode/plugin(s)/ as a plugin: unsandboxed JS with full shell
+      # access, which the permission denies never see. Remove the whole
+      # project-level surface (config, plugins, custom agents, commands)
+      # rather than enumerating file types and missing the next one;
       # instruction-file injection (AGENTS.md etc.) remains the residual risk
       # every other reviewer bot here also accepts.
       - name: Remove project-level opencode config from the untrusted tree
@@ -188,8 +192,8 @@ jobs:
           steps.dispatch-guard.outputs.blocked != 'true' &&
           steps.preflight-secret.outputs.secret_skip != 'true'
         run: |
-          rm -f opencode.json opencode.jsonc .opencode/config.json .opencode/opencode.json
-          rmdir .opencode 2>/dev/null || true
+          rm -rf .opencode
+          rm -f opencode.json opencode.jsonc
 
       - name: Capture diff and changed-file list
         id: prep-diff

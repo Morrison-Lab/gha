@@ -27,8 +27,8 @@ review.
 | `pr-number` | string | `''` | Pull request number to review. Required on `workflow_dispatch`; taken from the event on `pull_request`. |
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the review prompt. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
-| `opencode-model` | string | `'opencode/grok-code'` | Model passed to `opencode run -m`. |
-| `opencode-version` | string | `'v1.0.215'` | opencode CLI release installed at run time. |
+| `opencode-model` | string | `'opencode/big-pickle'` | Model passed to `opencode run -m`. |
+| `opencode-version` | string | `'1.18.21'` | opencode CLI release installed at run time. |
 
 ## Secrets
 
@@ -124,7 +124,7 @@ jobs:
       pr-number: ${{ inputs.pr_number }}
     # with:
     #   checkout-submodules: true
-    #   opencode-model: opencode/grok-code
+    #   opencode-model: opencode/big-pickle
     #   prompt-addendum: |
     #     Repo-specific review guidance.
 ```
