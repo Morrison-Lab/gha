@@ -64,6 +64,7 @@ website:
           - reference/gemini-code-review.qmd
           - reference/antigravity-code-review.qmd
           - reference/cursor-code-review.qmd
+          - reference/opencode-code-review.qmd
           - reference/ai-code-review.qmd
           - reference/small-model-agent.qmd
           - reference/bump-submodule.qmd

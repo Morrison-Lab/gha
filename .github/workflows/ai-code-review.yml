@@ -47,6 +47,12 @@ on:
           the name examples/cursor-code-review.yml is copied to.
         type: string
         default: 'cursor-code-review.yml'
+      opencode-review-workflow-file:
+        description: >-
+          Caller-repo workflow file dispatched for an OpenCode review. Defaults to
+          the name examples/opencode-code-review.yml is copied to.
+        type: string
+        default: 'opencode-code-review.yml'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false
@@ -55,6 +61,8 @@ on:
       GEMINI_API_KEY:
         required: false
       CURSOR_API_KEY:
+        required: false
+      OPENCODE_API_KEY:
         required: false
 
 jobs:
@@ -104,6 +112,7 @@ jobs:
           GEMINI_WF: ${{ inputs.gemini-review-workflow-file }}
           ANTIGRAVITY_WF: ${{ inputs.antigravity-review-workflow-file }}
           CURSOR_WF: ${{ inputs.cursor-review-workflow-file }}
+          OPENCODE_WF: ${{ inputs.opencode-review-workflow-file }}
           PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
           PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
@@ -114,6 +123,7 @@ jobs:
           HAS_CLAUDE_SECRET: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
           HAS_GEMINI_SECRET: ${{ secrets.GEMINI_API_KEY != '' }}
           HAS_CURSOR_SECRET: ${{ secrets.CURSOR_API_KEY != '' }}
+          HAS_OPENCODE_SECRET: ${{ secrets.OPENCODE_API_KEY != '' }}
         run: |
           set -euo pipefail
 
@@ -162,6 +172,7 @@ jobs:
               gemini) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$GEMINI_WF" ;;
               antigravity) has_secret="$HAS_GEMINI_SECRET"; agent_wf="$ANTIGRAVITY_WF" ;;
               cursor) has_secret="$HAS_CURSOR_SECRET"; agent_wf="$CURSOR_WF" ;;
+              opencode) has_secret="$HAS_OPENCODE_SECRET"; agent_wf="$OPENCODE_WF" ;;
               *)
                 echo "::warning::Unknown agent '$agent'; trying the next candidate."
                 continue

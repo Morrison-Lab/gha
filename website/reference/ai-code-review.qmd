@@ -12,8 +12,9 @@ can't be dispatched or fails during execution
 It sits above whichever per-agent review workflows a repo has installed ---
 [`claude-code-review.yml`](claude-code-review.qmd),
 [`gemini-code-review.yml`](gemini-code-review.qmd),
-[`antigravity-code-review.yml`](antigravity-code-review.qmd), and
-[`cursor-code-review.yml`](cursor-code-review.qmd) --- rather than
+[`antigravity-code-review.yml`](antigravity-code-review.qmd),
+[`cursor-code-review.yml`](cursor-code-review.qmd), and
+[`opencode-code-review.yml`](opencode-code-review.qmd) --- rather than
 reviewing anything itself, so those stubs have to exist in the caller repo
 and be named to match the `*-review-workflow-file` inputs below.
 
@@ -33,12 +34,13 @@ and falls through to try the next candidate agent in the list.
 
 | Input | Type | Default | Description |
 |---|---|---|---|
-| `agents` | string | `'claude, gemini'` | Comma-separated agents to select from (`claude`, `gemini`, `antigravity`, `cursor`). Unrecognized names are warned about and skipped. |
+| `agents` | string | `'claude, gemini'` | Comma-separated agents to select from (`claude`, `gemini`, `antigravity`, `cursor`, `opencode`). Unrecognized names are warned about and skipped. |
 | `pr-number` | string | `''` | Pull request number to review. Required on `workflow_dispatch`; taken from the event on `pull_request`. |
 | `claude-review-workflow-file` | string | `'claude-code-review.yml'` | Caller-repo workflow file dispatched for a Claude review. |
 | `gemini-review-workflow-file` | string | `'gemini-code-review.yml'` | Caller-repo workflow file dispatched for a Gemini review. |
 | `antigravity-review-workflow-file` | string | `'antigravity-code-review.yml'` | Caller-repo workflow file dispatched for an Antigravity review. |
 | `cursor-review-workflow-file` | string | `'cursor-code-review.yml'` | Caller-repo workflow file dispatched for a Cursor Bugbot review. |
+| `opencode-review-workflow-file` | string | `'opencode-code-review.yml'` | Caller-repo workflow file dispatched for an OpenCode review. |
 
 ## Secrets
 
@@ -48,6 +50,7 @@ and falls through to try the next candidate agent in the list.
 | `ANTHROPIC_API_KEY` | no | Direct Anthropic API key. |
 | `GEMINI_API_KEY` | no | Gemini API key. Makes `gemini` and `antigravity` eligible candidates. |
 | `CURSOR_API_KEY` | no | Cursor Enterprise Bugbot API key (`admin:*`). Makes `cursor` an eligible candidate. |
+| `OPENCODE_API_KEY` | no | [OpenCode Zen](https://opencode.ai/docs/zen/) API key. Makes `opencode` an eligible candidate. |
 
 ## Permissions
 
@@ -98,14 +101,16 @@ jobs:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
     # with:
-    #   agents: 'claude, gemini, antigravity, cursor'
+    #   agents: 'claude, gemini, antigravity, cursor, opencode'
     #   claude-review-workflow-file: claude-code-review.yml
     #   gemini-review-workflow-file: gemini-code-review.yml
     #   antigravity-review-workflow-file: antigravity-code-review.yml
     #   cursor-review-workflow-file: cursor-code-review.yml
+    #   opencode-review-workflow-file: opencode-code-review.yml
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory
