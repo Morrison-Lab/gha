@@ -4,11 +4,18 @@
 // so GFM ends the table at the blank line and renders every row below it as
 // literal pipe-delimited text.
 //
-// markdownlint's own table rules (MD055/MD056/MD060) operate *within* a table
-// block. A blank line ends the block, so the orphaned rows are not a table as
-// far as the linter is concerned, and there is nothing left to be inconsistent
-// with -- which is why this defect survived in README.md from `cacf1df` until
-// #555 and was visible only to a person opening the file on GitHub.
+// markdownlint's own table rules operate *within* a table block. A blank line
+// ends the block, so the orphaned rows are not a table as far as the linter is
+// concerned, and there is nothing left to be inconsistent with -- which is why
+// this defect survived in README.md from `cacf1df` until #555 and was visible
+// only to a person opening the file on GitHub.
+//
+// That was measured rather than assumed, because MD058 (`blanks-around-tables`)
+// sounds like exactly this check and is not: run against the genuinely broken
+// README (`git show cacf1df:README.md`) under markdownlint 0.41.0, the bundled
+// config reports 0 errors, and enabling *every* rule reports only MD060
+// pipe-spacing nits, none of them at the split. So no markdownlint rule --
+// MD055, MD056, MD058, or MD060 -- fires on this.
 //
 // Detection. A "pipe block" is a maximal run of consecutive lines that begin
 // (after at most three spaces) with `|`, outside fenced code. A pipe block is
