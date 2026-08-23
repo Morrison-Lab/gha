@@ -19,7 +19,7 @@ on:
 
 jobs:
   gemini:
-    timeout-minutes: 60
+    # timeout-minutes is defined in the reusable workflow
     if: |
 
       (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||

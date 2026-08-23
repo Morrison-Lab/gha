@@ -9,7 +9,7 @@ on:
 
 jobs:
   cleanup:
-    timeout-minutes: 15
+    # timeout-minutes is defined in the reusable workflow
     permissions:
 
       contents: write
