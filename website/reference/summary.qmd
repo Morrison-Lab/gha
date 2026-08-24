@@ -48,7 +48,7 @@ jobs:
       issues: write
       models: read
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1
     # secrets:
     #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
     # with:
