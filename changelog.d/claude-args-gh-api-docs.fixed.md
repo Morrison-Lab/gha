@@ -1,0 +1,3 @@
+- Clarify gh api mutation denial speed bump limits in claude.yml and documentation (gha#616).
+- Document that while -X, --method, and graphql flags are denied best-effort, gh api defaults to POST when passing fields (-f/-F/--input).
+- Accurately describe that write safety is bounded by the trusted-author gate and token permissions rather than tool deny lists.
