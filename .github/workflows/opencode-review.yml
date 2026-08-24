@@ -34,3 +34,6 @@ jobs:
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
     with:
       pr-number: ${{ inputs.pr_number }}
+    # with:
+    #   opencode-model: opencode/big-pickle   # OpenCode Zen model; free tier available
+    #   opencode-attempts: '3'                # total attempts; retries only the transient Zen network_error drop (gha#600)
