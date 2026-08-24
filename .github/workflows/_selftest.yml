@@ -1277,6 +1277,9 @@ jobs:
       - name: Run classify-opencode-run tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-classify-opencode-run-tests.sh
+      - name: Run run-step retry tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-opencode-run-step-tests.sh
       - name: Prepare run fixtures
         shell: bash
         run: |
