@@ -9,6 +9,19 @@ name: Quarto Preview Deploy (reusable)
 
 on:
   workflow_call:
+    inputs:
+      pages-base-url:
+        description: >-
+          Custom Pages base URL (e.g. 'org.github.io' or a custom domain) to
+          override automatic URL guessing by pr-preview-action.
+        type: string
+        default: ''
+      pages-base-path:
+        description: >-
+          Custom Pages base path prefix to override automatic path guessing by
+          pr-preview-action.
+        type: string
+        default: ''
 
 jobs:
   # Cheap gate: verify the build job actually ran (vs. being skipped due to an
@@ -88,6 +101,8 @@ jobs:
           pr-number: ${{ steps.meta.outputs.pr-number }}
           comment: false
           action: deploy
+          pages-base-url: ${{ inputs.pages-base-url }}
+          pages-base-path: ${{ inputs.pages-base-path }}
 
       - name: Remove PR Preview
         if: steps.meta.outputs.action == 'remove'
