@@ -16,7 +16,9 @@ on:
 
 jobs:
   review:
-    # timeout-minutes is defined in the reusable workflow
+    # No timeout-minutes here: a job calling a reusable workflow rejects the
+    # key at parse time (0-second zero-job failure); set timeouts in the
+    # called workflow instead.
     permissions:
       contents: read
       pull-requests: write

@@ -2,14 +2,16 @@
 # (dogfooding). Distinct filename from the reusable
 # .github/workflows/opencode-code-review.yml it calls.
 #
-# Dispatch-only for now (the `@opencode review` mention-wrapper analog of
-# gemini-bot.yml does not exist yet); uncomment the pull_request trigger to
-# review every PR automatically. Requires the OPENCODE_API_KEY secret
+# Dispatch-only for now; uncomment the pull_request block below to review
+# every PR automatically. Requires the OPENCODE_API_KEY secret
 # (repo- or org-level; org secrets must grant this repo visibility).
 # Do NOT add a top-level concurrency: block -- see examples/opencode-code-review.yml.
 name: OpenCode Review
 
 on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -19,7 +21,9 @@ on:
 
 jobs:
   review:
-    timeout-minutes: 30
+    # No timeout-minutes here: a job calling a reusable workflow rejects the
+    # key at parse time (0-second zero-job failure); set timeouts in the
+    # called workflow instead.
     permissions:
       contents: read
       pull-requests: write
