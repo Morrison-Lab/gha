@@ -252,10 +252,10 @@ parse_ignore_tells <- function(raw_arg) {
     return(lowered)
   }
 
-  if (grepl("[,\\n]", raw_arg)) {
-    tokens <- strsplit(raw_arg, "[,\\n]+", perl = TRUE)[[1]]
+  if (grepl(",", raw_arg, fixed = TRUE)) {
+    tokens <- strsplit(raw_arg, ",", fixed = TRUE)[[1]]
   } else {
-    tokens <- strsplit(raw_arg, "\\s+", perl = TRUE)[[1]]
+    tokens <- scan(text = raw_arg, what = character(), quiet = TRUE)
   }
 
   tokens <- tolower(trimws(tokens))
