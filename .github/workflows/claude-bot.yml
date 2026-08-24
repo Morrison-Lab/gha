@@ -21,7 +21,7 @@ on:
 
 jobs:
   claude:
-    timeout-minutes: 60
+    # timeout-minutes is defined in the reusable workflow
     # Cheap caller-side gate: only invoke the reusable workflow when an @claude
     # mention is present AND the author is trusted (OWNER/MEMBER/COLLABORATOR
     # or an allowlisted bot login), so an untrusted commenter's mention doesn't

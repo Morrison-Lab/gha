@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   publish:
-    timeout-minutes: 20
+    # timeout-minutes is defined in the reusable workflow
     permissions:
       # Push the rendered site to gh-pages.
       contents: write
