@@ -41,6 +41,7 @@ and commit the result.
 | -------------------- | ------ | ------------- | -------------------------------------------------------------------- |
 | `path`               | string | `'.'`         | Path to the package root, relative to the repository.                |
 | `exclude`            | string | `''`          | Comma-separated files or folders to skip. Accepts globs.             |
+| `fail`               | string | `'true'`      | Whether to fail the job on misspelled words (`'true'`, `'false'`).   |
 | `additional-options` | string | `'--vanilla'` | Options passed to `Rscript`. Pass `''` to let R read its profiles.   |
 | `install-quarto`     | string | `'false'`     | Whether dependency setup installs Quarto.                            |
 | `runs-on`            | string | `ubuntu-latest` | Runner label for the job.                                          |
@@ -62,6 +63,7 @@ jobs:
     # with:
     #   path: '.'
     #   exclude: 'vignettes/*.Rmd'
+    #   fail: 'true'
     #   additional-options: ''
     #   install-quarto: 'auto'
 ```
@@ -79,62 +81,29 @@ matching every other R capability here, so a consumer already paying for
 
 It also installs {spelling} through
 [`setup-r-dependencies`](https://github.com/r-lib/actions/tree/v2/setup-r-dependencies)
-rather than leaving it to the upstream action's own `install.packages()` call.
-That call sets `repos` to `cloud.r-project.org`, which serves source packages
-for Linux, so it would compile {spelling} and its {hunspell} C++ dependency on
-every run.
+rather than compiling {spelling} and its {hunspell} C++ dependency on every run.
 Going through `setup-r-dependencies` takes the public RSPM binaries instead and
-caches them, and the upstream install then finds the package present.
+caches them across runs.
 
 Only {spelling} is installed, not the consumer package's own dependencies:
 `spell_check_package()` reads a package's files without loading it, so
 resolving its dependency tree would be pure cost.
 `RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'` is set during dependency setup so
-{spelling} installs to the site library even in `renv` projects; upstream's
+{spelling} installs to the site library even in `renv` projects;
 `additional-options: '--vanilla'` default then finds it without requiring
 `.Rprofile` activation ([#620](https://github.com/Morrison-Lab/gha/issues/620)).
 For the same reason `install-quarto` defaults to `'false'` -- {spelling} reads
 vignette *sources* and never renders them.
 
-## Three upstream behaviours worth knowing
+## Handling of exclusions and finding counts
 
-This capability wraps
-[`insightsengineering/r-spellcheck-action`](https://github.com/insightsengineering/r-spellcheck-action),
-which carries three quirks a caller can be bitten by.
-All were confirmed by reading and running its `action.yaml` and `spellcheck.R`
-at `v3.0.3` (2026-08-21), not inferred from its documentation.
+`spellcheck` directly invokes `spelling::spell_check_package()`, providing:
 
-**A lone glob in `exclude` used to exclude only its first match -- this
-capability works around that.**
-Upstream interpolates `exclude` unquoted into a `bash` `run:` body, so the
-shell pathname-expands it into separate arguments before R sees it, and
-`spellcheck.R` reads only the first.
-Measured over three vignettes: `vignettes/*.Rmd` excluded
-`vignettes/a.Rmd` and left the other two checked, silently.
-The composite therefore normalizes the value first -- entries trimmed,
-rejoined with commas, and given a trailing comma -- which the shell cannot
-expand, since no path ends in a comma.
-R's own `Sys.glob()` then does the matching, so a glob excludes every file it
-matches, as the input has always claimed.
-The one shape that cannot be supported is an entry containing whitespace: the
-shell splits on it whatever we do, so such an entry is rejected with an error
-naming it.
-
-**`exclude` deletes the files it matches.**
-The script calls `file.remove()` on each glob match, and the branch meant to
-restore them afterwards tests `isTRUE()` against the *list* `lapply()` returned,
-which is never true.
-So excluded files stay deleted from the runner's checkout for the rest of the
-job.
-That is harmless in a job that only spellchecks, which is why the caller stub
-does nothing else -- but do not add steps after it that read or publish the
-working tree.
-
-**A count of exactly 256 misspelled words reports success.**
-The script exits with the misspelling count as its status, and a process exit
-status is taken modulo 256, so 256 words becomes `0`.
-Measured on R 4.6.1: `quit(status = 256)` is observed by the shell as `0`.
-Any count from 1 to 255 fails correctly, so this only reaches a package
-adopting the check with a very large wordlist gap.
-[gha#556](https://github.com/Morrison-Lab/gha/issues/556) tracks reporting it
-upstream and deciding whether to guard it here.
+- **Safe file exclusion**: Excluded files matching glob patterns are
+  temporarily staged out of the package root during analysis and restored
+  unconditionally on exit (resolving [gha#556](https://github.com/Morrison-Lab/gha/issues/556)).
+- **Consistent exit codes**: When misspellings are found, the step exits with
+  code `1` under `fail: 'true'` or `0` under `fail: 'false'` (with GitHub
+  Actions warning annotations for each finding), avoiding modulo-256 process exit
+  code truncation ([gha#556](https://github.com/Morrison-Lab/gha/issues/556),
+  [gha#560](https://github.com/Morrison-Lab/gha/issues/560)).

@@ -10,19 +10,18 @@ on:
       exclude:
         description: >-
           Comma-separated files or folders to exclude from the spellcheck.
-          Accepts globs, expanded by R rather than by the shell. The upstream
-          action implements exclusion by DELETING the matched files from the
-          runner's checkout and never restoring them, so do not add steps
-          after this job's spellcheck that read or publish the working tree.
-          An entry containing whitespace is rejected rather than silently
-          mangled.
+          Accepts globs. Excluded files are temporarily staged out of the package
+          tree during check and restored automatically on exit.
         type: string
         default: ''
+      fail:
+        description: Fail the workflow when spelling errors are found ('true' or 'false').
+        type: string
+        default: 'true'
       additional-options:
         description: >-
-          Additional options passed to Rscript by the upstream action. The
-          upstream default is --vanilla; pass an empty string to let R read
-          the site and user profiles instead.
+          Additional options passed to Rscript. Defaults to --vanilla; pass an
+          empty string to let R read the site and user profiles instead.
         type: string
         default: '--vanilla'
       install-quarto:
@@ -52,5 +51,6 @@ jobs:
         with:
           path: ${{ inputs.path }}
           exclude: ${{ inputs.exclude }}
+          fail: ${{ inputs.fail }}
           additional-options: ${{ inputs.additional-options }}
           install-quarto: ${{ inputs.install-quarto }}
