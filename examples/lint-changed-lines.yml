@@ -14,6 +14,9 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2
     # with:
     #   path: '.'               # R package root (holding DESCRIPTION)
+    #   use-renv: false         # true to restore dependencies with setup-renv
+    #   renv-cache-version: '1' # bump to invalidate renv cache
+    #   apt-packages: ''        # system packages required for compilation
     #   extra-packages: ''      # extra R deps (gh + lintr always installed)
     #   install-package: false  # skip R CMD INSTALL for a non-package repo
     #   fail: false             # warn instead of failing on lints
