@@ -1991,6 +1991,15 @@ jobs:
         with:
           path: _ci-quarto-site
           output-dir: docs
+          fail-on-render-warning: true
+          forbid-log-patterns: |
+            nonexistent-forbidden-pattern
+      - name: Exercise per-format split render with formats input
+        uses: ./quarto-publish
+        with:
+          path: _ci-quarto-site
+          output-dir: docs
+          formats: 'html'
   # Smoke-test the quarto-publish reusable workflow wrapper (not just the
   # composite): render this repo's own website with deploy: false, so the
   # gh-pages push — a write side effect we can't run in CI — is skipped. This

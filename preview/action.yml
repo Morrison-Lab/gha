@@ -84,9 +84,13 @@ runs:
       run: |
         set -euo pipefail
         mkdir -p _preview_upload/meta
-        echo "$PR_NUMBER" > _preview_upload/meta/pr-number
-        echo "$PR_HEAD_SHA" > _preview_upload/meta/pr-head-sha
-        echo "$EVENT_ACTION" > _preview_upload/meta/event-action
+        echo "$PR_NUMBER" > _preview_upload/meta/pr-number.txt
+        echo "$PR_HEAD_SHA" > _preview_upload/meta/pr-head-sha.txt
+        if [ "$EVENT_ACTION" = "closed" ]; then
+          echo "remove" > _preview_upload/meta/action.txt
+        else
+          echo "deploy" > _preview_upload/meta/action.txt
+        fi
 
     # All build/render steps below gate on `action != 'closed'`. When a PR is
     # closed, this workflow uploads just the `_preview_upload/meta/` directory;
@@ -135,8 +139,9 @@ runs:
         # source of flaky/rate-limited failures -- see
         # d-morrison/rme#994 / gha#239).
         RENV_CONFIG_INSTALL_REMOTES: false
+
     - name: Install R dependencies
-      if: github.event.action != 'closed' && inputs.use-renv != 'true'
+      if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != ''
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       with:
         packages: ${{ inputs.r-packages }}
@@ -186,7 +191,8 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf --output-dir "$OUTPUT_DIR" 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render docx
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:docx')
@@ -194,7 +200,8 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --no-clean 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --output-dir "$OUTPUT_DIR" --no-clean 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render revealjs
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:revealjs')
@@ -202,7 +209,8 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --no-clean 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --output-dir "$OUTPUT_DIR" --no-clean 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render html
       if: github.event.action != 'closed'
@@ -210,7 +218,8 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --no-clean 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --output-dir "$OUTPUT_DIR" --no-clean 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Verify render warnings and forbidden log patterns
       if: github.event.action != 'closed'
