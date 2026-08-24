@@ -1,0 +1,1 @@
+- Extract PR diff saver into `save-pr-diff.sh` and tested `.github/actions/save-pr-diff` composite action (gha#568).

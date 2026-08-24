@@ -2673,3 +2673,23 @@ jobs:
           fi
           [ "$rc" -eq 0 ] || exit 1
           echo "install-gha-scripts refused both a path-bearing name and a bare dot-dot name."
+
+  save-pr-diff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run save-pr-diff unit tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-save-pr-diff-tests.sh
+
+      - name: Invoke save-pr-diff composite action
+        id: composite-test
+        uses: ./.github/actions/save-pr-diff
+        with:
+          pr-number: '1'
+          repo: 'Morrison-Lab/gha'

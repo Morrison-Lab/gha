@@ -1,0 +1,32 @@
+name: Save PR diff for reviewer
+description: >-
+  Runs save-pr-diff.sh to fetch and save a PR diff into a workspace file for
+  AI reviewers, removing partial files on failure and setting outputs.path.
+
+inputs:
+  pr-number:
+    description: Pull request number.
+    required: true
+  repo:
+    description: Repository name (owner/repo).
+    default: ${{ github.repository }}
+  target-path:
+    description: Target file path to write diff to. Defaults to $GITHUB_WORKSPACE/.claude-review-pr.diff.
+    default: ''
+
+outputs:
+  path:
+    description: Absolute path to the saved diff file, or empty on failure.
+    value: ${{ steps.save.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - name: Save PR diff
+      id: save
+      shell: bash
+      env:
+        PR_NUMBER: ${{ inputs.pr-number }}
+        REPO: ${{ inputs.repo }}
+        TARGET_PATH: ${{ inputs.target-path }}
+      run: bash "${{ github.action_path }}/../../workflows/scripts/save-pr-diff.sh"
