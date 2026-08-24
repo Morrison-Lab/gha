@@ -13,6 +13,7 @@
 #
 # Team and individual Cursor plans should enable Bugbot in the dashboard
 # instead of this workflow: https://cursor.com/docs/bugbot.md
+# A Team-plan CURSOR_API_KEY is rejected as HTTP 401 Invalid Team API Key.
 # Manual trigger there is a PR comment `cursor review` or `bugbot run`.
 #
 # Default: dispatch-triggered only. Optional: uncomment pull_request for

@@ -499,6 +499,10 @@ which is why the capabilities above moved to `@v2`.
   itself, asynchronously.
   The API is Enterprise-scoped (`admin:*`); Team/individual installs enable
   Bugbot in the Cursor dashboard instead.
+  A Team-plan key is not "almost Enterprise": the queue step fails with
+  `HTTP 401: Invalid Team API Key` (dogfood `cursor-review.yml`, run
+  32694255358, 2026-08-24, gha#601). That error means the secret reached
+  Cursor and was rejected; it is not a missing `secrets:` mapping.
   The key is sent as an `Authorization: Basic` header via curl `--config`,
   not on argv, and the script never prints it.
   `--header` is not enough: it still puts the base64 credential on curl's

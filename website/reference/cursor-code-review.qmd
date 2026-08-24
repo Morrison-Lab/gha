@@ -13,6 +13,9 @@ It calls Cursor's Enterprise Bugbot API (`POST /bugbot/review`) with a
 Team and individual Cursor plans should enable Bugbot in the
 [Cursor dashboard](https://cursor.com/docs/bugbot.md)
 instead of this workflow.
+A Team-plan key is rejected as `HTTP 401 Invalid Team API Key`
+(measured on this repo's dogfood caller, run 32694255358, 2026-08-24);
+that is the wrong key class, not a missing `secrets:` pass-through.
 Once the GitHub App is connected, Bugbot can run on every PR update, or
 on a PR comment `cursor review` / `bugbot run`.
 Customize that path with `.cursor/BUGBOT.md`; this workflow has no
