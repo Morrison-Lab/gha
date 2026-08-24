@@ -17,4 +17,4 @@ jobs:
     #   # exempts a whole directory.
     #   paths-ignore: 'tests/fixtures/'
     #   # Warn instead of blocking, e.g. while cleaning up an existing tree.
-    #   fail: 'false'
+    #   fail: false

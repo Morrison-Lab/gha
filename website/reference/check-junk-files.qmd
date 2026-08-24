@@ -38,7 +38,7 @@ check deliberately does not ask. A file you force-added despite your own
 | -------------- | ------ | ------------------ | ---------------------------------------------- |
 | `patterns`     | string | see below          | Comma- or newline-separated gitignore-style patterns naming what counts as junk. |
 | `paths-ignore` | string | `''`               | Comma- or newline-separated paths to exempt, applied as git pathspec exclusions. A trailing `/` exempts a whole directory. |
-| `fail`         | string | `'true'`           | Fail the job on a finding (else warn only). Read fail-closed: only an explicit `false` opts out. |
+| `fail`         | boolean | `true`            | Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit `false` opts out. |
 
 The `patterns` default is the set
 [`usethis::git_vaccinate()`](https://usethis.r-lib.org/reference/git_vaccinate.html)
@@ -79,7 +79,7 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2
     # with:
     #   paths-ignore: 'tests/fixtures/'
-    #   fail: 'false'
+    #   fail: false
 ```
 
 See `check-junk-files.yml` in

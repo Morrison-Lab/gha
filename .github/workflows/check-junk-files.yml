@@ -19,8 +19,8 @@ on:
       fail:
         description: >-
           Fail the job when a tracked junk file is found (else warn only).
-        type: string
-        default: 'true'
+        type: boolean
+        default: true
 
 jobs:
   check-junk-files:
