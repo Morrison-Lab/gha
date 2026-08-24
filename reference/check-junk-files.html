@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>cleanup-pr-previews.yml – Morrison-Lab/gha</title>
+<title>check-junk-files.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/claude.html" rel="next">
-<link href="../reference/check-equation-renders.html" rel="prev">
+<link href="../reference/check-non-standard-chars.html" rel="next">
+<link href="../reference/check-bibliography-dois.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/cleanup-pr-previews.html">cleanup-pr-previews.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-junk-files.html">check-junk-files.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -391,7 +391,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-junk-files.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-junk-files.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-junk-files.yml</span></a>
   </div>
 </li>
@@ -517,7 +517,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/cleanup-pr-previews.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/cleanup-pr-previews.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">cleanup-pr-previews.yml</span></a>
   </div>
 </li>
@@ -635,19 +635,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#what-it-scans-and-why" id="toc-what-it-scans-and-why" class="nav-link active" data-scroll-target="#what-it-scans-and-why">What it scans, and why</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/cleanup-pr-previews.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-junk-files.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/cleanup-pr-previews.html">cleanup-pr-previews.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-junk-files.html">check-junk-files.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">cleanup-pr-previews.yml</h1>
+<h1 class="title">check-junk-files.yml</h1>
 </div>
 
 
@@ -664,15 +665,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The housekeeping half of the PR-preview family. On a schedule, it deletes <code>gh-pages</code> preview directories for pull requests that are no longer open.</p>
+<p>Fail when the repository <strong>tracks</strong> operating-system or editor detritus – a <code>.DS_Store</code> written by Finder, an AppleDouble <code>._*</code> sidecar, an <code>.Rhistory</code> or <code>.RData</code> an IDE left in the project root.</p>
+<p>The failure names each file, gives the <code>git rm --cached</code> line that clears it, and points at the per-machine fix that stops it recurring in every other repository too: a global gitignore, or <a href="https://usethis.r-lib.org/reference/git_vaccinate.html"><code>usethis::git_vaccinate()</code></a> for R users.</p>
+<section id="what-it-scans-and-why" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-scans-and-why">What it scans, and why</h2>
+<p><strong>Tracked files, not the pull request’s diff.</strong> The diff-scoping that <code>check-phi</code> and <code>check-new-line-breaks</code> use exists so a corpus’s pre-existing drift is not re-flagged on every unrelated PR. That reasoning does not carry over here: a <code>.DS_Store</code> committed two years ago is still a live defect, and still costs exactly one command to clear. Adopting this check in a tree that already has some will therefore go red once; <code>paths-ignore</code> is the escape hatch if one of them genuinely belongs.</p>
+<p><strong>Matching is git’s own.</strong> The check runs <code>git ls-files -i -c -X</code>, so <code>patterns</code> is ordinary gitignore syntax rather than a bespoke glob dialect – <code>.DS_Store</code> matches at any depth, a trailing <code>/</code> restricts a pattern to directories, and <code>#</code> comments are ignored.</p>
+<p><strong>Your repository’s own <code>.gitignore</code> is not consulted.</strong> <code>git ls-files</code> takes standard exclude sources only when asked (<code>--exclude-standard</code>), and this check deliberately does not ask. A file you force-added despite your own <code>.gitignore</code> is your decision, not this check’s business.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 6%">
-<col style="width: 2%">
-<col style="width: 5%">
-<col style="width: 85%">
+<col style="width: 16%">
+<col style="width: 7%">
+<col style="width: 21%">
+<col style="width: 54%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -684,49 +692,49 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>preview-dir</code></td>
+<td><code>patterns</code></td>
 <td>string</td>
-<td><code>'pr-preview'</code></td>
-<td>Directory on <code>gh-pages</code> that holds the per-PR preview subdirectories.</td>
+<td>see below</td>
+<td>Comma- or newline-separated gitignore-style patterns naming what counts as junk.</td>
 </tr>
 <tr class="even">
-<td><code>compact-history</code></td>
+<td><code>paths-ignore</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Comma- or newline-separated paths to exempt, applied as git pathspec exclusions. A trailing <code>/</code> exempts a whole directory.</td>
+</tr>
+<tr class="odd">
+<td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Orphan-squash the <code>gh-pages</code> branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses).</td>
+<td><code>true</code></td>
+<td>Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit <code>false</code> opts out.</td>
 </tr>
 </tbody>
 </table>
+<p>The <code>patterns</code> default is the set <a href="https://usethis.r-lib.org/reference/git_vaccinate.html"><code>usethis::git_vaccinate()</code></a> writes to a global gitignore, plus the three it does not cover:</p>
+<pre class="text"><code>.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto,
+Thumbs.db, desktop.ini</code></pre>
+<p>Keeping the two sets aligned is deliberate. The check recommends vaccination, so a default wider than what vaccination fixes would hand the reader advice that does not close what they were just told to close. <code>._*</code>, <code>Thumbs.db</code>, and <code>desktop.ini</code> are the exceptions, and the failure output says so rather than leaving the gap silent.</p>
+<p><code>paths-ignore</code> takes <strong>pathspecs</strong>, unlike <code>check-secrets</code>’s same-named input, which takes Go regexes. The syntax follows the matcher, and the two capabilities use different matchers. Pathspecs rather than gitignore <code>!</code> negation because negation is matched per pattern against the full path, so <code>!vendor/</code> fails to re-include <code>vendor/.DS_Store</code> and would exempt nothing at all – silently.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code> (commit the deletions to <code>gh-pages</code>) and <code>pull-requests: read</code>.</p>
+<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/cleanup-pr-previews.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Housekeeping half of the PR-preview family: periodically deletes gh-pages</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># preview directories for PRs that are no longer open. The calling job grants</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># contents:write so it can commit the deletions back to gh-pages.</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Clean up PR Previews</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">cron</span><span class="kw">:</span><span class="at"> </span><span class="st">"0 0 * * 0"</span><span class="co"> # Weekly on Sunday at midnight UTC</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">cleanup</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v2</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   compact-history: true       # orphan-squash gh-pages to one commit after</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # pruning, so deleted snapshots stop bloating</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # the repo. Branch-based Pages only.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/cleanup-pr-previews.yml"><code>examples/cleanup-pr-previews.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check junk files</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span><span class="at"> </span><span class="kw">{</span><span class="at"> </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">]</span><span class="at"> </span><span class="kw">}</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'tests/fixtures/'</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <code>check-junk-files.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, for the reason <a href="../reference/check-secrets.html"><code>check-secrets.qmd</code></a> records: a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it, and <code>check-links</code> rightly fails it.)</p>
 
 
 </section>
@@ -1147,13 +1155,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/check-equation-renders.html" class="pagination-link" aria-label="check-equation-renders.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-equation-renders.yml</span>
+      <a href="../reference/check-bibliography-dois.html" class="pagination-link" aria-label="check-bibliography-dois.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-bibliography-dois.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/claude.html" class="pagination-link" aria-label="claude.yml">
-        <span class="nav-page-text">claude.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/check-non-standard-chars.html" class="pagination-link" aria-label="check-non-standard-chars.yml">
+        <span class="nav-page-text">check-non-standard-chars.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1162,4 +1170,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/cleanup-pr-previews.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-junk-files.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
