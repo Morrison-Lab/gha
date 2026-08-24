@@ -89,6 +89,7 @@ jobs:
     #   install-quarto: true         # render .qmd files
     #   gemini-model: gemini-2.5-flash
     #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`
+    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory

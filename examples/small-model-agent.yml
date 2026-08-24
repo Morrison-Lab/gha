@@ -38,3 +38,5 @@ jobs:
       pr-number: ${{ inputs.pr_number }}
       endpoint-url: ${{ inputs.endpoint_url }}
       model: ${{ inputs.model }}
+    # with:
+    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)

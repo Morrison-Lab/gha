@@ -98,6 +98,7 @@ jobs:
     # with:
     #   checkout-submodules: true
     #   gemini-model: gemini-2.5-flash
+    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)
     #   prompt-addendum: |
     #     Repo-specific review guidance.
 ```

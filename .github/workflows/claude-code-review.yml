@@ -760,7 +760,7 @@ jobs:
       # Validates secret names against naming conventions and protected environment
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
-        if: steps.selfmod.outputs.self_mod != 'true' && inputs.extra-secret-names != ''
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && inputs.extra-secret-names != ''
         shell: bash
         env:
           EXTRA_SECRET_NAMES: ${{ inputs.extra-secret-names }}
