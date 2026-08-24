@@ -84,7 +84,10 @@ new_case() {
     printf 'content\n' > "$repo_dir/$path"
   done
   git -C "$repo_dir" add -Af . >/dev/null 2>&1
-  git -C "$repo_dir" -c user.email=t@example.com -c user.name=tests \
+  # A bare `tests` rather than an address: git accepts any string here, and
+  # an email-shaped one trips the repo's own check-phi selftest job, which
+  # scans added lines across the tree.
+  git -C "$repo_dir" -c user.email=tests -c user.name=tests \
     commit -qm "fixture" >/dev/null 2>&1
 }
 
@@ -169,7 +172,7 @@ cleanup_case
 new_case "force-added file in .gitignore" ".gitignore" "build.log" "README.md"
 printf 'build.log\n' > "$repo_dir/.gitignore"
 git -C "$repo_dir" add -f .gitignore build.log >/dev/null 2>&1
-git -C "$repo_dir" -c user.email=t@example.com -c user.name=tests \
+git -C "$repo_dir" -c user.email=tests -c user.name=tests \
   commit -qm "ignore build.log" >/dev/null 2>&1
 run_check
 assert_status 0

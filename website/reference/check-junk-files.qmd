@@ -82,6 +82,10 @@ jobs:
     #   fail: 'false'
 ```
 
-See
-[`examples/check-junk-files.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-junk-files.yml)
+See `check-junk-files.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 for the full caller stub.
+(Linked to the directory rather than the file, for the reason
+[`check-secrets.qmd`](check-secrets.qmd) records: a `blob/main/...` link to a
+capability's own example 404s on the pull request that introduces it, and
+`check-links` rightly fails it.)
