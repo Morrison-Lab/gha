@@ -229,22 +229,36 @@ scan_file_prose <- function(file_path, added_lines_only = NULL) {
 
 # ── Ignore Tells Parsing ──────────────────────────────────────────────────────
 
+MULTI_WORD_TELLS <- c(
+  "negation-reversal antithesis",
+  "signposting filler",
+  "in the realm of",
+  "at the heart of",
+  "more than just",
+  "shed light",
+  "dive into",
+  "dive in",
+  "deep dive",
+  "treasure trove"
+)
+
 parse_ignore_tells <- function(raw_arg) {
   if (is.null(raw_arg) || !nzchar(raw_arg)) return(character(0))
   raw_arg <- trimws(raw_arg)
   if (!nzchar(raw_arg)) return(character(0))
 
-  if (grepl("[,\\n]", raw_arg)) {
-    raw_tokens <- strsplit(raw_arg, "[,\\n]+", perl = TRUE)[[1]]
-  } else {
-    all_known_tells <- c(LEXICAL_TELLS, unname(sapply(RHETORICAL_PATTERNS, function(p) p$name)))
-    if (tolower(raw_arg) %in% tolower(all_known_tells)) {
-      raw_tokens <- raw_arg
-    } else {
-      raw_tokens <- strsplit(raw_arg, "[[:space:]]+")[[1]]
-    }
+  lowered <- tolower(raw_arg)
+  if (lowered %in% MULTI_WORD_TELLS) {
+    return(lowered)
   }
-  tokens <- tolower(trimws(raw_tokens))
+
+  if (grepl("[,\\n]", raw_arg)) {
+    tokens <- strsplit(raw_arg, "[,\\n]+", perl = TRUE)[[1]]
+  } else {
+    tokens <- strsplit(raw_arg, "[[:space:]]+")[[1]]
+  }
+
+  tokens <- tolower(trimws(tokens))
   tokens <- tokens[nzchar(tokens)]
   unname(as.character(unique(tokens)))
 }
