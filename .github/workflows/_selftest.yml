@@ -318,6 +318,13 @@ jobs:
         with:
           paths-ignore: 'check-ai-tells/tests/positive-control.md'
           fail: false
+      - name: Test ignore-tells on positive control fixture
+        uses: ./check-ai-tells
+        with:
+          paths: 'check-ai-tells/tests/positive-control.md'
+          ignore-tells: 'delve, elevate, holistic, unlock, testament, fast-paced, foster, landscape, negation-reversal antithesis, signposting filler'
+          fail: true
+          threshold: 0
   bib:
     runs-on: ubuntu-latest
     timeout-minutes: 20
