@@ -54,5 +54,6 @@ jobs:
     #   pip-packages: sympy          # pip packages installed before setup
     #   gemini-model: gemini-2.5-flash
     #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`
+    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)
     #   prompt-addendum: |
     #     Repo-specific guidance (e.g. Quarto/R conventions to follow).
