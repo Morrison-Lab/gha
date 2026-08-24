@@ -991,6 +991,12 @@ jobs:
           FCR_MAX_DENIALS: ${{ steps.fail-check-retry.outputs.max_denials }}
         run: |
           set -euo pipefail
+          if [[ "${{ steps.claude-review.outcome }}" == "cancelled" || "${{ steps.claude-review-retry.outcome }}" == "cancelled" || "${{ job.status }}" == "cancelled" ]]; then
+            echo "cancelled=true" >> "$GITHUB_OUTPUT"
+            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
+            echo "Review run was cancelled (e.g. superseded by a newer run or cancelled by user)."
+            exit 0
+          fi
           if [[ "${{ steps.preflight-quota.outputs.quota_exhausted }}" == "true" ]]; then
             echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
             echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
@@ -1508,9 +1514,11 @@ jobs:
     if: >-
       always() &&
       needs.claude-review.result != 'skipped' &&
+      needs.claude-review.result != 'cancelled' &&
       !(needs.claude-review.result == 'success' &&
       (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
-      fromJSON(needs.claude-review.outputs.self_mod || 'false')))
+      fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
+      fromJSON(needs.claude-review.outputs.cancelled || 'false')))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions: {}

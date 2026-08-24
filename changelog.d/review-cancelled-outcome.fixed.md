@@ -1,0 +1,1 @@
+- Prevent cancelled review runs from being misclassified as setup failures in `claude-code-review.yml`, and instruct the reviewer prompt that the PR branch is already checked out at the PR head (gha#585).
