@@ -676,10 +676,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 10%">
+<col style="width: 8%">
 <col style="width: 3%">
 <col style="width: 3%">
-<col style="width: 82%">
+<col style="width: 83%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -703,36 +703,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Install Quarto when setting up R dependencies.</td>
 </tr>
 <tr class="odd">
-<td><code>use-renv</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Restore dependencies with <code>renv</code> (<code>setup-renv</code>) instead of DESCRIPTION-based <code>setup-r-dependencies</code>.</td>
-</tr>
-<tr class="even">
-<td><code>renv-cache-version</code></td>
-<td>string</td>
-<td><code>'1'</code></td>
-<td>Cache version suffix passed to <code>setup-renv</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>apt-packages</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Extra apt packages to install before setting up dependencies.</td>
-</tr>
-<tr class="even">
 <td><code>extra-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Extra R packages to install (<code>gh</code> and <code>lintr</code> are always installed).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>install-package</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Run <code>R CMD INSTALL</code> before linting so <code>object_usage_linter</code> can resolve the package’s own functions. Set <code>false</code> for a repo that is not an installable R package.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>fail</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
@@ -760,12 +742,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2</span></span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'               # R package root (holding DESCRIPTION)</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-renv: false         # true to restore dependencies with setup-renv</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   renv-cache-version: '1' # bump to invalidate renv cache</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # system packages required for compilation</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''      # extra R deps (gh + lintr always installed)</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: false  # skip R CMD INSTALL for a non-package repo</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false             # warn instead of failing on lints</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''      # extra R deps (gh + lintr always installed)</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: false  # skip R CMD INSTALL for a non-package repo</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false             # warn instead of failing on lints</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-changed-lines.yml</code>).</p>
 
 
