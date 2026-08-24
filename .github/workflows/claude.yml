@@ -179,10 +179,12 @@ on:
         # post-steps (and the agent has no push), so granting it would only
         # invite duplicate or malformed PRs. `gh pr edit` stays — it needs no
         # push and lets the agent tidy a PR's title/body.
-        # `gh api` is allowed for the read-only polling loop, but its write
-        # forms (`-X`/`--method` mutations and `graphql`) are denied so a
-        # write-scoped GITHUB_TOKEN can't be used for arbitrary API mutations;
-        # the trusted-author gate remains the primary containment.
+        # `gh api` is allowed for the read-only polling loop and issue
+        # inspection. The deny patterns below (`-X`, `--method`, `graphql`)
+        # are a best-effort speed bump against direct mutation flags, but `gh api`
+        # defaults to POST when given field parameters (`-f`/`-F`/`--input`) and
+        # argument reordering bypasses prefix matches; write protection is
+        # bounded by the trusted-author trigger gate and job permissions.
         default: >-
           --allowedTools
           "Bash(Rscript -e 'lintr::lint*'),Bash(Rscript -e 'devtools::check*'),Bash(Rscript -e 'devtools::document*'),Bash(Rscript -e 'devtools::test*'),Bash(Rscript -e 'spelling::spell_check*'),Bash(Rscript -e 'roxygen2::roxygenise*'),Bash(quarto render:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git show:*),Bash(git checkout:*),Bash(git switch:*),Bash(git branch:*),Bash(git add:*),Bash(git commit:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr edit:*),Bash(gh issue view:*),Bash(gh api:*),Read,Glob,Grep,Edit,MultiEdit,Write"
