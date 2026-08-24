@@ -669,12 +669,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -713,6 +707,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td><code>'1.18.21'</code></td>
 <td>opencode CLI release installed at run time.</td>
+</tr>
+<tr class="even">
+<td><code>opencode-attempts</code></td>
+<td>string</td>
+<td><code>'3'</code></td>
+<td>Total run attempts per review (1-5). A failed attempt is retried only when its output carries the transient Zen stream-drop signature (<code>finish_reason: network_error</code>, <a href="https://github.com/Morrison-Lab/gha/issues/600">gha#600</a>); auth, quota, and other failures are never retried.</td>
 </tr>
 </tbody>
 </table>
@@ -799,8 +799,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-model: opencode/big-pickle</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-attempts: '3'</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>opencode-code-review.yml</code>).</p>
 
 
