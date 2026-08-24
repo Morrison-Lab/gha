@@ -25,7 +25,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: make-fixture.sh <dest-dir> [--no-wordlist|--vignette-typos]" >&2
+  echo "usage: make-fixture.sh <dest-dir> [--no-wordlist|--vignette-typos|--renv]" >&2
   exit 2
 }
 
@@ -33,7 +33,7 @@ dest="${1:-}"
 [ -n "$dest" ] || usage
 variant="${2:-}"
 case "$variant" in
-  ''|--no-wordlist|--vignette-typos) ;;
+  ''|--no-wordlist|--vignette-typos|--renv) ;;
   *) usage ;;
 esac
 
@@ -102,6 +102,37 @@ fi
 cat > "$dest/inst/WORDLIST" <<'EOF'
 seroincidence
 EOF
+
+if [ "$variant" = "--renv" ]; then
+  mkdir -p "$dest/renv"
+  cat > "$dest/.Rprofile" <<'EOF'
+source("renv/activate.R")
+EOF
+  cat > "$dest/renv/activate.R" <<'EOF'
+# Minimal renv activation stub
+if (!identical(Sys.getenv("RENV_CONFIG_AUTOLOADER_ENABLED"), "FALSE")) {
+  renv_lib <- file.path(tempdir(), "renv_lib")
+  dir.create(renv_lib, showWarnings = FALSE, recursive = TRUE)
+  .libPaths(c(renv_lib, .libPaths()))
+}
+EOF
+  cat > "$dest/renv.lock" <<'EOF'
+{
+  "R": {
+    "Version": "4.3.0",
+    "Repositories": [
+      {
+        "Name": "CRAN",
+        "URL": "https://cloud.r-project.org"
+      }
+    ]
+  },
+  "Packages": {}
+}
+EOF
+  echo "Created R package fixture with inst/WORDLIST and renv project files at: $dest"
+  exit 0
+fi
 
 if [ "$variant" != "--vignette-typos" ]; then
   echo "Created R package fixture with inst/WORDLIST at: $dest"

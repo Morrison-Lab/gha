@@ -64,8 +64,17 @@ runs:
     # to it, which is the point: spell_check_package() reads the package's files
     # without loading it, so resolving the consumer's whole dependency tree would
     # be pure cost.
+    #
+    # RENV_CONFIG_AUTOLOADER_ENABLED is set to FALSE so setup-r-dependencies
+    # installs {spelling} into the site library even when the caller repo is an
+    # renv project (.Rprofile + renv.lock). Upstream's spellcheck step passes
+    # `additional-options: --vanilla` (its default), which skips .Rprofile and
+    # does not activate renv; installing to the site library ensures {spelling}
+    # is discoverable under --vanilla (gha#620).
     - name: Set up R dependencies
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      env:
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
       with:
         working-directory: ${{ inputs.path }}
         install-quarto: ${{ inputs.install-quarto }}
