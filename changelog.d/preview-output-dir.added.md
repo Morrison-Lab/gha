@@ -1,0 +1,1 @@
+- Add `output-dir` input to `preview` composite action and reusable workflow (defaulting to `_site`), replacing hardcoded `_site` paths for custom output directories (gha#608).
