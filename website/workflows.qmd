@@ -278,6 +278,9 @@ It is not a mention bot: there is no `cursor.yml` counterpart.
 Team and individual Cursor plans should enable Bugbot in the dashboard
 (automatic reviews, or a PR comment `cursor review` / `bugbot run`) instead
 of this workflow.
+A Team-plan `CURSOR_API_KEY` fails the queue step with
+`HTTP 401 Invalid Team API Key` (gha#601);
+do not debug caller secret wiring for that signature.
 Add `cursor` to `ai-code-review.yml`'s `agents` input when `CURSOR_API_KEY`
 is set and the caller stub is installed.
 
