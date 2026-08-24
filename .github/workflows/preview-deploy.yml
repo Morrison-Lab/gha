@@ -41,11 +41,11 @@ jobs:
     if: needs.gate.outputs.has-artifact == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Serialize deploys for the same PR branch so two back-to-back build
-    # completions don't race on gh-pages. cancel-in-progress: false queues
-    # rather than kills — a mid-push cancel could corrupt gh-pages.
+    # Serialize deploys to gh-pages so main-site publishes, PR previews, and
+    # preview cleanups queue rather than race or clobber each other's commits.
+    # cancel-in-progress: false queues rather than kills.
     concurrency:
-      group: preview-deploy-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
+      group: gh-pages
       cancel-in-progress: false
     # This job runs in the base-repo context (not the fork), so the
     # GITHUB_TOKEN has write access to push to gh-pages and comment on PRs.
