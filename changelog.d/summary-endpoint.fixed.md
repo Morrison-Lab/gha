@@ -1,0 +1,3 @@
+﻿- Add `endpoint`, `model`, and `API_KEY` / `OPENAI_API_KEY` configuration support to `summary.yml` (gha#617).
+- Enables consumers to point `actions/ai-inference` at surviving or custom providers during the GitHub Models scheduled retirement brownout.
+- Documents the GitHub Models brownout notice and recommends `claude.yml` for richer issue triage and engagement.
