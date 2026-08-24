@@ -705,9 +705,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><code>fail</code></td>
-<td>string</td>
-<td><code>'true'</code></td>
-<td>Fail the job on a finding (else warn only). Read fail-closed: only an explicit <code>false</code> opts out.</td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit <code>false</code> opts out.</td>
 </tr>
 </tbody>
 </table>
@@ -733,7 +733,7 @@ Thumbs.db, desktop.ini</code></pre>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2</span></span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'tests/fixtures/'</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: 'false'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <code>check-junk-files.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, for the reason <a href="../reference/check-secrets.html"><code>check-secrets.qmd</code></a> records: a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it, and <code>check-links</code> rightly fails it.)</p>
 
 
