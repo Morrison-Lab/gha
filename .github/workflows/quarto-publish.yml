@@ -165,6 +165,11 @@ jobs:
     if: inputs.deploy
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Serialize deploys to gh-pages so main-site publishes, PR previews, and
+    # preview cleanups queue rather than race or clobber each other's commits.
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
     permissions:
       contents: write
     steps:
