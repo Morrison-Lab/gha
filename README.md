@@ -45,6 +45,7 @@ not reference `@main` from consumers.
 |---|---|---|
 | `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `ignore-tells`, `fail` |
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
+| `check-junk-files.yml` | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
@@ -98,7 +99,8 @@ that need to write must have the **caller** grant it on the calling job:
   `models: read`, `contents: read`.
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-equation-renders`, `check-new-line-breaks`, `check-news`,
+  `check-equation-renders`, `check-junk-files`,
+  `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
@@ -486,7 +488,8 @@ Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
-`check-new-line-breaks.yml`, `check-secrets.yml`, `lint-workflows.yml`, and
+`check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
+`lint-workflows.yml`, and
 `spellcheck.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
@@ -599,7 +602,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
 `lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
-`check-secrets.yml`, `request-dependabot-review.yml`,
+`check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
