@@ -71,6 +71,15 @@ inputs:
       Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap
       cap for large site renders.
     default: '--max-old-space-size=12288,--max-heap-size=12288'
+  fail-on-render-warning:
+    description: >-
+      Fail the build if Quarto emits any render warnings (WARN in the render log).
+    default: 'false'
+  forbid-log-patterns:
+    description: >-
+      Newline-separated fixed string patterns that will fail the build if found
+      in the Quarto render log.
+    default: ''
 runs:
   using: composite
   steps:
@@ -152,6 +161,8 @@ runs:
         OUTPUT_DIR: ${{ inputs.output-dir }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
         FORMATS: ${{ inputs.formats }}
+        FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
+        FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
       run: |
         set -euo pipefail
         PROFILE_ARG=()
@@ -165,22 +176,42 @@ runs:
           FORMAT_LIST+=("$word")
         done
 
+        LOG_FILE=$(mktemp)
+
         if [ ${#FORMAT_LIST[@]} -eq 0 ]; then
           # Single render invocation
-          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR"
+          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
         else
           # Per-format split render
           first=true
           for fmt in "${FORMAT_LIST[@]}"; do
             if [ "$first" = true ]; then
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt"
+              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" 2>&1 | tee "$LOG_FILE"
               first=false
             else
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean
+              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
             fi
           done
         fi
 
+        if [ "$FAIL_ON_WARN" = "true" ]; then
+          if grep -iE '(^|[[:space:]])WARN([[:space:]:]|$)|Warning:' "$LOG_FILE"; then
+            echo "::error::Quarto emitted one or more render warnings and fail-on-render-warning is enabled."
+            exit 1
+          fi
+        fi
+
+        if [ -n "${FORBID_PATTERNS:-}" ]; then
+          while IFS= read -r pattern || [ -n "$pattern" ]; do
+            trimmed_pattern=$(echo "$pattern" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            if [ -n "$trimmed_pattern" ]; then
+              if grep -F "$trimmed_pattern" "$LOG_FILE"; then
+                echo "::error::Quarto render log contains forbidden pattern '$trimmed_pattern'."
+                exit 1
+              fi
+            fi
+          done <<< "$FORBID_PATTERNS"
+        fi
     - name: Save Quarto freeze
       if: inputs.freeze-cache == 'true'
       uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

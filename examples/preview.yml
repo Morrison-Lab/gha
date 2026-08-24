@@ -36,3 +36,6 @@ jobs:
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   submodules: recursive
     #   render-profile: website
+    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
+    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
+    #     doesn't match any files or folders
