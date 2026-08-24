@@ -55,8 +55,9 @@ and falls through to try the next candidate agent in the list.
 
 ## Permissions
 
-Grant `contents: read`, `pull-requests: read`, `issues: read`, and `actions: write` (the last
-so it can dispatch the selected agent's review workflow).
+Grant `contents: read`, `pull-requests: read`, `issues: read`,
+and `actions: write` (the last so it can dispatch the selected agent's review
+workflow).
 
 The dispatch uses `GITHUB_TOKEN`, so no personal access token is needed:
 `actions: write` is enough to start a workflow in the caller's own repository.
