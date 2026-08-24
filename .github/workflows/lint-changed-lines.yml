@@ -11,6 +11,20 @@ on:
         description: Install Quarto when setting up R dependencies.
         type: boolean
         default: false
+      use-renv:
+        description: >-
+          Restore R dependencies with renv (r-lib/actions/setup-renv) instead of
+          DESCRIPTION-based setup-r-dependencies. Set true for renv-pinned repos.
+        type: boolean
+        default: false
+      renv-cache-version:
+        description: Cache version suffix passed to setup-renv.
+        type: string
+        default: '1'
+      apt-packages:
+        description: Extra apt packages to install before setting up R/renv dependencies.
+        type: string
+        default: ''
       extra-packages:
         description: >-
           Extra R packages to install (gh and lintr are always installed).
@@ -50,6 +64,9 @@ jobs:
         with:
           path: ${{ inputs.path }}
           install-quarto: ${{ inputs.install-quarto }}
+          use-renv: ${{ inputs.use-renv }}
+          renv-cache-version: ${{ inputs.renv-cache-version }}
+          apt-packages: ${{ inputs.apt-packages }}
           extra-packages: ${{ inputs.extra-packages }}
           install-package: ${{ inputs.install-package }}
           fail: ${{ inputs.fail }}
