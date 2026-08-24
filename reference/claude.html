@@ -793,7 +793,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>claude-args</code></td>
 <td>string</td>
 <td><code>(long; see workflow file)</code></td>
-<td>Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all <code>git push</code> and write-API forms denied.</td>
+<td>Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with <code>git push</code> omitted and mutation API flags denied best-effort. Write safety is bounded by the trusted-author gate and workflow permissions.</td>
 </tr>
 <tr class="even">
 <td><code>runs-on</code></td>
@@ -818,6 +818,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td><code>'[]'</code></td>
 <td>JSON array of GitHub logins for which an <code>issues.assigned</code> event dispatches a run on its own, with no <code>@claude</code> mention required anywhere in the issue – the assignment is the request. Example: <code>'["claude"]'</code>. Default <code>[]</code> means assignment changes nothing. Gates on the <strong>assignee</strong>, not the assigner: the <code>assigned</code> payload carries no <code>author_association</code> for the sender. Purely additive – an assigned issue that does mention <code>@claude</code> already dispatches without this. Mirror the assignment case in the caller job <code>if:</code> and add <code>assigned</code> to its <code>on: issues: types:</code>, or the reusable workflow is never invoked.</td>
+</tr>
+<tr class="even">
+<td><code>extra-secret-names</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-, comma-, or newline-separated caller secret names to export into the agent environment (e.g.&nbsp;<code>'EPI202_TOKEN EPI204_TOKEN'</code>). Requires <code>secrets: inherit</code> on the caller <code>uses:</code>. Secret names must match <code>[A-Z_][A-Z0-9_]*</code> and cannot shadow protected workflow environment variables. Empty to skip.</td>
 </tr>
 </tbody>
 </table>
@@ -934,10 +940,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)</span></span>
 <span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources</span></span>
 <span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;</span></span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="co">    #     This is the &lt;name&gt; R package. Before committing, run</span></span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co">    #     lintr::lint_package(), spelling::spell_check_package(), and</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a><span class="co">    #     devtools::test(); add a NEWS.md bullet for user-facing changes.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)</span></span>
+<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co">    #     This is the &lt;name&gt; R package. Before committing, run</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a><span class="co">    #     lintr::lint_package(), spelling::spell_check_package(), and</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a><span class="co">    #     devtools::test(); add a NEWS.md bullet for user-facing changes.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/claude.yml"><code>examples/claude.yml</code></a> for the full caller stub.</p>
 
 

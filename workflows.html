@@ -701,7 +701,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td><a href="./reference/lint-changed-lines.html"><code>lint-changed-lines.yml</code></a></td>
 <td>lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally</td>
-<td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code></td>
+<td><code>path</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>apt-packages</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/lint-workflows.html"><code>lint-workflows.yml</code></a></td>
@@ -730,8 +730,8 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
-<td>AI summary comment on newly opened issues</td>
-<td>–</td>
+<td>AI summary comment on newly opened issues (GitHub Models brownout notice: configure <code>endpoint</code>/<code>model</code> or use <code>claude.yml</code>)</td>
+<td><code>endpoint</code>, <code>model</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
@@ -766,22 +766,22 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
-<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reviewer</code>, <code>report-cost</code>, <code>trusted-bot-logins</code>, <code>dispatch-on-assignee</code></td>
+<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reviewer</code>, <code>report-cost</code>, <code>trusted-bot-logins</code>, <code>dispatch-on-assignee</code>, <code>extra-secret-names</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Read-only Claude PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
-<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>report-cost</code>, <code>model</code></td>
+<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>report-cost</code>, <code>model</code>, <code>extra-secret-names</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/gemini.html"><code>gemini.yml</code></a></td>
 <td>Agent-mode Gemini CLI bot: responds to <code>@gemini</code> and <code>@gemini-cli</code>, edits files, opens/updates PRs</td>
-<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>r-extra-packages</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>eager-pr</code>, <code>reviewer</code>, <code>mark-ready-for-review</code>, <code>prompt-addendum</code>, <code>gemini-model</code>, <code>review-workflow-file</code></td>
+<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>r-extra-packages</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>eager-pr</code>, <code>reviewer</code>, <code>mark-ready-for-review</code>, <code>prompt-addendum</code>, <code>gemini-model</code>, <code>review-workflow-file</code>, <code>extra-secret-names</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a></td>
 <td>Read-only Gemini PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
-<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>gemini-model</code></td>
+<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>gemini-model</code>, <code>extra-secret-names</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/antigravity-code-review.html"><code>antigravity-code-review.yml</code></a></td>
@@ -806,7 +806,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><a href="./reference/small-model-agent.html"><code>small-model-agent.yml</code></a></td>
 <td>Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (<code>wai#39</code>, <code>ai-config#1292</code>)</td>
-<td><code>pr-number</code>, <code>endpoint-url</code>, <code>model</code>, <code>max-iterations</code>, <code>setup-r</code>, <code>install-quarto</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>run-gates</code>, <code>dry-run</code></td>
+<td><code>pr-number</code>, <code>endpoint-url</code>, <code>model</code>, <code>max-iterations</code>, <code>setup-r</code>, <code>install-quarto</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>run-gates</code>, <code>dry-run</code>, <code>extra-secret-names</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
