@@ -833,12 +833,14 @@ clean (gha#552/#553):
   failing visibly, contrary to the PR's own prompt text claiming no post-step
   would post a reply.
   Caught by review, not by the author's own initial self-check.)
+
 - **Upstream -- the caller-side job `if:`** in `examples/` and in this repo's
   own dogfood caller workflows.
   A reusable workflow is never invoked if the caller's gate doesn't admit the
   event, and the new input is then silently inert for any consumer following the
   docs (gha#552 review: adding `dispatch-on-assignee` left `examples/claude.yml`'s
   gate dropping `issues.assigned` runs before the workflow could see them).
+
 - **Sideways -- sibling branches of conditionals referencing the event**
   predating the new case (prompt text, `format()` ternaries, step names).
   (gha#552 review: the prompt's opening ternary told every assignment run it was
