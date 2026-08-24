@@ -811,24 +811,34 @@ that round 3 flagged as out-of-scope, fixed anyway before round 4 confirmed
 clean.
 
 **Widening a job's trusted-author `if:` gate to admit a new event type needs
-a downstream-step audit, not just the gate itself.** `claude.yml`'s and
-`claude-code-review.yml`'s steps read event-shaped context
-(`github.event.issue.number`, `github.event.comment.body`, etc.) that only
-exists for the event types the gate used to admit. A step that looks safely
-scoped -- e.g. gated on a `steps.dedup.outputs.skip != 'true'` flag -- can still
-run and fail under the newly-admitted event, because that flag was never set
-for it either; the flag and the missing context are two independent gaps, and
-fixing the top-level `if:` closes neither. After widening a job `if:`, grep
-the same job for every step whose `if:`/`env:` reads event-shaped context and
-add the same admit condition (or an explicit exclusion) to each one -- don't
-assume a step's existing conditional already covers the new event just
-because it looks gated. (gha#245/#246: widening `claude.yml`'s job `if:` to
-admit `workflow_dispatch`/`schedule` left two post-steps --
-`Acknowledge @claude mention` and `Post Claude's response if no code was
-committed` -- still ungated for those events; both ran and attempted
-`gh issue comment ""` on every unattended run, one failing visibly, contrary
-to the PR's own prompt text claiming no post-step would post a reply. Caught
-by review, not by the author's own initial self-check.)
+a three-way audit across everything that decides something about the new path,
+not just the gate itself.** A productive audit of one direction is not evidence
+that other directions are clean (gha#552/#553):
+- **Downstream -- steps in the same job** whose `if:`/`env:` read event-shaped
+  context (`github.event.issue.number`, `github.event.comment.body`, etc.).
+  A step that looks safely scoped -- e.g. gated on a
+  `steps.dedup.outputs.skip != 'true'` flag -- can still run and fail under the
+  newly-admitted event, because that flag was never set for it either; the flag
+  and the missing context are two independent gaps, and fixing the top-level
+  `if:` closes neither. Grep the same job for every step reading event context
+  and add the same admit condition (or an explicit exclusion) to each one.
+  (gha#245/#246: widening `claude.yml`'s job `if:` to admit
+  `workflow_dispatch`/`schedule` left two post-steps --
+  `Acknowledge @claude mention` and `Post Claude's response if no code was
+  committed` -- still ungated for those events; both ran and attempted
+  `gh issue comment ""` on every unattended run, one failing visibly, contrary
+  to the PR's own prompt text claiming no post-step would post a reply. Caught
+  by review, not by the author's own initial self-check.)
+- **Upstream -- the caller-side job `if:`** in `examples/` and in this repo's
+  own dogfood caller workflows. A reusable workflow is never invoked if the
+  caller's gate doesn't admit the event, and the new input is then silently inert
+  for any consumer following the docs (gha#552 review: adding `dispatch-on-assignee`
+  left `examples/claude.yml`'s gate dropping `issues.assigned` runs before the
+  workflow could see them).
+- **Sideways -- sibling branches of conditionals referencing the event**
+  predating the new case (prompt text, `format()` ternaries, step names).
+  (gha#552 review: the prompt's opening ternary told every assignment run it
+  was "triggered by an @claude mention", which for that path does not exist.)
 
 ### Tests
 
