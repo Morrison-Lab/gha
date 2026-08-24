@@ -42,6 +42,9 @@ jobs:
     #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
     #   freeze-cache: true      # cache Quarto _freeze across runs
     #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
+    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
+    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log
+    #     doesn't match any files or folders
     #   checkout-submodules: true
     #   pre-render-artifact: demo-media       # inject a prior job's artifact before render
     #   pre-render-artifact-path: website/media

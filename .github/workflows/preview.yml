@@ -55,6 +55,14 @@ on:
         description: Quarto `--profile` to render with.
         type: string
         default: 'website'
+      fail-on-render-warning:
+        description: Fail the build if Quarto emits any render warnings (WARN in the render log).
+        type: boolean
+        default: false
+      forbid-log-patterns:
+        description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
+        type: string
+        default: ''
 
 jobs:
   build:
@@ -90,3 +98,5 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
+          fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
+          forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
