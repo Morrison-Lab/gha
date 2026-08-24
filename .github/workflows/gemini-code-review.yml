@@ -376,6 +376,7 @@ jobs:
       !fromJSON(needs.review.outputs.dispatch_guard_blocked || 'false')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions: {}
     steps:
       - name: Assert Gemini review succeeded
         run: |

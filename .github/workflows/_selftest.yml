@@ -268,6 +268,16 @@ jobs:
             echo "::error::expected zizmor-found=false on the clean fixture, got '$ZIZMOR_FOUND'"
             exit 1
           fi
+      - name: Audit repository workflows with actionlint
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Audits this repo's own .github/workflows/*.yml using actionlint
+          # (gha#582, gha#591). Shellcheck is disabled here because inline
+          # script style checks are covered by the dedicated shellcheck passes;
+          # actionlint here enforces GitHub Actions schema, syntax, expression,
+          # and reusable workflow caller rules across all workflows.
+          actionlint -shellcheck ""
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser
@@ -2471,16 +2481,15 @@ jobs:
           fi
           echo "All third-party actions in .github/workflows/*.yml are SHA-pinned."
 
-      - name: Assert all workflows set timeout-minutes
+      # Asserts all runner jobs specify timeout-minutes and all caller jobs
+      # specify only supported keys for reusable workflow calls (see gha#328,
+      # gha#504, gha#582, and gha#590).
+      - name: Run workflow job-guard unit tests and repo verification
         shell: bash
         run: |
           set -euo pipefail
-          MISSING_TIMEOUT=$(grep -rL 'timeout-minutes' .github/workflows/*.yml || true)
-          if [ -n "$MISSING_TIMEOUT" ]; then
-            echo "::error::Workflows missing timeout-minutes (see gha#328):\n$MISSING_TIMEOUT"
-            exit 1
-          fi
-          echo "All workflows in .github/workflows/*.yml set timeout-minutes."
+          python3 .github/workflows/scripts/tests/run-workflow-job-guard-tests.py --self-test
+          python3 .github/workflows/scripts/tests/run-workflow-job-guard-tests.py
 
   # Covers the open-failure-issue action used by report-failure.yml and
   # check-links.yml.
