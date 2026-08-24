@@ -1,4 +1,4 @@
-﻿name: Export extra secrets to environment
+name: Export extra secrets to environment
 description: >-
   Exports named consumer secrets from secrets-json into $GITHUB_ENV after
   validating secret names and registering masks with ::add-mask::.
@@ -12,7 +12,7 @@ inputs:
     required: false
     default: ''
   secrets-json:
-    description: JSON-serialized secrets map (typically ${{ toJson(secrets) }}).
+    description: JSON-serialized secrets map (typically toJson(secrets)).
     required: true
 
 runs:
