@@ -72,7 +72,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
 <link href="../reference/small-model-agent.html" rel="next">
-<link href="../reference/antigravity-code-review.html" rel="prev">
+<link href="../reference/opencode-code-review.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -445,6 +445,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-workflows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -541,6 +547,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cursor-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/opencode-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">opencode-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
@@ -593,6 +611,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">version-check.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/spellcheck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">spellcheck.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -638,7 +662,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched or fails during execution (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>, <a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
-<p>It sits above whichever per-agent review workflows a repo has installed — <a href="../reference/claude-code-review.html"><code>claude-code-review.yml</code></a>, <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a>, and <a href="../reference/antigravity-code-review.html"><code>antigravity-code-review.yml</code></a> — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the <code>*-review-workflow-file</code> inputs below.</p>
+<p>It sits above whichever per-agent review workflows a repo has installed — <a href="../reference/claude-code-review.html"><code>claude-code-review.yml</code></a>, <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a>, <a href="../reference/antigravity-code-review.html"><code>antigravity-code-review.yml</code></a>, <a href="../reference/cursor-code-review.html"><code>cursor-code-review.yml</code></a>, and <a href="../reference/opencode-code-review.html"><code>opencode-code-review.yml</code></a> — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the <code>*-review-workflow-file</code> inputs below.</p>
 <section id="what-the-fallback-covers" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-fallback-covers">What the fallback covers</h2>
 <p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong> (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that <strong>fails or is cancelled during execution</strong> (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>, <a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
@@ -666,7 +690,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>agents</code></td>
 <td>string</td>
 <td><code>'claude, gemini'</code></td>
-<td>Comma-separated agents to select from (<code>claude</code>, <code>gemini</code>, <code>antigravity</code>). Unrecognized names are warned about and skipped.</td>
+<td>Comma-separated agents to select from (<code>claude</code>, <code>gemini</code>, <code>antigravity</code>, <code>cursor</code>, <code>opencode</code>). Unrecognized names are warned about and skipped.</td>
 </tr>
 <tr class="even">
 <td><code>pr-number</code></td>
@@ -692,17 +716,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'antigravity-code-review.yml'</code></td>
 <td>Caller-repo workflow file dispatched for an Antigravity review.</td>
 </tr>
+<tr class="even">
+<td><code>cursor-review-workflow-file</code></td>
+<td>string</td>
+<td><code>'cursor-code-review.yml'</code></td>
+<td>Caller-repo workflow file dispatched for a Cursor Bugbot review.</td>
+</tr>
+<tr class="odd">
+<td><code>opencode-review-workflow-file</code></td>
+<td>string</td>
+<td><code>'opencode-code-review.yml'</code></td>
+<td>Caller-repo workflow file dispatched for an OpenCode review.</td>
+</tr>
 </tbody>
 </table>
 </section>
 <section id="secrets" class="level2">
 <h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Secret</th>
@@ -725,6 +756,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>GEMINI_API_KEY</code></td>
 <td>no</td>
 <td>Gemini API key. Makes <code>gemini</code> and <code>antigravity</code> eligible candidates.</td>
+</tr>
+<tr class="even">
+<td><code>CURSOR_API_KEY</code></td>
+<td>no</td>
+<td>Cursor Enterprise Bugbot API key (<code>admin:*</code>). Makes <code>cursor</code> an eligible candidate.</td>
+</tr>
+<tr class="odd">
+<td><code>OPENCODE_API_KEY</code></td>
+<td>no</td>
+<td><a href="https://opencode.ai/docs/zen/">OpenCode Zen</a> API key. Makes <code>opencode</code> an eligible candidate.</td>
 </tr>
 </tbody>
 </table>
@@ -765,13 +806,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ANTHROPIC_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.ANTHROPIC_API_KEY }}</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini, antigravity'</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   claude-review-workflow-file: claude-code-review.yml</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   antigravity-review-workflow-file: antigravity-code-review.yml</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CURSOR_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.CURSOR_API_KEY }}</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">OPENCODE_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.OPENCODE_API_KEY }}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini, antigravity, cursor, opencode'</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   claude-review-workflow-file: claude-code-review.yml</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   antigravity-review-workflow-file: antigravity-code-review.yml</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">    #   cursor-review-workflow-file: cursor-code-review.yml</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-review-workflow-file: opencode-code-review.yml</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>ai-code-review.yml</code>).</p>
 
 
@@ -1193,8 +1238,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/antigravity-code-review.html" class="pagination-link" aria-label="antigravity-code-review.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">antigravity-code-review.yml</span>
+      <a href="../reference/opencode-code-review.html" class="pagination-link" aria-label="opencode-code-review.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">opencode-code-review.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">

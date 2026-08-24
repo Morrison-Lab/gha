@@ -445,6 +445,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-workflows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -541,6 +547,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cursor-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/opencode-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">opencode-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
@@ -593,6 +611,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">version-check.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/spellcheck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">spellcheck.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -608,6 +632,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#showing-which-version-a-reader-is-on" id="toc-showing-which-version-a-reader-is-on" class="nav-link" data-scroll-target="#showing-which-version-a-reader-is-on">Showing which version a reader is on</a></li>
   <li><a href="#retired-version-directories" id="toc-retired-version-directories" class="nav-link" data-scroll-target="#retired-version-directories">Retired version directories</a></li>
+  <li><a href="#canonical-urls" id="toc-canonical-urls" class="nav-link" data-scroll-target="#canonical-urls">Canonical URLs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
@@ -778,6 +803,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><strong>The redirect replaces the site’s 404 page.</strong> Any path the site cannot resolve renders this page, not GitHub’s default one.</li>
 </ul>
 <p>The pairs are explicit rather than derived from whichever version this build deployed, so <code>/main/</code> resolves to the same place after a release build as after a default-branch build.</p>
+</section>
+<section id="canonical-urls" class="level2">
+<h2 class="anchored" data-anchor-id="canonical-urls">Canonical URLs</h2>
+<p>This workflow deploys the same rendered site to several paths — <code>/dev/</code>, <code>/latest-tag/</code>, <code>/vX.Y.Z/</code>, and <code>/pr-preview/pr-&lt;N&gt;/</code>. Without a signal saying which copy is authoritative, a search engine sees the same page many times over, and an archive or <code>/dev/</code> can outrank <code>/latest-tag/</code> — landing a reader on documentation for a version they are not running.</p>
+<p>Every indexable page therefore gets a <code>&lt;link rel="canonical"&gt;</code> pointing at its <code>/latest-tag/</code> equivalent, injected after the render and before any deploy. Nothing needs configuring; the URL is derived from <code>docs-base-url</code> (or from the repository, when that input is empty).</p>
+<p>Two behaviours are worth knowing about.</p>
+<p><strong>A canonical is only emitted when the target exists.</strong> A page that is new on the default branch has no <code>/latest-tag/</code> counterpart yet, so it names its own deployed URL instead. Pointing a canonical at a URL that 404s is worse than emitting none: it asks the indexer to credit a page that is not there. The set of pages currently under <code>/latest-tag/</code> is read from the deploy branch at build time rather than assumed.</p>
+<p><strong>PR previews are marked <code>noindex</code> rather than canonicalized.</strong> A preview is ephemeral and is not the authoritative copy of anything, so the correct request is “do not index this” rather than “index that other page instead”.</p>
+<p><code>404.html</code> is left untagged, since canonicalizing the page served for missing URLs would point every miss at a real page. A page that already carries a canonical — one written by hand, or emitted by a future Quarto release — is left alone rather than double-tagged.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>

@@ -410,6 +410,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-workflows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -506,6 +512,18 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cursor-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/opencode-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">opencode-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
@@ -556,6 +574,12 @@ ul.task-list li input[type="checkbox"] {
   <div class="sidebar-item-container"> 
   <a href="./reference/version-check.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">version-check.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/spellcheck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
       </ul>
@@ -650,12 +674,12 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><a href="./reference/lint-markdown.html"><code>lint-markdown.yml</code></a></td>
-<td>markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates</td>
-<td><code>config-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-code-block-lines</code>, <code>fail-on-long-code-blocks</code></td>
+<td>markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table</td>
+<td><code>config-file</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>max-code-block-lines</code>, <code>fail-on-long-code-blocks</code>, <code>base-ref</code>, <code>fail-on-item-splices</code>, <code>fail-on-table-splits</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-new-line-breaks.html"><code>check-new-line-breaks.yml</code></a></td>
-<td>Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line</td>
+<td>Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line</td>
 <td><code>python-version</code>, <code>globs</code>, <code>paths-ignore</code>, <code>fail</code>, <code>clause-breaks</code>, <code>clause-min-length</code></td>
 </tr>
 <tr class="even">
@@ -667,6 +691,16 @@ ul.task-list li input[type="checkbox"] {
 <td><a href="./reference/lint-changed-lines.html"><code>lint-changed-lines.yml</code></a></td>
 <td>lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally</td>
 <td><code>path</code>, <code>install-quarto</code>, <code>extra-packages</code>, <code>install-package</code>, <code>fail</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/lint-workflows.html"><code>lint-workflows.yml</code></a></td>
+<td>actionlint (syntax/semantics) and zizmor (security) over the caller’s GitHub Actions workflows and composite actions</td>
+<td><code>path</code>, <code>actionlint-version</code>, <code>actionlint-checksum</code>, <code>zizmor-version</code>, <code>python-version</code>, <code>pedantic</code>, <code>fail</code></td>
+</tr>
+<tr class="odd">
+<td><a href="./reference/spellcheck.html"><code>spellcheck.yml</code></a></td>
+<td>Spellcheck an R package’s prose – <code>DESCRIPTION</code>’s <code>Title</code>/<code>Description</code>, <code>man/*.Rd</code>, vignette sources, and root <code>README</code>/<code>NEWS</code>/<code>CHANGES</code>/<code>index</code> Markdown – with {spelling}, accepting the package’s own <code>inst/WORDLIST</code></td>
+<td><code>path</code>, <code>exclude</code>, <code>additional-options</code>, <code>install-quarto</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/check-news.html"><code>check-news.yml</code></a></td>
@@ -721,7 +755,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
-<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reviewer</code>, <code>report-cost</code></td>
+<td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reviewer</code>, <code>report-cost</code>, <code>trusted-bot-logins</code>, <code>dispatch-on-assignee</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
@@ -744,9 +778,19 @@ ul.task-list li input[type="checkbox"] {
 <td><code>mode</code>, <code>pr-number</code>, <code>prompt-addendum</code>, <code>trigger-policy</code>, <code>checkout-submodules</code>, <code>model</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/cursor-code-review.html"><code>cursor-code-review.yml</code></a></td>
+<td>Queue a Cursor Bugbot PR review via the Enterprise Bugbot API; success means the review was queued</td>
+<td><code>pr-number</code>, <code>dry-run</code></td>
+</tr>
+<tr class="even">
+<td><a href="./reference/opencode-code-review.html"><code>opencode-code-review.yml</code></a></td>
+<td>Read-only OpenCode PR review running the opencode CLI headless (default stub is dispatch-triggered; add <code>pull_request</code> for automatic reviews)</td>
+<td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>opencode-model</code>, <code>opencode-version</code></td>
+</tr>
+<tr class="odd">
 <td><a href="./reference/ai-code-review.html"><code>ai-code-review.yml</code></a></td>
 <td>Multi-agent PR review: picks one configured agent at random and dispatches its review workflow, falling through when one can’t be dispatched or fails during execution</td>
-<td><code>agents</code>, <code>pr-number</code>, <code>claude-review-workflow-file</code>, <code>gemini-review-workflow-file</code></td>
+<td><code>agents</code>, <code>pr-number</code>, <code>claude-review-workflow-file</code>, <code>gemini-review-workflow-file</code>, <code>antigravity-review-workflow-file</code>, <code>cursor-review-workflow-file</code>, <code>opencode-review-workflow-file</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/small-model-agent.html"><code>small-model-agent.yml</code></a></td>
@@ -792,7 +836,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>check-new-line-breaks.yml</code>, and <code>check-secrets.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>lint-workflows.yml</code>, and <code>spellcheck.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
@@ -810,6 +854,7 @@ ul.task-list li input[type="checkbox"] {
 <li><p><code>lint-changed-lines.yml</code> runs <a href="https://lintr.r-lib.org/">lintr</a> over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.</p></li>
 <li><p><code>check-phi.yml</code> scans for content that looks like protected health information; see <a href="#phi-scanning">below</a>.</p></li>
 <li><p><code>check-secrets.yml</code> scans the repository’s git <strong>history</strong> for committed credentials; see <a href="#secret-scanning">below</a>.</p></li>
+<li><p><code>spellcheck.yml</code> spellchecks an R package’s prose with the <a href="https://docs.ropensci.org/spelling/">{spelling}</a> package, treating the package’s own <code>inst/WORDLIST</code> as the accepted vocabulary. It reads <code>DESCRIPTION</code>’s <code>Title</code> and <code>Description</code> fields, <code>man/*.Rd</code>, vignette sources (<code>.Rmd</code>, <code>.qmd</code>, <code>.Rnw</code>), and root <code>README</code>/<code>NEWS</code>/<code>CHANGES</code>/<code>index</code> Markdown – so a Quarto site’s other pages, and any repo that is not an R package, are out of its reach. It replaces the bespoke <code>check-spelling.yaml</code> several lab repos carry, and needs no wordlist migration, since that file is {spelling}’s own format.</p></li>
 <li><p><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</p></li>
 </ul>
 </section>
@@ -829,7 +874,7 @@ ul.task-list li input[type="checkbox"] {
 <ul>
 <li><strong>It scans history, not the diff.</strong> A secret committed and then removed in a later commit is still exposed, because the orphaned commit stays fetchable through the GitHub API until the repository is garbage-collected. So the caller checks out with <code>fetch-depth: 0</code>, and a shallow clone is refused rather than reported clean on a partial scan.</li>
 <li><strong>Values are never printed</strong>, in the log or the run summary. Findings report only the rule, <code>file:line</code>, and the commit.</li>
-<li><strong>It blocks by default</strong>, where the advisory prose checks are non-blocking.</li>
+<li><strong>It blocks by default</strong>, where non-blocking prose checks only annotate.</li>
 <li><strong>Its <code>paths-ignore</code> patterns are Go regexes matched unanchored</strong>, not globs, so <code>docs</code> suppresses every path containing that substring; anchor with <code>^</code> when that matters.</li>
 </ul>
 <p>It complements GitHub’s native secret scanning rather than replacing it – that is a repository setting evaluating pushes, not a pull-request check – and neither substitutes for rotating an exposed credential. See <a href="./reference/check-secrets.html"><code>check-secrets.yml</code></a> for the full reference.</p>
@@ -864,6 +909,8 @@ ul.task-list li input[type="checkbox"] {
 </ul>
 <p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. If you also want the direct <code>/review</code> path, enable <code>issue_comment</code> in the review stub too. Enabling <code>issue_comment</code> is required for <strong>either</strong> comment path, since <code>dispatch-on-comment</code> only ever runs on that event. If you have disabled <code>claude.yml</code>, enable it and also set the repository variable <code>CLAUDE_AGENT_DISABLED</code> to <code>true</code>, so an <code>@claude review</code> mention dispatches a review from the stub rather than reaching a workflow that no longer answers it.</p>
 <p><code>gemini.yml</code> and <code>gemini-code-review.yml</code> are the same pair for Gemini CLI, with the same division of labour: the agent answers <code>@gemini</code> and <code>@gemini-cli</code> mentions, and an <code>@gemini review</code> dispatches the reviewer rather than being answered in place. Keep the review stub named <code>gemini-code-review.yml</code> (or set <code>gemini.yml</code>’s <code>review-workflow-file</code> to match). Gemini needs a <code>GEMINI_API_KEY</code> secret; the two families are independent, so a repo can install either or both.</p>
+<p><code>cursor-code-review.yml</code> queues a <a href="https://cursor.com/docs/bugbot.md">Cursor Bugbot</a> review through the Enterprise Bugbot API. It is not a mention bot: there is no <code>cursor.yml</code> counterpart. Team and individual Cursor plans should enable Bugbot in the dashboard (automatic reviews, or a PR comment <code>cursor review</code> / <code>bugbot run</code>) instead of this workflow. Add <code>cursor</code> to <code>ai-code-review.yml</code>’s <code>agents</code> input when <code>CURSOR_API_KEY</code> is set and the caller stub is installed.</p>
+<p><code>opencode-code-review.yml</code> runs the <a href="https://opencode.ai">opencode</a> CLI headless as a read-only reviewer: the diff arrives as an attachment, the agent reads the checkout for context, and its review is posted by the workflow itself. There is no <code>opencode.yml</code> mention bot yet (tracked in gha#586’s deferred follow-ups), so reviews arrive via <code>pull_request</code>, <code>ai-code-review.yml</code> dispatch, or manual <code>workflow_dispatch</code>. Add the <code>OPENCODE_API_KEY</code> secret (<a href="https://opencode.ai/docs/zen/">OpenCode Zen</a>) and add <code>opencode</code> to <code>ai-code-review.yml</code>’s <code>agents</code> input.</p>
 <p>All agent workflows align with upstream action standards (such as <code>anthropics/claude-code-action</code> v1.0.191 and <code>run-gemini-cli</code> v0.1.22, alongside the <code>google-antigravity</code> Python SDK) for trigger policies, permission isolation, and secret handling. In particular, central workflows (<code>claude.yml</code>, <code>claude-code-review.yml</code>) and the review attempt composite action (<code>run-claude-review-attempt</code>) were audited against upstream reference templates in <code>anthropics/claude-code-action</code>:</p>
 <ul>
 <li><strong>Action input forwarding.</strong> Upstream inputs such as <code>claude_code_oauth_token</code>, <code>anthropic_api_key</code>, <code>show_full_output</code>, and <code>allowed_bots</code> are forwarded cleanly, with <code>use_sticky_comment: 'false'</code> hardcoded in <code>run-claude-review-attempt</code> so each push surfaces fresh PR activity.</li>

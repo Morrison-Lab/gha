@@ -445,6 +445,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-workflows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -541,6 +547,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cursor-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/opencode-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">opencode-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
@@ -593,6 +611,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">version-check.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/spellcheck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">spellcheck.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -607,6 +631,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
+  <li><a href="#custom-headings" id="toc-custom-headings" class="nav-link" data-scroll-target="#custom-headings">Custom headings</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/assemble-news.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
@@ -633,7 +658,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Collate <code>news.d/</code> fragment files into <code>NEWS.md</code> under section headings (<code>## Breaking changes</code>, <code>## New features</code>, <code>## Bug fixes</code>, <code>## Minor improvements</code>) and delete consumed fragment files.</p>
+<p>Collate <code>news.d/</code> fragment files into <code>NEWS.md</code> under section headings (by default <code>## Breaking changes</code>, <code>## New features</code>, <code>## Bug fixes</code>, <code>## Minor improvements</code>) and delete consumed fragment files.</p>
 <p>Pairs with <a href="../reference/check-news.html"><code>check-news.yml</code></a>, allowing pull requests to add fragment files under <code>news.d/</code> instead of directly editing <code>NEWS.md</code>, eliminating merge conflicts between concurrent PRs.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -664,6 +689,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td><code>'NEWS.md'</code></td>
 <td>Target <code>NEWS.md</code> file path.</td>
+</tr>
+<tr class="odd">
+<td><code>headings</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Category-to-heading map, as newline-separated <code>category = Heading</code> pairs. Empty keeps the built-in map.</td>
 </tr>
 </tbody>
 </table>
@@ -700,6 +731,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>          git add NEWS.md news.d/</span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>          git diff --staged --quiet || git commit -m "chore(release): assemble news fragments into NEWS.md"</span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a>          git push</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="custom-headings" class="level2">
+<h2 class="anchored" data-anchor-id="custom-headings">Custom headings</h2>
+<p>The built-in map is <code>breaking</code> to Breaking changes; <code>added</code> and <code>feature</code> to New features; <code>fixed</code> and <code>bug</code> to Bug fixes; and <code>changed</code>, <code>minor</code>, <code>deprecated</code>, <code>removed</code>, and <code>security</code> to Minor improvements.</p>
+<p>A repo whose <code>NEWS.md</code> uses a different taxonomy supplies its own:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Assemble news fragments</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/actions/assemble-news@v2</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">fragments-dir</span><span class="kw">:</span><span class="at"> news.d</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">          headings</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>            breaking = Breaking changes</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            added = New features</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>            fixed = Bug fixes</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>            infrastructure = Infrastructure</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>            docs = Documentation</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>When set, <code>headings</code> <strong>replaces</strong> the built-in map rather than extending it, defining both the complete set of recognized categories and the order the headings are written in. Several categories may share a heading, which then takes the position of its first-listed category.</p>
+<p>A <code>#</code> comments out a line only when it starts the line, so a heading may contain one (<code>csharp = C# interop</code>). A category may not contain a dot – it is a single segment of <code>&lt;slug&gt;.&lt;category&gt;.md</code>, and a dotted one would collate the same fragment twice whenever its suffix is also configured.</p>
+<p>A fragment whose category is outside the active map fails the step, naming the offending files, rather than being skipped – the check runs before anything is consumed, so a mixed batch fails without deleting the valid fragments beside it.</p>
 <p>See <code>assemble-news.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the caller stub.</p>
 
 

@@ -445,6 +445,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-workflows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -541,6 +547,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cursor-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/opencode-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">opencode-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
@@ -591,6 +609,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/version-check.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">version-check.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/spellcheck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
       </ul>
@@ -687,6 +711,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>false</code></td>
 <td>Bump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its <code>dev-version</code> selftest job calls the <code>bump-dev-version</code> composite directly instead of this reusable workflow – see the bootstrapping-gap note in <code>CLAUDE.md</code>); meant for a consumer to smoke-test the bump logic.</td>
 </tr>
+<tr class="even">
+<td><code>pr-labels</code></td>
+<td>string</td>
+<td><em>(empty)</em></td>
+<td>Comma-separated labels applied to the bump PR on create and update. Set to <code>no changelog</code> when the repo runs <code>check-news.yml</code> on automation PRs.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -709,11 +739,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>WORKFLOW_TOKEN</code></td>
 <td>conditional</td>
-<td>PAT or App token. Needed to push the bump commit when <code>pr-branch</code> is protected, and to let <code>auto-merge</code> complete when the repo has required status checks (it authors the PR as a real user, so its checks run). Optional when neither applies.</td>
+<td>PAT or App token. Needed to push the bump commit when <code>pr-branch</code> is protected, and to let <code>auto-merge</code> complete when the repo has required status checks (it authors the PR as a real user, so its checks run). A fine-grained PAT needs <strong>Pull requests: Read and write</strong> in addition to <strong>Contents: write</strong>; the workflow probes pull-request <em>write</em> access before any bump work (via a POST that expects validation failure) and fails fast if it is missing. Optional when neither applies.</td>
 </tr>
 </tbody>
 </table>
-<p><code>WORKFLOW_TOKEN</code> covers two independent needs. First, the checkout and <code>open-sync-pr</code> push steps use it to push the bump commit; without it they fall back to the integrated <code>GITHUB_TOKEN</code>, which cannot push to a <code>pr-branch</code> a ruleset protects. This is the reason the sibling <code>open-sync-pr</code> stubs (<a href="../reference/bump-submodule.html"><code>bump-submodule</code></a>, <a href="../reference/sync-shared-fragments.html"><code>sync-shared-fragments</code></a>, <a href="../reference/sync-upstream.html"><code>sync-upstream</code></a>) document, and it still applies here. Second, it lets <code>auto-merge</code> complete in a repo with required status checks. GitHub does not trigger <code>pull_request</code> workflow runs for a <code>GITHUB_TOKEN</code>-authored PR (it suppresses them to prevent recursive runs), so those required checks never report and the merge is blocked forever – the PR sits open on every merge. Required checks block manual merges too, so turning off <code>auto-merge</code> does not avoid this; the genuine fixes are to set <code>WORKFLOW_TOKEN</code> (so the PR is authored by a real user whose checks run), force-merge with branch-protection bypass rights, or re-trigger the checks with a real-user event (a manual push to the bump branch, or closing and reopening the PR). The reusable workflow emits a warning at the start of its run when <code>auto-merge</code> is on and <code>WORKFLOW_TOKEN</code> is missing. Omit the token only when <code>pr-branch</code> is unprotected and the repo has no required checks.</p>
+<p><code>WORKFLOW_TOKEN</code> covers two independent needs. First, the checkout and <code>open-sync-pr</code> push steps use it to push the bump commit; without it they fall back to the integrated <code>GITHUB_TOKEN</code>, which cannot push to a <code>pr-branch</code> a ruleset protects. This is the reason the sibling <code>open-sync-pr</code> stubs (<a href="../reference/bump-submodule.html"><code>bump-submodule</code></a>, <a href="../reference/sync-shared-fragments.html"><code>sync-shared-fragments</code></a>, <a href="../reference/sync-upstream.html"><code>sync-upstream</code></a>) document, and it still applies here. Second, it lets <code>auto-merge</code> complete in a repo with required status checks. GitHub does not trigger <code>pull_request</code> workflow runs for a <code>GITHUB_TOKEN</code>-authored PR (it suppresses them to prevent recursive runs), so those required checks never report and the merge is blocked forever – the PR sits open on every merge. Required checks block manual merges too, so turning off <code>auto-merge</code> does not avoid this; the genuine fixes are to set <code>WORKFLOW_TOKEN</code> (so the PR is authored by a real user whose checks run), force-merge with branch-protection bypass rights, or re-trigger the checks with a real-user event (a manual push to the bump branch, or closing and reopening the PR). The reusable workflow emits a warning at the start of its run when <code>auto-merge</code> is on and <code>WORKFLOW_TOKEN</code> is missing, and fails fast when the secret is set but cannot access pull requests (for example a fine-grained PAT with Contents write only). Omit the token only when <code>pr-branch</code> is unprotected and the repo has no required checks.</p>
 </section>
 <section id="outputs" class="level2">
 <h2 class="anchored" data-anchor-id="outputs">Outputs</h2>
@@ -758,8 +788,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">      # description-path: DESCRIPTION   # default</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">      # auto-merge: true                 # default; set false to review by hand</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">WORKFLOW_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.WORKFLOW_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">      # pr-labels: no changelog          # when check-news.yml runs on automation PRs</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">WORKFLOW_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.WORKFLOW_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <code>bump-dev-version.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, because a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it – the file does not exist on <code>main</code> until that PR merges, and <code>check-links</code> rightly fails it. The sibling pages can use the direct form because their targets already landed.)</p>
 <p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag. See <a href="../versioning.html">Versioning</a>.</p>
 

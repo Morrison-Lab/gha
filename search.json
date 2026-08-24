@@ -15,7 +15,7 @@
     "href": "permissions.html#per-workflow-grants",
     "title": "Permissions",
     "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\ncheck-bibliography-dois, check-non-standard-chars, check-phi need only contents: read (the default), so no permissions: block is needed.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview (build half, read-only) needs only contents: read (the default).\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, id-token: write, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. version-check is read-only, so grant only pull-requests: read, contents: read.",
+    "text": "Per-workflow grants\n\n\ncheck-ai-tells, check-bibliography-dois, check-equation-renders, check-new-line-breaks, check-news, check-non-standard-chars, check-phi, check-secrets, cursor-code-review, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, spellcheck, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, id-token: write, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
     "crumbs": [
       "Overview",
       "Permissions"
@@ -48,7 +48,7 @@
     "href": "versioning.html",
     "title": "Versioning",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, ai-code-review.yml, bump-dev-version.yml, and version-check.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, and spellcheck.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -59,7 +59,7 @@
     "href": "versioning.html#advancing-a-major-tag",
     "title": "Versioning",
     "section": "Advancing a major tag",
-    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nA brand-new capability’s own PR merging to main does not make it usable at @v2 yet - if a consumer repo’s PR needs to reference a just-merged workflow at @v2 right away, check whether @v2 has actually been advanced past that merge first (step 3 above), or the consumer’s reference resolves to a workflow-not-found error rather than a stale-but-working one.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
+    "text": "Advancing a major tag\nUnlike r-lib/actions, a major tag here does not slide automatically on every push to main - merging a change does not, by itself, change what a consumer pinned to @v1/@v2 picks up next. Advancing the tag is a deliberate, manual step, so a change can be validated on one or a few consumer repos before everyone else has to deal with it:\n\nMerge the change to main.\nOptionally, point a consumer’s uses: line at @main, at a specific commit SHA, or temporarily at a feature branch of this repo, and let that consumer’s own CI run against the unreleased change.\nOnce confident, advance the shared major tag to main’s current tip by running slide-major-tag.yml via workflow_dispatch (from main), or with git tag -f / git push --force directly. Every consumer pinned to that tag picks up the change the next time its CI runs.\n\nA brand-new capability’s own PR merging to main does not make it usable at @v2 yet - if a consumer repo’s PR needs to reference a just-merged workflow at @v2 right away, check whether @v2 has actually been advanced past that merge first (step 3 above), or the consumer’s reference resolves to a workflow-not-found error rather than a stale-but-working one.\nTo prevent manual tag advancement from being forgotten when main moves ahead of the major tag, a tag drift check (check-tag-drift) runs as part of CI to surface when main has unreleased commits ahead of the active major tag (e.g. v2). It emits a GitHub Actions notice and job summary pointing to slide-major-tag.yml whenever tag advancement is pending.\nSee CHANGELOG.md for what changes as a major tag moves.\nChangelog entries are added as fragment files under changelog.d/ (one per PR, so parallel PRs never conflict on the shared changelog) and collated into CHANGELOG.md at release time; see changelog.d/README.md for the fragment format and release flow.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -70,7 +70,7 @@
     "href": "versioning.html#pinning-third-party-actions",
     "title": "Versioning",
     "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, and check-ai-tells.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, and spellcheck.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -260,7 +260,7 @@
     "href": "reference/claude.html#inputs",
     "title": "claude.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsetup-r\nboolean\ntrue\nInstall R (pandoc plus setup-r) and the package’s dependencies before running Claude.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto (with tinytex) so Claude can render .qmd files.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before R/Quarto setup. Empty to skip.\n\n\npip-packages\nstring\n''\nPython packages to install with pip3 --break-system-packages before Claude runs. Empty to skip.\n\n\nuse-renv\nboolean\nfalse\nRestore dependencies with renv instead of DESCRIPTION-based setup-r-dependencies.\n\n\nr-extra-packages\nstring\n(long; see workflow file)\nExtra packages for setup-r-dependencies (ignored when use-renv is true). Defaults to a devtools/roxygen2/lintr/spelling/rcmdcheck set plus local::..\n\n\nrenv-cache-version\nstring\n'1'\nrenv cache-version passed to setup-renv; bump to invalidate the cached library.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out submodules. Private submodules require the SUBMODULES_TOKEN secret.\n\n\nlink-skills\nboolean\nfalse\nExpose the caller repo’s top-level skills/ directory to Claude as project skills. A no-op on PR-triggered runs; commit the symlink to the default branch instead.\n\n\neager-pr\nboolean\nfalse\nOn an issue trigger, open the draft PR up front instead of only at the end. Empty PRs are closed automatically.\n\n\nreviewer\nstring\n'd-morrison'\nGitHub user re-requested as reviewer when Claude pushes commits to a PR.\n\n\nreview-workflow-file\nstring\n'claude-code-review.yml'\nWorkflow file in the caller repo dispatched to review Claude’s commits.\n\n\nmark-ready-for-review\nboolean\ntrue\nWhen Claude finishes with committed code, take its draft PR out of draft mode. Set false to leave PRs as drafts.\n\n\nprompt-addendum\nstring\n''\nRepo-specific instructions appended to Claude’s prompt.\n\n\nwebfetch-allowlist-url\nstring\n''\nURL of a newline-delimited hostname allowlist; each host becomes a WebFetch(domain:&lt;host&gt;) grant. Empty to disable WebFetch.\n\n\nuse-ai-config\nboolean\ntrue\nInstall the Morrison-Lab/ai-config plugin (ai-config@Morrison-Lab), giving the agent the lab’s shared skills, slash commands, and standing workflow conventions. Set false to opt out. Distinct from link-skills, which exposes the calling repo’s own skills/ directory; the two compose.\n\n\nplugin-marketplaces\nstring\n''\nExtra newline-separated Claude Code plugin marketplace Git URLs, added on top of the Morrison-Lab/ai-config.git marketplace use-ai-config adds. Pair with plugins below; empty adds none.\n\n\nplugins\nstring\n''\nExtra newline-separated plugin refs to install (&lt;plugin&gt;@&lt;marketplace-name&gt;), added on top of whatever use-ai-config installs. Each marketplace name must match the name that marketplace declares in its own .claude-plugin/marketplace.json, not the URL given in plugin-marketplaces.\n\n\nclaude-args\nstring\n(long; see workflow file)\nArgs passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all git push and write-API forms denied.\n\n\nruns-on\nstring\n'ubuntu-latest'\nRunner for the job.\n\n\nreport-cost\nboolean\ntrue\nSurface the run’s dollar cost (total_cost_usd): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See README.md’s feature-parity table for the upstream source citation. Set false to suppress it.",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsetup-r\nboolean\ntrue\nInstall R (pandoc plus setup-r) and the package’s dependencies before running Claude.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto (with tinytex) so Claude can render .qmd files.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before R/Quarto setup. Empty to skip.\n\n\npip-packages\nstring\n''\nPython packages to install with pip3 --break-system-packages before Claude runs. Empty to skip.\n\n\nuse-renv\nboolean\nfalse\nRestore dependencies with renv instead of DESCRIPTION-based setup-r-dependencies.\n\n\nr-extra-packages\nstring\n(long; see workflow file)\nExtra packages for setup-r-dependencies (ignored when use-renv is true). Defaults to a devtools/roxygen2/lintr/spelling/rcmdcheck set plus local::..\n\n\nrenv-cache-version\nstring\n'1'\nrenv cache-version passed to setup-renv; bump to invalidate the cached library.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out submodules. Private submodules require the SUBMODULES_TOKEN secret.\n\n\nlink-skills\nboolean\nfalse\nExpose the caller repo’s top-level skills/ directory to Claude as project skills. A no-op on PR-triggered runs; commit the symlink to the default branch instead.\n\n\neager-pr\nboolean\nfalse\nOn an issue trigger, open the draft PR up front instead of only at the end. Empty PRs are closed automatically.\n\n\nreviewer\nstring\n'd-morrison'\nGitHub user re-requested as reviewer when Claude pushes commits to a PR.\n\n\nreview-workflow-file\nstring\n'claude-code-review.yml'\nWorkflow file in the caller repo dispatched to review Claude’s commits.\n\n\nmark-ready-for-review\nboolean\ntrue\nWhen Claude finishes with committed code, take its draft PR out of draft mode. Set false to leave PRs as drafts.\n\n\nprompt-addendum\nstring\n''\nRepo-specific instructions appended to Claude’s prompt.\n\n\nwebfetch-allowlist-url\nstring\n''\nURL of a newline-delimited hostname allowlist; each host becomes a WebFetch(domain:&lt;host&gt;) grant. Empty to disable WebFetch.\n\n\nuse-ai-config\nboolean\ntrue\nInstall the Morrison-Lab/ai-config plugin (ai-config@Morrison-Lab), giving the agent the lab’s shared skills, slash commands, and standing workflow conventions. Set false to opt out. Distinct from link-skills, which exposes the calling repo’s own skills/ directory; the two compose.\n\n\nplugin-marketplaces\nstring\n''\nExtra newline-separated Claude Code plugin marketplace Git URLs, added on top of the Morrison-Lab/ai-config.git marketplace use-ai-config adds. Pair with plugins below; empty adds none.\n\n\nplugins\nstring\n''\nExtra newline-separated plugin refs to install (&lt;plugin&gt;@&lt;marketplace-name&gt;), added on top of whatever use-ai-config installs. Each marketplace name must match the name that marketplace declares in its own .claude-plugin/marketplace.json, not the URL given in plugin-marketplaces.\n\n\nclaude-args\nstring\n(long; see workflow file)\nArgs passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with all git push and write-API forms denied.\n\n\nruns-on\nstring\n'ubuntu-latest'\nRunner for the job.\n\n\nreport-cost\nboolean\ntrue\nSurface the run’s dollar cost (total_cost_usd): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See README.md’s feature-parity table for the upstream source citation. Set false to suppress it.\n\n\ntrusted-bot-logins\nstring\n'[]'\nJSON array of GitHub bot logins allowed to trigger the workflow even when author_association is not OWNER/MEMBER/COLLABORATOR (App comments are usually NONE). Example: '[\"cursor[bot]\"]'. Default [] keeps the human-collaborator-only gate. Mirror the same logins in the caller job if:, or the reusable workflow is never invoked.\n\n\ndispatch-on-assignee\nstring\n'[]'\nJSON array of GitHub logins for which an issues.assigned event dispatches a run on its own, with no @claude mention required anywhere in the issue – the assignment is the request. Example: '[\"claude\"]'. Default [] means assignment changes nothing. Gates on the assignee, not the assigner: the assigned payload carries no author_association for the sender. Purely additive – an assigned issue that does mention @claude already dispatches without this. Mirror the assignment case in the caller job if: and add assigned to its on: issues: types:, or the reusable workflow is never invoked.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -296,7 +296,7 @@
     "href": "reference/claude.html#example",
     "title": "claude.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/claude.yml in your repo.\n# NOTE: requires either CLAUDE_CODE_OAUTH_TOKEN (Claude Max plan) or\n# ANTHROPIC_API_KEY (direct API / GitHub App via /install-github-app). The\n# calling job grants write permissions so Claude can push branches and open PRs.\n# Pass secrets explicitly (below) rather than via `secrets: inherit`: GitHub\n# only inherits secrets into a reusable workflow owned by the same org/user, so\n# a cross-owner caller (e.g. a UCD-SERG-org repo calling this d-morrison\n# user-owned workflow) inherits an empty token.\nname: Claude Code\n\non:\n  issue_comment:\n    types: [created]\n  pull_request_review_comment:\n    types: [created]\n  issues:\n    # `assigned` lets an issue that already mentions @claude kick off a run when\n    # it's assigned (handy with eager-pr). The trusted-author gate keys on the\n    # issue *author*, so this only fires for issues opened by a collaborator.\n    types: [opened, assigned]\n  pull_request_review:\n    types: [submitted]\n\njobs:\n  claude:\n    # Cheap caller-side gate: only invoke the reusable workflow when an @claude\n    # mention is present AND the author is trusted (OWNER/MEMBER/COLLABORATOR),\n    # so an untrusted commenter's mention doesn't even spawn the\n    # reusable-workflow run. This mirrors the reusable workflow's own\n    # trusted-author gate as defense-in-depth.\n    if: |\n      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association)) ||\n      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association)) ||\n      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.review.author_association)) ||\n      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.issue.author_association))\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n      id-token: write\n      actions: write # dispatch the review workflow via `gh workflow run`\n    uses: Morrison-Lab/gha/.github/workflows/claude.yml@v2\n    secrets:\n      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key\n      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # direct API key; empty when using OAuth\n      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }} # optional; empty when unset\n      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }} # optional; for editing .github/workflows\n    # with:\n    #   setup-r: true               # default; set false for non-R repos\n    #   install-quarto: true        # for Quarto books\n    #   use-renv: true              # restore deps with renv instead of DESCRIPTION\n    #   apt-packages: jags libglpk-dev poppler-utils  # system libs deps need\n    #   pip-packages: sympy         # pip3 --break-system-packages\n    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules\n    #   link-skills: true           # expose this repo's skills/ as @claude project skills\n    #   eager-pr: true              # open the draft PR up front (Copilot-style)\n    #   mark-ready-for-review: false # keep Claude's PRs as drafts\n    #   reviewer: d-morrison        # re-requested when Claude pushes to a PR\n    #   report-cost: false          # suppress the dollar-cost comment (default true)\n    #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt\n    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)\n    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources\n    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;\n    #   prompt-addendum: |\n    #     This is the &lt;name&gt; R package. Before committing, run\n    #     lintr::lint_package(), spelling::spell_check_package(), and\n    #     devtools::test(); add a NEWS.md bullet for user-facing changes.\nSee examples/claude.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/claude.yml in your repo.\n# NOTE: requires either CLAUDE_CODE_OAUTH_TOKEN (Claude Max plan) or\n# ANTHROPIC_API_KEY (direct API / GitHub App via /install-github-app). The\n# calling job grants write permissions so Claude can push branches and open PRs.\n# Pass secrets explicitly (below) rather than via `secrets: inherit`: GitHub\n# only inherits secrets into a reusable workflow owned by the same org/user, so\n# a cross-owner caller (e.g. a UCD-SERG-org repo calling this d-morrison\n# user-owned workflow) inherits an empty token.\nname: Claude Code\n\non:\n  issue_comment:\n    types: [created]\n  pull_request_review_comment:\n    types: [created]\n  issues:\n    # `assigned` lets an issue that already mentions @claude kick off a run when\n    # it's assigned (handy with eager-pr). The trusted-author gate keys on the\n    # issue *author*, so this only fires for issues opened by a collaborator.\n    types: [opened, assigned]\n  pull_request_review:\n    types: [submitted]\n\njobs:\n  claude:\n    # Cheap caller-side gate: only invoke the reusable workflow when an @claude\n    # mention is present AND the author is trusted (OWNER/MEMBER/COLLABORATOR),\n    # so an untrusted commenter's mention doesn't even spawn the\n    # reusable-workflow run. This mirrors the reusable workflow's own\n    # trusted-author gate as defense-in-depth.\n    # To also admit a GitHub App bot, OR in a login check here and pass the\n    # same JSON array as trusted-bot-logins (see examples/claude.yml).\n    if: |\n      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association)) ||\n      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude') && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association)) ||\n      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude') && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.review.author_association)) ||\n      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.issue.author_association))\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n      id-token: write\n      actions: write # dispatch the review workflow via `gh workflow run`\n    uses: Morrison-Lab/gha/.github/workflows/claude.yml@v2\n    secrets:\n      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key\n      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }} # direct API key; empty when using OAuth\n      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }} # optional; empty when unset\n      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }} # optional; for editing .github/workflows\n    # with:\n    #   setup-r: true               # default; set false for non-R repos\n    #   install-quarto: true        # for Quarto books\n    #   use-renv: true              # restore deps with renv instead of DESCRIPTION\n    #   apt-packages: jags libglpk-dev poppler-utils  # system libs deps need\n    #   pip-packages: sympy         # pip3 --break-system-packages\n    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules\n    #   link-skills: true           # expose this repo's skills/ as @claude project skills\n    #   eager-pr: true              # open the draft PR up front (Copilot-style)\n    #   mark-ready-for-review: false # keep Claude's PRs as drafts\n    #   reviewer: d-morrison        # re-requested when Claude pushes to a PR\n    #   report-cost: false          # suppress the dollar-cost comment (default true)\n    #   trusted-bot-logins: '[\"cursor[bot]\"]'  # admit App bots the caller if: also allows\n    #   dispatch-on-assignee: '[\"claude\"]'     # assigning an issue dispatches a run, no mention needed\n    #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt\n    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)\n    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources\n    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;\n    #   prompt-addendum: |\n    #     This is the &lt;name&gt; R package. Before committing, run\n    #     lintr::lint_package(), spelling::spell_check_package(), and\n    #     devtools::test(); add a NEWS.md bullet for user-facing changes.\nSee examples/claude.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -412,6 +412,18 @@
     ]
   },
   {
+    "objectID": "reference/altdoc-multiversion-docs.html#canonical-urls",
+    "href": "reference/altdoc-multiversion-docs.html#canonical-urls",
+    "title": "altdoc-multiversion-docs.yml",
+    "section": "Canonical URLs",
+    "text": "Canonical URLs\nThis workflow deploys the same rendered site to several paths — /dev/, /latest-tag/, /vX.Y.Z/, and /pr-preview/pr-&lt;N&gt;/. Without a signal saying which copy is authoritative, a search engine sees the same page many times over, and an archive or /dev/ can outrank /latest-tag/ — landing a reader on documentation for a version they are not running.\nEvery indexable page therefore gets a &lt;link rel=\"canonical\"&gt; pointing at its /latest-tag/ equivalent, injected after the render and before any deploy. Nothing needs configuring; the URL is derived from docs-base-url (or from the repository, when that input is empty).\nTwo behaviours are worth knowing about.\nA canonical is only emitted when the target exists. A page that is new on the default branch has no /latest-tag/ counterpart yet, so it names its own deployed URL instead. Pointing a canonical at a URL that 404s is worse than emitting none: it asks the indexer to credit a page that is not there. The set of pages currently under /latest-tag/ is read from the deploy branch at build time rather than assumed.\nPR previews are marked noindex rather than canonicalized. A preview is ephemeral and is not the authoritative copy of anything, so the correct request is “do not index this” rather than “index that other page instead”.\n404.html is left untagged, since canonicalizing the page served for missing URLs would point every miss at a real page. A page that already carries a canonical — one written by hand, or emitted by a future Quarto release — is left alone rather than double-tagged.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "altdoc-multiversion-docs.yml"
+    ]
+  },
+  {
     "objectID": "reference/altdoc-multiversion-docs.html#permissions",
     "href": "reference/altdoc-multiversion-docs.html#permissions",
     "title": "altdoc-multiversion-docs.yml",
@@ -440,7 +452,7 @@
     "href": "reference/check-secrets.html",
     "title": "check-secrets.yml",
     "section": "",
-    "text": "Scan the repository’s git history for committed credentials – API tokens, private keys, high-entropy password assignments – using gitleaks. check-phi detects identifiers and has no notion of a credential, so a committed password or token passes it cleanly; this is the counterpart that catches those.\nHistory rather than the diff, unlike every other check here. A secret committed and then removed in a later commit is still exposed, because the orphaned commit stays fetchable through the GitHub API until the repository is garbage-collected. So the reusable workflow checks out with fetch-depth: 0, and a shallow clone is refused rather than reported clean on a partial scan.\nWider than “history” suggests, too. gitleaks’ default for its git subcommand is git log -p -U0 --full-history --all, so an empty log-opts scans every ref the checkout holds – every branch and tag fetch-depth: 0 fetched – rather than only HEAD’s ancestry. A finding can therefore name a commit that is not an ancestor of the pull request’s own head. That is the right behaviour for a credential: an exposed one is exposed wherever it sits.\nMatched values are never printed to the log or the run summary; findings report only the rule, file:line, and the commit. Blocking by default, unlike the advisory prose checks.",
+    "text": "Scan the repository’s git history for committed credentials – API tokens, private keys, high-entropy password assignments – using gitleaks. check-phi detects identifiers and has no notion of a credential, so a committed password or token passes it cleanly; this is the counterpart that catches those.\nHistory rather than the diff, unlike every other check here. A secret committed and then removed in a later commit is still exposed, because the orphaned commit stays fetchable through the GitHub API until the repository is garbage-collected. So the reusable workflow checks out with fetch-depth: 0, and a shallow clone is refused rather than reported clean on a partial scan.\nWider than “history” suggests, too. gitleaks’ default for its git subcommand is git log -p -U0 --full-history --all, so an empty log-opts scans every ref the checkout holds – every branch and tag fetch-depth: 0 fetched – rather than only HEAD’s ancestry. A finding can therefore name a commit that is not an ancestor of the pull request’s own head. That is the right behaviour for a credential: an exposed one is exposed wherever it sits.\nMatched values are never printed to the log or the run summary; findings report only the rule, file:line, and the commit. Blocking by default, where non-blocking prose checks only annotate.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -520,51 +532,147 @@
     ]
   },
   {
-    "objectID": "reference/request-dependabot-review.html",
-    "href": "reference/request-dependabot-review.html",
-    "title": "request-dependabot-review.yml",
+    "objectID": "reference/bump-dev-version.html",
+    "href": "reference/bump-dev-version.html",
+    "title": "bump-dev-version.yml",
     "section": "",
-    "text": "Request review from a configurable list of reviewers when a PR’s author matches a bot actor (Dependabot by default), so scheduled dependency bumps don’t merge without a human look.",
+    "text": "Bump an R package’s DESCRIPTION dev-version counter (the 4th .90NN component, e.g. 0.1.0.9057 -&gt; 0.1.0.9058) after every merge to main, and open – or auto-merge – a PR to carry it in. Pairs with version-check.yml, which now fails a PR that touches Version: itself: since the bot owns the bump, a PR doing so just guarantees a collision with the next PR that merges.\nA version with exactly 3 components (a release just cut, e.g. 0.1.0) starts a new dev cycle at .9000, matching the lab manual’s 0.0.0.9000, 0.0.0.9001, … convention. Depends on nothing but base R’s package_version class – no install.packages() step needed.\nGuards against re-triggering itself: the bump commit carries a [skip bump-dev-version] marker, and the job skips when the triggering push’s head commit carries it. This assumes the bump PR is merged via squash (the default auto-merge behavior), so the marker survives into the merge commit’s message.",
     "crumbs": [
       "Overview",
       "Reference",
-      "request-dependabot-review.yml"
+      "bump-dev-version.yml"
     ]
   },
   {
-    "objectID": "reference/request-dependabot-review.html#inputs",
-    "href": "reference/request-dependabot-review.html#inputs",
-    "title": "request-dependabot-review.yml",
+    "objectID": "reference/bump-dev-version.html#inputs",
+    "href": "reference/bump-dev-version.html#inputs",
+    "title": "bump-dev-version.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nreviewers\nstring\n(required)\nComma-separated GitHub usernames to request review from.\n\n\nbot-actor\nstring\n'dependabot[bot]'\nOnly request review when the PR author’s login matches this.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ndescription-path\nstring\nDESCRIPTION\nPath to the DESCRIPTION file to bump.\n\n\nbase-branch\nstring\nmain\nBase branch to open the bump PR against.\n\n\npr-branch\nstring\nautomated/bump-dev-version\nHead branch for the automation PR.\n\n\nauto-merge\nboolean\ntrue\nEnable GitHub’s native auto-merge (squash) on the bump PR. In a repo with required status checks, needs WORKFLOW_TOKEN (see Secrets).\n\n\ndry-run\nboolean\nfalse\nBump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its dev-version selftest job calls the bump-dev-version composite directly instead of this reusable workflow – see the bootstrapping-gap note in CLAUDE.md); meant for a consumer to smoke-test the bump logic.\n\n\npr-labels\nstring\n(empty)\nComma-separated labels applied to the bump PR on create and update. Set to no changelog when the repo runs check-news.yml on automation PRs.",
     "crumbs": [
       "Overview",
       "Reference",
-      "request-dependabot-review.yml"
+      "bump-dev-version.yml"
     ]
   },
   {
-    "objectID": "reference/request-dependabot-review.html#permissions",
-    "href": "reference/request-dependabot-review.html#permissions",
-    "title": "request-dependabot-review.yml",
+    "objectID": "reference/bump-dev-version.html#secrets",
+    "href": "reference/bump-dev-version.html#secrets",
+    "title": "bump-dev-version.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nWORKFLOW_TOKEN\nconditional\nPAT or App token. Needed to push the bump commit when pr-branch is protected, and to let auto-merge complete when the repo has required status checks (it authors the PR as a real user, so its checks run). A fine-grained PAT needs Pull requests: Read and write in addition to Contents: write; the workflow probes pull-request write access before any bump work (via a POST that expects validation failure) and fails fast if it is missing. Optional when neither applies.\n\n\n\nWORKFLOW_TOKEN covers two independent needs. First, the checkout and open-sync-pr push steps use it to push the bump commit; without it they fall back to the integrated GITHUB_TOKEN, which cannot push to a pr-branch a ruleset protects. This is the reason the sibling open-sync-pr stubs (bump-submodule, sync-shared-fragments, sync-upstream) document, and it still applies here. Second, it lets auto-merge complete in a repo with required status checks. GitHub does not trigger pull_request workflow runs for a GITHUB_TOKEN-authored PR (it suppresses them to prevent recursive runs), so those required checks never report and the merge is blocked forever – the PR sits open on every merge. Required checks block manual merges too, so turning off auto-merge does not avoid this; the genuine fixes are to set WORKFLOW_TOKEN (so the PR is authored by a real user whose checks run), force-merge with branch-protection bypass rights, or re-trigger the checks with a real-user event (a manual push to the bump branch, or closing and reopening the PR). The reusable workflow emits a warning at the start of its run when auto-merge is on and WORKFLOW_TOKEN is missing, and fails fast when the secret is set but cannot access pull requests (for example a fine-grained PAT with Contents write only). Omit the token only when pr-branch is unprotected and the repo has no required checks.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "bump-dev-version.yml"
+    ]
+  },
+  {
+    "objectID": "reference/bump-dev-version.html#outputs",
+    "href": "reference/bump-dev-version.html#outputs",
+    "title": "bump-dev-version.yml",
+    "section": "Outputs",
+    "text": "Outputs\n\n\n\nOutput\nDescription\n\n\n\n\nold-version\nThe DESCRIPTION version before the bump.\n\n\nnew-version\nThe DESCRIPTION version after the bump.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "bump-dev-version.yml"
+    ]
+  },
+  {
+    "objectID": "reference/bump-dev-version.html#permissions",
+    "href": "reference/bump-dev-version.html#permissions",
+    "title": "bump-dev-version.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant pull-requests: write (it requests a reviewer on the PR).",
+    "text": "Permissions\nGrant contents: write and pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”. For auto-merge, also enable Settings -&gt; General -&gt; “Allow auto-merge”.",
     "crumbs": [
       "Overview",
       "Reference",
-      "request-dependabot-review.yml"
+      "bump-dev-version.yml"
     ]
   },
   {
-    "objectID": "reference/request-dependabot-review.html#example",
-    "href": "reference/request-dependabot-review.html#example",
-    "title": "request-dependabot-review.yml",
+    "objectID": "reference/bump-dev-version.html#example",
+    "href": "reference/bump-dev-version.html#example",
+    "title": "bump-dev-version.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/request-dependabot-review.yml in your repo.\n# NOTE: the calling job grants pull-requests:write so the workflow can\n# request a review. Required because repos default to a read-only token.\nname: Request Dependabot PR Review\n\non:\n  pull_request:\n    types: [opened]\n\njobs:\n  request-review:\n    permissions:\n      pull-requests: write\n    uses: Morrison-Lab/gha/.github/workflows/request-dependabot-review.yml@v2\n    with:\n      reviewers: your-github-username\n      # bot-actor: renovate[bot]   # override the default (dependabot[bot])\nSee the examples/ directory for the full caller stub (request-dependabot-review.yml).",
+    "text": "Example\n# Copy to .github/workflows/bump-dev-version.yml in your repo.\nname: Bump dev version\n\non:\n  push:\n    branches: [main]\n\njobs:\n  bump:\n    permissions:\n      contents: write\n      pull-requests: write\n    uses: Morrison-Lab/gha/.github/workflows/bump-dev-version.yml@v2\n    with:\n      # description-path: DESCRIPTION   # default\n      # auto-merge: true                 # default; set false to review by hand\n      # pr-labels: no changelog          # when check-news.yml runs on automation PRs\n    secrets:\n      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}\nSee bump-dev-version.yml in examples/ for the full caller stub. (Linked to the directory rather than the file, because a blob/main/... link to a capability’s own example 404s on the pull request that introduces it – the file does not exist on main until that PR merges, and check-links rightly fails it. The sibling pages can use the direct form because their targets already landed.)\nPin @v2: this capability was added after @v1 was frozen, so it does not exist at that tag. See Versioning.",
     "crumbs": [
       "Overview",
       "Reference",
-      "request-dependabot-review.yml"
+      "bump-dev-version.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini.html",
+    "href": "reference/gemini.html",
+    "title": "gemini.yml",
+    "section": "",
+    "text": "Agent-mode Gemini CLI bot. Responds to @gemini and @gemini-cli mentions in issues, issue comments, PR review comments, and PR reviews, and also runs unattended on workflow_dispatch and schedule events.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini.html#scope-agent-mode",
+    "href": "reference/gemini.html#scope-agent-mode",
+    "title": "gemini.yml",
+    "section": "Scope: agent mode",
+    "text": "Scope: agent mode\nResponds to mentions, edits files, commits, pushes, and opens/updates pull requests on dedicated branches (gemini/issue-&lt;N&gt;-&lt;ts&gt;), matching claude.yml.\nRequires contents: write, pull-requests: write, issues: write, id-token: write, and actions: write permissions on the calling job.\nAn @gemini review mention is routed to the dedicated reviewer (gemini-code-review.yml) instead of being answered in place.\nRequires a GEMINI_API_KEY secret.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini.html#inputs",
+    "href": "reference/gemini.html#inputs",
+    "title": "gemini.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsetup-r\nboolean\ntrue\nInstall R before running Gemini CLI.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto so Gemini CLI can render .qmd files.\n\n\nuse-renv\nboolean\nfalse\nRestore R dependencies from renv.lock.\n\n\nrenv-cache-version\nstring\n'v1'\nCache version suffix for setup-renv.\n\n\nr-extra-packages\nstring\n''\nExtra R packages installed alongside DESCRIPTION dependencies.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setup.\n\n\npip-packages\nstring\n''\nPython packages to install with pip3.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\neager-pr\nboolean\nfalse\nOpen draft PR up front for issue triggers before Gemini runs.\n\n\nreviewer\nstring\n'd-morrison'\nReviewer login re-requested when Gemini pushes new commits.\n\n\nmark-ready-for-review\nboolean\ntrue\nMark draft PR ready for review when Gemini completes successfully.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the Gemini CLI prompt.\n\n\ngemini-model\nstring\n'gemini-2.5-flash'\nModel passed to run-gemini-cli.\n\n\nreview-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched on @gemini review mentions.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini.html#secrets",
+    "href": "reference/gemini.html#secrets",
+    "title": "gemini.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini API key. Without it the run reaches Gemini CLI and fails there.\n\n\nWORKFLOW_TOKEN\nno\nSecret token for pushing workflow changes (optional; falls back to GITHUB_TOKEN).\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini.html#permissions",
+    "href": "reference/gemini.html#permissions",
+    "title": "gemini.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant contents: write, pull-requests: write, issues: write, id-token: write, and actions: write.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini.html#example",
+    "href": "reference/gemini.html#example",
+    "title": "gemini.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/gemini.yml in your repo.\nname: Gemini CLI\n\non:\n  issue_comment:\n    types: [created]\n  pull_request_review_comment:\n    types: [created]\n  issues:\n    types: [opened, assigned]\n  pull_request_review:\n    types: [submitted]\n\njobs:\n  gemini:\n    if: |\n      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association))\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n      id-token: write\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    # with:\n    #   setup-r: false               # skip R setup for non-R repos\n    #   install-quarto: true         # render .qmd files\n    #   gemini-model: gemini-2.5-flash\n    #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`\nSee the examples/ directory for the full caller stub (gemini.yml), which carries the complete trusted-author if: for all four events.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini.yml"
     ]
   },
   {
@@ -928,11 +1036,95 @@
     ]
   },
   {
+    "objectID": "reference/spellcheck.html",
+    "href": "reference/spellcheck.html",
+    "title": "spellcheck.yml",
+    "section": "",
+    "text": "Spellcheck an R package’s prose with the {spelling} package. The package’s own inst/WORDLIST is the accepted vocabulary, so a repo migrating from a bespoke check-spelling.yaml keeps its wordlist unchanged – that file is {spelling}’s own format.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#what-it-reads",
+    "href": "reference/spellcheck.html#what-it-reads",
+    "title": "spellcheck.yml",
+    "section": "What it reads",
+    "text": "What it reads\nspell_check_package() decides the population, and it is narrower than “the repo’s prose” in one direction and wider in another. Read off spell_check_package()’s source at {spelling} 2.3.2 and confirmed against a fixture (2026-08-21):\n\nDESCRIPTION’s Title and Description fields, and no other field.\nEvery man/*.Rd help page.\nVignette sources under vignettes/, matched as .md/.Rmd/.qmd, plus .Rnw/.Snw. These are parsed as text, never rendered, which is why install-quarto defaults to 'false' even for a .qmd vignette.\nRoot-level Markdown whose name matches readme, news, changes, or index, case-insensitively. So a package’s own README.md and NEWS.md are checked.\n\nEverything else is out of reach: a Quarto site’s other pages, CONTRIBUTING.md, code comments, YAML, and any repository that is not an R package at all. gha#557 tracks covering those with a separate tool.\nThe package’s own name and its authors’ names are added to the accepted vocabulary automatically, so neither needs a WORDLIST entry.\nAdd a newly-accepted word with spelling::update_wordlist() in the package, and commit the result.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#inputs",
+    "href": "reference/spellcheck.html#inputs",
+    "title": "spellcheck.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the package root, relative to the repository.\n\n\nexclude\nstring\n''\nComma-separated files or folders to skip. Accepts globs.\n\n\nadditional-options\nstring\n'--vanilla'\nOptions passed to Rscript. Pass '' to let R read its profiles.\n\n\ninstall-quarto\nstring\n'false'\nWhether dependency setup installs Quarto.\n\n\nruns-on\nstring\nubuntu-latest\nRunner label for the job.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#permissions",
+    "href": "reference/spellcheck.html#permissions",
+    "title": "spellcheck.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#example",
+    "href": "reference/spellcheck.html#example",
+    "title": "spellcheck.yml",
+    "section": "Example",
+    "text": "Example\nname: Spellcheck\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  spellcheck:\n    uses: Morrison-Lab/gha/.github/workflows/spellcheck.yml@v2\n    # with:\n    #   path: '.'\n    #   exclude: 'vignettes/*.Rmd'\n    #   additional-options: ''\n    #   install-quarto: 'auto'\nSee the examples/ directory for the full caller stub (spellcheck.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#why-it-sets-up-r-instead-of-running-in-a-container",
+    "href": "reference/spellcheck.html#why-it-sets-up-r-instead-of-running-in-a-container",
+    "title": "spellcheck.yml",
+    "section": "Why it sets up R instead of running in a container",
+    "text": "Why it sets up R instead of running in a container\nThe bespoke workflows this replaces run inside a rocker image. This one calls r-lib/actions/setup-r, matching every other R capability here, so a consumer already paying for setup-r in its other jobs reuses that toolchain cache.\nIt also installs {spelling} through setup-r-dependencies rather than leaving it to the upstream action’s own install.packages() call. That call sets repos to cloud.r-project.org, which serves source packages for Linux, so it would compile {spelling} and its {hunspell} C++ dependency on every run. Going through setup-r-dependencies takes the public RSPM binaries instead and caches them, and the upstream install then finds the package present.\nOnly {spelling} is installed, not the consumer package’s own dependencies: spell_check_package() reads a package’s files without loading it, so resolving its dependency tree would be pure cost. For the same reason install-quarto defaults to 'false' – {spelling} reads vignette sources and never renders them.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#three-upstream-behaviours-worth-knowing",
+    "href": "reference/spellcheck.html#three-upstream-behaviours-worth-knowing",
+    "title": "spellcheck.yml",
+    "section": "Three upstream behaviours worth knowing",
+    "text": "Three upstream behaviours worth knowing\nThis capability wraps insightsengineering/r-spellcheck-action, which carries three quirks a caller can be bitten by. All were confirmed by reading and running its action.yaml and spellcheck.R at v3.0.3 (2026-08-21), not inferred from its documentation.\nA lone glob in exclude used to exclude only its first match – this capability works around that. Upstream interpolates exclude unquoted into a bash run: body, so the shell pathname-expands it into separate arguments before R sees it, and spellcheck.R reads only the first. Measured over three vignettes: vignettes/*.Rmd excluded vignettes/a.Rmd and left the other two checked, silently. The composite therefore normalizes the value first – entries trimmed, rejoined with commas, and given a trailing comma – which the shell cannot expand, since no path ends in a comma. R’s own Sys.glob() then does the matching, so a glob excludes every file it matches, as the input has always claimed. The one shape that cannot be supported is an entry containing whitespace: the shell splits on it whatever we do, so such an entry is rejected with an error naming it.\nexclude deletes the files it matches. The script calls file.remove() on each glob match, and the branch meant to restore them afterwards tests isTRUE() against the list lapply() returned, which is never true. So excluded files stay deleted from the runner’s checkout for the rest of the job. That is harmless in a job that only spellchecks, which is why the caller stub does nothing else – but do not add steps after it that read or publish the working tree.\nA count of exactly 256 misspelled words reports success. The script exits with the misspelling count as its status, and a process exit status is taken modulo 256, so 256 words becomes 0. Measured on R 4.6.1: quit(status = 256) is observed by the shell as 0. Any count from 1 to 255 fails correctly, so this only reaches a package adopting the check with a very large wordlist gap. gha#556 tracks reporting it upstream and deciding whether to guard it here.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
     "objectID": "reference/lint-markdown.html",
     "href": "reference/lint-markdown.html",
     "title": "lint-markdown.yml",
     "section": "",
-    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus a companion check that flags fenced code blocks longer than a configurable line threshold as decomposition candidates.",
+    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus companion checks that flag fenced code blocks longer than a configurable line threshold, list-item merge splices, and blank lines that split a GFM table.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -944,7 +1136,7 @@
     "href": "reference/lint-markdown.html#inputs",
     "title": "lint-markdown.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for markdownlint and companion checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.\n\n\nbase-ref\nstring\n''\nGit ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives). Pass ‘all’ to scan all lines.\n\n\nfail-on-item-splices\nboolean\ntrue\nFail the workflow when a list-item merge splice is detected.\n\n\nfail-on-table-splits\nboolean\ntrue\nFail the workflow when a blank line splits a GFM table, orphaning the rows below it so they render as literal text. Scans the whole tree rather than diff-scoping, since a split table has no legitimate form.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -968,7 +1160,7 @@
     "href": "reference/lint-markdown.html#example",
     "title": "lint-markdown.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus a companion check that flags long fenced code blocks as\n# decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\nSee the examples/ directory for the full caller stub (lint-markdown.yml).",
+    "text": "Example\n\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus companion checks that flag long fenced code blocks,\n# list-item merge splices, and blank lines that split a table.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   globs: '*.md'                       # git pathspecs to lint (recursive)\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\n    #   max-code-block-lines: '150'         # fenced code block line-count threshold\n    #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks\n    #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs\n    #   fail-on-item-splices: true          # fail when a list-item merge splice is detected\n    #   fail-on-table-splits: true          # fail when a blank line splits a GFM table\nSee the examples/ directory for the full caller stub (lint-markdown.yml).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1076,7 +1268,7 @@
     "href": "reference/claude-code-review.html#the-require-review-gate",
     "title": "claude-code-review.yml",
     "section": "The require-review gate",
-    "text": "The require-review gate\nPut review / require-review in branch protection’s required checks, not review / claude-review: the review job reports success in cases where no verdict was produced, and this gate job exists to distinguish them.\nRead its result as follows.\n\n\n\n\n\n\n\nResult\nWhat it attests\n\n\n\n\nGreen\nA reviewer ran and the job did not fail. Not that the reviewer approved — read the posted verdict for that.\n\n\nGray (skipped)\nNo review ran. Does not block merging.\n\n\nRed\nThe review job did not succeed. Blocks merging.\n\n\n\nOne red result is not a review failure at all: a claude-review run canceled by a newer run of the same PR (cancel-in-progress) also turns this gate red. Check whether claude-review’s conclusion is cancelled rather than failure before investigating the diff, and trust the surviving run’s review.\nThe gate skips gray whenever no review was attempted. That covers anything that made the claude-review job’s own if: false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:\n\nthe API quota was exhausted before any review work happened;\nthe PR edits the caller’s own review workflow file.\n\nThat last case deserves care. claude-code-action requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and no re-run or re-dispatch will change that — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.",
+    "text": "The require-review gate\nPut review / require-review in branch protection’s required checks, not review / claude-review: the review job reports success in cases where no verdict was produced, and this gate job exists to distinguish them.\nRead its result as follows.\n\n\n\n\n\n\n\nResult\nWhat it attests\n\n\n\n\nGreen\nA reviewer ran and the job did not fail. Not that the reviewer approved — read the posted verdict for that.\n\n\nGray (skipped)\nNo review ran. Does not block merging.\n\n\nRed\nThe review job did not succeed. Blocks merging.\n\n\n\nOne red result is not a review failure at all: a claude-review run canceled by a newer run of the same PR (cancel-in-progress) also turns this gate red. Check whether claude-review’s conclusion is cancelled rather than failure before investigating the diff, and trust the surviving run’s review.\nThe gate skips gray whenever no review was attempted. That covers anything that made the claude-review job’s own if: false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:\n\nthe API quota was exhausted — either before any review work happened, or part-way through the run, which leaves a 429 behind after real turns and real cost (#520);\nthe PR edits the caller’s own review workflow file.\n\nThat last case deserves care. claude-code-action requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and no re-run or re-dispatch will change that — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1300,6 +1492,78 @@
     ]
   },
   {
+    "objectID": "reference/lint-workflows.html",
+    "href": "reference/lint-workflows.html",
+    "title": "lint-workflows.yml",
+    "section": "",
+    "text": "Audit the caller’s GitHub Actions workflows and composite actions with actionlint (syntax/semantics – unknown keys, bad runs-on labels, invalid expression syntax, shellcheck over run: blocks) and zizmor (security – template-injection sinks, credential persistence, overly broad permissions, unpinned actions). The two tools check different things and both are worth running.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-workflows.html#inputs",
+    "href": "reference/lint-workflows.html#inputs",
+    "title": "lint-workflows.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nRoot path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting .gitignore.\n\n\nactionlint-version\nstring\n'v1.7.12'\nactionlint release tag to install.\n\n\nactionlint-checksum\nstring\n(pinned SHA-256 for the default version’s linux_amd64 tarball)\nExpected SHA-256 of the pinned actionlint-version’s linux_amd64 release tarball, verified before extracting it. Update alongside actionlint-version.\n\n\nzizmor-version\nstring\n'1.28.0'\nzizmor PyPI package version to install.\n\n\npython-version\nstring\n'3.x'\nPython version to set up (for installing zizmor via pip).\n\n\npedantic\nboolean\nfalse\nRun zizmor with --pedantic (also emit code-smell findings, not just security issues).\n\n\nfail\nboolean\ntrue\nFail the workflow when either tool reports a finding.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-workflows.html#outputs",
+    "href": "reference/lint-workflows.html#outputs",
+    "title": "lint-workflows.yml",
+    "section": "Outputs",
+    "text": "Outputs\n\n\n\n\n\n\n\nOutput\nDescription\n\n\n\n\nactionlint-found\n'true' if actionlint reported any finding.\n\n\nzizmor-found\n'true' if zizmor reported any finding.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-workflows.html#permissions",
+    "href": "reference/lint-workflows.html#permissions",
+    "title": "lint-workflows.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-workflows.html#landing-on-a-repo-with-pre-existing-findings",
+    "href": "reference/lint-workflows.html#landing-on-a-repo-with-pre-existing-findings",
+    "title": "lint-workflows.yml",
+    "section": "Landing on a repo with pre-existing findings",
+    "text": "Landing on a repo with pre-existing findings\nA repo that has never run either tool before will likely see a real backlog of findings on the first run – neither tool is diff-scoped, so both audit every workflow and action file in path, not just what a given PR touches. Rather than block adoption on fixing everything at once, set fail: false to land the capability as a warn-only baseline, then work through the backlog and flip fail back to true (the default) once it’s clean. The actionlint-found/zizmor-found outputs let a caller track progress (e.g. by asserting they eventually both come back 'false') without hand-parsing either tool’s own output.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-workflows.html#example",
+    "href": "reference/lint-workflows.html#example",
+    "title": "lint-workflows.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-workflows.yml in your repo.\n# Audits GitHub Actions workflows and composite actions with actionlint\n# (syntax/semantics) and zizmor (security). Only contents:read is needed\n# (the default), so no permissions block is required.\nname: Lint Workflows\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-workflows.yml@v2\n    # with:\n    #   path: '.'                       # root path to audit\n    #   pedantic: true                  # also emit zizmor code-smell findings\n    #   fail: false                     # warn instead of failing on findings --\n    #                                   # useful while working through a\n    #                                   # pre-existing backlog\nSee the examples/ directory for the full caller stub (lint-workflows.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
     "objectID": "reference/check-bibliography-dois.html",
     "href": "reference/check-bibliography-dois.html",
     "title": "check-bibliography-dois.yml",
@@ -1352,7 +1616,7 @@
     "href": "reference/check-new-line-breaks.html",
     "title": "check-new-line-breaks.yml",
     "section": "",
-    "text": "Advisory, diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines. Pairs well with lint-markdown.yml when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.\nTwo checks run, both on by default. The first is the SemBr spec’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an independent clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see gha#336 for the measurements.\nThe gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s visible length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set clause-breaks: false to check sentences only.",
+    "text": "Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto a single source line – the “semantic line breaks” convention (one clause/sentence per line), which keeps a diff scoped to the changed sentence instead of a whole reflowed paragraph. Scoped to lines a diff adds, so it never reflags a corpus’s pre-existing long lines. Pairs well with lint-markdown.yml when markdownlint’s MD013 (line-length) is disabled because the corpus already carries long-line drift from before the convention was adopted.\nTwo checks run, both on by default. The first is the SemBr spec’s rule 4, the normative MUST: break after a sentence. The second flags a long line carrying a mid-line semicolon, as a proxy for its rule 5, the SHOULD: break after an independent clause. It is a proxy rather than a test of the rule, since deciding whether a mark ends an independent clause needs a parser – so a semicolon-delimited list can be flagged too. Of the four marks rule 5 names, only the semicolon has a low enough unparsed hit rate to be useful: keying on all four flags 50.5% of already-conforming prose, against 0.7% for this check; see gha#336 for the measurements.\nThe gate’s default of 80 is the spec’s own rule 12, “a maximum line length of 80 characters is RECOMMENDED”. It measures a line’s visible length – rule 13 exempts a line that is long to accommodate a hyperlink or a code element – so a line that is long only because of a link target or a code span does not qualify. Set clause-breaks: false to check sentences only.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1364,7 +1628,7 @@
     "href": "reference/check-new-line-breaks.html#inputs",
     "title": "check-new-line-breaks.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nfail\nboolean\nfalse\nFail the workflow when a violation is found; otherwise non-blocking.\n\n\nclause-breaks\nboolean\ntrue\nAlso flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set false to check sentences only.\n\n\nclause-min-length\nstring\n'80'\nMinimum line length before clause-breaks applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when clause-breaks is false.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to check (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma- or newline-separated glob patterns (relative paths) to skip; supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when a violation is found; otherwise non-blocking.\n\n\nclause-breaks\nboolean\ntrue\nAlso flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set false to check sentences only.\n\n\nclause-min-length\nstring\n'80'\nMinimum line length before clause-breaks applies, inclusive. Measured on visible prose, after stripping inline markup such as code spans, link targets, bare URLs, and HTML entities, so a line long only because of a URL does not qualify. Ignored when clause-breaks is false.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1388,7 +1652,7 @@
     "href": "reference/check-new-line-breaks.html#example",
     "title": "check-new-line-breaks.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-new-line-breaks.yml in your repo.\n# Advisory check: flags newly-added Markdown lines packing more than one\n# sentence/clause onto one source line. Diff-scoped, so it only ever flags\n# what a PR itself adds -- pairs well with lint-markdown when MD013\n# (line-length) is disabled because the corpus already has long-line drift.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check new markdown lines for missing semantic breaks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2\n    # with:\n    #   globs: '*.md'                          # pathspecs to check (recursive)\n    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths\n    #   fail: true                             # block the PR instead of only annotating\n    #   clause-breaks: false                   # sentences only; skip the\n    #                                          # semicolon clause check (on by default)\n    #   clause-min-length: 100                 # raise the clause check's length gate\nSee examples/check-new-line-breaks.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/check-new-line-breaks.yml in your repo.\n# Diff-scoped check: flags newly-added Markdown lines packing more than one\n# sentence/clause onto one source line. Diff-scoped, so it only ever flags\n# what a PR itself adds -- pairs well with lint-markdown when MD013\n# (line-length) is disabled because the corpus already has long-line drift.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Check new markdown lines for missing semantic breaks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2\n    # with:\n    #   globs: '*.md'                          # pathspecs to check (recursive)\n    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths\n    #   fail: false                            # warn-only instead of blocking (defaults to true)\n    #   clause-breaks: false                   # sentences only; skip the\n    #                                          # semicolon clause check (on by default)\n    #   clause-min-length: 100                 # raise the clause check's length gate\nSee examples/check-new-line-breaks.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1684,147 +1948,243 @@
     ]
   },
   {
-    "objectID": "reference/gemini.html",
-    "href": "reference/gemini.html",
-    "title": "gemini.yml",
+    "objectID": "reference/cursor-code-review.html",
+    "href": "reference/cursor-code-review.html",
+    "title": "cursor-code-review.yml",
     "section": "",
-    "text": "Agent-mode Gemini CLI bot. Responds to @gemini and @gemini-cli mentions in issues, issue comments, PR review comments, and PR reviews, and also runs unattended on workflow_dispatch and schedule events.",
+    "text": "Queue a Cursor Bugbot review for a pull request. Bugbot posts its own inline comments and the Cursor Bugbot check; this workflow’s success means the review was queued, not that findings have already landed.\nIt calls Cursor’s Enterprise Bugbot API (POST /bugbot/review) with a CURSOR_API_KEY that has admin:* scope. Team and individual Cursor plans should enable Bugbot in the Cursor dashboard instead of this workflow. Once the GitHub App is connected, Bugbot can run on every PR update, or on a PR comment cursor review / bugbot run. Customize that path with .cursor/BUGBOT.md; this workflow has no prompt-addendum input because the trigger API does not take one.\nThe default caller stub is dispatch-triggered. Add a pull_request trigger in the caller if you also want this workflow to queue a review on every PR update (in addition to, or instead of, the GitHub App’s own automatic reviews).\nRequires a CURSOR_API_KEY secret.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini.yml"
+      "cursor-code-review.yml"
     ]
   },
   {
-    "objectID": "reference/gemini.html#scope-agent-mode",
-    "href": "reference/gemini.html#scope-agent-mode",
-    "title": "gemini.yml",
-    "section": "Scope: agent mode",
-    "text": "Scope: agent mode\nResponds to mentions, edits files, commits, pushes, and opens/updates pull requests on dedicated branches (gemini/issue-&lt;N&gt;-&lt;ts&gt;), matching claude.yml.\nRequires contents: write, pull-requests: write, issues: write, id-token: write, and actions: write permissions on the calling job.\nAn @gemini review mention is routed to the dedicated reviewer (gemini-code-review.yml) instead of being answered in place.\nRequires a GEMINI_API_KEY secret.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "gemini.yml"
-    ]
-  },
-  {
-    "objectID": "reference/gemini.html#inputs",
-    "href": "reference/gemini.html#inputs",
-    "title": "gemini.yml",
+    "objectID": "reference/cursor-code-review.html#inputs",
+    "href": "reference/cursor-code-review.html#inputs",
+    "title": "cursor-code-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nsetup-r\nboolean\ntrue\nInstall R before running Gemini CLI.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto so Gemini CLI can render .qmd files.\n\n\nuse-renv\nboolean\nfalse\nRestore R dependencies from renv.lock.\n\n\nrenv-cache-version\nstring\n'v1'\nCache version suffix for setup-renv.\n\n\nr-extra-packages\nstring\n''\nExtra R packages installed alongside DESCRIPTION dependencies.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setup.\n\n\npip-packages\nstring\n''\nPython packages to install with pip3.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\neager-pr\nboolean\nfalse\nOpen draft PR up front for issue triggers before Gemini runs.\n\n\nreviewer\nstring\n'd-morrison'\nReviewer login re-requested when Gemini pushes new commits.\n\n\nmark-ready-for-review\nboolean\ntrue\nMark draft PR ready for review when Gemini completes successfully.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the Gemini CLI prompt.\n\n\ngemini-model\nstring\n'gemini-2.5-flash'\nModel passed to run-gemini-cli.\n\n\nreview-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched on @gemini review mentions.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\ndry-run\nboolean\nfalse\nQueue analysis without posting comments or checks. Still billed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini.yml"
+      "cursor-code-review.yml"
     ]
   },
   {
-    "objectID": "reference/gemini.html#secrets",
-    "href": "reference/gemini.html#secrets",
-    "title": "gemini.yml",
+    "objectID": "reference/cursor-code-review.html#secrets",
+    "href": "reference/cursor-code-review.html#secrets",
+    "title": "cursor-code-review.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini API key. Without it the run reaches Gemini CLI and fails there.\n\n\nWORKFLOW_TOKEN\nno\nSecret token for pushing workflow changes (optional; falls back to GITHUB_TOKEN).\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCURSOR_API_KEY\nno\nCursor Enterprise API key (admin:*). Without it the queue step fails.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini.yml"
+      "cursor-code-review.yml"
     ]
   },
   {
-    "objectID": "reference/gemini.html#permissions",
-    "href": "reference/gemini.html#permissions",
-    "title": "gemini.yml",
+    "objectID": "reference/cursor-code-review.html#permissions",
+    "href": "reference/cursor-code-review.html#permissions",
+    "title": "cursor-code-review.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write, pull-requests: write, issues: write, id-token: write, and actions: write.",
+    "text": "Permissions\nGrant contents: read and pull-requests: read. Bugbot posts with the Cursor GitHub App, not this workflow’s token.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini.yml"
+      "cursor-code-review.yml"
     ]
   },
   {
-    "objectID": "reference/gemini.html#example",
-    "href": "reference/gemini.html#example",
-    "title": "gemini.yml",
+    "objectID": "reference/cursor-code-review.html#what-it-refuses-to-review",
+    "href": "reference/cursor-code-review.html#what-it-refuses-to-review",
+    "title": "cursor-code-review.yml",
+    "section": "What it refuses to review",
+    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.\nOnly one queue attempt runs per PR at a time: a newer run cancels an older one.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "cursor-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/cursor-code-review.html#concurrency",
+    "href": "reference/cursor-code-review.html#concurrency",
+    "title": "cursor-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. cursor-code-review.yml manages per-PR concurrency internally on its review job (group: cursor-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "cursor-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/cursor-code-review.html#example",
+    "href": "reference/cursor-code-review.html#example",
+    "title": "cursor-code-review.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/gemini.yml in your repo.\nname: Gemini CLI\n\non:\n  issue_comment:\n    types: [created]\n  pull_request_review_comment:\n    types: [created]\n  issues:\n    types: [opened, assigned]\n  pull_request_review:\n    types: [submitted]\n\njobs:\n  gemini:\n    if: |\n      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gemini-cli')) && contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), github.event.comment.author_association))\n    permissions:\n      contents: write\n      pull-requests: write\n      issues: write\n      id-token: write\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    # with:\n    #   setup-r: false               # skip R setup for non-R repos\n    #   install-quarto: true         # render .qmd files\n    #   gemini-model: gemini-2.5-flash\n    #   review-workflow-file: gemini-code-review.yml   # dispatched on `@gemini review`\nSee the examples/ directory for the full caller stub (gemini.yml), which carries the complete trusted-author if: for all four events.",
+    "text": "Example\n# Copy to .github/workflows/cursor-code-review.yml in your repo.\nname: Cursor Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  review:\n    permissions:\n      contents: read\n      pull-requests: read\n    uses: Morrison-Lab/gha/.github/workflows/cursor-code-review.yml@v2\n    secrets:\n      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   dry-run: true\nSee the examples/ directory for the full caller stub (cursor-code-review.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini.yml"
+      "cursor-code-review.yml"
     ]
   },
   {
-    "objectID": "reference/bump-dev-version.html",
-    "href": "reference/bump-dev-version.html",
-    "title": "bump-dev-version.yml",
+    "objectID": "reference/request-dependabot-review.html",
+    "href": "reference/request-dependabot-review.html",
+    "title": "request-dependabot-review.yml",
     "section": "",
-    "text": "Bump an R package’s DESCRIPTION dev-version counter (the 4th .90NN component, e.g. 0.1.0.9057 -&gt; 0.1.0.9058) after every merge to main, and open – or auto-merge – a PR to carry it in. Pairs with version-check.yml, which now fails a PR that touches Version: itself: since the bot owns the bump, a PR doing so just guarantees a collision with the next PR that merges.\nA version with exactly 3 components (a release just cut, e.g. 0.1.0) starts a new dev cycle at .9000, matching the lab manual’s 0.0.0.9000, 0.0.0.9001, … convention. Depends on nothing but base R’s package_version class – no install.packages() step needed.\nGuards against re-triggering itself: the bump commit carries a [skip bump-dev-version] marker, and the job skips when the triggering push’s head commit carries it. This assumes the bump PR is merged via squash (the default auto-merge behavior), so the marker survives into the merge commit’s message.",
+    "text": "Request review from a configurable list of reviewers when a PR’s author matches a bot actor (Dependabot by default), so scheduled dependency bumps don’t merge without a human look.",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-dev-version.yml"
+      "request-dependabot-review.yml"
     ]
   },
   {
-    "objectID": "reference/bump-dev-version.html#inputs",
-    "href": "reference/bump-dev-version.html#inputs",
-    "title": "bump-dev-version.yml",
+    "objectID": "reference/request-dependabot-review.html#inputs",
+    "href": "reference/request-dependabot-review.html#inputs",
+    "title": "request-dependabot-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ndescription-path\nstring\nDESCRIPTION\nPath to the DESCRIPTION file to bump.\n\n\nbase-branch\nstring\nmain\nBase branch to open the bump PR against.\n\n\npr-branch\nstring\nautomated/bump-dev-version\nHead branch for the automation PR.\n\n\nauto-merge\nboolean\ntrue\nEnable GitHub’s native auto-merge (squash) on the bump PR. In a repo with required status checks, needs WORKFLOW_TOKEN (see Secrets).\n\n\ndry-run\nboolean\nfalse\nBump but skip opening/merging a PR. Not yet exercised by this repo’s own CI (its dev-version selftest job calls the bump-dev-version composite directly instead of this reusable workflow – see the bootstrapping-gap note in CLAUDE.md); meant for a consumer to smoke-test the bump logic.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nreviewers\nstring\n(required)\nComma-separated GitHub usernames to request review from.\n\n\nbot-actor\nstring\n'dependabot[bot]'\nOnly request review when the PR author’s login matches this.",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-dev-version.yml"
+      "request-dependabot-review.yml"
     ]
   },
   {
-    "objectID": "reference/bump-dev-version.html#secrets",
-    "href": "reference/bump-dev-version.html#secrets",
-    "title": "bump-dev-version.yml",
-    "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nWORKFLOW_TOKEN\nconditional\nPAT or App token. Needed to push the bump commit when pr-branch is protected, and to let auto-merge complete when the repo has required status checks (it authors the PR as a real user, so its checks run). Optional when neither applies.\n\n\n\nWORKFLOW_TOKEN covers two independent needs. First, the checkout and open-sync-pr push steps use it to push the bump commit; without it they fall back to the integrated GITHUB_TOKEN, which cannot push to a pr-branch a ruleset protects. This is the reason the sibling open-sync-pr stubs (bump-submodule, sync-shared-fragments, sync-upstream) document, and it still applies here. Second, it lets auto-merge complete in a repo with required status checks. GitHub does not trigger pull_request workflow runs for a GITHUB_TOKEN-authored PR (it suppresses them to prevent recursive runs), so those required checks never report and the merge is blocked forever – the PR sits open on every merge. Required checks block manual merges too, so turning off auto-merge does not avoid this; the genuine fixes are to set WORKFLOW_TOKEN (so the PR is authored by a real user whose checks run), force-merge with branch-protection bypass rights, or re-trigger the checks with a real-user event (a manual push to the bump branch, or closing and reopening the PR). The reusable workflow emits a warning at the start of its run when auto-merge is on and WORKFLOW_TOKEN is missing. Omit the token only when pr-branch is unprotected and the repo has no required checks.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "bump-dev-version.yml"
-    ]
-  },
-  {
-    "objectID": "reference/bump-dev-version.html#outputs",
-    "href": "reference/bump-dev-version.html#outputs",
-    "title": "bump-dev-version.yml",
-    "section": "Outputs",
-    "text": "Outputs\n\n\n\nOutput\nDescription\n\n\n\n\nold-version\nThe DESCRIPTION version before the bump.\n\n\nnew-version\nThe DESCRIPTION version after the bump.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "bump-dev-version.yml"
-    ]
-  },
-  {
-    "objectID": "reference/bump-dev-version.html#permissions",
-    "href": "reference/bump-dev-version.html#permissions",
-    "title": "bump-dev-version.yml",
+    "objectID": "reference/request-dependabot-review.html#permissions",
+    "href": "reference/request-dependabot-review.html#permissions",
+    "title": "request-dependabot-review.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: write and pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”. For auto-merge, also enable Settings -&gt; General -&gt; “Allow auto-merge”.",
+    "text": "Permissions\nGrant pull-requests: write (it requests a reviewer on the PR).",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-dev-version.yml"
+      "request-dependabot-review.yml"
     ]
   },
   {
-    "objectID": "reference/bump-dev-version.html#example",
-    "href": "reference/bump-dev-version.html#example",
-    "title": "bump-dev-version.yml",
+    "objectID": "reference/request-dependabot-review.html#example",
+    "href": "reference/request-dependabot-review.html#example",
+    "title": "request-dependabot-review.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/bump-dev-version.yml in your repo.\nname: Bump dev version\n\non:\n  push:\n    branches: [main]\n\njobs:\n  bump:\n    permissions:\n      contents: write\n      pull-requests: write\n    uses: Morrison-Lab/gha/.github/workflows/bump-dev-version.yml@v2\n    with:\n      # description-path: DESCRIPTION   # default\n      # auto-merge: true                 # default; set false to review by hand\n    secrets:\n      WORKFLOW_TOKEN: ${{ secrets.WORKFLOW_TOKEN }}\nSee bump-dev-version.yml in examples/ for the full caller stub. (Linked to the directory rather than the file, because a blob/main/... link to a capability’s own example 404s on the pull request that introduces it – the file does not exist on main until that PR merges, and check-links rightly fails it. The sibling pages can use the direct form because their targets already landed.)\nPin @v2: this capability was added after @v1 was frozen, so it does not exist at that tag. See Versioning.",
+    "text": "Example\n# Copy to .github/workflows/request-dependabot-review.yml in your repo.\n# NOTE: the calling job grants pull-requests:write so the workflow can\n# request a review. Required because repos default to a read-only token.\nname: Request Dependabot PR Review\n\non:\n  pull_request:\n    types: [opened]\n\njobs:\n  request-review:\n    permissions:\n      pull-requests: write\n    uses: Morrison-Lab/gha/.github/workflows/request-dependabot-review.yml@v2\n    with:\n      reviewers: your-github-username\n      # bot-actor: renovate[bot]   # override the default (dependabot[bot])\nSee the examples/ directory for the full caller stub (request-dependabot-review.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "bump-dev-version.yml"
+      "request-dependabot-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html",
+    "href": "reference/opencode-code-review.html",
+    "title": "opencode-code-review.yml",
+    "section": "",
+    "text": "Read-only OpenCode PR code review, run through the opencode CLI headless. The agent receives the PR diff as an attachment and may read the checked-out repository for context; it runs with file edits, shell commands, and web fetches denied, so the workflow itself posts whatever review the model produces.\nThe default caller stub is workflow_dispatch-triggered. Add a pull_request trigger in the caller if you want automatic reviews on PR updates. There is no opencode.yml mention bot yet, so unlike gemini-code-review.yml there is no comment-triggered re-dispatch path to keep names in sync with.\nRequires an OPENCODE_API_KEY secret (OpenCode Zen; free-tier models are available). Without it, each run posts a skip notice on the PR instead of a review.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#inputs",
+    "href": "reference/opencode-code-review.html#inputs",
+    "title": "opencode-code-review.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the review prompt.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\nopencode-model\nstring\n'opencode/big-pickle'\nModel passed to opencode run -m.\n\n\nopencode-version\nstring\n'1.18.21'\nopencode CLI release installed at run time.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#secrets",
+    "href": "reference/opencode-code-review.html#secrets",
+    "title": "opencode-code-review.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nOPENCODE_API_KEY\nno\nOpenCode Zen API key. Without it the workflow skips gracefully with a warning comment on the PR.\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#permissions",
+    "href": "reference/opencode-code-review.html#permissions",
+    "title": "opencode-code-review.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant contents: read, pull-requests: write, and issues: write. No id-token: write is needed: the agent is invoked directly rather than through an action that exchanges an OIDC token.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#what-it-refuses-to-review",
+    "href": "reference/opencode-code-review.html#what-it-refuses-to-review",
+    "title": "opencode-code-review.yml",
+    "section": "What it refuses to review",
+    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad pr-number) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.\nOnly one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#untrusted-repository-hardening",
+    "href": "reference/opencode-code-review.html#untrusted-repository-hardening",
+    "title": "opencode-code-review.yml",
+    "section": "Untrusted-repository hardening",
+    "text": "Untrusted-repository hardening\nA pull request’s tree is attacker-controlled input, so before the CLI starts the workflow deletes any project-level opencode configuration files from the checkout (opencode.json, opencode.jsonc, .opencode/config.json, .opencode/opencode.json). Without that, a PR could carry its own config overriding the deny rules this workflow relies on and re-enabling shell or edit permissions for the reviewer.\nThe remaining surface is instruction-file injection (a PR editing AGENTS.md), which every AI reviewer here shares: the agent reads repo files, so a malicious diff can try to steer its prose. Reviews are read-only and the verdict contract is stated after any repository-controlled content, which bounds what such an attempt can achieve.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#failure-reporting",
+    "href": "reference/opencode-code-review.html#failure-reporting",
+    "title": "opencode-code-review.yml",
+    "section": "Failure reporting",
+    "text": "Failure reporting\nThe workflow classifies each run’s outcome into two kinds:\n\nreview — the agent exited 0 with non-empty output, posted as a comment.\nfailed — anything else (non-zero exit, empty output). The failure comment always begins OpenCode review failed: and includes the raw CLI stderr for triage.\n\nA missing API key skips with an OpenCode review skipped notice instead.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#concurrency",
+    "href": "reference/opencode-code-review.html#concurrency",
+    "title": "opencode-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. opencode-code-review.yml manages per-PR concurrency internally on its review job (group: opencode-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/opencode-code-review.html#example",
+    "href": "reference/opencode-code-review.html#example",
+    "title": "opencode-code-review.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/opencode-code-review.yml in your repo.\nname: OpenCode Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  review:\n    permissions:\n      contents: read\n      pull-requests: write\n      issues: write\n    uses: Morrison-Lab/gha/.github/workflows/opencode-code-review.yml@v2\n    secrets:\n      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   checkout-submodules: true\n    #   opencode-model: opencode/big-pickle\n    #   prompt-addendum: |\n    #     Repo-specific review guidance.\nSee the examples/ directory for the full caller stub (opencode-code-review.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "opencode-code-review.yml"
     ]
   },
   {
@@ -1832,7 +2192,7 @@
     "href": "reference/assemble-news.html",
     "title": "assemble-news",
     "section": "",
-    "text": "Collate news.d/ fragment files into NEWS.md under section headings (## Breaking changes, ## New features, ## Bug fixes, ## Minor improvements) and delete consumed fragment files.\nPairs with check-news.yml, allowing pull requests to add fragment files under news.d/ instead of directly editing NEWS.md, eliminating merge conflicts between concurrent PRs.",
+    "text": "Collate news.d/ fragment files into NEWS.md under section headings (by default ## Breaking changes, ## New features, ## Bug fixes, ## Minor improvements) and delete consumed fragment files.\nPairs with check-news.yml, allowing pull requests to add fragment files under news.d/ instead of directly editing NEWS.md, eliminating merge conflicts between concurrent PRs.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1844,7 +2204,7 @@
     "href": "reference/assemble-news.html#inputs",
     "title": "assemble-news",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nfragments-dir\nstring\n'news.d'\nDirectory containing fragment files (&lt;slug&gt;.&lt;category&gt;.md).\n\n\nnews-file\nstring\n'NEWS.md'\nTarget NEWS.md file path.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nfragments-dir\nstring\n'news.d'\nDirectory containing fragment files (&lt;slug&gt;.&lt;category&gt;.md).\n\n\nnews-file\nstring\n'NEWS.md'\nTarget NEWS.md file path.\n\n\nheadings\nstring\n''\nCategory-to-heading map, as newline-separated category = Heading pairs. Empty keeps the built-in map.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1856,7 +2216,19 @@
     "href": "reference/assemble-news.html#example",
     "title": "assemble-news",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/assemble-news.yml in your repo.\nname: Assemble NEWS.md\n\non:\n  workflow_dispatch:\n\njobs:\n  assemble:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: write\n    steps:\n      - name: Checkout repository\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          fetch-depth: 0\n\n      - name: Assemble news fragments\n        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2\n        with:\n          fragments-dir: news.d\n          news-file: NEWS.md\n\n      - name: Commit assembled NEWS.md\n        run: |\n          git config user.name \"github-actions[bot]\"\n          git config user.email \"github-actions[bot]@users.noreply.github.com\"\n          git add NEWS.md news.d/\n          git diff --staged --quiet || git commit -m \"chore(release): assemble news fragments into NEWS.md\"\n          git push\nSee assemble-news.yml in examples/ for the caller stub.",
+    "text": "Example\n# Copy to .github/workflows/assemble-news.yml in your repo.\nname: Assemble NEWS.md\n\non:\n  workflow_dispatch:\n\njobs:\n  assemble:\n    runs-on: ubuntu-latest\n    permissions:\n      contents: write\n    steps:\n      - name: Checkout repository\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        with:\n          fetch-depth: 0\n\n      - name: Assemble news fragments\n        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2\n        with:\n          fragments-dir: news.d\n          news-file: NEWS.md\n\n      - name: Commit assembled NEWS.md\n        run: |\n          git config user.name \"github-actions[bot]\"\n          git config user.email \"github-actions[bot]@users.noreply.github.com\"\n          git add NEWS.md news.d/\n          git diff --staged --quiet || git commit -m \"chore(release): assemble news fragments into NEWS.md\"\n          git push",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "assemble-news"
+    ]
+  },
+  {
+    "objectID": "reference/assemble-news.html#custom-headings",
+    "href": "reference/assemble-news.html#custom-headings",
+    "title": "assemble-news",
+    "section": "Custom headings",
+    "text": "Custom headings\nThe built-in map is breaking to Breaking changes; added and feature to New features; fixed and bug to Bug fixes; and changed, minor, deprecated, removed, and security to Minor improvements.\nA repo whose NEWS.md uses a different taxonomy supplies its own:\n      - name: Assemble news fragments\n        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2\n        with:\n          fragments-dir: news.d\n          headings: |\n            breaking = Breaking changes\n            added = New features\n            fixed = Bug fixes\n            infrastructure = Infrastructure\n            docs = Documentation\nWhen set, headings replaces the built-in map rather than extending it, defining both the complete set of recognized categories and the order the headings are written in. Several categories may share a heading, which then takes the position of its first-listed category.\nA # comments out a line only when it starts the line, so a heading may contain one (csharp = C# interop). A category may not contain a dot – it is a single segment of &lt;slug&gt;.&lt;category&gt;.md, and a dotted one would collate the same fragment twice whenever its suffix is also configured.\nA fragment whose category is outside the active map fails the step, naming the offending files, rather than being skipped – the check runs before anything is consumed, so a mixed batch fails without deleting the valid fragments beside it.\nSee assemble-news.yml in examples/ for the caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2000,7 +2372,7 @@
     "href": "reference/ai-code-review.html",
     "title": "ai-code-review.yml",
     "section": "",
-    "text": "Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched or fails during execution (gha#362, gha#444).\nIt sits above whichever per-agent review workflows a repo has installed — claude-code-review.yml, gemini-code-review.yml, and antigravity-code-review.yml — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the *-review-workflow-file inputs below.",
+    "text": "Multi-agent PR review. Picks one of the configured AI agents at random and dispatches that agent’s own review workflow for the PR, falling through to the next candidate when one can’t be dispatched or fails during execution (gha#362, gha#444).\nIt sits above whichever per-agent review workflows a repo has installed — claude-code-review.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, and opencode-code-review.yml — rather than reviewing anything itself, so those stubs have to exist in the caller repo and be named to match the *-review-workflow-file inputs below.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2024,7 +2396,7 @@
     "href": "reference/ai-code-review.html#inputs",
     "title": "ai-code-review.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nagents\nstring\n'claude, gemini'\nComma-separated agents to select from (claude, gemini, antigravity). Unrecognized names are warned about and skipped.\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nclaude-review-workflow-file\nstring\n'claude-code-review.yml'\nCaller-repo workflow file dispatched for a Claude review.\n\n\ngemini-review-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched for a Gemini review.\n\n\nantigravity-review-workflow-file\nstring\n'antigravity-code-review.yml'\nCaller-repo workflow file dispatched for an Antigravity review.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nagents\nstring\n'claude, gemini'\nComma-separated agents to select from (claude, gemini, antigravity, cursor, opencode). Unrecognized names are warned about and skipped.\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nclaude-review-workflow-file\nstring\n'claude-code-review.yml'\nCaller-repo workflow file dispatched for a Claude review.\n\n\ngemini-review-workflow-file\nstring\n'gemini-code-review.yml'\nCaller-repo workflow file dispatched for a Gemini review.\n\n\nantigravity-review-workflow-file\nstring\n'antigravity-code-review.yml'\nCaller-repo workflow file dispatched for an Antigravity review.\n\n\ncursor-review-workflow-file\nstring\n'cursor-code-review.yml'\nCaller-repo workflow file dispatched for a Cursor Bugbot review.\n\n\nopencode-review-workflow-file\nstring\n'opencode-code-review.yml'\nCaller-repo workflow file dispatched for an OpenCode review.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2036,7 +2408,7 @@
     "href": "reference/ai-code-review.html#secrets",
     "title": "ai-code-review.yml",
     "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nMax-plan OAuth token. Either this or ANTHROPIC_API_KEY makes claude an eligible candidate.\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key.\n\n\nGEMINI_API_KEY\nno\nGemini API key. Makes gemini and antigravity eligible candidates.",
+    "text": "Secrets\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCLAUDE_CODE_OAUTH_TOKEN\nno\nMax-plan OAuth token. Either this or ANTHROPIC_API_KEY makes claude an eligible candidate.\n\n\nANTHROPIC_API_KEY\nno\nDirect Anthropic API key.\n\n\nGEMINI_API_KEY\nno\nGemini API key. Makes gemini and antigravity eligible candidates.\n\n\nCURSOR_API_KEY\nno\nCursor Enterprise Bugbot API key (admin:*). Makes cursor an eligible candidate.\n\n\nOPENCODE_API_KEY\nno\nOpenCode Zen API key. Makes opencode an eligible candidate.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2072,7 +2444,7 @@
     "href": "reference/ai-code-review.html#example",
     "title": "ai-code-review.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/ai-code-review.yml in your repo.\nname: AI Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  ai-review:\n    permissions:\n      contents: read\n      pull-requests: read\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2\n    secrets:\n      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}\n      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   agents: 'claude, gemini, antigravity'\n    #   claude-review-workflow-file: claude-code-review.yml\n    #   gemini-review-workflow-file: gemini-code-review.yml\n    #   antigravity-review-workflow-file: antigravity-code-review.yml\nSee the examples/ directory for the full caller stub (ai-code-review.yml).",
+    "text": "Example\n# Copy to .github/workflows/ai-code-review.yml in your repo.\nname: AI Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  ai-review:\n    permissions:\n      contents: read\n      pull-requests: read\n      actions: write\n    uses: Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2\n    secrets:\n      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}\n      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}\n      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   agents: 'claude, gemini, antigravity, cursor, opencode'\n    #   claude-review-workflow-file: claude-code-review.yml\n    #   gemini-review-workflow-file: gemini-code-review.yml\n    #   antigravity-review-workflow-file: antigravity-code-review.yml\n    #   cursor-review-workflow-file: cursor-code-review.yml\n    #   opencode-review-workflow-file: opencode-code-review.yml\nSee the examples/ directory for the full caller stub (ai-code-review.yml).",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2191,7 +2563,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, and check-secrets.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, lint-workflows.yml, and spellcheck.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -2202,7 +2574,7 @@
     "href": "workflows.html#quality-checks",
     "title": "Workflows",
     "section": "Quality checks",
-    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-ai-tells.yml scans narrative prose in Markdown and Quarto files for AI tell patterns and density.\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-non-standard-chars.yml flags curly quotes, en/em dashes, and the multiplication sign in .qmd, .R, and .md files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: x or * in\ncode, and $\\times$ or &times; in prose, since Pandoc renders a \\uXXXX escape literally rather than decoding it.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\nlint-yaml.yml runs yamllint over tracked YAML with a bundled config, plus a check that flags long run: script blocks as decomposition candidates.\nlint-markdown.yml runs markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.\nlint-qmd.yml runs markdownlint over the prose sections of tracked .qmd Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.\nlint-changed-lines.yml runs lintr over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ncheck-secrets.yml scans the repository’s git history for committed credentials; see below.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended).",
+    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-ai-tells.yml scans narrative prose in Markdown and Quarto files for AI tell patterns and density.\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-non-standard-chars.yml flags curly quotes, en/em dashes, and the multiplication sign in .qmd, .R, and .md files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: x or * in\ncode, and $\\times$ or &times; in prose, since Pandoc renders a \\uXXXX escape literally rather than decoding it.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\nlint-yaml.yml runs yamllint over tracked YAML with a bundled config, plus a check that flags long run: script blocks as decomposition candidates.\nlint-markdown.yml runs markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.\nlint-qmd.yml runs markdownlint over the prose sections of tracked .qmd Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.\nlint-changed-lines.yml runs lintr over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ncheck-secrets.yml scans the repository’s git history for committed credentials; see below.\nspellcheck.yml spellchecks an R package’s prose with the {spelling} package, treating the package’s own inst/WORDLIST as the accepted vocabulary. It reads DESCRIPTION’s Title and Description fields, man/*.Rd, vignette sources (.Rmd, .qmd, .Rnw), and root README/NEWS/CHANGES/index Markdown – so a Quarto site’s other pages, and any repo that is not an R package, are out of its reach. It replaces the bespoke check-spelling.yaml several lab repos carry, and needs no wordlist migration, since that file is {spelling}’s own format.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended).",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -2224,7 +2596,7 @@
     "href": "workflows.html#secret-scanning",
     "title": "Workflows",
     "section": "Secret scanning",
-    "text": "Secret scanning\ncheck-secrets is check-phi’s counterpart for credentials: check-phi detects identifiers and has no notion of a password or a token, so a committed credential passes it cleanly.\n\nIt scans history, not the diff. A secret committed and then removed in a later commit is still exposed, because the orphaned commit stays fetchable through the GitHub API until the repository is garbage-collected. So the caller checks out with fetch-depth: 0, and a shallow clone is refused rather than reported clean on a partial scan.\nValues are never printed, in the log or the run summary. Findings report only the rule, file:line, and the commit.\nIt blocks by default, where the advisory prose checks are non-blocking.\nIts paths-ignore patterns are Go regexes matched unanchored, not globs, so docs suppresses every path containing that substring; anchor with ^ when that matters.\n\nIt complements GitHub’s native secret scanning rather than replacing it – that is a repository setting evaluating pushes, not a pull-request check – and neither substitutes for rotating an exposed credential. See check-secrets.yml for the full reference.",
+    "text": "Secret scanning\ncheck-secrets is check-phi’s counterpart for credentials: check-phi detects identifiers and has no notion of a password or a token, so a committed credential passes it cleanly.\n\nIt scans history, not the diff. A secret committed and then removed in a later commit is still exposed, because the orphaned commit stays fetchable through the GitHub API until the repository is garbage-collected. So the caller checks out with fetch-depth: 0, and a shallow clone is refused rather than reported clean on a partial scan.\nValues are never printed, in the log or the run summary. Findings report only the rule, file:line, and the commit.\nIt blocks by default, where non-blocking prose checks only annotate.\nIts paths-ignore patterns are Go regexes matched unanchored, not globs, so docs suppresses every path containing that substring; anchor with ^ when that matters.\n\nIt complements GitHub’s native secret scanning rather than replacing it – that is a repository setting evaluating pushes, not a pull-request check – and neither substitutes for rotating an exposed credential. See check-secrets.yml for the full reference.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -2246,7 +2618,7 @@
     "href": "workflows.html#claude-bots",
     "title": "Workflows",
     "section": "Claude bots",
-    "text": "Claude bots\nThe two Claude workflows are a pair.\n\nclaude.yml runs the agent-mode Claude Code bot: it responds to @claude mentions, edits files, and opens or updates PRs.\nclaude-code-review.yml runs a read-only Claude review: a consolidated summary on dispatched runs by default; add a pull_request trigger in the caller if you also want automatic reviews on PR updates.\n\nAn @claude review mention (or any commit Claude pushes) routes through claude.yml, which dispatches claude-code-review.yml via workflow_dispatch. Install both, and keep the review stub named claude-code-review.yml (or set claude.yml’s review-workflow-file input to match) so the dispatch resolves. If you also want the direct /review path, enable issue_comment in the review stub too. Enabling issue_comment is required for either comment path, since dispatch-on-comment only ever runs on that event. If you have disabled claude.yml, enable it and also set the repository variable CLAUDE_AGENT_DISABLED to true, so an @claude review mention dispatches a review from the stub rather than reaching a workflow that no longer answers it.\ngemini.yml and gemini-code-review.yml are the same pair for Gemini CLI, with the same division of labour: the agent answers @gemini and @gemini-cli mentions, and an @gemini review dispatches the reviewer rather than being answered in place. Keep the review stub named gemini-code-review.yml (or set gemini.yml’s review-workflow-file to match). Gemini needs a GEMINI_API_KEY secret; the two families are independent, so a repo can install either or both.\nAll agent workflows align with upstream action standards (such as anthropics/claude-code-action v1.0.191 and run-gemini-cli v0.1.22, alongside the google-antigravity Python SDK) for trigger policies, permission isolation, and secret handling. In particular, central workflows (claude.yml, claude-code-review.yml) and the review attempt composite action (run-claude-review-attempt) were audited against upstream reference templates in anthropics/claude-code-action:\n\nAction input forwarding. Upstream inputs such as claude_code_oauth_token, anthropic_api_key, show_full_output, and allowed_bots are forwarded cleanly, with use_sticky_comment: 'false' hardcoded in run-claude-review-attempt so each push surfaces fresh PR activity.\nPermission isolation. In agent mode, review runs enforce read-only execution by disallowing git-write tools (git add, git commit, git rm, git push, and gh pr comment) while allowlisting inline comments and read-only tools (gh pr view, gh pr diff, WebFetch, WebSearch).\nExecution guards. Single-turn verdicts are requested in system prompt addenda, while pre-flight credential checks and post-run execution checks gracefully handle unconfigured secrets or exhausted quota (#395).\n\nai-code-review.yml sits above whichever review workflows a repo has installed: it picks one of the configured agents at random and dispatches that agent’s own review workflow, falling through to the next candidate when one can’t be dispatched (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that fails or is cancelled during execution (gha#362, gha#444).",
+    "text": "Claude bots\nThe two Claude workflows are a pair.\n\nclaude.yml runs the agent-mode Claude Code bot: it responds to @claude mentions, edits files, and opens or updates PRs.\nclaude-code-review.yml runs a read-only Claude review: a consolidated summary on dispatched runs by default; add a pull_request trigger in the caller if you also want automatic reviews on PR updates.\n\nAn @claude review mention (or any commit Claude pushes) routes through claude.yml, which dispatches claude-code-review.yml via workflow_dispatch. Install both, and keep the review stub named claude-code-review.yml (or set claude.yml’s review-workflow-file input to match) so the dispatch resolves. If you also want the direct /review path, enable issue_comment in the review stub too. Enabling issue_comment is required for either comment path, since dispatch-on-comment only ever runs on that event. If you have disabled claude.yml, enable it and also set the repository variable CLAUDE_AGENT_DISABLED to true, so an @claude review mention dispatches a review from the stub rather than reaching a workflow that no longer answers it.\ngemini.yml and gemini-code-review.yml are the same pair for Gemini CLI, with the same division of labour: the agent answers @gemini and @gemini-cli mentions, and an @gemini review dispatches the reviewer rather than being answered in place. Keep the review stub named gemini-code-review.yml (or set gemini.yml’s review-workflow-file to match). Gemini needs a GEMINI_API_KEY secret; the two families are independent, so a repo can install either or both.\ncursor-code-review.yml queues a Cursor Bugbot review through the Enterprise Bugbot API. It is not a mention bot: there is no cursor.yml counterpart. Team and individual Cursor plans should enable Bugbot in the dashboard (automatic reviews, or a PR comment cursor review / bugbot run) instead of this workflow. Add cursor to ai-code-review.yml’s agents input when CURSOR_API_KEY is set and the caller stub is installed.\nopencode-code-review.yml runs the opencode CLI headless as a read-only reviewer: the diff arrives as an attachment, the agent reads the checkout for context, and its review is posted by the workflow itself. There is no opencode.yml mention bot yet (tracked in gha#586’s deferred follow-ups), so reviews arrive via pull_request, ai-code-review.yml dispatch, or manual workflow_dispatch. Add the OPENCODE_API_KEY secret (OpenCode Zen) and add opencode to ai-code-review.yml’s agents input.\nAll agent workflows align with upstream action standards (such as anthropics/claude-code-action v1.0.191 and run-gemini-cli v0.1.22, alongside the google-antigravity Python SDK) for trigger policies, permission isolation, and secret handling. In particular, central workflows (claude.yml, claude-code-review.yml) and the review attempt composite action (run-claude-review-attempt) were audited against upstream reference templates in anthropics/claude-code-action:\n\nAction input forwarding. Upstream inputs such as claude_code_oauth_token, anthropic_api_key, show_full_output, and allowed_bots are forwarded cleanly, with use_sticky_comment: 'false' hardcoded in run-claude-review-attempt so each push surfaces fresh PR activity.\nPermission isolation. In agent mode, review runs enforce read-only execution by disallowing git-write tools (git add, git commit, git rm, git push, and gh pr comment) while allowlisting inline comments and read-only tools (gh pr view, gh pr diff, WebFetch, WebSearch).\nExecution guards. Single-turn verdicts are requested in system prompt addenda, while pre-flight credential checks and post-run execution checks gracefully handle unconfigured secrets or exhausted quota (#395).\n\nai-code-review.yml sits above whichever review workflows a repo has installed: it picks one of the configured agents at random and dispatches that agent’s own review workflow, falling through to the next candidate when one can’t be dispatched (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that fails or is cancelled during execution (gha#362, gha#444).",
     "crumbs": [
       "Overview",
       "Workflows"

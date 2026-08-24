@@ -445,6 +445,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-workflows.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
@@ -541,6 +547,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">cursor-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/opencode-code-review.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">opencode-code-review.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/ai-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">ai-code-review.yml</span></a>
   </div>
@@ -591,6 +609,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <div class="sidebar-item-container"> 
   <a href="../reference/version-check.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">version-check.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/spellcheck.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
       </ul>
@@ -815,7 +839,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>One red result is not a review failure at all: a <code>claude-review</code> run canceled by a newer run of the same PR (<code>cancel-in-progress</code>) also turns this gate red. Check whether <code>claude-review</code>’s conclusion is <code>cancelled</code> rather than <code>failure</code> before investigating the diff, and trust the surviving run’s review.</p>
 <p>The gate skips gray whenever no review was attempted. That covers anything that made the <code>claude-review</code> job’s own <code>if:</code> false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:</p>
 <ul>
-<li>the API quota was exhausted before any review work happened;</li>
+<li>the API quota was exhausted — either before any review work happened, or part-way through the run, which leaves a <code>429</code> behind after real turns and real cost (<a href="https://github.com/Morrison-Lab/gha/issues/520">#520</a>);</li>
 <li>the PR edits the caller’s own review workflow file.</li>
 </ul>
 <p>That last case deserves care. <code>claude-code-action</code> requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and <strong>no re-run or re-dispatch will change that</strong> — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.</p>
