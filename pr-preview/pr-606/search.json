@@ -416,7 +416,7 @@
     "href": "reference/check-junk-files.html#example",
     "title": "check-junk-files.yml",
     "section": "Example",
-    "text": "Example\nname: Check junk files\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2\n    # with:\n    #   paths-ignore: 'tests/fixtures/'\n    #   fail: 'false'\nSee examples/check-junk-files.yml for the full caller stub.",
+    "text": "Example\nname: Check junk files\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2\n    # with:\n    #   paths-ignore: 'tests/fixtures/'\n    #   fail: 'false'\nSee check-junk-files.yml in examples/ for the full caller stub. (Linked to the directory rather than the file, for the reason check-secrets.qmd records: a blob/main/... link to a capability’s own example 404s on the pull request that introduces it, and check-links rightly fails it.)",
     "crumbs": [
       "Overview",
       "Reference",
