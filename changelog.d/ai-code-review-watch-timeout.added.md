@@ -1,0 +1,1 @@
+- Add `watch-timeout` input to `ai-code-review.yml` and handle watch timeouts in candidate loop, falling through to the next candidate (gha#570).
