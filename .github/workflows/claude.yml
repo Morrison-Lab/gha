@@ -247,6 +247,15 @@ on:
           types:`. See `examples/claude.yml` for the literal clause.
         type: string
         default: '[]'
+      extra-secret-names:
+        description: >-
+          Space-, comma-, or newline-separated list of caller secret names to
+          export into the agent environment (e.g. 'EPI202_TOKEN EPI204_TOKEN').
+          Requires 'secrets: inherit' on the caller's 'uses:' call. Secret names
+          must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow
+          environment variables. Empty to skip.
+        type: string
+        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
@@ -757,6 +766,18 @@ jobs:
           else
             echo "::warning::link-skills is true but no top-level skills/ directory was found."
           fi
+
+      # Export requested consumer secrets into the agent environment (gha#618).
+      # Validates secret names against naming conventions and protected environment
+      # variables, registers masks for values, and appends them to $GITHUB_ENV.
+      - name: Export extra secrets to environment
+        if: steps.gate.outputs.skip != 'true' && inputs.extra-secret-names != ''
+        shell: bash
+        env:
+          EXTRA_SECRET_NAMES: ${{ inputs.extra-secret-names }}
+          SECRETS_JSON: ${{ toJson(secrets) }}
+        run: |
+          python3 .github/workflows/scripts/export-extra-secrets.py
 
       - name: Run Claude Code
         id: claude

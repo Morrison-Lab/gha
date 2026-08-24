@@ -40,6 +40,7 @@ Requires a `GEMINI_API_KEY` secret.
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the Gemini CLI prompt. |
 | `gemini-model` | string | `'gemini-2.5-flash'` | Model passed to `run-gemini-cli`. |
 | `review-workflow-file` | string | `'gemini-code-review.yml'` | Caller-repo workflow file dispatched on `@gemini review` mentions. |
+| `extra-secret-names` | string | `''` | Space-, comma-, or newline-separated caller secret names to export into the agent environment (e.g. `'EPI202_TOKEN EPI204_TOKEN'`). Requires `secrets: inherit` on the caller `uses:`. Secret names must match `[A-Z_][A-Z0-9_]*` and cannot shadow protected workflow environment variables. Empty to skip. |
 
 ## Secrets
 
