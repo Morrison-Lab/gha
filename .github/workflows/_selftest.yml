@@ -603,12 +603,12 @@ jobs:
         uses: ./.github/actions/build-self-review-skip-notice
         with:
           workflow-path: .github/workflows/claude-code-review.yml
+          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
       - name: Exercise export-extra-secrets composite action end-to-end
         uses: ./.github/actions/export-extra-secrets
         with:
           extra-secret-names: TEST_SECRET
           secrets-json: '{"TEST_SECRET": "test_val"}'
-          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
       - name: Assert build-self-review-skip-notice generated body file
         shell: bash
         env:
