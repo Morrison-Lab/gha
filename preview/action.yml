@@ -176,7 +176,10 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        [ -n "$OUTPUT_DIR" ] && OUTPUT_FLAG="--output-dir $OUTPUT_DIR" || OUTPUT_FLAG=""
+        quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf $OUTPUT_FLAG 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render docx
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:docx')
@@ -184,7 +187,10 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --no-clean 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        [ -n "$OUTPUT_DIR" ] && OUTPUT_FLAG="--output-dir $OUTPUT_DIR" || OUTPUT_FLAG=""
+        quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --no-clean $OUTPUT_FLAG 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render revealjs
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:revealjs')
@@ -192,7 +198,10 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --no-clean 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        [ -n "$OUTPUT_DIR" ] && OUTPUT_FLAG="--output-dir $OUTPUT_DIR" || OUTPUT_FLAG=""
+        quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --no-clean $OUTPUT_FLAG 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render html
       if: github.event.action != 'closed'
@@ -200,7 +209,10 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --no-clean 2>&1 | tee -a _quarto_preview_render.log
+        OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: |
+        [ -n "$OUTPUT_DIR" ] && OUTPUT_FLAG="--output-dir $OUTPUT_DIR" || OUTPUT_FLAG=""
+        quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --no-clean $OUTPUT_FLAG 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Verify render warnings and forbidden log patterns
       if: github.event.action != 'closed'
