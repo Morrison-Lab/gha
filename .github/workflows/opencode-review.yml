@@ -1,0 +1,36 @@
+# Active caller for this repo's own reusable OpenCode PR review workflow
+# (dogfooding). Distinct filename from the reusable
+# .github/workflows/opencode-code-review.yml it calls.
+#
+# Dispatch-only for now; uncomment the pull_request block below to review
+# every PR automatically. Requires the OPENCODE_API_KEY secret
+# (repo- or org-level; org secrets must grant this repo visibility).
+# Do NOT add a top-level concurrency: block -- see examples/opencode-code-review.yml.
+name: OpenCode Review
+
+on:
+  # Optional: automatic review on PR activity.
+  # pull_request:
+  #   types: [opened, synchronize, ready_for_review, reopened]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to review'
+        required: true
+        type: string
+
+jobs:
+  review:
+    # No timeout-minutes here: a job calling a reusable workflow rejects the
+    # key at parse time (0-second zero-job failure); set timeouts in the
+    # called workflow instead.
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/opencode-code-review.yml@v2
+    secrets:
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}
+    with:
+      pr-number: ${{ inputs.pr_number }}
