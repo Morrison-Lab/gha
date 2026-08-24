@@ -58,6 +58,15 @@ on:
         description: Run in dry-run verification mode without external network calls.
         type: boolean
         default: false
+      extra-secret-names:
+        description: >-
+          Space-, comma-, or newline-separated list of caller secret names to
+          export into the agent environment (e.g. 'EPI202_TOKEN EPI204_TOKEN').
+          Requires 'secrets: inherit' on the caller's 'uses:' call. Secret names
+          must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow
+          environment variables. Empty to skip.
+        type: string
+        default: ''
 
     secrets:
       API_KEY:
@@ -139,6 +148,18 @@ jobs:
         id: gate-phi
         uses: Morrison-Lab/gha/check-phi@v2
         continue-on-error: true
+
+      # Export requested consumer secrets into the agent environment (gha#618).
+      # Validates secret names against naming conventions and protected environment
+      # variables, registers masks for values, and appends them to $GITHUB_ENV.
+      - name: Export extra secrets to environment
+        if: inputs.extra-secret-names != ''
+        shell: bash
+        env:
+          EXTRA_SECRET_NAMES: ${{ inputs.extra-secret-names }}
+          SECRETS_JSON: ${{ toJson(secrets) }}
+        run: |
+          python3 .github/workflows/scripts/export-extra-secrets.py
 
       - name: Execute small-model agent runner
         id: run-agent

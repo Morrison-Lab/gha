@@ -569,6 +569,9 @@ jobs:
       - name: Run reviewer allowlist guard
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-reviewer-allowlist-tests.py
+      - name: Run export-extra-secrets unit tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/test_export_extra_secrets.py
       - name: Run detect-bot-mention tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-bot-mention-tests.sh

@@ -27,6 +27,7 @@ Companion to [`Morrison-Lab/ai-config#1292`](https://github.com/Morrison-Lab/ai-
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
 | `run-gates` | boolean | `true` | Run repository verification gates. |
 | `dry-run` | boolean | `false` | Run in dry-run verification mode without network calls. |
+| `extra-secret-names` | string | `''` | Space-, comma-, or newline-separated caller secret names to export into the agent environment (e.g. `'EPI202_TOKEN EPI204_TOKEN'`). Requires `secrets: inherit` on the caller `uses:`. Secret names must match `[A-Z_][A-Z0-9_]*` and cannot shadow protected workflow environment variables. Empty to skip. |
 
 ## Secrets
 
