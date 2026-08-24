@@ -235,16 +235,16 @@ parse_ignore_tells <- function(raw_arg) {
   if (!nzchar(raw_arg)) return(character(0))
 
   if (grepl("[,\\n]", raw_arg)) {
-    tokens <- unlist(strsplit(raw_arg, "[,\\n]+", perl = TRUE), use.names = FALSE)
+    raw_tokens <- strsplit(raw_arg, "[,\\n]+", perl = TRUE)[[1]]
   } else {
     all_known_tells <- c(LEXICAL_TELLS, unname(sapply(RHETORICAL_PATTERNS, function(p) p$name)))
     if (tolower(raw_arg) %in% tolower(all_known_tells)) {
-      tokens <- raw_arg
+      raw_tokens <- raw_arg
     } else {
-      tokens <- unlist(strsplit(raw_arg, "[[:space:]]+"), use.names = FALSE)
+      raw_tokens <- strsplit(raw_arg, "[[:space:]]+")[[1]]
     }
   }
-  tokens <- tolower(trimws(tokens))
+  tokens <- tolower(trimws(raw_tokens))
   tokens <- tokens[nzchar(tokens)]
   unname(as.character(unique(tokens)))
 }
