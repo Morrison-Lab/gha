@@ -19,6 +19,10 @@ on:
         description: Maximum allowed tell density per 1,000 words.
         type: string
         default: '10'
+      ignore-tells:
+        description: Comma- or space-separated list of tell names to ignore.
+        type: string
+        default: ''
       fail:
         description: Whether to fail the workflow on high tell density.
         type: boolean
@@ -43,4 +47,5 @@ jobs:
           paths-ignore: ${{ inputs.paths-ignore }}
           base-ref: ${{ inputs.base-ref }}
           threshold: ${{ inputs.threshold }}
+          ignore-tells: ${{ inputs.ignore-tells }}
           fail: ${{ inputs.fail }}

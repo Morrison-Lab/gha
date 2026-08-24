@@ -87,4 +87,19 @@ res_diff_scoped <- scan_file_prose(pos_file, added_lines_only = c(3L, 4L))
 check("Diff-scoped word count only counts scoped lines", res_diff_scoped$word_count < res_pos$word_count)
 check("Diff-scoped only reports tells on scoped lines", all(sapply(res_diff_scoped$findings, function(x) x$line %in% c(3L, 4L))))
 
+# Test 6: Ignore tells parsing and filtering
+check("Parse comma-separated ignore-tells", identical(parse_ignore_tells("robust, landscape"), c("robust", "landscape")))
+check("Parse multi-word rhetorical tell in ignore-tells", identical(parse_ignore_tells("robust, negation-reversal antithesis"), c("robust", "negation-reversal antithesis")))
+check("Parse space-separated ignore-tells", identical(parse_ignore_tells("robust landscape"), c("robust", "landscape")))
+check("Parse single multi-word tell without comma", identical(parse_ignore_tells("signposting filler"), c("signposting filler")))
+check("Parse empty ignore-tells", length(parse_ignore_tells("")) == 0L)
+
+ignored_set <- parse_ignore_tells("delve, elevate, signposting filler")
+filtered_pos <- Filter(function(x) !(tolower(x$tell) %in% ignored_set), res_pos$findings)
+tells_filtered <- sapply(filtered_pos, function(x) x$tell)
+check("Ignored delve suppressed", !"delve" %in% tells_filtered)
+check("Ignored elevate suppressed", !"elevate" %in% tells_filtered)
+check("Ignored signposting filler suppressed", !"signposting filler" %in% tells_filtered)
+check("Unignored holistic remains", "holistic" %in% tells_filtered)
+
 cat("\nAll check-ai-tells tests passed successfully.\n")
