@@ -109,9 +109,9 @@ check("Parse empty ignore-tells", length(res_empty) == 0L, length(res_empty), 0L
 ignored_set <- parse_ignore_tells("delve, elevate, signposting filler")
 filtered_pos <- Filter(function(x) !(tolower(x$tell) %in% ignored_set), res_pos$findings)
 tells_filtered <- sapply(filtered_pos, function(x) x$tell)
-check("Ignored delve suppressed", !"delve" %in% tells_filtered)
-check("Ignored elevate suppressed", !"elevate" %in% tells_filtered)
-check("Ignored signposting filler suppressed", !"signposting filler" %in% tells_filtered)
-check("Unignored holistic remains", "holistic" %in% tells_filtered)
+check("Ignored delve suppressed", !("delve" %in% tells_filtered), "delve" %in% tells_filtered, FALSE)
+check("Ignored elevate suppressed", !("elevate" %in% tells_filtered), "elevate" %in% tells_filtered, FALSE)
+check("Ignored signposting filler suppressed", !("signposting filler" %in% tells_filtered), "signposting filler" %in% tells_filtered, FALSE)
+check("Unignored holistic remains", "holistic" %in% tells_filtered, "holistic" %in% tells_filtered, TRUE)
 
 cat("\nAll check-ai-tells tests passed successfully.\n")
