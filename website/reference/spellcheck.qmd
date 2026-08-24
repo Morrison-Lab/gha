@@ -89,6 +89,10 @@ caches them, and the upstream install then finds the package present.
 Only {spelling} is installed, not the consumer package's own dependencies:
 `spell_check_package()` reads a package's files without loading it, so
 resolving its dependency tree would be pure cost.
+`RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'` is set during dependency setup so
+{spelling} installs to the site library even in `renv` projects; upstream's
+`additional-options: '--vanilla'` default then finds it without requiring
+`.Rprofile` activation ([#620](https://github.com/Morrison-Lab/gha/issues/620)).
 For the same reason `install-quarto` defaults to `'false'` -- {spelling} reads
 vignette *sources* and never renders them.
 

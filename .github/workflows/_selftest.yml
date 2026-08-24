@@ -2346,10 +2346,15 @@ jobs:
           set -euo pipefail
           bash spellcheck/tests/make-fixture.sh _ci-spellcheck-listed
           bash spellcheck/tests/make-fixture.sh _ci-spellcheck-unlisted --no-wordlist
+          bash spellcheck/tests/make-fixture.sh _ci-spellcheck-renv --renv
       - name: Spellcheck the fixture whose inst/WORDLIST lists the term
         uses: ./spellcheck
         with:
           path: _ci-spellcheck-listed
+      - name: Spellcheck the renv project fixture (inst/WORDLIST present)
+        uses: ./spellcheck
+        with:
+          path: _ci-spellcheck-renv
       - name: Spellcheck the fixture with no inst/WORDLIST
         id: unlisted
         continue-on-error: true
