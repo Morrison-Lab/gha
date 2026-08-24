@@ -120,9 +120,12 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout submodules
+        if: inputs.checkout-submodules
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
         with:
-          submodules: ${{ inputs.checkout-submodules && 'recursive' || 'false' }}
-          token: ${{ inputs.checkout-submodules && secrets.SUBMODULES_TOKEN || github.token }}
+          submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
       - name: Download pre-render artifact
         # Best-effort: a caller's optional asset-builder job may have failed or
