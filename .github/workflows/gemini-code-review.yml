@@ -130,6 +130,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # Explicit `+e`, not merely omitting `-e`: a `run:` step with no
           # `shell:` key defaults to `bash -e {0}`, so -e is already active
@@ -155,6 +156,12 @@ jobs:
           if [[ "$IS_CROSS_REPO" == "true" || "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork or Dependabot PR (isCrossRepository=$IS_CROSS_REPO, author=$AUTHOR_LOGIN)."
+            gh issue comment "$PR_NUMBER" --repo "$REPO" \
+              --body "> [!WARNING]
+> **No review ran — dispatched Gemini review of fork or Dependabot PRs is disabled.**
+> Dispatched reviews of fork PRs and Dependabot PRs are skipped by design (gha#573).
+>
+> [View run]($RUN_URL)" || echo "::warning::Could not post dispatch-guard skip comment."
           else
             echo "blocked=false" >> "$GITHUB_OUTPUT"
           fi
