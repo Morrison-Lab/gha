@@ -212,7 +212,7 @@
     "href": "reference/preview-deploy.html#inputs",
     "title": "preview-deploy.yml",
     "section": "Inputs",
-    "text": "Inputs\nThis workflow takes no inputs.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npages-base-url\nstring\n''\nCustom Pages base URL (e.g. 'org.github.io' or a custom domain) to override automatic URL guessing by pr-preview-action.\n\n\npages-base-path\nstring\n''\nCustom Pages base path prefix to override automatic path guessing by pr-preview-action.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -236,7 +236,7 @@
     "href": "reference/preview-deploy.html#example",
     "title": "preview-deploy.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/preview-deploy.yml in your repo.\n# Deploy half of the PR-preview family: triggered when the build workflow\n# finishes, downloads its artifact, and publishes the preview to gh-pages. This\n# runs in the BASE-repo context, so its token can write --- keeping it separate\n# from the read-only build half is the trust boundary.\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Quarto Preview Deploy\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  deploy:\n    permissions:\n      contents: write # push to gh-pages\n      pull-requests: write # post the preview-link comment\n      actions: read # download the build artifact\n    uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2\nSee examples/preview-deploy.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/preview-deploy.yml in your repo.\n# Deploy half of the PR-preview family: triggered when the build workflow\n# finishes, downloads its artifact, and publishes the preview to gh-pages. This\n# runs in the BASE-repo context, so its token can write --- keeping it separate\n# from the read-only build half is the trust boundary.\n#\n# NOTE: the `workflows:` value below MUST match the `name:` of your build\n# workflow (examples/preview.yml). `workflow_run` triggers only fire when this\n# file lives on the default branch.\nname: Quarto Preview Deploy\n\non:\n  workflow_run:\n    workflows: [\"Quarto Preview Build\"]\n    types: [completed]\n\njobs:\n  deploy:\n    permissions:\n      contents: write # push to gh-pages\n      pull-requests: write # post the preview-link comment\n      actions: read # download the build artifact\n    uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2\n    # with:\n    #   pages-base-url: 'example.org' # custom Pages base URL or custom domain\n    #   pages-base-path: 'docs'       # custom Pages base path prefix\nSee examples/preview-deploy.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
