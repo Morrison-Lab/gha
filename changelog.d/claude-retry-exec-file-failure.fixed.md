@@ -1,0 +1,1 @@
+- Attribute `short-circuit` failure kind when `claude-code-review.yml`'s retry execution-file resolution step fails before `fail-check-retry` runs (gha#549).
