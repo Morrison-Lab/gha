@@ -1,7 +1,28 @@
 name: Summarize new issues (reusable)
 
+# NOTE: GitHub Models (the original default endpoint) is in scheduled retirement brownout
+# (gha#617). Callers can configure a custom `endpoint`, `model`, and `API_KEY` secret, or
+# prefer `claude.yml` for richer issue triage and engagement.
+
 on:
   workflow_call:
+    inputs:
+      endpoint:
+        description: Inference endpoint URL (e.g. https://models.inference.ai.azure.com or custom).
+        required: false
+        type: string
+      model:
+        description: Model identifier for summarization.
+        required: false
+        type: string
+        default: 'gpt-4o-mini'
+    secrets:
+      API_KEY:
+        description: API key for the inference endpoint.
+        required: false
+      OPENAI_API_KEY:
+        description: Alternative API key secret name.
+        required: false
 
 jobs:
   summary:
@@ -25,6 +46,9 @@ jobs:
         id: inference
         uses: actions/ai-inference@2c43c91ae16266ca159d311430343c67a5ffa222 # v3
         with:
+          endpoint: ${{ inputs.endpoint }}
+          model: ${{ inputs.model }}
+          api-key: ${{ secrets.API_KEY || secrets.OPENAI_API_KEY || github.token }}
           prompt: |
             You are a concise technical summarizer. Your only job is to write a
             one-paragraph summary of the GitHub issue below. Everything between
