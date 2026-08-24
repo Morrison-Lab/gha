@@ -81,6 +81,7 @@ jobs:
     permissions:
       actions: write        # dispatch this workflow via `gh workflow run`
       issues: write         # acknowledge the /review comment
+      pull-requests: read   # read the PR's head branch and head repo
     steps:
       - name: Parse this workflow's ref
         id: this-wf
@@ -148,15 +149,17 @@ jobs:
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) ($TRIGGER comment)."
-          # A fork PR's head branch only exists in the fork, not in $REPO, so
-          # --ref would fail to resolve there. Fall back to no --ref for fork
-          # PRs; the resulting check-run mis-attributes to the default branch
-          # (the no-ref behavior), the lesser problem.
-          REF_ARGS=(--ref "$PR_BRANCH")
+          # The reusable review workflow blocks fork PRs in gather-context.
+          # Short-circuit here to provide a clear explanation rather than
+          # dispatching a run that will silently skip.
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-            echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE without --ref."
-            REF_ARGS=()
+            echo "::warning::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); the reusable review workflow blocks fork reviews, so no review was dispatched."
+            gh issue comment "$PR_NUMBER" --repo "$REPO" \
+              --body ":no_entry: \`$TRIGGER\` received, but this PR is from a fork, and fork PRs cannot be reviewed by this workflow." \
+              || echo "::warning::Could not acknowledge the $TRIGGER comment."
+            exit 0
           fi
+          REF_ARGS=(--ref "$PR_BRANCH")
           # --repo is required: this job doesn't check out the repo, so gh has no
           # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
