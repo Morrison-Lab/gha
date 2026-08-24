@@ -55,6 +55,10 @@ on:
         description: Quarto `--profile` to render with.
         type: string
         default: 'website'
+      output-dir:
+        description: Directory the rendered site is written to, relative to `path`. Defaults to `_site`.
+        type: string
+        default: '_site'
       fail-on-render-warning:
         description: Fail the build if Quarto emits any render warnings (WARN in the render log).
         type: boolean
@@ -98,5 +102,6 @@ jobs:
           setup-chrome: ${{ inputs.setup-chrome }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
+          output-dir: ${{ inputs.output-dir }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}

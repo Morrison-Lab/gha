@@ -40,6 +40,9 @@ inputs:
   render-profile:
     description: Quarto `--profile` to render with.
     default: 'website'
+  output-dir:
+    description: Directory the rendered site is written to, relative to `path`. Defaults to `_site`.
+    default: '_site'
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
     default: 'false'
@@ -234,10 +237,11 @@ runs:
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
       run: |
         set -euo pipefail
-        echo "contents of $PROJECT_PATH/_site:"
-        ls "$PROJECT_PATH/_site/"
+        echo "contents of $PROJECT_PATH/$OUTPUT_DIR:"
+        ls "$PROJECT_PATH/$OUTPUT_DIR/"
         echo "contents of $PROJECT_PATH:"
         ls "$PROJECT_PATH"
 
@@ -253,10 +257,11 @@ runs:
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
+        OUTPUT_DIR: ${{ inputs.output-dir }}
       run: |
         set -euo pipefail
         mkdir -p _preview_upload/site/
-        cp -r "$PROJECT_PATH/_site/." _preview_upload/site/
+        cp -r "$PROJECT_PATH/$OUTPUT_DIR/." _preview_upload/site/
 
     - name: Upload preview artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
