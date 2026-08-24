@@ -1700,7 +1700,7 @@
     "href": "reference/check-ai-tells.html#inputs",
     "title": "check-ai-tells",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDescription\nDefault\n\n\n\n\npaths\nComma- or space-separated list of files or globs to scan.\nAll *.md, *.qmd, *.Rmd\n\n\npaths-ignore\nComma- or space-separated list of file paths or globs to exclude from scanning.\n''\n\n\nbase-ref\nGit base ref to limit checking to newly added/modified lines in diff.\n'' (whole-file scan)\n\n\nthreshold\nMaximum allowed tell density (tells per 1,000 words) before failing when fail: true.\n10\n\n\nfail\nWhether to fail the workflow if tell density exceeds threshold.\nfalse",
+    "text": "Inputs\n\n\n\n\n\n\n\n\nInput\nDescription\nDefault\n\n\n\n\npaths\nComma- or space-separated list of files or globs to scan.\nAll *.md, *.qmd, *.Rmd\n\n\npaths-ignore\nComma- or space-separated list of file paths or globs to exclude from scanning.\n''\n\n\nbase-ref\nGit base ref to limit checking to newly added/modified lines in diff.\n'' (whole-file scan)\n\n\nthreshold\nMaximum allowed tell density (tells per 1,000 words) before failing when fail: true.\n10\n\n\nignore-tells\nComma- or space-separated list of tell names to ignore (e.g. robust, landscape).\n''\n\n\nfail\nWhether to fail the workflow if tell density exceeds threshold.\nfalse",
     "crumbs": [
       "Overview",
       "Reference",
