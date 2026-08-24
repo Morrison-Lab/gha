@@ -1,0 +1,20 @@
+# Copy to .github/workflows/check-junk-files.yml in your repo.
+name: Check Junk Files
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2
+    # with:
+    #   # Exempt a path that genuinely belongs in the tree. A trailing `/`
+    #   # exempts a whole directory.
+    #   paths-ignore: 'tests/fixtures/'
+    #   # Warn instead of blocking, e.g. while cleaning up an existing tree.
+    #   fail: 'false'
