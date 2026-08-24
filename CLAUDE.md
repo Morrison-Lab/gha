@@ -1218,7 +1218,7 @@ So carry each credential in a form no other pattern can reach: a bare
 assignment or a file write, never a header and never a URL.
 A sibling pattern is one way to make such a case vacuous.
 The other is a **later stage of the same path** (gha#571, gha#574): a guard that
-rejects for a second reason — a missing file, an empty value, a type check — fails
+rejects for a second reason -- a missing file, an empty value, a type check -- fails
 the input whether or not the alternative under test exists.
 So a negative case must be built so the code **succeeds** when the thing being
 tested is removed, not merely fails differently.
