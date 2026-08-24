@@ -60,6 +60,15 @@ INSTALLER
 STUB
 chmod +x "$tmp/bin/curl"
 
+if ! command -v timeout >/dev/null 2>&1; then
+  cat > "$tmp/bin/timeout" <<'TIMEOUT_STUB'
+#!/usr/bin/env bash
+shift
+exec "$@"
+TIMEOUT_STUB
+  chmod +x "$tmp/bin/timeout"
+fi
+
 run_scenario() {
   local name="$1" attempts="$2" state_file="$3"
   mkdir -p "$tmp/home-$name"
