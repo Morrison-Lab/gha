@@ -32,12 +32,7 @@ jobs:
     #   r-version: '4.6.0'
     #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list
     #   use-renv: true                     # set false for non-renv repos
-    #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false
     #   install-package: true              # `R CMD INSTALL .` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   submodules: recursive
     #   render-profile: website
-    #   output-dir: docs                   # render to a dir other than _site
-    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
-    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
-    #     doesn't match any files or folders

@@ -9,27 +9,19 @@ skip the deploy.
 
 ## Inputs
 
-| Input                      | Type    | Default                                           | Description                                                                                                                                       |
-| -------------------------- | ------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`                     | string  | `'.'`                                             | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`).                                                       |
-| `setup-r`                  | boolean | `false`                                           | Install R and project R dependencies before rendering (for R/knitr Quarto projects).                                                              |
-| `r-packages`               | string  | `(long; see workflow file)`                       | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`.              |
-| `use-renv`                 | boolean | `false`                                           | Restore R dependencies with renv instead of `r-packages` (requires `setup-r`).                                                                    |
-| `install-package`          | boolean | `false`                                           | Run `R CMD INSTALL <path>` before rendering so package functions are available (requires `setup-r`).                                              |
-| `setup-chrome`             | boolean | `false`                                           | Install Chrome via `browser-actions/setup-chrome` before rendering (needed for revealjs/screenshots/mermaid).                                     |
-| `tinytex`                  | boolean | `false`                                           | Install TinyTeX (needed to render PDF outputs).                                                                                                   |
-| `apt-packages`             | string  | `''`                                              | Extra apt packages to install before rendering (space-separated).                                                                                 |
-| `output-dir`               | string  | `'_site'`                                         | Directory the rendered site is written to, relative to `path`; forwarded to `quarto render --output-dir` and overrides any `_quarto.yml` setting. |
-| `render-profile`           | string  | `''`                                              | Quarto `--profile` to render with (e.g. `'website'`). Empty to omit.                                                                              |
-| `formats`                  | string  | `''`                                              | Whitespace- or newline-separated Quarto output formats to render individually in order to prevent V8 out-of-memory errors on large sites.         |
-| `freeze-cache`             | boolean | `false`                                           | Restore and save Quarto `_freeze` directory via `actions/cache` keyed on `renv.lock` and commit SHA.                                              |
-| `deno-v8-options`          | string  | `'--max-old-space-size=12288,--max-heap-size=12288'` | Options passed to Deno V8 via `QUARTO_DENO_V8_OPTIONS` to raise the heap limit for large site renders.                                           |
-| `fail-on-render-warning`   | boolean | `false`                                           | Fail the build if Quarto emits any render warnings (`WARN` in the render log).                                                                   |
-| `forbid-log-patterns`      | string  | `''`                                              | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files).                              |
-| `checkout-submodules`      | boolean | `false`                                           | Initialize the caller's git submodules before rendering.                                                                                          |
-| `pre-render-artifact`      | string  | `''`                                              | Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.     |
-| `pre-render-artifact-path` | string  | `''`                                              | Directory in the caller repo to extract `pre-render-artifact` into. Defaults to the workspace root.                                               |
-| `deploy`                   | boolean | `true`                                            | Deploy the rendered site to the `gh-pages` branch. Set false to render only.                                                                      |
+| Input                      | Type    | Default                     | Description                                                                                                                                       |
+| -------------------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`                     | string  | `'.'`                       | Path in the caller repo to the Quarto project to render (the directory with `_quarto.yml`).                                                       |
+| `setup-r`                  | boolean | `false`                     | Install R and project R dependencies before rendering (for R/knitr Quarto projects).                                                              |
+| `r-packages`               | string  | `(long; see workflow file)` | r-lib/actions package specs installed when `setup-r` is true and `use-renv` is false. Defaults to `any::knitr` and `any::rmarkdown`.              |
+| `use-renv`                 | boolean | `false`                     | Restore R dependencies with renv instead of `r-packages` (requires `setup-r`).                                                                    |
+| `tinytex`                  | boolean | `false`                     | Install TinyTeX (needed to render PDF outputs).                                                                                                   |
+| `apt-packages`             | string  | `''`                        | Extra apt packages to install before rendering (space-separated).                                                                                 |
+| `output-dir`               | string  | `'_site'`                   | Directory the rendered site is written to, relative to `path`; forwarded to `quarto render --output-dir` and overrides any `_quarto.yml` setting. |
+| `checkout-submodules`      | boolean | `false`                     | Initialize the caller's git submodules before rendering.                                                                                          |
+| `pre-render-artifact`      | string  | `''`                        | Name of a workflow-run artifact to download into the project before rendering, so an earlier job can inject build-time assets. Empty to skip.     |
+| `pre-render-artifact-path` | string  | `''`                        | Directory in the caller repo to extract `pre-render-artifact` into. Defaults to the workspace root.                                               |
+| `deploy`                   | boolean | `true`                      | Deploy the rendered site to the `gh-pages` branch. Set false to render only.                                                                      |
 
 ## Secrets
 
@@ -79,21 +71,11 @@ jobs:
       contents: write
     uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
     # with:
-    #   path: website           # Quarto project lives in a subdir (default: repo root)
+    #   path: website          # Quarto project lives in a subdir (default: repo root)
     #   setup-r: true           # for R/knitr Quarto projects (default: false)
     #   use-renv: true          # restore R deps with renv instead of r-packages
-    #   install-package: true   # R CMD INSTALL . before render (for R packages)
-    #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid
     #   tinytex: true           # needed to render PDF outputs
-    #   apt-packages: ''        # extra system packages (space-separated)
     #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)
-    #   render-profile: website # Quarto --profile to render with
-    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
-    #   freeze-cache: true      # cache Quarto _freeze across runs
-    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
-    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log
-    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log
-    #     doesn't match any files or folders
     #   checkout-submodules: true
     #   pre-render-artifact: demo-media       # inject a prior job's artifact before render
     #   pre-render-artifact-path: website/media

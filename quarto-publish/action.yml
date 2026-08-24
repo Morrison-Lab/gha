@@ -28,16 +28,6 @@ inputs:
     description: >-
       Restore R dependencies with renv instead of r-packages (requires setup-r).
     default: 'false'
-  install-package:
-    description: >-
-      Run `R CMD INSTALL <path>` to install the caller repo as a local package
-      before rendering (requires setup-r).
-    default: 'false'
-  setup-chrome:
-    description: >-
-      Install Chrome via browser-actions/setup-chrome before rendering (needed
-      for revealjs / screenshot / mermaid rendering).
-    default: 'false'
   tinytex:
     description: Install TinyTeX (needed to render PDF outputs).
     default: 'false'
@@ -51,35 +41,6 @@ inputs:
       authoritative — it overrides any `output-dir` set in the project's
       `_quarto.yml`. Defaults to `_site`.
     default: '_site'
-  render-profile:
-    description: Quarto `--profile` to render with (e.g. 'website'). Empty to omit.
-    default: ''
-  formats:
-    description: >-
-      Whitespace- or newline-separated Quarto output formats to render
-      individually in order (e.g. "pdf docx revealjs html"). When set, renders
-      each format in its own process passing --no-clean to subsequent formats,
-      preventing V8 heap exhaustion on large multi-format sites.
-    default: ''
-  freeze-cache:
-    description: >-
-      Restore and save Quarto _freeze directory via actions/cache keyed on
-      renv.lock and commit SHA.
-    default: 'false'
-  deno-v8-options:
-    description: >-
-      Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap
-      cap for large site renders.
-    default: '--max-old-space-size=12288,--max-heap-size=12288'
-  fail-on-render-warning:
-    description: >-
-      Fail the build if Quarto emits any render warnings (WARN in the render log).
-    default: 'false'
-  forbid-log-patterns:
-    description: >-
-      Newline-separated fixed string patterns that will fail the build if found
-      in the Quarto render log.
-    default: ''
 runs:
   using: composite
   steps:
@@ -92,10 +53,6 @@ runs:
         set -euo pipefail
         sudo apt-get update
         sudo apt-get install -y $APT_PACKAGES
-
-    - name: Setup Chrome
-      if: inputs.setup-chrome == 'true'
-      uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
 
     - name: Set up Quarto
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
@@ -117,7 +74,6 @@ runs:
       if: inputs.setup-r == 'true' && inputs.use-renv == 'true'
       uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       env:
-        GITHUB_PAT: ${{ github.token }}
         # renv::restore() only needs each package's already-pinned RemoteSha
         # from renv.lock; it doesn't need to also re-resolve the consumer's
         # DESCRIPTION Remotes: field against GitHub's API on every run (a
@@ -131,93 +87,24 @@ runs:
       with:
         packages: ${{ inputs.r-packages }}
 
-    - name: Install local package
-      if: inputs.setup-r == 'true' && inputs.install-package == 'true'
+    - name: Raise Deno V8 heap cap for large site renders
       shell: bash
-      run: R CMD INSTALL "${{ inputs.path }}"
-
-    - name: Restore Quarto freeze
-      if: inputs.freeze-cache == 'true'
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ inputs.path }}/_freeze
-        key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-${{ github.run_attempt }}
-        restore-keys: |
-          quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-
-          quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-
-          quarto-freezer-${{ runner.os }}-
-
-    - name: Configure Deno V8 heap cap for large site renders
-      if: inputs.deno-v8-options != ''
-      shell: bash
-      # Lift Quarto's default 8 GB Deno heap cap so large multi-chapter sites
-      # don't crash the publish render with "Fatal JavaScript out of memory" (gha#262).
-      run: echo "QUARTO_DENO_V8_OPTIONS=${{ inputs.deno-v8-options }}" >> "$GITHUB_ENV"
+      # Same override as preview/action.yml (see that file's comment for the
+      # full rationale): lift Quarto's default 8 GB Deno heap cap so large
+      # multi-chapter sites don't crash the publish render with
+      # "Fatal JavaScript out of memory" (gha#262).
+      run: echo "QUARTO_DENO_V8_OPTIONS=--max-old-space-size=12288,--max-heap-size=12288" >> "$GITHUB_ENV"
 
     - name: Render Quarto project
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
         OUTPUT_DIR: ${{ inputs.output-dir }}
-        RENDER_PROFILE: ${{ inputs.render-profile }}
-        FORMATS: ${{ inputs.formats }}
-        FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
-        FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
       run: |
         set -euo pipefail
-        PROFILE_ARG=()
-        if [ -n "${RENDER_PROFILE:-}" ]; then
-          PROFILE_ARG=(--profile "$RENDER_PROFILE")
-        fi
-
-        # Parse formats (whitespace-separated)
-        FORMAT_LIST=()
-        for word in ${FORMATS:-}; do
-          FORMAT_LIST+=("$word")
-        done
-
-        LOG_FILE=$(mktemp)
-
-        if [ ${#FORMAT_LIST[@]} -eq 0 ]; then
-          # Single render invocation
-          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
-        else
-          # Per-format split render
-          first=true
-          for fmt in "${FORMAT_LIST[@]}"; do
-            if [ "$first" = true ]; then
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" 2>&1 | tee "$LOG_FILE"
-              first=false
-            else
-              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" --to "$fmt" --no-clean 2>&1 | tee -a "$LOG_FILE"
-            fi
-          done
-        fi
-
-        if [ "$FAIL_ON_WARN" = "true" ]; then
-          if grep -iE '(^|[[:space:]])WARN([[:space:]:]|$)|Warning:' "$LOG_FILE"; then
-            echo "::error::Quarto emitted one or more render warnings and fail-on-render-warning is enabled."
-            exit 1
-          fi
-        fi
-
-        if [ -n "${FORBID_PATTERNS:-}" ]; then
-          while IFS= read -r pattern || [ -n "$pattern" ]; do
-            trimmed_pattern=$(echo "$pattern" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
-            if [ -n "$trimmed_pattern" ]; then
-              if grep -F "$trimmed_pattern" "$LOG_FILE"; then
-                echo "::error::Quarto render log contains forbidden pattern '$trimmed_pattern'."
-                exit 1
-              fi
-            fi
-          done <<< "$FORBID_PATTERNS"
-        fi
-    - name: Save Quarto freeze
-      if: inputs.freeze-cache == 'true'
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      with:
-        path: ${{ inputs.path }}/_freeze
-        key: quarto-freezer-${{ runner.os }}-${{ hashFiles(format('{0}/renv.lock', inputs.path)) }}-${{ github.sha }}-${{ github.run_attempt }}
+        # --output-dir is resolved relative to the project dir, so the site
+        # lands at "$PROJECT_PATH/$OUTPUT_DIR" (matching the verify/upload paths).
+        quarto render "$PROJECT_PATH" --output-dir "$OUTPUT_DIR"
 
     - name: Verify rendered output exists
       shell: bash

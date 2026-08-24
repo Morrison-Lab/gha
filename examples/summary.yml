@@ -1,7 +1,5 @@
 # Copy to .github/workflows/summary.yml in your repo.
-# NOTE: GitHub Models (the default endpoint) is in scheduled retirement brownout (gha#617).
-# Provide a custom `endpoint` / `model` and API_KEY secret, or prefer `claude.yml` for richer issue engagement.
-# The calling job must grant issues:write + models:read.
+# NOTE: the calling job must grant issues:write + models:read.
 name: Summarize new issues
 
 on:
@@ -14,9 +12,4 @@ jobs:
       issues: write
       models: read
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v2
-    # secrets:
-    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
-    # with:
-    #   endpoint: http://localhost:11434/v1
-    #   model: gpt-4o-mini
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1

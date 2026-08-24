@@ -18,14 +18,10 @@ turn it off for a pure-markdown site.
 | `r-version` | string | `'4.6.0'` | R version to install with `r-lib/actions/setup-r`. |
 | `apt-packages` | string | `(long; see workflow file)` | System apt packages to install before R/Quarto setup, space-separated. Defaults to the shared renv stack plus build helpers; set to an empty string to skip the apt step. |
 | `use-renv` | boolean | `true` | Restore R dependencies with renv. Set false for non-renv repos. |
-| `r-packages` | string | `''` | R packages to install when `use-renv` is false (space- or newline-separated). |
 | `install-package` | boolean | `true` | Run `R CMD INSTALL .` to install the caller repo as a local package before rendering. |
 | `setup-chrome` | boolean | `true` | Install Chrome (needed by Quarto for revealjs and screenshot rendering). |
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
-| `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`. |
-| `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
-| `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
 
 ## Permissions
 
@@ -69,15 +65,10 @@ jobs:
     #   r-version: '4.6.0'
     #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list
     #   use-renv: true                     # set false for non-renv repos
-    #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false
     #   install-package: true              # `R CMD INSTALL .` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   submodules: recursive
     #   render-profile: website
-    #   output-dir: docs                   # render to a dir other than _site
-    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
-    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
-    #     doesn't match any files or folders
 ```
 
 See [`examples/preview.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml)

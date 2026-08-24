@@ -11,10 +11,7 @@ code never holds write permissions. The deploy stub's
 
 ## Inputs
 
-| Input | Type | Default | Description |
-|---|---|---|---|
-| `pages-base-url` | string | `''` | Custom Pages base URL (e.g. `'org.github.io'` or a custom domain) to override automatic URL guessing by `pr-preview-action`. |
-| `pages-base-path` | string | `''` | Custom Pages base path prefix to override automatic path guessing by `pr-preview-action`. |
+This workflow takes no inputs.
 
 ## Permissions
 
@@ -47,9 +44,6 @@ jobs:
       pull-requests: write # post the preview-link comment
       actions: read # download the build artifact
     uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2
-    # with:
-    #   pages-base-url: 'example.org' # custom Pages base URL or custom domain
-    #   pages-base-path: 'docs'       # custom Pages base path prefix
 ```
 
 See

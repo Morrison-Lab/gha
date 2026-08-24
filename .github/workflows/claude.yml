@@ -179,12 +179,10 @@ on:
         # post-steps (and the agent has no push), so granting it would only
         # invite duplicate or malformed PRs. `gh pr edit` stays — it needs no
         # push and lets the agent tidy a PR's title/body.
-        # `gh api` is allowed for the read-only polling loop and issue
-        # inspection. The deny patterns below (`-X`, `--method`, `graphql`)
-        # are a best-effort speed bump against direct mutation flags, but `gh api`
-        # defaults to POST when given field parameters (`-f`/`-F`/`--input`) and
-        # argument reordering bypasses prefix matches; write protection is
-        # bounded by the trusted-author trigger gate and job permissions.
+        # `gh api` is allowed for the read-only polling loop, but its write
+        # forms (`-X`/`--method` mutations and `graphql`) are denied so a
+        # write-scoped GITHUB_TOKEN can't be used for arbitrary API mutations;
+        # the trusted-author gate remains the primary containment.
         default: >-
           --allowedTools
           "Bash(Rscript -e 'lintr::lint*'),Bash(Rscript -e 'devtools::check*'),Bash(Rscript -e 'devtools::document*'),Bash(Rscript -e 'devtools::test*'),Bash(Rscript -e 'spelling::spell_check*'),Bash(Rscript -e 'roxygen2::roxygenise*'),Bash(quarto render:*),Bash(git diff:*),Bash(git log:*),Bash(git status:*),Bash(git show:*),Bash(git checkout:*),Bash(git switch:*),Bash(git branch:*),Bash(git add:*),Bash(git commit:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr edit:*),Bash(gh issue view:*),Bash(gh api:*),Read,Glob,Grep,Edit,MultiEdit,Write"
@@ -249,15 +247,6 @@ on:
           types:`. See `examples/claude.yml` for the literal clause.
         type: string
         default: '[]'
-      extra-secret-names:
-        description: >-
-          Space-, comma-, or newline-separated list of caller secret names to
-          export into the agent environment (e.g. 'EPI202_TOKEN EPI204_TOKEN').
-          Requires 'secrets: inherit' on the caller's 'uses:' call. Secret names
-          must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow
-          environment variables. Empty to skip.
-        type: string
-        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
@@ -768,16 +757,6 @@ jobs:
           else
             echo "::warning::link-skills is true but no top-level skills/ directory was found."
           fi
-
-      # Export requested consumer secrets into the agent environment (gha#618).
-      # Validates secret names against naming conventions and protected environment
-      # variables, registers masks for values, and appends them to $GITHUB_ENV.
-      - name: Export extra secrets to environment
-        if: steps.gate.outputs.skip != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
-        with:
-          extra-secret-names: ${{ inputs.extra-secret-names }}
-          secrets-json: ${{ toJson(secrets) }}
 
       - name: Run Claude Code
         id: claude

@@ -30,14 +30,6 @@ on:
         description: Restore R dependencies with renv instead of r-packages (requires setup-r).
         type: boolean
         default: false
-      install-package:
-        description: Run R CMD INSTALL on path before rendering (requires setup-r).
-        type: boolean
-        default: false
-      setup-chrome:
-        description: Install Chrome via browser-actions/setup-chrome before rendering.
-        type: boolean
-        default: false
       tinytex:
         description: Install TinyTeX (needed to render PDF outputs).
         type: boolean
@@ -50,35 +42,6 @@ on:
         description: Directory the rendered site is written to (relative to `path`), forwarded to `quarto render --output-dir` (overrides any `_quarto.yml` setting). Defaults to `_site`.
         type: string
         default: '_site'
-      render-profile:
-        description: Quarto `--profile` to render with (e.g. 'website'). Empty to omit.
-        type: string
-        default: ''
-      formats:
-        description: >-
-          Whitespace- or newline-separated Quarto output formats to render
-          individually in order (e.g. "pdf docx revealjs html"). When set,
-          renders each format in its own process passing --no-clean to
-          subsequent formats, preventing V8 heap exhaustion on large
-          multi-format sites.
-        type: string
-        default: ''
-      freeze-cache:
-        description: Restore and save Quarto _freeze directory via actions/cache keyed on renv.lock and commit SHA.
-        type: boolean
-        default: false
-      deno-v8-options:
-        description: Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap cap for large site renders.
-        type: string
-        default: '--max-old-space-size=12288,--max-heap-size=12288'
-      fail-on-render-warning:
-        description: Fail the build if Quarto emits any render warnings (WARN in the render log).
-        type: boolean
-        default: false
-      forbid-log-patterns:
-        description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
-        type: string
-        default: ''
       checkout-submodules:
         description: Initialize the caller's git submodules before rendering.
         type: boolean
@@ -149,17 +112,9 @@ jobs:
           setup-r: ${{ inputs.setup-r }}
           r-packages: ${{ inputs.r-packages }}
           use-renv: ${{ inputs.use-renv }}
-          install-package: ${{ inputs.install-package }}
-          setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
           apt-packages: ${{ inputs.apt-packages }}
           output-dir: ${{ inputs.output-dir }}
-          render-profile: ${{ inputs.render-profile }}
-          formats: ${{ inputs.formats }}
-          freeze-cache: ${{ inputs.freeze-cache }}
-          deno-v8-options: ${{ inputs.deno-v8-options }}
-          fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
-          forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
 
       - name: Stage rendered site
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -175,11 +130,6 @@ jobs:
     if: inputs.deploy
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Serialize deploys to gh-pages so main-site publishes, PR previews, and
-    # preview cleanups queue rather than race or clobber each other's commits.
-    concurrency:
-      group: gh-pages
-      cancel-in-progress: false
     permissions:
       contents: write
     steps:

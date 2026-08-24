@@ -1,1 +1,0 @@
-- Add `fail-on-render-warning` (boolean) and `forbid-log-patterns` (newline-separated strings) inputs to `quarto-publish` and `preview` composite actions and reusable workflows to fail builds on Quarto render warnings (gha#610).

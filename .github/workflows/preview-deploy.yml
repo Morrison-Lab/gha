@@ -9,19 +9,6 @@ name: Quarto Preview Deploy (reusable)
 
 on:
   workflow_call:
-    inputs:
-      pages-base-url:
-        description: >-
-          Custom Pages base URL (e.g. 'org.github.io' or a custom domain) to
-          override automatic URL guessing by pr-preview-action.
-        type: string
-        default: ''
-      pages-base-path:
-        description: >-
-          Custom Pages base path prefix to override automatic path guessing by
-          pr-preview-action.
-        type: string
-        default: ''
 
 jobs:
   # Cheap gate: verify the build job actually ran (vs. being skipped due to an
@@ -54,11 +41,11 @@ jobs:
     if: needs.gate.outputs.has-artifact == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Serialize deploys to gh-pages so main-site publishes, PR previews, and
-    # preview cleanups queue rather than race or clobber each other's commits.
-    # cancel-in-progress: false queues rather than kills.
+    # Serialize deploys for the same PR branch so two back-to-back build
+    # completions don't race on gh-pages. cancel-in-progress: false queues
+    # rather than kills — a mid-push cancel could corrupt gh-pages.
     concurrency:
-      group: gh-pages
+      group: preview-deploy-${{ github.event.workflow_run.head_repository.id }}-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: false
     # This job runs in the base-repo context (not the fork), so the
     # GITHUB_TOKEN has write access to push to gh-pages and comment on PRs.
@@ -101,8 +88,6 @@ jobs:
           pr-number: ${{ steps.meta.outputs.pr-number }}
           comment: false
           action: deploy
-          pages-base-url: ${{ inputs.pages-base-url }}
-          pages-base-path: ${{ inputs.pages-base-path }}
 
       - name: Remove PR Preview
         if: steps.meta.outputs.action == 'remove'

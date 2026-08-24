@@ -160,15 +160,6 @@ on:
           the URL written into plugin-marketplaces. Empty by default.
         type: string
         default: ''
-      extra-secret-names:
-        description: >-
-          Space-, comma-, or newline-separated list of caller secret names to
-          export into the reviewer environment (e.g. 'EPI202_TOKEN EPI204_TOKEN').
-          Requires 'secrets: inherit' on the caller's 'uses:' call. Secret names
-          must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow
-          environment variables. Empty to skip.
-        type: string
-        default: ''
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -755,16 +746,6 @@ jobs:
             echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
             echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret available for review execution (gha#396)."
           fi
-
-      # Export requested consumer secrets into the reviewer environment (gha#618).
-      # Validates secret names against naming conventions and protected environment
-      # variables, registers masks for values, and appends them to $GITHUB_ENV.
-      - name: Export extra secrets to environment
-        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
-        with:
-          extra-secret-names: ${{ inputs.extra-secret-names }}
-          secrets-json: ${{ toJson(secrets) }}
 
       # The actual claude-code-action call (allowedTools/disallowedTools,
       # system prompt, review prompt) lives in the run-claude-review-attempt

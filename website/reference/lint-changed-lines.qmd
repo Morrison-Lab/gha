@@ -27,16 +27,13 @@ Must be triggered by `pull_request` (the changed-line set comes from the PR).
 
 ## Inputs
 
-| Input                | Type    | Default | Description                                                                                                                                                       |
-| -------------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `path`               | string  | `'.'`   | Path to the R package root (the directory holding `DESCRIPTION`).                                                                                                 |
-| `install-quarto`     | boolean | `false` | Install Quarto when setting up R dependencies.                                                                                                                    |
-| `use-renv`           | boolean | `false` | Restore dependencies with `renv` (`setup-renv`) instead of DESCRIPTION-based `setup-r-dependencies`.                                                              |
-| `renv-cache-version` | string  | `'1'`   | Cache version suffix passed to `setup-renv`.                                                                                                                      |
-| `apt-packages`       | string  | `''`    | Extra apt packages to install before setting up dependencies.                                                                                                     |
-| `extra-packages`     | string  | `''`    | Extra R packages to install (`gh` and `lintr` are always installed).                                                                                              |
-| `install-package`    | boolean | `true`  | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
-| `fail`               | boolean | `true`  | Fail the workflow when a lint is found on a changed line (rather than warn only).                                                                                 |
+| Input             | Type    | Default | Description                                                                                                                                                       |
+| ----------------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `path`            | string  | `'.'`   | Path to the R package root (the directory holding `DESCRIPTION`).                                                                                                 |
+| `install-quarto`  | boolean | `false` | Install Quarto when setting up R dependencies.                                                                                                                    |
+| `extra-packages`  | string  | `''`    | Extra R packages to install (`gh` and `lintr` are always installed).                                                                                              |
+| `install-package` | boolean | `true`  | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
+| `fail`            | boolean | `true`  | Fail the workflow when a lint is found on a changed line (rather than warn only).                                                                                 |
 
 ## Permissions
 
@@ -59,9 +56,6 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2
     # with:
     #   path: '.'               # R package root (holding DESCRIPTION)
-    #   use-renv: false         # true to restore dependencies with setup-renv
-    #   renv-cache-version: '1' # bump to invalidate renv cache
-    #   apt-packages: ''        # system packages required for compilation
     #   extra-packages: ''      # extra R deps (gh + lintr always installed)
     #   install-package: false  # skip R CMD INSTALL for a non-package repo
     #   fail: false             # warn instead of failing on lints

@@ -1,3 +1,0 @@
-- Support per-format render split in `quarto-publish` composite action and reusable workflow via `formats` input (gha#614).
-- Adds `render-profile`, `setup-chrome`, `install-package`, `freeze-cache`, and `deno-v8-options` inputs to `quarto-publish`.
-- Prevents Deno V8 heap exhaustion crashes on large multi-format Quarto sites by resetting process heap across formats with `--no-clean`.

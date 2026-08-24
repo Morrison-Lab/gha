@@ -24,5 +24,4 @@ jobs:
 | `paths-ignore` | Comma- or space-separated list of file paths or globs to exclude from scanning. | `''` |
 | `base-ref` | Git base ref to limit checking to newly added/modified lines in diff. | `''` (whole-file scan) |
 | `threshold` | Maximum allowed tell density (tells per 1,000 words) before failing when `fail: true`. | `10` |
-| `ignore-tells` | Comma- or space-separated list of tell names to ignore (e.g. `robust, landscape`). | `''` |
 | `fail` | Whether to fail the workflow if tell density exceeds threshold. | `false` |
