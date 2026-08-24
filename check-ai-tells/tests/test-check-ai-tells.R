@@ -17,8 +17,11 @@ check_script <- file.path(repo_root, "check-ai-tells", "check-ai-tells.R")
 
 source(check_script)
 
-check <- function(label, condition) {
+check <- function(label, condition, actual = NULL, expected = NULL) {
   if (!condition) {
+    if (!is.null(actual)) {
+      stop(sprintf("FAIL: %s (actual: %s, expected: %s)", label, deparse(actual), deparse(expected)))
+    }
     stop(sprintf("FAIL: %s", label))
   }
   cat(sprintf("ok - %s\n", label))
@@ -86,5 +89,29 @@ check("Parsed multi-line added lines", identical(diff_map[["doc.md"]], c(11L, 12
 res_diff_scoped <- scan_file_prose(pos_file, added_lines_only = c(3L, 4L))
 check("Diff-scoped word count only counts scoped lines", res_diff_scoped$word_count < res_pos$word_count)
 check("Diff-scoped only reports tells on scoped lines", all(sapply(res_diff_scoped$findings, function(x) x$line %in% c(3L, 4L))))
+
+# Test 6: Ignore tells parsing and filtering
+res_comma <- parse_ignore_tells("robust, landscape")
+check("Parse comma-separated ignore-tells", identical(res_comma, c("robust", "landscape")), res_comma, c("robust", "landscape"))
+
+res_rhet <- parse_ignore_tells("robust, negation-reversal antithesis")
+check("Parse multi-word rhetorical tell in ignore-tells", identical(res_rhet, c("robust", "negation-reversal antithesis")), res_rhet, c("robust", "negation-reversal antithesis"))
+
+res_space <- parse_ignore_tells("robust landscape")
+check("Parse space-separated ignore-tells", identical(res_space, c("robust", "landscape")), res_space, c("robust", "landscape"))
+
+res_single_mw <- parse_ignore_tells("signposting filler")
+check("Parse single multi-word tell without comma", identical(res_single_mw, c("signposting filler")), res_single_mw, c("signposting filler"))
+
+res_empty <- parse_ignore_tells("")
+check("Parse empty ignore-tells", length(res_empty) == 0L, length(res_empty), 0L)
+
+ignored_set <- parse_ignore_tells("delve, elevate, signposting filler")
+filtered_pos <- Filter(function(x) !(tolower(x$tell) %in% ignored_set), res_pos$findings)
+tells_filtered <- sapply(filtered_pos, function(x) x$tell)
+check("Ignored delve suppressed", !("delve" %in% tells_filtered), "delve" %in% tells_filtered, FALSE)
+check("Ignored elevate suppressed", !("elevate" %in% tells_filtered), "elevate" %in% tells_filtered, FALSE)
+check("Ignored signposting filler suppressed", !("signposting filler" %in% tells_filtered), "signposting filler" %in% tells_filtered, FALSE)
+check("Unignored holistic remains", "holistic" %in% tells_filtered, "holistic" %in% tells_filtered, TRUE)
 
 cat("\nAll check-ai-tells tests passed successfully.\n")

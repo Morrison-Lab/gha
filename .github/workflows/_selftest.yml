@@ -318,6 +318,18 @@ jobs:
         with:
           paths-ignore: 'check-ai-tells/tests/positive-control.md'
           fail: false
+      - name: Create AI tells ignore test fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "This robust guide explores the statistical landscape." > _ci-aitells-fixture.md
+      - name: Test ignore-tells suppresses specified tells
+        uses: ./check-ai-tells
+        with:
+          paths: '_ci-aitells-fixture.md'
+          ignore-tells: 'robust, landscape'
+          fail: true
+          threshold: 0
   bib:
     runs-on: ubuntu-latest
     timeout-minutes: 20
