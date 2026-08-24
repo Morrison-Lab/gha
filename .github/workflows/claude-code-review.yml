@@ -364,6 +364,7 @@ jobs:
       # apart from "never reviewed" and report a gray skip for the latter
       # instead of the same green (gha#434).
       self_mod: ${{ steps.selfmod.outputs.self_mod }}
+      cancelled: ${{ steps.resolve-final.outputs.cancelled }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
