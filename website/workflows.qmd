@@ -10,6 +10,7 @@ input tables and a copy-paste example.
 | -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [`check-ai-tells.yml`](reference/check-ai-tells.qmd)                       | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers                                                                                                                            | `paths`, `paths-ignore`, `base-ref`, `threshold`, `ignore-tells`, `fail`                                                                                                            |
 | [`check-bibliography-dois.yml`](reference/check-bibliography-dois.qmd)     | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata                                                                                                                                              | `exclude-keys`, `install-quarto`, `no-metadata-check`                                                                                                                               |
+| [`check-junk-files.yml`](reference/check-junk-files.qmd) | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | [`check-non-standard-chars.yml`](reference/check-non-standard-chars.qmd)   | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files                                                                                                   | `python-version`, `extensions`                                                                                                                                                      |
 | [`check-phi.yml`](reference/check-phi.qmd)                                 | Scan PRs (added lines only) for content that looks like PHI                                                                                                                                                                       | `detectors`, `paths-ignore`, `allowlist-file`, `fail`                                                                                                                               |
 | [`check-secrets.yml`](reference/check-secrets.qmd)                         | Scan the repository's git **history** for committed credentials with gitleaks                                                                                                                                                     | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail`                                                                                       |
@@ -57,7 +58,8 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to
 `@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
-`check-new-line-breaks.yml`, `check-secrets.yml`, `lint-workflows.yml`, and
+`check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
+`lint-workflows.yml`, and
 `spellcheck.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
@@ -111,6 +113,11 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   tell patterns and density.
 - `check-bibliography-dois.yml` confirms BibTeX entries have DOIs that resolve
   and match CrossRef metadata.
+- `check-junk-files.yml` fails when the repository **tracks** operating-system
+  or editor detritus -- a `.DS_Store`, an AppleDouble `._*` sidecar, an
+  `.Rhistory` or `.RData`. It reports each file, the `git rm --cached` line
+  that clears it, and the per-machine fix that stops it recurring in every
+  other repository too.
 - `check-non-standard-chars.yml` flags curly quotes, en/em dashes, and the
   multiplication sign in `.qmd`, `.R`, and `.md` files, which can break Quarto
   and R rendering.

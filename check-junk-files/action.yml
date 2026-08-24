@@ -1,0 +1,58 @@
+name: Check for tracked junk files
+description: >-
+  Fail when the caller's repository TRACKS operating-system or editor detritus
+  -- a `.DS_Store` written by Finder, an AppleDouble `._*` sidecar, an
+  `.Rhistory` or `.RData` an IDE left in the project root. The failure names
+  each file, gives the `git rm --cached` line to clear it, and points at the
+  per-machine fix that stops it recurring in every other repository too
+  (a global gitignore, or `usethis::git_vaccinate()` for R users). The default
+  pattern set is deliberately the one `git_vaccinate()` writes, plus the three
+  it does not cover, so the advice is never wider than the check's own scope.
+  Matching is done by `git ls-files -i -c -X`, so `patterns` is ordinary
+  gitignore syntax rather than a bespoke glob dialect. Scans TRACKED FILES,
+  not the diff: a `.DS_Store` committed two years ago is still a live defect
+  and still costs one command to clear.
+inputs:
+  patterns:
+    description: >-
+      Comma- or newline-separated GITIGNORE-STYLE patterns naming what counts
+      as junk. Not regexes, and not shell globs -- git's own ignore matcher
+      evaluates them, so `.DS_Store` matches at any depth and a trailing `/`
+      restricts a pattern to directories. Blank lines and `#` comments are
+      ignored. The default is the set `usethis::git_vaccinate()` writes to a
+      global gitignore (verified against `r-lib/usethis`'s `git_ignore_lines`,
+      2026-08-24), plus `._*`, `Thumbs.db`, and `desktop.ini`, which
+      vaccination does not cover. Supplying an empty set is an error rather
+      than a silent pass -- a check with no patterns is a green check that
+      examined nothing.
+    default: '.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto, Thumbs.db, desktop.ini'
+  paths-ignore:
+    description: >-
+      Comma- or newline-separated paths to exempt, applied as git PATHSPEC
+      exclusions. A trailing `/` exempts a whole directory, as written.
+      Deliberately not `!` lines appended to `patterns`: gitignore negation is
+      matched per pattern against the full path, so `!vendor/` fails to
+      re-include `vendor/.DS_Store` and silently exempts nothing (verified
+      against git 2.50.1). Note this differs from `check-secrets`'s
+      same-named input, which takes Go regexes -- the syntax follows the
+      matcher, and these two capabilities use different matchers.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a tracked junk file is found (else warn only).
+      Defaults to `true`: the remedy is one command, so there is little reason
+      to merely nag. Read fail-closed -- only an explicit `false` (trimmed,
+      case-insensitive) opts out, so a typo cannot quietly downgrade the gate
+      to advisory.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Check for tracked junk files
+      shell: bash
+      env:
+        JUNK_TARGET: ${{ github.workspace }}
+        JUNK_PATTERNS: ${{ inputs.patterns }}
+        JUNK_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        JUNK_FAIL: ${{ inputs.fail }}
+      run: bash "$GITHUB_ACTION_PATH/check-junk-files.sh"
