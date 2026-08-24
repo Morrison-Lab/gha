@@ -41,6 +41,13 @@ on:
         description: OpenCode CLI version pinned for the install step.
         type: string
         default: '1.18.21'
+      opencode-attempts:
+        description: >-
+          Total OpenCode run attempts per review. Retries fire only on the
+          transient Zen stream-drop class (finish_reason: network_error,
+          gha#600); auth, quota, and other failures are never retried.
+        type: string
+        default: '3'
     secrets:
       OPENCODE_API_KEY:
         required: false
@@ -309,6 +316,19 @@ jobs:
       # The per-run `timeout` gives a cleaner failure than the job-level one
       # alone: the CLI dies with timeout's own status instead of being killed
       # mid-write by Actions.
+      #
+      # The bounded retry (gha#600) re-runs the CLI when an attempt dies with
+      # `finish_reason: network_error` -- the Zen gateway's known server-side
+      # stream-drop signature, which opencode 1.18.20+ already retries
+      # internally but can still exhaust. Only that positive signature is
+      # retried: an auth rejection or quota failure never matches it, so
+      # those stay single-shot by construction rather than by enumeration.
+      # Each attempt overwrites both artifact files, so what reaches the
+      # classifier and the failure comment is the last attempt; intermediate
+      # failures are visible as ::warning annotations in the job log. In the
+      # pathological case where every attempt burns its full inner timeout,
+      # control passes to the job-level timeout instead -- accepted rather
+      # than adding a shared budget computation.
       - name: Run OpenCode review
         id: run
         if: >-
@@ -321,18 +341,46 @@ jobs:
           OPENCODE_VERSION: ${{ inputs.opencode-version }}
           OPENCODE_CONFIG_CONTENT: '{"permission":{"edit":"deny","webfetch":"deny","bash":"deny"}}'
           OPENCODE_MODEL: ${{ inputs.opencode-model }}
+          OPENCODE_ATTEMPTS: ${{ inputs.opencode-attempts }}
           PROMPT_FILE: ${{ steps.prep-prompt.outputs.prompt-file }}
           DIFF_FILE: ${{ steps.prep-diff.outputs.diff-file }}
         run: |
           set -euo pipefail
+          # Initialized outside the capture so the post-loop summary line is
+          # defined even when the input validation below skips the loop.
+          attempt=1
           rc=0
           {
-            curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
-            export PATH="$HOME/.opencode/bin:$PATH"
-            timeout 1500 opencode run --agent plan -m "$OPENCODE_MODEL" -f "$DIFF_FILE" \
-              > review-output.md 2> review-error.log < "$PROMPT_FILE"
+            # Deliberately no plain `exit` in here: {} is not a subshell,
+            # so an exit would terminate the step shell outright and
+            # `|| rc=$?` could never catch it -- the failure would escape
+            # classification and leave kind='' (job silently green under
+            # continue-on-error).
+            if [[ ! "$OPENCODE_ATTEMPTS" =~ ^[1-5]$ ]]; then
+              echo "::error::opencode-attempts must be 1-5; got '$OPENCODE_ATTEMPTS'." >&2
+              rc=2
+            else
+              curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
+              export PATH="$HOME/.opencode/bin:$PATH"
+              while :; do
+              rc=0
+              timeout 1500 opencode run --agent plan -m "$OPENCODE_MODEL" -f "$DIFF_FILE" \
+                > review-output.md 2> review-error.log < "$PROMPT_FILE" || rc=$?
+              if [[ "$rc" -eq 0 ]] || [[ "$attempt" -ge "$OPENCODE_ATTEMPTS" ]]; then
+                break
+              fi
+              if ! grep -Eq 'finish_reason: network[-_]error' review-error.log review-output.md; then
+                echo "Not the transient network_error class; not retrying." >&2
+                break
+              fi
+              attempt=$((attempt + 1))
+              echo "::warning::OpenCode attempt $((attempt - 1))/$OPENCODE_ATTEMPTS died with finish_reason: network_error (known Zen gateway drop, gha#600); retrying."
+              sleep "${RETRY_SLEEP_SECONDS:-20}"
+            done
+            fi
           } || rc=$?
           echo "exitcode=$rc" >> "$GITHUB_OUTPUT"
+          echo "attempts=$attempt" >> "$GITHUB_OUTPUT"
 
       # prompt-file is set exactly when checkout, diff capture, and prompt
       # composition all succeeded, so this step runs for every real run

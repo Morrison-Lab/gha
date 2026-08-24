@@ -29,6 +29,7 @@ review.
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
 | `opencode-model` | string | `'opencode/big-pickle'` | Model passed to `opencode run -m`. |
 | `opencode-version` | string | `'1.18.21'` | opencode CLI release installed at run time. |
+| `opencode-attempts` | string | `'3'` | Total run attempts per review (1-5). A failed attempt is retried only when its output carries the transient Zen stream-drop signature (`finish_reason: network_error`, [gha#600](https://github.com/Morrison-Lab/gha/issues/600)); auth, quota, and other failures are never retried. |
 
 ## Secrets
 
@@ -125,6 +126,7 @@ jobs:
     # with:
     #   checkout-submodules: true
     #   opencode-model: opencode/big-pickle
+    #   opencode-attempts: '3'
     #   prompt-addendum: |
     #     Repo-specific review guidance.
 ```
