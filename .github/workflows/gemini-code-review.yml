@@ -219,12 +219,10 @@ jobs:
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
         if: success() && steps.dispatch-guard.outputs.blocked != 'true' && steps.preflight-gemini-quota.outputs.quota_skip != 'true' && inputs.extra-secret-names != ''
-        shell: bash
-        env:
-          EXTRA_SECRET_NAMES: ${{ inputs.extra-secret-names }}
-          SECRETS_JSON: ${{ toJson(secrets) }}
-        run: |
-          python3 .github/workflows/scripts/export-extra-secrets.py
+        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
+        with:
+          extra-secret-names: ${{ inputs.extra-secret-names }}
+          secrets-json: ${{ toJson(secrets) }}
 
       # Pinned to a release SHA per README's "Pinning third-party actions".
       # run-gemini-cli publishes v0 / v0.1.x and has no v1 tag, so a `@v1` ref
