@@ -1,0 +1,1 @@
+- Fix `check-review-execution.sh` turn-1 quota skip guard to require an `error_*` subtype, preventing `is_error:true` runtime/execution failures with zero cost at turn 1 from being misclassified as quota exhaustion (gha#561).

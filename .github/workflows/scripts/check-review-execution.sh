@@ -109,18 +109,21 @@ subtype="$(jq -r '.subtype // ""' <<< "$result")"
 has_verdict() {
   grep -qiE '^[[:space:]>*_#-]*verdict\b' "$1"
 }
-if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
-  # total_cost_usd==0 with num_turns==1 means the API rejected the
-  # request before any real processing — quota exhaustion, auth
+if [[ "$subtype" == error_* ]]; then
+  # total_cost_usd==0 with num_turns==1 and an error_* subtype means the API
+  # rejected the request before any real processing --- quota exhaustion, auth
   # failure, or an immediate network error. Skip gracefully. This has to
-  # run before any content extraction below, and applies whether or not
-  # subtype=="success" (the quota/auth rejection shape observed so far is
-  # always a genuine error_* subtype, e.g. quota-exhausted.json).
+  # run before any content extraction below.
+  #
+  # If subtype is "success" (or not error_*), an is_error:true result with zero
+  # cost at turn 1 is an execution/runtime failure rather than an API quota
+  # rejection (gha#561). Do NOT treat that as quota exhaustion; let it fall
+  # through to the error/verdict checks below and fail as a hard-error.
   total_cost="$(jq -r '.total_cost_usd // 1' <<< "$result")"
   num_turns="$(jq -r '.num_turns // 0' <<< "$result")"
   if [[ "$total_cost" == "0" && "$num_turns" == "1" ]]; then
     echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
-    echo "::warning::Claude review skipped — CLAUDE_CODE_OAUTH_TOKEN quota or auth error (zero cost, turn 1). Re-trigger the review once the quota resets."
+    echo "::warning::Claude review skipped -- CLAUDE_CODE_OAUTH_TOKEN quota or auth error (zero cost, turn 1). Re-trigger the review once the quota resets."
     exit 0
   fi
 fi

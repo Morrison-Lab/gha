@@ -50,6 +50,9 @@ declare -A expected=(
   # check-review-execution.sh's own comment at that check).
   [is-error-success-with-verdict.json]=pass
   [is-error-success-no-verdict.json]=fail
+  # gha#561: turn-1 zero-cost execution failure with subtype:"success" is an
+  # execution/runtime error, NOT quota exhaustion. Must fail as hard-error.
+  [is-error-success-turn1-zerocost.json]=fail
   # gha#446 review finding 1: permission_denials_count can be JSON null
   # (observed real evidence, not hypothetical -- see the null-denials comment
   # in check-review-execution.sh). A denied `gh pr comment`/`gh api ...
@@ -230,6 +233,7 @@ declare -A expected_cost=(
   [is-error-result.json]=0.15
   [is-error-success-with-verdict.json]=6.23
   [is-error-success-no-verdict.json]=0.97
+  [is-error-success-turn1-zerocost.json]=0
   [is-error-success-denied-comment-null-denials.json]=1.1
   [denied-comment-null-denials-not-trusted.json]=1.1
   [quota-exhausted.json]=0
@@ -284,6 +288,7 @@ declare -A expected_kind=(
   [denied-comment-null-denials-not-trusted.json]=high-denial
   [is-error-result.json]=hard-error
   [is-error-success-no-verdict.json]=hard-error
+  [is-error-success-turn1-zerocost.json]=hard-error
   [empty-review-text.json]=no-output
   [short-circuit-no-result.json]=short-circuit
   [claim-comment-deferred-review.json]=deferred
