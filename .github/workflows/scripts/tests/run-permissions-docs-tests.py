@@ -80,27 +80,14 @@ def load_yaml(path: pathlib.Path):
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def declared_permissions(doc) -> list[dict]:
-    """Every ``permissions:`` mapping in a workflow, top-level and per-job.
-
-    A scalar form (``permissions: read-all`` / ``write-all``) is normalized to
-    a mapping so callers never have to re-handle it.
-    """
-    found = []
-
-    def add(value):
-        if isinstance(value, dict):
-            found.append(value)
-        elif value == "read-all":
-            found.append({"contents": "read"})
-        elif value == "write-all":
-            found.append({"contents": "write"})
-
-    add(doc.get("permissions"))
-    for job in (doc.get("jobs") or {}).values():
-        if isinstance(job, dict):
-            add(job.get("permissions"))
-    return found
+def normalize_permissions(p) -> dict | None:
+    if p == "read-all":
+        return {"contents": "read"}
+    if p == "write-all":
+        return {"contents": "write"}
+    if isinstance(p, dict):
+        return p
+    return None
 
 
 def is_reusable(doc) -> bool:
@@ -117,15 +104,37 @@ def read_only_workflows(workflows_dir: pathlib.Path) -> set[str]:
         if not isinstance(doc, dict) or not is_reusable(doc):
             continue
 
-        blocks = declared_permissions(doc)
-        if not blocks:
-            # Silence here would classify the workflow as read-only on no
-            # evidence at all, which is the direction that under-reports what a
-            # caller must grant. Refuse instead.
+        top_p = normalize_permissions(doc.get("permissions"))
+        jobs = doc.get("jobs") or {}
+        if not isinstance(jobs, dict) or not jobs:
+            continue
+
+        # If no permissions are declared anywhere (neither top-level nor on any job),
+        # the workflow cannot be classified.
+        has_any_declared = (top_p is not None) or any(
+            isinstance(j, dict) and normalize_permissions(j.get("permissions")) is not None
+            for j in jobs.values()
+        )
+        if not has_any_declared:
             unclassifiable.append(path.name)
             continue
 
-        if all(v in READ_VALUES for block in blocks for v in block.values()):
+        # A reusable workflow is read-only if every job effectively declares
+        # permissions restricted to READ_VALUES (or empty dict {}).
+        # A job without a declared permissions block inherits top_p; if top_p
+        # is also not declared, that job inherits whatever the caller granted
+        # (which could be write), so the workflow is NOT read-only (gha#581).
+        is_read_only = True
+        for job in jobs.values():
+            if not isinstance(job, dict):
+                continue
+            job_p = normalize_permissions(job.get("permissions"))
+            eff_p = job_p if job_p is not None else top_p
+            if eff_p is None or not all(v in READ_VALUES for v in eff_p.values()):
+                is_read_only = False
+                break
+
+        if is_read_only:
             read_only.add(path.stem)
 
     if unclassifiable:
@@ -244,6 +253,21 @@ jobs:
 """
 
 
+WORKFLOW_PARTIALLY_DECLARED = """\
+on:
+  workflow_call:
+jobs:
+  job1:
+    permissions:
+      contents: read
+    steps:
+      - run: 'true'
+  job2:
+    steps:
+      - run: 'true'
+"""
+
+
 def run_self_test() -> int:
     script = pathlib.Path(__file__).resolve()
 
@@ -345,6 +369,20 @@ def run_self_test() -> int:
             run(wf2, [doc("undeclared.md", "`alpha`")]),
             False,
             "cannot be classified",
+        )
+
+        # 9. A workflow with partially declared permissions (one read-only job,
+        #    one job without permissions inheriting caller tokens) is NOT
+        #    classified as read-only (gha#581).
+        wf3 = root / "workflows-partial"
+        wf3.mkdir()
+        (wf3 / "alpha.yml").write_text(WORKFLOW_READONLY)
+        (wf3 / "partial.yml").write_text(WORKFLOW_PARTIALLY_DECLARED)
+        failures += expect(
+            "a partially declared workflow is not read-only",
+            run(wf3, [doc("partial.md", "`alpha`, `partial`")]),
+            False,
+            "declares a write permission",
         )
 
     if failures:
