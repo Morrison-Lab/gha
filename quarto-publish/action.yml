@@ -69,7 +69,7 @@ inputs:
   deno-v8-options:
     description: >-
       Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap
-      cap for large site renders.
+      cap for large site renders. Empty string disables the heap-cap override.
     default: '--max-old-space-size=12288,--max-heap-size=12288'
 runs:
   using: composite
@@ -125,7 +125,9 @@ runs:
     - name: Install local package
       if: inputs.setup-r == 'true' && inputs.install-package == 'true'
       shell: bash
-      run: R CMD INSTALL "${{ inputs.path }}"
+      env:
+        PROJECT_PATH: ${{ inputs.path }}
+      run: R CMD INSTALL "$PROJECT_PATH"
 
     - name: Restore Quarto freeze
       if: inputs.freeze-cache == 'true'
