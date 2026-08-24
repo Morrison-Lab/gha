@@ -27,15 +27,6 @@ on:
         description: Model override passed to run-gemini-cli (e.g. gemini-2.5-flash).
         type: string
         default: 'gemini-2.5-flash'
-      extra-secret-names:
-        description: >-
-          Space-, comma-, or newline-separated list of caller secret names to
-          export into the reviewer environment (e.g. 'EPI202_TOKEN EPI204_TOKEN').
-          Requires 'secrets: inherit' on the caller's 'uses:' call. Secret names
-          must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow
-          environment variables. Empty to skip.
-        type: string
-        default: ''
     secrets:
       GEMINI_API_KEY:
         required: false
@@ -213,16 +204,6 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Gemini review skipped — API key or quota unavailable.** No \`GEMINI_API_KEY\` secret is configured or quota is unavailable for Gemini CLI review. [View run]($RUN_URL)"
-
-      # Export requested consumer secrets into the reviewer environment (gha#618).
-      # Validates secret names against naming conventions and protected environment
-      # variables, registers masks for values, and appends them to $GITHUB_ENV.
-      - name: Export extra secrets to environment
-        if: success() && steps.dispatch-guard.outputs.blocked != 'true' && steps.preflight-gemini-quota.outputs.quota_skip != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
-        with:
-          extra-secret-names: ${{ inputs.extra-secret-names }}
-          secrets-json: ${{ toJson(secrets) }}
 
       # Pinned to a release SHA per README's "Pinning third-party actions".
       # run-gemini-cli publishes v0 / v0.1.x and has no v1 tag, so a `@v1` ref

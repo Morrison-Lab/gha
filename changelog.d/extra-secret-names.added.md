@@ -1,3 +1,0 @@
-- Add `extra-secret-names` input to `claude.yml`, `claude-code-review.yml`, `gemini.yml`, `gemini-code-review.yml`, and `small-model-agent.yml` (gha#618).
-- Allows callers passing `secrets: inherit` to selectively export named repo secrets into the agent or reviewer execution environment.
-- Validates secret names against `[A-Z_][A-Z0-9_]*`, protects standard runner environment variables from shadowing, and registers values with the runner log mask.

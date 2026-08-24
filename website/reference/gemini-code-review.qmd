@@ -27,7 +27,6 @@ Requires a `GEMINI_API_KEY` secret.
 | `prompt-addendum` | string | `''` | Extra prompt instructions appended to the review prompt. |
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
 | `gemini-model` | string | `'gemini-2.5-flash'` | Model passed to `run-gemini-cli`. |
-| `extra-secret-names` | string | `''` | Space-, comma-, or newline-separated caller secret names to export into the reviewer environment (e.g. `'EPI202_TOKEN EPI204_TOKEN'`). Requires `secrets: inherit` on the caller `uses:`. Secret names must match `[A-Z_][A-Z0-9_]*` and cannot shadow protected workflow environment variables. Empty to skip. |
 
 ## Secrets
 
@@ -98,7 +97,6 @@ jobs:
     # with:
     #   checkout-submodules: true
     #   gemini-model: gemini-2.5-flash
-    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)
     #   prompt-addendum: |
     #     Repo-specific review guidance.
 ```

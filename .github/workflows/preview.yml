@@ -39,10 +39,6 @@ on:
         description: Restore R dependencies with renv. Set false for non-renv repos.
         type: boolean
         default: true
-      r-packages:
-        description: R packages to install when use-renv is false, space- or newline-separated.
-        type: string
-        default: ''
       install-package:
         description: Run `R CMD INSTALL .` to install the caller repo as a local package before rendering.
         type: boolean
@@ -59,18 +55,6 @@ on:
         description: Quarto `--profile` to render with.
         type: string
         default: 'website'
-      output-dir:
-        description: Directory the rendered site is written to, relative to `path`. Defaults to `_site`.
-        type: string
-        default: '_site'
-      fail-on-render-warning:
-        description: Fail the build if Quarto emits any render warnings (WARN in the render log).
-        type: boolean
-        default: false
-      forbid-log-patterns:
-        description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
-        type: string
-        default: ''
 
 jobs:
   build:
@@ -102,11 +86,7 @@ jobs:
           r-version: ${{ inputs.r-version }}
           apt-packages: ${{ inputs.apt-packages }}
           use-renv: ${{ inputs.use-renv }}
-          r-packages: ${{ inputs.r-packages }}
           install-package: ${{ inputs.install-package }}
           setup-chrome: ${{ inputs.setup-chrome }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
-          output-dir: ${{ inputs.output-dir }}
-          fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
-          forbid-log-patterns: ${{ inputs.forbid-log-patterns }}

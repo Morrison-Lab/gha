@@ -34,10 +34,6 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Serialize gh-pages branch modifications with other publish/preview deploys.
-    concurrency:
-      group: gh-pages
-      cancel-in-progress: false
     permissions:
       contents: write
       pull-requests: read

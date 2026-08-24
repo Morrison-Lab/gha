@@ -1,1 +1,0 @@
-- Share the `gh-pages` concurrency group across `preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to prevent concurrent races on the `gh-pages` branch (gha#611).

@@ -16,9 +16,6 @@ inputs:
   threshold:
     description: Maximum allowed tell density (tells per 1,000 words) before failing when fail is true.
     default: '10'
-  ignore-tells:
-    description: Comma- or space-separated list of tell names to ignore (e.g. 'robust, landscape').
-    default: ''
   fail:
     description: Whether to fail the check if tell density exceeds threshold. Defaults to false (warn-only).
     default: 'false'
@@ -37,6 +34,5 @@ runs:
         AIT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         AIT_BASE_REF: ${{ inputs.base-ref }}
         AIT_THRESHOLD: ${{ inputs.threshold }}
-        AIT_IGNORE_TELLS: ${{ inputs.ignore-tells }}
         AIT_FAIL: ${{ inputs.fail }}
       run: Rscript "$GITHUB_ACTION_PATH/check-ai-tells.R"

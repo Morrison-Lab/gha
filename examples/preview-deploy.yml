@@ -21,6 +21,3 @@ jobs:
       pull-requests: write   # post the preview-link comment
       actions: read          # download the build artifact
     uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2
-    # with:
-    #   pages-base-url: 'example.org' # custom Pages base URL or custom domain
-    #   pages-base-path: 'docs'       # custom Pages base path prefix

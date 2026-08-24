@@ -1,1 +1,0 @@
-- Add `pages-base-url` and `pages-base-path` inputs to `preview-deploy.yml` to support custom Pages base URLs and custom domains without relying on automatic URL guessing (gha#609).
