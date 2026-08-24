@@ -8,9 +8,10 @@ on:
   workflow_call:
     inputs:
       endpoint:
-        description: Inference endpoint URL (e.g. https://models.inference.ai.azure.com or custom).
+        description: Inference endpoint URL (e.g. http://localhost:11434/v1 or custom OpenAI-compatible endpoint).
         required: false
         type: string
+        default: 'https://models.github.ai/inference'
       model:
         description: Model identifier for summarization.
         required: false
@@ -46,8 +47,8 @@ jobs:
         id: inference
         uses: actions/ai-inference@a7805884c80886efc241e94a5351df715968a0ad # v2
         with:
-          endpoint: ${{ inputs.endpoint }}
-          model: ${{ inputs.model }}
+          endpoint: ${{ inputs.endpoint || 'https://models.github.ai/inference' }}
+          model: ${{ inputs.model || 'gpt-4o-mini' }}
           token: ${{ secrets.API_KEY || secrets.OPENAI_API_KEY || github.token }}
           prompt: |
             You are a concise technical summarizer. Your only job is to write a
