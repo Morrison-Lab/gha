@@ -85,6 +85,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      issues: read
       # The one permission the dispatch needs: `gh workflow run` against the
       # caller's own repo. `actions: write` on GITHUB_TOKEN covers it, so no
       # PAT is involved --- and the picked agent's own review workflow
@@ -101,6 +102,12 @@ jobs:
       cancel-in-progress: true
 
     steps:
+      - name: Install the review-delivery classifier
+        id: scripts
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v2
+        with:
+          scripts: 'classify-review-delivery.sh'
+
       - name: Resolve PR info
         id: pr-info
         uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v2
@@ -124,6 +131,7 @@ jobs:
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
           WATCH_TIMEOUT: ${{ inputs.watch-timeout }}
+          SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
           # Secret *presence*, not the secret itself: a `secrets.X != ''`
           # comparison is evaluated by Actions, so only the boolean reaches
           # the runner.
@@ -221,10 +229,20 @@ jobs:
                 if [ "$WATCH_EXIT" -eq 0 ]; then
                   CONCLUSION=$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion --jq '.conclusion' || true)
                   if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
-                    echo "Agent '$agent' completed review successfully (conclusion: $CONCLUSION)."
-                    exit 0
+                    RUN_URL=$(gh run view "$RUN_ID" --repo "$REPO" --json url --jq '.url' || true)
+                    # Classify review delivery from PR comments matching this run
+                    COMMENTS_JSON=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate || echo '[]')
+                    CLASSIFY_OUTPUT=$(jq -j '.[] | select(.created_at >= "'"$START_TIME"'") | (.body + "\u0000")' <<< "$COMMENTS_JSON" | RUN_URL="$RUN_URL" bash "$SCRIPTS_DIR/classify-review-delivery.sh" || true)
+                    DELIVERED=$(echo "$CLASSIFY_OUTPUT" | sed -n 's/^delivered=//p')
+                    REASON=$(echo "$CLASSIFY_OUTPUT" | sed -n 's/^reason=//p')
+                    if [ "$DELIVERED" = "true" ]; then
+                      echo "Agent '$agent' completed review successfully (conclusion: $CONCLUSION, reason: ${REASON:-delivered})."
+                      exit 0
+                    fi
+                    echo "::warning::Dispatched run $RUN_ID for agent '$agent' finished without delivering a verdict (conclusion: $CONCLUSION, reason: ${REASON:-unknown}); trying the next candidate agent."
+                  else
+                    echo "::warning::Dispatched run $RUN_ID for agent '$agent' completed with status '$CONCLUSION'; trying the next candidate agent."
                   fi
-                  echo "::warning::Dispatched run $RUN_ID for agent '$agent' completed with status '$CONCLUSION'; trying the next candidate agent."
                 elif [ "$WATCH_EXIT" -eq 124 ]; then
                   echo "::warning::Dispatched run $RUN_ID for agent '$agent' timed out after $WATCH_TIMEOUT; trying the next candidate agent."
                 else
