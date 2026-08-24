@@ -22,6 +22,8 @@ turn it off for a pure-markdown site.
 | `setup-chrome` | boolean | `true` | Install Chrome (needed by Quarto for revealjs and screenshot rendering). |
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
+| `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
+| `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
 
 ## Permissions
 
@@ -69,6 +71,9 @@ jobs:
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   submodules: recursive
     #   render-profile: website
+    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
+    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
+    #     doesn't match any files or folders
 ```
 
 See [`examples/preview.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml)
