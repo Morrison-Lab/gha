@@ -30,11 +30,11 @@ inputs:
     default: 'true'
   r-packages:
     description: >-
-      R packages to install (space- or newline-separated) when `use-renv` is 'false',
+      R packages to install (space-, comma-, or newline-separated) when `use-renv` is 'false',
       e.g. for non-renv Quarto projects.
     default: ''
   install-package:
-    description: Run `R CMD INSTALL .` to install the caller repo as a local package before rendering.
+    description: Run `R CMD INSTALL <path>` to install the caller repo as a local package before rendering.
     default: 'true'
   setup-chrome:
     description: Install Chrome (needed by Quarto for revealjs / screenshot rendering).
