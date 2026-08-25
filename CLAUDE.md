@@ -1142,8 +1142,9 @@ trip the `bib` or `phi` jobs' repo-wide scans (gha#174).
 **Quota exhaustion arrives in two shapes, and the second one has real cost
 behind it.**
 The original `quota-exhausted.json` is a request rejected at the door --
-`total_cost_usd: 0`, `num_turns: 1` -- and the guard keys the graceful skip on
-exactly that pair.
+`total_cost_usd: 0`, `num_turns: 1` with an `error_*` subtype (an `is_error: true`
+run with `subtype: "success"` is an execution failure rather than quota exhaustion,
+gha#561) -- and the guard keys the graceful skip on that shape.
 An account can also run out **mid-review**, which the pair cannot see: gha#520
 was observed at 13 turns and $4.10, with `api_error_status: 429` and
 `is_error: true` alongside `subtype: "success"`.
