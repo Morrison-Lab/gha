@@ -5,27 +5,19 @@ This file defines standardized, vendor-neutral instructions for AI coding agents
 ## Instruction layering
 
 `AGENTS.md` is the compact, unconditional cross-agent contract.
-Keep every rule that applies to all agents here, rather than duplicating it in
-model-specific manuals.
-Do not load `CLAUDE.md`, `GEMINI.md`, or their case records wholesale at
-session start: consult the relevant section on demand when changing that
-model's integration or resolving a model-specific workflow question.
+Keep every rule that applies to all agents here, rather than duplicating it in model-specific manuals.
+Do not load `CLAUDE.md`, `GEMINI.md`, or their case records wholesale at session start: consult the relevant section on demand when changing that model's integration or resolving a model-specific workflow question.
 Those manuals must defer to this file for universal policy.
 
 ## Generalize instructions to every AI agent by default
 
-Unless the user explicitly scopes an instruction to one agent, project, or
-session, apply it to every available AI-agent configuration and shared
-automation surface.
-Do not treat the currently speaking agent as an implicit
-scope restriction.
+Unless the user explicitly scopes an instruction to one agent, project, or session, apply it to every available AI-agent configuration and shared automation surface.
+Do not treat the currently speaking agent as an implicit scope restriction.
 
 ## No empty promises
 
 A commitment about your own future behaviour --- "going forward, I will X", "from now on I won't Y", "I'll always Z", "I won't do that again", "that is owed by me" --- must ship an implemented accountability mechanism in the same turn, or not be made at all.
-A written rule or memory entry is the minimum and is always available;
-a hook or equivalent guard is the right form when the condition is decidable automatically;
-a filed issue covers work someone has to schedule.
+A written rule or memory entry is the minimum and is always available; a hook or equivalent guard is the right form when the condition is decidable automatically; a filed issue covers work someone has to schedule.
 
 A promise costs nothing to produce and changes no file, so no review, check, or reader can tell it apart from having acted.
 It is worse than saying nothing, because silence leaves the problem visibly open while a promise closes it on the record.
@@ -43,23 +35,15 @@ See `shared/workflow/no-empty-promises.md`.
 
 ## Interpret instructions broadly and maximize safe progress
 
-Unless the user narrows a request, take the broad reading that advances its
-obvious objective and complete every safe, authorized, relevant step.
-Do not
-reduce an instruction to the smallest literal action when its context makes a
-larger in-scope outcome clear.
+Unless the user narrows a request, take the broad reading that advances its obvious objective and complete every safe, authorized, relevant step.
+Do not reduce an instruction to the smallest literal action when its context makes a larger in-scope outcome clear.
 
 ## Status requests do not make issues report-only
 
-Treat a request for status as a request to inspect live state and finish every
-safe, in-scope, concrete action that inspection reveals.
-A report is the recap
-after the work, not a substitute for it.
-When an issue cannot be fixed
-directly, carry it forward with an actual next action.
-Every issue noticed,
-however small or outside the current task's scope, must at minimum be filed in
-the owning GitHub, GitLab, or equivalent tracker.
+Treat a request for status as a request to inspect live state and finish every safe, in-scope, concrete action that inspection reveals.
+A report is the recap after the work, not a substitute for it.
+When an issue cannot be fixed directly, carry it forward with an actual next action.
+Every issue noticed, however small or outside the current task's scope, must at minimum be filed in the owning GitHub, GitLab, or equivalent tracker.
 File it before reporting it.
 
 ## Upgrade a repo to `Morrison-Lab/gha` when it would benefit
@@ -96,11 +80,14 @@ See `shared/workflow/restructure-for-efficiency.md`.
 
 In every session --- at session start, and again periodically during long sessions --- refresh local state:
 
-1. **The ai-config checkout.** Check that the local `ai-config` clone is on `main` and run `git pull --ff-only`.
+1. **The ai-config checkout.**
+   Check that the local `ai-config` clone is on `main` and run `git pull --ff-only`.
+
 2. **The consumer copies / symlinks.**
    Ensure `bootstrap.sh` has run so local agent config directories (`~/.gemini/skills`, `~/.claude`, `~/.codex/skills`, `~/.cursor/rules`, and when needed `~/.cursor/skills`) contain up-to-date symlinks.
 
-3. **Working repo checkouts.** Keep `main` updated (`git fetch origin`, `git pull --ff-only`).
+3. **Working repo checkouts.**
+   Keep `main` updated (`git fetch origin`, `git pull --ff-only`).
 
 ## Verify changes before pushing
 
@@ -181,19 +168,12 @@ Each reading expires immediately: run the command fresh for every recap rather t
 
 ## Temporal limitations on software and technology facts
 
-Facts about software, platforms, libraries, APIs, harnesses, CLI tools,
-and runtime platforms are empirical observations
-of a specific version, release, or snapshot,
-not timeless definitions.
-When recording facts about any software or technology across memories,
-documentation, PR descriptions, commit messages, or comments:
+Facts about software, platforms, libraries, APIs, harnesses, CLI tools, and runtime platforms are empirical observations of a specific version, release, or snapshot, not timeless definitions.
+When recording facts about any software or technology across memories, documentation, PR descriptions, commit messages, or comments:
 
-- Qualify them with explicit temporal bounds and provenance
-  (date measured, version number, or execution environment).
+- Qualify them with explicit temporal bounds and provenance (date measured, version number, or execution environment).
 
-- State the vintage explicitly so future readers and sessions know
-  when the fact was verified
-  and to re-verify against current state rather than treating it as permanent.
+- State the vintage explicitly so future readers and sessions know when the fact was verified and to re-verify against current state rather than treating it as permanent.
 
 - See [`shared/writing/timestamp-volatile-claims.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/timestamp-volatile-claims.md).
 
@@ -249,46 +229,23 @@ The authoring session cannot perform this itself.
 It knows what the change was meant to say, so it reads the diff and recovers the intent --- confirmation rather than review --- and nothing in the output distinguishes that from a real pass.
 Brief the reviewer with the diff and the standards, never with the rationale for the change.
 
-Pushing without a clean self-review is mechanistically blocked by pre-push
-guards.
+Pushing without a clean self-review is mechanistically blocked by pre-push guards.
 Full rule, including why a same-vendor subagent buys independence of intent but not of blind spot: [`shared/workflow/adversarial-self-review.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/adversarial-self-review.md).
 
 ## Put PRs in ready mode when they are ready for review
 
-A Pull Request that is ready for review must be in ready mode, not left in
-draft.
-Two paths satisfy this, and either is fine: open the PR ready for review when
-it already carries completed, verified work, or open it as a draft and mark it
-ready once it becomes ready for review.
-What is not acceptable is leaving a review-ready PR in draft --- so do not
-rely on a harness or tool default that opens PRs as drafts and then forget to
-flip it: when the tool defaults to draft, either pass the flag that opens it
-ready or mark it ready once the work has landed.
-Before marking a draft ready, verify the implementation actually reached the
-branch head and the repo's checks pass, and mind the ready-transition timing
-in [`pr-on-claim.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md): do not flip a draft to
-ready within seconds of the final push, which can race two review runs and
-leave the wrong one cancelled.
-This overrides any agent-harness default that creates PRs as drafts unless the
-user opts in.
+A Pull Request that is ready for review must be in ready mode, not left in draft.
+Two paths satisfy this, and either is fine: open the PR ready for review when it already carries completed, verified work, or open it as a draft and mark it ready once it becomes ready for review.
+What is not acceptable is leaving a review-ready PR in draft --- so do not rely on a harness or tool default that opens PRs as drafts and then forget to flip it: when the tool defaults to draft, either pass the flag that opens it ready or mark it ready once the work has landed.
+Before marking a draft ready, verify the implementation actually reached the branch head and the repo's checks pass, and mind the ready-transition timing in [`pr-on-claim.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md): do not flip a draft to ready within seconds of the final push, which can race two review runs and leave the wrong one cancelled.
+This overrides any agent-harness default that creates PRs as drafts unless the user opts in.
 
-Draft status stays reserved for the cases that deliberately use draft as a
-signal or a gate, not only cases where work is unfinished: the empty up-front
-PR opened when claiming an issue (the
-[issue-first](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/issue-first.md) /
-[pr-on-claim](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md) pattern), un-drafted once the
-implementation has landed on the branch head and the repo's checks pass; and
-the deliberate draft-gating of a dependent PR, which is review-ready by
-construction and held in draft only to block the wrong merge order until its
-prerequisite merges.
-Marking a PR ready grants no merge authority (see the strict merge policy
-below).
+Draft status stays reserved for the cases that deliberately use draft as a signal or a gate, not only cases where work is unfinished: the empty up-front PR opened when claiming an issue (the [issue-first](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/issue-first.md) / [pr-on-claim](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md) pattern), un-drafted once the implementation has landed on the branch head and the repo's checks pass; and the deliberate draft-gating of a dependent PR, which is review-ready by construction and held in draft only to block the wrong merge order until its prerequisite merges.
+Marking a PR ready grants no merge authority (see the strict merge policy below).
 
-- **Do:** open a completed-work PR ready for review, or mark a draft ready once
-  it is ready for review and its checks pass.
+- **Do:** open a completed-work PR ready for review, or mark a draft ready once it is ready for review and its checks pass.
 
-- **Do:** un-draft an up-front empty PR once its implementation has landed on
-  the branch head and the checks pass.
+- **Do:** un-draft an up-front empty PR once its implementation has landed on the branch head and the checks pass.
 
 - **Don't:** leave a PR that is ready for review in draft, except a deliberately draft-gated dependent PR held until its prerequisite merges.
 - **Don't:** treat a tool's draft-by-default as the intended state once the work is ready for review.
@@ -320,12 +277,10 @@ This grants no merge authority: the strict merge policy below still applies.
   Merging a PR is strictly forbidden unless the user explicitly grants session permission (e.g. via `/mwc` or `/maw`) or explicitly issues a merge instruction for that specific PR (e.g. `/merge-it` or "merge this PR").
 
 - **Never merge over open review findings or treat a reviewer skip notice as approval.**
-  Under `mwc`, a PR must be fully clean across CI and review (see
-  [`fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md)).
+  Under `mwc`, a PR must be fully clean across CI and review (see [`fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md)).
   A clean automated Claude review evaluating the current HEAD commit is strictly required for merging with `mwc`.
   A reviewer skip notice (e.g. for quota exhaustion or workflow edits) or a fallback self-review does NOT satisfy `mwc` or grant autonomous merge authority.
-  All findings across the PR history must be Addressed, Rebutted, or Deferred
-  before merge.
+  All findings across the PR history must be Addressed, Rebutted, or Deferred before merge.
 
 ## Request review and drive every started PR to clean
 
@@ -344,43 +299,24 @@ Whenever starting or working on a Pull Request:
 ## Cursor Cloud specific instructions
 
 This repo has no compiled app or long-running service.
-The "product" is three things: a Quarto documentation website, a suite of
-Python validators/tests under `scripts/`, and the enforcement hooks under
-`hooks/`.
-Standard commands are already documented --- lint/test steps in
-[`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml) and the
-quality gates in [`README.md`](README.md) --- so consult those rather than
-re-deriving them; the build and preview commands are in the bullets below.
-The startup update script keeps the `shared/sembr-skills` submodule current;
-the system tools below (Quarto, the `python` shim, `pre-commit`) are already
-present in the environment.
+The "product" is three things: a Quarto documentation website, a suite of Python validators/tests under `scripts/`, and the enforcement hooks under `hooks/`.
+Standard commands are already documented --- lint/test steps in [`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml) and the quality gates in [`README.md`](README.md) --- so consult those rather than re-deriving them; the build and preview commands are in the bullets below.
+The startup update script keeps the `shared/sembr-skills` submodule current; the system tools below (Quarto, the `python` shim, `pre-commit`) are already present in the environment.
 
 Non-obvious caveats worth knowing:
 
-- **Lint:** the three fast checks under
-  [Verify changes before pushing](#verify-changes-before-pushing) cover this;
-  see that section rather than a second pinned command list here.
+- **Lint:** the three fast checks under [Verify changes before pushing](#verify-changes-before-pushing) cover this; see that section rather than a second pinned command list here.
 
-- **Test:** the `scripts/test_*.py` suites (each runnable directly with
-  `python3`); `validate.yml` lists the full set CI runs.
-  `scripts/test_compare_shell_forms.py` spawns a real `bash` that invokes
-  `python` (not `python3`), so it needs a `python` shim on `PATH`
-  (`python-is-python3`); without it six of its subtests fail.
+- **Test:** the `scripts/test_*.py` suites (each runnable directly with `python3`); `validate.yml` lists the full set CI runs.
+  `scripts/test_compare_shell_forms.py` spawns a real `bash` that invokes `python` (not `python3`), so it needs a `python` shim on `PATH` (`python-is-python3`); without it six of its subtests fail.
 
-- **Build:** `quarto render` writes the static site to `_site/`
-  (takes ~90s to render ~189 pages).
+- **Build:** `quarto render` writes the static site to `_site/` (takes ~90s to render ~189 pages).
 
-- **Run (dev):** `quarto preview --port 4444 --host 0.0.0.0 --no-browser`
-  serves the site with hot reload; edits to a `.qmd` rebuild that page live.
-  `quarto preview` also appends a redundant `/.quarto/` line to `.gitignore`
-  on first run --- revert that incidental change before committing.
+- **Run (dev):** `quarto preview --port 4444 --host 0.0.0.0 --no-browser` serves the site with hot reload; edits to a `.qmd` rebuild that page live.
+  `quarto preview` also appends a redundant `/.quarto/` line to `.gitignore` on first run --- revert that incidental change before committing.
   `_site/` and `.quarto/` are already gitignored.
 
-- **Submodule:** `shared/sembr-skills` must be initialized
-  (`git submodule update --init`) or `validate-skills.py` warns and the plugin
-  source check only ever reports its empty-directory branch.
+- **Submodule:** `shared/sembr-skills` must be initialized (`git submodule update --init`) or `validate-skills.py` warns and the plugin source check only ever reports its empty-directory branch.
 
-- **pre-commit:** installed to `~/.local/bin`, which is not on `PATH` by
-  default; run it as `~/.local/bin/pre-commit run --all-files`.
-  Its first run builds the gitleaks (Go) and markdownlint (Node) hook
-  environments, which is slow but cached thereafter.
+- **pre-commit:** installed to `~/.local/bin`, which is not on `PATH` by default; run it as `~/.local/bin/pre-commit run --all-files`.
+  Its first run builds the gitleaks (Go) and markdownlint (Node) hook environments, which is slow but cached thereafter.
