@@ -704,7 +704,7 @@ def main():
     if diff:
         # Check diff size limits
         lines = diff.splitlines()
-        changed_lines = sum(1 for line in lines if line.startswith("+") or line.startswith("-") and not line.startswith("+++") and not line.startswith("---"))
+        changed_lines = sum(1 for line in lines if (line.startswith("+") and not line.startswith("+++")) or (line.startswith("-") and not line.startswith("---")))
         files_changed = sum(1 for line in lines if line.startswith("diff --git"))
         
         if changed_lines > args.max_diff_lines:

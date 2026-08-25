@@ -1,0 +1,1 @@
+Added Workload Identity Federation (OIDC) support, diff limits, fork safe-to-test label logic, and fail-on-error configurations to the Antigravity Code Review action.
