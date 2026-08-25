@@ -53,6 +53,12 @@ on:
           the name examples/opencode-code-review.yml is copied to.
         type: string
         default: 'opencode-code-review.yml'
+      watch-timeout:
+        description: >-
+          Timeout bound for watching each dispatched agent's review run before
+          falling through to the next candidate (e.g. '15m' or '900s'). Defaults to '15m'.
+        type: string
+        default: '15m'
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false
@@ -75,7 +81,11 @@ jobs:
         github.event.sender.type != 'Bot'
       )
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Sized for up to ~3-4 candidate attempts at the default 15m watch-timeout
+    # plus run-polling overhead (gha#570). If configuring more agents or larger
+    # watch-timeouts, note that the fixed 60-minute job budget bounds the entire
+    # selection and candidate fallback loop.
+    timeout-minutes: 60
     permissions:
       contents: read
       pull-requests: read
@@ -117,6 +127,7 @@ jobs:
           PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
+          WATCH_TIMEOUT: ${{ inputs.watch-timeout }}
           # Secret *presence*, not the secret itself: a `secrets.X != ''`
           # comparison is evaluated by Actions, so only the boolean reaches
           # the runner.
@@ -206,16 +217,22 @@ jobs:
               done
 
               if [ -n "$RUN_ID" ]; then
-                echo "Tracking dispatched run $RUN_ID for agent '$agent'..."
-                if gh run watch "$RUN_ID" --repo "$REPO"; then
+                echo "Tracking dispatched run $RUN_ID for agent '$agent' (timeout: $WATCH_TIMEOUT)..."
+                set +e
+                timeout "$WATCH_TIMEOUT" gh run watch "$RUN_ID" --repo "$REPO"
+                WATCH_EXIT=$?
+                set -e
+                if [ "$WATCH_EXIT" -eq 0 ]; then
                   CONCLUSION=$(gh run view "$RUN_ID" --repo "$REPO" --json conclusion --jq '.conclusion' || true)
                   if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
                     echo "Agent '$agent' completed review successfully (conclusion: $CONCLUSION)."
                     exit 0
                   fi
                   echo "::warning::Dispatched run $RUN_ID for agent '$agent' completed with status '$CONCLUSION'; trying the next candidate agent."
+                elif [ "$WATCH_EXIT" -eq 124 ]; then
+                  echo "::warning::Dispatched run $RUN_ID for agent '$agent' timed out after $WATCH_TIMEOUT; trying the next candidate agent."
                 else
-                  echo "::warning::Dispatched run $RUN_ID for agent '$agent' failed during execution; trying the next candidate agent."
+                  echo "::warning::Dispatched run $RUN_ID for agent '$agent' failed during execution (exit $WATCH_EXIT); trying the next candidate agent."
                 fi
               else
                 # Failing OPEN here reports a successful review of a PR nobody
