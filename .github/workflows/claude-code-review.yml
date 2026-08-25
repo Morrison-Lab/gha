@@ -984,7 +984,11 @@ jobs:
           FCR_MAX_DENIALS: ${{ steps.fail-check-retry.outputs.max_denials }}
         run: |
           set -euo pipefail
-          if [[ "${{ cancelled() }}" == "true" ]]; then
+          # Note: GitHub Actions status-check functions like `cancelled()` are
+          # only permitted in `if:` keys, not inside `run:` blocks (actionlint
+          # flags calling them in expressions). We check step outcomes and
+          # job.status explicitly.
+          if [[ "${{ steps.claude-review.outcome }}" == "cancelled" || "${{ steps.claude-review-retry.outcome }}" == "cancelled" || "${{ job.status }}" == "cancelled" ]]; then
             echo "cancelled=true" >> "$GITHUB_OUTPUT"
             echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
             echo "Review run was cancelled (e.g. superseded by a newer run or cancelled by user)."
