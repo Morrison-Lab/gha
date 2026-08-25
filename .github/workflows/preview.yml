@@ -39,8 +39,12 @@ on:
         description: Restore R dependencies with renv. Set false for non-renv repos.
         type: boolean
         default: true
+      r-packages:
+        description: R packages to install when use-renv is false, space-, comma-, or newline-separated.
+        type: string
+        default: ''
       install-package:
-        description: Run `R CMD INSTALL .` to install the caller repo as a local package before rendering.
+        description: Run `R CMD INSTALL <path>` to install the caller repo as a local package before rendering.
         type: boolean
         default: true
       setup-chrome:
@@ -98,6 +102,7 @@ jobs:
           r-version: ${{ inputs.r-version }}
           apt-packages: ${{ inputs.apt-packages }}
           use-renv: ${{ inputs.use-renv }}
+          r-packages: ${{ inputs.r-packages }}
           install-package: ${{ inputs.install-package }}
           setup-chrome: ${{ inputs.setup-chrome }}
           submodules: ${{ inputs.submodules }}

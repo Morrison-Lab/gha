@@ -28,8 +28,13 @@ inputs:
   use-renv:
     description: Restore R dependencies with renv (r-lib/actions/setup-renv). Set 'false' for non-renv repos.
     default: 'true'
+  r-packages:
+    description: >-
+      R packages to install (space-, comma-, or newline-separated) when `use-renv` is 'false',
+      e.g. for non-renv Quarto projects.
+    default: ''
   install-package:
-    description: Run `R CMD INSTALL .` to install the caller repo as a local package before rendering.
+    description: Run `R CMD INSTALL <path>` to install the caller repo as a local package before rendering.
     default: 'true'
   setup-chrome:
     description: Install Chrome (needed by Quarto for revealjs / screenshot rendering).
@@ -120,10 +125,18 @@ runs:
       with:
         bypass-cache: never
 
+    - name: Install R dependencies
+      if: github.event.action != 'closed' && inputs.use-renv != 'true' && inputs.r-packages != ''
+      uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      with:
+        packages: ${{ inputs.r-packages }}
+
     - name: Install local package
       if: github.event.action != 'closed' && inputs.install-package == 'true'
       shell: bash
-      run: R CMD INSTALL .
+      env:
+        PROJECT_PATH: ${{ inputs.path }}
+      run: R CMD INSTALL "$PROJECT_PATH"
 
     - name: Install TinyTeX packages required for PDF rendering
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:pdf')
