@@ -1044,12 +1044,12 @@ jobs:
             else
               echo "::error::Attempt 1 failed but the retry failed for a different reason (hard SDK error, empty output, or a no-verdict result above the denial-count threshold) — treating as a failed review."
             fi
-          elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" ]]; then
-            # The retry ran but wrote no checkable execution file, so the guard
-            # never classified it and has no kind to offer. Name it here rather
+          elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" || "${{ steps.exec-file-retry.outcome }}" == "failure" ]]; then
+            # The retry ran but wrote no checkable execution file (or exec-file-retry failed),
+            # so the guard never classified it and has no kind to offer. Name it here rather
             # than letting it normalize to `unknown`: "no execution file" IS
             # the short-circuit signature (gha#368), and this is the one branch
-            # where the workflow knows that and the guard could not.
+            # where the workflow knows that and the guard could not (gha#549).
             attempt_kind="short-circuit"
             # The KIND is the retry's; the denial data is not. Blanking these
             # threw away whatever attempt 1 actually recorded, so a run whose
