@@ -1,0 +1,1 @@
+- Fixed `preview.yml` and `preview/action.yml` to install the package at `path` instead of hardcoding repo root `.` during `install-package: true`.
