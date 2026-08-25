@@ -434,9 +434,8 @@ which is why the capabilities above moved to `@v2`.
   `claude-code-review.yml`'s own header documents. Its `review` job shares a
   `cancel-in-progress` concurrency group across the automatic `pull_request`
   trigger and `gemini.yml`'s `@gemini review` dispatch, the same race
-  CLAUDE.md's "A canceled review can red-X require-review" documents for
-  `claude-code-review.yml` -- a canceled run there fails `require-review`
-  outright, which is expected and not a code bug. (Added after the "Default
+  CLAUDE.md's "A canceled review skips require-review gracefully" documents for
+  `claude-code-review.yml` (gha#585). (Added after the "Default
   Gemini Project" API-key suspension incident, 2026-07-30, gha#379 -- see the
   Tests section below for the offline coverage and the `_selftest.yml`
   end-to-end proof.)
@@ -1897,7 +1896,7 @@ which calls `lms::default_linters()` from a package defined in that repo's own
 `lms/` subdirectory) -- the manual's own docs page 403'd, but its `.qmd`
 source and the referenced `.lintr.R` file both fetched cleanly.)
 
-## A canceled review can red-X require-review -- don't chase it as a code bug
+## A canceled review skips require-review gracefully (gha#585)
 
 `claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
 (`claude-review-<PR>`, `cancel-in-progress: true`) across BOTH the automatic
@@ -1907,14 +1906,11 @@ together -- or claude.yml's agent run finishes and re-dispatches a review a
 minute or two later, landing on top of the next push's auto-review -- the two
 reviews race and one cancels the other.
 
-The `require-review` gate job asserts `claude-review`'s result is `success`;
-a *canceled* run (not skipped) makes that assertion fail, so `require-review`
-shows red right after a push even though the surviving review is fine. Before
-treating a post-push `require-review` failure as a real problem: check
-whether `claude-review`'s conclusion is `cancelled` rather than `failure`. If
-so, it's this race, not a code issue -- wait for (or re-trigger) an
-uncontested review instead of debugging the diff. To avoid causing it: don't
-post `@claude review` immediately after pushing a commit on a PR using this
+The `require-review` gate job treats a cancelled run as a graceful skip
+rather than an outright failure (gha#585), allowing surviving and subsequent
+reviews to proceed cleanly without leaving a false-negative red check on
+superseded runs. To avoid causing unnecessary cancellations: don't post
+`@claude review` immediately after pushing a commit on a PR using this
 workflow; let the automatic review run alone, or wait for any in-flight
 dispatched review to finish first. (See the `claude-review` job's
 `concurrency:` comment in `.github/workflows/claude-code-review.yml` for the

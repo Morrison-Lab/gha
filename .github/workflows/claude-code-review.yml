@@ -321,19 +321,11 @@ jobs:
     # dedupe: the survivor posts the current review and the collapse/cancel
     # steps fold the other as OUTDATED, leaving one visible review per push.
     #
-    # Caveat for require-review (below): a CANCELED claude-review run makes
-    # require-review FAIL outright (cancelled != skipped, so its `if:` still
-    # runs the assert, which then sees a non-success result). A consumer PR
-    # that pushes a commit and ALSO posts an `@claude review` comment around
-    # the same time — or whose claude.yml agent run finishes and re-dispatches
-    # a review 1-3 minutes later, landing on top of the next push's
-    # auto-review — can show a red require-review that is just this race, not
-    # a real review failure. Check whether claude-review's conclusion is
-    # `cancelled` (not `failure`) before troubleshooting the PR's content; the
-    # survivor run's review is what to trust. To avoid triggering the race,
-    # don't post `@claude review` immediately after pushing — let the
-    # automatic review run alone, or wait for any in-flight dispatched review
-    # to finish first.
+    # require-review treats a cancelled claude-review run as a graceful skip
+    # rather than a failure (gha#585). The survivor run's review is what to trust.
+    # To avoid unnecessary cancellations, don't post `@claude review` immediately
+    # after pushing — let the automatic review run alone, or wait for any
+    # in-flight dispatched review to finish first.
     concurrency:
       group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
@@ -992,7 +984,7 @@ jobs:
           FCR_MAX_DENIALS: ${{ steps.fail-check-retry.outputs.max_denials }}
         run: |
           set -euo pipefail
-          if [[ "${{ steps.claude-review.outcome }}" == "cancelled" || "${{ steps.claude-review-retry.outcome }}" == "cancelled" || "${{ job.status }}" == "cancelled" ]]; then
+          if [[ "${{ cancelled() }}" == "true" ]]; then
             echo "cancelled=true" >> "$GITHUB_OUTPUT"
             echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
             echo "Review run was cancelled (e.g. superseded by a newer run or cancelled by user)."
@@ -1159,6 +1151,7 @@ jobs:
         if: >-
           steps.resolve-final.outcome == 'success' &&
           steps.resolve-final.outputs.quota_exhausted != 'true' &&
+          steps.resolve-final.outputs.cancelled != 'true' &&
           !(inputs.track-progress && github.event_name == 'pull_request')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1211,6 +1204,7 @@ jobs:
           inputs.report-cost &&
           steps.resolve-final.outcome == 'success' &&
           steps.resolve-final.outputs.quota_exhausted != 'true' &&
+          steps.resolve-final.outputs.cancelled != 'true' &&
           steps.resolve-final.outputs.total_cost_usd != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1501,12 +1495,15 @@ jobs:
     #   - claude-review was skipped, whatever made its own `if:` false --- a
     #     draft, fork, or bot-authored PR; a dispatch blocked by the
     #     fork/Dependabot guard; or gather-context having been cancelled
+    #   - claude-review was cancelled (the cancel-in-progress race, gha#585)
     #   - quota_exhausted=true (the API rejected the request, either before
     #     any work or part-way through the review -- gha#520)
     #   - self_mod=true (the PR edits the caller workflow, so the review was
     #     deliberately skipped --- gha#434)
+    #   - cancelled=true (the review run was cancelled mid-job and resolved as
+    #     a graceful skip -- gha#585)
     #
-    # Both of those last two are conditioned on the review job having SUCCEEDED.
+    # The last three are conditioned on the review job having SUCCEEDED.
     # A deliberate no-verdict skip and a job that blew up are different states,
     # and only the first is safe to gray out: without the success test, a
     # genuine failure in any step that still runs on those paths would be
