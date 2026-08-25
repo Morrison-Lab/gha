@@ -247,20 +247,32 @@ parse_ignore_tells <- function(raw_arg) {
   raw_arg <- trimws(raw_arg)
   if (!nzchar(raw_arg)) return(character(0))
 
-  lowered <- tolower(raw_arg)
-  if (lowered %in% MULTI_WORD_TELLS) {
-    return(lowered)
-  }
-
   if (grepl(",", raw_arg, fixed = TRUE)) {
     tokens <- strsplit(raw_arg, ",", fixed = TRUE)[[1]]
-  } else {
-    tokens <- scan(text = raw_arg, what = character(), quiet = TRUE)
+    tokens <- tolower(trimws(tokens))
+    tokens <- tokens[nzchar(tokens)]
+    return(unname(as.character(unique(tokens))))
   }
 
-  tokens <- tolower(trimws(tokens))
-  tokens <- tokens[nzchar(tokens)]
-  unname(as.character(unique(tokens)))
+  lines <- strsplit(raw_arg, "\n", fixed = TRUE)[[1]]
+  lines <- trimws(lines)
+  lines <- lines[nzchar(lines)]
+
+  results <- character(0)
+  for (line in lines) {
+    for (mwt in MULTI_WORD_TELLS) {
+      pattern <- paste0("(?i)(?:^|\\s)", gsub("-", "\\\\-", mwt), "(?:$|\\s)")
+      if (grepl(pattern, line, perl = TRUE)) {
+        results <- c(results, mwt)
+        line <- sub(pattern, " ", line, perl = TRUE)
+      }
+    }
+    rem_tokens <- scan(text = line, what = character(), quiet = TRUE)
+    results <- c(results, tolower(trimws(rem_tokens)))
+  }
+
+  results <- results[nzchar(results)]
+  unname(as.character(unique(results)))
 }
 
 # ── Main Entrypoint ──────────────────────────────────────────────────────────
