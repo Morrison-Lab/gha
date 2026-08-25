@@ -1,3 +1,4 @@
+# Copy to .github/workflows/spellcheck.yml in your repo.
 # Spellcheck an R package's prose (DESCRIPTION Title/Description,
 # man/*.Rd, vignettes/, root README/NEWS/CHANGES/index).
 #

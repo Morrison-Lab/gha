@@ -43,6 +43,7 @@ runs:
       env:
         RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
       with:
+        working-directory: ${{ inputs.path }}
         install-quarto: ${{ inputs.install-quarto }}
         packages: |
           any::spelling
