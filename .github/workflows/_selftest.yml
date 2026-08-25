@@ -609,6 +609,15 @@ jobs:
         with:
           extra-secret-names: TEST_SECRET
           secrets-json: '{"TEST_SECRET": "test_val"}'
+      - name: Assert export-extra-secrets exported environment variable
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${TEST_SECRET:-}" != "test_val" ]]; then
+            echo "::error::export-extra-secrets did not export TEST_SECRET=test_val to environment"
+            exit 1
+          fi
+          echo "export-extra-secrets correctly exported TEST_SECRET to environment"
       - name: Assert build-self-review-skip-notice generated body file
         shell: bash
         env:
@@ -2673,3 +2682,86 @@ jobs:
           fi
           [ "$rc" -eq 0 ] || exit 1
           echo "install-gha-scripts refused both a path-bearing name and a bare dot-dot name."
+
+  # check-junk-files is brand new, so (like check-secrets above) it does not
+  # exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-junk-files@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual PR
+  # code.
+  junk-files:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # This repo's own tree carries no tracked junk, so this call asserts the
+      # zero-match path -- and, unlike the offline suite, it proves action.yml
+      # wires its inputs through to the script at all. The offline tests call
+      # the script directly, so they cannot see that layer.
+      - name: Check a clean tree
+        uses: ./check-junk-files
+
+      # A clean-tree call structurally cannot exercise the failing path, which
+      # is where the annotations, the step summary, and the exit code live. So
+      # stage a junk file into the index (the scan reads the index, not the
+      # worktree, so no commit is needed) and assert the step really fails.
+      - name: Track a junk file
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'selftest\n' > .DS_Store
+          git add -f .DS_Store
+
+      - name: Check again, expecting a failure
+        id: junk-expected-failure
+        continue-on-error: true
+        uses: ./check-junk-files
+
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.junk-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-junk-files to fail on a tracked .DS_Store, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-junk-files failed on a tracked .DS_Store, as expected."
+
+      # And that paths-ignore reaches the script through action.yml -- the one
+      # input whose semantics are easiest to get wrong (see its own docs), and
+      # the one a wiring typo would silently turn into "exempt nothing".
+      - name: Check again with the junk file exempted
+        uses: ./check-junk-files
+        with:
+          paths-ignore: '.DS_Store'
+
+      - name: Remove the planted junk file
+        if: always()
+        shell: bash
+        run: |
+          git rm -q --cached --ignore-unmatch .DS_Store || true
+          rm -f .DS_Store
+
+  # The job above takes the zero-match early return, proves a finding fails,
+  # and proves two inputs are wired. Everything else -- the `fail`
+  # normalization's fail-closed reading, the empty-pattern guard, the
+  # deliberate omission of --exclude-standard, and pathspec-vs-`!` exemption
+  # semantics -- runs only here. Kept as its own job so a failure is
+  # attributable at a glance, the same one-capability-per-job split
+  # phi-tests / new-line-breaks-tests / secrets-tests use.
+  junk-files-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run check-junk-files tests
+        shell: bash
+        run: bash check-junk-files/tests/test-check-junk-files.sh

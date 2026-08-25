@@ -33,8 +33,8 @@ Must be triggered by `pull_request` (the changed-line set comes from the PR).
 | `install-quarto`     | boolean | `false` | Install Quarto when setting up R dependencies.                                                                                                                    |
 | `use-renv`           | boolean | `false` | Restore dependencies with `renv` (`setup-renv`) instead of DESCRIPTION-based `setup-r-dependencies`.                                                              |
 | `renv-cache-version` | string  | `'1'`   | Cache version suffix passed to `setup-renv`.                                                                                                                      |
-| `apt-packages`       | string  | `''`    | Extra apt packages to install before setting up dependencies.                                                                                                     |
-| `extra-packages`     | string  | `''`    | Extra R packages to install (`gh` and `lintr` are always installed).                                                                                              |
+| `apt-packages`       | string  | `''`    | Extra apt packages to install before setting up dependencies (space-separated).                                                                                   |
+| `extra-packages`     | string  | `''`    | Extra R packages to install (space- or comma-separated; passed to `setup-r-dependencies`, or installed from CRAN under `use-renv: true`). `gh` and `lintr` are always installed. |
 | `install-package`    | boolean | `true`  | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Set `false` for a repo that is not an installable R package. |
 | `fail`               | boolean | `true`  | Fail the workflow when a lint is found on a changed line (rather than warn only).                                                                                 |
 

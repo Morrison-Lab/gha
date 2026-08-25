@@ -48,7 +48,6 @@ jobs:
     permissions:
       actions: write
       issues: write
-      pull-requests: read
     steps:
       - name: Parse workflow ref
         id: this-wf
@@ -75,15 +74,11 @@ jobs:
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
 
+          REF_ARGS=(--ref "$PR_BRANCH")
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-            echo "::warning::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); the reusable review workflow blocks fork reviews, so no review was dispatched."
-            gh issue comment "$PR_NUMBER" --repo "$REPO" \
-              --body ":no_entry: Review request received, but this PR is from a fork, and fork PRs cannot be reviewed by this workflow." \
-              || echo "::warning::Could not acknowledge comment."
-            exit 0
+            REF_ARGS=()
           fi
 
-          REF_ARGS=(--ref "$PR_BRANCH")
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
           gh issue comment "$PR_NUMBER" --repo "$REPO" \
             --body ":robot: Dispatched an Antigravity Agent review for PR #$PR_NUMBER (see [run]($RUN_URL))." \

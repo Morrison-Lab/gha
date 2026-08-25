@@ -103,6 +103,12 @@ check("Parse space-separated ignore-tells", identical(res_space, c("robust", "la
 res_single_mw <- parse_ignore_tells("signposting filler")
 check("Parse single multi-word tell without comma", identical(res_single_mw, c("signposting filler")), res_single_mw, c("signposting filler"))
 
+res_mw_space <- parse_ignore_tells("robust signposting filler landscape")
+check("Parse multi-word tell mixed in space-separated list", identical(res_mw_space, c("signposting filler", "robust", "landscape")), res_mw_space, c("signposting filler", "robust", "landscape"))
+
+res_mw_newline <- parse_ignore_tells("signposting filler\nrealm delve")
+check("Parse multi-word tell mixed in newline-separated list", identical(res_mw_newline, c("signposting filler", "realm", "delve")), res_mw_newline, c("signposting filler", "realm", "delve"))
+
 res_empty <- parse_ignore_tells("")
 check("Parse empty ignore-tells", length(res_empty) == 0L, length(res_empty), 0L)
 
