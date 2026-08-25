@@ -81,6 +81,10 @@ jobs:
         github.event.sender.type != 'Bot'
       )
     runs-on: ubuntu-latest
+    # Sized for up to ~3-4 candidate attempts at the default 15m watch-timeout
+    # plus run-polling overhead (gha#570). If configuring more agents or larger
+    # watch-timeouts, note that the fixed 60-minute job budget bounds the entire
+    # selection and candidate fallback loop.
     timeout-minutes: 60
     permissions:
       contents: read
