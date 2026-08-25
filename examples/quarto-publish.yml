@@ -15,6 +15,11 @@ on:
   # For a render-only build check (deploy: false below), also add:
   # pull_request:
 
+# Serialize deploys so two pushes don't race on the gh-pages branch.
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
 jobs:
   publish:
     permissions:
