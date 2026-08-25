@@ -1,0 +1,1 @@
+- Add `fail` input to `spellcheck` composite action and reusable workflow, and execute `spelling::spell_check_package()` directly in R to eliminate file-deletion during exclusions and the 256-word exit code modulo bug (gha#560, gha#556).
