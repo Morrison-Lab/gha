@@ -13,12 +13,10 @@ Post an AI summary comment on newly opened issues.
 
 ## Inputs
 
-<!-- lychee:ignore-start -->
 | Input | Description | Type | Default | Required |
 | --- | --- | --- | --- | --- |
-| `endpoint` | Inference endpoint URL (e.g. `http://localhost:11434/v1` or custom OpenAI-compatible endpoint). | string | `https://models.github.ai/inference` | No |
+| `endpoint` | Inference endpoint URL (e.g. `http://localhost:11434/v1` or custom OpenAI-compatible endpoint). | string | `https&#58;//models.github.ai/inference` | No |
 | `model` | Model identifier to query. | string | `openai/gpt-4o-mini` | No |
-<!-- lychee:ignore-end -->
 
 ## Secrets
 
