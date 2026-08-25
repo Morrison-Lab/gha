@@ -78,7 +78,7 @@ if (n_words > 0) {
   # Format GitHub Actions annotations
   for (i in seq_len(n_words)) {
     w <- words$word[i]
-    found <- paste(words$Found[i], collapse = ", ")
+    found <- paste(words$found[[i]], collapse = ", ")
     cat(sprintf("::warning::Possible misspelled word '%s' in: %s\n", w, found))
   }
 

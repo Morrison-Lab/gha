@@ -40,6 +40,8 @@ runs:
 
     - name: Set up R dependencies
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      env:
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
       with:
         install-quarto: ${{ inputs.install-quarto }}
         packages: |
@@ -48,6 +50,7 @@ runs:
     - name: Spellcheck
       shell: bash
       env:
+        RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'
         INPUT_PATH: ${{ inputs.path }}
         INPUT_EXCLUDE: ${{ inputs.exclude }}
         INPUT_FAIL: ${{ inputs.fail }}
