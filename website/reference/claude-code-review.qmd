@@ -38,6 +38,7 @@ variable unset while the agent is live, or the mention is answered twice.
 | `use-ai-config`       | boolean | `true`                  | Install the [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config) plugin (`ai-config@Morrison-Lab`) alongside the built-in `code-review@claude-code-plugins`, so the reviewer applies the lab's shared review conventions rather than only the calling repo's own `CLAUDE.md`. Set false to opt out.                                                                                                                                                                            |
 | `plugin-marketplaces` | string  | `''`                    | Extra newline-separated plugin marketplace Git URLs, added on top of the two this workflow already uses (`anthropics/claude-code.git` for the `code-review` plugin, and `Morrison-Lab/ai-config.git` unless `use-ai-config` is false). Pair with `plugins` below; empty adds none.                                                                                                                                                                                                         |
 | `plugins`             | string  | `''`                    | Extra newline-separated plugin refs to install (`<plugin>@<marketplace-name>`), added on top of the built-in `code-review@claude-code-plugins` and `ai-config@Morrison-Lab`. Each marketplace name must match the name that marketplace declares in its own `.claude-plugin/marketplace.json`, not the URL given in `plugin-marketplaces`.                                                                                                                                                  |
+| `extra-secret-names`  | string  | `''`                    | Space-, comma-, or newline-separated caller secret names to export into the reviewer environment (e.g. `'EPI202_TOKEN EPI204_TOKEN'`). Requires `secrets: inherit` on the caller `uses:`. Secret names must match `[A-Z_][A-Z0-9_]*` and cannot shadow protected workflow environment variables. Empty to skip.                                                                                                                                                                           |
 
 ## Secrets
 
@@ -166,6 +167,7 @@ jobs:
     #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources
     #   plugins: <plugin>@<marketplace-name>
+    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)
     #   prompt-addendum: |
     #     Repo-specific review guidance (e.g. Quarto/R conventions to enforce).
 ```

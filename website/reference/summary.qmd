@@ -2,11 +2,28 @@
 title: "summary.yml"
 ---
 
-Post an AI summary comment on newly opened issues, using the GitHub models API.
+Post an AI summary comment on newly opened issues.
+
+> [!WARNING]
+> **GitHub Models retirement notice**:
+> The default GitHub Models endpoint is in a scheduled retirement brownout
+> ([gha#617](https://github.com/Morrison-Lab/gha/issues/617)) and returns 410 errors.
+> Pass a custom `endpoint`, `model`, and `API_KEY` secret,
+> or prefer [`claude.yml`](claude.qmd) for richer issue triage and engagement.
 
 ## Inputs
 
-This workflow takes no inputs.
+| Input | Description | Type | Default | Required |
+| --- | --- | --- | --- | --- |
+| `endpoint` | Inference endpoint URL (e.g. `http://localhost:11434/v1` or custom OpenAI-compatible endpoint). | string | `https&#58;//models.github.ai/inference` | No |
+| `model` | Model identifier to query. | string | `openai/gpt-4o-mini` | No |
+
+## Secrets
+
+| Secret | Description | Required |
+| --- | --- | --- |
+| `API_KEY` | API key for the custom inference endpoint. | No |
+| `OPENAI_API_KEY` | Alternative API key secret name. | No |
 
 ## Permissions
 
@@ -16,7 +33,9 @@ Grant `issues: write`, `models: read`, and `contents: read`.
 
 ```yaml
 # Copy to .github/workflows/summary.yml in your repo.
-# NOTE: the calling job must grant issues:write + models:read.
+# NOTE: GitHub Models (the default endpoint) is in scheduled retirement brownout (gha#617).
+# Provide a custom `endpoint` / `model` and API_KEY secret, or prefer `claude.yml` for richer issue engagement.
+# The calling job must grant issues:write + models:read.
 name: Summarize new issues
 
 on:
@@ -30,6 +49,11 @@ jobs:
       models: read
       contents: read
     uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1
+    # secrets:
+    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    # with:
+    #   endpoint: http://localhost:11434/v1
+    #   model: openai/gpt-4o-mini
 ```
 
 See [`examples/summary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/summary.yml)

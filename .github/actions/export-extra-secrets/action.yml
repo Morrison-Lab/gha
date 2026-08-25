@@ -1,0 +1,28 @@
+name: Export extra secrets to environment
+description: >-
+  Exports named consumer secrets from secrets-json into $GITHUB_ENV after
+  validating secret names and registering masks with ::add-mask::.
+  Wrapped in a composite action, located via github.action_path, because
+  reusable workflows run against the caller's checkout, not Morrison-Lab/gha's
+  tree (gha#618, gha#196).
+
+inputs:
+  extra-secret-names:
+    description: Comma- or whitespace-separated list of secret names to export.
+    required: false
+    default: ''
+  secrets-json:
+    description: JSON-serialized secrets map (typically toJson(secrets)).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export extra secrets
+      if: inputs.extra-secret-names != ''
+      shell: bash
+      env:
+        EXTRA_SECRET_NAMES: ${{ inputs.extra-secret-names }}
+        SECRETS_JSON: ${{ inputs.secrets-json }}
+      run: |
+        python3 "${{ github.action_path }}/../../workflows/scripts/export-extra-secrets.py"
