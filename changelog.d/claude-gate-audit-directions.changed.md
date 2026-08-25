@@ -1,0 +1,1 @@
+- Expand `CLAUDE.md` gate-widening audit rule to all three directions: downstream steps, upstream caller gates, and sideways conditional branches (gha#553).
