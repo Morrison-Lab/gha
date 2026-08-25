@@ -515,11 +515,12 @@ runs:
           checkout as you found it, and if you would have changed something,
           describe the change in your review instead of making it.
 
-          The repository and PR branch are ALREADY checked out at the PR
-          head commit in your current working directory. You do NOT need
-          to (and must not) run `gh pr checkout` or `git checkout` — the
-          working tree already contains the exact files and commits under
-          review.
+          The repository and PR branch are ALREADY checked out at the commit
+          under review (for automatic reviews, this may be a GitHub-generated
+          merge commit rather than the PR's exact head SHA) in your current
+          working directory. You do NOT need to (and must not) run
+          `gh pr checkout` or `git checkout` — the working tree already
+          contains the exact files and commits under review.
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
           curl to verify a computed value or figure against rendered

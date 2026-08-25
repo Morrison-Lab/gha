@@ -15,8 +15,8 @@ Post an AI summary comment on newly opened issues.
 
 | Input | Description | Type | Default | Required |
 | --- | --- | --- | --- | --- |
-| `endpoint` | Inference endpoint URL (e.g. `http://localhost:11434/v1` or custom OpenAI-compatible endpoint). | string | `""` | No |
-| `model` | Model identifier to query. | string | `gpt-4o-mini` | No |
+| `endpoint` | Inference endpoint URL (e.g. `http://localhost:11434/v1` or custom OpenAI-compatible endpoint). | string | `https&#58;//models.github.ai/inference` | No |
+| `model` | Model identifier to query. | string | `openai/gpt-4o-mini` | No |
 
 ## Secrets
 
@@ -48,12 +48,12 @@ jobs:
       issues: write
       models: read
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1
     # secrets:
     #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
     # with:
     #   endpoint: http://localhost:11434/v1
-    #   model: gpt-4o-mini
+    #   model: openai/gpt-4o-mini
 ```
 
 See [`examples/summary.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/summary.yml)

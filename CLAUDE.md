@@ -23,7 +23,8 @@ composite action plus a `workflow_call` reusable workflow. Consumers pin the
 major tag each capability's own reference page documents (`@v1` for most,
 `@v2` for `preview`, `preview-deploy`, `cleanup-pr-previews`, `quarto-publish`,
 `test-coverage`, `check-equation-renders`, `check-bibliography-dois`,
-`check-phi`, `check-links`, `check-non-standard-chars`, `claude`,
+`check-phi`, `check-junk-files`, `check-links`,
+`check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
 `lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
@@ -46,6 +47,26 @@ which is why the capabilities above moved to `@v2`.
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
   exists to avoid).
+  `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
+  the history but the **index** (`git ls-files -i -c -X`), for tracked
+  operating-system and editor detritus.
+  Diff-scoping is wrong here for the
+  opposite reason it is right for `check-new-line-breaks`: a `.DS_Store`
+  committed long ago is still a live defect rather than pre-existing drift to
+  tolerate, and clearing it costs one command.
+  It passes no
+  `--exclude-standard`, so a file the caller force-added despite its own
+  `.gitignore` is not second-guessed, and its `paths-ignore` becomes git
+  **pathspec** exclusions rather than gitignore `!` lines -- negation is
+  matched per pattern against the full path, so `!vendor/` re-includes
+  `vendor/.DS_Store` not at all and would exempt nothing silently (verified
+  against git 2.50.1, both directions).
+  Its `patterns` default is deliberately
+  the set `usethis::git_vaccinate()` writes (read from `r-lib/usethis`'s own
+  `git_ignore_lines`, not from the rendered reference page), plus `._*`,
+  `Thumbs.db`, and `desktop.ini`, which vaccination does not cover -- so the
+  remedy the failure recommends is never narrower than the check's own scope,
+  and the gap is stated rather than left silent.
   `check-secrets/` (shell) is the deliberate counter-example to that pattern:
   it is the one check that scans **history** rather than a diff,
   because a secret committed and later removed stays fetchable through the
@@ -413,9 +434,8 @@ which is why the capabilities above moved to `@v2`.
   `claude-code-review.yml`'s own header documents. Its `review` job shares a
   `cancel-in-progress` concurrency group across the automatic `pull_request`
   trigger and `gemini.yml`'s `@gemini review` dispatch, the same race
-  CLAUDE.md's "A canceled review can red-X require-review" documents for
-  `claude-code-review.yml` -- a canceled run there fails `require-review`
-  outright, which is expected and not a code bug. (Added after the "Default
+  CLAUDE.md's "A canceled review skips require-review gracefully" documents for
+  `claude-code-review.yml` (gha#585). (Added after the "Default
   Gemini Project" API-key suspension incident, 2026-07-30, gha#379 -- see the
   Tests section below for the offline coverage and the `_selftest.yml`
   end-to-end proof.)
@@ -1049,6 +1069,35 @@ the paragraph below describes, in the one form no runtime generation can
 undo, since the commit that added it stays in history.
 The canned report the stub writes carries only `RuleID`, `File`, `StartLine`,
 `Commit`, and `Fingerprint`, never `Match` or `Secret`, for the same reason.
+
+`check-junk-files/tests/test-check-junk-files.sh` is a shell suite driving
+`check-junk-files.sh` against throwaway git repos built in `$TMPDIR` -- nothing
+committed, for the same reason the `test-coverage` fixture is generated: a
+committed `.DS_Store` would be swept into this repo's own `junk-files` selftest
+job forever after.
+Every fixture is force-added (`git add -Af`), because a developer running the
+suite on a vaccinated machine has a global gitignore that silently skips the
+very files under test.
+CI runs it as the `junk-files-tests` job in `_selftest.yml`, alongside a
+`junk-files` job that exercises the real composite: once against this repo's
+clean tree, once against a `.DS_Store` staged into the index (the scan reads
+the index, so no commit is needed) with `continue-on-error` plus an `outcome`
+assertion, and once with that file exempted through `paths-ignore` -- the two
+input paths a wiring typo would silently turn into "checks nothing" and
+"exempts nothing".
+The four cases to keep if the suite is ever trimmed are the negative ones,
+because each pins a decision that is silent when reversed: a force-added file
+listed in the repo's own `.gitignore` is not reported (passing
+`--exclude-standard` reports it), `paths-ignore: 'vendor/'` really exempts the
+directory (implementing it as gitignore `!` lines exempts nothing), an empty
+pattern set is an error rather than a green check that examined nothing, and a
+filename merely *containing* `.DS_Store` is not a match.
+All five mutations were confirmed to turn the suite red rather than assumed
+to, the sixth being the defaults-agreement check that `action.yml` and
+`.github/workflows/check-junk-files.yml` declare the same `patterns` string --
+the gha#303 precedent, and here a drift would hand a consumer of the reusable
+workflow a different pattern set from a consumer of the composite with nothing
+red.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
@@ -1854,7 +1903,7 @@ which calls `lms::default_linters()` from a package defined in that repo's own
 `lms/` subdirectory) -- the manual's own docs page 403'd, but its `.qmd`
 source and the referenced `.lintr.R` file both fetched cleanly.)
 
-## A canceled review can red-X require-review -- don't chase it as a code bug
+## A canceled review skips require-review gracefully (gha#585)
 
 `claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
 (`claude-review-<PR>`, `cancel-in-progress: true`) across BOTH the automatic
@@ -1864,14 +1913,12 @@ together -- or claude.yml's agent run finishes and re-dispatches a review a
 minute or two later, landing on top of the next push's auto-review -- the two
 reviews race and one cancels the other.
 
-The `require-review` gate job asserts `claude-review`'s result is `success`;
-a *canceled* run (not skipped) makes that assertion fail, so `require-review`
-shows red right after a push even though the surviving review is fine. Before
-treating a post-push `require-review` failure as a real problem: check
-whether `claude-review`'s conclusion is `cancelled` rather than `failure`. If
-so, it's this race, not a code issue -- wait for (or re-trigger) an
-uncontested review instead of debugging the diff. To avoid causing it: don't
-post `@claude review` immediately after pushing a commit on a PR using this
+The `require-review` gate job treats a cancelled run as a graceful skip
+rather than an outright failure (gha#585), allowing surviving and subsequent
+reviews to proceed cleanly without leaving a false-negative red check on
+superseded runs.
+To avoid causing unnecessary cancellations: don't post
+`@claude review` immediately after pushing a commit on a PR using this
 workflow; let the automatic review run alone, or wait for any in-flight
 dispatched review to finish first. (See the `claude-review` job's
 `concurrency:` comment in `.github/workflows/claude-code-review.yml` for the
