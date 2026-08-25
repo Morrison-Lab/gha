@@ -1640,7 +1640,7 @@
     "href": "reference/summary.html#inputs",
     "title": "summary.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\n\nInput\nDescription\nType\nDefault\nRequired\n\n\n\n\nendpoint\nInference endpoint URL (e.g. http://localhost:11434/v1 or custom OpenAI-compatible endpoint).\nstring\n\"\"\nNo\n\n\nmodel\nModel identifier to query.\nstring\ngpt-4o-mini\nNo",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\n\nInput\nDescription\nType\nDefault\nRequired\n\n\n\n\nendpoint\nInference endpoint URL (e.g. http://localhost:11434/v1 or custom OpenAI-compatible endpoint).\nstring\nhttps://models.github.ai/inference\nNo\n\n\nmodel\nModel identifier to query.\nstring\nopenai/gpt-4o-mini\nNo",
     "crumbs": [
       "Overview",
       "Reference",
@@ -1676,7 +1676,7 @@
     "href": "reference/summary.html#example",
     "title": "summary.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/summary.yml in your repo.\n# NOTE: GitHub Models (the default endpoint) is in scheduled retirement brownout (gha#617).\n# Provide a custom `endpoint` / `model` and API_KEY secret, or prefer `claude.yml` for richer issue engagement.\n# The calling job must grant issues:write + models:read.\nname: Summarize new issues\n\non:\n  issues:\n    types: [opened]\n\njobs:\n  summary:\n    permissions:\n      issues: write\n      models: read\n      contents: read\n    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1\n    # secrets:\n    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}\n    # with:\n    #   endpoint: http://localhost:11434/v1\n    #   model: gpt-4o-mini\nSee examples/summary.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/summary.yml in your repo.\n# NOTE: GitHub Models (the default endpoint) is in scheduled retirement brownout (gha#617).\n# Provide a custom `endpoint` / `model` and API_KEY secret, or prefer `claude.yml` for richer issue engagement.\n# The calling job must grant issues:write + models:read.\nname: Summarize new issues\n\non:\n  issues:\n    types: [opened]\n\njobs:\n  summary:\n    permissions:\n      issues: write\n      models: read\n      contents: read\n    uses: Morrison-Lab/gha/.github/workflows/summary.yml@v1\n    # secrets:\n    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}\n    # with:\n    #   endpoint: http://localhost:11434/v1\n    #   model: openai/gpt-4o-mini\nSee examples/summary.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
