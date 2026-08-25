@@ -1,4 +1,6 @@
-# Caller for this repo's reusable Antigravity PR review workflow.
+# Inactive caller for this repo's reusable Antigravity PR review workflow.
+# Antigravity review is currently out of service (see ai-config#1776, gha#584);
+# the job is gated so an inadvertent dispatch is a no-op.
 name: Antigravity Code Review
 
 on:
@@ -20,6 +22,8 @@ on:
 
 jobs:
   review:
+    # Gated to never run while Antigravity is out of service (ai-config#1776, gha#584).
+    if: ${{ github.event_name == 'none' }}
     # timeout-minutes is defined in the reusable workflow
     permissions:
       contents: read

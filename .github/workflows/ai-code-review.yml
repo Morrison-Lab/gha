@@ -16,9 +16,9 @@ on:
   workflow_call:
     inputs:
       agents:
-        description: Comma-separated list of AI agents to select from (e.g. 'claude, gemini, cursor, antigravity').
+        description: Comma-separated list of AI agents to select from (e.g. 'claude, gemini, cursor').
         type: string
-        default: 'claude, gemini, antigravity'
+        default: 'claude, gemini'
       pr-number:
         description: Pull request number to review (required for workflow_dispatch).
         type: string

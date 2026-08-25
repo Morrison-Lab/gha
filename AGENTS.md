@@ -33,7 +33,7 @@ It is the wrong instinct when the debt is yours and has a next step.
 The implication runs one way: a timer fires once and dies, so it cannot keep a standing rule.
 
 When no mechanism is worth building, drop the promise and state the plain fact instead.
-See `shared/workflow/no-empty-promises.md`.
+See [`shared/workflow/no-empty-promises.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/no-empty-promises.md).
 
 ## Interpret instructions broadly and maximize safe progress
 
@@ -76,7 +76,7 @@ The decision stays the human's.
 Two boundaries.
 Efficiency never outranks correctness, so no saving is bought with a skipped verification or a shortened review.
 And restructure in its own issue or PR, not inside whatever task happened to notice it.
-See `shared/workflow/restructure-for-efficiency.md`.
+See [`shared/workflow/restructure-for-efficiency.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/restructure-for-efficiency.md).
 
 ## Keep ai-config and repo checkouts fresh
 
@@ -94,46 +94,15 @@ In every session --- at session start, and again periodically during long sessio
 ## Verify changes before pushing
 
 No compiled app gates this repo.
-CI ([`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml)) and pre-commit run the checks directly:
+CI ([`.github/workflows/_selftest.yml`](.github/workflows/_selftest.yml)) runs the checks directly.
+Run unit tests and lint checks locally per capability:
 
 ```sh
-python3 scripts/validate-skills.py    # SKILL.md frontmatter, codex-skills/ sync, manifests
-python3 scripts/check-links.py        # no broken relative markdown links
-npx --yes markdownlint-cli2@0.22.1    # style; config in .markdownlint-cli2.jsonc
+python3 check-new-line-breaks/tests/test_check_new_line_breaks.py
+node lint-markdown/tests/test_list_item_splices.mjs
+python3 check-non-standard-chars/tests/test_check_non_standard_chars.py
+python3 check-phi/tests/test_check_phi.py
 ```
-
-Most checks ship their own suite as a standalone script (`scripts/test_<name>.py`, plus `hooks/test-<name>.py` paired with their subjects by `scripts/test_hooks.py`, which fails on an untested hook outside its explicit allowlist), so a focused check is one `python3` invocation.
-Environment quirks that bite here (the `python` shim, pre-commit's PATH, the submodule) are listed under the Cursor Cloud section below and apply to any agent.
-
-## Canonical sources vs generated output
-
-Never hand-edit generated files; CI fails on stale or drifted output.
-
-| Source of truth | Generated (do not edit) | Refresh with |
-|---|---|---|
-| `skills/<name>/SKILL.md` | `codex-skills/**` wrappers | `python3 scripts/sync-codex-skill-wrappers.py` |
-| `tool-mappings.yml` | `tool-mappings.md` | same script |
-| upstream d-morrison/wai | `shared/vendored/**` copies | automatic `Sync from wai` workflow |
-
-After adding or editing a skill, regenerate the wrappers before pushing.
-
-## Shared fragments have two consumers
-
-Fragments under `shared/` are imported by `CLAUDE.md` (`@path`) and transcluded by the UCD-SERG lab manual via its `.ai-config` submodule.
-Edit the fragment, never an inline copy in `CLAUDE.md`.
-Keep fragments ASCII (write `---` for em-dashes, straight quotes) so the lab manual's non-standard-character check passes, and keep them audience-neutral: no first person, no harness-specific framing inside the body.
-
-## Adding an enforcement hook
-
-A hook needs four synchronized pieces: the script in `hooks/`, its `test-<name>.py` beside it, its binding in [`hooks/hooks.json`](https://github.com/Morrison-Lab/ai-config/blob/main/hooks/hooks.json), and a row in the README hook table --- `scripts/check-hook-catalog.py` fails when the table and the manifest disagree.
-Warn-only hooks emit `systemMessage`, never a bare `reason`: a `Stop` hook's `reason` is read only alongside `"decision": "block"`, so a warn-by-`reason` hook fires silently.
-Never activate a hook before its PR merges: writing and testing the script is authoring and needs no permission, but do not run `install-hooks.py --fix` for a hook whose PR is still open.
-
-## Context budget
-
-`CLAUDE.md` plus the transitive closure of its `@path` imports loads in full at every session start.
-The root file's character cap and a per-fragment cap gate CI (`scripts/check-context-closure.py`), so an addition there can redden an unrelated-feeling PR.
-Prefer an on-demand memory file under `memories/`.
 
 ## Worktree isolation
 
@@ -275,13 +244,11 @@ This grants no merge authority: the strict merge policy below still applies.
 
 ## Strict Merge Control Policy
 
-- **NEVER merge any Pull Request or Merge Request without explicit user permission.**
-  Creating, opening, updating, or driving a PR to clean CI/review does NOT grant permission to merge it.
-  Merging a PR is strictly forbidden unless the user explicitly grants session permission (e.g. via `/mwc` or `/maw`) or explicitly issues a merge instruction for that specific PR (e.g. `/merge-it` or "merge this PR").
+- **Standing `mwc` is active by default in `Morrison-Lab/gha`**: AI agent sessions working in this repository have standing permission to squash-merge pull requests once they reach **fully clean** (all CI checks green and zero outstanding review findings), unless explicitly instructed otherwise for a specific PR or session.
 
 - **Never merge over open review findings or treat a reviewer skip notice as approval.**
   Under `mwc`, a PR must be fully clean across CI and review (see [`fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md)).
-  A clean automated Claude review evaluating the current HEAD commit is strictly required for merging with `mwc`.
+  A clean automated AI review evaluating the current HEAD commit is strictly required for merging with `mwc`.
   A reviewer skip notice (e.g. for quota exhaustion or workflow edits) or a fallback self-review does NOT satisfy `mwc` or grant autonomous merge authority.
   All findings across the PR history must be Addressed, Rebutted, or Deferred before merge.
 
@@ -298,34 +265,3 @@ Whenever starting or working on a Pull Request:
 - **Do:** Trigger AI review (or let the automated PR review run) after completing code pushes, and request human review only after the AI review is clean/approved (or upon an impasse).
 - **Don't:** Manually trigger a redundant `@claude review` comment when an automated review is already running or triggered by the push/ready event.
 - **Don't:** Request human review when the PR is first opened empty, before code pushes are complete, or before the AI review has passed / produced a clean verdict.
-
-## Cursor Cloud specific instructions
-
-This repo has no compiled app or long-running service.
-The "product" is three things: a Quarto documentation website, a suite of Python validators/tests under `scripts/`, and the enforcement hooks under `hooks/`.
-Standard commands are already documented --- lint/test steps in [`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml) and the quality gates in [`README.md`](README.md) --- so consult those rather than re-deriving them;
-the build and preview commands are in the bullets below.
-The startup update script keeps the `shared/sembr-skills` submodule current;
-the system tools below (Quarto, the `python` shim, `pre-commit`) are already present in the environment.
-
-Non-obvious caveats worth knowing:
-
-- **Lint:** the three fast checks under [Verify changes before pushing](#verify-changes-before-pushing) cover this;
-  see that section rather than a second pinned command list here.
-
-- **Test:** the `scripts/test_*.py` suites (each runnable directly with `python3`);
-  `validate.yml` lists the full set CI runs.
-  `scripts/test_compare_shell_forms.py` spawns a real `bash` that invokes `python` (not `python3`), so it needs a `python` shim on `PATH` (`python-is-python3`);
-  without it six of its subtests fail.
-
-- **Build:** `quarto render` writes the static site to `_site/` (takes ~90s to render ~189 pages).
-
-- **Run (dev):** `quarto preview --port 4444 --host 0.0.0.0 --no-browser` serves the site with hot reload;
-  edits to a `.qmd` rebuild that page live.
-  `quarto preview` also appends a redundant `/.quarto/` line to `.gitignore` on first run --- revert that incidental change before committing.
-  `_site/` and `.quarto/` are already gitignored.
-
-- **Submodule:** `shared/sembr-skills` must be initialized (`git submodule update --init`) or `validate-skills.py` warns and the plugin source check only ever reports its empty-directory branch.
-
-- **pre-commit:** installed to `~/.local/bin`, which is not on `PATH` by default; run it as `~/.local/bin/pre-commit run --all-files`.
-  Its first run builds the gitleaks (Go) and markdownlint (Node) hook environments, which is slow but cached thereafter.
