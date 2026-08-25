@@ -99,6 +99,7 @@ In every session --- at session start, and again periodically during long sessio
 1. **The ai-config checkout.** Check that the local `ai-config` clone is on `main` and run `git pull --ff-only`.
 2. **The consumer copies / symlinks.**
    Ensure `bootstrap.sh` has run so local agent config directories (`~/.gemini/skills`, `~/.claude`, `~/.codex/skills`, `~/.cursor/rules`, and when needed `~/.cursor/skills`) contain up-to-date symlinks.
+
 3. **Working repo checkouts.** Keep `main` updated (`git fetch origin`, `git pull --ff-only`).
 
 ## Verify changes before pushing
@@ -159,9 +160,11 @@ See [`shared/workflow/check-before-pushing.md`](https://github.com/Morrison-Lab/
   An earlier `git fetch` is a measurement of a moment that has passed.
   If the remote tip is not an ancestor of the ref you are **pushing**, another agent is driving the branch: fetch and reconcile, never overwrite.
   That ref is `HEAD` only when the refspec says so --- `git push origin feature-x` from `main` pushes local `feature-x`, and comparing against `HEAD` goes quiet in exactly the dangerous case.
+
 - **The branch you own is the one to check hardest.**
   Ownership is what suppresses the check.
   The `@claude` agent pushes to your branch on PR activity, a second CLI session can claim the same PR, and a human can push at any time --- none of which appears in your conversation.
+
 - **Never bare `git push --force`.**
   Use `git push --force-with-lease --force-if-includes`.
   The lease alone is defeatable: it compares against your remote-tracking ref, so any background fetch silently satisfies it over the commits it was protecting.
@@ -187,9 +190,11 @@ documentation, PR descriptions, commit messages, or comments:
 
 - Qualify them with explicit temporal bounds and provenance
   (date measured, version number, or execution environment).
+
 - State the vintage explicitly so future readers and sessions know
   when the fact was verified
   and to re-verify against current state rather than treating it as permanent.
+
 - See [`shared/writing/timestamp-volatile-claims.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/timestamp-volatile-claims.md).
 
 ## Every comment you post to a forge says an agent posted it
@@ -281,8 +286,10 @@ below).
 
 - **Do:** open a completed-work PR ready for review, or mark a draft ready once
   it is ready for review and its checks pass.
+
 - **Do:** un-draft an up-front empty PR once its implementation has landed on
   the branch head and the checks pass.
+
 - **Don't:** leave a PR that is ready for review in draft, except a deliberately draft-gated dependent PR held until its prerequisite merges.
 - **Don't:** treat a tool's draft-by-default as the intended state once the work is ready for review.
 
@@ -311,6 +318,7 @@ This grants no merge authority: the strict merge policy below still applies.
 - **NEVER merge any Pull Request or Merge Request without explicit user permission.**
   Creating, opening, updating, or driving a PR to clean CI/review does NOT grant permission to merge it.
   Merging a PR is strictly forbidden unless the user explicitly grants session permission (e.g. via `/mwc` or `/maw`) or explicitly issues a merge instruction for that specific PR (e.g. `/merge-it` or "merge this PR").
+
 - **Never merge over open review findings or treat a reviewer skip notice as approval.**
   Under `mwc`, a PR must be fully clean across CI and review (see
   [`fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md)).
@@ -325,6 +333,7 @@ Whenever starting or working on a Pull Request:
 
 1. **Trigger AI review when done pushing**: In repositories where reviews do not auto-trigger, request an AI review (`@claude review` comment, or dispatch `claude-review.yml`) **after completing all code pushes** for the round, not when the PR is first opened and empty.
    In repos that automatically trigger review on PR events (`pull_request` synchronize, opened, ready_for_review), do NOT manually trigger a redundant review if an automated review is already running or queued.
+
 2. **Drive to clean**: Run `ardi` / the review-and-iterate loop to ensure CI passes and all review findings are addressed until the PR reaches a clean verdict.
 3. **Request human review only after AI approval or deadlock**: Per [`copilot-review-before-human.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/vendored/copilot-review-before-human.md), request human review (configured repo reviewers per `skills/request-pr-review/SKILL.md`) **only after** the AI review produces a clean/approved verdict, or if an impasse/deadlock occurs.
 
@@ -351,21 +360,26 @@ Non-obvious caveats worth knowing:
 - **Lint:** the three fast checks under
   [Verify changes before pushing](#verify-changes-before-pushing) cover this;
   see that section rather than a second pinned command list here.
+
 - **Test:** the `scripts/test_*.py` suites (each runnable directly with
   `python3`); `validate.yml` lists the full set CI runs.
   `scripts/test_compare_shell_forms.py` spawns a real `bash` that invokes
   `python` (not `python3`), so it needs a `python` shim on `PATH`
   (`python-is-python3`); without it six of its subtests fail.
+
 - **Build:** `quarto render` writes the static site to `_site/`
   (takes ~90s to render ~189 pages).
+
 - **Run (dev):** `quarto preview --port 4444 --host 0.0.0.0 --no-browser`
   serves the site with hot reload; edits to a `.qmd` rebuild that page live.
   `quarto preview` also appends a redundant `/.quarto/` line to `.gitignore`
   on first run --- revert that incidental change before committing.
   `_site/` and `.quarto/` are already gitignored.
+
 - **Submodule:** `shared/sembr-skills` must be initialized
   (`git submodule update --init`) or `validate-skills.py` warns and the plugin
   source check only ever reports its empty-directory branch.
+
 - **pre-commit:** installed to `~/.local/bin`, which is not on `PATH` by
   default; run it as `~/.local/bin/pre-commit run --all-files`.
   Its first run builds the gitleaks (Go) and markdownlint (Node) hook
