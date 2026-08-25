@@ -37,6 +37,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      issues: read
       actions: write
     uses: Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2
     secrets:
