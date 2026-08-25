@@ -1,0 +1,1 @@
+- Document in `CLAUDE.md` that negative guard tests can be rendered vacuous by later stages of the same code path failing (gha#574).
