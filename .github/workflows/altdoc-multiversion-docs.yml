@@ -171,12 +171,10 @@ jobs:
       contents: read
       issues: write
     steps:
-      # The build job runs a checkout even on closed PRs so it successfully completes (all other steps are skipped).
-      # step runs ONLY on the closed event and needs a
-      # checked-out git working tree to operate (rossjrw/pr-preview-action's
-      # remove mode delegates to JamesIves/github-pages-deploy-action, which
-      # runs git commands against the checkout). Gating this step the same
-      # way as the build steps would make that step reachable but broken.
+      # The build job runs a checkout unconditionally, even on closed PRs,
+      # to ensure it successfully completes (since all other steps are skipped).
+      # This allows the downstream `deploy` job to still run and execute
+      # the PR preview removal step on close.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: ${{ inputs.checkout-submodules }}
@@ -631,12 +629,11 @@ jobs:
               | <p><img src="https://qr.rossjrw.com/?url=${{ steps.preview-step.outputs.preview-url }}" height="100" align="right" alt="QR code for preview link"></p> :rocket: View preview at <br> ${{ steps.preview-step.outputs.preview-url }} <br><br>
               | <h6>Built to branch [`${{ inputs.preview-branch }}`](${{ github.server_url }}/${{ github.repository }}/tree/${{ inputs.preview-branch }}) at ${{ steps.preview-step.outputs.action-start-time }}. <br> Preview will be ready when the [GitHub Pages deployment](${{ github.server_url }}/${{ github.repository }}/deployments) is complete. <br><br> </h6>
 
-      # Unlike the build steps above, the closed-PR cleanup below is the ONE
-      # thing that must run when github.event.action == 'closed' -- rpt's
-      # original docs.yaml skipped its whole job on close (via a job-level
-      # `if:`), which meant PR-preview directories were never actually
-      # removed. Gate every other step on `action != 'closed'` instead, so
-      # this step is reachable.
+      # The closed-PR cleanup below must run when github.event.action == 'closed'.
+      # rpt's original docs.yaml skipped its whole job on close (via a job-level
+      # `if:`), which meant PR-preview directories were never actually removed.
+      # By allowing the jobs to run on close (and skipping individual build/deploy steps),
+      # we ensure this cleanup step remains reachable.
       - name: Remove PR Preview
         id: preview-remove-step
         if: github.event_name == 'pull_request' && github.event.action == 'closed'
