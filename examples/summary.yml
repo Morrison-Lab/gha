@@ -19,4 +19,4 @@ jobs:
     #   API_KEY: ${{ secrets.OPENAI_API_KEY }}
     # with:
     #   endpoint: http://localhost:11434/v1
-    #   model: gpt-4o-mini
+    #   model: openai/gpt-4o-mini

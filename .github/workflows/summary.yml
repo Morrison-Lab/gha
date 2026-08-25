@@ -16,7 +16,7 @@ on:
         description: Model identifier for summarization.
         required: false
         type: string
-        default: 'gpt-4o-mini'
+        default: 'openai/gpt-4o-mini'
     secrets:
       API_KEY:
         description: API key for the inference endpoint.
@@ -48,7 +48,7 @@ jobs:
         uses: actions/ai-inference@a7805884c80886efc241e94a5351df715968a0ad # v2
         with:
           endpoint: ${{ inputs.endpoint || 'https://models.github.ai/inference' }}
-          model: ${{ inputs.model || 'gpt-4o-mini' }}
+          model: ${{ inputs.model || 'openai/gpt-4o-mini' }}
           token: ${{ secrets.API_KEY || secrets.OPENAI_API_KEY || github.token }}
           prompt: |
             You are a concise technical summarizer. Your only job is to write a
