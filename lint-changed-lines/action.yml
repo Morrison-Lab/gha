@@ -15,6 +15,17 @@ inputs:
   install-quarto:
     description: Install Quarto when setting up R dependencies.
     default: 'false'
+  use-renv:
+    description: >-
+      Restore R dependencies with renv (r-lib/actions/setup-renv) instead of
+      DESCRIPTION-based setup-r-dependencies. Set 'true' for renv-pinned repos.
+    default: 'false'
+  renv-cache-version:
+    description: Cache version suffix passed to setup-renv.
+    default: '1'
+  apt-packages:
+    description: Extra apt packages to install before setting up R/renv dependencies.
+    default: ''
   extra-packages:
     description: >-
       Extra R packages to install, passed to
@@ -38,7 +49,18 @@ runs:
       with:
         use-public-rspm: true
 
-    - name: Set up R dependencies
+    - name: Install system dependencies
+      if: inputs.apt-packages != ''
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.apt-packages }}
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        sudo apt-get install -y $APT_PACKAGES
+
+    - name: Set up R dependencies (DESCRIPTION)
+      if: inputs.use-renv != 'true'
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       with:
         working-directory: ${{ inputs.path }}
@@ -48,6 +70,33 @@ runs:
           any::lintr
           ${{ inputs.extra-packages }}
         needs: lint
+
+    - name: Restore R dependencies (renv)
+      if: inputs.use-renv == 'true'
+      uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      env:
+        GITHUB_PAT: ${{ github.token }}
+        RENV_CONFIG_INSTALL_REMOTES: false
+      with:
+        working-directory: ${{ inputs.path }}
+        cache-version: ${{ inputs.renv-cache-version }}
+
+    - name: Ensure lintr and gh installed (renv)
+      if: inputs.use-renv == 'true'
+      working-directory: ${{ inputs.path }}
+      shell: bash
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+      run: |
+        Rscript -e '
+          req <- c("gh", "lintr")
+          extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
+          extra <- extra[nzchar(extra)]
+          needed <- setdiff(c(req, sub("^.*::", "", extra)), rownames(installed.packages()))
+          if (length(needed) > 0) {
+            install.packages(needed, repos = "https://cloud.r-project.org")
+          }
+        '
 
     - name: Install package
       if: ${{ inputs.install-package == 'true' }}
