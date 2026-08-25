@@ -17,7 +17,9 @@ Do not treat the currently speaking agent as an implicit scope restriction.
 ## No empty promises
 
 A commitment about your own future behaviour --- "going forward, I will X", "from now on I won't Y", "I'll always Z", "I won't do that again", "that is owed by me" --- must ship an implemented accountability mechanism in the same turn, or not be made at all.
-A written rule or memory entry is the minimum and is always available; a hook or equivalent guard is the right form when the condition is decidable automatically; a filed issue covers work someone has to schedule.
+A written rule or memory entry is the minimum and is always available;
+a hook or equivalent guard is the right form when the condition is decidable automatically;
+a filed issue covers work someone has to schedule.
 
 A promise costs nothing to produce and changes no file, so no review, check, or reader can tell it apart from having acted.
 It is worse than saying nothing, because silence leaves the problem visibly open while a promise closes it on the record.
@@ -240,7 +242,8 @@ What is not acceptable is leaving a review-ready PR in draft --- so do not rely 
 Before marking a draft ready, verify the implementation actually reached the branch head and the repo's checks pass, and mind the ready-transition timing in [`pr-on-claim.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md): do not flip a draft to ready within seconds of the final push, which can race two review runs and leave the wrong one cancelled.
 This overrides any agent-harness default that creates PRs as drafts unless the user opts in.
 
-Draft status stays reserved for the cases that deliberately use draft as a signal or a gate, not only cases where work is unfinished: the empty up-front PR opened when claiming an issue (the [issue-first](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/issue-first.md) / [pr-on-claim](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md) pattern), un-drafted once the implementation has landed on the branch head and the repo's checks pass; and the deliberate draft-gating of a dependent PR, which is review-ready by construction and held in draft only to block the wrong merge order until its prerequisite merges.
+Draft status stays reserved for the cases that deliberately use draft as a signal or a gate, not only cases where work is unfinished: the empty up-front PR opened when claiming an issue (the [issue-first](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/issue-first.md) / [pr-on-claim](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md) pattern), un-drafted once the implementation has landed on the branch head and the repo's checks pass;
+and the deliberate draft-gating of a dependent PR, which is review-ready by construction and held in draft only to block the wrong merge order until its prerequisite merges.
 Marking a PR ready grants no merge authority (see the strict merge policy below).
 
 - **Do:** open a completed-work PR ready for review, or mark a draft ready once it is ready for review and its checks pass.
@@ -300,19 +303,25 @@ Whenever starting or working on a Pull Request:
 
 This repo has no compiled app or long-running service.
 The "product" is three things: a Quarto documentation website, a suite of Python validators/tests under `scripts/`, and the enforcement hooks under `hooks/`.
-Standard commands are already documented --- lint/test steps in [`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml) and the quality gates in [`README.md`](README.md) --- so consult those rather than re-deriving them; the build and preview commands are in the bullets below.
-The startup update script keeps the `shared/sembr-skills` submodule current; the system tools below (Quarto, the `python` shim, `pre-commit`) are already present in the environment.
+Standard commands are already documented --- lint/test steps in [`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml) and the quality gates in [`README.md`](README.md) --- so consult those rather than re-deriving them;
+the build and preview commands are in the bullets below.
+The startup update script keeps the `shared/sembr-skills` submodule current;
+the system tools below (Quarto, the `python` shim, `pre-commit`) are already present in the environment.
 
 Non-obvious caveats worth knowing:
 
-- **Lint:** the three fast checks under [Verify changes before pushing](#verify-changes-before-pushing) cover this; see that section rather than a second pinned command list here.
+- **Lint:** the three fast checks under [Verify changes before pushing](#verify-changes-before-pushing) cover this;
+  see that section rather than a second pinned command list here.
 
-- **Test:** the `scripts/test_*.py` suites (each runnable directly with `python3`); `validate.yml` lists the full set CI runs.
-  `scripts/test_compare_shell_forms.py` spawns a real `bash` that invokes `python` (not `python3`), so it needs a `python` shim on `PATH` (`python-is-python3`); without it six of its subtests fail.
+- **Test:** the `scripts/test_*.py` suites (each runnable directly with `python3`);
+  `validate.yml` lists the full set CI runs.
+  `scripts/test_compare_shell_forms.py` spawns a real `bash` that invokes `python` (not `python3`), so it needs a `python` shim on `PATH` (`python-is-python3`);
+  without it six of its subtests fail.
 
 - **Build:** `quarto render` writes the static site to `_site/` (takes ~90s to render ~189 pages).
 
-- **Run (dev):** `quarto preview --port 4444 --host 0.0.0.0 --no-browser` serves the site with hot reload; edits to a `.qmd` rebuild that page live.
+- **Run (dev):** `quarto preview --port 4444 --host 0.0.0.0 --no-browser` serves the site with hot reload;
+  edits to a `.qmd` rebuild that page live.
   `quarto preview` also appends a redundant `/.quarto/` line to `.gitignore` on first run --- revert that incidental change before committing.
   `_site/` and `.quarto/` are already gitignored.
 
