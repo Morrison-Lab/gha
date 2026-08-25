@@ -40,6 +40,14 @@ inputs:
   render-profile:
     description: Quarto `--profile` to render with.
     default: 'website'
+  fail-on-render-warning:
+    description: Fail the build if Quarto emits any render warnings (WARN in the render log).
+    default: 'false'
+  forbid-log-patterns:
+    description: >-
+      Newline-separated fixed string patterns that will fail the build if found
+      in the Quarto render log.
+    default: ''
 runs:
   using: composite
   steps:
@@ -49,14 +57,6 @@ runs:
       with:
         submodules: ${{ inputs.submodules }}
 
-    # IMPORTANT: write the metadata AFTER checkout. actions/checkout runs
-    # `git clean -ffdx` (clean: true is the default), which deletes any
-    # untracked files already in the workspace — including a
-    # `_preview_upload/` directory created beforehand. With the metadata
-    # written before checkout, `_preview_upload/meta/` was wiped and never
-    # reached the artifact, so the deploy half read an empty pr-number, the
-    # deploy step's `action == 'deploy'` guard was false, and every deploy-path
-    # preview was silently skipped (the job still passed). See d-morrison/rme#913.
     # For the 'closed'/remove event the checkout step is skipped, but this step
     # is unguarded and still runs, so the remove path is unaffected.
     - name: Save PR metadata
@@ -162,7 +162,7 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render docx
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:docx')
@@ -170,7 +170,7 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --no-clean
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --no-clean 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render revealjs
       if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:revealjs')
@@ -178,7 +178,7 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --no-clean
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --no-clean 2>&1 | tee -a _quarto_preview_render.log
 
     - name: Render html
       if: github.event.action != 'closed'
@@ -186,7 +186,37 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --no-clean
+      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --no-clean 2>&1 | tee -a _quarto_preview_render.log
+
+    - name: Verify render warnings and forbidden log patterns
+      if: github.event.action != 'closed'
+      shell: bash
+      env:
+        FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
+        FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
+      run: |
+        set -euo pipefail
+        LOG_FILE="_quarto_preview_render.log"
+        [ -f "$LOG_FILE" ] || exit 0
+
+        if [ "$FAIL_ON_WARN" = "true" ]; then
+          if grep -iE '(^|[[:space:]])WARN([[:space:]:]|$)|Warning:' "$LOG_FILE"; then
+            echo "::error::Quarto emitted one or more render warnings and fail-on-render-warning is enabled."
+            exit 1
+          fi
+        fi
+
+        if [ -n "${FORBID_PATTERNS:-}" ]; then
+          while IFS= read -r pattern || [ -n "$pattern" ]; do
+            trimmed_pattern=$(echo "$pattern" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+            if [ -n "$trimmed_pattern" ]; then
+              if grep -F "$trimmed_pattern" "$LOG_FILE"; then
+                echo "::error::Quarto render log contains forbidden pattern '$trimmed_pattern'."
+                exit 1
+              fi
+            fi
+          done <<< "$FORBID_PATTERNS"
+        fi
 
     - name: List files
       if: github.event.action != 'closed'

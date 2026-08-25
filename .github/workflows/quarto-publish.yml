@@ -71,6 +71,14 @@ on:
         description: Options passed to Deno V8 via QUARTO_DENO_V8_OPTIONS to raise the heap cap for large site renders.
         type: string
         default: '--max-old-space-size=12288,--max-heap-size=12288'
+      fail-on-render-warning:
+        description: Fail the build if Quarto emits any render warnings (WARN in the render log).
+        type: boolean
+        default: false
+      forbid-log-patterns:
+        description: Newline-separated fixed string patterns that will fail the build if found in the Quarto render log.
+        type: string
+        default: ''
       checkout-submodules:
         description: Initialize the caller's git submodules before rendering.
         type: boolean
@@ -150,6 +158,8 @@ jobs:
           formats: ${{ inputs.formats }}
           freeze-cache: ${{ inputs.freeze-cache }}
           deno-v8-options: ${{ inputs.deno-v8-options }}
+          fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
+          forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
 
       - name: Stage rendered site
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
