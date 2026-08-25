@@ -33,7 +33,7 @@ jobs:
     #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list
     #   use-renv: true                     # set false for non-renv repos
     #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false
-    #   install-package: true              # `R CMD INSTALL .` before rendering
+    #   install-package: true              # `R CMD INSTALL <path>` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   submodules: recursive
     #   render-profile: website

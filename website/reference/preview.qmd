@@ -18,8 +18,8 @@ turn it off for a pure-markdown site.
 | `r-version` | string | `'4.6.0'` | R version to install with `r-lib/actions/setup-r`. |
 | `apt-packages` | string | `(long; see workflow file)` | System apt packages to install before R/Quarto setup, space-separated. Defaults to the shared renv stack plus build helpers; set to an empty string to skip the apt step. |
 | `use-renv` | boolean | `true` | Restore R dependencies with renv. Set false for non-renv repos. |
-| `r-packages` | string | `''` | R packages to install when `use-renv` is false (space- or newline-separated). |
-| `install-package` | boolean | `true` | Run `R CMD INSTALL .` to install the caller repo as a local package before rendering. |
+| `r-packages` | string | `''` | R packages to install when `use-renv` is false (space-, comma-, or newline-separated). |
+| `install-package` | boolean | `true` | Run `R CMD INSTALL <path>` to install the caller repo as a local package before rendering. |
 | `setup-chrome` | boolean | `true` | Install Chrome (needed by Quarto for revealjs and screenshot rendering). |
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
@@ -70,7 +70,7 @@ jobs:
     #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list
     #   use-renv: true                     # set false for non-renv repos
     #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false
-    #   install-package: true              # `R CMD INSTALL .` before rendering
+    #   install-package: true              # `R CMD INSTALL <path>` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   submodules: recursive
     #   render-profile: website
