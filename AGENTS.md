@@ -104,7 +104,7 @@ node lint-markdown/tests/test_list_item_splices.mjs
 node lint-markdown/tests/test_table_splits.mjs
 python3 -m pytest check-phi/tests/ -q
 python3 -m pytest check-new-line-breaks/tests/ -q
-bash check-junk-files/tests/test_junk_files.sh
+bash check-junk-files/tests/test-check-junk-files.sh
 ```
 
 ## Worktree isolation
