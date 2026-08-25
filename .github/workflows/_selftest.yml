@@ -609,6 +609,15 @@ jobs:
         with:
           extra-secret-names: TEST_SECRET
           secrets-json: '{"TEST_SECRET": "test_val"}'
+      - name: Assert export-extra-secrets exported environment variable
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${TEST_SECRET:-}" != "test_val" ]]; then
+            echo "::error::export-extra-secrets did not export TEST_SECRET=test_val to environment"
+            exit 1
+          fi
+          echo "export-extra-secrets correctly exported TEST_SECRET to environment"
       - name: Assert build-self-review-skip-notice generated body file
         shell: bash
         env:
