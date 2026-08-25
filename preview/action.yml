@@ -57,57 +57,29 @@ runs:
       with:
         submodules: ${{ inputs.submodules }}
 
-    # IMPORTANT: write the metadata AFTER checkout. actions/checkout runs
-    # `git clean -ffdx` (clean: true is the default), which deletes any
-    # untracked files already in the workspace — including a
-    # `_preview_upload/` directory created beforehand. With the metadata
-    # written before checkout, `_preview_upload/meta/` was wiped and never
-    # reached the artifact, so the deploy half read an empty pr-number, the
-    # deploy step's `action == 'deploy'` guard was false, and every deploy-path
-    # preview was silently skipped (the job still passed). See d-morrison/rme#913.
     # For the 'closed'/remove event the checkout step is skipped, but this step
-    # still runs so the empty/meta-only artifact reaches the deploy half.
-    - name: Save PR metadata for the deploy workflow
+    # is unguarded and still runs, so the remove path is unaffected.
+    - name: Save PR metadata
       shell: bash
       env:
         PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        EVENT_ACTION: ${{ github.event.action }}
+        PREVIEW_ACTION: ${{ github.event.action == 'closed' && 'remove' || 'deploy' }}
       run: |
         set -euo pipefail
         mkdir -p _preview_upload/meta
-        echo "$PR_NUMBER" > _preview_upload/meta/pr-number
-        echo "$PR_HEAD_SHA" > _preview_upload/meta/pr-head-sha
-        echo "$EVENT_ACTION" > _preview_upload/meta/event-action
-
-    # All build/render steps below gate on `action != 'closed'`. When a PR is
-    # closed, this workflow uploads just the `_preview_upload/meta/` directory;
-    # the deploy workflow sees no `site/` folder and routes into its removal
-    # path.
-    - name: Install system dependencies
-      if: github.event.action != 'closed' && inputs.apt-packages != ''
-      shell: bash
-      env:
-        APT_PACKAGES: ${{ inputs.apt-packages }}
-      run: |
-        set -euo pipefail
-        sudo apt-get update
-        sudo apt-get install -y $APT_PACKAGES
-
-    - name: Setup Chrome
-      if: github.event.action != 'closed' && inputs.setup-chrome == 'true'
-      uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+        echo "$PR_NUMBER" > _preview_upload/meta/pr-number.txt
+        echo "$PREVIEW_ACTION" > _preview_upload/meta/action.txt
 
     - name: Set up Quarto
       if: github.event.action != 'closed'
       uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
       env:
-        # `quarto install tinytex` looks up the latest `rstudio/tinytex-releases`
-        # release via the GitHub API; unauthenticated, that intermittently 403s on
-        # shared runners (#270). Authenticate it.
         GH_TOKEN: ${{ github.token }}
       with:
-        tinytex: true
+        # Install TinyTeX in the same setup only when a PDF render is requested;
+        # composite actions can't vary `with:` conditionally, so gate it on the
+        # label expression rather than running a second setup step.
+        tinytex: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
 
     - name: Set up R
       if: github.event.action != 'closed'
@@ -116,7 +88,22 @@ runs:
         r-version: ${{ inputs.r-version }}
         use-public-rspm: true
 
-    - name: Restore R dependencies
+    - name: Install system dependencies
+      if: github.event.action != 'closed' && inputs.apt-packages != ''
+      shell: bash
+      env:
+        APT_PACKAGES: ${{ inputs.apt-packages }}
+      run: |
+        set -euo pipefail
+        sudo apt-get update
+        # Intentional word-splitting: APT_PACKAGES is a space-separated list.
+        sudo apt-get install -y $APT_PACKAGES
+
+    - name: Setup Chrome
+      if: github.event.action != 'closed' && inputs.setup-chrome == 'true'
+      uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+
+    - name: Restore R dependencies (renv)
       if: github.event.action != 'closed' && inputs.use-renv == 'true'
       uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
       env:
@@ -127,6 +114,8 @@ runs:
         # source of flaky/rate-limited failures -- see
         # d-morrison/rme#994 / gha#239).
         RENV_CONFIG_INSTALL_REMOTES: false
+      with:
+        bypass-cache: never
 
     - name: Install local package
       if: github.event.action != 'closed' && inputs.install-package == 'true'
