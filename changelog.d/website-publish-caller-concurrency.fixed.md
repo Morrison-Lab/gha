@@ -1,4 +1,4 @@
-﻿- **Remove redundant top-level `concurrency` from `quarto-publish` caller stubs**
+- **Remove redundant top-level `concurrency` from `quarto-publish` caller stubs**
   ([#662](https://github.com/Morrison-Lab/gha/issues/662)).
   Because `quarto-publish.yml`'s `deploy` job now directly declares
   `concurrency: group: gh-pages`, callers declaring `concurrency: group: gh-pages`
