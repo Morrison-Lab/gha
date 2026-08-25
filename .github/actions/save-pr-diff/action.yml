@@ -13,6 +13,9 @@ inputs:
   target-path:
     description: Target file path to write diff to. Defaults to $GITHUB_WORKSPACE/.claude-review-pr.diff.
     default: ''
+  github-token:
+    description: GitHub token used to fetch PR diff via gh.
+    default: ${{ github.token }}
 
 outputs:
   path:
@@ -26,6 +29,7 @@ runs:
       id: save
       shell: bash
       env:
+        GH_TOKEN: ${{ inputs.github-token }}
         PR_NUMBER: ${{ inputs.pr-number }}
         REPO: ${{ inputs.repo }}
         TARGET_PATH: ${{ inputs.target-path }}

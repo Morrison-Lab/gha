@@ -2771,6 +2771,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -2785,3 +2786,16 @@ jobs:
         with:
           pr-number: '1'
           repo: 'Morrison-Lab/gha'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Assert save-pr-diff output path is non-empty
+        shell: bash
+        env:
+          SAVED_PATH: ${{ steps.composite-test.outputs.path }}
+        run: |
+          set -euo pipefail
+          if [ -z "$SAVED_PATH" ] || [ ! -s "$SAVED_PATH" ]; then
+            echo "::error::expected save-pr-diff to output a non-empty saved diff path, got '$SAVED_PATH'"
+            exit 1
+          fi
+          echo "save-pr-diff successfully saved diff to $SAVED_PATH ($(wc -c < "$SAVED_PATH") bytes)."
