@@ -12,6 +12,11 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Serialize deploys so two pushes don't race on the gh-pages branch.
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
 jobs:
   publish:
     # timeout-minutes is defined in the reusable workflow

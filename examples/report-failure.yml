@@ -17,6 +17,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: gh-pages
+  cancel-in-progress: false
+
 jobs:
   publish:
     permissions:
