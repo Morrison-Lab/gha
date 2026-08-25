@@ -78,15 +78,19 @@ runs:
         GITHUB_PAT: ${{ github.token }}
         RENV_CONFIG_INSTALL_REMOTES: false
       with:
+        working-directory: ${{ inputs.path }}
         cache-version: ${{ inputs.renv-cache-version }}
 
     - name: Ensure lintr and gh installed (renv)
       if: inputs.use-renv == 'true'
+      working-directory: ${{ inputs.path }}
       shell: bash
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
         Rscript -e '
           req <- c("gh", "lintr")
-          extra <- strsplit("${{ inputs.extra-packages }}", "[[:space:],]+")[[1]]
+          extra <- strsplit(Sys.getenv("EXTRA_PACKAGES"), "[[:space:],]+")[[1]]
           extra <- extra[nzchar(extra)]
           needed <- setdiff(c(req, sub("^.*::", "", extra)), rownames(installed.packages()))
           if (length(needed) > 0) {
