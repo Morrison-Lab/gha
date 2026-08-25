@@ -30,11 +30,18 @@ jobs:
       contents: write
     uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
     # with:
-    #   path: website          # Quarto project lives in a subdir (default: repo root)
+    #   path: website           # Quarto project lives in a subdir (default: repo root)
     #   setup-r: true           # for R/knitr Quarto projects (default: false)
     #   use-renv: true          # restore R deps with renv instead of r-packages
+    #   install-package: true   # R CMD INSTALL <path> before render (for R packages)
+    #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid
     #   tinytex: true           # needed to render PDF outputs
+    #   apt-packages: ''        # extra system packages (space-separated)
     #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)
+    #   render-profile: website # Quarto --profile to render with
+    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM
+    #   freeze-cache: true      # cache Quarto _freeze across runs
+    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'
     #   checkout-submodules: true
     #   pre-render-artifact: demo-media       # inject a prior job's artifact before render
     #   pre-render-artifact-path: website/media
