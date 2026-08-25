@@ -40,7 +40,7 @@ if (nzchar(raw_exclude)) {
   }
 }
 
-# Ensure restoration on exit
+# Ensure restoration of excluded files
 restore_exclusions <- function() {
   if (length(excluded_files) > 0 && dir.exists(temp_backup_dir)) {
     for (f in excluded_files) {
@@ -53,7 +53,11 @@ restore_exclusions <- function() {
     unlink(temp_backup_dir, recursive = TRUE)
   }
 }
-on.exit(restore_exclusions(), add = TRUE)
+
+finish <- function(status) {
+  restore_exclusions()
+  quit(save = "no", status = status, runLast = FALSE)
+}
 
 if (length(excluded_files) > 0) {
   dir.create(temp_backup_dir, recursive = TRUE, showWarnings = FALSE)
@@ -66,8 +70,14 @@ if (length(excluded_files) > 0) {
   }
 }
 
-# Run spell check
-words <- spelling::spell_check_package(pkg = pkg_path)
+# Run spell check with error recovery to ensure restoration
+words <- tryCatch(
+  spelling::spell_check_package(pkg = pkg_path),
+  error = function(e) {
+    restore_exclusions()
+    stop(e)
+  }
+)
 n_words <- nrow(words)
 
 if (n_words > 0) {
@@ -85,12 +95,12 @@ if (n_words > 0) {
   msg <- sprintf("Spellcheck found %d potentially misspelled word%s.", n_words, if (n_words == 1) "" else "s")
   if (should_fail) {
     cat(sprintf("::error::%s (fail=true)\n", msg))
-    quit(save = "no", status = 1, runLast = FALSE)
+    finish(1)
   } else {
     cat(sprintf("::warning::%s (fail=false, check passes with warnings)\n", msg))
-    quit(save = "no", status = 0, runLast = FALSE)
+    finish(0)
   }
 } else {
   cat("Spellcheck clean: 0 misspelled words found.\n")
-  quit(save = "no", status = 0, runLast = FALSE)
+  finish(0)
 }

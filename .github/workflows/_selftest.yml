@@ -2434,6 +2434,15 @@ jobs:
         with:
           path: _ci-spellcheck-vign-excluded
           exclude: 'vignettes/*.Rmd'
+      - name: Assert excluded files were restored after spellcheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f _ci-spellcheck-vign-excluded/vignettes/first.Rmd ] || [ ! -f _ci-spellcheck-vign-excluded/vignettes/second.Rmd ]; then
+            echo "::error::excluded vignette files were not restored after spellcheck"
+            exit 1
+          fi
+          echo "Excluded vignette files were correctly restored after spellcheck."
       - name: Assert the vignettes are checked when not excluded
         shell: bash
         env:
