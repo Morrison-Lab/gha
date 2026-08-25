@@ -736,7 +736,7 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto site and deploy it to GitHub Pages</td>
-<td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>apt-packages</code>, <code>output-dir</code>, <code>render-profile</code>, <code>formats</code>, <code>freeze-cache</code>, <code>deno-v8-options</code>, <code>checkout-submodules</code>, <code>pre-render-artifact</code>, <code>pre-render-artifact-path</code>, <code>deploy</code></td>
+<td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>apt-packages</code>, <code>output-dir</code>, <code>render-profile</code>, <code>formats</code>, <code>freeze-cache</code>, <code>deno-v8-options</code>, <code>checkout-submodules</code>, <code>pre-render-artifact</code>, <code>pre-render-artifact-path</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>deploy</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/report-failure.html"><code>report-failure.yml</code></a></td>
@@ -746,12 +746,12 @@ ul.task-list li input[type="checkbox"] {
 <tr class="odd">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
-<td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code></td>
+<td><code>path</code>, <code>r-version</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code></td>
 </tr>
 <tr class="even">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
-<td>–</td>
+<td><code>pages-base-url</code>, <code>pages-base-path</code></td>
 </tr>
 <tr class="odd">
 <td><a href="./reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a></td>
