@@ -40,17 +40,6 @@ if (nzchar(raw_exclude)) {
   }
 }
 
-if (length(excluded_files) > 0) {
-  dir.create(temp_backup_dir, recursive = TRUE, showWarnings = FALSE)
-  for (f in excluded_files) {
-    if (file.exists(f)) {
-      dest <- file.path(temp_backup_dir, f)
-      dir.create(dirname(dest), recursive = TRUE, showWarnings = FALSE)
-      file.rename(f, dest)
-    }
-  }
-}
-
 # Ensure restoration on exit
 restore_exclusions <- function() {
   if (length(excluded_files) > 0 && dir.exists(temp_backup_dir)) {
@@ -65,6 +54,17 @@ restore_exclusions <- function() {
   }
 }
 on.exit(restore_exclusions(), add = TRUE)
+
+if (length(excluded_files) > 0) {
+  dir.create(temp_backup_dir, recursive = TRUE, showWarnings = FALSE)
+  for (f in excluded_files) {
+    if (file.exists(f)) {
+      dest <- file.path(temp_backup_dir, f)
+      dir.create(dirname(dest), recursive = TRUE, showWarnings = FALSE)
+      file.rename(f, dest)
+    }
+  }
+}
 
 # Run spell check
 words <- spelling::spell_check_package(pkg = pkg_path)
