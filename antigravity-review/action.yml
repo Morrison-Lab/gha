@@ -38,9 +38,37 @@ inputs:
     required: false
     default: 'true'
 
+  workload-identity-provider:
+    description: 'Full GCP Workload Identity Provider resource name for keyless authentication'
+    required: false
+    default: ''
+  service-account:
+    description: 'GCP Service Account email to impersonate when using Workload Identity Federation'
+    required: false
+    default: ''
+  fail-on-error:
+    description: 'Whether to fail the workflow run if the orchestration engine throws an error'
+    required: false
+    default: 'false'
+  max-diff-lines:
+    description: 'Maximum modified lines allowed in a PR diff before skipping review'
+    required: false
+    default: '2000'
+  max-diff-files:
+    description: 'Maximum modified files allowed in a PR diff before skipping review'
+    required: false
+    default: '50'
+
 runs:
   using: 'composite'
   steps:
+    - name: Authenticate to Google Cloud (OIDC)
+      if: inputs.workload-identity-provider != '' && inputs.service-account != ''
+      uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f  # v2.1.7
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+
     - name: Set up Python
       uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
@@ -65,6 +93,10 @@ runs:
         INPUT_TRIGGER_POLICY: ${{ inputs.trigger-policy }}
         INPUT_DRY_RUN: ${{ inputs.dry-run }}
         INPUT_POST_COMMENT: ${{ inputs.post-comment }}
+
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        INPUT_MAX_DIFF_LINES: ${{ inputs.max-diff-lines }}
+        INPUT_MAX_DIFF_FILES: ${{ inputs.max-diff-files }}
       run: |
         ARGS=(
           "--mode" "${INPUT_MODE}"
@@ -80,6 +112,16 @@ runs:
         fi
         if [ "${INPUT_POST_COMMENT}" = "true" ]; then
           ARGS+=("--post-comment")
+        fi
+
+        if [ "${INPUT_FAIL_ON_ERROR}" = "true" ]; then
+          ARGS+=("--fail-on-error")
+        fi
+        if [ -n "${INPUT_MAX_DIFF_LINES}" ]; then
+          ARGS+=("--max-diff-lines" "${INPUT_MAX_DIFF_LINES}")
+        fi
+        if [ -n "${INPUT_MAX_DIFF_FILES}" ]; then
+          ARGS+=("--max-diff-files" "${INPUT_MAX_DIFF_FILES}")
         fi
 
         python "${{ github.action_path }}/run_antigravity.py" "${ARGS[@]}"

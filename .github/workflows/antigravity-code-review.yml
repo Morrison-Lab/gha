@@ -30,6 +30,26 @@ on:
         description: 'Trigger policy mode: any (default), on-push (only automatic PR updates), or on-request (only manual workflow_dispatch)'
         type: string
         default: 'any'
+      workload-identity-provider:
+        description: 'Full GCP Workload Identity Provider resource name'
+        type: string
+        default: ''
+      service-account:
+        description: 'GCP Service Account email to impersonate'
+        type: string
+        default: ''
+      max-diff-lines:
+        description: 'Maximum modified lines allowed in a PR diff before skipping review'
+        type: string
+        default: '2000'
+      max-diff-files:
+        description: 'Maximum modified files allowed in a PR diff before skipping review'
+        type: string
+        default: '50'
+      fail-on-error:
+        description: 'Whether to fail the workflow run if the orchestration engine throws an error'
+        type: boolean
+        default: false
     secrets:
       GEMINI_API_KEY:
         required: false
@@ -46,7 +66,7 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         (
           github.event.pull_request.draft == false &&
-          github.event.pull_request.head.repo.full_name == github.repository &&
+          (github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'safe-to-test')) &&
           github.event.sender.type != 'Bot'
         )
       )
@@ -88,16 +108,20 @@ jobs:
           PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
         run: |
           set -euo pipefail
-          if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author); then
+          if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author,labels); then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status; failing closed."
             exit 1
           fi
           IS_CROSS_REPO=$(jq -r '.isCrossRepository' <<< "$PR_JSON")
           AUTHOR_LOGIN=$(jq -r '.author.login' <<< "$PR_JSON")
-          if [[ "$IS_CROSS_REPO" == "true" || "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
+          HAS_SAFE_LABEL=$(jq -r 'if .labels then (.labels | map(.name == "safe-to-test") | any) else false end' <<< "$PR_JSON")
+          if [[ "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork or Dependabot PR."
+            echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- Dependabot PR."
+          elif [[ "$IS_CROSS_REPO" == "true" && "$HAS_SAFE_LABEL" != "true" ]]; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork PR without safe-to-test label."
           else
             echo "blocked=false" >> "$GITHUB_OUTPUT"
           fi
@@ -132,3 +156,8 @@ jobs:
           prompt-addendum: ${{ inputs.prompt-addendum }}
           trigger-policy: ${{ inputs.trigger-policy }}
           post-comment: 'true'
+          workload-identity-provider: ${{ inputs.workload-identity-provider }}
+          service-account: ${{ inputs.service-account }}
+          max-diff-lines: ${{ inputs.max-diff-lines }}
+          max-diff-files: ${{ inputs.max-diff-files }}
+          fail-on-error: ${{ inputs.fail-on-error }}

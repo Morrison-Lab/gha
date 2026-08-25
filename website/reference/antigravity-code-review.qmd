@@ -21,6 +21,11 @@ Requires a `GEMINI_API_KEY` secret.
 | `checkout-submodules` | boolean | `false` | Check out git submodules. |
 | `model` | string | `''` | Antigravity / Gemini model override passed to the SDK (optional). |
 | `trigger-policy` | string | `'any'` | Enforcement mode: `any`, `on-push`, or `on-request`. |
+| `workload-identity-provider` | string | `''` | Full GCP Workload Identity Provider resource name. |
+| `service-account` | string | `''` | GCP Service Account email to impersonate. |
+| `max-diff-lines` | string | `'2000'` | Maximum modified lines allowed in a PR diff before skipping review. |
+| `max-diff-files` | string | `'50'` | Maximum modified files allowed in a PR diff before skipping review. |
+| `fail-on-error` | boolean | `false` | Whether to fail the workflow run if the orchestration engine throws an error. |
 
 ## Secrets
 

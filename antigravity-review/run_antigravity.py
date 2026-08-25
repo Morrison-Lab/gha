@@ -115,6 +115,23 @@ def parse_args(args=None):
         action="store_true",
         help="Print prompt and diff without executing agent or posting comments",
     )
+    parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        help="Whether to fail the workflow run if the orchestration engine throws an error",
+    )
+    parser.add_argument(
+        "--max-diff-lines",
+        type=int,
+        default=2000,
+        help="Maximum modified lines allowed in a PR diff before skipping review",
+    )
+    parser.add_argument(
+        "--max-diff-files",
+        type=int,
+        default=50,
+        help="Maximum modified files allowed in a PR diff before skipping review",
+    )
     return parser.parse_args(args)
 
 
@@ -669,9 +686,10 @@ def main():
             pr_meta = {}
         else:
             print(f"::error::Failed to fetch PR metadata: {err}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(1 if args.fail_on_error else 0)
 
     pr_num = args.pr_number or pr_meta.get("number")
+
 
     try:
         diff = get_pr_diff(pr_num)
@@ -681,7 +699,21 @@ def main():
             diff = ""
         else:
             print(f"::error::Failed to fetch PR diff: {err}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(1 if args.fail_on_error else 0)
+
+    if diff:
+        # Check diff size limits
+        lines = diff.splitlines()
+        changed_lines = sum(1 for line in lines if line.startswith("+") or line.startswith("-") and not line.startswith("+++") and not line.startswith("---"))
+        files_changed = sum(1 for line in lines if line.startswith("diff --git"))
+        
+        if changed_lines > args.max_diff_lines:
+            print(f"::warning::PR diff exceeds max-diff-lines ({changed_lines} > {args.max_diff_lines}). Skipping review.", file=sys.stderr)
+            sys.exit(0)
+        
+        if files_changed > args.max_diff_files:
+            print(f"::warning::PR diff exceeds max-diff-files ({files_changed} > {args.max_diff_files}). Skipping review.", file=sys.stderr)
+            sys.exit(0)
 
     system_instruction = (
         f"You are the Google Antigravity AI Agent running in automated mode ({args.mode}). "
@@ -701,7 +733,7 @@ def main():
 
     if not diff:
         print("::error::Empty diff fetched for analysis.", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(1 if args.fail_on_error else 0)
 
     try:
         report = asyncio.run(run_antigravity_agent(full_prompt, system_instruction, model=args.model))
@@ -709,7 +741,7 @@ def main():
             post_github_comment(pr_num, report, args.mode, diff=diff)
     except Exception as err:
         print(f"Execution failed: {err}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(1 if args.fail_on_error else 0)
 
 
 if __name__ == "__main__":
