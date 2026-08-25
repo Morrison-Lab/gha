@@ -1,0 +1,1 @@
+- Post a skip notice comment on PRs when `gemini-code-review.yml`'s dispatch guard blocks a fork or Dependabot PR, enabling delivery classification (gha#573).
