@@ -68,7 +68,8 @@ class TestExportExtraSecrets(unittest.TestCase):
             self.assertEqual(ret, 0)
             stdout = captured_out.getvalue()
             self.assertIn("::add-mask::secret_val_1", stdout)
-            self.assertIn("::add-mask::secret_val_2\nmultiline", stdout)
+            self.assertIn("::add-mask::secret_val_2", stdout)
+            self.assertIn("::add-mask::multiline", stdout)
             self.assertIn("Exported 2 extra secret(s) to environment: EPI202_TOKEN, EPI204_TOKEN", stdout)
 
             with open(env_path, encoding="utf-8") as f:

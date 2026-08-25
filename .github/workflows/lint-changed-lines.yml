@@ -22,12 +22,14 @@ on:
         type: string
         default: '1'
       apt-packages:
-        description: Extra apt packages to install before setting up R/renv dependencies.
+        description: Extra apt packages to install before setting up R/renv dependencies (space-separated).
         type: string
         default: ''
       extra-packages:
         description: >-
-          Extra R packages to install (gh and lintr are always installed).
+          Extra R packages to install (space- or comma-separated; passed to
+          setup-r-dependencies under DESCRIPTION, or installed from CRAN under
+          use-renv: true). gh and lintr are always installed.
         type: string
         default: ''
       install-package:

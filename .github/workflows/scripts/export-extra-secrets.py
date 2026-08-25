@@ -137,9 +137,11 @@ def export_secrets(
             continue
 
         val = str(secrets_map[name])
-        # Register mask with GitHub Actions runner
+        # Register mask with GitHub Actions runner per line (add-mask is single-line only)
         if val:
-            print(f"::add-mask::{val}")
+            for line in val.splitlines():
+                if line:
+                    print(f"::add-mask::{line}")
 
         if env_file:
             delimiter = f"ghasecret_{secrets.token_hex(16)}"
