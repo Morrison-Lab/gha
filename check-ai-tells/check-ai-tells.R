@@ -227,6 +227,54 @@ scan_file_prose <- function(file_path, added_lines_only = NULL) {
   )
 }
 
+# ── Ignore Tells Parsing ──────────────────────────────────────────────────────
+
+MULTI_WORD_TELLS <- c(
+  "negation-reversal antithesis",
+  "signposting filler",
+  "in the realm of",
+  "at the heart of",
+  "more than just",
+  "shed light",
+  "dive into",
+  "dive in",
+  "deep dive",
+  "treasure trove"
+)
+
+parse_ignore_tells <- function(raw_arg) {
+  if (is.null(raw_arg) || !nzchar(raw_arg)) return(character(0))
+  raw_arg <- trimws(raw_arg)
+  if (!nzchar(raw_arg)) return(character(0))
+
+  if (grepl(",", raw_arg, fixed = TRUE)) {
+    tokens <- strsplit(raw_arg, ",", fixed = TRUE)[[1]]
+    tokens <- tolower(trimws(tokens))
+    tokens <- tokens[nzchar(tokens)]
+    return(unname(as.character(unique(tokens))))
+  }
+
+  lines <- strsplit(raw_arg, "\n", fixed = TRUE)[[1]]
+  lines <- trimws(lines)
+  lines <- lines[nzchar(lines)]
+
+  results <- character(0)
+  for (line in lines) {
+    for (mwt in MULTI_WORD_TELLS) {
+      pattern <- paste0("(?i)(?:^|\\s)", gsub("-", "\\\\-", mwt), "(?:$|\\s)")
+      if (grepl(pattern, line, perl = TRUE)) {
+        results <- c(results, mwt)
+        line <- sub(pattern, " ", line, perl = TRUE)
+      }
+    }
+    rem_tokens <- scan(text = line, what = character(), quiet = TRUE)
+    results <- c(results, tolower(trimws(rem_tokens)))
+  }
+
+  results <- results[nzchar(results)]
+  unname(as.character(unique(results)))
+}
+
 # ── Main Entrypoint ──────────────────────────────────────────────────────────
 
 main <- function() {
@@ -235,9 +283,12 @@ main <- function() {
   paths_arg <- Sys.getenv("AIT_PATHS", "")
   paths_ignore_arg <- Sys.getenv("AIT_PATHS_IGNORE", "")
   base_ref <- Sys.getenv("AIT_BASE_REF", "")
+  ignore_tells_arg <- Sys.getenv("AIT_IGNORE_TELLS", "")
   fail_on_high <- tolower(Sys.getenv("AIT_FAIL", "false")) %in% c("true", "1")
   threshold <- as.numeric(Sys.getenv("AIT_THRESHOLD", "10"))
   if (is.na(threshold)) threshold <- 10
+
+  ignore_tells <- parse_ignore_tells(ignore_tells_arg)
 
   raw_files <- if (length(args) > 0) {
     args
@@ -318,16 +369,35 @@ main <- function() {
     }
   }
 
-  total_tells <- length(all_findings)
-  density <- if (total_words > 0) (total_tells / total_words) * 1000 else 0
+  active_findings <- list()
+  suppressed_findings <- list()
 
-  cat(sprintf("Scanned %d file(s) (%d prose words). Found %d AI tell(s) (density: %.1f / 1000 words).\n\n",
-              scanned_files, total_words, total_tells, density))
+  for (item in all_findings) {
+    if (tolower(item$tell) %in% ignore_tells) {
+      suppressed_findings[[length(suppressed_findings) + 1L]] <- item
+    } else {
+      active_findings[[length(active_findings) + 1L]] <- item
+    }
+  }
+
+  total_tells <- length(active_findings)
+  density <- if (total_words > 0) (total_tells / total_words) * 1000 else 0
+  suppressed_count <- length(suppressed_findings)
+
+  suppressed_msg <- ""
+  if (suppressed_count > 0) {
+    unique_ignored <- sort(unique(sapply(suppressed_findings, function(x) x$tell)))
+    suppressed_msg <- sprintf(" (ignored %d tell(s) via ignore-tells: %s)",
+                              suppressed_count, paste(unique_ignored, collapse = ", "))
+  }
+
+  cat(sprintf("Scanned %d file(s) (%d prose words). Found %d AI tell(s) (density: %.1f / 1000 words)%s.\n\n",
+              scanned_files, total_words, total_tells, density, suppressed_msg))
 
   if (total_tells > 0) {
     cat(sprintf("%-35s %-6s %-25s %s\n", "File", "Line", "Tell", "Snippet"))
     cat(paste(rep("-", 80), collapse = ""), "\n")
-    for (item in all_findings) {
+    for (item in active_findings) {
       snip <- substr(item$context, 1, 40)
       cat(sprintf("%-35s %-6d %-25s %s\n", item$file, item$line, item$tell, snip))
       cat(sprintf("::warning file=%s,line=%d::AI tell '%s' found: \"%s\"\n",

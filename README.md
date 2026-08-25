@@ -43,7 +43,7 @@ not reference `@main` from consumers.
 
 | Workflow | Purpose | Key inputs |
 |---|---|---|
-| `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `fail` |
+| `check-ai-tells.yml` | Scan narrative prose in Markdown and Quarto files for AI-generated tell density and rhetorical markers | `paths`, `paths-ignore`, `base-ref`, `threshold`, `ignore-tells`, `fail` |
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
 | `check-junk-files.yml` | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
