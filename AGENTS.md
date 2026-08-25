@@ -16,7 +16,8 @@ Those manuals must defer to this file for universal policy.
 
 Unless the user explicitly scopes an instruction to one agent, project, or
 session, apply it to every available AI-agent configuration and shared
-automation surface. Do not treat the currently speaking agent as an implicit
+automation surface.
+Do not treat the currently speaking agent as an implicit
 scope restriction.
 
 ## No empty promises
@@ -43,7 +44,8 @@ See `shared/workflow/no-empty-promises.md`.
 ## Interpret instructions broadly and maximize safe progress
 
 Unless the user narrows a request, take the broad reading that advances its
-obvious objective and complete every safe, authorized, relevant step. Do not
+obvious objective and complete every safe, authorized, relevant step.
+Do not
 reduce an instruction to the smallest literal action when its context makes a
 larger in-scope outcome clear.
 
@@ -281,10 +283,8 @@ below).
   it is ready for review and its checks pass.
 - **Do:** un-draft an up-front empty PR once its implementation has landed on
   the branch head and the checks pass.
-- **Don't:** leave a PR that is ready for review in draft, except a
-  deliberately draft-gated dependent PR held until its prerequisite merges.
-- **Don't:** treat a tool's draft-by-default as the intended state once the
-  work is ready for review.
+- **Don't:** leave a PR that is ready for review in draft, except a deliberately draft-gated dependent PR held until its prerequisite merges.
+- **Don't:** treat a tool's draft-by-default as the intended state once the work is ready for review.
 
 ## Antigravity Workspace Rules & Activation Scopes
 
