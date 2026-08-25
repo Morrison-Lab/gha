@@ -80,7 +80,7 @@ jobs:
     #   path: website           # Quarto project lives in a subdir (default: repo root)
     #   setup-r: true           # for R/knitr Quarto projects (default: false)
     #   use-renv: true          # restore R deps with renv instead of r-packages
-    #   install-package: true   # R CMD INSTALL . before render (for R packages)
+    #   install-package: true   # R CMD INSTALL <path> before render (for R packages)
     #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid
     #   tinytex: true           # needed to render PDF outputs
     #   apt-packages: ''        # extra system packages (space-separated)
