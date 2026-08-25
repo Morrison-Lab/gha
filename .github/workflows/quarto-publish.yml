@@ -177,6 +177,9 @@ jobs:
     timeout-minutes: 45
     # Serialize deploys to gh-pages so main-site publishes, PR previews, and
     # preview cleanups queue rather than race or clobber each other's commits.
+    # Note: GitHub Actions only retains *one* pending run per concurrency group
+    # (superseding older pending runs in the queue), rather than buffering
+    # unbounded pending runs. cancel-in-progress: false queues rather than kills.
     concurrency:
       group: gh-pages
       cancel-in-progress: false
