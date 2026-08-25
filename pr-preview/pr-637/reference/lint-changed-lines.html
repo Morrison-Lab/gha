@@ -391,6 +391,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-junk-files.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-junk-files.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-non-standard-chars.yml</span></a>
   </div>
@@ -712,13 +718,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Extra apt packages to install before setting up dependencies.</td>
+<td>Extra apt packages to install before setting up dependencies (space-separated).</td>
 </tr>
 <tr class="even">
 <td><code>extra-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Extra R packages to install (<code>gh</code> and <code>lintr</code> are always installed).</td>
+<td>Extra R packages to install (space- or comma-separated; passed to <code>setup-r-dependencies</code>, or installed from CRAN under <code>use-renv: true</code>). <code>gh</code> and <code>lintr</code> are always installed.</td>
 </tr>
 <tr class="odd">
 <td><code>install-package</code></td>
