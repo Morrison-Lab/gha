@@ -731,6 +731,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'website'</code></td>
 <td>Quarto <code>--profile</code> to render with.</td>
 </tr>
+<tr class="odd">
+<td><code>fail-on-render-warning</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Fail the build if Quarto emits any render warnings (<code>WARN</code> in the render log).</td>
+</tr>
+<tr class="even">
+<td><code>forbid-log-patterns</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -777,7 +789,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: true              # `R CMD INSTALL .` before rendering</span></span>
 <span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-chrome: true                 # needed for revealjs / screenshots</span></span>
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">    #   submodules: recursive</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml"><code>examples/preview.yml</code></a> for the full caller stub.</p>
 
 

@@ -763,6 +763,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Options passed to Deno V8 via <code>QUARTO_DENO_V8_OPTIONS</code> to raise the heap limit for large site renders.</td>
 </tr>
 <tr class="even">
+<td><code>fail-on-render-warning</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Fail the build if Quarto emits any render warnings (<code>WARN</code> in the render log).</td>
+</tr>
+<tr class="odd">
+<td><code>forbid-log-patterns</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
+</tr>
+<tr class="even">
 <td><code>checkout-submodules</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
@@ -863,13 +875,16 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM</span></span>
 <span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache: true      # cache Quarto _freeze across runs</span></span>
 <span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/quarto-publish.yml"><code>examples/quarto-publish.yml</code></a> for the full caller stub.</p>
 
 
