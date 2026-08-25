@@ -1,0 +1,16 @@
+name: Claude Manage Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  manage:
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+      actions: write
+    uses: Morrison-Lab/gha/.github/workflows/claude-manage-project.yml@v2
+    secrets: inherit

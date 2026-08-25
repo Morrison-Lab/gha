@@ -1,0 +1,41 @@
+name: Claude Manage Project (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      prompt-addendum:
+        description: Repo-specific project management guidance appended to the prompt.
+        type: string
+        default: ''
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: true
+      ANTHROPIC_API_KEY:
+        required: false
+
+jobs:
+  manage-project:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@e2a4b761cd77a1138a5b41410eda9b28581f9bcd # v1.0.196
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --allowedTools "Bash(gh issue edit:*),Bash(gh issue view:*),Bash(gh api:*),Bash(gh project:*)"
+          prompt: |
+            You are a project manager. The user has opened a new issue #${{ github.event.issue.number }}.
+            Please review the issue, prioritize it by adding an appropriate label (e.g., 'priority: high', 'priority: medium', 'priority: low'), and add it to the repository's project board if one exists.
+            Use `gh api`, `gh project`, and `gh issue edit` as necessary.
+            
+            Issue title: ${{ github.event.issue.title }}
+            Issue body: ${{ github.event.issue.body }}
+            
+            ${{ inputs.prompt-addendum }}
