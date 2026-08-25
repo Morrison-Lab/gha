@@ -639,7 +639,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   <li><a href="#why-it-sets-up-r-instead-of-running-in-a-container" id="toc-why-it-sets-up-r-instead-of-running-in-a-container" class="nav-link" data-scroll-target="#why-it-sets-up-r-instead-of-running-in-a-container">Why it sets up R instead of running in a container</a></li>
-  <li><a href="#three-upstream-behaviours-worth-knowing" id="toc-three-upstream-behaviours-worth-knowing" class="nav-link" data-scroll-target="#three-upstream-behaviours-worth-knowing">Three upstream behaviours worth knowing</a></li>
+  <li><a href="#handling-of-exclusions-and-finding-counts" id="toc-handling-of-exclusions-and-finding-counts" class="nav-link" data-scroll-target="#handling-of-exclusions-and-finding-counts">Handling of exclusions and finding counts</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/spellcheck.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
@@ -711,18 +711,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Comma-separated files or folders to skip. Accepts globs.</td>
 </tr>
 <tr class="odd">
+<td><code>fail</code></td>
+<td>string</td>
+<td><code>'true'</code></td>
+<td>Whether to fail the job on misspelled words (<code>'true'</code>, <code>'false'</code>).</td>
+</tr>
+<tr class="even">
 <td><code>additional-options</code></td>
 <td>string</td>
 <td><code>'--vanilla'</code></td>
 <td>Options passed to <code>Rscript</code>. Pass <code>''</code> to let R read its profiles.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>install-quarto</code></td>
 <td>string</td>
 <td><code>'false'</code></td>
 <td>Whether dependency setup installs Quarto.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>runs-on</code></td>
 <td>string</td>
 <td><code>ubuntu-latest</code></td>
@@ -747,22 +753,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'</span></span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">    #   exclude: 'vignettes/*.Rmd'</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   additional-options: ''</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: 'auto'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: 'true'</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   additional-options: ''</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: 'auto'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>spellcheck.yml</code>).</p>
 </section>
 <section id="why-it-sets-up-r-instead-of-running-in-a-container" class="level2">
 <h2 class="anchored" data-anchor-id="why-it-sets-up-r-instead-of-running-in-a-container">Why it sets up R instead of running in a container</h2>
 <p>The bespoke workflows this replaces run inside a <code>rocker</code> image. This one calls <a href="https://github.com/r-lib/actions/tree/v2/setup-r"><code>r-lib/actions/setup-r</code></a>, matching every other R capability here, so a consumer already paying for <code>setup-r</code> in its other jobs reuses that toolchain cache.</p>
-<p>It also installs {spelling} through <a href="https://github.com/r-lib/actions/tree/v2/setup-r-dependencies"><code>setup-r-dependencies</code></a> rather than leaving it to the upstream action’s own <code>install.packages()</code> call. That call sets <code>repos</code> to <code>cloud.r-project.org</code>, which serves source packages for Linux, so it would compile {spelling} and its {hunspell} C++ dependency on every run. Going through <code>setup-r-dependencies</code> takes the public RSPM binaries instead and caches them, and the upstream install then finds the package present.</p>
-<p>Only {spelling} is installed, not the consumer package’s own dependencies: <code>spell_check_package()</code> reads a package’s files without loading it, so resolving its dependency tree would be pure cost. <code>RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'</code> is set during dependency setup so {spelling} installs to the site library even in <code>renv</code> projects; upstream’s <code>additional-options: '--vanilla'</code> default then finds it without requiring <code>.Rprofile</code> activation (<a href="https://github.com/Morrison-Lab/gha/issues/620">#620</a>). For the same reason <code>install-quarto</code> defaults to <code>'false'</code> – {spelling} reads vignette <em>sources</em> and never renders them.</p>
+<p>It also installs {spelling} through <a href="https://github.com/r-lib/actions/tree/v2/setup-r-dependencies"><code>setup-r-dependencies</code></a> rather than compiling {spelling} and its {hunspell} C++ dependency on every run. Going through <code>setup-r-dependencies</code> takes the public RSPM binaries instead and caches them across runs.</p>
+<p>Only {spelling} is installed, not the consumer package’s own dependencies: <code>spell_check_package()</code> reads a package’s files without loading it, so resolving its dependency tree would be pure cost. <code>RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE'</code> is set during dependency setup so {spelling} installs to the site library even in <code>renv</code> projects; <code>additional-options: '--vanilla'</code> default then finds it without requiring <code>.Rprofile</code> activation (<a href="https://github.com/Morrison-Lab/gha/issues/620">#620</a>). For the same reason <code>install-quarto</code> defaults to <code>'false'</code> – {spelling} reads vignette <em>sources</em> and never renders them.</p>
 </section>
-<section id="three-upstream-behaviours-worth-knowing" class="level2">
-<h2 class="anchored" data-anchor-id="three-upstream-behaviours-worth-knowing">Three upstream behaviours worth knowing</h2>
-<p>This capability wraps <a href="https://github.com/insightsengineering/r-spellcheck-action"><code>insightsengineering/r-spellcheck-action</code></a>, which carries three quirks a caller can be bitten by. All were confirmed by reading and running its <code>action.yaml</code> and <code>spellcheck.R</code> at <code>v3.0.3</code> (2026-08-21), not inferred from its documentation.</p>
-<p><strong>A lone glob in <code>exclude</code> used to exclude only its first match – this capability works around that.</strong> Upstream interpolates <code>exclude</code> unquoted into a <code>bash</code> <code>run:</code> body, so the shell pathname-expands it into separate arguments before R sees it, and <code>spellcheck.R</code> reads only the first. Measured over three vignettes: <code>vignettes/*.Rmd</code> excluded <code>vignettes/a.Rmd</code> and left the other two checked, silently. The composite therefore normalizes the value first – entries trimmed, rejoined with commas, and given a trailing comma – which the shell cannot expand, since no path ends in a comma. R’s own <code>Sys.glob()</code> then does the matching, so a glob excludes every file it matches, as the input has always claimed. The one shape that cannot be supported is an entry containing whitespace: the shell splits on it whatever we do, so such an entry is rejected with an error naming it.</p>
-<p><strong><code>exclude</code> deletes the files it matches.</strong> The script calls <code>file.remove()</code> on each glob match, and the branch meant to restore them afterwards tests <code>isTRUE()</code> against the <em>list</em> <code>lapply()</code> returned, which is never true. So excluded files stay deleted from the runner’s checkout for the rest of the job. That is harmless in a job that only spellchecks, which is why the caller stub does nothing else – but do not add steps after it that read or publish the working tree.</p>
-<p><strong>A count of exactly 256 misspelled words reports success.</strong> The script exits with the misspelling count as its status, and a process exit status is taken modulo 256, so 256 words becomes <code>0</code>. Measured on R 4.6.1: <code>quit(status = 256)</code> is observed by the shell as <code>0</code>. Any count from 1 to 255 fails correctly, so this only reaches a package adopting the check with a very large wordlist gap. <a href="https://github.com/Morrison-Lab/gha/issues/556">gha#556</a> tracks reporting it upstream and deciding whether to guard it here.</p>
+<section id="handling-of-exclusions-and-finding-counts" class="level2">
+<h2 class="anchored" data-anchor-id="handling-of-exclusions-and-finding-counts">Handling of exclusions and finding counts</h2>
+<p><code>spellcheck</code> directly invokes <code>spelling::spell_check_package()</code>, providing:</p>
+<ul>
+<li><strong>Safe file exclusion</strong>: Excluded files matching glob patterns are temporarily staged out of the package root during analysis and restored unconditionally on exit (resolving <a href="https://github.com/Morrison-Lab/gha/issues/556">gha#556</a>).</li>
+<li><strong>Consistent exit codes</strong>: When misspellings are found, the step exits with code <code>1</code> under <code>fail: 'true'</code> or <code>0</code> under <code>fail: 'false'</code> (with GitHub Actions warning annotations for each finding), avoiding modulo-256 process exit code truncation (<a href="https://github.com/Morrison-Lab/gha/issues/556">gha#556</a>, <a href="https://github.com/Morrison-Lab/gha/issues/560">gha#560</a>).</li>
+</ul>
 
 
 </section>

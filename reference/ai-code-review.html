@@ -672,7 +672,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="what-the-fallback-covers" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-fallback-covers">What the fallback covers</h2>
 <p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong> (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that <strong>fails or is cancelled during execution</strong> (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>, <a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
-<p>When a dispatched agent run fails, <code>ai-code-review.yml</code> detects the failure and falls through to try the next candidate agent in the list.</p>
+<p>When a dispatched agent run fails, <code>ai-code-review.yml</code> detects the failure and falls through to try the next candidate agent in the list. The overall job has a <code>timeout-minutes: 60</code> budget covering all candidate attempts. When configuring a custom <code>agents</code> list or raising <code>watch-timeout</code>, ensure the combined worst-case wait fits within this 60-minute bound so the fallback loop finishes its candidate progression cleanly.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -734,6 +734,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'opencode-code-review.yml'</code></td>
 <td>Caller-repo workflow file dispatched for an OpenCode review.</td>
 </tr>
+<tr class="even">
+<td><code>watch-timeout</code></td>
+<td>string</td>
+<td><code>'15m'</code></td>
+<td>Timeout bound for watching each dispatched agent’s review run before falling through to the next candidate. Sized against the overall 60-minute job timeout.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -778,7 +784,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: read</code>, and <code>actions: write</code> (the last so it can dispatch the selected agent’s review workflow).</p>
+<p>Grant <code>contents: read</code>, <code>pull-requests: read</code>, <code>issues: read</code>, and <code>actions: write</code> (the last so it can dispatch the selected agent’s review workflow).</p>
 <p>The dispatch uses <code>GITHUB_TOKEN</code>, so no personal access token is needed: <code>actions: write</code> is enough to start a workflow in the caller’s own repository. Each agent’s own review workflow declares whatever permissions it needs for itself.</p>
 </section>
 <section id="concurrency" class="level2">
@@ -806,23 +812,25 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ANTHROPIC_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.ANTHROPIC_API_KEY }}</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CURSOR_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.CURSOR_API_KEY }}</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">OPENCODE_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.OPENCODE_API_KEY }}</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini, antigravity, cursor, opencode'</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   claude-review-workflow-file: claude-code-review.yml</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   antigravity-review-workflow-file: antigravity-code-review.yml</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">    #   cursor-review-workflow-file: cursor-code-review.yml</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-review-workflow-file: opencode-code-review.yml</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/ai-code-review.yml@v2</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ANTHROPIC_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.ANTHROPIC_API_KEY }}</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CURSOR_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.CURSOR_API_KEY }}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">OPENCODE_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.OPENCODE_API_KEY }}</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   agents: 'claude, gemini, antigravity, cursor, opencode'</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   claude-review-workflow-file: claude-code-review.yml</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-review-workflow-file: gemini-code-review.yml</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">    #   antigravity-review-workflow-file: antigravity-code-review.yml</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   cursor-review-workflow-file: cursor-code-review.yml</span></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-review-workflow-file: opencode-code-review.yml</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   watch-timeout: 15m</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>ai-code-review.yml</code>).</p>
 
 
