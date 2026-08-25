@@ -144,7 +144,7 @@ on:
         default: ''
 
 jobs:
-  docs:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout-minutes }}
     # PR builds/previews are keyed by PR number, so different PRs never block
@@ -159,16 +159,20 @@ jobs:
     concurrency:
       group: altdoc-multiversion-docs-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
       cancel-in-progress: true
+    outputs:
+      subdir: ${{ steps.job-outputs.outputs.subdir }}
+      landing_target: ${{ steps.job-outputs.outputs.landing_target }}
+      bootstrap_latest_tag: ${{ steps.job-outputs.outputs.bootstrap_latest_tag }}
+      DOCS_SOURCE_DIR: ${{ steps.job-outputs.outputs.DOCS_SOURCE_DIR }}
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       DOCS_SOURCE_DIR: .
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
       issues: write
     steps:
-      # Unconditional (unlike every step below it): the "Remove PR Preview"
-      # step at the end of this job runs ONLY on the closed event and needs a
+      # The build job runs a checkout even on closed PRs so it successfully completes (all other steps are skipped).
+      # step runs ONLY on the closed event and needs a
       # checked-out git working tree to operate (rossjrw/pr-preview-action's
       # remove mode delegates to JamesIves/github-pages-deploy-action, which
       # runs git commands against the checkout). Gating this step the same
@@ -510,6 +514,54 @@ jobs:
           output-dir: site-root
           base-url: ${{ inputs.docs-base-url }}
           legacy-paths: ${{ inputs.legacy-paths }}
+
+      - name: Export job outputs
+        id: job-outputs
+        if: github.event.action != 'closed'
+        run: |
+          echo "subdir=${subdir:-}" >> "$GITHUB_OUTPUT"
+          echo "landing_target=${landing_target:-}" >> "$GITHUB_OUTPUT"
+          echo "bootstrap_latest_tag=${bootstrap_latest_tag:-}" >> "$GITHUB_OUTPUT"
+          echo "DOCS_SOURCE_DIR=${DOCS_SOURCE_DIR:-.}" >> "$GITHUB_OUTPUT"
+
+      - name: Stage build artifacts
+        if: github.event.action != 'closed'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: altdoc-build-${{ github.run_id }}
+          path: |
+            ${{ env.DOCS_SOURCE_DIR }}/docs/
+            site-root/
+            site-latest-tag-bootstrap/
+          retention-days: 1
+          if-no-files-found: ignore
+
+  deploy:
+    needs: build
+    if: always() && (needs.build.result == 'success' || (github.event_name == 'pull_request' && github.event.action == 'closed'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: gh-pages
+      cancel-in-progress: false
+    env:
+      subdir: ${{ needs.build.outputs.subdir }}
+      landing_target: ${{ needs.build.outputs.landing_target }}
+      bootstrap_latest_tag: ${{ needs.build.outputs.bootstrap_latest_tag }}
+      DOCS_SOURCE_DIR: ${{ needs.build.outputs.DOCS_SOURCE_DIR || '.' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download build artifacts
+        if: github.event.action != 'closed'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: altdoc-build-${{ github.run_id }}
+          path: .
 
       - name: Deploy to GitHub pages
         if: github.event_name != 'pull_request' && env.subdir != ''
