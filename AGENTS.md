@@ -4,10 +4,10 @@ This file defines standardized, vendor-neutral instructions for AI coding agents
 
 ## Instruction layering
 
-`AGENTS.md` is the compact, unconditional cross-agent contract.
-Keep every rule that applies to all agents here, rather than duplicating it in model-specific manuals.
-Do not load `CLAUDE.md`, `GEMINI.md`, or their case records wholesale at session start: consult the relevant section on demand when changing that model's integration or resolving a model-specific workflow question.
-Those manuals must defer to this file for universal policy.
+`AGENTS.md` is the compact cross-agent policy contract defining standardized instructions across Morrison-Lab repositories.
+In `Morrison-Lab/gha`, `CLAUDE.md` serves as the primary repository operator manual (documenting composite action architectures, test recipes, review guards, and versioning rules).
+Load and consult `CLAUDE.md` for repo-specific implementation details;
+`AGENTS.md` provides the cross-agent baseline that must not contradict it (such as standing `mwc`).
 
 ## Generalize instructions to every AI agent by default
 
@@ -94,14 +94,17 @@ In every session --- at session start, and again periodically during long sessio
 ## Verify changes before pushing
 
 No compiled app gates this repo.
-CI ([`.github/workflows/_selftest.yml`](.github/workflows/_selftest.yml)) runs the checks directly.
-Run unit tests and lint checks locally per capability:
+CI ([`.github/workflows/_selftest.yml`](.github/workflows/_selftest.yml)) runs the end-to-end composite checks and standalone test suites directly.
+Consult `CLAUDE.md` ("Tests") for capability-specific test recipes.
+Common local unit tests include:
 
 ```sh
-python3 check-new-line-breaks/tests/test_check_new_line_breaks.py
-node lint-markdown/tests/test_list_item_splices.mjs
 python3 check-non-standard-chars/tests/test_check_non_standard_chars.py
-python3 check-phi/tests/test_check_phi.py
+node lint-markdown/tests/test_list_item_splices.mjs
+node lint-markdown/tests/test_table_splits.mjs
+python3 -m pytest check-phi/tests/ -q
+python3 -m pytest check-new-line-breaks/tests/ -q
+bash check-junk-files/tests/test_junk_files.sh
 ```
 
 ## Worktree isolation
@@ -128,7 +131,7 @@ See [`shared/workflow/check-before-pushing.md`](https://github.com/Morrison-Lab/
   The lease alone is defeatable: it compares against your remote-tracking ref, so any background fetch silently satisfies it over the commits it was protecting.
   `--force-if-includes` (git 2.30+) closes that.
   Pairing `--force` *with* the lease is not a middle ground: git documents `-f, --force` as one that "disables that check, the other safety checks in PUSH RULES below, and the checks in `--force-with-lease`".
-  A `stale info` refusal is not a reason to force either --- it means the remote branch is gone, so a plain push is the fix (`memories/git.md`).
+  A `stale info` refusal is not a reason to force either --- it means the remote branch is gone, so a plain push is the fix ([`memories/git.md`](https://github.com/Morrison-Lab/ai-config/blob/main/memories/git.md)).
   `ALLOW_FORCE_PUSH=1` is an escape valve for a case the guard did not foresee.
   State the reason when you use it.
 
@@ -200,7 +203,8 @@ The authoring session cannot perform this itself.
 It knows what the change was meant to say, so it reads the diff and recovers the intent --- confirmation rather than review --- and nothing in the output distinguishes that from a real pass.
 Brief the reviewer with the diff and the standards, never with the rationale for the change.
 
-Pushing without a clean self-review is mechanistically blocked by pre-push guards.
+In repositories with installed pre-push hooks (such as ai-config), pushing without a clean self-review is mechanistically blocked;
+in this repo without local hooks, the rule is enforced procedurally.
 Full rule, including why a same-vendor subagent buys independence of intent but not of blind spot: [`shared/workflow/adversarial-self-review.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/adversarial-self-review.md).
 
 ## Put PRs in ready mode when they are ready for review
@@ -235,7 +239,7 @@ Marking a PR ready grants no merge authority (see the strict merge policy below)
 
 ## Default to action without asking
 
-The owner grants standing permission for non-destructive steps --- committing to a branch, pushing, opening or updating PRs against Morrison-Lab repositories, running non-destructive Git and API reads, and editing the shared agent-config memory in this repo.
+The owner grants standing permission for non-destructive steps --- committing to a branch, pushing, opening or updating PRs against Morrison-Lab repositories, running non-destructive Git and API reads, and editing shared agent configurations.
 Proceed with reasonable non-destructive steps and report them afterwards in the past tense.
 Ask only for destructive, ambiguous, high-impact, or genuinely blocking choices.
 This grants no merge authority: the strict merge policy below still applies.
@@ -260,7 +264,7 @@ Whenever starting or working on a Pull Request:
    In repos that automatically trigger review on PR events (`pull_request` synchronize, opened, ready_for_review), do NOT manually trigger a redundant review if an automated review is already running or queued.
 
 2. **Drive to clean**: Run `ardi` / the review-and-iterate loop to ensure CI passes and all review findings are addressed until the PR reaches a clean verdict.
-3. **Request human review only after AI approval or deadlock**: Per [`copilot-review-before-human.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/vendored/copilot-review-before-human.md), request human review (configured repo reviewers per `skills/request-pr-review/SKILL.md`) **only after** the AI review produces a clean/approved verdict, or if an impasse/deadlock occurs.
+3. **Request human review only after AI approval or deadlock**: Per [`copilot-review-before-human.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/vendored/copilot-review-before-human.md), request human review (configured repo reviewers per [`skills/request-pr-review/SKILL.md`](https://github.com/Morrison-Lab/ai-config/blob/main/skills/request-pr-review/SKILL.md)) **only after** the AI review produces a clean/approved verdict, or if an impasse/deadlock occurs.
 
 - **Do:** Trigger AI review (or let the automated PR review run) after completing code pushes, and request human review only after the AI review is clean/approved (or upon an impasse).
 - **Don't:** Manually trigger a redundant `@claude review` comment when an automated review is already running or triggered by the push/ready event.
