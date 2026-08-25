@@ -1640,7 +1640,7 @@
     "href": "reference/summary.html#inputs",
     "title": "summary.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\n\n\nInput\nDescription\nType\nDefault\nRequired\n\n\n\n\nendpoint\nInference endpoint URL (e.g. http://localhost:11434/v1 or custom OpenAI-compatible endpoint).\nstring\nhttps://models.github.ai/inference\nNo\n\n\nmodel\nModel identifier to query.\nstring\nopenai/gpt-4o-mini\nNo",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\n\nInput\nDescription\nType\nDefault\nRequired\n\n\n\n\nendpoint\nInference endpoint URL (e.g. http://localhost:11434/v1 or custom OpenAI-compatible endpoint).\nstring\nhttps&#58;//models.github.ai/inference\nNo\n\n\nmodel\nModel identifier to query.\nstring\nopenai/gpt-4o-mini\nNo",
     "crumbs": [
       "Overview",
       "Reference",
