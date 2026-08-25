@@ -1,0 +1,91 @@
+---
+title: "check-junk-files.yml"
+---
+
+Fail when the repository **tracks** operating-system or editor detritus --
+a `.DS_Store` written by Finder, an AppleDouble `._*` sidecar, an `.Rhistory`
+or `.RData` an IDE left in the project root.
+
+The failure names each file, gives the `git rm --cached` line that clears it,
+and points at the per-machine fix that stops it recurring in every other
+repository too: a global gitignore, or
+[`usethis::git_vaccinate()`](https://usethis.r-lib.org/reference/git_vaccinate.html)
+for R users.
+
+## What it scans, and why
+
+**Tracked files, not the pull request's diff.** The diff-scoping that
+`check-phi` and `check-new-line-breaks` use exists so a corpus's pre-existing
+drift is not re-flagged on every unrelated PR. That reasoning does not carry
+over here: a `.DS_Store` committed two years ago is still a live defect, and
+still costs exactly one command to clear. Adopting this check in a tree that
+already has some will therefore go red once; `paths-ignore` is the escape
+hatch if one of them genuinely belongs.
+
+**Matching is git's own.** The check runs `git ls-files -i -c -X`, so
+`patterns` is ordinary gitignore syntax rather than a bespoke glob dialect --
+`.DS_Store` matches at any depth, a trailing `/` restricts a pattern to
+directories, and `#` comments are ignored.
+
+**Your repository's own `.gitignore` is not consulted.** `git ls-files` takes
+standard exclude sources only when asked (`--exclude-standard`), and this
+check deliberately does not ask. A file you force-added despite your own
+`.gitignore` is your decision, not this check's business.
+
+## Inputs
+
+| Input          | Type   | Default            | Description                                    |
+| -------------- | ------ | ------------------ | ---------------------------------------------- |
+| `patterns`     | string | see below          | Comma- or newline-separated gitignore-style patterns naming what counts as junk. |
+| `paths-ignore` | string | `''`               | Comma- or newline-separated paths to exempt, applied as git pathspec exclusions. A trailing `/` exempts a whole directory. |
+| `fail`         | boolean | `true`            | Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit `false` opts out. |
+
+The `patterns` default is the set
+[`usethis::git_vaccinate()`](https://usethis.r-lib.org/reference/git_vaccinate.html)
+writes to a global gitignore, plus the three it does not cover:
+
+```text
+.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto,
+Thumbs.db, desktop.ini
+```
+
+Keeping the two sets aligned is deliberate. The check recommends vaccination,
+so a default wider than what vaccination fixes would hand the reader advice
+that does not close what they were just told to close. `._*`, `Thumbs.db`,
+and `desktop.ini` are the exceptions, and the failure output says so rather
+than leaving the gap silent.
+
+`paths-ignore` takes **pathspecs**, unlike `check-secrets`'s same-named input,
+which takes Go regexes. The syntax follows the matcher, and the two
+capabilities use different matchers. Pathspecs rather than gitignore `!`
+negation because negation is matched per pattern against the full path, so
+`!vendor/` fails to re-include `vendor/.DS_Store` and would exempt nothing at
+all -- silently.
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check junk files
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-junk-files.yml@v2
+    # with:
+    #   paths-ignore: 'tests/fixtures/'
+    #   fail: false
+```
+
+See `check-junk-files.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
+(Linked to the directory rather than the file, for the reason
+[`check-secrets.qmd`](check-secrets.qmd) records: a `blob/main/...` link to a
+capability's own example 404s on the pull request that introduces it, and
+`check-links` rightly fails it.)

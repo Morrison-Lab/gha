@@ -24,12 +24,13 @@ inputs:
     description: Cache version suffix passed to setup-renv.
     default: '1'
   apt-packages:
-    description: Extra apt packages to install before setting up R/renv dependencies.
+    description: Extra apt packages to install before setting up R/renv dependencies (space-separated).
     default: ''
   extra-packages:
     description: >-
-      Extra R packages to install, passed to
-      r-lib/actions/setup-r-dependencies. gh and lintr are always installed.
+      Extra R packages to install (space- or comma-separated; passed to
+      r-lib/actions/setup-r-dependencies under DESCRIPTION, or installed from CRAN
+      under use-renv: true). gh and lintr are always installed.
     default: ''
   install-package:
     description: >-
@@ -78,17 +79,27 @@ runs:
         GITHUB_PAT: ${{ github.token }}
         RENV_CONFIG_INSTALL_REMOTES: false
       with:
+        working-directory: ${{ inputs.path }}
         cache-version: ${{ inputs.renv-cache-version }}
+
+    - name: Set up Quarto (renv)
+      if: inputs.use-renv == 'true' && inputs.install-quarto == 'true'
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
 
     - name: Ensure lintr and gh installed (renv)
       if: inputs.use-renv == 'true'
+      working-directory: ${{ inputs.path }}
       shell: bash
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
         Rscript -e '
           req <- c("gh", "lintr")
-          extra <- strsplit("${{ inputs.extra-packages }}", "[[:space:],]+")[[1]]
+          extra_str <- Sys.getenv("EXTRA_PACKAGES")
+          extra <- strsplit(extra_str, "[[:space:],]+")[[1]]
           extra <- extra[nzchar(extra)]
-          needed <- setdiff(c(req, sub("^.*::", "", extra)), rownames(installed.packages()))
+          pkgs <- unique(c(req, sub("^.*::", "", extra)))
+          needed <- setdiff(pkgs, rownames(installed.packages()))
           if (length(needed) > 0) {
             install.packages(needed, repos = "https://cloud.r-project.org")
           }

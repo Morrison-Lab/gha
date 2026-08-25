@@ -74,10 +74,11 @@ check "opencode failure headline (non-zero exit)" false opencode-failure \
 check "opencode secret-skip notice" false opencode-skipped \
   "> **OpenCode review skipped — API key unavailable.** No \`OPENCODE_API_KEY\` secret is configured for this repository. [View run]($RUN_URL)"
 
-# --- the self-mod skip (gha#571 review). The job reports `success` and every
-#     step after the guard reads `skipped`, so nothing about this looks like a
-#     failure -- which is why the marker list omitted it. Both wordings
-#     build-self-review-skip-notice.sh can emit are pinned, since they differ
+# --- the self-mod and dispatch-guard skips (gha#571, gha#573). The job reports
+#     `success` and every step after the guard reads `skipped`, so nothing
+#     about this looks like a failure -- which is why the marker list omitted
+#     it initially. All wordings (build-self-review-skip-notice.sh's two, plus
+#     gemini-code-review.yml's dispatch guard) are pinned, since they differ
 #     after the shared leading phrase.
 check "self-mod skip, caller-workflow wording" false self-mod-skip \
   "> [!WARNING]
@@ -89,6 +90,13 @@ check "self-mod skip, caller-workflow wording" false self-mod-skip \
 check "self-mod skip, other-workflow wording" false self-mod-skip \
   "> [!WARNING]
 > **No review ran --- this PR edits \`.github/workflows/_selftest.yml\`.**
+>
+> [View run]($RUN_URL)"
+
+check "gemini dispatch-guard skip, fork or Dependabot PR" false self-mod-skip \
+  "> [!WARNING]
+> **No review ran -- dispatched Gemini review of fork or Dependabot PRs is disabled.**
+> Dispatched reviews of fork PRs and Dependabot PRs are skipped by design (gha#573).
 >
 > [View run]($RUN_URL)"
 

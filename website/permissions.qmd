@@ -11,7 +11,8 @@ already include the right `permissions:` blocks; copy them as-is.
 ## Per-workflow grants
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-equation-renders`, `check-new-line-breaks`, `check-news`,
+  `check-equation-renders`, `check-junk-files`,
+  `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,

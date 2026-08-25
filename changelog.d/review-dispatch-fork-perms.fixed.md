@@ -1,2 +1,0 @@
-- Declare `pull-requests: read` permission in `dispatch-on-comment` review jobs (gha#612).
-- Informatively short-circuit and explain when `/review` is requested on fork PRs in review caller workflows instead of dispatching a blocked run (gha#613).
