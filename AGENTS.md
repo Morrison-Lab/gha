@@ -50,11 +50,15 @@ larger in-scope outcome clear.
 ## Status requests do not make issues report-only
 
 Treat a request for status as a request to inspect live state and finish every
-safe, in-scope, concrete action that inspection reveals. A report is the recap
-after the work, not a substitute for it. When an issue cannot be fixed
-directly, carry it forward with an actual next action. Every issue noticed,
+safe, in-scope, concrete action that inspection reveals.
+A report is the recap
+after the work, not a substitute for it.
+When an issue cannot be fixed
+directly, carry it forward with an actual next action.
+Every issue noticed,
 however small or outside the current task's scope, must at minimum be filed in
-the owning GitHub, GitLab, or equivalent tracker. File it before reporting it.
+the owning GitHub, GitLab, or equivalent tracker.
+File it before reporting it.
 
 ## Upgrade a repo to `Morrison-Lab/gha` when it would benefit
 
@@ -65,7 +69,7 @@ Candidates are duplication, drift from a shared version, a named fix gha carries
 Not candidates are a workflow with genuinely repo-specific logic gha does not model, a repo a prior decision deliberately pinned off gha, and a repo we cannot merge a PR to.
 Take the inventory from gha's README "Available reusable workflows" table and each capability's tag from its Versioning section, since `@v1` was frozen and the recommended tag varies per workflow.
 File the migration as its own issue and PR rather than folding it into whatever brought you to the repo.
-Full rule, including the migration hazards and the review-guard case: [`shared/workflow/upgrade-to-gha.md`](shared/workflow/upgrade-to-gha.md).
+Full rule, including the migration hazards and the review-guard case: [`shared/workflow/upgrade-to-gha.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/upgrade-to-gha.md).
 
 ## Manage quota, including the structural kind
 
@@ -95,11 +99,10 @@ In every session --- at session start, and again periodically during long sessio
    Ensure `bootstrap.sh` has run so local agent config directories (`~/.gemini/skills`, `~/.claude`, `~/.codex/skills`, `~/.cursor/rules`, and when needed `~/.cursor/skills`) contain up-to-date symlinks.
 3. **Working repo checkouts.** Keep `main` updated (`git fetch origin`, `git pull --ff-only`).
 
-
 ## Verify changes before pushing
 
 No compiled app gates this repo.
-CI ([`.github/workflows/validate.yml`](.github/workflows/validate.yml)) and pre-commit run the checks directly:
+CI ([`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml)) and pre-commit run the checks directly:
 
 ```sh
 python3 scripts/validate-skills.py    # SKILL.md frontmatter, codex-skills/ sync, manifests
@@ -130,7 +133,7 @@ Keep fragments ASCII (write `---` for em-dashes, straight quotes) so the lab man
 
 ## Adding an enforcement hook
 
-A hook needs four synchronized pieces: the script in `hooks/`, its `test-<name>.py` beside it, its binding in [`hooks/hooks.json`](hooks/hooks.json), and a row in the README hook table --- `scripts/check-hook-catalog.py` fails when the table and the manifest disagree.
+A hook needs four synchronized pieces: the script in `hooks/`, its `test-<name>.py` beside it, its binding in [`hooks/hooks.json`](https://github.com/Morrison-Lab/ai-config/blob/main/hooks/hooks.json), and a row in the README hook table --- `scripts/check-hook-catalog.py` fails when the table and the manifest disagree.
 Warn-only hooks emit `systemMessage`, never a bare `reason`: a `Stop` hook's `reason` is read only alongside `"decision": "block"`, so a warn-by-`reason` hook fires silently.
 Never activate a hook before its PR merges: writing and testing the script is authoring and needs no permission, but do not run `install-hooks.py --fix` for a hook whose PR is still open.
 
@@ -147,7 +150,7 @@ Prefer an on-demand memory file under `memories/`.
 
 ## Check the remote immediately before every push
 
-See [`shared/workflow/check-before-pushing.md`](shared/workflow/check-before-pushing.md).
+See [`shared/workflow/check-before-pushing.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/check-before-pushing.md).
 
 - **Read the remote branch fresh, every time.**
   Run `git ls-remote --heads origin <branch>` immediately before every `git push` --- read-only, so it cannot itself change what it reports.
@@ -179,16 +182,17 @@ of a specific version, release, or snapshot,
 not timeless definitions.
 When recording facts about any software or technology across memories,
 documentation, PR descriptions, commit messages, or comments:
+
 - Qualify them with explicit temporal bounds and provenance
   (date measured, version number, or execution environment).
 - State the vintage explicitly so future readers and sessions know
   when the fact was verified
   and to re-verify against current state rather than treating it as permanent.
-- See [`shared/writing/timestamp-volatile-claims.md`](shared/writing/timestamp-volatile-claims.md).
+- See [`shared/writing/timestamp-volatile-claims.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/timestamp-volatile-claims.md).
 
 ## Every comment you post to a forge says an agent posted it
 
-See [`disclose-agent-authorship`](shared/workflow/disclose-agent-authorship.md).
+See [`disclose-agent-authorship`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/disclose-agent-authorship.md).
 
 An agent driving `gh`/`glab` under the account holder's credentials posts as **that person**: their login, their avatar, a `MEMBER` association, and `type: User`.
 Nothing in the API distinguishes such a comment from one they typed, so a reader deciding how much weight to give a claim, a status note, or a review has no way to tell which they are reading.
@@ -196,14 +200,14 @@ The forge cannot say it; the body must.
 
 End every comment an agent posts with this line, on its own, after a blank line:
 
-```
+```markdown
 _Posted by Claude Code (AI agent) --- not written by a human._
 ```
 
 Substitute your own agent's name where you are not Claude Code, and keep the rest of the line verbatim so one query finds every disclosed comment.
 Check the substituted **name** against `REVIEW_BODY_MARKERS` as well as a replacement marker: `code review` is one of its entries, so an agent named for code review would reintroduce through its own name the false-clean the emoji ban exists to prevent.
 
-The marker deliberately contains **no robot emoji**: [`scripts/check-pr-fully-clean.py`](scripts/check-pr-fully-clean.py) matches that emoji as a review-body marker, so a disclosed claim comment would be admitted into the fully-clean verdict scan as a finding-free review.
+The marker deliberately contains **no robot emoji**: [`scripts/check-pr-fully-clean.py`](https://github.com/Morrison-Lab/ai-config/blob/main/scripts/check-pr-fully-clean.py) matches that emoji as a review-body marker, so a disclosed claim comment would be admitted into the fully-clean verdict scan as a finding-free review.
 Check any replacement marker against that script's `REVIEW_BODY_MARKERS` and `REVIEW_AGENT_MARKERS` before adopting it.
 
 Scope: comment bodies, on every surface --- claims, releases, status notes, review replies, self-reviews, issue comments filed on the user's behalf.
@@ -231,7 +235,7 @@ The strict merge policy below still applies.
 ## Every self-review is an adversarial review by a separate subagent
 
 Never push code to a remote branch blind, and never review your own diff in the context that wrote it.
-Whenever reviewing your own work is called for --- before `git push`, as the fallback when the external reviewer is down, or the project-conventions pass --- dispatch it to a separate reviewer agent with an adversarial brief (the [`adversarial-reviewer`](.claude/agents/adversarial-reviewer.md) subagent, or a separate CLI where no subagent tool exists), against `git diff origin/<default-branch>...HEAD`.
+Whenever reviewing your own work is called for --- before `git push`, as the fallback when the external reviewer is down, or the project-conventions pass --- dispatch it to a separate reviewer agent with an adversarial brief (the [`adversarial-reviewer`](https://github.com/Morrison-Lab/ai-config/blob/main/.claude/agents/adversarial-reviewer.md) subagent, or a separate CLI where no subagent tool exists), against `git diff origin/<default-branch>...HEAD`.
 Address, rebut, or defer every finding, and obtain a clean verdict before pushing.
 
 The authoring session cannot perform this itself.
@@ -240,7 +244,7 @@ Brief the reviewer with the diff and the standards, never with the rationale for
 
 Pushing without a clean self-review is mechanistically blocked by pre-push
 guards.
-Full rule, including why a same-vendor subagent buys independence of intent but not of blind spot: [`shared/workflow/adversarial-self-review.md`](shared/workflow/adversarial-self-review.md).
+Full rule, including why a same-vendor subagent buys independence of intent but not of blind spot: [`shared/workflow/adversarial-self-review.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/adversarial-self-review.md).
 
 ## Put PRs in ready mode when they are ready for review
 
@@ -255,7 +259,7 @@ flip it: when the tool defaults to draft, either pass the flag that opens it
 ready or mark it ready once the work has landed.
 Before marking a draft ready, verify the implementation actually reached the
 branch head and the repo's checks pass, and mind the ready-transition timing
-in [`pr-on-claim.md`](shared/workflow/pr-on-claim.md): do not flip a draft to
+in [`pr-on-claim.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md): do not flip a draft to
 ready within seconds of the final push, which can race two review runs and
 leave the wrong one cancelled.
 This overrides any agent-harness default that creates PRs as drafts unless the
@@ -264,8 +268,8 @@ user opts in.
 Draft status stays reserved for the cases that deliberately use draft as a
 signal or a gate, not only cases where work is unfinished: the empty up-front
 PR opened when claiming an issue (the
-[issue-first](shared/workflow/issue-first.md) /
-[pr-on-claim](shared/workflow/pr-on-claim.md) pattern), un-drafted once the
+[issue-first](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/issue-first.md) /
+[pr-on-claim](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/pr-on-claim.md) pattern), un-drafted once the
 implementation has landed on the branch head and the repo's checks pass; and
 the deliberate draft-gating of a dependent PR, which is review-ready by
 construction and held in draft only to block the wrong merge order until its
@@ -309,7 +313,7 @@ This grants no merge authority: the strict merge policy below still applies.
   Merging a PR is strictly forbidden unless the user explicitly grants session permission (e.g. via `/mwc` or `/maw`) or explicitly issues a merge instruction for that specific PR (e.g. `/merge-it` or "merge this PR").
 - **Never merge over open review findings or treat a reviewer skip notice as approval.**
   Under `mwc`, a PR must be fully clean across CI and review (see
-  [`fully-clean.md`](shared/workflow/fully-clean.md)).
+  [`fully-clean.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/fully-clean.md)).
   A clean automated Claude review evaluating the current HEAD commit is strictly required for merging with `mwc`.
   A reviewer skip notice (e.g. for quota exhaustion or workflow edits) or a fallback self-review does NOT satisfy `mwc` or grant autonomous merge authority.
   All findings across the PR history must be Addressed, Rebutted, or Deferred
@@ -318,10 +322,11 @@ This grants no merge authority: the strict merge policy below still applies.
 ## Request review and drive every started PR to clean
 
 Whenever starting or working on a Pull Request:
+
 1. **Trigger AI review when done pushing**: In repositories where reviews do not auto-trigger, request an AI review (`@claude review` comment, or dispatch `claude-review.yml`) **after completing all code pushes** for the round, not when the PR is first opened and empty.
    In repos that automatically trigger review on PR events (`pull_request` synchronize, opened, ready_for_review), do NOT manually trigger a redundant review if an automated review is already running or queued.
 2. **Drive to clean**: Run `ardi` / the review-and-iterate loop to ensure CI passes and all review findings are addressed until the PR reaches a clean verdict.
-3. **Request human review only after AI approval or deadlock**: Per [`copilot-review-before-human.md`](shared/vendored/copilot-review-before-human.md), request human review (configured repo reviewers per `skills/request-pr-review/SKILL.md`) **only after** the AI review produces a clean/approved verdict, or if an impasse/deadlock occurs.
+3. **Request human review only after AI approval or deadlock**: Per [`copilot-review-before-human.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/vendored/copilot-review-before-human.md), request human review (configured repo reviewers per `skills/request-pr-review/SKILL.md`) **only after** the AI review produces a clean/approved verdict, or if an impasse/deadlock occurs.
 
 - **Do:** Trigger AI review (or let the automated PR review run) after completing code pushes, and request human review only after the AI review is clean/approved (or upon an impasse).
 - **Don't:** Manually trigger a redundant `@claude review` comment when an automated review is already running or triggered by the push/ready event.
@@ -334,7 +339,7 @@ The "product" is three things: a Quarto documentation website, a suite of
 Python validators/tests under `scripts/`, and the enforcement hooks under
 `hooks/`.
 Standard commands are already documented --- lint/test steps in
-[`.github/workflows/validate.yml`](.github/workflows/validate.yml) and the
+[`.github/workflows/validate.yml`](https://github.com/Morrison-Lab/ai-config/blob/main/.github/workflows/validate.yml) and the
 quality gates in [`README.md`](README.md) --- so consult those rather than
 re-deriving them; the build and preview commands are in the bullets below.
 The startup update script keeps the `shared/sembr-skills` submodule current;
