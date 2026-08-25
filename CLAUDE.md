@@ -1624,6 +1624,14 @@ one asserting a path-bearing filename is refused.
 gain its first `@v2` caller in the PR that introduces it, so the wiring waits
 on the tag slide and is tracked in gha#569.
 
+`.github/workflows/scripts/tests/run-save-pr-diff-tests.sh` exercises
+`save-pr-diff.sh` offline against stubbed `gh` outcomes, asserting successful diff
+saving, empty diff handling, command failure, and partial output cleanup;
+mutation tests verify `rm -f` and non-empty `-s` checks are load-bearing.
+CI runs it as the `save-pr-diff` job in `_selftest.yml`, calling the
+`.github/actions/save-pr-diff` composite action through a real `uses:` step
+and asserting a non-empty saved diff path (gha#568).
+
 `.github/workflows/scripts/tests/run-resolve-major-tag-tests.sh` exercises
 `resolve-major-tag.sh` (see Layout above) offline against throwaway git repos;
 `.github/workflows/scripts/tests/run-check-tag-drift-tests.sh` exercises
