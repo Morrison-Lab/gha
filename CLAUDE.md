@@ -1909,7 +1909,8 @@ reviews race and one cancels the other.
 The `require-review` gate job treats a cancelled run as a graceful skip
 rather than an outright failure (gha#585), allowing surviving and subsequent
 reviews to proceed cleanly without leaving a false-negative red check on
-superseded runs. To avoid causing unnecessary cancellations: don't post
+superseded runs.
+To avoid causing unnecessary cancellations: don't post
 `@claude review` immediately after pushing a commit on a PR using this
 workflow; let the automatic review run alone, or wait for any in-flight
 dispatched review to finish first. (See the `claude-review` job's
