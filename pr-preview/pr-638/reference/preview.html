@@ -391,6 +391,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-junk-files.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-junk-files.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-non-standard-chars.yml</span></a>
   </div>
@@ -705,13 +711,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>r-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>R packages to install when <code>use-renv</code> is false (space- or newline-separated).</td>
+<td>R packages to install when <code>use-renv</code> is false (space-, comma-, or newline-separated).</td>
 </tr>
 <tr class="even">
 <td><code>install-package</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Run <code>R CMD INSTALL .</code> to install the caller repo as a local package before rendering.</td>
+<td>Run <code>R CMD INSTALL &lt;path&gt;</code> to install the caller repo as a local package before rendering.</td>
 </tr>
 <tr class="odd">
 <td><code>setup-chrome</code></td>
@@ -793,7 +799,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: 'jags libglpk-dev'   # override the default system-deps list</span></span>
 <span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-renv: true                     # set false for non-renv repos</span></span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">    #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: true              # `R CMD INSTALL .` before rendering</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: true              # `R CMD INSTALL &lt;path&gt;` before rendering</span></span>
 <span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-chrome: true                 # needed for revealjs / screenshots</span></span>
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   submodules: recursive</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website</span></span>

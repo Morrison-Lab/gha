@@ -391,6 +391,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-junk-files.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-junk-files.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-non-standard-chars.yml</span></a>
   </div>
@@ -687,14 +693,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>endpoint</code></td>
 <td>Inference endpoint URL (e.g.&nbsp;<code>http://localhost:11434/v1</code> or custom OpenAI-compatible endpoint).</td>
 <td>string</td>
-<td><code>""</code></td>
+<td><code>https&amp;#58;//models.github.ai/inference</code></td>
 <td>No</td>
 </tr>
 <tr class="even">
 <td><code>model</code></td>
 <td>Model identifier to query.</td>
 <td>string</td>
-<td><code>gpt-4o-mini</code></td>
+<td><code>openai/gpt-4o-mini</code></td>
 <td>No</td>
 </tr>
 </tbody>
@@ -746,12 +752,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">models</span><span class="kw">:</span><span class="at"> read</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/summary.yml@v2</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/summary.yml@v1</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   API_KEY: ${{ secrets.OPENAI_API_KEY }}</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   endpoint: http://localhost:11434/v1</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: gpt-4o-mini</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: openai/gpt-4o-mini</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/summary.yml"><code>examples/summary.yml</code></a> for the full caller stub.</p>
 
 

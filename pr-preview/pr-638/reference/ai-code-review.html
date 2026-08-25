@@ -391,6 +391,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-junk-files.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-junk-files.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-non-standard-chars.yml</span></a>
   </div>
@@ -666,7 +672,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="what-the-fallback-covers" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-fallback-covers">What the fallback covers</h2>
 <p>The fallback covers an agent that is unavailable <strong>at dispatch time</strong> (no API key or token secret configured for it, or its review workflow file missing or disabled in the caller repo) as well as an agent run that <strong>fails or is cancelled during execution</strong> (<a href="https://github.com/Morrison-Lab/gha/issues/362">gha#362</a>, <a href="https://github.com/Morrison-Lab/gha/issues/444">gha#444</a>).</p>
-<p>When a dispatched agent run fails, <code>ai-code-review.yml</code> detects the failure and falls through to try the next candidate agent in the list.</p>
+<p>When a dispatched agent run fails, <code>ai-code-review.yml</code> detects the failure and falls through to try the next candidate agent in the list. The overall job has a <code>timeout-minutes: 60</code> budget covering all candidate attempts. When configuring a custom <code>agents</code> list or raising <code>watch-timeout</code>, ensure the combined worst-case wait fits within this 60-minute bound so the fallback loop finishes its candidate progression cleanly.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -732,7 +738,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>watch-timeout</code></td>
 <td>string</td>
 <td><code>'15m'</code></td>
-<td>Timeout bound for watching each dispatched agent’s review run before falling through to the next candidate.</td>
+<td>Timeout bound for watching each dispatched agent’s review run before falling through to the next candidate. Sized against the overall 60-minute job timeout.</td>
 </tr>
 </tbody>
 </table>
