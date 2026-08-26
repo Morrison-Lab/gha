@@ -2986,6 +2986,71 @@ jobs:
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-typos/tests/ -q
 
+  # check-formatting is brand new, so (like check-typos above) it does not
+  # exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-formatting@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual
+  # PR code. This repo's own `.R` files are not Air-formatted, and this
+  # capability must not reformat them (gha#333: consumers opt in with their
+  # own reformat commit), so the job never calls the composite on `.`.
+  formatting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run check-formatting YAML-contract tests
+        shell: bash
+        run: bash check-formatting/tests/test-check-formatting.sh
+
+      - name: Create throwaway Air fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-air-messy _ci-air-ok
+          # Air's own formatter docs use this as the rewrite example
+          # (https://posit-dev.github.io/air/formatter.html, checked 2026-08-26).
+          printf '%s\n' '1+2:3*(4/5)' > _ci-air-messy/x.R
+          cp _ci-air-messy/x.R _ci-air-ok/x.R
+
+      - name: Check unformatted R, expecting a failure
+        id: air-expected-failure
+        continue-on-error: true
+        uses: ./check-formatting
+        with:
+          path: _ci-air-messy
+
+      - name: Assert the unformatted call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.air-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-formatting to fail on compact R, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-formatting failed on compact R, as expected."
+
+      - name: Format the pass fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          air format _ci-air-ok
+
+      - name: Check formatted R, expecting a pass
+        uses: ./check-formatting
+        with:
+          path: _ci-air-ok
+
+      - name: Remove the planted fixtures
+        if: always()
+        shell: bash
+        run: rm -rf _ci-air-messy _ci-air-ok
+
   save-pr-diff:
     runs-on: ubuntu-latest
     timeout-minutes: 20

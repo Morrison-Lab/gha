@@ -17,6 +17,7 @@ updates:
     directories:
       - "/" # .github/workflows/
       - "/check-bibliography-dois"
+      - "/check-formatting"
       - "/check-links"
       - "/check-non-standard-chars"
       - "/check-phi"
