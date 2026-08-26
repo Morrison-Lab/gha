@@ -1980,6 +1980,8 @@ and `claude-review`, across BOTH the automatic
 review`) re-dispatch. Stash/restore (`gather-context` / `post-review`) use
 a separate non-canceling group so a cancelled run's restore cannot cancel
 the successor's model job.
+`preempt-previous` is an echo in the canceling group; it does not wait
+for the predecessor's post-review.
 When a push and an `@claude review` comment land close
 together -- or claude.yml's agent run finishes and re-dispatches a review a
 minute or two later, landing on top of the next push's auto-review -- the two

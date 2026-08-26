@@ -273,6 +273,12 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         "failure-notice missing-artifact path requires a finished review "
         "(does not fire on cancelled/skipped)",
     )
+    check(
+        "steps.target.outputs.stale != 'true'" in notice_if_norm
+        or 'steps.target.outputs.stale != "true"' in notice_if_norm,
+        "failure-notice skips when target marked stale "
+        "(empty stale from a failed lookup must not post)",
+    )
     conc_review = (
         "claude-review-${{ github.event.pull_request.number || inputs.pr-number }}"
     )
@@ -333,7 +339,8 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         gather_needs = [gather_needs]
     check(
         isinstance(gather_needs, list) and "preempt-previous" in gather_needs,
-        "gather-context waits for preempt-previous so a cancelled run can restore first",
+        "gather-context waits for preempt-previous so the predecessor "
+        "model job is cancelled before this run stashes",
     )
     require_art = next(
         (
@@ -452,6 +459,19 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         check(
             "not posting an unverifiable review" in target_run,
             "live-head lookup fails closed when gh api cannot read the PR head",
+        )
+        fail_branch = re.search(
+            r'if \[ -z "\$LIVE" \].*?exit 1',
+            target_run,
+            re.S,
+        )
+        check(
+            fail_branch is not None
+            and "stale=true" in fail_branch.group(0)
+            and fail_branch.group(0).find("stale=true")
+            < fail_branch.group(0).find("exit 1"),
+            "unverifiable live-head writes stale=true before exit 1 "
+            "(failure notice and collapse key on stale != true)",
         )
 
     action = load_yaml(action_path)
@@ -608,6 +628,7 @@ def run_self_test() -> int:
         )
         notice_if = (
             "!cancelled() && "
+            "steps.target.outputs.stale != 'true' && "
             "(steps.payload.outputs.resolve_outcome == 'failure' || "
             "(steps.download.outcome != 'success' && "
             "(needs.claude-review.result == 'success' || "
@@ -669,7 +690,11 @@ jobs:
         if: "{notice_if}"
       - id: target
         run: |
-          echo "not posting an unverifiable review"
+          if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "not posting an unverifiable review"
+            exit 1
+          fi
           COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
   require-review:
     needs: [claude-review, post-review]
@@ -1099,7 +1124,7 @@ runs:
         live_head_open = root / "live-head-open.yml"
         live_head_open.write_text(
             good_wf.read_text().replace(
-                '          echo "not posting an unverifiable review"\n',
+                '            echo "not posting an unverifiable review"\n',
                 "",
                 1,
             )
@@ -1109,6 +1134,36 @@ runs:
             run(live_head_open, good_action),
             False,
             "fails closed when gh api cannot read the PR head",
+        )
+
+        no_stale_before_exit = root / "no-stale-before-exit.yml"
+        no_stale_before_exit.write_text(
+            good_wf.read_text().replace(
+                '            echo "stale=true" >> "$GITHUB_OUTPUT"\n',
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "unverifiable live-head without stale=true before exit 1 fails",
+            run(no_stale_before_exit, good_action),
+            False,
+            "writes stale=true before exit 1",
+        )
+
+        notice_without_stale = root / "notice-without-stale.yml"
+        notice_without_stale.write_text(
+            good_wf.read_text().replace(
+                "steps.target.outputs.stale != 'true' && ",
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "failure-notice without a stale skip fails",
+            run(notice_without_stale, good_action),
+            False,
+            "failure-notice skips when target marked stale",
         )
 
         no_stale_skip = root / "no-stale-skip.yml"

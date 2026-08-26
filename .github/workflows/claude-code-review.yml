@@ -209,12 +209,13 @@ on:
         required: false
 
 jobs:
-  # Cancel a superseded model job before this run stashes reviewers, so
-  # the cancelled run's post-review can restore before gather-context
-  # DELETEs. Sharing that canceling group with gather-context / post-review
-  # would let a cancelled run's restore cancel this run's model job:
-  # GitHub concurrency is repository-wide per group, including later jobs
-  # of an older run (control-workflow-concurrency, measured 2026-08-26).
+  # Cancel a superseded model job when this run starts. This job is an
+  # echo in the canceling review group; it does not wait for the
+  # predecessor's post-review. The stash group serializes gather/post
+  # writers but does not pick which run's restore wins. Sharing the
+  # canceling group with gather-context / post-review would let a
+  # cancelled run's restore cancel this run's model job
+  # (control-workflow-concurrency, measured 2026-08-26).
   preempt-previous:
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -230,7 +231,7 @@ jobs:
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Yield so a cancelled predecessor can restore
+      - name: Cancel a predecessor model job
         run: echo "Predecessor model job cancelled if one was in this group."
 
   # Fetch the last few claude[bot] review comments so the reviewer can skip
@@ -238,6 +239,10 @@ jobs:
   # Runs under the same conditions as the review job so it skips together with
   # it (fork PRs, drafts, bot-triggered synchronize events).
   gather-context:
+    # Waits until this run's preempt-previous has been queued (which
+    # cancels a predecessor model job if one was running). Not a
+    # restore-before-stash barrier: that job does not wait for the
+    # predecessor's post-review.
     needs: [preempt-previous]
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -1273,6 +1278,11 @@ jobs:
               fi
             done
             if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
+              # Write stale before exiting so !cancelled() posting steps
+              # that key on stale != 'true' skip. An empty stale output
+              # would post a fake missing-artifact notice and collapse
+              # prior reviews (gha#580 review of d964542).
+              echo "stale=true" >> "$GITHUB_OUTPUT"
               echo "::error::Could not read live PR head for #$PR_NUMBER; not posting an unverifiable review."
               exit 1
             fi

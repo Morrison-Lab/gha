@@ -42,3 +42,7 @@
   Stash/restore share a non-canceling concurrency group; the model job
   and a `preempt-previous` job share a separate canceling group so a
   cancelled run's restore cannot cancel the successor's model job.
+  `preempt-previous` is an echo in that group: it cancels a predecessor
+  model job when queued, and does not wait for that run's restore.
+  A live-head lookup that cannot read the PR SHA writes `stale=true`
+  before exiting, so the gha#543 notice and collapse steps skip.
