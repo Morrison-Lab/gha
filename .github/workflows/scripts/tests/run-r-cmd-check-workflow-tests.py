@@ -249,12 +249,22 @@ def check_workflow(path: pathlib.Path) -> list[str]:
         errors.append(f"{path}: full matrix job has no Quarto setup step")
     else:
         qif = str(quarto.get("if") or "")
-        if "verse" not in qif:
+        if "ubuntu-latest" not in qif or (
+            "contains(inputs.linux-container, 'verse')" not in qif
+        ):
             errors.append(
                 f"{path}: full job Quarto if: must skip ubuntu-latest "
                 "only when linux-container contains 'verse' "
                 f"(got {qif!r})"
             )
+
+    full_force = str((full.get("env") or {}).get("_R_CHECK_FORCE_SUGGESTS_") or "")
+    if "inputs.force-suggests" not in full_force:
+        errors.append(
+            f"{path}: full matrix job must set _R_CHECK_FORCE_SUGGESTS_ from "
+            "inputs.force-suggests; r-lib/check-r-package sets it false when "
+            "unset, so omitting the env makes force-suggests: true a no-op"
+        )
 
     return errors
 
@@ -541,6 +551,45 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             False,
             "\n".join(errors),
             "verse",
+        )
+        wf.write_text(mutated)
+
+        # 9. Quarto skip on verse images on every OS (verse without
+        # ubuntu-latest) must fail; a 'verse' substring is not enough.
+        verse_any_os = (
+            "        if: inputs.install-quarto && "
+            "!contains(inputs.linux-container, 'verse')"
+        )
+        wf.write_text(mutated.replace(verse_quarto, verse_any_os, 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "Quarto skip on verse images on every OS fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "ubuntu-latest",
+        )
+        wf.write_text(mutated)
+
+        # 10. Dropping _R_CHECK_FORCE_SUGGESTS_ from the full job must fail.
+        force_line = (
+            "      _R_CHECK_FORCE_SUGGESTS_: ${{ inputs.force-suggests }}\n"
+        )
+        if force_line not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no full-job "
+                "_R_CHECK_FORCE_SUGGESTS_ env line to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(force_line, "", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "full job without _R_CHECK_FORCE_SUGGESTS_ fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "inputs.force-suggests",
         )
 
     if failures:

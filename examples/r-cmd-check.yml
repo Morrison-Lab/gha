@@ -30,6 +30,7 @@ jobs:
     #   path: '.'
     #   error-on: '"note"'             # full matrix only; hard job omits this
     #   force-suggests: false          # matches r-lib/check-r-package when unset
+    #   cran-incoming-remote: false    # also sets _R_CHECK_CRAN_INCOMING_ (r-lib forces it false when unset)
     #   setup-julia: true              # rpt: julia-actions/setup-julia
     #   install-quarto: true           # rpt: quarto-dev/quarto-actions/setup (skipped on ubuntu when linux-container contains verse)
     #   linux-container: rocker/verse:latest  # rpt: container on ubuntu-latest; ignored by the hard job

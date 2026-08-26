@@ -1198,12 +1198,14 @@ Run it
 with
 `python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test`;
 CI runs it as the `r-cmd-check-tests` job.
-Seven mutations are confirmed
+Nine mutations are confirmed
 to turn it red: flipping `cache: false`, dropping the `pull_request` gate,
 restoring upstream's `github.head_ref`-only concurrency group,
 forwarding `inputs.error-on` on the hard job, dropping `error-on` from
-the full matrix Check step, dropping `_R_CHECK_CRAN_INCOMING_`, and
-restoring rpt's skip-Quarto-on-every-ubuntu condition.
+the full matrix Check step, dropping `_R_CHECK_CRAN_INCOMING_`,
+dropping `_R_CHECK_FORCE_SUGGESTS_` from the full job, restoring rpt's
+skip-Quarto-on-every-ubuntu condition, and a verse-only skip that is
+not limited to `ubuntu-latest`.
 
 `.github/workflows/scripts/check-review-execution.sh` holds
 `claude-code-review.yml`'s fail-check guard logic (stub/placeholder-review
