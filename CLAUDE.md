@@ -2079,18 +2079,19 @@ single-push PR just to suppress a cosmetic, self-resolving non-issue on the
 rare double-push. The fix is behavioral: batch closely-related changes into
 one commit/push instead of two in quick succession.
 
-**Until `@v2` picks up gha#342's gate, you cannot even *quote* the mention
-safely, and that interacts badly with the paragraph above.**
-`claude-bot.yml` gates on `contains(body, '@claude')`, so a comment writing
-the mention inside backticks -- exactly what explaining any of this requires
--- spawns an agent run, which re-dispatches a review, which cancels the review
-already in flight.
-The natural response to a red `require-review` is a comment explaining why it
-is red, and that comment fires it again.
-So while writing about the bot on an issue or PR, defang the string the way
-gha#342's own body does.
-Once the gate ships and the tag advances, a quoted mention stands down on its
-own and the mitigation can be dropped.
+**gha#342's in-job gate is already at `@v2`; this PR's leftover is a
+runner, not a re-dispatch.**
+`claude-bot.yml` still gates on `contains(body, '@claude')`, so a comment
+writing the mention inside backticks -- exactly what explaining any of this
+requires -- still starts a job: the full agent job on current `@v2` pins,
+and only `mention-filter` after this PR's tag slides.
+The in-job stripper already withholds the billed agent run and the review
+re-dispatch, so quoting no longer cancels an in-flight `claude-review` the
+way the pre-#342 world did.
+Until `@v2` slides past this PR, quoting still spends that agent-job
+runner minute (and the issue/PR concurrency slot).
+After the slide, only `mention-filter` starts, and the defang mitigation
+can be dropped.
 
 **Cheap self-check before investigating a post-push `require-review`/`claude-review` failure:**
 compare the failing check's commit SHA against the PR's *current* head SHA
