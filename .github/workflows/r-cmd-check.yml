@@ -1,6 +1,6 @@
 name: R-CMD-check (reusable)
 
-# Run R CMD check. The full OS × R-version matrix is the default; pass
+# Run R CMD check. The full OS x R-version matrix is the default; pass
 # hard: true from a second caller job for a Depends/Imports/LinkingTo-only
 # check that is gated to pull_request.
 #
@@ -40,9 +40,12 @@ on:
         default: ''
       error-on:
         description: >-
-          R expression for r-lib/actions/check-r-package error-on.
-          Default '"note"' matches rpt (NOTEs fail), not r-lib's
-          '"warning"'.
+          R expression for r-lib/actions/check-r-package error-on on
+          the full matrix. Default '"note"' matches rpt (NOTEs fail),
+          not r-lib's '"warning"'. The hard job omits this input so
+          r-lib's '"warning"' default applies: missing Suggests are
+          NOTEs, and error-on note would fail the job for the
+          condition it exists to tolerate.
         type: string
         default: '"note"'
       cran-incoming-remote:
@@ -85,9 +88,10 @@ on:
         default: true
       install-quarto:
         description: >-
-          Install Quarto before the check. Skipped on ubuntu-latest when
-          linux-container is set, because rocker/verse already includes
-          it.
+          Install Quarto before the check. On the full matrix, skipped
+          on ubuntu-latest only when linux-container contains 'verse'
+          (rocker/verse already includes Quarto). Other images still
+          get the install step.
         type: boolean
         default: false
       setup-julia:
@@ -104,9 +108,8 @@ on:
           (e.g. rocker/verse:latest). Empty means no container. Ignored
           on the hard job: a verse image already contains Suggested
           packages, which would silently defeat a hard-deps check.
-          Any non-empty image also skips the Quarto install step on
-          ubuntu-latest; that skip assumes the image already provides
-          Quarto, as rocker/verse does.
+          The Quarto install step is skipped on ubuntu-latest only
+          when this image name contains 'verse'.
         type: string
         default: ''
       checkout-submodules:
@@ -180,7 +183,7 @@ jobs:
           version: ${{ inputs.julia-version }}
 
       - name: Set up Quarto
-        if: inputs.install-quarto && !(matrix.config.os == 'ubuntu-latest' && inputs.linux-container != '')
+        if: inputs.install-quarto && !(matrix.config.os == 'ubuntu-latest' && contains(inputs.linux-container, 'verse'))
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
 
       - name: Set up R
@@ -278,5 +281,6 @@ jobs:
           working-directory: ${{ inputs.path }}
           upload-snapshots: ${{ inputs.upload-snapshots }}
           upload-results: ${{ inputs.upload-results }}
-          error-on: ${{ inputs.error-on }}
+          # Omit error-on: r-lib's default '"warning"' keeps missing-Suggests
+          # NOTEs from failing the job that exists to tolerate them.
           build_args: ${{ inputs.build-args }}

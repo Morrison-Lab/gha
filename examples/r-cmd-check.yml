@@ -3,7 +3,7 @@
 # Complete reference:
 # https://morrison-lab.github.io/gha/reference/r-cmd-check.html
 #
-# Two jobs: the full OS × R-version matrix, and a hard-dependencies-only
+# Two jobs: the full OS x R-version matrix, and a hard-dependencies-only
 # check that runs only on pull_request. Drop R-CMD-check-hard if you do
 # not want that extra job.
 #
@@ -28,10 +28,10 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2
     # with:
     #   path: '.'
-    #   error-on: '"note"'
-    #   force-suggests: true           # rpt leaves R's default true; this workflow defaults false
+    #   error-on: '"note"'             # full matrix only; hard job omits this
+    #   force-suggests: false          # matches r-lib/check-r-package when unset
     #   setup-julia: true              # rpt: julia-actions/setup-julia
-    #   install-quarto: true           # rpt: quarto-dev/quarto-actions/setup (skipped on ubuntu when linux-container is set)
+    #   install-quarto: true           # rpt: quarto-dev/quarto-actions/setup (skipped on ubuntu when linux-container contains verse)
     #   linux-container: rocker/verse:latest  # rpt: container on ubuntu-latest; ignored by the hard job
     #   checkout-submodules: true      # rpt: actions/checkout submodules: recursive
     #   timeout-minutes: 50            # rpt's hang ceiling; this workflow defaults to 90

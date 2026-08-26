@@ -206,6 +206,19 @@ def check_workflow(path: pathlib.Path) -> list[str]:
     if "timeout-minutes" not in full or "timeout-minutes" not in hard:
         errors.append(f"{path}: both jobs must set timeout-minutes")
 
+    hard_check = find_step(hard, "check-r-package")
+    if hard_check is None:
+        errors.append(f"{path}: hard job has no check-r-package step")
+    else:
+        hard_check_with = hard_check.get("with") or {}
+        if "error-on" in hard_check_with:
+            errors.append(
+                f"{path}: hard job must omit error-on so r-lib's "
+                "default '\"warning\"' applies; forwarding "
+                "inputs.error-on (default note) fails the job on "
+                "missing-Suggests NOTEs"
+            )
+
     return errors
 
 
@@ -382,6 +395,36 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             False,
             "\n".join(errors),
             "head_ref",
+        )
+
+        # 5. Forwarding inputs.error-on on the hard job must fail.
+        omit_marker = (
+            "          # Omit error-on: r-lib's default '\"warning\"' keeps missing-Suggests\n"
+            "          # NOTEs from failing the job that exists to tolerate them.\n"
+            "          build_args: ${{ inputs.build-args }}"
+        )
+        if omit_marker not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no hard-job "
+                "error-on omission comment to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(
+            mutated.replace(
+                omit_marker,
+                "          error-on: ${{ inputs.error-on }}\n"
+                "          build_args: ${{ inputs.build-args }}",
+                1,
+            )
+        )
+        errors = check_workflow(wf)
+        failures += expect(
+            "hard job forwarding error-on fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "error-on",
         )
 
     if failures:

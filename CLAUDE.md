@@ -98,7 +98,7 @@ which is why the capabilities above moved to `@v2`.
   that wrap external actions; `cleanup-pr-previews.yml` is a self-contained
   `workflow_call` reusable workflow (inline shell logic, no external
   composite); `r-cmd-check.yml` wraps `r-lib/actions` check steps in two
-  mutually exclusive jobs (full OS × R-version matrix, plus a
+  mutually exclusive jobs (full OS x R-version matrix, plus a
   hard-dependencies-only job) because the matrix, the job `if:`, and the
   optional Linux container are job-level and cannot live in a composite;
   `altdoc-multiversion-docs.yml` is also self-contained but pairs
@@ -1182,16 +1182,23 @@ parses `r-cmd-check.yml` and `examples/r-cmd-check.yml` and asserts the
 contracts that a live `R CMD check` in this repo cannot: `cache: false` on
 the hard job, that job gated to `pull_request`, `_R_CHECK_FORCE_SUGGESTS_`
 hard-coded false there, no `linux-container` on that job, `error-on`
-defaulting to `'"note"'`, the issue-required inputs present, and the
+defaulting to `'"note"'` on the full matrix, the hard job omitting
+`error-on` so r-lib's `'"warning"'` default applies, the issue-required
+inputs present, and the
 example stub's concurrency group keyed on `github.ref` rather than
-`github.head_ref` alone. This repo is not an R package, so `_selftest.yml`
-does not run the reusable workflow end-to-end (the same
-reusable-workflow-layer gap `request-dependabot-review` records). Run it
+`github.head_ref` alone.
+This repo is not an R package, so `_selftest.yml`
+does not run the reusable workflow end-to-end.
+A `uses:` job cannot materialize an R-package fixture the called
+workflow's own checkout would see.
+Run it
 with
 `python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test`;
-CI runs it as the `r-cmd-check-tests` job. Three mutations are confirmed
+CI runs it as the `r-cmd-check-tests` job.
+Four mutations are confirmed
 to turn it red: flipping `cache: false`, dropping the `pull_request` gate,
-and restoring upstream's `github.head_ref`-only concurrency group.
+restoring upstream's `github.head_ref`-only concurrency group, and
+forwarding `inputs.error-on` on the hard job.
 
 `.github/workflows/scripts/check-review-execution.sh` holds
 `claude-code-review.yml`'s fail-check guard logic (stub/placeholder-review
