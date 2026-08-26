@@ -5,9 +5,10 @@
 # The check-extra selftest job exercises the real composite against a
 # generated fixture, which always takes the happy path (green examples,
 # tests, vignettes, README render). Everything that is silent when reversed
-# -- a skip of a missing surface, a freshness fail, an unknown check name,
-# a defaults drift between action.yml and the reusable workflow -- lives
-# here so it actually runs.
+# -- skip vs fail of a missing surface, a freshness fail, an unknown check
+# name, main() env plumbing, a warning() in a test, a defaults drift
+# between action.yml and the reusable workflow -- lives here so it actually
+# runs.
 #
 # Run with: bash check-extra/tests/test-check-extra.sh
 set -uo pipefail

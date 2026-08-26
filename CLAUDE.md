@@ -1171,9 +1171,12 @@ The bash half pins that `action.yml` and
 here would hand a consumer of the reusable workflow a different freshness
 gate from a consumer of the composite with nothing red.
 The R half pins the decisions that are silent when reversed: an unknown
-`check` name is an error, a missing `README.Rmd` / `tests/testthat` /
-`vignettes/` is a skip rather than a failure, a dirty or untracked
-`README.md` fails freshness, and `parse_flag` is fail-closed.
+`check` name is an error, a missing `tests/testthat` or `vignettes/`
+inside the combined warnings job is a skip rather than a failure, a
+missing `README.Rmd` or `tests/testthat` on the dedicated README /
+random-order jobs is a failure, a dirty or untracked `README.md` fails
+freshness, `parse_flag` is fail-closed, and a `warning()` in a test file
+fails the warnings sweep (when pkgload and testthat are installed).
 CI runs it as a step in the `check-extra` job in `_selftest.yml`, after
 three real `uses: ./check-extra` calls against a generated fixture (one
 per check) and before a fourth call against a warning-in-example fixture

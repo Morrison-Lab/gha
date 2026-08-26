@@ -21,9 +21,8 @@ inputs:
       Extra R packages to install, passed to setup-r-dependencies. Use
       this for packages a README or example needs that are not in
       DESCRIPTION (e.g. `any::ggthemes`). purrr, withr, fs, cli, pkgload,
-      callr, devtools, testthat, and rmarkdown are always installed --
-      they are declared here rather than arriving transitively via
-      devtools.
+      callr, testthat, and rmarkdown are always installed -- they are
+      declared here rather than arriving transitively via devtools.
     default: ''
   install-quarto:
     description: Install Quarto when setting up R dependencies.
@@ -68,7 +67,6 @@ runs:
         working-directory: ${{ inputs.path }}
         install-quarto: ${{ inputs.install-quarto }}
         extra-packages: |
-          any::devtools
           any::callr
           any::purrr
           any::withr

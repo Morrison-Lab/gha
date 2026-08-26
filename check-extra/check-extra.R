@@ -39,23 +39,37 @@ require_pkgs <- function(pkgs) {
 }
 
 run_examples_warn2 <- function() {
-  # devtools::run_examples(fresh = TRUE) uses callr::r() and does not
-  # inherit parent options, so options(warn = 2L) around that call would
-  # not apply to the examples. Drive the fresh session ourselves, set
-  # warn=2 inside it, then run_examples(fresh = FALSE) there. Isolation
-  # matches fresh=TRUE; the option actually reaches the examples.
-  require_pkgs(c("callr", "devtools"))
+  # Equivalent of devtools::run_examples(fresh = TRUE, run_dontrun = TRUE,
+  # run_donttest = TRUE) under options(warn = 2L). run_examples(fresh = TRUE)
+  # uses callr::r() and does not inherit parent options, so wrapping that
+  # call in warn=2 would not apply to the examples. Drive the fresh session
+  # ourselves. load_all() first (outside warn=2, matching the test sweep),
+  # then evaluate each Rd example with the option on. document() is skipped:
+  # CI should run the committed Rd, not rewrite man/.
+  require_pkgs(c("callr", "pkgload"))
   pkg_path <- normalizePath(".", winslash = "/", mustWork = TRUE)
   callr::r(
     function(path) {
-      options(warn = 2L, crayon.enabled = TRUE)
-      devtools::run_examples(
-        pkg = path,
-        fresh = FALSE,
-        document = FALSE,
-        run_dontrun = TRUE,
-        run_donttest = TRUE
+      pkgload::load_all(
+        path,
+        reset = TRUE,
+        export_all = FALSE,
+        helpers = FALSE
       )
+      options(warn = 2L, crayon.enabled = TRUE)
+      man <- file.path(path, "man")
+      files <- if (dir.exists(man)) {
+        sort(list.files(man, pattern = "\\.[Rr]d$", full.names = TRUE))
+      } else {
+        character()
+      }
+      lapply(
+        files,
+        pkgload::run_example,
+        run_donttest = TRUE,
+        run_dontrun = TRUE
+      )
+      invisible()
     },
     args = list(path = pkg_path),
     show = TRUE,
@@ -66,12 +80,12 @@ run_examples_warn2 <- function() {
 }
 
 run_tests_warn2 <- function() {
-  # Parallel testthat does not honor a global warn option
-  # (r-lib/testthat#1912), so a single options(warn = 2L) around
-  # testthat::test_local() would miss warnings in worker processes.
-  # Load the package first (outside warn=2, so load_all's own messages
-  # are not the thing under test), then run each test file inside
-  # withr::local_options(list(warn = 2L)).
+  # A session-wide options(warn = 2L) crashes parallel testthat workers
+  # (r-lib/testthat#1912). IndrajeetPatil's workaround, which that issue
+  # closed on, is to load_all() first (outside warn=2), then call
+  # test_file() per script inside withr::local_options(list(warn = 2L)).
+  # TESTTHAT_PARALLEL=FALSE is belt-and-braces; the per-file option is
+  # what makes warn=2 safe even if a consumer leaves parallel on.
   require_pkgs(c("pkgload", "purrr", "testthat", "withr", "cli"))
   test_dir <- "tests/testthat"
   if (!dir.exists(test_dir)) {
@@ -139,13 +153,23 @@ run_random_test_order <- function() {
   require_pkgs(c("pkgload", "testthat", "withr", "cli"))
   test_dir <- "tests/testthat"
   if (!dir.exists(test_dir)) {
-    cli::cli_inform(
-      "No tests/testthat directory; skipping the random-order check."
+    stop(
+      "No tests/testthat directory; the random-order check has nothing to run. ",
+      "Set check-random-order: false if this package has no tests.",
+      call. = FALSE
     )
-    return(invisible())
   }
   withr::local_options(list(crayon.enabled = TRUE))
   withr::local_envvar(list(TESTTHAT_PARALLEL = "FALSE"))
+  scripts <- testthat::find_test_scripts(test_dir)
+  if (!length(scripts)) {
+    stop(
+      "No testthat scripts under tests/testthat; the random-order check ",
+      "has nothing to run. Set check-random-order: false if this package ",
+      "has no tests.",
+      call. = FALSE
+    )
+  }
   seed <- sample.int(1e6, 1L)
   cli::cli_inform("Chosen seed for the current test run: {seed}")
   set.seed(seed)
@@ -196,8 +220,11 @@ check_readme_freshness <- function() {
 run_readme_check <- function(check_freshness = TRUE) {
   require_pkgs(c("rmarkdown", "withr", "cli"))
   if (!file.exists("README.Rmd")) {
-    cli::cli_inform("No README.Rmd; skipping the README render check.")
-    return(invisible())
+    stop(
+      "No README.Rmd; the README render check has nothing to run. ",
+      "Set check-readme: false if this package has no README.Rmd.",
+      call. = FALSE
+    )
   }
   withr::local_options(list(warn = 2L, crayon.enabled = TRUE))
   rmarkdown::render("README.Rmd")

@@ -14,34 +14,39 @@ package has no tests, no vignettes, or no `README.Rmd`.
 
 ## What it catches
 
-1. **Warnings as errors** on three surfaces, all under `options(warn = 2L)`:
-   `devtools::run_examples(fresh = TRUE, run_dontrun = TRUE, run_donttest = TRUE)`,
-   a testthat sweep, and a vignette render over
+1. **Warnings as errors** on three surfaces, all under `options(warn = 2L)`.
+   Examples run in a fresh R session with `run_dontrun` and `run_donttest`
+   on (the `devtools::run_examples(fresh = TRUE, ...)` equivalent),
+   because a parent `warn=2` does not reach `callr`'s child.
+   Tests use a per-file sweep:
+   `testthat::test_file()` inside `withr::local_options(list(warn = 2L))`.
+   A session-wide `warn=2` crashes parallel testthat workers
+   ([testthat#1912](https://github.com/r-lib/testthat/issues/1912));
+   this is the workaround that issue closed on.
+   Vignettes render via
    `fs::dir_ls("vignettes/", glob = "*.Rmd", recurse = TRUE)`.
    A deprecation warning from a dependency is the motivating case: it is
    invisible in a normal green check until the deprecation becomes an error
    a release later.
-   Parallel testthat does not honor a global `warn` option
-   ([testthat#1912](https://github.com/r-lib/testthat/issues/1912)),
-   so the test sweep finds test scripts and calls
-   `testthat::test_file()` per file inside
-   `withr::local_options(list(warn = 2L))`.
 2. **Random test order.** `testthat::test_dir("tests/testthat", shuffle = TRUE)`
    with a randomly drawn seed that is logged, so a failure is reproducible.
    `TESTTHAT_PARALLEL=FALSE` via `withr::local_envvar`, because shuffling is
    meaningless if tests run in parallel anyway.
    This catches a test that only passes because an earlier one left state
    behind.
+   A missing `tests/testthat` fails this job; disable it with
+   `check-random-order: false` if the package has no tests.
 3. **README render**, also with warnings as errors.
    When `check-readme-freshness` is on (the default), the job also fails if
-   `README.md` is modified or untracked after the render -- the freshness
-   half a consumer like `rpt` wants, so this workflow can replace a bespoke
-   `check-readme.yaml` rather than sit beside it.
+   `README.md` is modified or untracked after the render -- so a consumer
+   does not need a second workflow for that half.
    Only an explicit `false` opts out of freshness.
+   A missing `README.Rmd` fails this job; disable it with
+   `check-readme: false` if the package has none.
 
-A missing `tests/testthat`, `vignettes/*.Rmd`, or `README.Rmd` is a skip
-with a log line, not a failure, so a package that has only some of these
-surfaces can leave every job enabled.
+A missing `tests/testthat` or `vignettes/*.Rmd` inside the combined
+warnings job is a skip with a log line, not a failure, so a package that
+has only examples still gets those checked.
 
 `.qmd` vignettes and `README.qmd` are out of scope: the vignette glob is
 `*.Rmd`, matching upstream, and a Quarto README would need Quarto, which
