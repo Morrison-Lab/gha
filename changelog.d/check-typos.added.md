@@ -12,5 +12,6 @@
   `check-new-line-breaks`, so a first run over an existing repo does not
   reflag years of drift; pass `base-ref: all` to scan the whole tree.
   The CLI is installed from a pinned GitHub release rather than wrapping
-  the official `crate-ci/typos` action, so the diff filter and the
-  fail-closed `fail` gate have offline tests.
+  the official `crate-ci/typos` action, which has no line-level diff
+  filter, so the diff filter and the fail-closed `fail` gate have
+  offline tests.

@@ -49,7 +49,9 @@ which is why the capabilities above moved to `@v2`.
   exists to avoid).
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
-  years of drift, and typos has no wordlist to grow into.
+  every known misspelling the corpus already carries, and unknown jargon
+  is not an error, so there is no `inst/WORDLIST` to grow into the way
+  `spellcheck.yml` does.
   `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
   the history but the **index** (`git ls-files -i -c -X`), for tracked
   operating-system and editor detritus.
@@ -1124,11 +1126,13 @@ writes canned JSONL -- no download, the same remedy check-secrets records
 for its scan script.
 The cases to keep if the suite is ever trimmed are the negative ones:
 empty / unresolvable `base-ref` skips rather than scanning the whole tree
-(a whole-tree fallback would reflag years of drift, and typos has no
-wordlist to grow into), a pre-existing typo on an untouched line is not
+(a whole-tree fallback would reflag every known misspelling the corpus
+already carries), a pre-existing typo on an untouched line is not
 flagged, `fail: yes` still blocks, a named-but-missing config is an error
-rather than a silent fall back to defaults, and a stub exit other than
-0 or 2 is a tool error even when `fail` is false.
+rather than a silent fall back to defaults, a stub exit other than
+0 or 2 is a tool error even when `fail` is false, an added line starting
+`++ ` is not parsed as a diff file header, and a checksum mismatch
+refuses to install the binary.
 CI runs it as the `typos-tests` job in `_selftest.yml`, alongside a
 `typos` job that exercises the real composite (real installer, real
 `typos` 1.49.0): a no-`base-ref` call against this repo's own tree (which

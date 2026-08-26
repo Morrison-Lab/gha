@@ -2796,6 +2796,25 @@ jobs:
       - name: Skip when no base-ref is given
         uses: ./check-typos
 
+      - name: A named-but-missing config must fail
+        id: typos-missing-config
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          config: definitely-missing.toml
+
+      - name: Assert the missing-config call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-missing-config.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos to fail on a missing config file, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a named-but-missing config, as expected."
+
       - name: Build a fixture with pre-existing drift
         shell: bash
         run: bash check-typos/tests/make-fixture.sh _ci-typos
@@ -2857,12 +2876,13 @@ jobs:
           base-ref: HEAD~1
           paths-ignore: 'page.qmd'
 
-  # The job above proves action.yml wires path, base-ref, and paths-ignore
-  # through a real uses: call, including the skip, the whole-tree fail, and
-  # a newly-added .qmd typo. Everything else -- fail-closed reading, the
-  # missing-config guard, JSONL parse errors, filename-typo scope -- runs
-  # only here against a stub binary, so a regression is caught even when
-  # this repo's own tree wouldn't trip it.
+  # The job above proves action.yml wires path, base-ref, paths-ignore, and
+  # config through a real uses: call, including the skip, the missing-config
+  # fail, the whole-tree fail, and a newly-added .qmd typo. Everything else
+  # -- fail-closed reading, JSONL parse errors, filename-typo scope, the
+  # checksum gate -- runs only here against a stub binary (and a stub curl
+  # for the installer), so a regression is caught even when this repo's
+  # own tree wouldn't trip it.
   typos-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20

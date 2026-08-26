@@ -14,6 +14,9 @@ because each pins a decision that is silent when reversed:
   * `fail: yes` still blocks (fail-closed)
   * a missing config file is an error, not a silent fall back
   * a stub exit other than 0 or 2 is a tool error even when fail is false
+  * an added line starting `++ ` is not parsed as a diff file header
+  * a malformed glob fails the check rather than skipping it
+  * a checksum mismatch refuses to install the binary
 
 check-typos.py isn't an importable module name (the hyphen), so load it by
 path -- same pattern as check-new-line-breaks/tests.
@@ -26,6 +29,7 @@ import json
 import os
 import stat
 import subprocess
+import tarfile
 import textwrap
 from pathlib import Path
 
@@ -232,6 +236,7 @@ def test_paths_ignore_drops_a_finding(tmp_path, monkeypatch, capsys):
     _commit(tmp_path, "base")
     (tmp_path / "vendor").mkdir()
     (tmp_path / "vendor" / "old.md").write_text("This will recieve a fix.\n")
+    (tmp_path / "notes.md").write_text("A short note.\n")
     _commit(tmp_path, "add ignored typo")
 
     bin_dir = _install_stub(tmp_path, _typo_json(path="vendor/old.md", line=1))
@@ -243,6 +248,8 @@ def test_paths_ignore_drops_a_finding(tmp_path, monkeypatch, capsys):
         TYPOS_PATHS_IGNORE="vendor/",
     )
     assert ct.main() == 0
+    argv = (tmp_path / "typos-argv.txt").read_text(encoding="utf-8")
+    assert "--exclude" not in argv
     assert "No typos found." in capsys.readouterr().out
 
 
@@ -474,6 +481,146 @@ def test_normalize_path_keeps_leading_dot_on_hidden_paths():
     )
     assert ct._normalize_path("./notes.md") == "notes.md"
     assert ct._normalize_path("./.gitignore") == ".gitignore"
+
+
+def test_diff_new_file_path_rejects_added_double_plus_content():
+    """An added `++ heading` line is `+++ heading` in the diff, not a header."""
+    is_header, path = ct._diff_new_file_path("+++ heading")
+    assert is_header is False
+    assert path is None
+    is_header, path = ct._diff_new_file_path("+++ b/notes.md")
+    assert is_header is True
+    assert path == "notes.md"
+    is_header, path = ct._diff_new_file_path("+++ /dev/null")
+    assert is_header is True
+    assert path is None
+    is_header, path = ct._diff_new_file_path("+++ b/.github/workflows/ci.yml")
+    assert is_header is True
+    assert path == ".github/workflows/ci.yml"
+
+
+def test_added_line_starting_with_double_plus_stays_in_scope(tmp_path, monkeypatch):
+    """Matching any `+++ ` prefix invented a path from the content and
+    dropped the real added line -- silent skip of C `++ i` / markdown."""
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("++ recieve\n")
+    _commit(tmp_path, "add double-plus line")
+
+    added = ct._added_line_numbers("HEAD~1", ["."], cwd=str(tmp_path))
+    assert added == {"notes.md": {1}}
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+    passed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
+    assert "notes.md" in passed.splitlines()
+    assert "cieve" not in passed.splitlines()
+
+
+def test_malformed_globs_fail_rather_than_skip(tmp_path, monkeypatch, capsys):
+    """A pathspec git rejects must not disable the check with exit 0."""
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(
+        tmp_path,
+        monkeypatch,
+        bin_dir,
+        TYPOS_BASE_REF="HEAD~1",
+        TYPOS_GLOBS=":(bogus)",
+    )
+    assert ct.main() == 1
+    out = capsys.readouterr().out
+    assert "Skipping the typos check" not in out
+    assert "::error::check-typos:" in out
+
+
+def test_subdirectory_path_is_rejected(tmp_path, monkeypatch, capsys):
+    _init_repo(tmp_path)
+    sub = tmp_path / "pkg"
+    sub.mkdir()
+    (sub / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+
+    bin_dir = _install_stub(tmp_path, "", exit_code=0)
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="all")
+    monkeypatch.setenv("TYPOS_TARGET", str(sub))
+    assert ct.main() == 1
+    assert "not the repository root" in capsys.readouterr().out
+
+
+def test_exit_2_with_no_typo_records_is_a_tool_error(
+    tmp_path, monkeypatch, capsys
+):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, "", exit_code=2)
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="all")
+    assert ct.main() == 1
+    out = capsys.readouterr().out
+    assert "No typos found." not in out
+    assert "::error::check-typos:" in out
+
+
+def test_install_rejects_checksum_mismatch(tmp_path):
+    """A valid tarball with the wrong digest must not be installed.
+    Deleting the checksum comparison would extract and succeed."""
+    payload = tmp_path / "payload"
+    payload.mkdir()
+    fake = payload / "typos"
+    fake.write_text("#!/bin/sh\necho typos-fake\n", encoding="utf-8")
+    tarball = tmp_path / "typos.tar.gz"
+    with tarfile.open(tarball, "w:gz") as tf:
+        tf.add(fake, arcname="typos")
+
+    stub_dir = tmp_path / "bin"
+    stub_dir.mkdir()
+    curl = stub_dir / "curl"
+    curl.write_text(
+        textwrap.dedent(
+            f"""\
+            #!/usr/bin/env bash
+            set -euo pipefail
+            out=""
+            prev=""
+            for arg in "$@"; do
+              if [ "$prev" = "--output" ]; then
+                out="$arg"
+              fi
+              prev="$arg"
+            done
+            cp "{tarball}" "$out"
+            """
+        ),
+        encoding="utf-8",
+    )
+    curl.chmod(curl.stat().st_mode | stat.S_IEXEC)
+
+    dest = tmp_path / "install-bin"
+    env = os.environ.copy()
+    env["PATH"] = f"{stub_dir}{os.pathsep}{env['PATH']}"
+    env["TYPOS_VERSION"] = _DEFAULT_VERSION
+    env["TYPOS_CHECKSUMS_SHA256"] = "0" * 64
+    env["TYPOS_BIN_DIR"] = str(dest)
+    proc = subprocess.run(
+        ["bash", str(_MOD_PATH.parent / "install-typos.sh")],
+        cwd=tmp_path,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    combined = (proc.stderr or "") + (proc.stdout or "")
+    assert proc.returncode != 0
+    assert "checksum" in combined.lower()
+    assert not (dest / "typos").exists()
 
 
 def test_clean_stub_exit_zero_reports_no_typos(tmp_path, monkeypatch, capsys):

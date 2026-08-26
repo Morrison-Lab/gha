@@ -11,9 +11,11 @@ checker, so it does not need a curated wordlist.
 Design notes:
 - **Diff-scoped, by default.** Only lines *added* since ``TYPOS_BASE_REF``
   (a PR's base SHA) are checked, so a corpus's pre-existing typos are not
-  reflagged on every unrelated edit. ``typos`` has no wordlist to grow
-  into, which is why this matters more here than it does for spellcheck
-  (see gha#557). Pass ``TYPOS_BASE_REF=all`` to scan the whole tracked tree.
+  reflagged on every unrelated edit. typos flags known misspellings, not
+  unknown jargon, so there is no ``inst/WORDLIST`` to grow into the way
+  ``spellcheck.yml`` does -- a whole-tree first run still reflags every
+  known misspelling the corpus already carries (see gha#557). Pass
+  ``TYPOS_BASE_REF=all`` to scan the whole tracked tree.
 - **No base_ref to diff against, or the diff can't be computed** (e.g. an
   unset base-ref on a push run, or a shallow clone missing the base
   commit): the check is *skipped* with a warning. There is no whole-tree
@@ -65,16 +67,44 @@ class Finding(NamedTuple):
 
 def _run_git(args: List[str], cwd: Optional[str] = None) -> Optional[str]:
     try:
-        return subprocess.run(
+        proc = subprocess.run(
             ["git", "-c", "core.quotepath=false", *args],
             capture_output=True,
-            check=True,
+            check=False,
             encoding="utf-8",
             errors="replace",
             cwd=cwd,
-        ).stdout
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        )
+    except FileNotFoundError:
         return None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def _run_git_checked(args: List[str], cwd: Optional[str] = None) -> str:
+    """Return stdout, or raise RuntimeError with git's stderr."""
+    try:
+        proc = subprocess.run(
+            ["git", "-c", "core.quotepath=false", *args],
+            capture_output=True,
+            check=False,
+            encoding="utf-8",
+            errors="replace",
+            cwd=cwd,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError("git is not available") from exc
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout or "").strip() or (
+            f"git {' '.join(args)} exited {proc.returncode}"
+        )
+        raise RuntimeError(detail)
+    return proc.stdout
+
+
+def _ref_exists(ref: str, cwd: str) -> bool:
+    return _run_git(["rev-parse", "--verify", f"{ref}^{{commit}}"], cwd=cwd) is not None
 
 
 def _glob_to_regex(pat: str) -> "re.Pattern[str]":
@@ -130,24 +160,44 @@ def _normalize_path(path: str) -> str:
     return path
 
 
+def _diff_new_file_path(raw: str) -> Tuple[bool, Optional[str]]:
+    """Parse a unified-diff ``+++ `` line.
+
+    Returns ``(True, path)`` for a real file header (``path`` is None when
+    the new side is ``/dev/null``), or ``(False, None)`` when ``raw`` is
+    not a header -- including an added line whose content starts with
+    ``++ ``, which git renders as ``+++ rest``. Matching any ``+++ ``
+    prefix would treat that content as a path, then ``[2:]`` would invent
+    a bogus file and drop the real added line.
+    """
+    if not raw.startswith("+++ "):
+        return False, None
+    target = raw[4:].split("\t", 1)[0]
+    if len(target) >= 2 and target.startswith('"') and target.endswith('"'):
+        target = target[1:-1]
+    if target == "/dev/null":
+        return True, None
+    if target.startswith("b/") or target.startswith("a/"):
+        return True, _normalize_path(target[2:])
+    return False, None
+
+
 def _added_line_numbers(
     base_ref: str, pathspecs: List[str], cwd: Optional[str] = None
-) -> Optional[Dict[str, Set[int]]]:
+) -> Dict[str, Set[int]]:
     """Return {file: {new-file line numbers added}} vs the merge-base of
-    base_ref and HEAD, or None if the diff could not be computed."""
-    diff = _run_git(
+    base_ref and HEAD. Raises RuntimeError if git fails."""
+    diff = _run_git_checked(
         ["diff", "--unified=0", "--no-color", f"{base_ref}...HEAD", "--", *pathspecs],
         cwd=cwd,
     )
-    if diff is None:
-        return None
     result: Dict[str, Set[int]] = {}
     cur_path: Optional[str] = None
     new_lineno = 0
     for raw in diff.splitlines():
-        if raw.startswith("+++ "):
-            target = raw[4:]
-            cur_path = None if target == "/dev/null" else _normalize_path(target[2:])
+        is_header, header_path = _diff_new_file_path(raw)
+        if is_header:
+            cur_path = header_path
             if cur_path is not None:
                 result.setdefault(cur_path, set())
             continue
@@ -155,7 +205,7 @@ def _added_line_numbers(
             m = _HUNK_RE.match(raw)
             new_lineno = int(m.group(1)) if m else 0
             continue
-        if raw.startswith("+") and not raw.startswith("+++"):
+        if raw.startswith("+"):
             if cur_path is not None:
                 result[cur_path].add(new_lineno)
             new_lineno += 1
@@ -164,21 +214,17 @@ def _added_line_numbers(
 
 def _changed_paths(
     base_ref: str, pathspecs: List[str], cwd: Optional[str] = None
-) -> Optional[Set[str]]:
+) -> Set[str]:
     """Paths that appear in the diff, including pure renames / mode changes."""
-    out = _run_git(
+    out = _run_git_checked(
         ["diff", "--name-only", "-z", f"{base_ref}...HEAD", "--", *pathspecs],
         cwd=cwd,
     )
-    if out is None:
-        return None
     return {_normalize_path(p) for p in out.split("\0") if p}
 
 
-def _tracked_files(pathspecs: List[str], cwd: Optional[str] = None) -> Optional[List[str]]:
-    out = _run_git(["ls-files", "-z", "--", *pathspecs], cwd=cwd)
-    if out is None:
-        return None
+def _tracked_files(pathspecs: List[str], cwd: Optional[str] = None) -> List[str]:
+    out = _run_git_checked(["ls-files", "-z", "--", *pathspecs], cwd=cwd)
     return [_normalize_path(p) for p in out.split("\0") if p]
 
 
@@ -301,17 +347,21 @@ def _run_typos(
     typos: str,
     files: List[str],
     config: str,
-    excludes: List[str],
     cwd: str,
 ) -> Tuple[str, int]:
-    """Return (stdout, exit_code). Raises RuntimeError on a tool error."""
+    """Return (stdout, exit_code). Raises RuntimeError on a tool error.
+
+    ``paths-ignore`` is applied in Python before this runs, then again on
+    findings. Passing the same patterns to ``typos --exclude`` would use
+    gitignore semantics (a slash-less ``foo`` matches ``sub/foo``) while
+    the Python matcher is root-anchored -- two implementations of one
+    input. Filter once.
+    """
     if not files:
         return "", 0
     cmd = [typos, "--format", "json", "--color", "never", "--force-exclude"]
     if config:
         cmd.extend(["--config", config])
-    for glob in excludes:
-        cmd.extend(["--exclude", glob])
     with tempfile.NamedTemporaryFile(
         mode="w",
         encoding="utf-8",
@@ -348,7 +398,6 @@ def collect_findings(
     base_ref: str,
     globs: List[str],
     ignores: List["re.Pattern[str]"],
-    exclude_globs: List[str],
     config: str,
     typos: str,
     cwd: str,
@@ -356,8 +405,10 @@ def collect_findings(
     """Return (in-scope findings, skipped, dropped-count).
 
     skipped is True when there is no diff to check against -- either
-    base_ref was never given, or a base_ref was given but the diff could
-    not be computed. Unlike check-phi, there is no whole-tree fallback.
+    base_ref was never given, or a base_ref was given but is not a
+    commit this clone can see. Unlike check-phi, there is no whole-tree
+    fallback. A base-ref that exists but whose diff fails (a malformed
+    glob, for example) is a tool error, not a skip.
     """
     if not base_ref:
         return [], True, 0
@@ -366,8 +417,6 @@ def collect_findings(
 
     if whole_tree:
         tracked = _tracked_files(pathspecs, cwd=cwd)
-        if tracked is None:
-            return [], True, 0
         files = [
             p
             for p in tracked
@@ -376,21 +425,25 @@ def collect_findings(
         added: Dict[str, Set[int]] = {}
         changed: Set[str] = set(files)
     else:
-        added = _added_line_numbers(base_ref, pathspecs, cwd=cwd)
-        changed_opt = _changed_paths(base_ref, pathspecs, cwd=cwd)
-        if added is None or changed_opt is None:
+        if not _ref_exists(base_ref, cwd):
             return [], True, 0
-        changed = {p for p in changed_opt if not _ignored(p, ignores)}
+        added = _added_line_numbers(base_ref, pathspecs, cwd=cwd)
+        changed = {
+            p for p in _changed_paths(base_ref, pathspecs, cwd=cwd) if not _ignored(p, ignores)
+        }
         files = sorted(
             p
             for p in set(added) | changed
             if not _ignored(p, ignores) and (Path(cwd) / p).is_file()
         )
 
-    stdout, _rc = _run_typos(typos, files, config, exclude_globs, cwd)
-    all_findings = [
-        f for f in _parse_jsonl(stdout) if not _ignored(f.path, ignores)
-    ]
+    stdout, rc = _run_typos(typos, files, config, cwd)
+    parsed = _parse_jsonl(stdout)
+    if rc == _TYPOS_FOUND_EXIT and not parsed:
+        raise RuntimeError(
+            "typos exited 2 (findings) but produced no typo records"
+        )
+    all_findings = [f for f in parsed if not _ignored(f.path, ignores)]
     in_scope = [
         f for f in all_findings if _in_scope(f, whole_tree, added, changed)
     ]
@@ -409,6 +462,22 @@ def main() -> int:
     inside = _run_git(["rev-parse", "--is-inside-work-tree"], cwd=cwd)
     if inside is None or inside.strip() != "true":
         print(f"::error::check-typos: {target!r} is not a git repository.")
+        return 1
+
+    root = _run_git(["rev-parse", "--show-toplevel"], cwd=cwd)
+    if root is None:
+        print(f"::error::check-typos: {target!r} is not a git repository.")
+        return 1
+    try:
+        same_root = os.path.samefile(root.strip(), cwd)
+    except OSError:
+        same_root = False
+    if not same_root:
+        print(
+            f"::error::check-typos: path {target!r} is not the repository root "
+            f"(git toplevel is {root.strip()!r}). "
+            "Pass the repo root and use globs/paths-ignore to narrow the scan."
+        )
         return 1
 
     typos = _typos_bin()
@@ -441,7 +510,6 @@ def main() -> int:
             base_ref=base_ref,
             globs=globs,
             ignores=ignores,
-            exclude_globs=exclude_globs,
             config=config,
             typos=typos,
             cwd=cwd,
@@ -452,7 +520,9 @@ def main() -> int:
 
     if skipped:
         reason = (
-            f"could not diff against '{base_ref}'" if base_ref else "no base-ref given"
+            f"base-ref '{base_ref}' is not a commit this clone can see"
+            if base_ref
+            else "no base-ref given"
         )
         print(
             "::warning::Skipping the typos check for this run "

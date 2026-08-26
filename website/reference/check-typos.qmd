@@ -8,8 +8,8 @@ non-vignette `.qmd` pages, `CONTRIBUTING.md`-class Markdown, `docs/`,
 YAML, code comments, and repositories that are not R packages -- with
 [crate-ci/typos](https://github.com/crate-ci/typos).
 typos is a corrections-list checker rather than a dictionary checker,
-so it does not need a curated wordlist and its false-positive rate on
-technical prose is far lower than hunspell's.
+so unknown jargon is not an error and a consumer does not need a
+curated wordlist the way [`spellcheck.yml`](spellcheck.qmd) does.
 
 It is a separate capability from `spellcheck.yml` because the two tools
 have different vocabularies and config formats, and because this repo
@@ -21,8 +21,8 @@ README/NEWS.
 Scoped to lines a diff adds, so a first run over an existing repo does
 not reflag years of drift -- the same adoption problem
 [`check-new-line-breaks.yml`](check-new-line-breaks.qmd) solves, and
-the one that matters more here because typos has no wordlist to grow
-into.
+the one that matters more here because a whole-tree scan still flags
+every known misspelling the corpus already carries.
 Pass `base-ref: all` to scan the whole tracked tree once you are ready
 to clean it.
 When the diff cannot be computed (a push run with no base, a shallow
@@ -30,8 +30,8 @@ clone), the check is skipped with a warning rather than falling back to
 a whole-tree scan.
 
 The CLI is installed from a pinned GitHub release rather than wrapping
-the official `crate-ci/typos` action, which scans the whole tree and
-has no line-level filter.
+the official `crate-ci/typos` action, which has no line-level diff
+filter.
 Measured against crate-ci/typos v1.49.0 (released 2026-08-03; pin
 checked 2026-08-26): `--format json` exits 2 on findings and 0 when
 clean, and a filename typo has no `line_num` field.
