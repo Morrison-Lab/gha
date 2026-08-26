@@ -25,10 +25,10 @@ else
   failures=$((failures + 1))
 fi
 
-if [[ "$got" == *"restoring default-branch workflow files failed"* ]]; then
-  echo "OK   build-self-review-skip-notice.sh names a restore failure"
+if [[ "$got" == *"No review ran --- restoring default-branch workflow files failed."* ]]; then
+  echo "OK   build-self-review-skip-notice.sh uses the live restore-failure headline"
 else
-  echo "::error::build-self-review-skip-notice.sh output missing restore-failure phrasing"
+  echo "::error::build-self-review-skip-notice.sh output missing live headline 'No review ran --- restoring default-branch workflow files failed.'"
   failures=$((failures + 1))
 fi
 
