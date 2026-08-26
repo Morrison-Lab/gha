@@ -5,9 +5,10 @@
 #   Rscript test-coverage/tests/test-coverage-helpers.R
 # Does not load {covr}.
 #
-# check() / check_error() match
-# .github/workflows/scripts/tests/test-description-version.R.
-# Extracting a shared r-test-helpers.R is tracked in
+# adapted from
+# .github/workflows/scripts/tests/test-description-version.R;
+# check_error() here adds a message-pattern argument.
+# Extracting a shared helper is tracked in
 # https://github.com/Morrison-Lab/gha/issues/682.
 
 sourced <- FALSE
@@ -63,6 +64,8 @@ check(
   "tests"
 )
 check("single type", parse_coverage_type("tests"), "tests")
+check("all alone is allowed", parse_coverage_type("all"), "all")
+check("none alone is allowed", parse_coverage_type("none"), "none")
 check(
   "comma-separated types are split and trimmed",
   parse_coverage_type("examples, vignettes"),

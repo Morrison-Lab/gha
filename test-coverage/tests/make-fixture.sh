@@ -112,7 +112,6 @@ from_dontrun(1, 2)
 EX
 )"
 
-
 cat > "$dest/tests/testthat.R" <<'EOF'
 library(testthat)
 library(covfixture)

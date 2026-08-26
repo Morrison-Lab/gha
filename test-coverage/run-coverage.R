@@ -20,6 +20,10 @@ if (!nzchar(action_path)) {
 }
 source(file.path(action_path, "coverage-helpers.R"), local = FALSE)
 
+# Fail fast on a bad min-coverage value before covr installs the package.
+# Enforcement still happens after the Codecov upload.
+invisible(parse_min_coverage(Sys.getenv("MIN_COVERAGE")))
+
 if (!requireNamespace("covr", quietly = TRUE)) {
   stop("Package 'covr' is not installed.", call. = FALSE)
 }

@@ -106,6 +106,7 @@ runs:
         COVERAGE_TYPE: ${{ inputs.coverage-type }}
         COVERAGE_COMMENT_DONTTEST: ${{ inputs.comment-donttest }}
         COVERAGE_COMMENT_DONTRUN: ${{ inputs.comment-dontrun }}
+        MIN_COVERAGE: ${{ inputs.min-coverage }}
       run: |
         set -euo pipefail
         Rscript "$GITHUB_ACTION_PATH/run-coverage.R"
@@ -121,9 +122,10 @@ runs:
         disable_search: true
 
     # After the upload so a threshold miss still publishes cobertura.xml
-    # (the artifact this capability exists to produce). success() is the
-    # default for a step with no always()/failure() gate; the extra
-    # min-coverage check skips spawning R when the caller left the bar off.
+    # (the artifact this capability exists to produce). An `if:` replaces
+    # the implicit success() default, so success() is load-bearing: without
+    # it this step would run after a failed measurement (empty percent).
+    # The min-coverage check skips spawning R when the caller left the bar off.
     - name: Enforce min-coverage
       if: success() && inputs.min-coverage != ''
       shell: bash
@@ -132,7 +134,7 @@ runs:
         COVERAGE_PERCENT: ${{ steps.coverage.outputs.percent }}
       run: |
         set -euo pipefail
-        Rscript "$GITHUB_ACTION_PATH/enforce-min-coverage.R"
+        Rscript --vanilla "$GITHUB_ACTION_PATH/enforce-min-coverage.R"
 
     # Runs the package's tests a second time (covr::package_coverage above
     # already ran them once) purely to get a JUnit-formatted report --
@@ -161,13 +163,15 @@ runs:
     - name: Show testthat output
       if: always()
       shell: bash
+      env:
+        INSTALL_PATH: ${{ steps.coverage.outputs.install_path || format('{0}/package', runner.temp) }}
       run: |
         set -euo pipefail
-        find "${{ steps.coverage.outputs.install_path }}" -name 'testthat.Rout*' -exec cat '{}' \; || true
+        find "$INSTALL_PATH" -name 'testthat.Rout*' -exec cat '{}' \; || true
 
     - name: Upload test results on failure
       if: failure() && inputs.failure-artifact-name != ''
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ inputs.failure-artifact-name }}
-        path: ${{ steps.coverage.outputs.install_path }}
+        path: ${{ steps.coverage.outputs.install_path || format('{0}/package', runner.temp) }}

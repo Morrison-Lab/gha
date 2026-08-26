@@ -10,12 +10,17 @@ into the repo's composite-plus-wrapper shape.
 Set `examples-coverage: true` for an optional second job that measures
 coverage from examples and vignettes.
 [`\dontrun{}`](https://cran.r-project.org/doc/manuals/R-exts.html#Documenting-functions)
-never runs under `R CMD check`.
+does not run under `R CMD check` by default
+(only with `--run-dontrun`, which `--as-cran` does not imply).
 [`\donttest{}`](https://cran.r-project.org/doc/manuals/R-exts.html#Documenting-functions)
 is skipped unless `--as-cran` or `--run-donttest`.
-That job does not upload to Codecov, emit an artifact, or apply `min-coverage`.
-The percent appears in the job log and the step summary only,
-and the job fails only when examples or vignettes error.
+That job does not upload to Codecov, produce a JUnit report, or apply
+`min-coverage`.
+On failure it uploads its covr install tree as
+`examples-coverage-test-failures`.
+The percent appears in the job log and the step summary.
+Enabling it adds a second check named
+`<caller job> / Examples and vignettes coverage`.
 A `min-coverage` input can fail the tests job when coverage falls below
 a chosen percent.
 It defaults to no threshold and does not apply to the examples job,

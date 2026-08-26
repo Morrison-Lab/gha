@@ -3,7 +3,8 @@
   A new `examples-coverage` job (off by default) runs
   `covr::package_coverage(type = c("examples", "vignettes"),
   commentDonttest = FALSE, commentDontrun = FALSE)`.
-  `\dontrun{}` never runs under `R CMD check`.
+  `\dontrun{}` does not run under `R CMD check` by default
+  (only with `--run-dontrun`, which `--as-cran` does not imply).
   `\donttest{}` is skipped unless `--as-cran` or `--run-donttest`
   (r-lib's `check-r-package` defaults `--as-cran`, which *does* run them).
   covr comments both out by default.

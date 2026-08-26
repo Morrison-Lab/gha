@@ -38,11 +38,12 @@ on:
           Run a second job that measures coverage from examples and vignettes
           via covr::package_coverage(type = c("examples", "vignettes"),
           commentDonttest = FALSE, commentDontrun = FALSE), so \dontrun{}
-          blocks execute (they never run under R CMD check) and \donttest{}
-          blocks execute even when a check without --as-cran would skip
-          them. Off by default -- those paths can need extra suggested
-          packages or Quarto, and turning this on without that setup would
-          fail a job that currently passes (gha#334).
+          blocks execute (they do not run under R CMD check by default,
+          only with --run-dontrun, which --as-cran does not imply) and
+          \donttest{} blocks execute even when a check without --as-cran
+          would skip them. Off by default -- those paths can need extra
+          suggested packages or Quarto, and turning this on without that
+          setup would fail a job that currently passes (gha#334).
         type: boolean
         default: false
       min-coverage:

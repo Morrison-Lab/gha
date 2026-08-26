@@ -1,9 +1,9 @@
 # Pure parsing/enforcement helpers for test-coverage/run-coverage.R.
 # Kept free of {covr} so the offline test table can run with base R only.
 
-# covr::package_coverage() type= values. Reject anything else rather than
-# forwarding a typo (e.g. "exmaples") that covr would treat as empty work.
-.COVR_TYPES <- c("tests", "vignettes", "examples", "all", "none")
+# Fail before covr installs anything, and reject partial matches
+# that covr's match.arg/pmatch would accept ("ex" -> "examples").
+COVR_TYPES <- c("tests", "vignettes", "examples", "all", "none")
 
 parse_coverage_type <- function(raw) {
   raw <- trimws(as.character(raw))
@@ -15,7 +15,7 @@ parse_coverage_type <- function(raw) {
   if (length(types) == 0L) {
     return("tests")
   }
-  bad <- types[!types %in% .COVR_TYPES]
+  bad <- types[!types %in% COVR_TYPES]
   if (length(bad) > 0L) {
     stop(
       sprintf(
@@ -24,7 +24,7 @@ parse_coverage_type <- function(raw) {
           "expected comma-separated values from: %s."
         ),
         paste(bad, collapse = ", "),
-        paste(.COVR_TYPES, collapse = ", ")
+        paste(COVR_TYPES, collapse = ", ")
       ),
       call. = FALSE
     )
