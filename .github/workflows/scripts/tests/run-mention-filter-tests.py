@@ -2,13 +2,13 @@
 """Pin claude.yml's cheap mention-filter job (gha#554).
 
 gha#342 already stripped markup *inside* the agent job, so a quoted mention
-no longer billed the expensive agent job (model invocation, caller checkout,
-R/Quarto setup). What it left was the job-level `if:` testing the raw body
--- a GitHub expression cannot strip Markdown -- so a filter runner still
-spun up, checked out, and stood down. Direction 2 of #554 moves that
-decision to a cheap first job that reuses detect-bot-mention and gates the
-agent job on `proceed`. The filter runner minute is still billed; the
-avoided cost is the `claude` job.
+no longer billed the expensive agent job (model invocation, R/Quarto setup).
+What it left was the job-level `if:` testing the raw body -- a GitHub
+expression cannot strip Markdown -- so a filter runner still spun up and
+stood down (hosted-runner minute, dedup API call, agent concurrency slot).
+Direction 2 of #554 moves that decision to a cheap first job that reuses
+detect-bot-mention and gates the agent job on `proceed`. The filter runner
+minute is still billed; the avoided cost is the `claude` job.
 
 A wiring typo here is silent in the other direction from most bugs in this
 file: dropping the gate, or widening `proceed == 'true'` to `!= 'false'`,
@@ -71,6 +71,12 @@ EXPECTED_FILTER_JOB_IF = (
     "github.event_name == 'workflow_dispatch' ||\n"
     "github.event_name == 'schedule'\n"
 )
+
+EXPECTED_DETECT_USES = (
+    "Morrison-Lab/gha/.github/actions/detect-bot-mention@v2"
+)
+
+EXPECTED_FILTER_PERMISSIONS = {"contents": "read"}
 
 EXPECTED_DETECT_STEP_IF = (
     "github.event_name == 'issue_comment' || "
@@ -187,6 +193,11 @@ def main() -> int:
     )
 
     check(
+        filt.get("permissions") == EXPECTED_FILTER_PERMISSIONS,
+        "mention-filter permissions are contents: read "
+        "(an omitted block inherits the caller's write-scoped GITHUB_TOKEN)",
+    )
+    check(
         filt.get("runs-on") == "ubuntu-latest",
         "mention-filter uses ubuntu-latest, not inputs.runs-on "
         f"(found: {filt.get('runs-on')!r})",
@@ -223,10 +234,17 @@ def main() -> int:
         f"(found: {len(filt_mention)})",
     )
     if filt_mention:
-        uses = step_uses(filt_mention[0])
         check(
-            uses.endswith("@v2") or uses.startswith("./"),
-            f"detect-bot-mention is referenced at @v2 or a local path (found: {uses})",
+            filt_mention[0].get("id") == "mention",
+            "detect step id is `mention` "
+            "(proceed env reads steps.mention.outputs.match; a rename "
+            "fail-opens quoted mentions)",
+        )
+        check(
+            step_uses(filt_mention[0]) == EXPECTED_DETECT_USES,
+            "detect-bot-mention uses the exact @v2 ref "
+            "(a relative ./ path inside a reusable workflow resolves "
+            "against the caller checkout, gha#284)",
         )
         check(
             filt_mention[0].get("continue-on-error") is True,

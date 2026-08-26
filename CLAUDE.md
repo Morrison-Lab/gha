@@ -1494,10 +1494,10 @@ the usual reusable-workflow lag, not a new-composite bootstrapping gap.
 covers the stripper that matcher now pipes its bodies through, as a table of
 `(input, expected output)` pairs rather than of verdicts.
 CI runs it as a step in the same `review-fail-check` job in `_selftest.yml`.
-It is a separate suite because the stripper has a second consumer coming
-(`claude.yml`'s mention gate, gha#342) and because its failure modes run in
-both directions: under-stripping dispatches on quoted text, over-stripping
-swallows a real request.
+It is a separate suite because the stripper already has two consumers
+(`detect-review-request` and `detect-bot-mention` / `mention-filter`) and
+because its failure modes run in both directions: under-stripping
+dispatches on quoted text, over-stripping swallows a real request.
 So the table pins both, and the cases that matter most are the ones a
 verdict-level test cannot distinguish -- an unclosed backtick run left alone,
 a shorter run failing to close a longer fence, a dropped block *not* joining
