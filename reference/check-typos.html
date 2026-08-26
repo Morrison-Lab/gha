@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>cursor-code-review.yml – Morrison-Lab/gha</title>
+<title>check-typos.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/opencode-code-review.html" rel="next">
-<link href="../reference/antigravity-code-review.html" rel="prev">
+<link href="../reference/spellcheck.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +331,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/cursor-code-review.html">cursor-code-review.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-typos.html">check-typos.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -553,7 +552,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/cursor-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">cursor-code-review.yml</span></a>
   </div>
 </li>
@@ -625,7 +624,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-typos.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-typos.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-typos.yml</span></a>
   </div>
 </li>
@@ -642,21 +641,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
-  <li><a href="#what-it-refuses-to-review" id="toc-what-it-refuses-to-review" class="nav-link" data-scroll-target="#what-it-refuses-to-review">What it refuses to review</a></li>
-  <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
+  <li><a href="#suppressing-false-positives" id="toc-suppressing-false-positives" class="nav-link" data-scroll-target="#suppressing-false-positives">Suppressing false positives</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/cursor-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-typos.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/cursor-code-review.html">cursor-code-review.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-typos.html">check-typos.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">cursor-code-review.yml</h1>
+<h1 class="title">check-typos.yml</h1>
 </div>
 
 
@@ -673,10 +670,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Queue a <a href="https://cursor.com/docs/bugbot.md">Cursor Bugbot</a> review for a pull request. Bugbot posts its own inline comments and the <code>Cursor Bugbot</code> check; this workflow’s success means the review was <strong>queued</strong>, not that findings have already landed.</p>
-<p>It calls Cursor’s Enterprise Bugbot API (<code>POST /bugbot/review</code>) with a <code>CURSOR_API_KEY</code> that has <code>admin:*</code> scope. Team and individual Cursor plans should enable Bugbot in the <a href="https://cursor.com/docs/bugbot.md">Cursor dashboard</a> instead of this workflow. A Team-plan key is rejected as <code>HTTP 401 Invalid Team API Key</code> (measured on this repo’s dogfood caller, run 32694255358, 2026-08-24); that is the wrong key class, not a missing <code>secrets:</code> pass-through. Once the GitHub App is connected, Bugbot can run on every PR update, or on a PR comment <code>cursor review</code> / <code>bugbot run</code>. Customize that path with <code>.cursor/BUGBOT.md</code>; this workflow has no prompt-addendum input because the trigger API does not take one.</p>
-<p>The default caller stub is dispatch-triggered. Add a <code>pull_request</code> trigger in the caller if you also want this workflow to queue a review on every PR update (in addition to, or instead of, the GitHub App’s own automatic reviews).</p>
-<p>Requires a <code>CURSOR_API_KEY</code> secret.</p>
+<p>Diff-scoped spellcheck of the files <a href="../reference/spellcheck.html"><code>spellcheck.yml</code></a> cannot see – a Quarto site’s non-vignette <code>.qmd</code> pages, <code>CONTRIBUTING.md</code>-class Markdown, <code>docs/</code>, YAML, code comments, and repositories that are not R packages – with <a href="https://github.com/crate-ci/typos">crate-ci/typos</a>. typos is a corrections-list checker rather than a dictionary checker, so unknown jargon is not an error and a consumer does not need a curated wordlist the way <a href="../reference/spellcheck.html"><code>spellcheck.yml</code></a> does.</p>
+<p>It is a separate capability from <code>spellcheck.yml</code> because the two tools have different vocabularies and config formats, and because this repo is not an R package and can dogfood <code>check-typos</code>. <code>spellcheck.yml</code> remains the right check for an R package’s <code>DESCRIPTION</code> Title/Description, <code>man/*.Rd</code>, vignettes, and root README/NEWS.</p>
+<p>Scoped to lines a diff adds, and to filename typos only on paths the PR added or renamed, so a first run over an existing repo does not reflag years of drift – the same adoption problem <a href="../reference/check-new-line-breaks.html"><code>check-new-line-breaks.yml</code></a> solves, and the one that matters more here because a whole-tree scan still flags every known misspelling the corpus already carries. Pass <code>base-ref: all</code> to scan the whole tracked tree once you are ready to clean it. When the diff cannot be computed (a push run with no base, a shallow clone), the check is skipped with a warning rather than falling back to a whole-tree scan.</p>
+<p>The CLI is installed from a pinned GitHub release rather than wrapping the official <code>crate-ci/typos</code> action, which has no line-level diff filter. Measured against crate-ci/typos v1.49.0 (released 2026-08-03; pin checked 2026-08-26): <code>--format json</code> exits 2 on findings and 0 when clean, and a filename typo has no <code>line_num</code> field. A filename finding is in scope only when the PR added or renamed that path; a content-only edit of a file whose misspelled name already existed is treated as pre-existing drift, same as an untouched file.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -696,87 +693,95 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>pr-number</code></td>
+<td><code>version</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Pull request number to review. Required on <code>workflow_dispatch</code>; taken from the event on <code>pull_request</code>.</td>
+<td><code>'1.49.0'</code></td>
+<td>crate-ci/typos release version to install (with or without the leading <code>v</code>). Bumping this requires bumping <code>checksums-sha256</code>.</td>
 </tr>
 <tr class="even">
-<td><code>dry-run</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Queue analysis without posting comments or checks. Still billed.</td>
+<td><code>checksums-sha256</code></td>
+<td>string</td>
+<td><code>'48bd2d58e02ce713b8c0f1aa239e68ee4f7d8c551013135806e6aed3938d9e10'</code></td>
+<td>Expected SHA-256 of the platform tarball. The default is linux x86_64 musl.</td>
 </tr>
-</tbody>
-</table>
-</section>
-<section id="secrets" class="level2">
-<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Secret</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
 <tr class="odd">
-<td><code>CURSOR_API_KEY</code></td>
-<td>no</td>
-<td>Cursor Enterprise API key (<code>admin:*</code>). Without it the queue step fails.</td>
+<td><code>path</code></td>
+<td>string</td>
+<td><code>'.'</code></td>
+<td>Path to the repository root, relative to the workspace.</td>
+</tr>
+<tr class="even">
+<td><code>config</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Path (relative to <code>path</code>) to a typos config file. Empty lets typos auto-discover <code>_typos.toml</code>, <code>typos.toml</code>, or <code>.typos.toml</code>. A named but missing file is an error.</td>
+</tr>
+<tr class="odd">
+<td><code>globs</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-separated git pathspecs of tracked files to check. Empty checks every tracked file typos would consider (recursive by default).</td>
+</tr>
+<tr class="even">
+<td><code>paths-ignore</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Comma- or newline-separated glob patterns (relative paths) to skip; supports <code>*</code>, <code>?</code>, and recursive <code>**</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>base-ref</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Git ref/SHA to diff against. Only added lines, plus filename typos on paths the three-dot diff added or renamed. Empty uses the PR base SHA on <code>pull_request</code> runs and skips on push. Pass <code>all</code> to scan the whole tracked tree.</td>
+</tr>
+<tr class="even">
+<td><code>fail</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Fail the workflow when a typo is found; otherwise non-blocking.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code> and <code>pull-requests: read</code>. Bugbot posts with the Cursor GitHub App, not this workflow’s token.</p>
-</section>
-<section id="what-it-refuses-to-review" class="level2">
-<h2 class="anchored" data-anchor-id="what-it-refuses-to-review">What it refuses to review</h2>
-<p>The automatic <code>pull_request</code> path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.</p>
-<p>A <code>workflow_dispatch</code> run carries none of that payload, only <code>pr-number</code>, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.</p>
-<p>Only one queue attempt runs per PR at a time: a newer run cancels an older one.</p>
-</section>
-<section id="concurrency" class="level2">
-<h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
-<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>cursor-code-review.yml</code> manages per-PR concurrency internally on its <code>review</code> job (<code>group: cursor-review-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
+<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/cursor-code-review.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Cursor Code Review</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">  # Optional: automatic review on PR activity.</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">  # pull_request:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">  #   types: [opened, synchronize, ready_for_review, reopened]</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">inputs</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr_number</span><span class="kw">:</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> </span><span class="st">'Pull request number to review'</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">required</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> string</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">review</span><span class="kw">:</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/cursor-code-review.yml@v2</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CURSOR_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.CURSOR_API_KEY }}</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   dry-run: true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>cursor-code-review.yml</code>).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-typos.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped spellcheck of the files spellcheck.yml cannot see: Quarto site</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># pages, CONTRIBUTING.md-class Markdown, docs/, YAML, code comments, and</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># repositories that are not R packages. Uses crate-ci/typos, a</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># corrections-list checker, so it does not need a curated wordlist.</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Diff-scoped, so it only ever flags what a PR itself adds (added lines,</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># plus filename typos on paths the PR added or renamed). A first run</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># over an existing repo does not reflag years of drift. Pass base-ref: all</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># to scan the whole tree once you are ready to clean it.</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Only contents:read is needed (the default), so no permissions block is required.</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check typos</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-typos.yml@v2</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.md *.qmd'                    # pathspecs to check (recursive)</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   config: '_typos.toml'                  # explicit config; empty auto-discovers</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                            # warn-only instead of blocking (defaults to true)</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   base-ref: all                          # whole-tree scan instead of the PR diff</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <code>check-typos.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, for the reason <a href="../reference/check-secrets.html"><code>check-secrets.qmd</code></a> records: a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it, and <code>check-links</code> rightly fails it.)</p>
+</section>
+<section id="suppressing-false-positives" class="level2">
+<h2 class="anchored" data-anchor-id="suppressing-false-positives">Suppressing false positives</h2>
+<p>A hit is a known misspelling, not a word missing from a dictionary. Suppress one in a <code>_typos.toml</code> (or <code>typos.toml</code> / <code>.typos.toml</code>) at the repository root – see <a href="https://github.com/crate-ci/typos">crate-ci/typos</a> – or skip the path with <code>paths-ignore</code>.</p>
 
 
 </section>
@@ -1197,14 +1202,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/antigravity-code-review.html" class="pagination-link" aria-label="antigravity-code-review.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">antigravity-code-review.yml</span>
+      <a href="../reference/spellcheck.html" class="pagination-link" aria-label="spellcheck.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">spellcheck.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/opencode-code-review.html" class="pagination-link" aria-label="opencode-code-review.yml">
-        <span class="nav-page-text">opencode-code-review.yml</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->
@@ -1212,4 +1214,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/cursor-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-typos.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
