@@ -1467,8 +1467,19 @@ jobs:
           fi
           # Dispatch a review on the new commits (the review's own concurrency
           # group dedupes a redundant dispatch). --ref: see the comment on the
-          # earlier dispatch steps above (#285).
-          gh workflow run "$REVIEW_WF" --ref "$BRANCH" -f pr_number="${PR_URL##*/}" \
+          # earlier dispatch steps above (#285). Omit --ref when the PR edits
+          # top-level workflow YAML so GitHub executes the default-branch
+          # caller (gha#598).
+          PR_NUM="${PR_URL##*/}"
+          REVIEW_REF_ARGS=(--ref "$BRANCH")
+          if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files" --paginate --jq '.[].filename'); then
+            echo "::notice::Could not list files for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
+            REVIEW_REF_ARGS=()
+          elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            echo "::notice::PR #$PR_NUM edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
+            REVIEW_REF_ARGS=()
+          fi
+          gh workflow run "$REVIEW_WF" "${REVIEW_REF_ARGS[@]}" -f pr_number="$PR_NUM" \
             || echo "::warning::Could not dispatch $REVIEW_WF."
           # Claude finished successfully with committed code: take the draft PR
           # out of draft so a human knows it's ready to review. Gated on Claude's

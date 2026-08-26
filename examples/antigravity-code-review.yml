@@ -78,6 +78,14 @@ jobs:
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
             REF_ARGS=()
           fi
+          # Keep this grep in sync with detect-pr-workflow-edits.sh (gha#598).
+          if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
+            echo "::notice::Could not list files for PR #$PR_NUMBER; dispatching $WF_FILE without --ref (gha#598)."
+            REF_ARGS=()
+          elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $WF_FILE from the default branch (gha#598)."
+            REF_ARGS=()
+          fi
 
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
           gh issue comment "$PR_NUMBER" --repo "$REPO" \

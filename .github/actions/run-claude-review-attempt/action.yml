@@ -113,6 +113,24 @@ inputs:
       Empty by default.
     required: false
     default: ''
+  github-token:
+    description: >-
+      Optional token passed through to claude-code-action as github_token.
+      When set, the action skips its OIDC App-token exchange and the
+      workflow-content check that exchange runs (anthropics/claude-code-action
+      src/entrypoints/prepare.ts OVERRIDE_GITHUB_TOKEN, read 2026-08-26).
+      Leave empty on the ordinary path. Set it when this checkout restored
+      `.github/workflows/` from the default branch (gha#598) so a remaining
+      content mismatch cannot skip the review.
+    required: false
+    default: ''
+  workflow-fallback:
+    description: >-
+      "true" when this checkout replaced `.github/workflows/` with the
+      default-branch tree (gha#598). The prompt then tells the reviewer to
+      take workflow diffs from the saved PR diff, not from on-disk YAML.
+    required: false
+    default: 'false'
 
 outputs:
   execution_file:
@@ -128,6 +146,7 @@ runs:
       with:
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         anthropic_api_key: ${{ inputs.anthropic-api-key }}
+        github_token: ${{ inputs.github-token }}
         # Leaving the ai-config and extra-* slots as blank lines is safe when
         # they're unset: the upstream action's installPlugins() trims and
         # filters blank lines before parsing, so a blank line adds no
@@ -521,6 +540,7 @@ runs:
           working directory. You do NOT need to (and must not) run
           `gh pr checkout` or `git checkout` — the working tree already
           contains the exact files and commits under review.
+          ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598): `.github/workflows/` on disk is the default-branch copy, not the PR. Take workflow diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head workflow files back into this tree.' || '' }}
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
           curl to verify a computed value or figure against rendered
@@ -700,6 +720,7 @@ runs:
           rather than leaving the PR thread silent. Still close with the
           explicit `### Verdict` status line required above — restating that
           the prior verdict stands is not itself the status line.
+          ${{ inputs.workflow-fallback == 'true' && '**Workflow-file fallback (gha#598).** This checkout restored `.github/workflows/` from the default branch so the review would not execute untrusted workflow YAML from the PR head. On-disk workflow files are therefore NOT the PR versions. Take workflow diffs from the saved PR diff file and from `gh pr diff`. Do not `git checkout` PR-head workflow files back into this tree.' || '' }}
           ${{ inputs.prompt-addendum }}
         # Agent mode (false) by default; tag mode (true) when the caller
         # opts in via the track-progress input on pull_request events.

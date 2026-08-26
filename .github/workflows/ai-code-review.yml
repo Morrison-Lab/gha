@@ -110,7 +110,7 @@ jobs:
         id: scripts
         uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v2
         with:
-          scripts: 'classify-review-delivery.sh'
+          scripts: 'classify-review-delivery.sh,detect-pr-workflow-edits.sh'
 
       - name: Resolve PR info
         id: pr-info
@@ -180,6 +180,22 @@ jobs:
           fi
           if [ "$IS_FORK" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching without --ref."
+          fi
+          # Omit --ref when the PR edits top-level workflow YAML so GitHub
+          # executes the default-branch caller (gha#598). Also drop the
+          # branch filter: a no-ref dispatch lands on the default branch,
+          # and scoping gh run list to $PR_BRANCH would miss it.
+          if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
+            echo "::notice::Could not list files for PR #$PR_NUMBER; dispatching without --ref (gha#598)."
+            REF_ARGS=()
+            BRANCH_FILTER=()
+          else
+            detect_out="$(PR_CHANGED_FILES="$files" CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh")"
+            if [ "$(sed -n 's/^workflow_edits=//p' <<<"$detect_out")" = "true" ]; then
+              echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching from the default branch (gha#598)."
+              REF_ARGS=()
+              BRANCH_FILTER=()
+            fi
           fi
 
           for agent in "${AGENTS[@]}"; do

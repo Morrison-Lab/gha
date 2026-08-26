@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Exercises build-self-review-skip-notice.sh offline, verifying notice formatting
 # and the collapse step's run-ID matching contract (actions/runs/(?<r>[0-9]+)).
-# Wired into _selftest.yml's test suite (gha#441).
+# Wired into _selftest.yml's test suite (gha#441, gha#598).
 #
 # Usage: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
 set -euo pipefail
@@ -12,7 +12,7 @@ build_script="$repo_root/.github/workflows/scripts/build-self-review-skip-notice
 
 failures=0
 
-# Test 1: Standard self-review skip (edits review workflow itself)
+# Test 1: Restore-failure skip (gha#598)
 wf_path=".github/workflows/claude-code-review.yml"
 run_url="https://github.com/Morrison-Lab/gha/actions/runs/987654321"
 
@@ -25,10 +25,17 @@ else
   failures=$((failures + 1))
 fi
 
-if [[ "$got" == *"the review workflow itself"* ]]; then
-  echo "OK   build-self-review-skip-notice.sh contains 'the review workflow itself' phrasing"
+if [[ "$got" == *"restoring default-branch workflow files failed"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh names a restore failure"
 else
-  echo "::error::build-self-review-skip-notice.sh output missing 'the review workflow itself'"
+  echo "::error::build-self-review-skip-notice.sh output missing restore-failure phrasing"
+  failures=$((failures + 1))
+fi
+
+if [[ "$got" == *"gha#598"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh cites gha#598"
+else
+  echo "::error::build-self-review-skip-notice.sh output missing gha#598"
   failures=$((failures + 1))
 fi
 
@@ -59,15 +66,15 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 2: Dispatched review skip on other workflow edit (gha#386)
-other_wf=".github/workflows/claude.yml"
+# Test 2: A different edited path still appears; the third arg is ignored.
+other_wf=".github/workflows/_selftest.yml"
 caller_wf=".github/workflows/claude-review.yml"
 got2="$(bash "$build_script" "$other_wf" "$run_url" "$caller_wf")"
 
-if [[ "$got2" == *"dispatched runs"* ]]; then
-  echo "OK   build-self-review-skip-notice.sh contains dispatched runs explanation for other workflow"
+if [[ "$got2" == *"$other_wf"* ]] && [[ "$got2" == *"restoring default-branch workflow files failed"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh names the edited path on a non-caller workflow"
 else
-  echo "::error::build-self-review-skip-notice.sh output missing 'dispatched runs' explanation"
+  echo "::error::build-self-review-skip-notice.sh did not name '$other_wf' in the restore-failure notice"
   failures=$((failures + 1))
 fi
 

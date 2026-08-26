@@ -1,11 +1,11 @@
 name: Build self-review skip notice body
 description: >-
-  Generates the markdown notice comment body posted when self-review is skipped
-  because a PR edits the review workflow file itself. Extracted from
-  claude-code-review.yml so the notice assembly and its run-URL matching contract
-  can be unit-tested offline (gha#441). Wrapped in a composite action, located
-  via github.action_path, so it resolves correctly when invoked from a caller
-  repo.
+  Generates the markdown notice comment body posted when a review is skipped
+  because restoring default-branch workflow files failed (gha#598). Extracted
+  from claude-code-review.yml so the notice assembly and its run-URL matching
+  contract can be unit-tested offline (gha#441). Wrapped in a composite action,
+  located via github.action_path, so it resolves correctly when invoked from a
+  caller repo.
 
 inputs:
   workflow-path:

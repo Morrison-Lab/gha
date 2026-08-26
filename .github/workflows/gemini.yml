@@ -181,6 +181,14 @@ jobs:
             exit 1
           fi
           echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER ($PR_BRANCH)."
+          # Keep this grep in sync with detect-pr-workflow-edits.sh (gha#598).
+          if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
+            echo "::notice::Could not list files for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref (gha#598)."
+            REF_ARG=""
+          elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
+            REF_ARG=""
+          fi
           gh workflow run "$REVIEW_WF" --repo "$REPO" $REF_ARG -f pr_number="$PR_NUMBER"
 
       - name: Decide whether the agent should run
@@ -710,7 +718,16 @@ jobs:
           else
             PR_VERB="pushed new commits to draft PR"
           fi
-          gh workflow run "$REVIEW_WF" --ref "$BRANCH" -f pr_number="${PR_URL##*/}" \
+          gh_review_ref=(--ref "$BRANCH")
+          PR_NUM="${PR_URL##*/}"
+          if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files" --paginate --jq '.[].filename'); then
+            echo "::notice::Could not list files for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
+            gh_review_ref=()
+          elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            echo "::notice::PR #$PR_NUM edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
+            gh_review_ref=()
+          fi
+          gh workflow run "$REVIEW_WF" "${gh_review_ref[@]}" -f pr_number="$PR_NUM" \
             || echo "::warning::Could not dispatch $REVIEW_WF."
           if [ "$MARK_READY" = "true" ] && [ "$GEMINI_OUTCOME" = "success" ]; then
             if gh pr ready "${PR_URL##*/}"; then

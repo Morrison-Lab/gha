@@ -544,6 +544,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -584,6 +585,12 @@ jobs:
       - name: Run dispatch-review tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-dispatch-review-tests.sh
+      - name: Run detect-pr-workflow-edits tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-detect-pr-workflow-edits-tests.sh
+      - name: Run restore-default-branch-workflows tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh
       - name: Run resolve-pr-info tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-resolve-pr-info-tests.sh
@@ -604,6 +611,26 @@ jobs:
         with:
           workflow-path: .github/workflows/claude-code-review.yml
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise detect-pr-workflow-edits composite action end-to-end
+        id: detect-wf-e2e
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/detect-pr-workflow-edits
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          caller-workflow-path: .github/workflows/claude-review.yml
+      - name: Assert detect-pr-workflow-edits produced a boolean
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          WORKFLOW_EDITS: ${{ steps.detect-wf-e2e.outputs.workflow_edits }}
+          EDITED_PATH: ${{ steps.detect-wf-e2e.outputs.edited_path }}
+        run: |
+          set -euo pipefail
+          if [[ "$WORKFLOW_EDITS" != "true" && "$WORKFLOW_EDITS" != "false" ]]; then
+            echo "::error::detect-pr-workflow-edits did not produce a boolean workflow_edits output (got '$WORKFLOW_EDITS')"
+            exit 1
+          fi
+          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH"
       - name: Exercise export-extra-secrets composite action end-to-end
         uses: ./.github/actions/export-extra-secrets
         with:

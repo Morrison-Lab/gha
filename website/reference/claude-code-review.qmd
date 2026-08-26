@@ -82,14 +82,23 @@ ran and stopped early:
 - the API quota was exhausted --- either before any review work happened, or
   part-way through the run, which leaves a `429` behind after real turns and
   real cost ([#520](https://github.com/Morrison-Lab/gha/issues/520));
-- the PR edits the caller's own review workflow file.
+- restoring default-branch copies of `.github/workflows/` failed, so the
+  review was skipped rather than executing workflow YAML from the PR head
+  ([#598](https://github.com/Morrison-Lab/gha/issues/598)).
 
-That last case deserves care. `claude-code-action` requires the calling
-workflow to match the default branch, so a PR editing it cannot be reviewed by
-this workflow at all, and **no re-run or re-dispatch will change that** --- the
-skip lifts only if the PR stops editing the file, which is rarely what the PR
-is for. The review job posts a PR comment saying so. Merge such a PR on a
-self-review or a human review; do not read the gray gate as an all-clear.
+PRs that edit workflow files are reviewed when that restore succeeds.
+The job replaces `.github/workflows/` with the default-branch tree after
+checkout and passes `github_token` so `claude-code-action` skips its OIDC
+workflow-content check.
+On a dispatched review it also omits `--ref`, so GitHub executes the
+default-branch caller rather than the PR head's YAML.
+Check-runs for that no-`--ref` dispatch land on the default branch
+([#285](https://github.com/Morrison-Lab/gha/issues/285)); the review comment
+still posts on the PR.
+
+A gray skip here still means no review ran.
+Do not read it as an all-clear.
+A later re-run can recover if fetching the default branch was the problem.
 
 ## Concurrency
 
