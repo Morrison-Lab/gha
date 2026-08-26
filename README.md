@@ -151,12 +151,16 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, and either the
+  `pull-requests: write`, `issues: write`, `actions: read`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job itself is `contents: read` only; write is confined to jobs
   that never run the model (`gather-context` stashes reviewers and posts
   the early dispatch notice; `post-review` downloads the review artifact
   and comments) (gha#580).
+  `actions: read` is required on the caller: a `permissions:` block sets
+  unspecified scopes to none, and `post-review` needs it to download the
+  packed artifact (the model job also uses it for the `github_ci` MCP
+  server).
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public

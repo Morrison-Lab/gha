@@ -17,7 +17,11 @@
   permission would let a dropped override mint that write token.
   `post-review` downloads the artifact and posts;
   it holds `pull-requests: write` / `issues: write`
-  and does not invoke the model.
+  and `actions: read`, and does not invoke the model.
+  Callers must grant `actions: read` too: a `permissions:` block sets
+  unspecified scopes to none, and without it artifact download 403s.
+  A missing artifact after a failed review still posts the gha#543
+  failure notice (empty payload fields normalize to unknown).
   `gather-context` also holds those write grants (stash/early notice) but
   never runs the model.
   `classify_inline_comments: false` restores during-session posting and

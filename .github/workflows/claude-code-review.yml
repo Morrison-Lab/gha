@@ -13,7 +13,8 @@ name: Claude Code Review (reusable)
 # `claude-review` runs the model with contents: read (plus pull-requests:
 # read, issues: read, and actions: read). It writes the review to an
 # artifact. `post-review` downloads that artifact and posts; it holds
-# pull-requests: write / issues: write and does not invoke the model.
+# pull-requests: write / issues: write / actions: read and does not
+# invoke the model.
 # The deny list on the model job is then a guard rail against accidents,
 # not a security boundary. `id-token: write` is omitted: forwarding
 # github.token skips claude-code-action's OIDC App-token exchange
@@ -1342,12 +1343,27 @@ jobs:
       # and the previous round's review comment still expanded and reading like
       # a current verdict (gha#543).
       #
+      # The download step is continue-on-error: a missing artifact after
+      # resolve-final fails must still post (empty payload fields normalize
+      # to unknown / not-recorded). Gating only on resolve_outcome ==
+      # 'failure' skips this step when Load never ran, which is the
+      # silent-thread case gha#543 exists to close.
+      # !cancelled() is required: Require the payload artifact exits 1
+      # when a successful review has no artifact, and a default
+      # success() conjunct would skip this notice on that path too.
+      #
       # denied_tools is read from the sidecar file into env:, never through
       # ${{ }} in this run body (gha#541). report-review-failure takes it as
       # an input and itself puts it in env: before composing.
       - name: Post review-failure comment
         id: failure-notice
-        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.resolve_outcome == 'failure'
+        if: >-
+          !cancelled() &&
+          steps.target.outputs.stale != 'true' &&
+          (steps.payload.outputs.resolve_outcome == 'failure' ||
+           (steps.download.outcome != 'success' &&
+            (needs.claude-review.result == 'success' ||
+             needs.claude-review.result == 'failure')))
         uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         with:
           failure-kind: ${{ steps.payload.outputs.failure_kind }}

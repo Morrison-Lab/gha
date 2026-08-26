@@ -23,6 +23,10 @@ the facts a future edit could reverse silently:
 5. Pack still runs after a failed `resolve-final` (`!cancelled()` plus
    success/failure outcomes) so a no-verdict run still reaches the
    posting job (gha#543).
+6. The gha#543 failure notice still posts when the packed artifact is
+   missing (`download.outcome != 'success'` on a finished review).
+7. Caller grant lists include `actions: read` (a `permissions:` block
+   sets unspecified scopes to none; without it `download-artifact` 403s).
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -161,6 +165,10 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         post_perms.get("id-token") != "write",
         "post-review does not need id-token: write",
     )
+    check(
+        post_perms.get("actions") == "read",
+        "post-review holds actions: read (download-artifact)",
+    )
 
     review_uses = uses_of(review)
     post_uses = uses_of(post)
@@ -217,6 +225,53 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     check(
         "!= 'failure'" not in pack_if_norm and '!= "failure"' not in pack_if_norm,
         "pack if: does not negate the failure outcome",
+    )
+    notice_step = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict)
+            and "report-review-failure" in str(s.get("uses", ""))
+        ),
+        None,
+    )
+    if notice_step is None:
+        die(f"{workflow_path}: post-review has no report-review-failure step")
+    notice_if = notice_step.get("if") or ""
+    if not isinstance(notice_if, str):
+        die(
+            f"{workflow_path}: report-review-failure if: is "
+            f"{type(notice_if).__name__}, expected a string"
+        )
+    notice_if_norm = " ".join(str(notice_if).split())
+    check(
+        "!cancelled()" in notice_if_norm,
+        "failure-notice runs under !cancelled() so Require failing the "
+        "job does not skip the notice (implicit success() conjunct)",
+    )
+    check(
+        "resolve_outcome == 'failure' ||" in notice_if_norm
+        or 'resolve_outcome == "failure" ||' in notice_if_norm,
+        "failure-notice if: ORs the loaded no-verdict path with the "
+        "missing-artifact path (AND would skip both)",
+    )
+    check(
+        "steps.download.outcome != 'success'" in notice_if_norm
+        or 'steps.download.outcome != "success"' in notice_if_norm,
+        "failure-notice if: still posts when the packed artifact is missing "
+        "(download.outcome != 'success'; gha#543)",
+    )
+    check(
+        "needs.claude-review.result == 'success'" in notice_if_norm
+        or 'needs.claude-review.result == "success"' in notice_if_norm,
+        "failure-notice missing-artifact path includes a successful review "
+        "(Require would otherwise skip the notice)",
+    )
+    check(
+        "needs.claude-review.result == 'failure'" in notice_if_norm
+        or 'needs.claude-review.result == "failure"' in notice_if_norm,
+        "failure-notice missing-artifact path requires a finished review "
+        "(does not fire on cancelled/skipped)",
     )
     reviewed_head = str((review.get("outputs") or {}).get("reviewed-head") or "")
     check(
@@ -330,6 +385,56 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         "(either prefix starts the inline-comment MCP server)",
     )
 
+    if workflow_path.name == "claude-code-review.yml":
+        root = workflow_path.resolve().parent.parent.parent
+        example = root / "examples" / "claude-code-review.yml"
+        if example.is_file():
+            ex = load_yaml(example)
+            review_job = ((ex or {}).get("jobs") or {}).get("review") or {}
+            check(
+                job_permissions(review_job).get("actions") == "read",
+                "examples/claude-code-review.yml grants actions: read "
+                "(caller token; unspecified scopes are none)",
+            )
+        grant_list_re = (
+            r"`claude-code-review`[\s\S]{0,80}?grant[s]? "
+            r"(`contents: read`[\s\S]{0,250}?)(?:and either|and add)"
+        )
+        for rel, pattern, message in (
+            (
+                "README.md",
+                grant_list_re,
+                "README.md claude-code-review grant lists actions: read",
+            ),
+            (
+                "website/permissions.qmd",
+                grant_list_re,
+                "website/permissions.qmd claude-code-review grant lists actions: read",
+            ),
+            (
+                "website/reference/claude-code-review.qmd",
+                r"## Permissions\n+Grant (`contents: read`[\s\S]{0,250}?)(?:and either|and add)",
+                "website/reference/claude-code-review.qmd Permissions lists actions: read",
+            ),
+        ):
+            path = root / rel
+            if not path.is_file():
+                continue
+            blob = path.read_text(encoding="utf-8")
+            m = re.search(pattern, blob)
+            listed = m.group(1) if m else ""
+            check("actions: read" in listed, message)
+        ref = root / "website" / "reference" / "claude-code-review.qmd"
+        if ref.is_file():
+            check(
+                re.search(
+                    r"permissions:\n(?:[^\n]*\n)*?      actions: read",
+                    ref.read_text(encoding="utf-8"),
+                )
+                is not None,
+                "website/reference/claude-code-review.qmd Example grants actions: read",
+            )
+
     if FAILURES:
         print(
             f"::error::{len(FAILURES)} review-job-split assertion(s) failed",
@@ -387,6 +492,13 @@ def run_self_test() -> int:
             "steps.resolve-final.outcome == 'success' || "
             "steps.resolve-final.outcome == 'failure')"
         )
+        notice_if = (
+            "!cancelled() && "
+            "(steps.payload.outputs.resolve_outcome == 'failure' || "
+            "(steps.download.outcome != 'success' && "
+            "(needs.claude-review.result == 'success' || "
+            "needs.claude-review.result == 'failure')))"
+        )
         good_wf.write_text(
             f"""
 on:
@@ -415,9 +527,12 @@ jobs:
     permissions:
       pull-requests: write
       issues: write
+      actions: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
       - uses: actions/download-artifact@v4
+      - uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
+        if: "{notice_if}"
       - run: COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
 """
         )
@@ -714,6 +829,65 @@ runs:
             run(second_compare, good_action),
             False,
             "COMPARE is assigned exactly once",
+        )
+
+        payload_only_notice = root / "payload-only-notice.yml"
+        payload_only_notice.write_text(
+            good_wf.read_text().replace(
+                f'        if: "{notice_if}"\n',
+                "        if: steps.payload.outputs.resolve_outcome == 'failure'\n",
+            )
+        )
+        failures += expect(
+            "failure-notice gated only on payload resolve_outcome fails",
+            run(payload_only_notice, good_action),
+            False,
+            "download.outcome != 'success'",
+        )
+
+        anded_notice = root / "anded-notice.yml"
+        anded_notice.write_text(
+            good_wf.read_text().replace(
+                "resolve_outcome == 'failure' || ",
+                "resolve_outcome == 'failure' && ",
+                1,
+            )
+        )
+        failures += expect(
+            "AND between resolve_outcome and download.outcome fails",
+            run(anded_notice, good_action),
+            False,
+            "ORs the loaded no-verdict path",
+        )
+
+        no_success_arm = root / "no-success-arm.yml"
+        no_success_arm.write_text(
+            good_wf.read_text().replace(
+                "(needs.claude-review.result == 'success' || "
+                "needs.claude-review.result == 'failure')",
+                "(needs.claude-review.result == 'failure')",
+                1,
+            )
+        )
+        failures += expect(
+            "dropping the success arm of the missing-artifact path fails",
+            run(no_success_arm, good_action),
+            False,
+            "includes a successful review",
+        )
+
+        no_cancelled_guard = root / "no-cancelled-guard.yml"
+        no_cancelled_guard.write_text(
+            good_wf.read_text().replace(
+                f'        if: "{notice_if}"\n',
+                '        if: "' + notice_if.replace("!cancelled() && ", "", 1) + '"\n',
+            )
+        )
+        failures += expect(
+            "omitting !cancelled() on the failure notice fails",
+            run(no_cancelled_guard, good_action),
+            False,
+            "failure-notice runs under !cancelled()",
         )
 
     if failures:

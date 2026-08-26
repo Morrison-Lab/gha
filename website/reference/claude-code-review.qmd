@@ -51,11 +51,15 @@ variable unset while the agent is live, or the mention is answered twice.
 ## Permissions
 
 Grant `contents: read`, `pull-requests: write`, `issues: write`,
-and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
+`actions: read`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
 `ANTHROPIC_API_KEY` secret.
 The model job itself is `contents: read` only; write is confined to jobs
 that never run the model (`gather-context` stashes reviewers; `post-review`
 downloads the review artifact and comments) (gha#580).
+`actions: read` is required on the caller: a `permissions:` block sets
+unspecified scopes to none, and `post-review` needs it to download the
+packed artifact (the model job also uses it for the `github_ci` MCP
+server).
 
 ## The `require-review` gate
 
@@ -147,6 +151,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      actions: read
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key

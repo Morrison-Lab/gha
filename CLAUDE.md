@@ -1569,12 +1569,18 @@ and asserts the facts a future edit could reverse silently:
 the model job grants no forge-write (including no `id-token: write`)
 and keeps `contents: read`,
 the posting job holds `pull-requests: write` /
-`issues: write` and does not invoke the model,
+`issues: write` / `actions: read` and does not invoke the model,
 `github_token` is forwarded so the App-token write exchange is skipped,
 the inline-comment MCP tool is not allowlisted,
 pack still runs after a failed `resolve-final` (`!cancelled()` plus
 success/failure outcomes;
 a default `success()` gate would skip it),
+the gha#543 failure notice still posts when the packed artifact is
+missing (`!cancelled()` plus `download.outcome != 'success'` ORed with
+the loaded `resolve_outcome == 'failure'` path, including a successful
+review so Require exiting 1 does not skip the notice),
+caller grant lists (the example stub, README, permissions page,
+reference Permissions and Example) include `actions: read`,
 and `post-review` stale-checks against event-pinned
 `reviewed-head` (`github.event.pull_request.head.sha`),
 falling back to gather-context's stash-head on dispatch,
