@@ -153,7 +153,7 @@ that need to write must have the **caller** grant it on the calling job:
 - `claude-code-review` (read-only review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
-  The model job holds no write
+  The model job's `GITHUB_TOKEN` has no write scopes
   (`contents` / `pull-requests` / `issues` / `actions: read`);
   write is confined to jobs that never run the model
   (`gather-context` stashes reviewers and posts

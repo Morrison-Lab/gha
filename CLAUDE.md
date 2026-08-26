@@ -1973,10 +1973,14 @@ source and the referenced `.lintr.R` file both fetched cleanly.)
 
 ## A canceled review skips require-review gracefully (gha#585)
 
-`claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
-(`claude-review-<PR>`, `cancel-in-progress: true`) across BOTH the automatic
+`claude-code-review.yml`'s model path is concurrency-grouped per PR
+(`claude-review-<PR>`, `cancel-in-progress: true`) on `preempt-previous`
+and `claude-review`, across BOTH the automatic
 `pull_request`-triggered review and claude.yml's comment-triggered (`@claude
-review`) re-dispatch. When a push and an `@claude review` comment land close
+review`) re-dispatch. Stash/restore (`gather-context` / `post-review`) use
+a separate non-canceling group so a cancelled run's restore cannot cancel
+the successor's model job.
+When a push and an `@claude review` comment land close
 together -- or claude.yml's agent run finishes and re-dispatches a review a
 minute or two later, landing on top of the next push's auto-review -- the two
 reviews race and one cancels the other.

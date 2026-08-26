@@ -273,22 +273,68 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         "failure-notice missing-artifact path requires a finished review "
         "(does not fire on cancelled/skipped)",
     )
-    conc_group = "claude-review-${{ github.event.pull_request.number || inputs.pr-number }}"
-    for name in ("gather-context", "claude-review", "post-review"):
-        if name not in jobs:
-            continue
-        conc = jobs[name].get("concurrency")
-        if not isinstance(conc, dict):
-            check(False, f"{name} shares the per-PR concurrency group")
-            continue
+    conc_review = (
+        "claude-review-${{ github.event.pull_request.number || inputs.pr-number }}"
+    )
+    conc_stash = (
+        "claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}"
+    )
+
+    def concurrency_of(name: str) -> dict | None:
+        conc = (jobs.get(name) or {}).get("concurrency")
+        return conc if isinstance(conc, dict) else None
+
+    if "preempt-previous" not in jobs:
+        check(False, "preempt-previous cancels a superseded model job before stash")
+    else:
         check(
-            str(conc.get("group") or "") == conc_group,
-            f"{name} shares the per-PR concurrency group",
+            not job_uses_model(jobs["preempt-previous"]),
+            "preempt-previous does not invoke the model",
+        )
+        preempt_conc = concurrency_of("preempt-previous")
+        check(
+            preempt_conc is not None and str(preempt_conc.get("group") or "") == conc_review,
+            "preempt-previous shares the canceling review group",
         )
         check(
-            conc.get("cancel-in-progress") is True,
-            f"{name} cancels in-progress runs of that group",
+            preempt_conc is not None and preempt_conc.get("cancel-in-progress") is True,
+            "preempt-previous cancels in-progress model jobs of that group",
         )
+    review_conc = concurrency_of("claude-review")
+    check(
+        review_conc is not None and str(review_conc.get("group") or "") == conc_review,
+        "claude-review uses the canceling review group",
+    )
+    check(
+        review_conc is not None and review_conc.get("cancel-in-progress") is True,
+        "claude-review cancels in-progress model jobs of that group",
+    )
+    for name in ("gather-context", "post-review"):
+        conc = concurrency_of(name)
+        if conc is None:
+            check(False, f"{name} uses the non-canceling stash group")
+            continue
+        check(
+            str(conc.get("group") or "") == conc_stash,
+            f"{name} uses the non-canceling stash group",
+        )
+        check(
+            conc.get("cancel-in-progress") is False,
+            f"{name} queues behind another run's stash/restore "
+            "(does not cancel in-progress writes)",
+        )
+        check(
+            str(conc.get("group") or "") != conc_review,
+            f"{name} does not share the canceling review group "
+            "(a cancelled run's post-review would cancel the new model job)",
+        )
+    gather_needs = (jobs.get("gather-context") or {}).get("needs")
+    if isinstance(gather_needs, str):
+        gather_needs = [gather_needs]
+    check(
+        isinstance(gather_needs, list) and "preempt-previous" in gather_needs,
+        "gather-context waits for preempt-previous so a cancelled run can restore first",
+    )
     require_art = next(
         (
             s
@@ -393,6 +439,20 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         compare_values == ["${REVIEWED_HEAD:-$STASH_HEAD}"],
         "COMPARE is assigned exactly once to ${REVIEWED_HEAD:-$STASH_HEAD}",
     )
+    target = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict) and s.get("id") == "target"
+        ),
+        None,
+    )
+    if target is not None:
+        target_run = str(target.get("run") or "")
+        check(
+            "not posting an unverifiable review" in target_run,
+            "live-head lookup fails closed when gh api cannot read the PR head",
+        )
 
     action = load_yaml(action_path)
     steps = action.get("runs", {}).get("steps") or []
@@ -553,24 +613,34 @@ def run_self_test() -> int:
             "(needs.claude-review.result == 'success' || "
             "needs.claude-review.result == 'failure')))"
         )
-        conc_block = (
+        review_conc = (
             "    concurrency:\n"
             "      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}\n"
             "      cancel-in-progress: true\n"
+        )
+        stash_conc = (
+            "    concurrency:\n"
+            "      group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}\n"
+            "      cancel-in-progress: false\n"
         )
         good_wf.write_text(
             f"""
 on:
   workflow_call: {{}}
 jobs:
+  preempt-previous:
+{review_conc}    permissions: {{}}
+    steps:
+      - run: echo cancel predecessor
   gather-context:
-{conc_block}    permissions:
+    needs: preempt-previous
+{stash_conc}    permissions:
       pull-requests: write
       issues: write
     steps:
       - run: echo stash
   claude-review:
-{conc_block}    outputs:
+{review_conc}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
     permissions:
       contents: read
@@ -583,7 +653,7 @@ jobs:
         if: "{pack_if}"
   post-review:
     needs: claude-review
-{conc_block}    outputs:
+{stash_conc}    outputs:
       stale: ${{{{ steps.target.outputs.stale }}}}
     permissions:
       pull-requests: write
@@ -597,7 +667,10 @@ jobs:
         run: exit 1
       - uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         if: "{notice_if}"
-      - run: COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
+      - id: target
+        run: |
+          echo "not posting an unverifiable review"
+          COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
   require-review:
     needs: [claude-review, post-review]
     if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
@@ -974,13 +1047,68 @@ runs:
             "does not treat a skipped download as a miss",
         )
 
-        no_gather_conc = root / "no-gather-conc.yml"
-        no_gather_conc.write_text(good_wf.read_text().replace(conc_block, "", 1))
+        gather_on_review_group = root / "gather-on-review-group.yml"
+        gather_on_review_group.write_text(
+            good_wf.read_text().replace(stash_conc, review_conc, 1)
+        )
         failures += expect(
-            "gather-context without the per-PR concurrency group fails",
-            run(no_gather_conc, good_action),
+            "gather-context on the canceling review group fails",
+            run(gather_on_review_group, good_action),
             False,
-            "gather-context shares the per-PR concurrency group",
+            "does not share the canceling review group",
+        )
+
+        stash_cancels = root / "stash-cancels.yml"
+        stash_cancels.write_text(
+            good_wf.read_text().replace(
+                "      cancel-in-progress: false\n",
+                "      cancel-in-progress: true\n",
+                1,
+            )
+        )
+        failures += expect(
+            "cancel-in-progress on the stash group fails",
+            run(stash_cancels, good_action),
+            False,
+            "does not cancel in-progress writes",
+        )
+
+        no_preempt = root / "no-preempt.yml"
+        no_preempt.write_text(
+            good_wf.read_text().replace(
+                "  preempt-previous:\n"
+                + review_conc
+                + "    permissions: {}\n"
+                + "    steps:\n"
+                + "      - run: echo cancel predecessor\n",
+                "",
+                1,
+            ).replace(
+                "    needs: preempt-previous\n",
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "omitting preempt-previous fails",
+            run(no_preempt, good_action),
+            False,
+            "preempt-previous cancels a superseded model job before stash",
+        )
+
+        live_head_open = root / "live-head-open.yml"
+        live_head_open.write_text(
+            good_wf.read_text().replace(
+                '          echo "not posting an unverifiable review"\n',
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "live-head lookup that can fail open fails",
+            run(live_head_open, good_action),
+            False,
+            "fails closed when gh api cannot read the PR head",
         )
 
         no_stale_skip = root / "no-stale-skip.yml"

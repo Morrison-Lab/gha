@@ -39,3 +39,6 @@
   The input is kept so existing callers do not fail at the call gate.
   The posting job is `pull_request_target`-free: forks are already refused
   (gha#235), so same-repo `pull_request` / `workflow_dispatch` is enough.
+  Stash/restore share a non-canceling concurrency group; the model job
+  and a `preempt-previous` job share a separate canceling group so a
+  cancelled run's restore cannot cancel the successor's model job.

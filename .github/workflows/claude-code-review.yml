@@ -72,8 +72,9 @@ on:
           and hardcodes git write tools; it does not start github_inline_comment
           unless mcp__github_inline_comment__* or mcp__github__* is allowlisted.
           All of that needs a writable forge token in the model job. This
-          workflow splits those: the model job holds no write, and the
-          posting job submits the summary after the model finishes. The
+          workflow splits those: the model job's GITHUB_TOKEN has no write
+          scopes, and the posting job submits the summary after the model
+          finishes. The
           input is kept so existing callers do not fail at the call gate.
           Tag mode also hardcodes git write tools regardless of
           --disallowedTools (serodynamics PR #175) until
@@ -208,11 +209,13 @@ on:
         required: false
 
 jobs:
-  # Fetch the last few claude[bot] review comments so the reviewer can skip
-  # findings that were already raised, rebutted, and resolved in a prior round.
-  # Runs under the same conditions as the review job so it skips together with
-  # it (fork PRs, drafts, bot-triggered synchronize events).
-  gather-context:
+  # Cancel a superseded model job before this run stashes reviewers, so
+  # the cancelled run's post-review can restore before gather-context
+  # DELETEs. Sharing that canceling group with gather-context / post-review
+  # would let a cancelled run's restore cancel this run's model job:
+  # GitHub concurrency is repository-wide per group, including later jobs
+  # of an older run (control-workflow-concurrency, measured 2026-08-26).
+  preempt-previous:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (
@@ -220,12 +223,34 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.sender.type != 'Bot'
       )
-    # Same group as claude-review / post-review: stash-and-clear mutates
-    # the reviewer list, and two runs for one PR can interleave DELETE
-    # with a superseded restore if only the model job is serialized.
     concurrency:
       group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Yield so a cancelled predecessor can restore
+        run: echo "Predecessor model job cancelled if one was in this group."
+
+  # Fetch the last few claude[bot] review comments so the reviewer can skip
+  # findings that were already raised, rebutted, and resolved in a prior round.
+  # Runs under the same conditions as the review job so it skips together with
+  # it (fork PRs, drafts, bot-triggered synchronize events).
+  gather-context:
+    needs: [preempt-previous]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    # Separate from the canceling review group. Queue behind another run's
+    # stash or restore rather than cancelling it mid-DELETE.
+    concurrency:
+      group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -430,10 +455,10 @@ jobs:
 
   claude-review:
     needs: gather-context
-    # Serialize runs per PR. The stash (gather-context) / restore
-    # (post-review) reviewer dance assumes only one run mutates the
-    # reviewer list at a time. `cancel-in-progress: true` is safe because
-    # the model job cannot push (gha#580).
+    # Serialize model jobs per PR. Stash/restore use a separate
+    # non-canceling group so a cancelled run's post-review cannot cancel
+    # the successor's model job. `cancel-in-progress: true` is safe
+    # because the model job cannot push (gha#580).
     #
     # A single @claude push can land here twice — the `synchronize` auto-review
     # AND claude.yml's re-dispatched review, both keyed on the same PR number —
@@ -459,6 +484,7 @@ jobs:
     # automatic review of a bot-authored diff.
     if: >-
       always() &&
+      needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
       (
         (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
@@ -1191,11 +1217,11 @@ jobs:
   post-review:
     needs: [gather-context, claude-review]
     if: always() && needs.gather-context.result != 'skipped'
-    # Same group as gather-context / claude-review so a superseded
-    # restore cannot interleave with a newer stash-and-clear.
+    # Same non-canceling group as gather-context so a superseded restore
+    # queues behind a newer stash rather than cancelling the new model job.
     concurrency:
-      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
-      cancel-in-progress: true
+      group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -1237,7 +1263,19 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           LIVE=""
           if [ -n "$PR_NUMBER" ]; then
-            LIVE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+            for attempt in 1 2 3; do
+              LIVE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+              if [ -n "$LIVE" ] && [ "$LIVE" != "null" ]; then
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                sleep 2
+              fi
+            done
+            if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
+              echo "::error::Could not read live PR head for #$PR_NUMBER; not posting an unverifiable review."
+              exit 1
+            fi
           fi
           echo "live_head=$LIVE" >> "$GITHUB_OUTPUT"
           # Prefer the event-pinned PR head (what checkout actually
