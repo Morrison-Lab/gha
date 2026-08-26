@@ -723,7 +723,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>cran-incoming-remote</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Value for <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code>.</td>
+<td>Value for <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code> and <code>_R_CHECK_CRAN_INCOMING_</code>. r-lib’s <code>check-r-package</code> sets INCOMING false when unset, so REMOTE alone cannot turn incoming checks on.</td>
 </tr>
 <tr class="odd">
 <td><code>force-suggests</code></td>
@@ -801,7 +801,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>upload-snapshots</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Upload check snapshots on failure.</td>
+<td>Upload all testthat snapshots as an artifact (r-lib’s wording). Default uploads on success too.</td>
 </tr>
 <tr class="even">
 <td><code>upload-results</code></td>
@@ -903,7 +903,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td>(unset) <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code>, <code>_R_CHECK_FORCE_SUGGESTS_</code>, <code>_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_</code></td>
-<td>Inputs. Defaults follow <a href="https://github.com/Morrison-Lab/gha/issues/331">issue #331</a>’s description of IndrajeetPatil (<code>false</code>, <code>false</code>, <code>true</code>), not the current upstream file (which only hard-codes <code>_R_CHECK_CRAN_INCOMING_REMOTE_: false</code>). rpt does not set these either; <code>r-lib/actions/check-r-package</code> then sets <code>_R_CHECK_FORCE_SUGGESTS_=false</code> when unset, so this workflow’s <code>force-suggests: false</code> already matches rpt.</td>
+<td>Inputs. <code>cran-incoming-remote</code> also sets <code>_R_CHECK_CRAN_INCOMING_</code>, because <code>r-lib/actions/check-r-package</code> forces INCOMING false when unset (REMOTE-only cannot enable incoming checks). Defaults follow <a href="https://github.com/Morrison-Lab/gha/issues/331">issue #331</a>’s description of IndrajeetPatil (<code>false</code>, <code>false</code>, <code>true</code>). rpt does not set these either; r-lib then sets <code>_R_CHECK_FORCE_SUGGESTS_=false</code> when unset, so this workflow’s <code>force-suggests: false</code> already matches rpt.</td>
 </tr>
 <tr class="odd">
 <td><code>upload-snapshots: true</code></td>
