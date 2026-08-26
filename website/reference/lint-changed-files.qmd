@@ -33,7 +33,8 @@ API, whose paths are relative to the head commit) and `github.sha` otherwise
 (the merge commit on a `pull_request` event, matching the r-lib example and
 the qwt/qbt whole-project workflows). It then sets up R, installs lintr from
 CRAN, optionally installs the package (so `object_usage_linter` can resolve
-the package's own functions), and runs lintr at the requested scope.
+the package's own functions; skipped when `path` has no `DESCRIPTION`),
+and runs lintr at the requested scope.
 
 `changed-files` requires a `pull_request` event. It lints with
 `lint_package()` when `path` holds a `DESCRIPTION` (the rpt form) and with
