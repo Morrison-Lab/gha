@@ -5,7 +5,7 @@
   [`posit-dev/setup-air`](https://github.com/posit-dev/setup-air)
   installs a pinned Air release.
   Air is Posit's R formatter, a Rust binary, so there is no R session
-  to start and the check runs in seconds.
+  to start.
   Complements `lint-changed-lines.yml`: Air settles layout, lintr
   decides the rest.
   Check-only -- it never rewrites the caller's branch.

@@ -1173,17 +1173,19 @@ a later whole-tree dogfood of this repo should `paths-ignore`
 
 The `formatting` job in `_selftest.yml` exercises the local
 `./check-formatting` composite against throwaway fixtures generated at
-runtime (nothing committed): a one-liner Air's own formatter docs
-rewrite (`1+2:3*(4/5)`; assert the step fails), then the same file after
-`air format` (assert the step passes).
+runtime (nothing committed): Air's own documented rewrite example
+(`1+2:3*(4/5)` vs `1 + 2:3 * (4 / 5)`), asserting the compact form
+fails the check and the spaced form passes.
+Both sides are written by hand so the pass path does not need `air`
+on PATH after a `continue-on-error` composite failure.
 This repo's own `.R` files are not Air-formatted, and a capability PR
 must not reformat them (gha#333: each consumer opts in with its own
 reformat commit), so the job must not call the composite on `.`.
 `check-formatting/tests/test-check-formatting.sh` pins that `action.yml`
 and the reusable workflow declare the same `version`/`path` defaults
-(gha#303), and that the `posit-dev/setup-air` pin's trailing comment
-names a dotted release (`v1.0.1`) rather than the floating major tag
-(`v1`) upstream uses.
+(gha#303), that the run line carries `--check`, and that the
+`posit-dev/setup-air` pin's trailing comment names a dotted release
+(`v1.0.1`) rather than the floating major tag (`v1`) upstream uses.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

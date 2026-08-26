@@ -87,6 +87,19 @@ else
     || fail "setup-air pin comment must be a dotted release, not a floating major tag: $uses_line"
 fi
 
+# --- The check is check-only ------------------------------------------------
+# Dropping `--check` would make the composite rewrite files and exit 0.
+# The expected-failure e2e would catch that, but an offline assertion is
+# cheaper (gha#303: pin the contract that fails silently when reversed).
+case_name="run line is check-only"
+run_line="$(grep -E '^[[:space:]]*run: air format' "$action_yml" || true)"
+if [ -z "$run_line" ]; then
+  fail "$action_yml has no 'run: air format' line"
+else
+  echo "$run_line" | grep -Fq -- '--check' \
+    || fail "expected air format invocation to carry --check, got: $run_line"
+fi
+
 if [ "$failures" -ne 0 ]; then
   echo "$failures assertion(s) failed." >&2
   exit 1
