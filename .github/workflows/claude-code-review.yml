@@ -449,7 +449,7 @@ jobs:
 
       - name: Restore default-branch workflow files
         id: restore-wf
-        if: steps.wf-edits.outputs.workflow_edits == 'true'
+        if: success() && steps.wf-edits.outputs.workflow_edits == 'true'
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/restore-default-branch-workflows@v2
         with:

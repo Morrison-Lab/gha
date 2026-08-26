@@ -540,7 +540,7 @@ runs:
           working directory. You do NOT need to (and must not) run
           `gh pr checkout` or `git checkout` — the working tree already
           contains the exact files and commits under review.
-          ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598): `.github/workflows/` on disk is the default-branch copy, not the PR. Take workflow diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head workflow files back into this tree.' || '' }}
+          ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598): the entire `.github/workflows/` tree on disk (YAML and `scripts/`) is the default-branch copy, not the PR. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head files under `.github/workflows/` back into this tree.' || '' }}
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
           curl to verify a computed value or figure against rendered
@@ -720,7 +720,7 @@ runs:
           rather than leaving the PR thread silent. Still close with the
           explicit `### Verdict` status line required above — restating that
           the prior verdict stands is not itself the status line.
-          ${{ inputs.workflow-fallback == 'true' && '**Workflow-file fallback (gha#598).** This checkout restored `.github/workflows/` from the default branch so the review would not execute untrusted workflow YAML from the PR head. On-disk workflow files are therefore NOT the PR versions. Take workflow diffs from the saved PR diff file and from `gh pr diff`. Do not `git checkout` PR-head workflow files back into this tree.' || '' }}
+          ${{ inputs.workflow-fallback == 'true' && '**Workflow-file fallback (gha#598).** This checkout restored the entire `.github/workflows/` tree (YAML and `scripts/`) from the default branch so the review would not execute untrusted workflow YAML from the PR head. On-disk files there are therefore NOT the PR versions. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not `git checkout` PR-head files under `.github/workflows/` back into this tree.' || '' }}
           ${{ inputs.prompt-addendum }}
         # Agent mode (false) by default; tag mode (true) when the caller
         # opts in via the track-progress input on pull_request events.

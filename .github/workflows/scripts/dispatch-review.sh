@@ -88,8 +88,10 @@ else
     echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
     REF_ARGS=()
   fi
-  if [[ "$workflow_edits" == "true" || "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
+  if [[ "$workflow_edits" == "true" ]]; then
     echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $REVIEW_WF from the default branch so GitHub executes trusted workflow YAML rather than the PR head (gha#598)."
+    REF_ARGS=()
+  elif [[ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
     REF_ARGS=()
   fi
   if [[ "$DRY_RUN" == "true" ]]; then
