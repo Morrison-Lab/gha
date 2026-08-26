@@ -13,7 +13,9 @@
   to match rpt; the hard job omits it so r-lib's
   `'"warning"'` default keeps missing-Suggests NOTEs
   from failing that job.
-  `_R_CHECK_CRAN_INCOMING_REMOTE_`,
+  `_R_CHECK_CRAN_INCOMING_` (driven from `cran-incoming-remote`,
+  because r-lib's check-r-package sets INCOMING false when unset
+  so a REMOTE-only env is a no-op),
   `_R_CHECK_CRAN_INCOMING_REMOTE_`,
   `_R_CHECK_FORCE_SUGGESTS_`, and
   `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_`

@@ -50,8 +50,12 @@ on:
         default: '"note"'
       cran-incoming-remote:
         description: >-
-          Value for _R_CHECK_CRAN_INCOMING_REMOTE_. false skips the
-          remote CRAN incoming checks.
+          Value for _R_CHECK_CRAN_INCOMING_REMOTE_ and
+          _R_CHECK_CRAN_INCOMING_. r-lib/actions/check-r-package
+          sets INCOMING false when unset, so REMOTE alone cannot
+          turn incoming checks on. {devtools} uses incoming =
+          remote; this input drives both. Default false matches
+          r-lib's skip.
         type: boolean
         default: false
       force-suggests:
@@ -127,7 +131,10 @@ on:
         type: string
         default: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
       upload-snapshots:
-        description: Upload check snapshots on failure.
+        description: >-
+          Upload all testthat snapshots as an artifact (r-lib's
+          wording). Default true uploads on success as well as
+          failure; pass false to skip.
         type: boolean
         default: true
       upload-results:
@@ -157,6 +164,10 @@ jobs:
     env:
       GITHUB_PAT: ${{ github.token }}
       R_KEEP_PKG_SOURCE: yes
+      # r-lib/check-r-package sets INCOMING false when unset, so REMOTE
+      # alone cannot enable incoming checks. Drive both from this input
+      # ({devtools} uses incoming = remote).
+      _R_CHECK_CRAN_INCOMING_: ${{ inputs.cran-incoming-remote }}
       _R_CHECK_CRAN_INCOMING_REMOTE_: ${{ inputs.cran-incoming-remote }}
       _R_CHECK_FORCE_SUGGESTS_: ${{ inputs.force-suggests }}
       _R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_: ${{ inputs.stop-on-invalid-numeric-version-inputs }}
@@ -221,6 +232,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ github.token }}
       R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_CRAN_INCOMING_: ${{ inputs.cran-incoming-remote }}
       _R_CHECK_CRAN_INCOMING_REMOTE_: ${{ inputs.cran-incoming-remote }}
       # Always false here: Suggests are not installed, so forcing them
       # would make this job fail for the wrong reason.

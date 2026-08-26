@@ -40,7 +40,7 @@ job-level, so splitting the steps into a composite would add a nested
 | `hard` | boolean | `false` | Run the hard-dependencies-only job instead of the full matrix. Gated to `pull_request`. Call the workflow twice from the stub if you want both. |
 | `extra-packages` | string | `''` | Extra r-lib/actions package specs appended after the check's own extras (`any::rcmdcheck` on the full matrix; knitr, rcmdcheck, rmarkdown, curl, and testthat on the hard job). |
 | `error-on` | string | `'"note"'` | R expression for `check-r-package` `error-on` on the full matrix. Default matches rpt (NOTEs fail). The hard job omits this so r-lib's `'"warning"'` default applies. |
-| `cran-incoming-remote` | boolean | `false` | Value for `_R_CHECK_CRAN_INCOMING_REMOTE_`. |
+| `cran-incoming-remote` | boolean | `false` | Value for `_R_CHECK_CRAN_INCOMING_REMOTE_` and `_R_CHECK_CRAN_INCOMING_`. r-lib's `check-r-package` sets INCOMING false when unset, so REMOTE alone cannot turn incoming checks on. |
 | `force-suggests` | boolean | `false` | Value for `_R_CHECK_FORCE_SUGGESTS_` on the full matrix. The hard job always sets this `false`. |
 | `stop-on-invalid-numeric-version-inputs` | boolean | `true` | Value for `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_`. |
 | `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
@@ -53,7 +53,7 @@ job-level, so splitting the steps into a composite would add a nested
 | `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules before the check. |
 | `timeout-minutes` | number | `90` | Job timeout. rpt's bespoke workflow used 50. |
 | `build-args` | string | `'c("--no-manual","--compact-vignettes=gs+qpdf")'` | R expression forwarded to `check-r-package` `build_args`. |
-| `upload-snapshots` | boolean | `true` | Upload check snapshots on failure. |
+| `upload-snapshots` | boolean | `true` | Upload all testthat snapshots as an artifact (r-lib's wording). Default uploads on success too. |
 | `upload-results` | boolean | `true` | Upload the check results directory as a workflow artifact. |
 
 ## Secrets
@@ -110,7 +110,7 @@ Do not migrate `rpt` until a follow-up actually passes these through.
 | `extra-packages: any::rcmdcheck` and `local::.` | `any::rcmdcheck` is always installed; pass `local::.` in `extra-packages` if you still want it. |
 | `error-on: '"note"'` | Default on the full matrix. The hard job omits `error-on` so r-lib's `'"warning"'` default applies (missing-Suggests NOTEs must not fail that job). |
 | `build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'` | Default `build-args`. |
-| (unset) `_R_CHECK_CRAN_INCOMING_REMOTE_`, `_R_CHECK_FORCE_SUGGESTS_`, `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_` | Inputs. Defaults follow [issue #331](https://github.com/Morrison-Lab/gha/issues/331)'s description of IndrajeetPatil (`false`, `false`, `true`), not the current upstream file (which only hard-codes `_R_CHECK_CRAN_INCOMING_REMOTE_: false`). rpt does not set these either; `r-lib/actions/check-r-package` then sets `_R_CHECK_FORCE_SUGGESTS_=false` when unset, so this workflow's `force-suggests: false` already matches rpt. |
+| (unset) `_R_CHECK_CRAN_INCOMING_REMOTE_`, `_R_CHECK_FORCE_SUGGESTS_`, `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_` | Inputs. `cran-incoming-remote` also sets `_R_CHECK_CRAN_INCOMING_`, because `r-lib/actions/check-r-package` forces INCOMING false when unset (REMOTE-only cannot enable incoming checks). Defaults follow [issue #331](https://github.com/Morrison-Lab/gha/issues/331)'s description of IndrajeetPatil (`false`, `false`, `true`). rpt does not set these either; r-lib then sets `_R_CHECK_FORCE_SUGGESTS_=false` when unset, so this workflow's `force-suggests: false` already matches rpt. |
 | `upload-snapshots: true` | Default `true`. |
 | (unset) `upload-results` (r-lib default `false`) | Default `true`. Pass `upload-results: false` to match rpt. |
 | No hard-deps job | Add the `R-CMD-check-hard` caller job from the example stub. |

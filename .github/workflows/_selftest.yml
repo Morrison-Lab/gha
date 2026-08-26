@@ -2541,7 +2541,8 @@ jobs:
   # r-cmd-check is workflow-only wrapping r-lib/actions; this repo is not an
   # R package, so a live R CMD check is out of reach. Parse the workflow and
   # example stub for the contracts that would be silent if reversed
-  # (cache: false on the hard job, pull_request gate, github.ref concurrency).
+  # (cache: false on the hard job, pull_request gate, github.ref concurrency,
+  # error-on omit/forward, INCOMING env, verse-gated Quarto skip).
   r-cmd-check-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10

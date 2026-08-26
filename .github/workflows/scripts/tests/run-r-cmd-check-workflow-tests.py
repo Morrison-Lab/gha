@@ -5,7 +5,9 @@ The reusable workflow wraps r-lib/actions and is not exercised end-to-end
 in this repo (gha is not an R package; a 5-way matrix is a real write of
 CI time). What can go silently wrong is YAML shape: dropping cache: false
 on the hard job, gating that job off pull_request, copying upstream's
-head_ref-only concurrency group, or omitting an input the issue required.
+head_ref-only concurrency group, omitting error-on from the full matrix,
+forwarding it on the hard job, leaving _R_CHECK_CRAN_INCOMING_ unset
+(r-lib then forces it false), or skipping Quarto on every ubuntu cell.
 
 This script parses the workflow and the example stub and asserts those
 contracts. Mutations that reverse each one are confirmed to fail in
@@ -219,6 +221,41 @@ def check_workflow(path: pathlib.Path) -> list[str]:
                 "missing-Suggests NOTEs"
             )
 
+    full_check = find_step(full, "check-r-package")
+    if full_check is None:
+        errors.append(f"{path}: full matrix job has no check-r-package step")
+    else:
+        full_error_on = str((full_check.get("with") or {}).get("error-on") or "")
+        if "inputs.error-on" not in full_error_on:
+            errors.append(
+                f"{path}: full matrix check-r-package must forward "
+                "inputs.error-on (got "
+                f"{full_error_on!r}); dropping it silently applies "
+                "r-lib's '\"warning\"' default"
+            )
+
+    for job_name, job in (("R-CMD-check", full), ("R-CMD-check-hard", hard)):
+        incoming = str((job.get("env") or {}).get("_R_CHECK_CRAN_INCOMING_") or "")
+        if "inputs.cran-incoming-remote" not in incoming:
+            errors.append(
+                f"{path}: {job_name} must set _R_CHECK_CRAN_INCOMING_ from "
+                "inputs.cran-incoming-remote; r-lib/check-r-package sets "
+                "it false when unset, so REMOTE-only cannot enable "
+                "incoming checks"
+            )
+
+    quarto = find_step(full, "quarto-actions/setup")
+    if quarto is None:
+        errors.append(f"{path}: full matrix job has no Quarto setup step")
+    else:
+        qif = str(quarto.get("if") or "")
+        if "verse" not in qif:
+            errors.append(
+                f"{path}: full job Quarto if: must skip ubuntu-latest "
+                "only when linux-container contains 'verse' "
+                f"(got {qif!r})"
+            )
+
     return errors
 
 
@@ -425,6 +462,85 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             False,
             "\n".join(errors),
             "error-on",
+        )
+        wf.write_text(mutated)
+
+        # 6. Dropping error-on from the full matrix Check step must fail.
+        full_error_on = (
+            "          error-on: ${{ inputs.error-on }}\n"
+            "          build_args: ${{ inputs.build-args }}"
+        )
+        if full_error_on not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no full-matrix "
+                "error-on forwarding to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(
+            mutated.replace(
+                full_error_on,
+                "          build_args: ${{ inputs.build-args }}",
+                1,
+            )
+        )
+        errors = check_workflow(wf)
+        failures += expect(
+            "full matrix omitting error-on fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "inputs.error-on",
+        )
+        wf.write_text(mutated)
+
+        # 7. Dropping _R_CHECK_CRAN_INCOMING_ on the full job must fail.
+        incoming_line = (
+            "      _R_CHECK_CRAN_INCOMING_: ${{ inputs.cran-incoming-remote }}\n"
+        )
+        if incoming_line not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "_R_CHECK_CRAN_INCOMING_ env line to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(incoming_line, "", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "full job without _R_CHECK_CRAN_INCOMING_ fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "_R_CHECK_CRAN_INCOMING_",
+        )
+        wf.write_text(mutated)
+
+        # 8. Quarto skip on every ubuntu cell (rpt's os != ubuntu-latest)
+        # must fail; last round's verse-only skip is load-bearing.
+        verse_quarto = (
+            "        if: inputs.install-quarto && !(matrix.config.os == "
+            "'ubuntu-latest' && contains(inputs.linux-container, 'verse'))"
+        )
+        rpt_quarto = (
+            "        if: inputs.install-quarto && "
+            "matrix.config.os != 'ubuntu-latest'"
+        )
+        if verse_quarto not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no verse-gated "
+                "Quarto if: to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(verse_quarto, rpt_quarto, 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "Quarto skip on all ubuntu cells fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "verse",
         )
 
     if failures:
