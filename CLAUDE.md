@@ -53,7 +53,7 @@ which is why the capabilities above moved to `@v2`.
   is not an error, so there is no `inst/WORDLIST` to grow into the way
   `spellcheck.yml` does.
   `check-formatting/` wraps `posit-dev/setup-air` and
-  `air format <path> --check`.
+  `air format --check -- <path>`.
   It has no helper script: Air is a Rust binary, so there is no R
   session.
   Whole-tree (not diff-scoped): the check is check-only, and consumers
@@ -1178,14 +1178,19 @@ runtime (nothing committed): Air's own documented rewrite example
 fails the check and the spaced form passes.
 Both sides are written by hand so the pass path does not need `air`
 on PATH after a `continue-on-error` composite failure.
+The messy fixture plants both `x.R` and `y.r`, and a second compact
+dir contains only `y.r`, so a dropped `.r` include cannot ride on
+`x.R`.
+The pass fixture plants both extensions too.
 This repo's own `.R` files are not Air-formatted, and a capability PR
 must not reformat them (gha#333: each consumer opts in with its own
 reformat commit), so the job must not call the composite on `.`.
 `check-formatting/tests/test-check-formatting.sh` pins that `action.yml`
 and the reusable workflow declare the same `version`/`path` defaults
-(gha#303), that the run line carries `--check`, and that the
-`posit-dev/setup-air` pin's trailing comment names a dotted release
-(`v1.0.1`) rather than the floating major tag (`v1`) upstream uses.
+(gha#303), that the run line carries `--check` and an end-of-options
+`--` before the path, and that the `posit-dev/setup-air` pin's
+trailing comment names a dotted release (`v1.0.1`) rather than the
+floating major tag (`v1`) upstream uses.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

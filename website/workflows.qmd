@@ -148,16 +148,16 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   lines a pull request adds or modifies (not whole changed files), so lint rules
   can be adopted or tightened incrementally: new and edited code must comply
   while untouched legacy code is left alone.
-- `check-formatting.yml` runs `air format <path> --check` via
+- `check-formatting.yml` runs `air format --check -- <path>` via
   [posit-dev/setup-air](https://github.com/posit-dev/setup-air).
   [Air](https://posit-dev.github.io/air/) is Posit's R formatter, a Rust
   binary, so there is no R session to start.
   It complements `lint-changed-lines.yml`: Air settles layout, lintr
-  decides the rest.
+  decides the rest of R style.
   Check-only -- it never rewrites the branch.
   Adopting it in a repo that is not already Air-formatted is a large
-  first-pass diff; land that reformat in its own commit, then enable the
-  check.
+  first-pass diff; commit an `air.toml` first (empty is enough), land
+  that reformat in its own commit, then enable the check.
 - `check-phi.yml` scans for content that looks like protected health
   information; see [below](#phi-scanning).
 - `check-secrets.yml` scans the repository's git **history** for committed

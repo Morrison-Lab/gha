@@ -18,8 +18,9 @@ inputs:
     default: '0.11.0'
   path:
     description: >-
-      Path to format, relative to the repository root. Passed to
-      `air format <path> --check`. Defaults to `.` (the whole tree),
+      Path to format, relative to the repository root. Passed after
+      `--` to `air format --check -- <path>` so a path that looks like
+      a flag is still a path. Defaults to `.` (the whole tree),
       matching upstream.
     default: '.'
 runs:
@@ -35,4 +36,4 @@ runs:
       shell: bash
       env:
         AIR_PATH: ${{ inputs.path }}
-      run: air format "$AIR_PATH" --check
+      run: air format --check -- "$AIR_PATH"

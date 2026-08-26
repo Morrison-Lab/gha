@@ -14,8 +14,8 @@ on:
         default: '0.11.0'
       path:
         description: >-
-          Path to format, relative to the repository root. Passed to
-          `air format <path> --check`.
+          Path to format, relative to the repository root. Passed after
+          `--` to `air format --check -- <path>`.
         type: string
         default: '.'
 

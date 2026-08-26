@@ -1,7 +1,9 @@
 # Copy to .github/workflows/check-formatting.yml in your repo.
 #
 # Adopting this in a repo that is not already Air-formatted is a large,
-# noisy first-pass diff. Land that reformat in its own commit (or PR),
+# noisy first-pass diff. Commit an air.toml at the project root first
+# (empty is enough -- Air then ignores IDE tab-width and any user-level
+# ~/.config/air/air.toml), land that reformat in its own commit (or PR),
 # then enable this check. The check itself never rewrites the branch.
 #
 # Only contents:read is needed (the default), so no permissions block

@@ -3010,14 +3010,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _ci-air-messy _ci-air-ok
+          mkdir -p _ci-air-messy _ci-air-messy-r _ci-air-ok
           # Air's own formatter docs use this as the rewrite example
           # (https://posit-dev.github.io/air/formatter.html, checked 2026-08-26).
           # Write both sides by hand so the pass path does not need `air`
           # on PATH after a continue-on-error composite failure.
           printf '%s\n' '1+2:3*(4/5)' > _ci-air-messy/x.R
           printf '%s\n' '1+2:3*(4/5)' > _ci-air-messy/y.r
+          # A dir whose only file is `.r`, so a dropped `.r` include cannot
+          # ride on `x.R` (the mixed dir's failure is overdetermined).
+          printf '%s\n' '1+2:3*(4/5)' > _ci-air-messy-r/y.r
           printf '%s\n' '1 + 2:3 * (4 / 5)' > _ci-air-ok/x.R
+          printf '%s\n' '1 + 2:3 * (4 / 5)' > _ci-air-ok/y.r
 
       - name: Check unformatted R, expecting a failure
         id: air-expected-failure
@@ -3036,11 +3040,36 @@ jobs:
             echo "::error::expected check-formatting to fail on compact R, got outcome='$OUTCOME'"
             exit 1
           fi
-          if ! grep -qx '1+2:3*(4/5)' _ci-air-messy/x.R; then
-            echo "::error::check-formatting rewrote the fixture; --check must not write"
+          for f in _ci-air-messy/x.R _ci-air-messy/y.r; do
+            if ! grep -qx '1+2:3*(4/5)' "$f"; then
+              echo "::error::check-formatting rewrote $f; --check must not write"
+              exit 1
+            fi
+          done
+          echo "check-formatting failed on compact R without rewriting it, as expected."
+
+      - name: Check unformatted .r only, expecting a failure
+        id: air-expected-failure-r
+        continue-on-error: true
+        uses: ./check-formatting
+        with:
+          path: _ci-air-messy-r
+
+      - name: Assert the .r-only unformatted call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.air-expected-failure-r.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-formatting to fail on compact .r, got outcome='$OUTCOME'"
             exit 1
           fi
-          echo "check-formatting failed on compact R without rewriting it, as expected."
+          if ! grep -qx '1+2:3*(4/5)' _ci-air-messy-r/y.r; then
+            echo "::error::check-formatting rewrote the .r fixture; --check must not write"
+            exit 1
+          fi
+          echo "check-formatting failed on compact .r without rewriting it, as expected."
 
       - name: Check formatted R, expecting a pass
         uses: ./check-formatting
@@ -3050,7 +3079,7 @@ jobs:
       - name: Remove the planted fixtures
         if: always()
         shell: bash
-        run: rm -rf _ci-air-messy _ci-air-ok
+        run: rm -rf _ci-air-messy _ci-air-messy-r _ci-air-ok
 
   save-pr-diff:
     runs-on: ubuntu-latest
