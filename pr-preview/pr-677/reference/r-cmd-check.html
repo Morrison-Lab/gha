@@ -679,7 +679,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Run <a href="https://r-pkgs.org/check.html"><code>R CMD check</code></a> across an OS × R-version matrix, wrapping <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> <code>setup-r</code>, <code>setup-r-dependencies</code>, and <code>check-r-package</code>. A second caller job with <code>hard: true</code> runs a Depends/Imports/LinkingTo-only check that is gated to <code>pull_request</code>.</p>
+<p>Run <a href="https://r-pkgs.org/check.html"><code>R CMD check</code></a> across an OS x R-version matrix, wrapping <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> <code>setup-r</code>, <code>setup-r-dependencies</code>, and <code>check-r-package</code>. A second caller job with <code>hard: true</code> runs a Depends/Imports/LinkingTo-only check that is gated to <code>pull_request</code>.</p>
 <p>Two designs come from <a href="https://github.com/IndrajeetPatil/workflows"><code>IndrajeetPatil/workflows</code></a> <code>R-CMD-check.yaml</code> (MIT): the <code>hard</code> input, and <code>cache: false</code> on that job so a restored pak cache cannot silently contain Suggests. Do not copy that file’s <code>concurrency.group</code> of <code>${{ github.workflow }}-${{ github.head_ref }}</code> with no <code>github.ref</code> fallback: <code>head_ref</code> is empty on <code>push</code>, so every push across every branch collapsed into one group. This reusable workflow sets no concurrency; the <a href="#example">example stub</a> keys on <code>github.ref</code>.</p>
 <p><code>error-on</code> defaults to <code>'"note"'</code> to match <a href="https://github.com/Morrison-Lab/rpt"><code>rpt</code></a>’s bespoke workflow, not r-lib’s <code>'"warning"'</code>. The <code>_R_CHECK_*</code> knobs, the matrix, the timeout, and rpt’s Julia / Quarto / pandoc / <code>rocker/verse</code> steps are inputs rather than hard-coded. See <a href="#migrating-from-rpt">Migrating from rpt</a> before treating this as a drop-in for that file.</p>
 <p>This capability is workflow-only (no root composite): the matrix, the two mutually exclusive jobs, and the optional Linux container are job-level, so splitting the steps into a composite would add a nested <code>@v2</code> bootstrap without reuse value, the same shape as <code>update-snapshots.yml</code>.</p>
@@ -717,7 +717,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>error-on</code></td>
 <td>string</td>
 <td><code>'"note"'</code></td>
-<td>R expression for <code>check-r-package</code> <code>error-on</code>. Default matches rpt (NOTEs fail).</td>
+<td>R expression for <code>check-r-package</code> <code>error-on</code> on the full matrix. Default matches rpt (NOTEs fail). The hard job omits this so r-lib’s <code>'"warning"'</code> default applies.</td>
 </tr>
 <tr class="even">
 <td><code>cran-incoming-remote</code></td>
@@ -759,7 +759,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>install-quarto</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Install Quarto via <code>quarto-dev/quarto-actions/setup</code> before the check. Skipped on <code>ubuntu-latest</code> when <code>linux-container</code> is set. Separate from r-lib <code>setup-r-dependencies</code>’ own <code>install-quarto</code> (default <code>auto</code> when the tree has <code>.qmd</code> files).</td>
+<td>Install Quarto via <code>quarto-dev/quarto-actions/setup</code> before the check. On the full matrix, skipped on <code>ubuntu-latest</code> only when <code>linux-container</code> contains <code>verse</code>. Separate from r-lib <code>setup-r-dependencies</code>’ own <code>install-quarto</code> (default <code>auto</code> when the tree has <code>.qmd</code> files).</td>
 </tr>
 <tr class="odd">
 <td><code>setup-julia</code></td>
@@ -777,7 +777,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>linux-container</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Container image for <code>ubuntu-latest</code> cells of the full matrix (e.g.&nbsp;<code>rocker/verse:latest</code>). Ignored on the hard job. Any non-empty image skips the Quarto install on ubuntu (assumes the image already provides Quarto).</td>
+<td>Container image for <code>ubuntu-latest</code> cells of the full matrix (e.g.&nbsp;<code>rocker/verse:latest</code>). Ignored on the hard job. Quarto install is skipped on ubuntu only when this image name contains <code>verse</code>.</td>
 </tr>
 <tr class="even">
 <td><code>checkout-submodules</code></td>
@@ -844,7 +844,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="hard-dependencies-check">Hard-dependencies check</h2>
 <p>The standard matrix installs Suggests, so it cannot see a package that works for the author and breaks for a user who did not install them. <code>hard: true</code> installs only Depends, Imports, and LinkingTo, then adds back <code>knitr</code>, <code>rcmdcheck</code>, <code>rmarkdown</code>, <code>curl</code>, and <code>testthat</code> so the check itself can run.</p>
 <p><code>cache: false</code> on that job is load-bearing, not a speed knob: a restored pak cache may already contain a Suggested package, which would make a green hard-deps run meaningless. It is hard-coded, not an input.</p>
-<p>The hard job also never uses <code>linux-container</code>. <code>rocker/verse</code> ships a large set of R packages, which is the same silent-Suggests failure <code>cache: false</code> exists to prevent.</p>
+<p>The hard job also never uses <code>linux-container</code>. <code>rocker/verse</code> ships a large set of R packages, which is the same silent-Suggests failure <code>cache: false</code> exists to prevent. It omits <code>error-on</code> so r-lib’s <code>'"warning"'</code> default applies: missing Suggests are NOTEs, and <code>error-on: note</code> would fail the job for the condition it exists to tolerate.</p>
 </section>
 <section id="migrating-from-rpt" class="level2">
 <h2 class="anchored" data-anchor-id="migrating-from-rpt">Migrating from rpt</h2>
@@ -858,7 +858,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td>5-way OS × R-version matrix, <code>fail-fast: false</code>, devel <code>http-user-agent: release</code></td>
+<td>5-way OS x R-version matrix, <code>fail-fast: false</code>, devel <code>http-user-agent: release</code></td>
 <td>Default <code>config</code> JSON.</td>
 </tr>
 <tr class="even">
@@ -883,7 +883,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td><code>quarto-dev/quarto-actions/setup@v2</code> when <code>os != ubuntu-latest</code></td>
-<td><code>install-quarto: true</code>. Skipped on ubuntu when <code>linux-container</code> is set, because verse already includes Quarto.</td>
+<td><code>install-quarto: true</code>. Skipped on ubuntu only when <code>linux-container</code> contains <code>verse</code>.</td>
 </tr>
 <tr class="even">
 <td><code>setup-r</code> with <code>r-version</code>, <code>http-user-agent</code>, <code>use-public-rspm: true</code></td>
@@ -895,7 +895,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td><code>error-on: '"note"'</code></td>
-<td>Default.</td>
+<td>Default on the full matrix. The hard job omits <code>error-on</code> so r-lib’s <code>'"warning"'</code> default applies (missing-Suggests NOTEs must not fail that job).</td>
 </tr>
 <tr class="odd">
 <td><code>build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'</code></td>
@@ -903,7 +903,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td>(unset) <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code>, <code>_R_CHECK_FORCE_SUGGESTS_</code>, <code>_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_</code></td>
-<td>Inputs. Defaults follow <a href="https://github.com/Morrison-Lab/gha/issues/331">issue #331</a>’s description of IndrajeetPatil (<code>false</code>, <code>false</code>, <code>true</code>), not rpt and not the current upstream file (which only hard-codes <code>_R_CHECK_CRAN_INCOMING_REMOTE_: false</code>). rpt leaves <code>_R_CHECK_FORCE_SUGGESTS_</code> at R’s default <code>true</code>; pass <code>force-suggests: true</code> to match that.</td>
+<td>Inputs. Defaults follow <a href="https://github.com/Morrison-Lab/gha/issues/331">issue #331</a>’s description of IndrajeetPatil (<code>false</code>, <code>false</code>, <code>true</code>), not the current upstream file (which only hard-codes <code>_R_CHECK_CRAN_INCOMING_REMOTE_: false</code>). rpt does not set these either; <code>r-lib/actions/check-r-package</code> then sets <code>_R_CHECK_FORCE_SUGGESTS_=false</code> when unset, so this workflow’s <code>force-suggests: false</code> already matches rpt.</td>
 </tr>
 <tr class="odd">
 <td><code>upload-snapshots: true</code></td>
@@ -942,7 +942,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   error-on: '"note"'</span></span>
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   cran-incoming-remote: false</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   force-suggests: true          # rpt leaves R's default true</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   force-suggests: false         # matches r-lib/check-r-package when unset</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-julia: true</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: true</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   linux-container: rocker/verse:latest</span></span>
@@ -952,7 +952,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2</span></span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">hard</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/r-cmd-check.yml"><code>examples/r-cmd-check.yml</code></a> for the full caller stub.</p>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub.</p>
 <p>A brand-new capability is not usable at <code>@v2</code> until that tag slides past this merge; pin the example as-is and wait for the slide, or point a template repo at this branch to try it.</p>
 
 
