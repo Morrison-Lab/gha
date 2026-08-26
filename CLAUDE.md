@@ -2456,12 +2456,14 @@ log is not misdiagnosed as a `401`:
 - The "Run Claude Code Review" STEP finishes in seconds (~4-11s measured)
   while writing no execution output; total job time is not a reliable tell,
   since checkout, submodules, and package installs run first and can dominate.
+
 - Grepping the log for `401` finds nothing -- the auth failure the
   parenthetical above calls "401s" does not surface as a literal `401`
   string; grep for `workflow validation` / `Exiting due to workflow
   validation skip`, or just READ the "Run Claude Code Review" step's own
   output rather than grepping for a guessed string (per
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
+
 - The validation keyed on workflow CONTENT vs. the default branch, independent
   of trigger type, so bypassing the self-review skip on a dispatched
   `@claude review` did NOT help -- it just reddened the check with no verdict.
