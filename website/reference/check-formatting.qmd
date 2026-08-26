@@ -14,7 +14,7 @@ Air settles layout; lintr decides the rest of R style.
 It never rewrites the caller's branch.
 
 As of Air 0.11.0 the CLI still formats `.R`/`.r` only -- not `.Rmd` or
-`.qmd` (include set from 0.9.0, #476; still current as of 0.11.0,
+`.qmd` (include set from 0.9.0, posit-dev/air#476; still current as of 0.11.0,
 checked 2026-08-26).
 Generated files such as `cpp11.R` and folders such as `renv/` are
 excluded by Air's own defaults.
@@ -26,7 +26,7 @@ Air's
 [configuration page](https://posit-dev.github.io/air/configuration.html)
 recommends that so editors and CI share settings rather than picking
 up IDE tab-width or a user-level `~/.config/air/air.toml`
-(user-level fallback added in Air 0.11.0, #309; checked 2026-08-26).
+(user-level fallback added in Air 0.11.0, posit-dev/air#309; checked 2026-08-26).
 Run `air format` and commit that rewrite on its own, then enable the
 check, so the rewrite is reviewable separately from the CI change.
 
