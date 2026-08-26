@@ -850,6 +850,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="migrating-from-rpt">Migrating from rpt</h2>
 <p><a href="https://github.com/Morrison-Lab/rpt"><code>rpt</code></a>’s bespoke <code>.github/workflows/R-CMD-check.yaml</code> is not a drop-in for this workflow’s defaults. Each of its steps has an equivalent or an input; none is silently dropped. This table is the feature-by-feature diff <code>CLAUDE.md</code> asks for before calling a reusable capability drop-in. Do not migrate <code>rpt</code> until a follow-up actually passes these through.</p>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>rpt step</th>
@@ -903,7 +907,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td>(unset) <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code>, <code>_R_CHECK_FORCE_SUGGESTS_</code>, <code>_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_</code></td>
-<td>Inputs. <code>cran-incoming-remote</code> also sets <code>_R_CHECK_CRAN_INCOMING_</code>, because <code>r-lib/actions/check-r-package</code> forces INCOMING false when unset (REMOTE-only cannot enable incoming checks). Defaults follow <a href="https://github.com/Morrison-Lab/gha/issues/331">issue #331</a>’s description of IndrajeetPatil (<code>false</code>, <code>false</code>, <code>true</code>). rpt does not set these either; r-lib then sets <code>_R_CHECK_FORCE_SUGGESTS_=false</code> when unset, so this workflow’s <code>force-suggests: false</code> already matches rpt.</td>
+<td>Inputs. <code>IndrajeetPatil/workflows</code> currently sets only <code>_R_CHECK_CRAN_INCOMING_REMOTE_: false</code> on the full job (fetched 2026-08-26); it does not set the other two. This workflow’s <code>cran-incoming-remote</code> also sets <code>_R_CHECK_CRAN_INCOMING_</code>, because <code>check-r-package</code> forces INCOMING false when unset. <code>force-suggests: false</code> matches r-lib’s unset override (and therefore rpt, which also leaves it unset). <code>stop-on-invalid-numeric-version-inputs: true</code> restates R’s default (stop unless that env is <code>false</code>).</td>
 </tr>
 <tr class="odd">
 <td><code>upload-snapshots: true</code></td>
