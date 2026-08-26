@@ -27,6 +27,14 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s).
+8. `claude-review`'s `if:` excludes a `failure` gather-context result,
+   so the model does not run when stash-head cannot be bound.
+9. Empty COMPARE writes `stale=true` before `exit 1`, and the post
+   comment binds `COMMIT_SHA` to `reviewed_sha` (no live-head fallback).
+10. Pack and download share a `claude-review-payload-` name that
+    includes `run_id`/`RUN_ID` and `github.run_attempt`.
+11. No job interpolates `denied_tools` into a `run:` body (gha#541).
+12. `require-review` is in neither concurrency group.
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -47,6 +55,7 @@ import tempfile
 
 DEFAULT_WORKFLOW = ".github/workflows/claude-code-review.yml"
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
+DEFAULT_PACK = ".github/actions/pack-review-payload/action.yml"
 
 # Permissions that would let the model mutate the forge or the checkout.
 # `id-token: write` is included: in the pinned action it is exchanged for a
@@ -123,7 +132,15 @@ def uses_of(job: dict) -> list[str]:
     return uses
 
 
-def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> int:
+def check_workflow(
+    workflow_path: pathlib.Path,
+    action_path: pathlib.Path,
+    pack_path: pathlib.Path | None = None,
+) -> int:
+    if pack_path is None:
+        pack_path = pathlib.Path(DEFAULT_PACK)
+    if not pack_path.is_file():
+        die(f"{pack_path}: no such file")
     doc = load_yaml(workflow_path)
     jobs = doc.get("jobs") or {}
     if "claude-review" not in jobs:
@@ -135,8 +152,15 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     post = jobs["post-review"]
     review_perms = job_permissions(review)
     post_perms = job_permissions(post)
+    review_if = " ".join(str(review.get("if") or "").split())
 
     print(f"Checking {workflow_path} and {action_path}\n")
+
+    check(
+        "needs.gather-context.result != 'failure'" in review_if
+        or 'needs.gather-context.result != "failure"' in review_if,
+        "claude-review if: excludes a failed gather-context",
+    )
 
     for key, val in FORGE_WRITE.items():
         check(
@@ -380,6 +404,11 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
             "post-review.outputs.stale" in rif,
             "require-review skips when post-review reports stale",
         )
+        check(
+            concurrency_of("require-review") is None,
+            "require-review is in neither concurrency group "
+            "(the canceling group would let preempt-previous cancel the gate)",
+        )
     reviewed_head = str((review.get("outputs") or {}).get("reviewed-head") or "")
     check(
         " ".join(reviewed_head.split()) == "${{ github.event.pull_request.head.sha }}",
@@ -392,6 +421,31 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     check(
         any("download-artifact" in u for u in post_uses),
         "post-review downloads the payload artifact",
+    )
+    download_step = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict) and "download-artifact" in str(s.get("uses") or "")
+        ),
+        None,
+    )
+    download_name = ""
+    if download_step is None:
+        check(False, "post-review has a download-artifact step with a name:")
+    else:
+        download_name = str((download_step.get("with") or {}).get("name") or "")
+        check(
+            "claude-review-payload-" in download_name
+            and "github.run_id" in download_name
+            and "github.run_attempt" in download_name,
+            "download-artifact name includes github.run_id and github.run_attempt",
+        )
+    pack_text = pack_path.read_text(encoding="utf-8")
+    check(
+        "claude-review-payload-${RUN_ID}-" in pack_text
+        and "github.run_attempt" in pack_text,
+        "pack-review-payload default name includes RUN_ID and github.run_attempt",
     )
 
     needs = post.get("needs")
@@ -457,7 +511,7 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     if target is not None:
         target_run = str(target.get("run") or "")
         check(
-            "not posting an unverifiable review" in target_run,
+            "Could not read live PR head" in target_run,
             "live-head lookup fails closed when gh api cannot read the PR head",
         )
         fail_branch = re.search(
@@ -473,6 +527,59 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
             "unverifiable live-head writes stale=true before exit 1 "
             "(failure notice and collapse key on stale != true)",
         )
+        check(
+            "No reviewed SHA to compare against live head" in target_run,
+            "empty COMPARE fails closed rather than posting against live head",
+        )
+        compare_fail = re.search(
+            r'if \[ -z "\$COMPARE" \].*?exit 1',
+            target_run,
+            re.S,
+        )
+        check(
+            compare_fail is not None
+            and "stale=true" in compare_fail.group(0)
+            and compare_fail.group(0).find("stale=true")
+            < compare_fail.group(0).find("exit 1"),
+            "empty COMPARE writes stale=true before exit 1",
+        )
+    post_comment = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict)
+            and "Post review comment" in str(s.get("name") or "")
+        ),
+        None,
+    )
+    if post_comment is not None:
+        env_sha = str((post_comment.get("env") or {}).get("COMMIT_SHA") or "")
+        comment_run = str(post_comment.get("run") or "")
+        check(
+            "reviewed_sha" in env_sha,
+            "Post review comment binds COMMIT_SHA to reviewed_sha",
+        )
+        check(
+            not ("gh api" in comment_run and ".head.sha" in comment_run),
+            "Post review comment does not fall back to a live head lookup",
+        )
+    denied_in_run = []
+    for job_name, job in jobs.items():
+        if not isinstance(job, dict):
+            continue
+        for step in job.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            run_body = step.get("run")
+            if not isinstance(run_body, str):
+                continue
+            if re.search(r"\$\{\{[^}]*denied[-_]tools", run_body):
+                denied_in_run.append(job_name)
+    check(
+        not denied_in_run,
+        "no job interpolates denied_tools into a run: body"
+        + (f" (found in: {', '.join(denied_in_run)})" if denied_in_run else ""),
+    )
 
     action = load_yaml(action_path)
     steps = action.get("runs", {}).get("steps") or []
@@ -582,19 +689,22 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
 def run_self_test() -> int:
     script = pathlib.Path(__file__).resolve()
 
-    def run(workflow: pathlib.Path, action: pathlib.Path) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [
-                sys.executable,
-                str(script),
-                "--workflow",
-                str(workflow),
-                "--action",
-                str(action),
-            ],
-            capture_output=True,
-            text=True,
-        )
+    def run(
+        workflow: pathlib.Path,
+        action: pathlib.Path,
+        pack: pathlib.Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        cmd = [
+            sys.executable,
+            str(script),
+            "--workflow",
+            str(workflow),
+            "--action",
+            str(action),
+        ]
+        if pack is not None:
+            cmd.extend(["--pack", str(pack)])
+        return subprocess.run(cmd, capture_output=True, text=True)
 
     def expect(label: str, result: subprocess.CompletedProcess[str], should_pass: bool, needle: str | None = None) -> int:
         passed = result.returncode == 0
@@ -644,6 +754,21 @@ def run_self_test() -> int:
             "      group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}\n"
             "      cancel-in-progress: false\n"
         )
+        good_pack = root / "pack-action.yml"
+        good_pack.write_text(
+            """
+runs:
+  using: composite
+  steps:
+    - run: echo "artifact-name=claude-review-payload-${RUN_ID}-${{ github.run_attempt }}"
+"""
+        )
+        review_if = (
+            "always() && "
+            "needs.gather-context.result != 'skipped' && "
+            "needs.gather-context.result != 'cancelled' && "
+            "needs.gather-context.result != 'failure'"
+        )
         good_wf.write_text(
             f"""
 on:
@@ -661,6 +786,7 @@ jobs:
     steps:
       - run: echo stash
   claude-review:
+    if: {review_if}
 {review_conc}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
     permissions:
@@ -683,6 +809,8 @@ jobs:
     steps:
       - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
       - uses: actions/download-artifact@v4
+        with:
+          name: claude-review-payload-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}
       - name: Require the payload artifact on a finished review
         if: needs.claude-review.result == 'success' && steps.download.outcome == 'failure'
         run: exit 1
@@ -692,10 +820,21 @@ jobs:
         run: |
           if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "not posting an unverifiable review"
+            echo "Could not read live PR head"
             exit 1
           fi
           COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
+          if [ -z "$COMPARE" ] || [ "$COMPARE" = "null" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "No reviewed SHA to compare against live head"
+            exit 1
+          fi
+          echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
+      - name: Post review comment
+        env:
+          COMMIT_SHA: ${{{{ steps.target.outputs.reviewed_sha }}}}
+        run: |
+          echo "$COMMIT_SHA"
   require-review:
     needs: [claude-review, post-review]
     if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
@@ -1124,7 +1263,7 @@ runs:
         live_head_open = root / "live-head-open.yml"
         live_head_open.write_text(
             good_wf.read_text().replace(
-                '            echo "not posting an unverifiable review"\n',
+                '            echo "Could not read live PR head"\n',
                 "",
                 1,
             )
@@ -1182,6 +1321,131 @@ runs:
             "require-review skips when post-review reports stale",
         )
 
+        no_gather_failure_skip = root / "no-gather-failure-skip.yml"
+        no_gather_failure_skip.write_text(
+            good_wf.read_text().replace(
+                " && needs.gather-context.result != 'failure'",
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "claude-review if: omitting gather-context failure fails",
+            run(no_gather_failure_skip, good_action),
+            False,
+            "claude-review if: excludes a failed gather-context",
+        )
+
+        no_compare_stale = root / "no-compare-stale.yml"
+        no_compare_stale.write_text(
+            good_wf.read_text().replace(
+                '            echo "stale=true" >> "$GITHUB_OUTPUT"\n'
+                '            echo "No reviewed SHA to compare against live head"\n',
+                '            echo "No reviewed SHA to compare against live head"\n',
+                1,
+            )
+        )
+        failures += expect(
+            "empty COMPARE without stale=true before exit 1 fails",
+            run(no_compare_stale, good_action),
+            False,
+            "empty COMPARE writes stale=true before exit 1",
+        )
+
+        no_compare_fail_closed = root / "no-compare-fail-closed.yml"
+        no_compare_fail_closed.write_text(
+            good_wf.read_text().replace(
+                '            echo "No reviewed SHA to compare against live head"\n',
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "empty COMPARE without fail-closed wording fails",
+            run(no_compare_fail_closed, good_action),
+            False,
+            "empty COMPARE fails closed rather than posting against live head",
+        )
+
+        download_unpinned = root / "download-unpinned.yml"
+        download_unpinned.write_text(
+            good_wf.read_text().replace(
+                "name: claude-review-payload-${{ github.run_id }}-${{ github.run_attempt }}",
+                "name: claude-review-payload-${{ github.run_id }}",
+                1,
+            )
+        )
+        failures += expect(
+            "download-artifact name without run_attempt fails",
+            run(download_unpinned, good_action),
+            False,
+            "download-artifact name includes github.run_id and github.run_attempt",
+        )
+
+        pack_unpinned = root / "pack-unpinned.yml"
+        pack_unpinned.write_text(
+            good_pack.read_text().replace(
+                "-${{ github.run_attempt }}",
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "pack default name without run_attempt fails",
+            run(good_wf, good_action, pack_unpinned),
+            False,
+            "pack-review-payload default name includes RUN_ID and github.run_attempt",
+        )
+
+        denied_in_run = root / "denied-in-run.yml"
+        denied_in_run.write_text(
+            good_wf.read_text().replace(
+                '          echo "$COMMIT_SHA"\n',
+                '          echo "${{ steps.x.outputs.denied_tools }}"\n',
+                1,
+            )
+        )
+        failures += expect(
+            "denied_tools interpolated into a run: body fails",
+            run(denied_in_run, good_action),
+            False,
+            "no job interpolates denied_tools into a run: body",
+        )
+
+        live_head_fallback = root / "live-head-fallback.yml"
+        live_head_fallback.write_text(
+            good_wf.read_text().replace(
+                '          echo "$COMMIT_SHA"\n',
+                '          COMMIT_SHA="${HEAD_SHA:-$(gh api repos/$REPO/pulls/$PR_NUMBER --jq .head.sha)}"\n'
+                '          echo "$COMMIT_SHA"\n',
+                1,
+            )
+        )
+        failures += expect(
+            "Post review comment live-head fallback fails",
+            run(live_head_fallback, good_action),
+            False,
+            "Post review comment does not fall back to a live head lookup",
+        )
+
+        require_on_canceling = root / "require-on-canceling.yml"
+        require_on_canceling.write_text(
+            good_wf.read_text().replace(
+                "  require-review:\n"
+                "    needs: [claude-review, post-review]\n",
+                "  require-review:\n"
+                + review_conc
+                + "    needs: [claude-review, post-review]\n",
+                1,
+            )
+        )
+        failures += expect(
+            "require-review on the canceling group fails",
+            run(require_on_canceling, good_action),
+            False,
+            "require-review is in neither concurrency group",
+        )
+
     if failures:
         print(f"::error::{failures} self-test case(s) failed", file=sys.stderr)
         return 1
@@ -1193,17 +1457,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflow", default=DEFAULT_WORKFLOW)
     parser.add_argument("--action", default=DEFAULT_ACTION)
+    parser.add_argument("--pack", default=DEFAULT_PACK)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
     workflow = pathlib.Path(args.workflow)
     action = pathlib.Path(args.action)
+    pack = pathlib.Path(args.pack)
     if not workflow.is_file():
         die(f"{workflow}: no such file")
     if not action.is_file():
         die(f"{action}: no such file")
-    return check_workflow(workflow, action)
+    if not pack.is_file():
+        die(f"{pack}: no such file")
+    return check_workflow(workflow, action, pack)
 
 
 if __name__ == "__main__":

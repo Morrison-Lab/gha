@@ -1620,6 +1620,14 @@ and `post-review` stale-checks against event-pinned
 `reviewed-head` (`github.event.pull_request.head.sha`),
 falling back to gather-context's stash-head on dispatch,
 rather than a later API fetch from the model job.
+An empty COMPARE (dispatch after a stash miss) writes
+`stale=true` before exiting, same as an unverifiable live-head.
+`claude-review`'s `if:` excludes a `gather-context` `failure`
+so the model does not run when that SHA cannot be bound.
+The payload artifact name includes `github.run_id` and
+`github.run_attempt` on both pack and download.
+`denied_tools` is not interpolated into any `run:` body.
+`require-review` is in neither concurrency group.
 CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
 `upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
 separate from `review-fail-check` so a failure is attributable at a glance.

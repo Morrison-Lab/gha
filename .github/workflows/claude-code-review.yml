@@ -306,12 +306,11 @@ jobs:
           # Fail CLOSED, not open: if the `gh pr view` call itself fails
           # (rate limit, transient 5xx, bad pr-number), write blocked=true
           # before exiting non-zero. Without this, the step's failure would
-          # leave `blocked` unset -- and claude-review's `if:` below only
-          # excludes a `cancelled` gather-context result and an explicit
-          # `blocked == 'true'`, so an empty output from a *failed* guard
-          # would satisfy both and let the review run anyway, defeating the
-          # guard's whole purpose on exactly the transient error it should
-          # be most defensive about (gha#244 review).
+          # leave `blocked` unset. claude-review's `if:` also excludes a
+          # `failure` gather-context result, so a failed guard skips the
+          # model even if that output does not survive. Writing blocked
+          # still fails the dispatch path closed when the job itself
+          # somehow continues (gha#244 review).
           PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author)
           if [[ $? -ne 0 ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
@@ -483,7 +482,10 @@ jobs:
     # Dispatched runs review unconditionally (so a review fires on the draft PR
     # claude.yml opens for an issue trigger), except when gather-context's
     # dispatch-guard step (gha#235) found the dispatched PR is a fork or
-    # Dependabot PR. Otherwise skip — don't fail — drafts, Dependabot, fork
+    # Dependabot PR. Skip when gather-context failed: a stash/API miss
+    # leaves stash-head empty, and on workflow_dispatch reviewed-head is
+    # empty too, so posting would have no SHA to bound against live head.
+    # Otherwise skip — don't fail — drafts, Dependabot, fork
     # PRs (forks can't read the OAuth token), and bot-triggered `synchronize`
     # events (e.g. @claude pushing a commit), which would otherwise red-X an
     # automatic review of a bot-authored diff.
@@ -491,6 +493,7 @@ jobs:
       always() &&
       needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
+      needs.gather-context.result != 'failure' &&
       (
         (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
         (
@@ -1294,7 +1297,16 @@ jobs:
           # Do not use a later API fetch from the model job: that SHA
           # can move past the event-pinned tree.
           COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"
-          if [ -n "$COMPARE" ] && [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
+          # Empty COMPARE is the dispatch path after a stash miss: there
+          # is no event-pinned SHA. Treating that as stale=false posted
+          # against live head (gha#580 review of 66e423c).
+          if [ -z "$COMPARE" ] || [ "$COMPARE" = "null" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::error::No reviewed SHA to compare against live head; not posting an unverifiable review."
+            exit 1
+          fi
+          echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
+          if [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             echo "::notice::PR head moved ($COMPARE -> $LIVE); not posting a stale review."
           else
@@ -1457,14 +1469,17 @@ jobs:
           PR_NUMBER: ${{ steps.target.outputs.pr_number }}
           RUN_URL: ${{ steps.target.outputs.run_url }}
           REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
-          HEAD_SHA: ${{ needs.gather-context.outputs.stash-head }}
+          COMMIT_SHA: ${{ steps.target.outputs.reviewed_sha }}
         run: |
           REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
             echo "No review text found in execution output; skipping comment."
             exit 0
           fi
-          COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)}"
+          if [[ -z "$COMMIT_SHA" || "$COMMIT_SHA" == "null" ]]; then
+            echo "::error::No bound reviewed SHA; not posting against live head."
+            exit 1
+          fi
           BODY_FILE="$(mktemp)"
           printf '%s\n\n---\n\n%s\n\nReviewed commit: %s' \
             "**Claude finished review** — [View run]($RUN_URL)" \
