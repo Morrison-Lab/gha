@@ -14,6 +14,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-equation-renders`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
+  `check-typos`,
   `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> need only
@@ -52,8 +53,16 @@ already include the right `permissions:` blocks; copy them as-is.
   `id-token: write`, `actions: write`, and add either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 - `claude-code-review` (read-only review) grants `contents: read`,
-  `pull-requests: write`, `issues: write`, `id-token: write`, and either the
+  `pull-requests: write`, `issues: write`, `actions: read`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
+  The model job's `GITHUB_TOKEN` has no write scopes
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  write is confined to jobs that never run the model
+  (`gather-context` and `post-review`) (gha#580).
+  `actions: read` is required on the caller: a `permissions:` block sets
+  unspecified scopes to none, and `post-review` needs it to download the
+  packed artifact (the model job also uses it for the `github_ci` MCP
+  server).
 - `cursor-code-review` queues a Cursor Bugbot review.
   It is read-only, above, but does need the `CURSOR_API_KEY` secret
   (Enterprise, `admin:*` scope).

@@ -9,11 +9,31 @@ name: Claude Code Review (reusable)
 # claude.yml can re-dispatch a review after an @claude run pushes commits.
 # The stub passes the dispatch's pr_number through as the `pr-number` input.
 #
-# This workflow is read-only: it always runs claude-code-action in agent mode
-# (track_progress: false) so git write tools are never in ALLOWED_TOOLS.
-# Tag mode hardcodes git write tools regardless of --disallowedTools, which
-# caused unauthorized commits (serodynamics PR #175, commit 02af72b). Agent
-# mode fixes this; cancel-in-progress: true is safe because no push can occur.
+# The model and a writable forge token never share a job (gha#580).
+# `claude-review` runs the model with contents: read (plus pull-requests:
+# read, issues: read, and actions: read). It writes the review to an
+# artifact. `post-review` downloads that artifact and posts; it holds
+# pull-requests: write / issues: write / actions: read and does not
+# invoke the model.
+# The deny list on the model job is then a guard rail against accidents,
+# not a security boundary. `id-token: write` is omitted: forwarding
+# github.token skips claude-code-action's OIDC App-token exchange
+# (OVERRIDE_GITHUB_TOKEN), and that exchange's DEFAULT_PERMISSIONS are
+# write (anthropics/claude-code-action v1.0.196 src/github/token.ts,
+# measured 2026-08-26). Granting id-token: write would let a dropped
+# override mint that write token.
+#
+# Agent mode is forced (track_progress: false) regardless of the
+# track-progress input: tag mode posts a live tracking comment through
+# the github_comment MCP server (tagModeTools includes
+# mcp__github_comment__update_claude_comment; prepareMcpConfig always
+# starts that server in tag mode) and hardcodes git write tools.
+# It does not start github_inline_comment unless allowedTools contains
+# mcp__github_inline_comment__* or mcp__github__* (pinned
+# anthropics/claude-code-action v1.0.196 src/modes/tag/index.ts and
+# src/mcp/install-mcp-server.ts, measured 2026-08-26). All of that
+# needs a writable token in the model job. cancel-in-progress: true is
+# safe because the model job cannot push.
 
 on:
   workflow_call:
@@ -47,12 +67,18 @@ on:
         default: 'github-actions[bot]'
       track-progress:
         description: >-
-          Enable tag mode (track_progress: true) for pull_request events so the
-          reviewer posts a live tracking comment and can use the inline-comment
-          tool. Defaults to false (agent mode), which is safe but produces
-          summary-only reviews. Set to true only after anthropics/claude-code-action#1415
-          ships a read_only input — until then, tag mode grants git write tools
-          and the reviewer may push commits to the branch.
+          Ignored (gha#580). Tag mode posts a live tracking comment through
+          the github_comment MCP server (mcp__github_comment__update_claude_comment)
+          and hardcodes git write tools; it does not start github_inline_comment
+          unless mcp__github_inline_comment__* or mcp__github__* is allowlisted.
+          All of that needs a writable forge token in the model job. This
+          workflow splits those: the model job's GITHUB_TOKEN has no write
+          scopes, and the posting job submits the summary after the model
+          finishes. The
+          input is kept so existing callers do not fail at the call gate.
+          Tag mode also hardcodes git write tools regardless of
+          --disallowedTools (serodynamics PR #175) until
+          anthropics/claude-code-action#1415 ships a read_only input.
         type: boolean
         default: false
       show-full-output:
@@ -183,11 +209,14 @@ on:
         required: false
 
 jobs:
-  # Fetch the last few claude[bot] review comments so the reviewer can skip
-  # findings that were already raised, rebutted, and resolved in a prior round.
-  # Runs under the same conditions as the review job so it skips together with
-  # it (fork PRs, drafts, bot-triggered synchronize events).
-  gather-context:
+  # Cancel a superseded model job when this run starts. This job is an
+  # echo in the canceling review group; it does not wait for the
+  # predecessor's post-review. The stash group serializes gather/post
+  # writers but does not pick which run's restore wins. Sharing the
+  # canceling group with gather-context / post-review would let a
+  # cancelled run's restore cancel this run's model job
+  # (control-workflow-concurrency, measured 2026-08-26).
+  preempt-previous:
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (
@@ -195,14 +224,51 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.sender.type != 'Bot'
       )
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Cancel a predecessor model job
+        run: echo "Predecessor model job cancelled if one was in this group."
+
+  # Fetch the last few claude[bot] review comments so the reviewer can skip
+  # findings that were already raised, rebutted, and resolved in a prior round.
+  # Runs under the same conditions as the review job so it skips together with
+  # it (fork PRs, drafts, bot-triggered synchronize events).
+  gather-context:
+    # Waits until this run's preempt-previous has been queued (which
+    # cancels a predecessor model job if one was running). Not a
+    # restore-before-stash barrier: that job does not wait for the
+    # predecessor's post-review.
+    needs: [preempt-previous]
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (
+        github.event.pull_request.draft == false &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        github.event.sender.type != 'Bot'
+      )
+    # Separate from the canceling review group. Queue behind another run's
+    # stash or restore rather than cancelling it mid-DELETE.
+    concurrency:
+      group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
-      issues: read
-      pull-requests: read
+      issues: write
+      pull-requests: write
     outputs:
       dispatch-guard-blocked: ${{ steps.dispatch-guard.outputs.blocked }}
       prior-context: ${{ steps.fetch.outputs.prior-context }}
+      stash-users: ${{ steps.stash.outputs.users }}
+      stash-teams: ${{ steps.stash.outputs.teams }}
+      stash-ai-users: ${{ steps.stash.outputs.ai_users }}
+      stash-head: ${{ steps.stash.outputs.head }}
+      stashed: ${{ steps.stash.outputs.stashed }}
     steps:
       # Defense-in-depth for the workflow_dispatch path (gha#235): the
       # automatic pull_request path already gates on same-repo/non-draft/
@@ -308,12 +374,96 @@ jobs:
             echo "${DELIMITER}"
           } >> "$GITHUB_OUTPUT"
 
+      # Clear requested reviewers before the model runs so they aren't
+      # notified mid-review. Restore lives on post-review, which holds the
+      # write token the model job must not. This job never runs the model
+      # (gha#580): the write grant here is only this stash and the early
+      # dispatch notice below.
+      - name: Stash and clear reviewers
+        id: stash
+        if: github.event_name != 'workflow_dispatch' || steps.dispatch-guard.outputs.blocked != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+        run: |
+          retry_gh_api() {
+            local desc="$1"
+            shift
+            local out=""
+            for attempt in 1 2 3; do
+              if out=$(gh api "$@") && [ -n "$out" ] && echo "$out" | jq empty 2>/dev/null; then
+                echo "$out"
+                return 0
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::Failed to $desc (attempt $attempt/3); retrying in 2s..." >&2
+                sleep 2
+              else
+                echo "::error::Failed to $desc after 3 attempts." >&2
+                return 1
+              fi
+            done
+          }
+
+          PR_JSON=$(retry_gh_api "fetch PR details" "repos/$REPO/pulls/$PR_NUMBER")
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head.sha')
+          if [ -z "$HEAD_SHA" ] || [ "$HEAD_SHA" = "null" ]; then
+            echo "::error::Retrieved invalid or empty head SHA for PR #$PR_NUMBER." >&2
+            exit 1
+          fi
+          REVIEWERS_JSON=$(retry_gh_api "fetch requested reviewers" "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
+          USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[].login]')
+          TEAMS=$(echo "$REVIEWERS_JSON" | jq -c '[.teams[].slug]')
+          AI_USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[] | select(.type == "Bot") | .login]')
+          {
+            echo "head=$HEAD_SHA"
+            echo "users=$USERS"
+            echo "teams=$TEAMS"
+            echo "ai_users=$AI_USERS"
+          } >> "$GITHUB_OUTPUT"
+          if [ "$USERS" != "[]" ] || [ "$TEAMS" != "[]" ]; then
+            # `|| true` is intentional and asymmetric with the restore step: a
+            # failed stash leaves reviewers in place (recoverable); a failed
+            # restore would drop them entirely (not recoverable).
+            jq -n --argjson users "$USERS" --argjson teams "$TEAMS" \
+              '{reviewers: $users, team_reviewers: $teams}' \
+              | gh api -X DELETE "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input - || true
+            echo "stashed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "stashed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # On workflow_dispatch there is otherwise no link from the PR to the
+      # run. Posted here, before the model job, so a stall during setup is
+      # still visible. This job does not run the model.
+      - name: Post early review dispatch notice
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          (steps.dispatch-guard.outputs.blocked != 'true')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          [ -z "$PR_NUMBER" ] && exit 0
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+          if [ -n "$HEAD_SHA" ]; then
+            SHA_SHORT="${HEAD_SHA:0:7}"
+            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
+          else
+            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER."
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" 2>/dev/null || true
+
   claude-review:
     needs: gather-context
-    # Serialize runs per PR. The stash/restore reviewer dance below assumes
-    # only one run mutates the reviewer list at a time. `cancel-in-progress:
-    # true` is safe because this workflow is read-only (it never pushes, so it
-    # can't cancel its own triggered run).
+    # Serialize model jobs per PR. Stash/restore use a separate
+    # non-canceling group so a cancelled run's post-review cannot cancel
+    # the successor's model job. `cancel-in-progress: true` is safe
+    # because the model job cannot push (gha#580).
     #
     # A single @claude push can land here twice — the `synchronize` auto-review
     # AND claude.yml's re-dispatched review, both keyed on the same PR number —
@@ -339,6 +489,7 @@ jobs:
     # automatic review of a bot-authored diff.
     if: >-
       always() &&
+      needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
       (
         (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
@@ -357,32 +508,41 @@ jobs:
       # instead of the same green (gha#434).
       self_mod: ${{ steps.selfmod.outputs.self_mod }}
       cancelled: ${{ steps.resolve-final.outputs.cancelled }}
+      # Event-pinned PR head (empty on workflow_dispatch). post-review
+      # compares live head to this, falling back to gather-context's
+      # stash-head when the event has no pull_request payload.
+      # Checkout is also event-pinned (`actions/checkout` with no `ref:`),
+      # so a later `gh api` of `.head.sha` can be newer than the tree the
+      # model reviewed; using that later SHA would post a stale review
+      # as current.
+      reviewed-head: ${{ github.event.pull_request.head.sha }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read
-      pull-requests: write
-      issues: write
-      id-token: write
+      pull-requests: read
+      issues: read
+      # No id-token: write. github_token: github.token skips the App-token
+      # exchange; that exchange's defaults are write (see file header).
       # Let the action install its github_ci MCP server so the reviewer can
       # read CI/check-run status for the PR. Without actions: read it logs
       # "Skipping CI server installation" and reviews blind to CI state.
       actions: read
 
     steps:
-      # A PR that changes the review workflow file itself can't be reviewed by
-      # the action: its App-token exchange requires the workflow to match the
-      # default branch, so it 401s ("Workflow validation failed … must have
-      # identical content to the … default branch") until merged — the action
-      # says this is normal and to ignore it. Rather than post a failing check,
-      # detect that case and skip the review; it runs normally once merged. The
-      # file checked is the CALLER's review workflow, derived from
-      # github.workflow_ref (owner/repo/.github/workflows/<file>@ref ->
-      # .github/workflows/<file>): in a workflow_call run the github context is
-      # the caller's, so workflow_ref is the consumer's stub — the callee
-      # (reusable) path is exposed separately as github.job_workflow_ref — hence
-      # this matches whatever name the consumer's stub uses, not just the
+      # Skip when the PR edits the CALLER's review stub. That skip predates
+      # gha#580: claude-code-action's App-token exchange used to 401
+      # ("Workflow validation failed") until merge. Forwarding github_token
+      # now skips that exchange, so the skip is this workflow's own policy
+      # rather than a workaround for a 401 — a bypass would run the model
+      # with the read-only job token. The file checked is the CALLER's
+      # review workflow, derived from github.workflow_ref
+      # (owner/repo/.github/workflows/<file>@ref -> .github/workflows/<file>):
+      # in a workflow_call run the github context is the caller's, so
+      # workflow_ref is the consumer's stub — the callee (reusable) path is
+      # exposed separately as github.job_workflow_ref — hence this matches
+      # whatever name the consumer's stub uses, not just the
       # claude-code-review.yml convention. (Ported from qwt — gha #45.)
       - name: Parse caller workflow ref
         id: caller-wf
@@ -404,69 +564,16 @@ jobs:
           if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
+            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (this workflow skips when the PR edits the caller review stub; it runs after merge)."
           elif [ "$EVENT_NAME" = "workflow_dispatch" ] && printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
             mod_wf=$(printf '%s\n' "$files" | grep -m1 -E '^\.github/workflows/[^/]+\.ya?ml$')
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "wf_path=$mod_wf" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (claude-code-action refuses token exchange on dispatched workflow changes until merged; gha#386)."
+            echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (dispatch also skips when any top-level workflow YAML changed; gha#386)."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
             echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Build self-review skip notice body
-        id: build-notice
-        if: steps.selfmod.outputs.self_mod == 'true'
-        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
-        with:
-          workflow-path: ${{ steps.selfmod.outputs.wf_path || steps.caller-wf.outputs.path }}
-          caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-
-      - name: Post a notice that self-review was skipped
-        id: skip-notice
-        if: steps.selfmod.outputs.self_mod == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          BODY_FILE: ${{ steps.build-notice.outputs.body-file }}
-        run: |
-          set -euo pipefail
-          # Warn rather than fail: require-review is gray either way, so the gate
-          # stays honest without this comment, and the next run posts again. A
-          # red claude-review here would mislabel a comment-posting failure as a
-          # review failure, on a PR where no review was ever attempted.
-          #
-          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"; then
-            echo "posted=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "posted=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
-          fi
-
-      # Post an early comment linking the run for dispatched reviews (gha#424).
-      # On workflow_dispatch, from the PR there is otherwise no link to the run
-      # and no sign a review is in progress if the job stalls during setup/model execution.
-      - name: Post early review dispatch notice
-        if: steps.selfmod.outputs.self_mod != 'true' && github.event_name == 'workflow_dispatch'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ inputs.pr-number }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          set -euo pipefail
-          [ -z "$PR_NUMBER" ] && exit 0
-          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
-          if [ -n "$HEAD_SHA" ]; then
-            SHA_SHORT="${HEAD_SHA:0:7}"
-            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
-          else
-            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER."
-          fi
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" 2>/dev/null || true
 
       - name: Checkout repository
         if: steps.selfmod.outputs.self_mod != 'true'
@@ -548,12 +655,13 @@ jobs:
             echo "::warning::Could not save the PR diff to $target; the reviewer will fall back to calling gh pr diff itself."
           fi
 
-      # Clear the requested reviewers (human and AI, e.g. Copilot) before
-      # Claude runs so they aren't notified mid-run, then re-add them when
-      # Claude finishes so the re-add fires a fresh notification — letting a
-      # reviewer see Claude's review before starting their own. Also snapshot
-      # the PR head SHA for the post-step.
-      - name: Stash and clear reviewers; record starting head SHA
+      # Snapshot the PR head SHA and open/merged state for the prompt
+      # (gha#295). Clearing requested reviewers lives on gather-context
+      # (write, no model) and restoring lives on post-review; this job
+      # cannot DELETE reviewers because it holds no forge-write token
+      # (gha#580). id stays `stash` so the prompt inputs below do not
+      # have to be renamed.
+      - name: Record PR state and starting head SHA
         id: stash
         if: steps.selfmod.outputs.self_mod != 'true'
         env:
@@ -596,29 +704,6 @@ jobs:
             echo "pr_state=$(echo "$PR_JSON" | jq -r '.state')"
             echo "pr_merged=$(echo "$PR_JSON" | jq -r '.merged')"
           } >> "$GITHUB_OUTPUT"
-
-          REVIEWERS_JSON=$(retry_gh_api "fetch requested reviewers" "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
-          USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[].login]')
-          TEAMS=$(echo "$REVIEWERS_JSON" | jq -c '[.teams[].slug]')
-          # Capture AI reviewers (bot-type users, e.g. Copilot) separately so
-          # the commit path can restore them best-effort — a bad bot login
-          # shouldn't drop human reviewer re-requests. Human reviewers are
-          # derived from USERS_BEFORE minus AI_USERS_BEFORE.
-          # (`user.type` is always present in the REST user object.)
-          AI_USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[] | select(.type == "Bot") | .login]')
-          {
-            echo "users=$USERS"
-            echo "teams=$TEAMS"
-            echo "ai_users=$AI_USERS"
-          } >> "$GITHUB_OUTPUT"
-          if [ "$USERS" != "[]" ] || [ "$TEAMS" != "[]" ]; then
-            # `|| true` is intentional and asymmetric with the restore step: a
-            # failed stash leaves reviewers in place (recoverable); a failed
-            # restore would drop them entirely (not recoverable).
-            jq -n --argjson users "$USERS" --argjson teams "$TEAMS" \
-              '{reviewers: $users, team_reviewers: $teams}' \
-              | gh api -X DELETE "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input - || true
-          fi
 
       # Compose the SERG lab-manual review guidance, gated on the `lab-manual`
       # input. Empty when a caller opts out (e.g. a non-R/Quarto repo), so the
@@ -797,13 +882,14 @@ jobs:
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
-          track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
+          track-progress: 'false'
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
           use-ai-config: ${{ inputs.use-ai-config }}
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
+          github-token: ${{ github.token }}
 
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
@@ -905,13 +991,14 @@ jobs:
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
-          track-progress: ${{ inputs.track-progress && github.event_name == 'pull_request' && 'true' || 'false' }}
+          track-progress: 'false'
           show-full-output: ${{ inputs.show-full-output }}
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
           use-ai-config: ${{ inputs.use-ai-config }}
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
+          github-token: ${{ github.token }}
           is-retry: 'true'
 
       - name: Resolve and upload execution file path (retry)
@@ -1089,139 +1176,319 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           exit 1
 
-      # When the API rejected the request before Claude could review (quota
-      # exhaustion, auth failure, etc.), post a notice so the PR author knows
-      # why the review didn't run and how to re-trigger it.
-      - name: Post quota-exhausted comment
-        if: steps.resolve-final.outputs.quota_exhausted == 'true'
+      # The model job cannot post. Pack every value the posting job needs
+      # into an artifact (gha#580). `!cancelled()` is a status function, so
+      # this still runs after resolve-final exits 1. It does not run when
+      # GitHub cancelled the job -- a partial artifact must not be posted.
+      # Self-mod skips resolve-final; pack still runs so the skip notice
+      # can be posted downstream. An earlier setup failure that skipped
+      # both selfmod-true and resolve-final leaves nothing to pack.
+      - name: Pack review payload for the posting job
+        if: >-
+          !cancelled() &&
+          (steps.selfmod.outputs.self_mod == 'true' ||
+           steps.resolve-final.outcome == 'success' ||
+           steps.resolve-final.outcome == 'failure')
+        uses: Morrison-Lab/gha/.github/actions/pack-review-payload@v2
+        with:
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          caller-wf-path: ${{ steps.caller-wf.outputs.path }}
+          wf-path: ${{ steps.selfmod.outputs.wf_path }}
+          self-mod: ${{ steps.selfmod.outputs.self_mod }}
+          quota-exhausted: ${{ steps.resolve-final.outputs.quota_exhausted }}
+          cancelled: ${{ steps.resolve-final.outputs.cancelled }}
+          resolve-outcome: ${{ steps.resolve-final.outcome }}
+          head-sha: ${{ steps.stash.outputs.head_before }}
+          total-cost-usd: ${{ steps.resolve-final.outputs.total_cost_usd }}
+          failure-kind: ${{ steps.resolve-final.outputs.failure_kind }}
+          denials: ${{ steps.resolve-final.outputs.denials }}
+          denied-tools: ${{ steps.resolve-final.outputs.denied_tools }}
+          max-denials: ${{ steps.resolve-final.outputs.max_denials }}
+          attempts: ${{ steps.claude-review-retry.outcome == 'skipped' && '1' || '2' }}
+          track-progress: 'false'
+          report-cost: ${{ inputs.report-cost }}
+          review-text-file: ${{ steps.resolve-final.outputs.review_text_file }}
+
+  # Download the model job's artifact and post. Holds pull-requests: write
+  # / issues: write and does not invoke the model (gha#580). Forks are
+  # already refused (gha#235), so this stays on pull_request /
+  # workflow_dispatch with the job token -- no pull_request_target.
+  #
+  # Runs whenever gather-context ran (including cancelled): that job is
+  # what clears reviewers, so restore cannot be gated on claude-review
+  # having started. Does not post a review from a missing or partial
+  # artifact, and does not take repo/PR/run identity from the artifact
+  # (those come from this job's github context).
+  post-review:
+    needs: [gather-context, claude-review]
+    if: always() && needs.gather-context.result != 'skipped'
+    # Same non-canceling group as gather-context so a superseded restore
+    # queues behind a newer stash rather than cancelling the new model job.
+    concurrency:
+      group: claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      pull-requests: write
+      issues: write
+      actions: read
+    outputs:
+      stale: ${{ steps.target.outputs.stale }}
+
+    steps:
+      # Trusted identity for every write. The model job has unrestricted
+      # Bash, so values packed into the artifact after that turn are not
+      # a targeting source (gha#580 review).
+      - name: Parse caller workflow ref
+        id: caller-wf
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
+      - name: Bound posting to this run's PR
+        id: target
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STASH_HEAD: ${{ needs.gather-context.outputs.stash-head }}
+          REVIEWED_HEAD: ${{ needs.claude-review.outputs.reviewed-head }}
+          CALLER_WF_PATH: ${{ steps.caller-wf.outputs.path }}
+        run: |
+          set -euo pipefail
+          {
+            echo "repo=$REPO"
+            echo "pr_number=$PR_NUMBER"
+            echo "run_id=$RUN_ID"
+            echo "run_url=$RUN_URL"
+            echo "caller_wf_path=$CALLER_WF_PATH"
+          } >> "$GITHUB_OUTPUT"
+          LIVE=""
+          if [ -n "$PR_NUMBER" ]; then
+            for attempt in 1 2 3; do
+              LIVE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+              if [ -n "$LIVE" ] && [ "$LIVE" != "null" ]; then
+                break
+              fi
+              if [ "$attempt" -lt 3 ]; then
+                sleep 2
+              fi
+            done
+            if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
+              # Write stale before exiting so !cancelled() posting steps
+              # that key on stale != 'true' skip. An empty stale output
+              # would post a fake missing-artifact notice and collapse
+              # prior reviews (gha#580 review of d964542).
+              echo "stale=true" >> "$GITHUB_OUTPUT"
+              echo "::error::Could not read live PR head for #$PR_NUMBER; not posting an unverifiable review."
+              exit 1
+            fi
+          fi
+          echo "live_head=$LIVE" >> "$GITHUB_OUTPUT"
+          # Prefer the event-pinned PR head (what checkout actually
+          # reviewed). Fall back to gather-context's stash-head on
+          # workflow_dispatch, which has no pull_request payload.
+          # Do not use a later API fetch from the model job: that SHA
+          # can move past the event-pinned tree.
+          COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"
+          if [ -n "$COMPARE" ] && [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::PR head moved ($COMPARE -> $LIVE); not posting a stale review."
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download review payload
+        id: download
+        if: >-
+          steps.target.outputs.stale != 'true' &&
+          (needs.claude-review.result == 'success' ||
+           needs.claude-review.result == 'failure')
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: claude-review-payload-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/review-payload
+
+      - name: Require the payload artifact on a finished review
+        if: >-
+          needs.claude-review.result == 'success' &&
+          steps.download.outcome == 'failure'
+        run: |
+          echo "::error::claude-review succeeded but the payload artifact was missing or could not be downloaded."
+          exit 1
+
+      - name: Load review payload
+        id: payload
+        if: needs.claude-review.result != 'cancelled' && steps.download.outcome == 'success'
+        env:
+          PAYLOAD_DIR: ${{ runner.temp }}/review-payload
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$PAYLOAD_DIR/payload.json" ]]; then
+            echo "::error::Review payload artifact is missing payload.json."
+            exit 1
+          fi
+          jq -r '
+            "wf_path=\(.wf_path)",
+            "self_mod=\(.self_mod)",
+            "quota_exhausted=\(.quota_exhausted)",
+            "cancelled=\(.cancelled)",
+            "resolve_outcome=\(.resolve_outcome)",
+            "total_cost_usd=\(.total_cost_usd)",
+            "failure_kind=\(.failure_kind)",
+            "denials=\(.denials)",
+            "max_denials=\(.max_denials)",
+            "attempts=\(.attempts)",
+            "report_cost=\(.report_cost)",
+            "review_present=\(.review_present)"
+          ' "$PAYLOAD_DIR/payload.json" >> "$GITHUB_OUTPUT"
+          if [[ -f "$PAYLOAD_DIR/review.txt" ]]; then
+            echo "review_text_file=$PAYLOAD_DIR/review.txt" >> "$GITHUB_OUTPUT"
+          else
+            echo "review_text_file=" >> "$GITHUB_OUTPUT"
+          fi
+          # Multiline: denied_tools is agent-authored (gha#541). A GitHub
+          # output is substituted into the composite `with:`, which then
+          # puts it in env: -- never into a run: body in this job.
+          delim="eof_$(openssl rand -hex 8)"
+          {
+            echo "denied_tools<<${delim}"
+            if [[ -f "$PAYLOAD_DIR/denied_tools.txt" ]]; then
+              cat "$PAYLOAD_DIR/denied_tools.txt"
+            fi
+            echo "${delim}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build self-review skip notice body
+        id: build-notice
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.self_mod == 'true'
+        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
+        with:
+          workflow-path: ${{ steps.payload.outputs.wf_path || steps.target.outputs.caller_wf_path }}
+          caller-workflow-path: ${{ steps.target.outputs.caller_wf_path }}
+          run-url: ${{ steps.target.outputs.run_url }}
+
+      - name: Post a notice that self-review was skipped
+        id: skip-notice
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.self_mod == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          BODY_FILE: ${{ steps.build-notice.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          # Warn rather than fail: require-review is gray either way, so the gate
+          # stays honest without this comment, and the next run posts again. A
+          # red post-review here would mislabel a comment-posting failure as a
+          # review failure, on a PR where no review was ever attempted.
+          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"; then
+            echo "posted=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "posted=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
+          fi
+
+      - name: Post quota-exhausted comment
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.quota_exhausted == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          RUN_URL: ${{ steps.target.outputs.run_url }}
         run: |
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Claude review skipped — API credential or quota unavailable.** No \`CLAUDE_CODE_OAUTH_TOKEN\` or \`ANTHROPIC_API_KEY\` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset. [View run]($RUN_URL)"
 
       # The mirror of the quota-exhausted notice above, for the case where the
-      # review RAN and still produced nothing usable. Without it every posting
-      # step downstream of "Resolve final review outcome" is gated on that step
-      # having succeeded, so a no-verdict review left the PR thread completely
-      # silent: no review, no cost record, and the previous round's review
-      # comment still expanded and reading like a current verdict. From the PR
-      # page that is indistinguishable from a reviewer that has not started yet
-      # (gha#543, reproduced on Morrison-Lab/wai#83).
+      # review RAN and still produced nothing usable. Without it a no-verdict
+      # review left the PR thread completely silent: no review, no cost record,
+      # and the previous round's review comment still expanded and reading like
+      # a current verdict (gha#543).
       #
-      # A status-check function is what makes this reachable at all:
-      # resolve-final exits 1, so an `if:` with none is implicitly ANDed with
-      # `success()` and would be skipped along with the rest.
+      # The download step is continue-on-error: a missing artifact after
+      # resolve-final fails must still post (empty payload fields normalize
+      # to unknown / not-recorded). Gating only on resolve_outcome ==
+      # 'failure' skips this step when Load never ran, which is the
+      # silent-thread case gha#543 exists to close.
+      # !cancelled() is required: Require the payload artifact exits 1
+      # when a successful review has no artifact, and a default
+      # success() conjunct would skip this notice on that path too.
       #
-      # `!cancelled()` rather than `always()`, which also fires on a cancelled
-      # run. That case is the documented `cancel-in-progress` race, where a
-      # newer commit superseded this review and its own run is already under
-      # way -- so a "the review failed" comment there is noise about a run
-      # nobody is waiting on, and this repo double-pushes often enough
-      # (CLAUDE.md's own race section) that it would be frequent noise. Posting
-      # nothing on a supersede is the pre-existing, correct behaviour; the
-      # silence this action fixes is the one on a run that finished.
-      #
-      # This step never decides the job's outcome. resolve-final has already
-      # emitted the `::error::` and already failed it, and `require-review`
-      # stays red -- which is correct, and is the point. The comment explains
-      # the red check rather than clearing it, the same split
-      # report-gemini-failure documents for its own post.
+      # denied_tools is read from the sidecar file into env:, never through
+      # ${{ }} in this run body (gha#541). report-review-failure takes it as
+      # an input and itself puts it in env: before composing.
       - name: Post review-failure comment
         id: failure-notice
-        if: "!cancelled() && steps.resolve-final.outcome == 'failure'"
+        if: >-
+          !cancelled() &&
+          steps.target.outputs.stale != 'true' &&
+          (steps.payload.outputs.resolve_outcome == 'failure' ||
+           (steps.download.outcome != 'success' &&
+            (needs.claude-review.result == 'success' ||
+             needs.claude-review.result == 'failure')))
         uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         with:
-          failure-kind: ${{ steps.resolve-final.outputs.failure_kind }}
-          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
-          denials: ${{ steps.resolve-final.outputs.denials }}
-          denied-tools: ${{ steps.resolve-final.outputs.denied_tools }}
-          max-denials: ${{ steps.resolve-final.outputs.max_denials }}
-          total-cost-usd: ${{ steps.resolve-final.outputs.total_cost_usd }}
-          attempts: ${{ steps.claude-review-retry.outcome == 'skipped' && '1' || '2' }}
-          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          failure-kind: ${{ steps.payload.outputs.failure_kind }}
+          pr-number: ${{ steps.target.outputs.pr_number }}
+          denials: ${{ steps.payload.outputs.denials }}
+          denied-tools: ${{ steps.payload.outputs.denied_tools }}
+          max-denials: ${{ steps.payload.outputs.max_denials }}
+          total-cost-usd: ${{ steps.payload.outputs.total_cost_usd }}
+          attempts: ${{ steps.payload.outputs.attempts }}
+          run-url: ${{ steps.target.outputs.run_url }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # In agent mode, display_report writes Claude's output to the step
-      # summary, not to the PR. Post it manually here. Tag mode auto-posts
-      # the tracking comment on pull_request events, so skip this step then
-      # (it would duplicate the comment). Always run on workflow_dispatch
-      # since the action rejects track_progress there regardless. Closes #87.
       - name: Post review comment
         id: post-comment
         if: >-
-          steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true' &&
-          steps.resolve-final.outputs.cancelled != 'true' &&
-          !(inputs.track-progress && github.event_name == 'pull_request')
+          steps.target.outputs.stale != 'true' &&
+          steps.payload.outputs.resolve_outcome == 'success' &&
+          steps.payload.outputs.quota_exhausted != 'true' &&
+          steps.payload.outputs.cancelled != 'true' &&
+          steps.payload.outputs.review_present == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          REVIEW_TEXT_FILE: ${{ steps.resolve-final.outputs.review_text_file }}
-          HEAD_SHA: ${{ steps.stash.outputs.head_before }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          RUN_URL: ${{ steps.target.outputs.run_url }}
+          REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
+          HEAD_SHA: ${{ needs.gather-context.outputs.stash-head }}
         run: |
-          # resolve-final already picked the winning attempt's extracted and
-          # validated review text (and would have failed the job if neither
-          # attempt produced one), so reuse its file instead of re-parsing
-          # $EXECUTION_FILE here too.
           REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
             echo "No review text found in execution output; skipping comment."
             exit 0
           fi
           COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)}"
-          # Include the run URL so the collapse step can match this comment by
-          # run ID (same regex: `actions/runs/<id>` in the body).
-          # Write the body to a file and post it with --body-file so the review
-          # text — which can contain backticks, $(...), quotes, or a leading
-          # `---` — is never re-parsed by the shell as it would be if inlined as
-          # a --body argument. printf assembles the file at runtime, which also
-          # keeps the `---` separator off column 0: a bare `---` on its own line
-          # at column 0 in a YAML run block is read as a document separator by
-          # both PyYAML and GitHub Actions' parser, truncating the script
-          # mid-string and producing "unexpected EOF" on the runner.
           BODY_FILE="$(mktemp)"
           printf '%s\n\n---\n\n%s\n\nReviewed commit: %s' \
             "**Claude finished review** — [View run]($RUN_URL)" \
             "$REVIEW" \
             "$COMMIT_SHA" > "$BODY_FILE"
-          # `gh pr comment` prints the new comment's URL to stdout; capture it
-          # so the cost-comment step below can link back to it (gha#219).
           COMMENT_URL="$(gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE")"
           echo "comment_url=$COMMENT_URL" >> "$GITHUB_OUTPUT"
 
-      # Surfaces claude-code-action's total_cost_usd (summed across the
-      # attempt-1 + gha#185 stub-retry attempts by resolve-final) in its own
-      # follow-up comment. Upstream computes this cost but only writes it to
-      # the job step summary, never the PR comment it posts (gha#219) — this
-      # is a repo-local workaround, not a duplicate of the review comment's
-      # content. Runs regardless of whether "Post review comment" ran (tag
-      # mode skips that step but still incurs cost), just without a link back
-      # to a comment that doesn't exist in that case.
       - name: Post cost comment
         if: >-
-          inputs.report-cost &&
-          steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true' &&
-          steps.resolve-final.outputs.cancelled != 'true' &&
-          steps.resolve-final.outputs.total_cost_usd != ''
+          steps.target.outputs.stale != 'true' &&
+          steps.payload.outputs.report_cost == 'true' &&
+          steps.payload.outputs.resolve_outcome == 'success' &&
+          steps.payload.outputs.quota_exhausted != 'true' &&
+          steps.payload.outputs.cancelled != 'true' &&
+          steps.payload.outputs.total_cost_usd != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          TOTAL_COST: ${{ steps.resolve-final.outputs.total_cost_usd }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          RUN_URL: ${{ steps.target.outputs.run_url }}
+          TOTAL_COST: ${{ steps.payload.outputs.total_cost_usd }}
           COMMENT_URL: ${{ steps.post-comment.outputs.comment_url }}
         run: |
-          # Include the run URL (like "Post review comment" does) so the
-          # collapse step below folds older cost comments the same way it
-          # folds older review comments — without it, every push in an ARDI
-          # loop would leave its own uncollapsed cost comment (gha#219).
           if [[ -n "$COMMENT_URL" ]]; then
             BODY="💰 **Cost:** \$${TOTAL_COST} ([review]($COMMENT_URL)) — [run]($RUN_URL)"
           else
@@ -1229,94 +1496,19 @@ jobs:
           fi
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY"
 
-      # With sticky disabled, every run leaves its own review comment (and,
-      # when report-cost is on, its own cost comment). Collapse the older
-      # ones (minimize as OUTDATED) so the PR shows one expanded, current
-      # review (plus current cost comment) with history folded beneath it.
-      # Only THIS workflow's comments are touched — identified by the run
-      # each comment links to (its workflow `path` is this file) — so
-      # `@claude` task comments from claude.yml are left alone (their run's
-      # path is claude.yml, not this file). This matches on the run-URL link,
-      # so it folds "Post review comment"'s and "Post cost comment"'s output
-      # identically (gha#219) -- the cost comment includes its own
-      # `actions/runs/<id>` link for exactly this reason.
-      #
-      # The author pre-filter must admit BOTH bots: the agent-mode review and
-      # cost comments are github-actions[bot] (posted by this workflow's own
-      # steps), while a tag-mode tracking comment is claude[bot] (posted by
-      # claude-code-action). An earlier version filtered claude[bot] alone,
-      # which silently folded nothing in agent mode -- the github-actions[bot]
-      # review/cost comments never matched, so every round's comments stayed
-      # expanded. The run->path check below is what actually scopes this to
-      # this workflow, so admitting both bots cannot touch another workflow's
-      # comments.
-      #
-      # Not gated to pull_request: a dispatched (workflow_dispatch / agent-mode)
-      # review that wins the per-PR concurrency race must fold the earlier
-      # pushes' review comments too, or they linger now that dispatched runs can
-      # succeed (allowed_bots, above). The run_id→path match already scopes this
-      # to this workflow's comments, so running it on dispatched reviews is safe.
-      # The "Post review comment" step above ensures that dispatched and
-      # pull_request runs always leave a comment with an `actions/runs/<id>` link,
-      # so this collapse step can match and fold it in future rounds.
-      #
-      # Also runs on the self-review-skip path, where resolve-final never ran:
-      # that path posts a notice comment per run (see above), and this step is
-      # what keeps a PR from accumulating one per push. It needs nothing from the
-      # skipped steps -- only `gh api` and caller-wf's already-parsed path.
-      #
-      # Gated on that notice having actually POSTED, not merely on self_mod: the
-      # post is best-effort, so folding the previous run's notice after a failed
-      # post would leave the PR gray with no explanation at all -- gha#434's own
-      # symptom, reproduced in one run.
-      #
-      # `!cancelled()` is load-bearing rather than tidiness. An `if:` carrying
-      # no status-check function is implicitly ANDed with `success()`, and the
-      # failure-notice disjunct is by construction only true once
-      # `Resolve final review outcome` has FAILED -- that step has no
-      # `continue-on-error`, so the job is already failing whenever the notice
-      # posts. Without a status function the new disjunct was therefore dead
-      # code, and every failed round would have left its own permanent,
-      # unfoldable comment beside the previous round's stale one: the exact
-      # accumulation this step exists to prevent (gha#548 review, finding 1).
-      #
-      # `!cancelled()` rather than `always()`, because a cancelled run is the
-      # documented `cancel-in-progress` race, not a failure worth folding
-      # around -- a newer commit's review is already in flight, and the
-      # "Explain and fold tracking comment when canceled" step below owns that
-      # case.
-      #
-      # The relaxed check is scoped to the failure-notice disjunct ALONE, and
-      # the other two keep an explicit `success()`. A first draft put
-      # `!cancelled()` in front of the whole expression, which relaxed all
-      # three -- and `steps.<id>.outcome` freezes when its step completes, so
-      # `resolve-final.outcome == 'success'` stays true even after a LATER
-      # step fails. "Post review comment" carries no `continue-on-error`, so a
-      # 422 or a rate limit there would have left this step folding the
-      # previous round's review while the current round posted nothing: zero
-      # expanded review comments on the thread, which is the very
-      # silent-thread class this PR exists to close, reopened on a different
-      # step (gha#548 review round 2).
-      #
-      # An `if:` containing any status function suppresses the implicit
-      # `success()`, so the explicit one is doing real work here rather than
-      # restating a default.
       - name: Collapse previous Claude review comments
         if: >-
-          (!cancelled() && steps.failure-notice.outputs.posted == 'true') ||
+          steps.target.outputs.stale != 'true' &&
+          ((!cancelled() && steps.failure-notice.outputs.posted == 'true') ||
           (success() && (steps.skip-notice.outputs.posted == 'true' ||
-          (steps.resolve-final.outcome == 'success' &&
-          steps.resolve-final.outputs.quota_exhausted != 'true')))
+          (steps.payload.outputs.resolve_outcome == 'success' &&
+          steps.payload.outputs.quota_exhausted != 'true'))))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          CURRENT_RUN_ID: ${{ github.run_id }}
-          # The caller invokes this reusable workflow, so a comment "belongs"
-          # to this review iff its linked run used the same workflow file the
-          # current run did. Reuse the `caller-wf` step's already-parsed path
-          # (from github.workflow_ref) instead of re-deriving it here.
-          THIS_WF: ${{ steps.caller-wf.outputs.path }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          CURRENT_RUN_ID: ${{ steps.target.outputs.run_id }}
+          THIS_WF: ${{ steps.target.outputs.caller_wf_path }}
         run: |
           gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[]
@@ -1324,7 +1516,10 @@ jobs:
                   | "\(.node_id)\t\(((.body | capture("actions/runs/(?<r>[0-9]+)").r)?) // "")"' \
           | while IFS=$'\t' read -r NODE_ID RUN_ID; do
               [ -z "$RUN_ID" ] && continue
-              [ "$RUN_ID" = "$CURRENT_RUN_ID" ] && continue
+              [[ "$RUN_ID" =~ ^[0-9]+$ ]] || continue
+              # Never fold this run or a newer one. Run ids increase, so a
+              # stale posting job must not minimize a successor's comments.
+              [ "$RUN_ID" -ge "$CURRENT_RUN_ID" ] && continue
               WF_PATH=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.path' 2>/dev/null || true)
               [ "$WF_PATH" = "$THIS_WF" ] || continue
               echo "Collapsing review comment $NODE_ID (run $RUN_ID)"
@@ -1336,15 +1531,17 @@ jobs:
                 }' -f id="$NODE_ID" || true
             done
 
-      # When this run is canceled (e.g. cancel-in-progress fires because a newer
-      # commit superseded it), any tracking comment left by a tag-mode run
-      # (track-progress: true) would be stuck showing "review in progress".
-      # In agent mode (the default), no tracking comment is created, so this
-      # step is a no-op — kept as a safety net for tag-mode opt-in callers.
-      # The comment is identified by its run ID link — the same matcher the
-      # collapse step uses.
+      # When claude-review is canceled (cancel-in-progress), any leftover
+      # tag-mode tracking comment from an older @v2 pin would be stuck
+      # showing "review in progress". Agent mode (forced, gha#580) creates
+      # none, so this is a no-op for current runs -- kept as a safety net.
+      # Gated on the *review* job having been cancelled, not this job:
+      # post-review is supposed to run in that case.
       - name: Explain and fold tracking comment when canceled
-        if: cancelled()
+        if: >-
+          always() &&
+          (needs.claude-review.result == 'cancelled' ||
+           steps.payload.outputs.cancelled == 'true')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
@@ -1353,9 +1550,6 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           NOTE=$(printf '> [!WARNING]\n> **Review canceled.** This run was canceled before it finished — superseded by a newer review of the same PR (`cancel-in-progress`), e.g. a later commit or a re-dispatched review. A fresh review runs on the latest commit; see the [canceled run](%s).\n\n---\n\n' "$RUN_URL")
-          # The paginated list already carries each comment's body, so capture it
-          # here (base64-encoded so an embedded tab/newline can't break the
-          # tab-delimited `read`) rather than making a second per-comment fetch.
           gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[]
                   | select(.user.login == "claude[bot]")
@@ -1375,15 +1569,15 @@ jobs:
             done
 
       - name: Re-assign reviewers after Claude finishes
-        if: always() && steps.stash.outcome == 'success'
+        if: always() && needs.gather-context.result != 'skipped'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          HEAD_BEFORE: ${{ steps.stash.outputs.head_before }}
-          USERS_BEFORE: ${{ steps.stash.outputs.users }}
-          TEAMS_BEFORE: ${{ steps.stash.outputs.teams }}
-          AI_USERS_BEFORE: ${{ steps.stash.outputs.ai_users }}
+          HEAD_BEFORE: ${{ needs.gather-context.outputs.stash-head }}
+          USERS_BEFORE: ${{ needs.gather-context.outputs.stash-users }}
+          TEAMS_BEFORE: ${{ needs.gather-context.outputs.stash-teams }}
+          AI_USERS_BEFORE: ${{ needs.gather-context.outputs.stash-ai-users }}
         run: |
           retry_gh_api() {
             local desc="$1"
@@ -1407,8 +1601,14 @@ jobs:
           PR_JSON=$(retry_gh_api "fetch PR details in restore step" "repos/$REPO/pulls/$PR_NUMBER")
           HEAD_AFTER=$(echo "$PR_JSON" | jq -r '.head.sha')
 
-          if [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
-            # No new commits — restore the original reviewer set.
+          # Empty HEAD_BEFORE is the cancelled-with-no-artifact path: restore
+          # the stashed set rather than treating a missing SHA as a push.
+          # Empty-string outputs (stash skipped) are not valid JSON; treat
+          # them as an empty list.
+          if [ -z "$USERS_BEFORE" ]; then USERS_BEFORE='[]'; fi
+          if [ -z "$TEAMS_BEFORE" ]; then TEAMS_BEFORE='[]'; fi
+          if [ -z "$AI_USERS_BEFORE" ]; then AI_USERS_BEFORE='[]'; fi
+          if [ -z "$HEAD_BEFORE" ] || [ "$HEAD_AFTER" = "$HEAD_BEFORE" ]; then
             USERS=${USERS_BEFORE:-[]}
             TEAMS=${TEAMS_BEFORE:-[]}
             if [ "$USERS" = "[]" ] && [ "$TEAMS" = "[]" ]; then
@@ -1416,25 +1616,15 @@ jobs:
               exit 0
             fi
             echo "Restoring original reviewers."
-            # No `|| true`: a failed restore silently drops the reviewer, so
-            # fail loudly instead of letting them vanish.
             jq -n --argjson users "$USERS" --argjson teams "$TEAMS" \
               '{reviewers: $users, team_reviewers: $teams}' \
               | gh api -X POST "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers" --input -
             exit 0
           fi
 
-          # Claude pushed commits. Re-request the human reviewers that were
-          # stashed before the run — anyone originally requested who isn't a
-          # bot — AND put back any AI reviewers (e.g. Copilot) and team reviewers.
-          # These are separate POSTs (POST adds to the requested set, it doesn't
-          # replace it): the human re-request fails loudly if it errors; AI-user
-          # and team restores are best-effort so a bad login/slug can't undo the
-          # human re-request.
-          #
-          # Use USERS_BEFORE (minus AI_USERS_BEFORE) instead of the PR's
-          # current assignee list: a human reviewer who isn't a PR assignee
-          # would otherwise lose their review request on every commit push.
+          # Head SHA moved while the model ran (a human or another session
+          # pushed; this job cannot push -- gha#580). Re-request humans
+          # loudly; AI users and teams best-effort.
           AI_USERS=${AI_USERS_BEFORE:-[]}
           HUMAN_USERS=$(jq -cn \
             --argjson all "${USERS_BEFORE:-[]}" \
@@ -1467,6 +1657,7 @@ jobs:
             echo "No human reviewers, AI reviewers, or team reviewers to restore; leaving reviewers cleared."
           fi
 
+
   # Gate job: skipped (gray) when the claude-review job was itself skipped
   # (fork/draft/bot), when the API quota was exhausted, or when the self-review
   # guard skipped the review because the PR edits the caller workflow. Passes on
@@ -1491,9 +1682,9 @@ jobs:
   # self-review case: no re-run or re-dispatch clears that condition, and the
   # only thing that does is the PR ceasing to edit the file, so failing would
   # force an admin override on every workflow-editing PR. The gray icon plus the
-  # PR comment the review job posts carry the signal instead.
+  # PR comment the posting job writes carry the signal instead.
   require-review:
-    needs: claude-review
+    needs: [claude-review, post-review]
     # Run when the claude-review job ran and produced a real verdict.
     # Skip (gray) when:
     #   - claude-review was skipped, whatever made its own `if:` false --- a
@@ -1506,8 +1697,12 @@ jobs:
     #     deliberately skipped --- gha#434)
     #   - cancelled=true (the review run was cancelled mid-job and resolved as
     #     a graceful skip -- gha#585)
+    #   - post-review reported stale (the PR head moved before posting;
+    #     a newer run owns the thread -- a green gate here would attest
+    #     a verdict that was withheld)
     #
-    # The last three are conditioned on the review job having SUCCEEDED.
+    # quota/self_mod/cancelled are conditioned on the review job having
+    # SUCCEEDED; stale is conditioned on post-review having succeeded.
     # A deliberate no-verdict skip and a job that blew up are different states,
     # and only the first is safe to gray out: without the success test, a
     # genuine failure in any step that still runs on those paths would be
@@ -1517,6 +1712,8 @@ jobs:
       always() &&
       needs.claude-review.result != 'skipped' &&
       needs.claude-review.result != 'cancelled' &&
+      !(needs.post-review.result == 'success' &&
+      fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
       (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
       fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
@@ -1531,4 +1728,8 @@ jobs:
             echo "::error::Claude review job did not succeed (result: ${{ needs.claude-review.result }})."
             exit 1
           fi
-          echo "Claude review completed."
+          if [[ "${{ needs.post-review.result }}" != "success" ]]; then
+            echo "::error::Review posting job did not succeed (result: ${{ needs.post-review.result }})."
+            exit 1
+          fi
+          echo "Claude review completed and was posted."

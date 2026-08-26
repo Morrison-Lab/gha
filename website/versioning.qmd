@@ -20,8 +20,9 @@ to `@v2`;
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
 `cursor-code-review.yml`, `opencode-code-review.yml`,
 `ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
-`small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`, and
-`spellcheck.yml`
+`small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`,
+`spellcheck.yml`, and
+`check-typos.yml`
 only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
@@ -104,8 +105,9 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `gemini-code-review.yml`, `antigravity-code-review.yml`,
 `cursor-code-review.yml`, `opencode-code-review.yml`,
 `ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
-`small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`, and
-`spellcheck.yml` at
+`small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`,
+`spellcheck.yml`, and
+`check-typos.yml` at
 `@v2` - see the
 versioning note above), so
 they are **not** SHA-pinned.

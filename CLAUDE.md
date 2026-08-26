@@ -30,7 +30,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, and `spellcheck` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, and `check-typos` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -47,6 +47,11 @@ which is why the capabilities above moved to `@v2`.
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
   exists to avoid).
+  `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
+  skip-not-fallback for misspellings: a whole-tree first run would reflag
+  every known misspelling the corpus already carries, and unknown jargon
+  is not an error, so there is no `inst/WORDLIST` to grow into the way
+  `spellcheck.yml` does.
   `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
   the history but the **index** (`git ls-files -i -c -X`), for tracked
   operating-system and editor detritus.
@@ -159,6 +164,19 @@ which is why the capabilities above moved to `@v2`.
   `run-claude-review-attempt` retry above -- the same DRY rationale that
   motivated extracting that (much larger) composite action, just at a
   smaller scale (gha#201 review).
+
+- `.github/actions/pack-review-payload/` -- writes the files
+  `claude-code-review.yml`'s posting job needs (`payload.json` plus optional
+  `review.txt` / `denied_tools.txt`) and uploads them as a workflow artifact
+  (gha#580).
+  The model job (`claude-review`) holds `contents: read` and cannot post;
+  `post-review` downloads this artifact and holds
+  `pull-requests: write` / `issues: write`.
+  Located via `github.action_path` because callers checkout their own repo.
+  `_selftest.yml` exercises it via a local `./` ref (`upload: false`);
+  the reusable workflow's `@v2` call is the usual bootstrap gap until the
+  tag slides.
+
 - `.github/actions/extract-total-cost/` -- wraps
   `scripts/extract-total-cost.sh`, which extracts `total_cost_usd` from a
   claude-code-action execution-output file's last `result` event. `claude.yml`
@@ -1118,6 +1136,36 @@ the gha#303 precedent, and here a drift would hand a consumer of the reusable
 workflow a different pattern set from a consumer of the composite with nothing
 red.
 
+`check-typos/tests/test_check_typos.py` is a pytest suite driving
+`check-typos.py` against throwaway git repos and a stub `typos` binary that
+writes canned JSONL -- no download, the same remedy check-secrets records
+for its scan script.
+The cases to keep if the suite is ever trimmed are the negative ones:
+empty / unresolvable `base-ref` skips rather than scanning the whole tree
+(a whole-tree fallback would reflag every known misspelling the corpus
+already carries), a pre-existing typo on an untouched line is not
+flagged, a filename typo on a content-only edit of an already-named
+file is not flagged (the finding is produced and then dropped, not
+skipped), a rename into a misspelled name is flagged, `fail: yes`
+still blocks, a named-but-missing config is an error rather than a
+silent fall back to defaults, a stub
+exit other than 0 or 2 is a tool error even when `fail` is false, an
+added line starting `++` plus a space is not parsed as a diff file
+header, and a checksum mismatch refuses to install the binary.
+CI runs it as the `typos-tests` job in `_selftest.yml`, alongside a
+`typos` job that exercises the real composite (real installer, real
+`typos` 1.49.0): a no-`base-ref` call against this repo's own tree (which
+carried a handful of pre-existing hits as of 2026-08-26, so a broken skip
+would fail it), a fixture whose only typo is pre-existing (diff-scoped
+pass, `base-ref: all` fail), and a newly-added `.qmd` typo that
+`spellcheck.yml` cannot see, plus that file exempted through
+`paths-ignore`.
+The fixture checkout is generated at runtime
+(`check-typos/tests/make-fixture.sh`).
+The misspelling is also used as fixture payload in the pytest sources, so
+a later whole-tree dogfood of this repo should `paths-ignore`
+`check-typos/tests/`.
+
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
 `test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the
@@ -1573,6 +1621,39 @@ As with `report-push-failure`, `claude-code-review.yml`'s own consumption of
 this composite via `@v2` is not covered here -- it does not resolve until `@v2`
 is advanced past this capability's merge.
 
+`.github/workflows/scripts/tests/run-pack-review-payload-tests.sh` and
+`.github/workflows/scripts/tests/run-review-job-split-tests.py` pin the
+gha#580 credential split.
+The pack suite asserts `payload.json`'s key set
+and that sidecar files are omitted when the corresponding input is empty
+(a missing `review.txt` must not look like a present empty review).
+The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
+and asserts the facts a future edit could reverse silently:
+the model job grants no forge-write (including no `id-token: write`)
+and keeps `contents: read`,
+the posting job holds `pull-requests: write` /
+`issues: write` / `actions: read` and does not invoke the model,
+`github_token` is forwarded so the App-token write exchange is skipped,
+the inline-comment MCP tool is not allowlisted,
+pack still runs after a failed `resolve-final` (`!cancelled()` plus
+success/failure outcomes;
+a default `success()` gate would skip it),
+the gha#543 failure notice still posts when the packed artifact is
+missing (`!cancelled()` plus `download.outcome != 'success'` ORed with
+the loaded `resolve_outcome == 'failure'` path, including a successful
+review so Require exiting 1 does not skip the notice),
+caller grant lists (the example stub, README, permissions page,
+reference Permissions and Example) include `actions: read`,
+and `post-review` stale-checks against event-pinned
+`reviewed-head` (`github.event.pull_request.head.sha`),
+falling back to gather-context's stash-head on dispatch,
+rather than a later API fetch from the model job.
+CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
+`upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
+separate from `review-fail-check` so a failure is attributable at a glance.
+`claude-code-review.yml`'s own `@v2` consumption of the new composite is
+the usual bootstrap gap until the tag slides.
+
 `run-fixture-tests.sh` gained three assertions alongside it, and the last two
 are the ones worth reading.
 `failure_kind` is asserted for **every** fixture rather than only the failing
@@ -1955,10 +2036,16 @@ source and the referenced `.lintr.R` file both fetched cleanly.)
 
 ## A canceled review skips require-review gracefully (gha#585)
 
-`claude-code-review.yml`'s `claude-review` job is concurrency-grouped per PR
-(`claude-review-<PR>`, `cancel-in-progress: true`) across BOTH the automatic
+`claude-code-review.yml`'s model path is concurrency-grouped per PR
+(`claude-review-<PR>`, `cancel-in-progress: true`) on `preempt-previous`
+and `claude-review`, across BOTH the automatic
 `pull_request`-triggered review and claude.yml's comment-triggered (`@claude
-review`) re-dispatch. When a push and an `@claude review` comment land close
+review`) re-dispatch. Stash/restore (`gather-context` / `post-review`) use
+a separate non-canceling group so a cancelled run's restore cannot cancel
+the successor's model job.
+`preempt-previous` is an echo in the canceling group; it does not wait
+for the predecessor's post-review.
+When a push and an `@claude review` comment land close
 together -- or claude.yml's agent run finishes and re-dispatches a review a
 minute or two later, landing on top of the next push's auto-review -- the two
 reviews race and one cancels the other.
@@ -2315,9 +2402,10 @@ files against the CALLER's review-workflow path (derived from
 downstream step: checkout, run review, post review comment.
 `review / claude-review` reports `success`, but every step past the guard shows
 `skipped`, and no verdict is ever produced.
-This is deliberate, since the action's own App-token exchange 401s on a workflow
-file that doesn't match the default branch's content until merge (see the
-guard's own comment).
+The skip is this workflow's own policy, not an action 401:
+gha#580 forwards `github_token`, which skips the App-token exchange
+that used to fail workflow-content validation until merge
+(see the guard's own comment).
 But a green `claude-review` check is easy to mistake for a real review.
 
 **`require-review` used to report `success` here too, which is what made this
@@ -2337,10 +2425,11 @@ workflow YAML file on `workflow_dispatch` (gha#386).** `WF_PATH` comes from
 file, which in this repo's dogfooding setup is `.github/workflows/claude-review.yml`
 (for a downstream consumer, their own copy of the caller stub). On automatic
 `pull_request` runs, only a PR that touches that one file trips `self_mod=true`.
-On `workflow_dispatch` runs, `claude-code-action`'s token exchange validates that
-all `.github/workflows/*.yml` files match `main` or it skips with an OIDC
-validation error; to prevent false-positive failures, the guard trips `self_mod=true`
-for any touched top-level workflow YAML file on dispatch (gha#386).
+On `workflow_dispatch` runs, the action's token exchange *used to*
+validate that all `.github/workflows/*.yml` files match `main` or skip
+with an OIDC validation error; to prevent false-positive failures, the
+guard still trips `self_mod=true` for any touched top-level workflow YAML
+file on dispatch (gha#386), as this workflow's own policy.
 `examples/claude-code-review.yml` lives under `examples/`, not
 `.github/workflows/`, so it never actually executes as a workflow in this
 repo and `github.workflow_ref` can never resolve to it either. Check the
@@ -2385,9 +2474,19 @@ silently skipped -- caught only by noticing the job finished in 4 seconds.
 Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
-**That guard is the workflow-level skip; the action carries its OWN
-workflow-content validation, which would fire if the guard were bypassed --
-and it does not print a literal `401`.**
+**That guard is the workflow-level skip.**
+Before gha#580 it also papered over the action's own workflow-content
+validation, which lived inside the OIDC App-token exchange and did not
+print a literal `401`.
+`run-claude-review-attempt` now forwards `github_token`
+(`${{ github.token }}` from the read-only model job), so
+`setupGitHubToken()` returns that token without calling `getIDToken()`
+or `exchangeForAppToken()`
+(anthropics/claude-code-action v1.0.196 `src/github/token.ts`,
+measured 2026-08-26).
+Bypassing `self_mod` therefore no longer hits that validation skip:
+the model would run on the job token.
+
 The section above skips every step of the review job when the PR edits the
 caller workflow `claude-review.yml` (the job itself still runs and reports
 `success`, green -- not a gray skipped job).
@@ -2397,16 +2496,17 @@ with no trigger gating, so an `@claude review` dispatch trips it exactly as an
 automatic run does -- the gha#286 example above is that case, the guard firing
 on a dispatched review (green job, every post-guard step `skipped`).
 So today a caller-editing PR just gets that silent skip.
-The review can still run and hit the action's OWN content validation by two
-paths.
-One is a deliberate bypass -- as gha#417 proposed and this repo rejected.
-The other is live and undeliberate: the guard sets `self_mod` from
+
+**Pre-gha#580, a bypass of that skip reddened the check with no verdict.**
+Two paths reached the action's content validation then.
+One was a deliberate bypass -- as gha#417 proposed and this repo rejected.
+The other is still live: the guard sets `self_mod` from
 `files=$(gh api .../files ... || true)` in `claude-code-review.yml`, so a
 transient `gh api` failure leaves `files` empty, `self_mod=false`, and the
 review proceeds even on a PR that does edit `claude-review.yml`.
-Either way the action's content validation then checks the running workflow
-against the default branch and gracefully skips on a mismatch.
-The "Run Claude Code Review" step then reads:
+Before the `github_token` override, the action then checked the running
+workflow against the default branch and gracefully skipped on a mismatch.
+The "Run Claude Code Review" step then read:
 
 ```text
 Exchanging OIDC token for app token...
@@ -2416,35 +2516,42 @@ version on the repository's default branch...
 Exiting due to workflow validation skip
 ```
 
-The action STEP reports `outcome=success` (it "gracefully skips"), runs only
-~4-11s, and writes NO execution output -- so `check-review-execution.sh`
-reports `Claude review produced no execution output -- treating as a failed
-review`, and `claude-review` + `require-review` go RED with no verdict.
-That is worse than the silent skip, which is why gha#417 was abandoned.
+The action STEP reported `outcome=success` (it "gracefully skips"), ran only
+~4-11s, and wrote NO execution output -- so `check-review-execution.sh`
+reported `Claude review produced no execution output -- treating as a failed
+review`, and `claude-review` + `require-review` went RED with no verdict.
+That was worse than the silent skip, which is why gha#417 was abandoned.
+The same abort is what a template test of a modified review workflow used
+to hit (confirmed empirically 2026-08-05; the failure surfaces as a fast
+`no execution output`, not a literal `401`).
 
-Diagnostic tells for that validation skip, so it is not misdiagnosed as a
-`401`:
+Diagnostic tells for that **historical** validation skip, so an older run
+log is not misdiagnosed as a `401`:
 
 - The "Run Claude Code Review" STEP finishes in seconds (~4-11s measured)
   while writing no execution output; total job time is not a reliable tell,
   since checkout, submodules, and package installs run first and can dominate.
+
 - Grepping the log for `401` finds nothing -- the auth failure the
   parenthetical above calls "401s" does not surface as a literal `401`
   string; grep for `workflow validation` / `Exiting due to workflow
   validation skip`, or just READ the "Run Claude Code Review" step's own
   output rather than grepping for a guessed string (per
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
-- The validation keys on workflow CONTENT vs. the default branch, independent
-  of trigger type, so bypassing the self-review skip on a dispatched
-  `@claude review` does NOT help -- it just reddens the check with no verdict.
 
-The likely fix for a PR editing the review workflow is a `github_token`
-override on the action, which would skip the OIDC exchange and its content
-check -- but that is untested: PR #420 only showed that bypassing `self_mod`
-*without* such an override is counterproductive (it hits this validation skip),
-and no `github_token` input is wired up in `run-claude-review-attempt` today.
+- The validation keyed on workflow CONTENT vs. the default branch, independent
+  of trigger type, so bypassing the self-review skip on a dispatched
+  `@claude review` did NOT help -- it just reddened the check with no verdict.
+
+The skip remains this workflow's own policy (caller-stub edits on every
+event; any top-level workflow YAML on `workflow_dispatch`, gha#386).
+PR #420 showed that bypassing `self_mod` *without* the override
+was counterproductive (it hit the historical validation skip);
+with the override in place, a bypass would run the review rather
+than 401.
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
-section reaches the same OIDC content-validation from the testing angle.
+section used to hit that same OIDC content-validation abort;
+`github_token` forwarding is what skips it now (gha#580).
 
 ## A prompt instruction is a request; a permission rule is a constraint
 
@@ -2616,21 +2723,18 @@ To exercise a composite change, also repoint the nested `@v2` refs to the PR
 branch on the branch-pinned reusable workflow, or invoke the composite directly.
 
 A PR fixing a reusable **review** workflow (`claude-code-review.yml` or
-`claude.yml`) can't be verified this way at all.
-The review runs `anthropics/claude-code-action`, whose OIDC App-token exchange
-validates that the calling review-workflow content matches the repo's default
-branch.
-Testing the fix means running the review against a modified copy of that
-workflow, which makes the caller differ from its own default branch -- in `gha`
-or in a template repo alike -- so the action aborts with `Workflow validation
-failed` ("Exiting due to workflow validation skip"), produces no output, and
-reddens the check with no verdict.
-(Confirmed empirically 2026-08-05 via a throwaway dispatched review; the failure
-surfaces as a fast `no execution output`, not a literal `401`.)
+`claude.yml`) used to abort template tests at the action's OIDC
+workflow-content check
+(confirmed empirically 2026-08-05 via a throwaway dispatched review;
+the failure surfaces as a fast `no execution output`, not a literal `401`).
+`run-claude-review-attempt` now forwards `github_token` (gha#580),
+which skips that exchange and its content check.
+What still blocks dogfood review of such a PR in *this* repo is the
+caller-side `self_mod` skip:
+it fires when the PR edits the caller stub, and on `workflow_dispatch`
+when any top-level workflow YAML is in the diff.
 Fall back to the manual/offline path in
-[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
-or give the action a `github_token` override that skips the OIDC exchange
-(untested -- see the workflow-validation-skip note's `github_token` caveat above).
+[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge).
 
 ## Code review guidelines
 
