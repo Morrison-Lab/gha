@@ -1609,6 +1609,11 @@ unset `PR_CHANGED_FILES` (must fail closed).
 CI runs it as a step in `review-fail-check`, which also calls
 `detect-pr-workflow-edits` through a real `uses: ./...` step on
 pull_request events for the `github.action_path`-resolution proof.
+That e2e asserts the composite's `workflow_edits` matches an independent
+classify of the same PR (the scripts the composite wraps), not merely
+that the output is the string `true` or `false` --- a detector that
+always returned `false` would still pass the boolean-only check on a
+workflow-editing PR.
 
 `.github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh`
 exercises `list-pr-changed-files.sh` against a stub `gh`: a complete
@@ -2357,8 +2362,11 @@ checks it out from `origin/<default-branch>`, so a workflow the PR added is
 deleted rather than left on disk.
 `run-claude-review-attempt` passes `github_token` (`GITHUB_TOKEN`) on that
 path so `claude-code-action` skips its OIDC App-token exchange and the
-workflow-content check that exchange runs
-(`OVERRIDE_GITHUB_TOKEN` in `src/entrypoints/prepare.ts`, read 2026-08-26).
+workflow-content check that exchange runs.
+`setupGitHubToken` in `src/github/token.ts` returns early on
+`OVERRIDE_GITHUB_TOKEN` and never calls `exchangeForAppToken`, which is
+where the skip is thrown (anthropics/claude-code-action, read 2026-08-26).
+`prepare.ts` reads that env var only for the write-permission path.
 The prompt tells the reviewer that on-disk workflow files are the
 default-branch copies and to take workflow diffs from the saved PR diff.
 

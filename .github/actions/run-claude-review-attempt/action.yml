@@ -116,9 +116,10 @@ inputs:
   github-token:
     description: >-
       Optional token passed through to claude-code-action as github_token.
-      When set, the action skips its OIDC App-token exchange and the
-      workflow-content check that exchange runs (anthropics/claude-code-action
-      src/entrypoints/prepare.ts OVERRIDE_GITHUB_TOKEN, read 2026-08-26).
+      When set, setupGitHubToken in src/github/token.ts returns it and never
+      reaches exchangeForAppToken, which is where the workflow-content skip
+      is thrown (anthropics/claude-code-action, read 2026-08-26). prepare.ts
+      reads OVERRIDE_GITHUB_TOKEN only for the write-permission path.
       Leave empty on the ordinary path. Set it when this checkout restored
       `.github/workflows/` from the default branch (gha#598) so a remaining
       content mismatch cannot skip the review.

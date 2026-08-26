@@ -621,10 +621,13 @@ jobs:
         with:
           pr-number: ${{ github.event.pull_request.number }}
           caller-workflow-path: .github/workflows/claude-review.yml
-      - name: Assert detect-pr-workflow-edits produced a boolean
+      - name: Assert detect-pr-workflow-edits matches an independent classify
         if: github.event_name == 'pull_request'
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           WORKFLOW_EDITS: ${{ steps.detect-wf-e2e.outputs.workflow_edits }}
           EDITED_PATH: ${{ steps.detect-wf-e2e.outputs.edited_path }}
         run: |
@@ -633,7 +636,21 @@ jobs:
             echo "::error::detect-pr-workflow-edits did not produce a boolean workflow_edits output (got '$WORKFLOW_EDITS')"
             exit 1
           fi
-          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH"
+          # The boolean-only check cannot catch a composite that always
+          # returns false: this PR edits workflow YAML, so that bug would
+          # still look green. Classify the same PR independently via the
+          # scripts the composite wraps; a wiring skip that never calls
+          # them disagrees on a workflow-editing PR.
+          if files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash .github/workflows/scripts/list-pr-changed-files.sh); then
+            want=$(PR_CHANGED_FILES="$files" CALLER_WF_PATH=".github/workflows/claude-review.yml" bash .github/workflows/scripts/detect-pr-workflow-edits.sh | sed -n 's/^workflow_edits=//p')
+          else
+            want=true
+          fi
+          if [ "$WORKFLOW_EDITS" != "$want" ]; then
+            echo "::error::detect-pr-workflow-edits workflow_edits='$WORKFLOW_EDITS' but independent classify wants '$want' (edited_path='$EDITED_PATH')"
+            exit 1
+          fi
+          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH (matches independent classify)"
       - name: Exercise export-extra-secrets composite action end-to-end
         uses: ./.github/actions/export-extra-secrets
         with:

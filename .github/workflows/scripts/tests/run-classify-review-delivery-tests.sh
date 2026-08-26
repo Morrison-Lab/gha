@@ -75,19 +75,27 @@ check "opencode secret-skip notice" false opencode-skipped \
   "> **OpenCode review skipped — API key unavailable.** No \`OPENCODE_API_KEY\` secret is configured for this repository. [View run]($RUN_URL)"
 
 # --- the self-mod and dispatch-guard skips (gha#571, gha#573). The job reports
-#     `success` and every step after the guard reads `skipped`, so nothing
+#     `success` and every post-guard step reads `skipped`, so nothing
 #     about this looks like a failure -- which is why the marker list omitted
-#     it initially. All wordings (build-self-review-skip-notice.sh's two, plus
-#     gemini-code-review.yml's dispatch guard) are pinned, since they differ
-#     after the shared leading phrase.
-check "self-mod skip, caller-workflow wording" false self-mod-skip \
+#     it initially. Pin every live wording, since they differ after the
+#     shared leading phrase. gha#598 changed build-self-review-skip-notice.sh
+#     to the restore-failure line; the two "this PR edits" bodies are the
+#     pre-#598 notices @v2 still posts until that tag slides, and they must
+#     keep classifying.
+check "self-mod skip, restore-failure wording (gha#598)" false self-mod-skip \
+  "> [!WARNING]
+> **No review ran --- restoring default-branch workflow files failed.**
+>
+> [View run]($RUN_URL)"
+
+check "self-mod skip, caller-workflow wording (pre-#598 @v2)" false self-mod-skip \
   "> [!WARNING]
 > **No review ran --- this PR edits \`.github/workflows/claude-review.yml\`, the review workflow itself.**
 > \`claude-code-action\` requires that file to match the default branch.
 >
 > [View run]($RUN_URL)"
 
-check "self-mod skip, other-workflow wording" false self-mod-skip \
+check "self-mod skip, other-workflow wording (pre-#598 @v2)" false self-mod-skip \
   "> [!WARNING]
 > **No review ran --- this PR edits \`.github/workflows/_selftest.yml\`.**
 >
