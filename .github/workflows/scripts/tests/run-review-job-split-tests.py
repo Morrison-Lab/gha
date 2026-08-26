@@ -27,14 +27,17 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s).
-8. `claude-review`'s `if:` excludes a `failure` gather-context result,
-   so the model does not run when stash-head cannot be bound.
-9. Empty COMPARE writes `stale=true` before `exit 1`, and the post
-   comment binds `COMMIT_SHA` to `reviewed_sha` (no live-head fallback).
+8. `claude-review`'s `if:` does not skip a `failure` gather-context
+   result (that skip greys `require-review` and does not block merging).
+9. Empty COMPARE writes `stale=true` before `exit 1` when the model ran,
+   and the post comment binds `COMMIT_SHA` to `reviewed_sha` exactly
+   (no live-head fallback).
 10. Pack and download share a `claude-review-payload-` name that
     includes `run_id`/`RUN_ID` and `github.run_attempt`.
 11. No job interpolates `denied_tools` into a `run:` body (gha#541).
-12. `require-review` is in neither concurrency group.
+12. `require-review` is in neither concurrency group, and its stale
+    skip ANDs `post-review` success so a failed unbound-SHA post still
+    reds the gate.
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -161,6 +164,12 @@ def check_workflow(
         and 'needs.gather-context.result != "failure"' not in review_if,
         "claude-review if: does not skip on gather-context failure "
         "(that skip greys require-review and does not block merging)",
+    )
+    check(
+        "needs.gather-context.result == 'success'" not in review_if
+        and 'needs.gather-context.result == "success"' not in review_if,
+        "claude-review if: does not require gather-context success "
+        "(that skip greys require-review on a gather failure)",
     )
 
     for key, val in FORGE_WRITE.items():
@@ -406,6 +415,16 @@ def check_workflow(
             "require-review skips when post-review reports stale",
         )
         check(
+            re.search(
+                r"needs\.post-review\.result == ['\"]success['\"]\s*&&\s*"
+                r"fromJSON\(needs\.post-review\.outputs\.stale",
+                rif,
+            )
+            is not None,
+            "require-review stale skip ANDs post-review success "
+            "(failed-job stale=true must not grey the gate)",
+        )
+        check(
             concurrency_of("require-review") is None,
             "require-review is in neither concurrency group "
             "(the canceling group would let preempt-previous cancel the gate)",
@@ -563,6 +582,17 @@ def check_workflow(
             and compare_fail.group(0).find("stale=true")
             < compare_fail.group(0).find("exit 1"),
             "empty COMPARE writes stale=true before exit 1",
+        )
+        review_result = str((target.get("env") or {}).get("REVIEW_RESULT") or "")
+        check(
+            " ".join(review_result.split())
+            == "${{ needs.claude-review.result }}",
+            "empty-COMPARE gate reads needs.claude-review.result",
+        )
+        check(
+            '"$REVIEW_RESULT" != "skipped"' in target_run
+            and '"$REVIEW_RESULT" != "cancelled"' in target_run,
+            "empty COMPARE exits 1 only when the model was not skipped or cancelled",
         )
     post_comment = next(
         (
@@ -838,6 +868,8 @@ jobs:
       - uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         if: "{notice_if}"
       - id: target
+        env:
+          REVIEW_RESULT: ${{{{ needs.claude-review.result }}}}
         run: |
           if [ -z "$LIVE" ] || [ "$LIVE" = "null" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
@@ -848,7 +880,9 @@ jobs:
           if [ -z "$COMPARE" ] || [ "$COMPARE" = "null" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             echo "No reviewed SHA to compare against live head"
-            exit 1
+            if [ "$REVIEW_RESULT" != "skipped" ] && [ "$REVIEW_RESULT" != "cancelled" ]; then
+              exit 1
+            fi
           fi
           echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
       - name: Post review comment
@@ -1342,6 +1376,21 @@ runs:
             "require-review skips when post-review reports stale",
         )
 
+        stale_without_success = root / "stale-without-success.yml"
+        stale_without_success.write_text(
+            good_wf.read_text().replace(
+                "needs.post-review.result == 'success' && ",
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "require-review stale skip without post-review success fails",
+            run(stale_without_success, good_action),
+            False,
+            "require-review stale skip ANDs post-review success",
+        )
+
         no_gather_failure_skip = root / "no-gather-failure-skip.yml"
         no_gather_failure_skip.write_text(
             good_wf.read_text().replace(
@@ -1356,6 +1405,22 @@ runs:
             run(no_gather_failure_skip, good_action),
             False,
             "does not skip on gather-context failure",
+        )
+
+        gather_success_gate = root / "gather-success-gate.yml"
+        gather_success_gate.write_text(
+            good_wf.read_text().replace(
+                "needs.gather-context.result != 'skipped' && "
+                "needs.gather-context.result != 'cancelled'",
+                "needs.gather-context.result == 'success'",
+                1,
+            )
+        )
+        failures += expect(
+            "claude-review if: requiring gather-context success fails",
+            run(gather_success_gate, good_action),
+            False,
+            "does not require gather-context success",
         )
 
         no_compare_stale = root / "no-compare-stale.yml"
@@ -1387,6 +1452,39 @@ runs:
             run(no_compare_fail_closed, good_action),
             False,
             "empty COMPARE fails closed rather than posting against live head",
+        )
+
+        unconditional_compare_exit = root / "unconditional-compare-exit.yml"
+        unconditional_compare_exit.write_text(
+            good_wf.read_text().replace(
+                '            if [ "$REVIEW_RESULT" != "skipped" ] && '
+                '[ "$REVIEW_RESULT" != "cancelled" ]; then\n'
+                "              exit 1\n"
+                "            fi\n",
+                "            exit 1\n",
+                1,
+            )
+        )
+        failures += expect(
+            "empty COMPARE that always exits 1 fails",
+            run(unconditional_compare_exit, good_action),
+            False,
+            "empty COMPARE exits 1 only when the model was not skipped or cancelled",
+        )
+
+        no_review_result = root / "no-review-result.yml"
+        no_review_result.write_text(
+            good_wf.read_text().replace(
+                "          REVIEW_RESULT: ${{ needs.claude-review.result }}\n",
+                "",
+                1,
+            )
+        )
+        failures += expect(
+            "empty-COMPARE gate without REVIEW_RESULT env fails",
+            run(no_review_result, good_action),
+            False,
+            "empty-COMPARE gate reads needs.claude-review.result",
         )
 
         download_unpinned = root / "download-unpinned.yml"
