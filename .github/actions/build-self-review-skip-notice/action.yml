@@ -9,8 +9,12 @@ description: >-
 
 inputs:
   workflow-path:
-    description: Workflow file path (e.g. .github/workflows/claude-code-review.yml)
-    required: true
+    description: >-
+      Workflow file path (e.g. .github/workflows/claude-code-review.yml).
+      Empty when the PR file list could not be completed; the notice then
+      names an incomplete list rather than a fake path.
+    required: false
+    default: ''
   caller-workflow-path:
     description: Caller review workflow file path (e.g. .github/workflows/claude-code-review.yml)
     required: false

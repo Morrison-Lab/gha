@@ -94,6 +94,10 @@ fi
 check "self-mod skip, restore-failure wording (gha#598)" false self-mod-skip \
   "$SKIP_NOTICE"
 
+EMPTY_NOTICE="$(bash "$HERE/../build-self-review-skip-notice.sh" "" "$RUN_URL")"
+check "self-mod skip, incomplete file list (gha#598)" false self-mod-skip \
+  "$EMPTY_NOTICE"
+
 check "gemini dispatch-guard skip, fork or Dependabot PR" false self-mod-skip \
   "> [!WARNING]
 > **No review ran -- dispatched Gemini review of fork or Dependabot PRs is disabled.**

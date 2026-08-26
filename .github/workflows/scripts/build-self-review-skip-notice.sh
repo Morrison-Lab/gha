@@ -9,16 +9,31 @@
 #
 # The third argument is kept so existing callers do not break; the notice no
 # longer branches on caller-vs-other (every remaining skip is a restore
-# failure). The path still appears in the body so the collapse step and a
-# reader can see which file was in play.
+# failure). A real edited path still appears in the body so the collapse
+# step and a reader can see which file was in play.
+#
+# An empty workflow-path means the PR file list could not be completed
+# (API failure or GitHub's 3000-file cap). detect-pr-workflow-edits then
+# sets workflow_edits=true with an empty edited_path rather than stuffing
+# a fake filename into the notice.
 set -euo pipefail
 
-WF_PATH="${1:?usage: build-self-review-skip-notice.sh <workflow-path> <run-url> [caller-wf-path]}"
-RUN_URL="${2:?usage: build-self-review-skip-notice.sh <workflow-path> <run-url> [caller-wf-path]}"
+if [ "$#" -lt 2 ]; then
+  echo "usage: build-self-review-skip-notice.sh <workflow-path> <run-url> [caller-wf-path]" >&2
+  exit 1
+fi
+
+WF_PATH="$1"
+RUN_URL="$2"
+RESTORE_CLAUSE='The review job tried to replace `.github/workflows/` with the default-branch copies so it would not execute untrusted workflow YAML from the PR head ([gha#598](https://github.com/Morrison-Lab/gha/issues/598)), and that restore failed.'
 
 printf '> [!WARNING]\n'
 printf '> **No review ran --- restoring default-branch workflow files failed.**\n'
-printf '> This PR edits `%s`. The review job tried to replace `.github/workflows/` with the default-branch copies so it would not execute untrusted workflow YAML from the PR head ([gha#598](https://github.com/Morrison-Lab/gha/issues/598)), and that restore failed.\n' "$WF_PATH"
+if [ -z "$WF_PATH" ]; then
+  printf '> The PR changed-file list was incomplete, so the review treated it as a workflow-file edit rather than executing an unknown or truncated PR tree. %s\n' "$RESTORE_CLAUSE"
+else
+  printf '> This PR edits `%s`. %s\n' "$WF_PATH" "$RESTORE_CLAUSE"
+fi
 printf '> The review is skipped rather than running against PR-head YAML. A later re-run can recover if fetching the default branch was the problem.\n'
 printf '>\n'
 printf '> `require-review` reports a gray *skipped* rather than green.\n'

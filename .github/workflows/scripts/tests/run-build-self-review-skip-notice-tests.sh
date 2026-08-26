@@ -78,6 +78,61 @@ else
   failures=$((failures + 1))
 fi
 
+# Test 2b: An empty workflow-path is the incomplete-list case (API failure
+# or GitHub's 3000-file cap). Do not name a fake file, and do not say
+# "This PR edits" (Bugbot on gha#674). A real `.github/workflows/unknown.yml`
+# is a legal workflow and must still be named if passed as the path.
+got_empty="$(bash "$build_script" "" "$run_url")"
+if [[ "$got_empty" == *"The PR changed-file list was incomplete"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh names an incomplete file list when the path is empty"
+else
+  echo "::error::build-self-review-skip-notice.sh empty-path notice missing incomplete-list wording"
+  failures=$((failures + 1))
+fi
+if [[ "$got_empty" == *"This PR edits"* ]]; then
+  echo "::error::build-self-review-skip-notice.sh empty-path notice still contains 'This PR edits'"
+  failures=$((failures + 1))
+else
+  echo "OK   build-self-review-skip-notice.sh empty-path notice does not say 'This PR edits'"
+fi
+if [[ "$got_empty" == *"unknown.yml"* ]]; then
+  echo "::error::build-self-review-skip-notice.sh empty-path notice still names unknown.yml"
+  failures=$((failures + 1))
+else
+  echo "OK   build-self-review-skip-notice.sh empty-path notice does not name unknown.yml"
+fi
+if [[ "$got_empty" == *"No review ran --- restoring default-branch workflow files failed."* ]]; then
+  echo "OK   build-self-review-skip-notice.sh empty-path notice keeps the live headline"
+else
+  echo "::error::build-self-review-skip-notice.sh empty-path notice dropped the live headline"
+  failures=$((failures + 1))
+fi
+
+real_unknown=".github/workflows/unknown.yml"
+got_real_unknown="$(bash "$build_script" "$real_unknown" "$run_url")"
+if [[ "$got_real_unknown" == *"This PR edits \`$real_unknown\`"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh still names a real unknown.yml path"
+else
+  echo "::error::build-self-review-skip-notice.sh treated a real unknown.yml path as an incomplete list"
+  failures=$((failures + 1))
+fi
+
+# The detect composite must not stuff a fake filename into edited_path
+# (gha#303: two declarations of one sentinel would drift).
+detect_action="$repo_root/.github/actions/detect-pr-workflow-edits/action.yml"
+if grep -q 'unknown.yml' "$detect_action"; then
+  echo "::error::detect-pr-workflow-edits/action.yml still mentions unknown.yml; use list_incomplete=true and an empty edited_path"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-pr-workflow-edits/action.yml does not use an unknown.yml sentinel"
+fi
+if grep -q 'list_incomplete=true' "$detect_action"; then
+  echo "OK   detect-pr-workflow-edits/action.yml sets list_incomplete=true on an incomplete list"
+else
+  echo "::error::detect-pr-workflow-edits/action.yml missing list_incomplete=true on the incomplete-list path"
+  failures=$((failures + 1))
+fi
+
 # Test 3: Missing arguments usage check
 set +e
 err_output="$(bash "$build_script" 2>&1)"

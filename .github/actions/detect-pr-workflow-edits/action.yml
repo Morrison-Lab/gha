@@ -30,8 +30,16 @@ outputs:
     description: "'true' when the PR edits the caller review workflow."
     value: ${{ steps.detect.outputs.caller_edited }}
   edited_path:
-    description: First matching workflow path, or empty.
+    description: >-
+      First matching workflow path, or empty. Empty when the PR file list
+      could not be completed; see list_incomplete.
     value: ${{ steps.detect.outputs.edited_path }}
+  list_incomplete:
+    description: >-
+      'true' when the PR file list could not be completed (API failure or
+      GitHub's 3000-file cap). workflow_edits is then true and edited_path
+      is empty --- not a fake workflow filename.
+    value: ${{ steps.detect.outputs.list_incomplete }}
 
 runs:
   using: composite
@@ -49,6 +57,11 @@ runs:
         ACTION_SCRIPTS="${{ github.action_path }}/../../workflows/scripts"
         if ! files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$ACTION_SCRIPTS/list-pr-changed-files.sh"); then
           echo "::warning::Could not list a complete file set for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown or truncated PR tree (gha#598)."
-          files=".github/workflows/unknown.yml"
+          echo "workflow_edits=true" >> "$GITHUB_OUTPUT"
+          echo "caller_edited=false" >> "$GITHUB_OUTPUT"
+          echo "edited_path=" >> "$GITHUB_OUTPUT"
+          echo "list_incomplete=true" >> "$GITHUB_OUTPUT"
+        else
+          PR_CHANGED_FILES="$files" bash "$ACTION_SCRIPTS/detect-pr-workflow-edits.sh"
+          echo "list_incomplete=false" >> "$GITHUB_OUTPUT"
         fi
-        PR_CHANGED_FILES="$files" bash "$ACTION_SCRIPTS/detect-pr-workflow-edits.sh"

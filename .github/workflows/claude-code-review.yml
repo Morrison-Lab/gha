@@ -466,15 +466,23 @@ jobs:
           WORKFLOW_EDITS: ${{ steps.wf-edits.outputs.workflow_edits }}
           EDITED_PATH: ${{ steps.wf-edits.outputs.edited_path }}
           CALLER_PATH: ${{ steps.caller-wf.outputs.path }}
+          LIST_INCOMPLETE: ${{ steps.wf-edits.outputs.list_incomplete }}
         run: |
           set -euo pipefail
+          # An incomplete file list must not fall back to the caller path:
+          # that would claim the PR edited claude-review.yml when we do
+          # not know which files changed.
+          if [ "$LIST_INCOMPLETE" = "true" ]; then
+            wf_path=""
+          else
+            wf_path="${EDITED_PATH:-$CALLER_PATH}"
+          fi
+          echo "wf_path=$wf_path" >> "$GITHUB_OUTPUT"
           if [ "$WORKFLOW_EDITS" = "true" ] && [ "$RESTORE_OUTCOME" = "failure" ]; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
-            echo "wf_path=${EDITED_PATH:-$CALLER_PATH}" >> "$GITHUB_OUTPUT"
             echo "::notice::Could not restore default-branch workflow files; skipping the review rather than executing PR-head YAML (gha#598)."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
-            echo "wf_path=${EDITED_PATH:-$CALLER_PATH}" >> "$GITHUB_OUTPUT"
             if [ "$WORKFLOW_EDITS" = "true" ]; then
               echo "::notice::PR edits workflow files; restored .github/workflows/ from the default branch and passing github_token so the review can run without executing PR-head workflow YAML (gha#598)."
             fi
@@ -485,7 +493,7 @@ jobs:
         if: steps.selfmod.outputs.self_mod == 'true'
         uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
         with:
-          workflow-path: ${{ steps.selfmod.outputs.wf_path || steps.caller-wf.outputs.path }}
+          workflow-path: ${{ steps.selfmod.outputs.wf_path }}
           caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
 

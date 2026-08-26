@@ -614,6 +614,12 @@ jobs:
         with:
           workflow-path: .github/workflows/claude-code-review.yml
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise build-self-review-skip-notice with an empty workflow-path
+        id: skip-notice-incomplete-e2e
+        uses: ./.github/actions/build-self-review-skip-notice
+        with:
+          workflow-path: ''
+          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
       - name: Exercise detect-pr-workflow-edits composite action end-to-end
         id: detect-wf-e2e
         if: github.event_name == 'pull_request'
@@ -630,10 +636,19 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           WORKFLOW_EDITS: ${{ steps.detect-wf-e2e.outputs.workflow_edits }}
           EDITED_PATH: ${{ steps.detect-wf-e2e.outputs.edited_path }}
+          LIST_INCOMPLETE: ${{ steps.detect-wf-e2e.outputs.list_incomplete }}
         run: |
           set -euo pipefail
           if [[ "$WORKFLOW_EDITS" != "true" && "$WORKFLOW_EDITS" != "false" ]]; then
             echo "::error::detect-pr-workflow-edits did not produce a boolean workflow_edits output (got '$WORKFLOW_EDITS')"
+            exit 1
+          fi
+          if [[ "$LIST_INCOMPLETE" != "true" && "$LIST_INCOMPLETE" != "false" ]]; then
+            echo "::error::detect-pr-workflow-edits did not produce a boolean list_incomplete output (got '$LIST_INCOMPLETE')"
+            exit 1
+          fi
+          if [[ "$LIST_INCOMPLETE" == "true" && -n "$EDITED_PATH" ]]; then
+            echo "::error::detect-pr-workflow-edits set list_incomplete=true but edited_path='$EDITED_PATH' (must be empty, not a fake path)"
             exit 1
           fi
           # The boolean-only check cannot catch a composite that always
@@ -650,7 +665,7 @@ jobs:
             echo "::error::detect-pr-workflow-edits workflow_edits='$WORKFLOW_EDITS' but independent classify wants '$want' (edited_path='$EDITED_PATH')"
             exit 1
           fi
-          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH (matches independent classify)"
+          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH list_incomplete=$LIST_INCOMPLETE (matches independent classify)"
       - name: Exercise export-extra-secrets composite action end-to-end
         uses: ./.github/actions/export-extra-secrets
         with:
@@ -669,6 +684,7 @@ jobs:
         shell: bash
         env:
           BODY_FILE: ${{ steps.skip-notice-e2e.outputs.body-file }}
+          INCOMPLETE_BODY_FILE: ${{ steps.skip-notice-incomplete-e2e.outputs.body-file }}
         run: |
           set -euo pipefail
           if [[ ! -s "$BODY_FILE" ]]; then
@@ -676,6 +692,19 @@ jobs:
             exit 1
           fi
           echo "build-self-review-skip-notice correctly generated body file at $BODY_FILE"
+          if [[ ! -s "$INCOMPLETE_BODY_FILE" ]]; then
+            echo "::error::build-self-review-skip-notice empty-path call did not generate a non-empty body file"
+            exit 1
+          fi
+          if grep -q 'This PR edits' "$INCOMPLETE_BODY_FILE"; then
+            echo "::error::empty-path skip notice still contains 'This PR edits'"
+            exit 1
+          fi
+          if ! grep -q 'changed-file list was incomplete' "$INCOMPLETE_BODY_FILE"; then
+            echo "::error::empty-path skip notice missing incomplete-list wording"
+            exit 1
+          fi
+          echo "build-self-review-skip-notice empty-path notice names an incomplete list"
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
