@@ -157,6 +157,7 @@ that need to write must have the **caller** grant it on the calling job:
   that never run the model (`gather-context` stashes reviewers and posts
   the early dispatch notice; `post-review` downloads the review artifact
   and comments) (gha#580).
+
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
     submodules clone anonymously; private ones additionally need a
