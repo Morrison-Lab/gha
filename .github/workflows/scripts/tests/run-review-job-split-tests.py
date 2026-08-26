@@ -157,9 +157,10 @@ def check_workflow(
     print(f"Checking {workflow_path} and {action_path}\n")
 
     check(
-        "needs.gather-context.result != 'failure'" in review_if
-        or 'needs.gather-context.result != "failure"' in review_if,
-        "claude-review if: excludes a failed gather-context",
+        "needs.gather-context.result != 'failure'" not in review_if
+        and 'needs.gather-context.result != "failure"' not in review_if,
+        "claude-review if: does not skip on gather-context failure "
+        "(that skip greys require-review and does not block merging)",
     )
 
     for key, val in FORGE_WRITE.items():
@@ -442,10 +443,30 @@ def check_workflow(
             "download-artifact name includes github.run_id and github.run_attempt",
         )
     pack_text = pack_path.read_text(encoding="utf-8")
+    pack_default = None
+    pack_m = re.search(
+        r'artifact-name=(claude-review-payload-\$\{RUN_ID\}-\$\{\{\s*github\.run_attempt\s*\}\})',
+        pack_text,
+    )
+    if pack_m:
+        pack_default = re.sub(r"\$\{\{\s+", "${{ ", pack_m.group(1))
+        pack_default = re.sub(r"\s+\}\}", " }}", pack_default)
+    download_as_pack = re.sub(
+        r"\$\{\{\s*github\.run_id\s*\}\}",
+        "${RUN_ID}",
+        download_name,
+    )
+    download_as_pack = re.sub(r"\$\{\{\s+", "${{ ", download_as_pack)
+    download_as_pack = re.sub(r"\s+\}\}", " }}", download_as_pack)
     check(
-        "claude-review-payload-${RUN_ID}-" in pack_text
-        and "github.run_attempt" in pack_text,
+        pack_default is not None
+        and "claude-review-payload-${RUN_ID}-" in pack_default
+        and "github.run_attempt" in pack_default,
         "pack-review-payload default name includes RUN_ID and github.run_attempt",
+    )
+    check(
+        pack_default is not None and download_as_pack == pack_default,
+        "pack default name matches the download-artifact name",
     )
 
     needs = post.get("needs")
@@ -556,8 +577,9 @@ def check_workflow(
         env_sha = str((post_comment.get("env") or {}).get("COMMIT_SHA") or "")
         comment_run = str(post_comment.get("run") or "")
         check(
-            "reviewed_sha" in env_sha,
-            "Post review comment binds COMMIT_SHA to reviewed_sha",
+            " ".join(env_sha.split())
+            == "${{ steps.target.outputs.reviewed_sha }}",
+            "Post review comment COMMIT_SHA is exactly steps.target.outputs.reviewed_sha",
         )
         check(
             not ("gh api" in comment_run and ".head.sha" in comment_run),
@@ -766,8 +788,7 @@ runs:
         review_if = (
             "always() && "
             "needs.gather-context.result != 'skipped' && "
-            "needs.gather-context.result != 'cancelled' && "
-            "needs.gather-context.result != 'failure'"
+            "needs.gather-context.result != 'cancelled'"
         )
         good_wf.write_text(
             f"""
@@ -1324,16 +1345,17 @@ runs:
         no_gather_failure_skip = root / "no-gather-failure-skip.yml"
         no_gather_failure_skip.write_text(
             good_wf.read_text().replace(
-                " && needs.gather-context.result != 'failure'",
-                "",
+                "needs.gather-context.result != 'cancelled'",
+                "needs.gather-context.result != 'cancelled' && "
+                "needs.gather-context.result != 'failure'",
                 1,
             )
         )
         failures += expect(
-            "claude-review if: omitting gather-context failure fails",
+            "claude-review if: skipping gather-context failure fails",
             run(no_gather_failure_skip, good_action),
             False,
-            "claude-review if: excludes a failed gather-context",
+            "does not skip on gather-context failure",
         )
 
         no_compare_stale = root / "no-compare-stale.yml"
@@ -1397,6 +1419,21 @@ runs:
             "pack-review-payload default name includes RUN_ID and github.run_attempt",
         )
 
+        pack_infix = root / "pack-infix.yml"
+        pack_infix.write_text(
+            good_pack.read_text().replace(
+                "claude-review-payload-${RUN_ID}-",
+                "claude-review-payload-${RUN_ID}-extra-",
+                1,
+            )
+        )
+        failures += expect(
+            "pack default name that does not match download fails",
+            run(good_wf, good_action, pack_infix),
+            False,
+            "pack default name matches the download-artifact name",
+        )
+
         denied_in_run = root / "denied-in-run.yml"
         denied_in_run.write_text(
             good_wf.read_text().replace(
@@ -1426,6 +1463,21 @@ runs:
             run(live_head_fallback, good_action),
             False,
             "Post review comment does not fall back to a live head lookup",
+        )
+
+        commit_sha_or = root / "commit-sha-or.yml"
+        commit_sha_or.write_text(
+            good_wf.read_text().replace(
+                "COMMIT_SHA: ${{ steps.target.outputs.reviewed_sha }}",
+                "COMMIT_SHA: ${{ steps.target.outputs.reviewed_sha || steps.target.outputs.live_head }}",
+                1,
+            )
+        )
+        failures += expect(
+            "COMMIT_SHA with a live_head fallback fails",
+            run(commit_sha_or, good_action),
+            False,
+            "Post review comment COMMIT_SHA is exactly steps.target.outputs.reviewed_sha",
         )
 
         require_on_canceling = root / "require-on-canceling.yml"

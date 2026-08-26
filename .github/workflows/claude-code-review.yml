@@ -306,11 +306,12 @@ jobs:
           # Fail CLOSED, not open: if the `gh pr view` call itself fails
           # (rate limit, transient 5xx, bad pr-number), write blocked=true
           # before exiting non-zero. Without this, the step's failure would
-          # leave `blocked` unset. claude-review's `if:` also excludes a
-          # `failure` gather-context result, so a failed guard skips the
-          # model even if that output does not survive. Writing blocked
-          # still fails the dispatch path closed when the job itself
-          # somehow continues (gha#244 review).
+          # leave `blocked` unset -- and claude-review's `if:` below only
+          # excludes a `cancelled` gather-context result and an explicit
+          # `blocked == 'true'`, so an empty output from a *failed* guard
+          # would satisfy both and let the review run anyway, defeating the
+          # guard's whole purpose on exactly the transient error it should
+          # be most defensive about (gha#244 review).
           PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author)
           if [[ $? -ne 0 ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
@@ -482,9 +483,9 @@ jobs:
     # Dispatched runs review unconditionally (so a review fires on the draft PR
     # claude.yml opens for an issue trigger), except when gather-context's
     # dispatch-guard step (gha#235) found the dispatched PR is a fork or
-    # Dependabot PR. Skip when gather-context failed: a stash/API miss
-    # leaves stash-head empty, and on workflow_dispatch reviewed-head is
-    # empty too, so posting would have no SHA to bound against live head.
+    # Dependabot PR. Do not skip on gather-context failure: that greys
+    # require-review (skipped model) and does not block merging. Posting
+    # fail-closes on an empty COMPARE instead, which reds the gate.
     # Otherwise skip — don't fail — drafts, Dependabot, fork
     # PRs (forks can't read the OAuth token), and bot-triggered `synchronize`
     # events (e.g. @claude pushing a commit), which would otherwise red-X an
@@ -493,7 +494,6 @@ jobs:
       always() &&
       needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
-      needs.gather-context.result != 'failure' &&
       (
         (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
         (
@@ -1259,6 +1259,7 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           STASH_HEAD: ${{ needs.gather-context.outputs.stash-head }}
           REVIEWED_HEAD: ${{ needs.claude-review.outputs.reviewed-head }}
+          REVIEW_RESULT: ${{ needs.claude-review.result }}
           CALLER_WF_PATH: ${{ steps.caller-wf.outputs.path }}
         run: |
           set -euo pipefail
@@ -1303,14 +1304,21 @@ jobs:
           if [ -z "$COMPARE" ] || [ "$COMPARE" = "null" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             echo "::error::No reviewed SHA to compare against live head; not posting an unverifiable review."
-            exit 1
-          fi
-          echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
-          if [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
-            echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR head moved ($COMPARE -> $LIVE); not posting a stale review."
+            # Fail the job only when the model ran, so require-review can
+            # go red. A skipped/cancelled model already greys the gate;
+            # exiting 1 here would only redden post-review while restore
+            # still needs to run under always().
+            if [ "$REVIEW_RESULT" != "skipped" ] && [ "$REVIEW_RESULT" != "cancelled" ]; then
+              exit 1
+            fi
           else
-            echo "stale=false" >> "$GITHUB_OUTPUT"
+            echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
+            if [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
+              echo "stale=true" >> "$GITHUB_OUTPUT"
+              echo "::notice::PR head moved ($COMPARE -> $LIVE); not posting a stale review."
+            else
+              echo "stale=false" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
       - name: Download review payload
@@ -1704,7 +1712,10 @@ jobs:
     # Skip (gray) when:
     #   - claude-review was skipped, whatever made its own `if:` false --- a
     #     draft, fork, or bot-authored PR; a dispatch blocked by the
-    #     fork/Dependabot guard; or gather-context having been cancelled
+    #     fork/Dependabot guard; or gather-context having been cancelled.
+    #     gather-context *failure* is not in this list: the model still
+    #     runs, and posting fail-closes on an unbound SHA so this gate
+    #     can go red.
     #   - claude-review was cancelled (the cancel-in-progress race, gha#585)
     #   - quota_exhausted=true (the API rejected the request, either before
     #     any work or part-way through the review -- gha#520)

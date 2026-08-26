@@ -4,6 +4,8 @@
   If `gather-context` also failed, `stash-head` is empty too.
   Empty COMPARE previously skipped the mismatch arm, wrote
   `stale=false`, and the post-comment step fell back to live head.
-  COMPARE now writes `stale=true` and exits before posting,
-  `claude-review` does not start when `gather-context` failed,
-  and the comment binds `COMMIT_SHA` to the compared SHA.
+  COMPARE now writes `stale=true` and exits before posting when
+  the model ran, so `require-review` goes red rather than gray.
+  The comment binds `COMMIT_SHA` to the compared SHA.
+  Consumer docs now match gha#585: a cancelled review skips
+  `require-review` gray; an unbound SHA does not.

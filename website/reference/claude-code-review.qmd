@@ -27,7 +27,7 @@ variable unset while the agent is live, or the mention is answered twice.
 | `prompt-addendum`     | string  | `''`                    | Repo-specific review guidance appended to the plugin prompt.                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `checkout-submodules` | boolean | `false`                 | Check out submodules so the reviewer can read their contents. Private submodules require the `SUBMODULES_TOKEN` secret.                                                                                                                                                                                                                                                                                                                                                                   |
 | `allowed-bots`        | string  | `'github-actions[bot]'` | Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human.                                                                                                                                                                                                                                                                                                                                                                                     |
-| `track-progress`      | boolean | `false`                 | Ignored (gha#580). Tag mode needs a writable forge token in the model job. This workflow posts from a separate job instead. The input is kept so existing callers do not fail at the call gate. |
+| `track-progress`      | boolean | `false`                 | Ignored (gha#580). Tag mode posts a live tracking comment through the `github_comment` MCP server (`mcp__github_comment__update_claude_comment`) and hardcodes git write tools; it does not start `github_inline_comment` unless `mcp__github_inline_comment__*` or `mcp__github__*` is allowlisted. All of that needs a writable forge token in the model job. This workflow splits those: the model job's `GITHUB_TOKEN` has no write scopes, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate. |
 | `show-full-output`    | boolean | `false`                 | Show the full JSON output from Claude Code. Turn it on to diagnose a review that fails inside the model call.                                                                                                                                                                                                                                                                                                                                                                             |
 | `apt-packages`        | string  | `''`                    | Space-separated system packages to `apt-get install` before the review runs (e.g. `maxima` for a computer algebra system). Empty to skip.                                                                                                                                                                                                                                                                                                                                                 |
 | `pip-packages`        | string  | `''`                    | Space-separated pip packages to install with `pip3 --break-system-packages` before the review runs (e.g. `sympy`). Empty to skip.                                                                                                                                                                                                                                                                                                                                                         |
@@ -87,15 +87,21 @@ review.
 The gate skips gray whenever no review was attempted. That covers anything
 that made the `claude-review` job's own `if:` false --- a draft, fork, or
 bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the
-context-gathering job having been cancelled or failed --- plus three cases
+context-gathering job having been cancelled --- plus three cases
 where a job ran and the verdict was withheld:
 
 - the API quota was exhausted --- either before any review work happened, or
   part-way through the run, which leaves a `429` behind after real turns and
   real cost ([#520](https://github.com/Morrison-Lab/gha/issues/520));
 - the PR edits the caller's own review workflow file;
-- `post-review` marked the payload stale (the PR head moved, or the reviewed
-  SHA could not be bound) so a newer run owns the thread.
+- `post-review` marked the payload stale because the PR head moved, so a
+  newer run owns the thread.
+
+A gather-context *failure* is not a gray skip: the model still runs, and
+an unbound reviewed SHA (`stale=true` plus `post-review` exiting 1) turns
+this gate **red**. That is not "a newer run owns the thread"; there may
+be no successor. The same red applies to a live-head lookup that cannot
+read the PR SHA.
 
 That self-mod case deserves care. This workflow's skip guard refuses to
 review a PR that edits the caller review workflow; **no re-run or
