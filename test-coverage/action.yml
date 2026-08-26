@@ -73,9 +73,9 @@ inputs:
   failure-artifact-name:
     description: >-
       Artifact name for the covr install tree uploaded when the job fails.
-      Default 'coverage-test-failures'. Pass empty to skip the upload (the
-      selftest fail-path does this so an expected threshold miss does not
-      publish a failure artifact).
+      Default 'coverage-test-failures'. Pass empty to skip the upload.
+      The examples/vignettes reusable-workflow job uses a distinct name so
+      the two jobs cannot 409 on the same artifact in one run.
     default: 'coverage-test-failures'
 runs:
   using: composite
@@ -163,11 +163,11 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        find "${RUNNER_TEMP}/package" -name 'testthat.Rout*' -exec cat '{}' \; || true
+        find "${{ steps.coverage.outputs.install_path }}" -name 'testthat.Rout*' -exec cat '{}' \; || true
 
     - name: Upload test results on failure
       if: failure() && inputs.failure-artifact-name != ''
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ inputs.failure-artifact-name }}
-        path: ${{ runner.temp }}/package
+        path: ${{ steps.coverage.outputs.install_path }}

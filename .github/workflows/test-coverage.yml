@@ -64,7 +64,6 @@ on:
 
 jobs:
   test-coverage:
-    name: Test coverage
     runs-on: ubuntu-latest
     timeout-minutes: 45
     permissions:
@@ -112,6 +111,7 @@ jobs:
           # unit-test report; skip Codecov and JUnit so they are not mixed in.
           upload-coverage: 'false'
           upload-test-results: 'false'
+          failure-artifact-name: 'examples-coverage-test-failures'
           coverage-type: 'examples,vignettes'
           comment-donttest: 'false'
           comment-dontrun: 'false'

@@ -44,44 +44,36 @@ export(from_donttest)
 export(from_dontrun)
 EOF
 
+# Hand-written man/*.Rd files are the source of truth; this fixture never
+# runs roxygen, and a regenerate would drop the \donttest{}/\dontrun{}
+# examples gha#334's proof rests on.
 cat > "$dest/R/add.R" <<'EOF'
-#' Add two numbers
-#'
-#' @param x a number
-#' @param y a number
-#' @return the sum of `x` and `y`
-#' @export
 add <- function(x, y) {
   x + y
 }
 
-#' Add two numbers (donttest example only)
-#'
-#' @param x a number
-#' @param y a number
-#' @return the sum of `x` and `y`
-#' @export
 from_donttest <- function(x, y) {
   x + y
 }
 
-#' Add two numbers (dontrun example only)
-#'
-#' @param x a number
-#' @param y a number
-#' @return the sum of `x` and `y`
-#' @export
 from_dontrun <- function(x, y) {
   x + y
 }
 EOF
 
-cat > "$dest/man/add.Rd" <<'EOF'
-\name{add}
-\alias{add}
-\title{Add two numbers}
+# Unquoted heredoc: $name expands, \name stays literal (backslash is only
+# special before $, `, \, and newline).
+write_rd() {
+  local name="$1"
+  local title="$2"
+  local description="$3"
+  local example="$4"
+  cat > "$dest/man/${name}.Rd" <<EOF
+\name{${name}}
+\alias{${name}}
+\title{${title}}
 \usage{
-add(x, y)
+${name}(x, y)
 }
 \arguments{
 \item{x}{a number}
@@ -92,62 +84,34 @@ add(x, y)
 the sum of \code{x} and \code{y}
 }
 \description{
-Add two numbers.
+${description}
 }
 \examples{
-add(1, 2)
+${example}
 }
 EOF
+}
 
-cat > "$dest/man/from_donttest.Rd" <<'EOF'
-\name{from_donttest}
-\alias{from_donttest}
-\title{Add two numbers (donttest example only)}
-\usage{
-from_donttest(x, y)
-}
-\arguments{
-\item{x}{a number}
-
-\item{y}{a number}
-}
-\value{
-the sum of \code{x} and \code{y}
-}
-\description{
-Add two numbers. Covered only when donttest examples run.
-}
-\examples{
+write_rd add "Add two numbers" "Add two numbers." "add(1, 2)"
+write_rd from_donttest \
+  "Add two numbers (donttest example only)" \
+  "Add two numbers. Covered only when donttest examples run." \
+  "$(cat <<'EX'
 \donttest{
 from_donttest(1, 2)
 }
-}
-EOF
-
-cat > "$dest/man/from_dontrun.Rd" <<'EOF'
-\name{from_dontrun}
-\alias{from_dontrun}
-\title{Add two numbers (dontrun example only)}
-\usage{
-from_dontrun(x, y)
-}
-\arguments{
-\item{x}{a number}
-
-\item{y}{a number}
-}
-\value{
-the sum of \code{x} and \code{y}
-}
-\description{
-Add two numbers. Covered only when dontrun examples run.
-}
-\examples{
+EX
+)"
+write_rd from_dontrun \
+  "Add two numbers (dontrun example only)" \
+  "Add two numbers. Covered only when dontrun examples run." \
+  "$(cat <<'EX'
 \dontrun{
 from_dontrun(1, 2)
 }
-}
-EOF
+EX
+)"
+
 
 cat > "$dest/tests/testthat.R" <<'EOF'
 library(testthat)

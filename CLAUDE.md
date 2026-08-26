@@ -1173,8 +1173,14 @@ maintainer email, etc.). Generate the fixture in a small script
 selftest job runs before invoking the composite, instead of committing R
 package source files (gha#148).
 
-The same `coverage` job pins gha#334's two new inputs rather than only the
-happy path.
+The same `coverage` job exercises the new composite inputs
+(`coverage-type`, `comment-donttest`, `comment-dontrun`, `min-coverage`,
+`upload-coverage`, `failure-artifact-name`) rather than only the happy
+path.
+It cannot exercise the reusable workflow's `examples-coverage` input:
+that layer calls `Morrison-Lab/gha/test-coverage@v2`, which does not
+resolve the new keys until `@v2` slides (the same bootstrapping gap
+`dependabot-review` and `failure-issue` record).
 The fixture exports `add()` (unit-tested) plus `from_donttest()`
 and `from_dontrun()` (covered only by those Rd example wrappers).
 A `min-coverage: '100'` call on the default tests type must fail;

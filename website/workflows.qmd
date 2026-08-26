@@ -171,11 +171,15 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   caller's `secrets:` block (optional for public repos, but recommended).
   Set `examples-coverage: true` for a second job that runs examples and
   vignettes.
-  `\dontrun{}` never runs under `R CMD check`;
-  `\donttest{}` is skipped unless `--as-cran` or `--run-donttest`.
-  Set `min-coverage`
-  to fail the tests job below a chosen percent (empty/off by default; does
-  not apply to the examples job).
+  [`\dontrun{}`](https://cran.r-project.org/doc/manuals/R-exts.html#Documenting-functions)
+  never runs under `R CMD check`;
+  [`\donttest{}`](https://cran.r-project.org/doc/manuals/R-exts.html#Documenting-functions)
+  is skipped unless `--as-cran` or `--run-donttest`.
+  That job does not upload to Codecov or apply `min-coverage`;
+  the percent appears in the log and step summary only.
+  Set `min-coverage` to fail the tests job when coverage falls below
+  a chosen percent (empty/off by default).
+  It does not apply to the examples job.
 
 ## PHI scanning {#phi-scanning}
 

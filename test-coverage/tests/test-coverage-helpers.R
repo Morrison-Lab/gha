@@ -7,8 +7,8 @@
 #
 # check() / check_error() match
 # .github/workflows/scripts/tests/test-description-version.R.
-# Extracting a shared r-test-helpers.R would retarget that file and is
-# out of scope for this change.
+# Extracting a shared r-test-helpers.R is tracked in
+# https://github.com/Morrison-Lab/gha/issues/682.
 
 sourced <- FALSE
 candidates <- c(
@@ -78,13 +78,18 @@ check_error(
   parse_coverage_type("exmaples"),
   "exmaples"
 )
+check_error(
+  "all cannot mix with other types",
+  parse_coverage_type("all,tests"),
+  "must be the only coverage type"
+)
+check_error(
+  "none cannot mix with other types",
+  parse_coverage_type("none,examples"),
+  "must be the only coverage type"
+)
 
 check("empty comment flag uses default TRUE", parse_comment_flag(""), TRUE)
-check(
-  "empty comment flag can default FALSE",
-  parse_comment_flag("", default = FALSE),
-  FALSE
-)
 check("comment flag true", parse_comment_flag("true"), TRUE)
 check("comment flag TRUE", parse_comment_flag("TRUE"), TRUE)
 check("comment flag false", parse_comment_flag("false"), FALSE)

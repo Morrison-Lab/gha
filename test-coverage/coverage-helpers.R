@@ -29,13 +29,19 @@ parse_coverage_type <- function(raw) {
       call. = FALSE
     )
   }
+  if (length(types) > 1L && any(types %in% c("all", "none"))) {
+    stop(
+      "'all' and 'none' must be the only coverage type specified.",
+      call. = FALSE
+    )
+  }
   types
 }
 
-parse_comment_flag <- function(raw, default = TRUE) {
+parse_comment_flag <- function(raw) {
   raw <- trimws(as.character(raw))
   if (!nzchar(raw)) {
-    return(isTRUE(default))
+    return(TRUE)
   }
   value <- as.logical(raw)
   if (is.na(value)) {

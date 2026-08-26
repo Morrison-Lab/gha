@@ -20,11 +20,9 @@ if (!nzchar(action_path)) {
 }
 source(file.path(action_path, "coverage-helpers.R"), local = FALSE)
 
-suppressPackageStartupMessages({
-  if (!requireNamespace("covr", quietly = TRUE)) {
-    stop("Package 'covr' is not installed.")
-  }
-})
+if (!requireNamespace("covr", quietly = TRUE)) {
+  stop("Package 'covr' is not installed.", call. = FALSE)
+}
 
 path <- Sys.getenv("COVERAGE_PATH")
 type <- parse_coverage_type(Sys.getenv("COVERAGE_TYPE"))
@@ -46,8 +44,20 @@ install_path <- file.path(
 # covr with clean=FALSE reuses this directory across composite calls in the
 # same job (the selftest coverage job runs three). A leftover rdb from a
 # previous install is corrupt on the next load.
-if (dir.exists(install_path)) {
-  unlink(install_path, recursive = TRUE)
+if (unlink(install_path, recursive = TRUE, force = TRUE) != 0L) {
+  stop(
+    sprintf("could not remove stale covr install tree at %s.", install_path),
+    call. = FALSE
+  )
+}
+
+github_output <- Sys.getenv("GITHUB_OUTPUT", "")
+if (nzchar(github_output)) {
+  cat(
+    sprintf("install_path=%s\n", install_path),
+    file = github_output,
+    append = TRUE
+  )
 }
 
 # Copied from r-lib/actions test-coverage.yaml so covr's progress output is
@@ -61,7 +71,13 @@ covr_args <- list(
   clean = FALSE,
   install_path = install_path
 )
-# commentDonttest/commentDontrun only apply when examples run.
+# commentDonttest/commentDontrun are not named arguments of
+# covr::package_coverage(); they travel through `...` to
+# tools::testInstalledPackage() and then to the unexported
+# tools:::.createExdotR() / tools::Rd2ex() helpers. The selftest's
+# type=examples,vignettes call with both flags false is what pins that
+# pass-through: if it broke, from_donttest/from_dontrun would stay
+# uncovered and min-coverage=100 would fail that step.
 if (any(type %in% c("examples", "all"))) {
   covr_args$commentDonttest <- comment_donttest
   covr_args$commentDontrun <- comment_dontrun
@@ -73,7 +89,6 @@ cat(sprintf("\nCode coverage: %.2f%%\n", pct))
 # Written to the working directory as cobertura.xml regardless of `path`.
 covr::to_cobertura(coverage)
 
-github_output <- Sys.getenv("GITHUB_OUTPUT", "")
 if (nzchar(github_output)) {
   cat(sprintf("percent=%.10g\n", pct), file = github_output, append = TRUE)
 }

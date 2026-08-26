@@ -2438,6 +2438,7 @@ jobs:
       # rather than assumed -- dropping parse_min_coverage("") -> NULL turns
       # the empty-is-disabled case red.
       - name: Test coverage helper parsers
+        if: ${{ !cancelled() }}
         shell: bash
         run: |
           set -euo pipefail
