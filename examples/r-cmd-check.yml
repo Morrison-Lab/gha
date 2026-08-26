@@ -1,0 +1,52 @@
+# Copy to .github/workflows/r-cmd-check.yml (or R-CMD-check.yaml) in your repo.
+#
+# Complete reference:
+# https://morrison-lab.github.io/gha/reference/r-cmd-check.html
+#
+# Two jobs: the full OS × R-version matrix, and a hard-dependencies-only
+# check that runs only on pull_request. Drop R-CMD-check-hard if you do
+# not want that extra job.
+#
+# Do not key concurrency on github.head_ref alone: it is empty on push,
+# so every push across every branch would share one group and cancel
+# each other. github.ref is set on both pull_request and push.
+name: R-CMD-check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: r-cmd-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  R-CMD-check:
+    uses: Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2
+    # with:
+    #   path: '.'
+    #   error-on: '"note"'
+    #   force-suggests: true           # rpt leaves R's default true; this workflow defaults false
+    #   setup-julia: true              # rpt: julia-actions/setup-julia
+    #   install-quarto: true           # rpt: quarto-dev/quarto-actions/setup (skipped on ubuntu when linux-container is set)
+    #   linux-container: rocker/verse:latest  # rpt: container on ubuntu-latest; ignored by the hard job
+    #   checkout-submodules: true      # rpt: actions/checkout submodules: recursive
+    #   timeout-minutes: 50            # rpt's hang ceiling; this workflow defaults to 90
+    #   extra-packages: local::.       # rpt extra; rcmdcheck is always installed
+    # secrets:
+    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}  # only for private submodules
+  R-CMD-check-hard:
+    uses: Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2
+    with:
+      hard: true
+      # Match extras you enable on the full job, except linux-container
+      # (the hard job never uses a container: verse would preinstall Suggests).
+      # setup-julia: true
+      # install-quarto: true
+      # checkout-submodules: true
+      # extra-packages: local::.
+    # secrets:
+    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}

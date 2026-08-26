@@ -61,6 +61,7 @@ not reference `@main` from consumers.
 | `summary.yml` | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`) | `endpoint`, `model` |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
+| `r-cmd-check.yml` | Run `R CMD check` across an OS × R-version matrix, with an optional hard-dependencies-only job gated to `pull_request` | `hard`, `error-on`, `setup-julia`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes` |
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names` |
@@ -105,7 +106,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `check-typos`,
   `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
-  `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
+  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> → only
   `contents: read` (the default), so no `permissions:` block is needed.
   This list is checked against the workflows' own `permissions:` blocks by
@@ -503,8 +504,9 @@ Pin
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, and
-`check-typos.yml`
+`spellcheck.yml`,
+`check-typos.yml`, and
+`r-cmd-check.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -621,8 +623,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, and
-`check-typos.yml` at `@v2` -- see the
+`spellcheck.yml`,
+`check-typos.yml`, and
+`r-cmd-check.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
@@ -637,9 +640,10 @@ run.
 A job that calls a reusable workflow cannot set `timeout-minutes` itself
 (GitHub rejects the key on a `uses:` job), so such a job inherits whatever
 timeout the called workflow's own job declares.
-`altdoc-multiversion-docs.yml` additionally exposes its timeout as a
-`workflow_call` input, which is the pattern to follow if a consumer ever needs
-to raise one.
+`altdoc-multiversion-docs.yml` and `r-cmd-check.yml` additionally expose
+their timeouts as a `workflow_call` input, which is the pattern to follow if
+a consumer ever needs to raise one. `r-cmd-check.yml` defaults to 90 minutes
+(an `R CMD check` matrix hang ceiling, not a budget).
 
 ## Reverse dependencies
 
@@ -656,5 +660,5 @@ automatically. A **private** consumer must allow access to this repo under
 ## Scope
 
 This started as the pilot set (the byte-identical / near-identical workflow
-families) plus the PR-preview/publish family. Additional families (spell check,
-lint-changed-files, pr-commands, R-CMD-check) may be added later.
+families) plus the PR-preview/publish family. Additional families
+(lint-changed-files, pr-commands) may be added later.

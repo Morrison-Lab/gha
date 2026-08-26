@@ -2538,6 +2538,21 @@ jobs:
             exit 1
           fi
           echo "The vignette fixture failed without 'exclude', so the exclude assertion is not vacuous."
+  # r-cmd-check is workflow-only wrapping r-lib/actions; this repo is not an
+  # R package, so a live R CMD check is out of reach. Parse the workflow and
+  # example stub for the contracts that would be silent if reversed
+  # (cache: false on the hard job, pull_request gate, github.ref concurrency).
+  r-cmd-check-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run r-cmd-check workflow contract tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't
