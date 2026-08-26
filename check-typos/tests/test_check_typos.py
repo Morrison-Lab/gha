@@ -483,20 +483,14 @@ def test_normalize_path_keeps_leading_dot_on_hidden_paths():
     assert ct._normalize_path("./.gitignore") == ".gitignore"
 
 
-def test_diff_new_file_path_rejects_added_double_plus_content():
-    """An added `++ heading` line is `+++ heading` in the diff, not a header."""
-    is_header, path = ct._diff_new_file_path("+++ heading")
-    assert is_header is False
-    assert path is None
-    is_header, path = ct._diff_new_file_path("+++ b/notes.md")
-    assert is_header is True
-    assert path == "notes.md"
-    is_header, path = ct._diff_new_file_path("+++ /dev/null")
-    assert is_header is True
-    assert path is None
-    is_header, path = ct._diff_new_file_path("+++ b/.github/workflows/ci.yml")
-    assert is_header is True
-    assert path == ".github/workflows/ci.yml"
+def test_diff_new_file_path_parses_headers():
+    assert ct._diff_new_file_path("+++ b/notes.md") == "notes.md"
+    assert ct._diff_new_file_path("+++ /dev/null") is None
+    assert ct._diff_new_file_path("+++ b/.github/workflows/ci.yml") == (
+        ".github/workflows/ci.yml"
+    )
+    # diff.noprefix=true (we also force it off on the git invocation)
+    assert ct._diff_new_file_path("+++ notes.md") == "notes.md"
 
 
 def test_added_line_starting_with_double_plus_stays_in_scope(tmp_path, monkeypatch):
@@ -517,6 +511,44 @@ def test_added_line_starting_with_double_plus_stays_in_scope(tmp_path, monkeypat
     passed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
     assert "notes.md" in passed.splitlines()
     assert "cieve" not in passed.splitlines()
+
+
+def test_added_line_looking_like_a_b_prefix_header_stays_in_scope(tmp_path):
+    """`++ b/notes.md` is rendered as `+++ b/notes.md`, identical to a
+    file header. Only hunk position distinguishes them."""
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("++ b/notes.md\n")
+    _commit(tmp_path, "add header-shaped line")
+
+    added = ct._added_line_numbers("HEAD~1", ["."], cwd=str(tmp_path))
+    assert added == {"notes.md": {1}}
+
+
+def test_diff_noprefix_config_does_not_drop_added_lines(tmp_path):
+    _init_repo(tmp_path)
+    subprocess.run(
+        ["git", "config", "diff.noprefix", "true"], cwd=tmp_path, check=True
+    )
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    added = ct._added_line_numbers("HEAD~1", ["."], cwd=str(tmp_path))
+    assert added == {"notes.md": {1}}
+
+
+def test_path_with_space_is_kept(tmp_path):
+    _init_repo(tmp_path)
+    (tmp_path / "my notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "my notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    added = ct._added_line_numbers("HEAD~1", ["."], cwd=str(tmp_path))
+    assert added == {"my notes.md": {1}}
 
 
 def test_malformed_globs_fail_rather_than_skip(tmp_path, monkeypatch, capsys):

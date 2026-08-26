@@ -54,6 +54,16 @@ _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 # the step, whatever `fail` says -- the same split check-secrets draws with
 # gitleaks --exit-code 0.
 _TYPOS_FOUND_EXIT = 2
+# Force literal paths and the default a/ b/ prefixes so a consumer's
+# diff.noprefix / quotepath config cannot reshape the unified diff this
+# parser reads.
+_GIT = (
+    "git",
+    "-c",
+    "core.quotepath=false",
+    "-c",
+    "diff.noprefix=false",
+)
 
 
 class Finding(NamedTuple):
@@ -68,7 +78,7 @@ class Finding(NamedTuple):
 def _run_git(args: List[str], cwd: Optional[str] = None) -> Optional[str]:
     try:
         proc = subprocess.run(
-            ["git", "-c", "core.quotepath=false", *args],
+            [*_GIT, *args],
             capture_output=True,
             check=False,
             encoding="utf-8",
@@ -86,7 +96,7 @@ def _run_git_checked(args: List[str], cwd: Optional[str] = None) -> str:
     """Return stdout, or raise RuntimeError with git's stderr."""
     try:
         proc = subprocess.run(
-            ["git", "-c", "core.quotepath=false", *args],
+            [*_GIT, *args],
             capture_output=True,
             check=False,
             encoding="utf-8",
@@ -160,26 +170,22 @@ def _normalize_path(path: str) -> str:
     return path
 
 
-def _diff_new_file_path(raw: str) -> Tuple[bool, Optional[str]]:
-    """Parse a unified-diff ``+++ `` line.
+def _diff_new_file_path(raw: str) -> Optional[str]:
+    """Path from a unified-diff ``+++ `` header, or None for ``/dev/null``.
 
-    Returns ``(True, path)`` for a real file header (``path`` is None when
-    the new side is ``/dev/null``), or ``(False, None)`` when ``raw`` is
-    not a header -- including an added line whose content starts with
-    ``++ ``, which git renders as ``+++ rest``. Matching any ``+++ ``
-    prefix would treat that content as a path, then ``[2:]`` would invent
-    a bogus file and drop the real added line.
+    Caller must only invoke this *outside* a hunk. An added line whose
+    content starts with ``++ `` is also rendered as ``+++ rest``, and is
+    indistinguishable from a header except by that position: headers
+    come before ``@@``, content comes after.
     """
-    if not raw.startswith("+++ "):
-        return False, None
     target = raw[4:].split("\t", 1)[0]
     if len(target) >= 2 and target.startswith('"') and target.endswith('"'):
         target = target[1:-1]
     if target == "/dev/null":
-        return True, None
+        return None
     if target.startswith("b/") or target.startswith("a/"):
-        return True, _normalize_path(target[2:])
-    return False, None
+        target = target[2:]
+    return _normalize_path(target)
 
 
 def _added_line_numbers(
@@ -194,14 +200,21 @@ def _added_line_numbers(
     result: Dict[str, Set[int]] = {}
     cur_path: Optional[str] = None
     new_lineno = 0
+    in_hunk = False
     for raw in diff.splitlines():
-        is_header, header_path = _diff_new_file_path(raw)
-        if is_header:
-            cur_path = header_path
+        if raw.startswith("diff "):
+            in_hunk = False
+            continue
+        if raw.startswith("--- "):
+            in_hunk = False
+            continue
+        if raw.startswith("+++ ") and not in_hunk:
+            cur_path = _diff_new_file_path(raw)
             if cur_path is not None:
                 result.setdefault(cur_path, set())
             continue
         if raw.startswith("@@"):
+            in_hunk = True
             m = _HUNK_RE.match(raw)
             new_lineno = int(m.group(1)) if m else 0
             continue
