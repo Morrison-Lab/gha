@@ -2,11 +2,13 @@
 """Pin claude.yml's cheap mention-filter job (gha#554).
 
 gha#342 already stripped markup *inside* the agent job, so a quoted mention
-no longer billed an agent run. What it left was the job-level `if:` testing
-the raw body -- a GitHub expression cannot strip Markdown -- so a runner
-still spun up, checked out, and stood down. Direction 2 of #554 moves that
+no longer billed the expensive agent job (model invocation, caller checkout,
+R/Quarto setup). What it left was the job-level `if:` testing the raw body
+-- a GitHub expression cannot strip Markdown -- so a filter runner still
+spun up, checked out, and stood down. Direction 2 of #554 moves that
 decision to a cheap first job that reuses detect-bot-mention and gates the
-agent job on `proceed`.
+agent job on `proceed`. The filter runner minute is still billed; the
+avoided cost is the `claude` job.
 
 A wiring typo here is silent in the other direction from most bugs in this
 file: dropping the gate, or widening `proceed == 'true'` to `!= 'false'`,
@@ -31,6 +33,74 @@ import tempfile
 FAILURES: list[str] = []
 
 DEFAULT_WORKFLOW = ".github/workflows/claude.yml"
+
+# Pin the exact expressions, not substrings. Appending `|| true` to either
+# `if:` still contains every required fragment, so a substring pin stays
+# green while dispatch/schedule runs detection on four empty bodies
+# (prints `false`; unattended runs die) or the trusted-author gate is
+# bypassed. Measured 2026-08-26 against this file's own mutations.
+EXPECTED_FILTER_JOB_IF = (
+    "(github.event_name == 'issue_comment' && "
+    "contains(github.event.comment.body, '@claude') && "
+    "(contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), "
+    "github.event.comment.author_association) || "
+    "contains(fromJSON(inputs.trusted-bot-logins), "
+    "github.event.comment.user.login))) ||\n"
+    "(github.event_name == 'pull_request_review_comment' && "
+    "contains(github.event.comment.body, '@claude') && "
+    "(contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), "
+    "github.event.comment.author_association) || "
+    "contains(fromJSON(inputs.trusted-bot-logins), "
+    "github.event.comment.user.login))) ||\n"
+    "(github.event_name == 'pull_request_review' && "
+    "contains(github.event.review.body, '@claude') && "
+    "(contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), "
+    "github.event.review.author_association) || "
+    "contains(fromJSON(inputs.trusted-bot-logins), "
+    "github.event.review.user.login))) ||\n"
+    "(github.event_name == 'issues' && "
+    "(contains(github.event.issue.body, '@claude') || "
+    "contains(github.event.issue.title, '@claude')) && "
+    "(contains(fromJSON('[\"OWNER\",\"MEMBER\",\"COLLABORATOR\"]'), "
+    "github.event.issue.author_association) || "
+    "contains(fromJSON(inputs.trusted-bot-logins), "
+    "github.event.issue.user.login))) ||\n"
+    "(github.event_name == 'issues' && github.event.action == 'assigned' && "
+    "contains(fromJSON(inputs.dispatch-on-assignee), "
+    "github.event.assignee.login)) ||\n"
+    "github.event_name == 'workflow_dispatch' ||\n"
+    "github.event_name == 'schedule'\n"
+)
+
+EXPECTED_DETECT_STEP_IF = (
+    "github.event_name == 'issue_comment' || "
+    "github.event_name == 'pull_request_review_comment' || "
+    "github.event_name == 'pull_request_review' || "
+    "github.event_name == 'issues'"
+)
+
+EXPECTED_DETECT_WITH = {
+    "comment-body": "${{ github.event.comment.body }}",
+    "review-body": "${{ github.event.review.body }}",
+    "issue-body": (
+        "${{ github.event_name == 'issues' && "
+        "github.event.issue.body || '' }}"
+    ),
+    "issue-title": (
+        "${{ github.event_name == 'issues' && "
+        "github.event.issue.title || '' }}"
+    ),
+}
+
+EXPECTED_PROCEED_ENV = {
+    "MENTION_MATCH": "${{ steps.mention.outputs.match }}",
+    "ASSIGNMENT_TRIGGER": (
+        "${{ github.event_name == 'issues' && "
+        "github.event.action == 'assigned' && "
+        "contains(fromJSON(inputs.dispatch-on-assignee), "
+        "github.event.assignee.login) }}"
+    ),
+}
 
 # (assignment_trigger, mention_match, expected_proceed, why)
 # mention_match "" is the empty-output case: the detect step did not run
@@ -165,33 +235,18 @@ def main() -> int:
         # Empty bodies still print `false` (detect-bot-mention.sh counts them),
         # so this `if:` is what leaves match empty on dispatch/schedule --
         # not the proceed `else`. Deleting it silently kills unattended runs.
-        # Split on || so pull_request_review is not a prefix of
-        # pull_request_review_comment.
-        detect_if = str(filt_mention[0].get("if") or "")
-        detect_clauses = {c.strip() for c in detect_if.split("||")}
-        for event in (
-            "issue_comment",
-            "pull_request_review_comment",
-            "pull_request_review",
-            "issues",
-        ):
-            check(
-                f"github.event_name == '{event}'" in detect_clauses,
-                f"detect-bot-mention runs on {event}",
-            )
+        # Compare the normalized exact expression, not a substring: appending
+        # `|| true` still contains every event clause and stays green under a
+        # fragment pin, then runs detection on dispatch/schedule.
         check(
-            not any("workflow_dispatch" in c or "schedule" in c for c in detect_clauses),
-            "detect-bot-mention does not run on workflow_dispatch/schedule "
-            "(four empty bodies would print false and withhold the agent)",
+            filt_mention[0].get("if") == EXPECTED_DETECT_STEP_IF,
+            "detect-bot-mention `if:` is the exact four-event expression "
+            "(substring pins miss `|| true`)",
         )
-        with_block = filt_mention[0].get("with") or {}
-        for field in ("issue-body", "issue-title"):
-            value = str(with_block.get(field) or "")
-            check(
-                "github.event_name == 'issues'" in value,
-                f"{field} is scoped to the issues event (gha#343: an enclosing "
-                "issue title must not keep a later quoted comment matching)",
-            )
+        check(
+            (filt_mention[0].get("with") or {}) == EXPECTED_DETECT_WITH,
+            "detect-bot-mention `with:` maps each body input to its event field",
+        )
 
     agent_mention = [s for s in agent_steps if "detect-bot-mention" in step_uses(s)]
     check(
@@ -200,33 +255,10 @@ def main() -> int:
         "(quoted mentions must never start this job, so the decision cannot live here)",
     )
 
-    filt_if = str(filt.get("if") or "")
     check(
-        "github.event.action == 'assigned'" in filt_if
-        and "inputs.dispatch-on-assignee" in filt_if,
-        "mention-filter's if: still admits an allowlisted assignment with no mention",
-    )
-    check(
-        "contains(github.event.issue.body, '@claude')" in filt_if,
-        "mention-filter's if: still requires a raw mention on issues.opened "
-        "(assignment is the other clause, not a replacement)",
-    )
-    check(
-        "workflow_dispatch" in filt_if and "schedule" in filt_if,
-        "mention-filter's if: still admits workflow_dispatch/schedule "
-        "(gha#245; a skipped filter leaves proceed empty and the agent never starts)",
-    )
-    check(
-        "author_association" in filt_if
-        and "OWNER" in filt_if
-        and "MEMBER" in filt_if
-        and "COLLABORATOR" in filt_if,
-        "mention-filter's if: still carries the trusted-author association gate "
-        "(the agent job's only if: is proceed==true, so this is the real gate)",
-    )
-    check(
-        "trusted-bot-logins" in filt_if,
-        "mention-filter's if: still honours trusted-bot-logins",
+        filt.get("if") == EXPECTED_FILTER_JOB_IF,
+        "mention-filter's if: is the exact trusted-author expression "
+        "(substring pins miss `|| true` bypasses of the association gate)",
     )
 
     proceed_out = str((filt.get("outputs") or {}).get("proceed") or "")
@@ -249,6 +281,11 @@ def main() -> int:
 
     script = proceed_steps[0].get("run") or ""
     check(bool(script.strip()), "the proceed step has a run: script")
+    check(
+        (proceed_steps[0].get("env") or {}) == EXPECTED_PROCEED_ENV,
+        "proceed step env maps MENTION_MATCH and ASSIGNMENT_TRIGGER "
+        "to the detect output and the assignment expression",
+    )
     check(
         "ASSIGNMENT_TRIGGER" in script,
         "the proceed script keeps the #552 assignment exemption",

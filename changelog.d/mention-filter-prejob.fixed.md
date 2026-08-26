@@ -5,8 +5,9 @@
   A GitHub expression cannot strip Markdown, so the trusted-author `if:` is
   still formatting-blind and a quoted or code-span mention still starts the
   filter job.
-  What it no longer starts is the expensive agent job -- no caller checkout,
-  no R/Quarto setup, no billed agent run.
+  What it no longer starts is the expensive `claude` job -- no caller
+  checkout, no R/Quarto setup, no model invocation.
+  The filter runner minute is still billed.
 
   Assignment remains a sufficient trigger (gha#552): an allowlisted
   `issues.assigned` event proceeds even when the issue never mentions the

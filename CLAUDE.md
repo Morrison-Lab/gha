@@ -334,9 +334,9 @@ which is why the capabilities above moved to `@v2`.
   very little and risk exactly the false negative this bias rules out.
   The caller-side job `if:` and `mention-filter`'s own `if:` still test the
   raw body, because a GitHub expression cannot strip Markdown, so a quoted
-  mention still starts the filter job.
-  What it no longer starts is the agent job: no caller checkout, no billed
-  agent run, no review re-dispatch.
+  mention still starts the filter job (a billed runner minute).
+  What it no longer starts is the expensive `claude` job: no caller checkout,
+  no model invocation, no review re-dispatch.
   An allowlisted `issues.assigned` event is exempt from the mention check
   (gha#552) and still proceeds with no mention anywhere in the issue.
 - `.github/actions/report-push-failure/` -- wraps
