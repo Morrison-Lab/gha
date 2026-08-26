@@ -658,8 +658,20 @@ jobs:
           # them disagrees on a workflow-editing PR.
           if files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash .github/workflows/scripts/list-pr-changed-files.sh); then
             want=$(PR_CHANGED_FILES="$files" CALLER_WF_PATH=".github/workflows/claude-review.yml" bash .github/workflows/scripts/detect-pr-workflow-edits.sh | sed -n 's/^workflow_edits=//p')
+            # A composite that always takes the incomplete-list branch
+            # (workflow_edits=true, list_incomplete=true, empty path)
+            # would still match want=true on this PR. The list succeeded
+            # here, so list_incomplete must be false.
+            if [ "$LIST_INCOMPLETE" != "false" ]; then
+              echo "::error::detect-pr-workflow-edits list_incomplete='$LIST_INCOMPLETE' but the independent file list succeeded (want false)"
+              exit 1
+            fi
           else
             want=true
+            if [ "$LIST_INCOMPLETE" != "true" ]; then
+              echo "::error::detect-pr-workflow-edits list_incomplete='$LIST_INCOMPLETE' but the independent file list failed (want true)"
+              exit 1
+            fi
           fi
           if [ "$WORKFLOW_EDITS" != "$want" ]; then
             echo "::error::detect-pr-workflow-edits workflow_edits='$WORKFLOW_EDITS' but independent classify wants '$want' (edited_path='$EDITED_PATH')"
