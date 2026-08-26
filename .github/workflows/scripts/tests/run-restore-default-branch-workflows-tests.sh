@@ -19,7 +19,7 @@ init_repo() {
   local dir="$1"
   mkdir -p "$dir"
   git -C "$dir" init -q -b main
-  git -C "$dir" config user.email "test@example.com"
+  git -C "$dir" config user.email "selftest@example.invalid"  # phi-allow
   git -C "$dir" config user.name "test"
   mkdir -p "$dir/.github/workflows/scripts"
   printf 'name: trusted\n' > "$dir/.github/workflows/review.yml"
@@ -80,7 +80,7 @@ fi
 repo2="$tmpdir/nowf"
 mkdir -p "$repo2"
 git -C "$repo2" init -q -b main
-git -C "$repo2" config user.email "test@example.com"
+git -C "$repo2" config user.email "selftest@example.invalid"  # phi-allow
 git -C "$repo2" config user.name "test"
 printf 'readme\n' > "$repo2/README.md"
 git -C "$repo2" add -A

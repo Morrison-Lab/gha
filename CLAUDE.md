@@ -124,16 +124,19 @@ which is why the capabilities above moved to `@v2`.
   before any checkout has happened -- a composite action's own files are
   available via `uses:` regardless of checkout state, which a bare script path
   is not.
+
 - `.github/actions/detect-pr-workflow-edits/` -- wraps
   `scripts/detect-pr-workflow-edits.sh`, which classifies whether a PR's
   changed-file list includes top-level `.github/workflows/*.yml` / `.yaml`
   (not `scripts/` nested under that directory, and not composite
-  `action.yml` files). `claude-code-review.yml` uses it to restore
+  `action.yml` files).
+  `claude-code-review.yml` uses it to restore
   default-branch workflow copies instead of skipping the review (gha#598);
   `dispatch-review.sh` uses it to omit `--ref` so GitHub executes the
-  default-branch caller rather than the PR head's YAML. A missing
-  `PR_CHANGED_FILES` variable fails closed (exit 2) rather than reporting
-  a clean tree.
+  default-branch caller rather than the PR head's YAML.
+  A missing `PR_CHANGED_FILES` variable fails closed (exit 2) rather than
+  reporting a clean tree.
+
 - `.github/actions/restore-default-branch-workflows/` -- wraps
   `scripts/restore-default-branch-workflows.sh`, which deletes
   `.github/workflows/` then checks it out from `origin/<default-branch>`.
@@ -142,6 +145,7 @@ which is why the capabilities above moved to `@v2`.
   The script probes `git cat-file -e "$ref:.github/workflows"` *before*
   deleting, so a missing tree on the trusted ref fails rather than
   wiping the working copy.
+
 - `.github/actions/run-review-guard/` -- a thin composite-action wrapper around
   `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
   "Fail the check if the review did not complete (attempt 1)" step (and again
@@ -1597,10 +1601,10 @@ permissions.
 exercises `detect-pr-workflow-edits.sh` (see Layout above) offline against
 a table of changed-file lists: a top-level workflow, the caller workflow,
 a nested `workflows/scripts/` path, a composite `action.yml`, and an
-unset `PR_CHANGED_FILES` (must fail closed). CI runs it as a step in
-`review-fail-check`, which also calls `detect-pr-workflow-edits` through
-a real `uses: ./...` step on pull_request events for the
-`github.action_path`-resolution proof.
+unset `PR_CHANGED_FILES` (must fail closed).
+CI runs it as a step in `review-fail-check`, which also calls
+`detect-pr-workflow-edits` through a real `uses: ./...` step on
+pull_request events for the `github.action_path`-resolution proof.
 
 `.github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh`
 exercises `restore-default-branch-workflows.sh` against throwaway git
@@ -1608,10 +1612,11 @@ repos in `$TMPDIR`: a modified workflow plus a PR-only file must be
 replaced/deleted, a missing `DEFAULT_BRANCH` fails closed, a ref with no
 `.github/workflows` tree fails *before* deleting, and a pathspec-only
 checkout is shown not to delete the PR-only file (so the `rm -rf` is
-load-bearing). CI runs it in the same `review-fail-check` job. There is
-no live `uses:` of the restore composite against this checkout: restoring
-this repo's own `.github/workflows/` mid-selftest would clobber later
-steps.
+load-bearing).
+CI runs it in the same `review-fail-check` job.
+There is no live `uses:` of the restore composite against this checkout:
+restoring this repo's own `.github/workflows/` mid-selftest would clobber
+later steps.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
@@ -2318,11 +2323,12 @@ SHA-comparison rule in
 [`Morrison-Lab/ai-config`'s `shared/workflow/ardi.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/ardi.md).
 
 **A third, more direct mechanism used to produce the identical symptom without
-`@v2` even entering the picture.** `claude-code-review.yml` used to skip the
-review whenever the PR edited the caller workflow (and, on dispatch, any
-top-level `.github/workflows/*.yml` -- gha#386). `review / claude-review`
-reported `success` with every post-guard step `skipped`, and no verdict was
-produced.
+`@v2` even entering the picture.**
+`claude-code-review.yml` used to skip the review whenever the PR edited
+the caller workflow (and, on dispatch, any top-level
+`.github/workflows/*.yml` -- gha#386).
+`review / claude-review` reported `success` with every post-guard step
+`skipped`, and no verdict was produced.
 Since gha#440 that skip is a `self_mod` job output and `require-review` is
 gray rather than green.
 gha#598 keeps the gray skip only when restoring default-branch workflow
