@@ -362,8 +362,9 @@ jobs:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
           # test fixtures that carry synthetic PHI-shaped strings by design (the
-          # detector unit tests, the coverage and spellcheck fixture
-          # generators' synthetic maintainer emails, and check-new-line-breaks'
+          # detector unit tests, the coverage, spellcheck, and check-typos
+          # fixture generators' synthetic maintainer emails, and
+          # check-new-line-breaks'
           # throwaway git-repo test fixtures' placeholder git config email),
           # which are skipped via paths-ignore below.
           # This input REPLACES the default set rather than extending it, so a
@@ -376,6 +377,7 @@ jobs:
             test-coverage/tests/**
             check-new-line-breaks/tests/**
             spellcheck/tests/**
+            check-typos/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
@@ -1085,6 +1087,88 @@ jobs:
             exit 1
           fi
           echo "report-push-failure withheld the patch for a secret-scanning rejection"
+
+  # gha#580: the model job must not hold forge-write. Kept as its own job
+  # rather than folded into review-fail-check, so a failure here is
+  # attributable at a glance -- the same one-capability-per-job split
+  # phi-tests / review-failure-report already use.
+  review-job-split:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run pack-review-payload tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-pack-review-payload-tests.sh
+      - name: Run review-job-split self-tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-review-job-split-tests.py --self-test
+      - name: Run review-job-split assertions against this checkout
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-review-job-split-tests.py
+      # Real `uses:` call, proving pack-review-payload's github.action_path
+      # resolution of pack-review-payload.sh works end-to-end. The offline
+      # table above calls the script directly, so it cannot see whether
+      # action.yml wires its inputs through at all.
+      #
+      # upload: false so this neither uploads an artifact nor depends on
+      # actions: write. claude-code-review.yml's own consumption via @v2
+      # is the documented bootstrap gap until the tag slides.
+      - name: Exercise pack-review-payload composite action end-to-end
+        id: pack-e2e
+        uses: ./.github/actions/pack-review-payload
+        with:
+          pr-number: '12'
+          upload: 'false'
+          payload-dir: ${{ runner.temp }}/pack-e2e
+          repo: Morrison-Lab/gha
+          run-url: https://example.invalid/run
+          run-id: '99'
+          event-name: pull_request
+          caller-wf-path: .github/workflows/claude-review.yml
+          self-mod: 'false'
+          quota-exhausted: 'false'
+          cancelled: 'false'
+          resolve-outcome: success
+          head-sha: abc123
+          total-cost-usd: '1.25'
+          denials: '0'
+          denied-tools: 'Bash(echo "$(gh pr merge)")'
+          max-denials: '5'
+          attempts: '1'
+          track-progress: 'false'
+          report-cost: 'true'
+      - name: Assert pack-review-payload wrote payload.json and sidecars
+        shell: bash
+        env:
+          DIR: ${{ steps.pack-e2e.outputs.dir }}
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$DIR/payload.json" ]]; then
+            echo "::error::pack-review-payload did not write payload.json"
+            exit 1
+          fi
+          if [[ "$(jq -r .pr_number "$DIR/payload.json")" != "12" ]]; then
+            echo "::error::pack-review-payload did not wire pr-number through (got $(jq -r .pr_number "$DIR/payload.json"))"
+            exit 1
+          fi
+          if [[ "$(jq -r .review_present "$DIR/payload.json")" != "false" ]]; then
+            echo "::error::pack-review-payload treated a missing review as present"
+            exit 1
+          fi
+          if [[ ! -f "$DIR/denied_tools.txt" ]]; then
+            echo "::error::pack-review-payload dropped denied-tools"
+            exit 1
+          fi
+          if [[ -f "$DIR/review.txt" ]]; then
+            echo "::error::pack-review-payload wrote review.txt with no review-text-file"
+            exit 1
+          fi
+          echo "pack-review-payload wrote payload.json and the denied_tools sidecar"
+
   # gha#543: the review-failure comment claude-code-review.yml posts when a
   # review run finishes without a usable verdict. Kept as its own job rather
   # than folded into review-fail-check, so a failure here is attributable at a
@@ -2838,6 +2922,133 @@ jobs:
       - name: Run check-junk-files tests
         shell: bash
         run: bash check-junk-files/tests/test-check-junk-files.sh
+
+  # check-typos is brand new, so (like check-junk-files above) it does not
+  # exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-typos@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual PR
+  # code. This repo's own tree currently carries a handful of pre-existing
+  # typos (`unparseable`, measured 2026-08-26), so the no-base-ref call below
+  # is a live proof of the skip: a whole-tree fallback would fail it.
+  typos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Skip when no base-ref is given
+        uses: ./check-typos
+
+      - name: A named-but-missing config must fail
+        id: typos-missing-config
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          config: definitely-missing.toml
+
+      - name: Assert the missing-config call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-missing-config.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos to fail on a missing config file, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a named-but-missing config, as expected."
+
+      - name: Build a fixture with pre-existing drift
+        shell: bash
+        run: bash check-typos/tests/make-fixture.sh _ci-typos
+
+      - name: Diff-scoped call over an unrelated addition must pass
+        uses: ./check-typos
+        with:
+          path: _ci-typos
+          base-ref: HEAD~1
+
+      - name: Whole-tree call must fail on the pre-existing typo
+        id: typos-all-expected-failure
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          path: _ci-typos
+          base-ref: all
+
+      - name: Assert the whole-tree call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-all-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos base-ref=all to fail on a pre-existing typo, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a pre-existing typo in whole-tree mode, as expected."
+
+      - name: Build a fixture with a newly-added Quarto typo
+        shell: bash
+        run: bash check-typos/tests/make-fixture.sh _ci-typos-qmd --new-typo
+
+      - name: Diff-scoped call must fail on the new .qmd typo
+        id: typos-qmd-expected-failure
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          path: _ci-typos-qmd
+          base-ref: HEAD~1
+
+      - name: Assert the new .qmd typo actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-qmd-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos to fail on a newly-added page.qmd typo, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a newly-added .qmd typo, as expected."
+
+      - name: The same .qmd typo is silent when paths-ignore exempts it
+        uses: ./check-typos
+        with:
+          path: _ci-typos-qmd
+          base-ref: HEAD~1
+          paths-ignore: 'page.qmd'
+
+  # The job above proves action.yml wires path, base-ref, paths-ignore, and
+  # config through a real uses: call, including the skip, the missing-config
+  # fail, the whole-tree fail, and a newly-added .qmd typo. Everything else
+  # -- fail-closed reading, JSONL parse errors, filename-typo scope, the
+  # checksum gate -- runs only here against a stub binary (and a stub curl
+  # for the installer), so a regression is caught even when this repo's
+  # own tree wouldn't trip it.
+  typos-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-typos unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-typos/tests/ -q
 
   save-pr-diff:
     runs-on: ubuntu-latest

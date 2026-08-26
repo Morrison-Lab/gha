@@ -57,6 +57,7 @@ not reference `@main` from consumers.
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-workflows.yml` | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail` |
 | `spellcheck.yml` | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto` |
+| `check-typos.yml` | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail` |
 | `summary.yml` | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`) | `endpoint`, `model` |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage` |
@@ -102,6 +103,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-equation-renders`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
+  `check-typos`,
   `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> → only
@@ -151,8 +153,19 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, `id-token: write`, and either the
+  `pull-requests: write`, `issues: write`, `actions: read`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
+  The model job's `GITHUB_TOKEN` has no write scopes
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  write is confined to jobs that never run the model
+  (`gather-context` stashes reviewers and posts
+  the early dispatch notice; `post-review` downloads the review artifact
+  and comments) (gha#580).
+  `actions: read` is required on the caller: a `permissions:` block sets
+  unspecified scopes to none, and `post-review` needs it to download the
+  packed artifact (the model job also uses it for the `github_ci` MCP
+  server).
+
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
     submodules clone anonymously; private ones additionally need a
@@ -275,7 +288,7 @@ says so.
 
 | Feature | Action argument | Caller-configurable? |
 |---|---|---|
-| Live progress tracking comment on the PR | `track_progress` | Yes -- driven by the `track-progress` input of `claude-code-review.yml` (default `false`; tag mode with tracking comment and inline-comment tool when `true`, agent/summary-only mode when `false`). Not used in `claude.yml`. See `track-progress` warning in the inputs table: tag mode exposes git write tools until anthropics/claude-code-action#1415 lands. |
+| Live progress tracking comment on the PR | `track_progress` | No -- forced off (gha#580). Tag mode posts during the model turn, which needs a writable token in that job. The `track-progress` input is still declared so existing callers do not fail at the call gate, but it is ignored. The posting job submits the summary after the model finishes. Not used in `claude.yml`. |
 | Full Claude SDK output in the job log | `show_full_output` | Yes -- driven by the `show-full-output` input of `claude-code-review.yml` (note the hyphen; off by default, turn on to diagnose silent auth / quota failures). Not surfaced in `claude.yml`. |
 | Resume a prior session | `session_id` (internal step output of `anthropics/claude-code-action`) + `--resume` in `claude_args` | No -- neither reusable workflow declares `session_id` as a `workflow_call` output, so session resume is not available to consumers of `claude.yml` or `claude-code-review.yml`. |
 | Dollar cost of the run | n/a (action *output*, not an argument) -- `total_cost_usd` on the execution output's `result` event | Yes, indirectly -- verified against `anthropics/claude-code-action` v1.0.162 (the SHA this repo pins): `src/entrypoints/format-turns.ts` writes the cost only to `GITHUB_STEP_SUMMARY`, and `src/github/operations/comment-logic.ts`'s comment builder receives `total_cost_usd` but never reads it when composing the comment. Both workflows extract that output and post it in a comment instead, gated on the `report-cost` input (default `true`). |
@@ -489,8 +502,9 @@ Pin
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
-`lint-workflows.yml`, and
-`spellcheck.yml`
+`lint-workflows.yml`,
+`spellcheck.yml`, and
+`check-typos.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -606,8 +620,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
-`check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`, and
-`spellcheck.yml` at `@v2` -- see the
+`check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
+`spellcheck.yml`, and
+`check-typos.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
