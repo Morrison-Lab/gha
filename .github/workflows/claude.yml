@@ -409,10 +409,12 @@ jobs:
   claude:
     needs: mention-filter
     # Skipped when mention-filter is skipped (untrusted author / no raw
-    # mention) and when it ran but `proceed` is not true (quoted / code-span /
-    # fence mention). Do not widen this to `!= 'false'`: a skipped filter job
-    # has an empty output, and treating empty as proceed would start the
-    # agent for an untrusted commenter.
+    # mention; a dependent job without always() stays skipped) and when it
+    # ran but `proceed` is not true (quoted / code-span / fence mention).
+    # Keep `== 'true'`. `!= 'false'` still withholds a quoted mention
+    # (`proceed=false`) and still skips when the filter job is skipped.
+    # It fail-opens an empty output from a *successful* filter job, and it
+    # is the second half of `always() && != 'false'`.
     if: needs.mention-filter.outputs.proceed == 'true'
 
     # Serialize @claude sessions per issue/PR so rapid mentions don't fire

@@ -11,8 +11,11 @@ detect-bot-mention and gates the agent job on `proceed`. The filter runner
 minute is still billed; the avoided cost is the `claude` job.
 
 A wiring typo here is silent in the other direction from most bugs in this
-file: dropping the gate, or widening `proceed == 'true'` to `!= 'false'`,
-starts the expensive job for a quoted mention or an untrusted commenter.
+file: dropping the gate, or combining `always()` with `!= 'false'`,
+starts the expensive job for an untrusted commenter. Widening
+`proceed == 'true'` to `!= 'false'` alone still withholds a quoted
+mention (`proceed=false`) and still skips when the filter job is skipped;
+it fail-opens when the filter job succeeds but proceed writes nothing.
 The agent job is not something `_selftest.yml` can invoke, so this suite
 reads the workflow YAML and executes the proceed script against a table.
 
@@ -189,7 +192,7 @@ def main() -> int:
     check(
         "!= 'false'" not in agent_if,
         "the agent job does not treat an empty proceed output as go "
-        "(a skipped filter job would then start the agent for an untrusted commenter)",
+        "(`!= 'false'` fail-opens a successful filter that wrote nothing)",
     )
 
     check(
@@ -299,6 +302,12 @@ def main() -> int:
 
     script = proceed_steps[0].get("run") or ""
     check(bool(script.strip()), "the proceed step has a run: script")
+    check(
+        "if" not in proceed_steps[0],
+        "the proceed step has no `if:` "
+        "(a match-nonempty or outcome==success gate skips the script on "
+        "dispatch/schedule and fail-closes unattended runs)",
+    )
     check(
         (proceed_steps[0].get("env") or {}) == EXPECTED_PROCEED_ENV,
         "proceed step env maps MENTION_MATCH and ASSIGNMENT_TRIGGER "

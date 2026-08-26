@@ -561,8 +561,9 @@ jobs:
       - name: Run detect-review-request matcher tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-review-request-tests.sh
-      # Separate from the matcher tests above because the stripper has its own
-      # consumer coming (claude.yml's mention gate, gha#342) and its failure
+      # Separate from the matcher tests above because the stripper already
+      # has two consumers (detect-review-request and detect-bot-mention /
+      # mention-filter) and its failure
       # modes run in both directions -- under-stripping dispatches on quoted
       # text, over-stripping swallows a real request.
       - name: Run strip-non-invoking-markup tests

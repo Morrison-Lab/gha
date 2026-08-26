@@ -1474,11 +1474,14 @@ code-span / fence mention does not start the agent job, and an allowlisted
 assignment still dispatches with no mention.
 It also asserts the wiring that would silently undo the split --
 `claude` needing `mention-filter`, the agent `if:` requiring `proceed ==
-'true'` rather than `!= 'false'` (empty output from a skipped filter would
-otherwise start the agent for an untrusted commenter), `outputs.proceed`
+'true'` rather than `!= 'false'` (`!= 'false'` fail-opens an empty
+output from a successful filter job, and is the second half of
+`always() && != 'false'`), `outputs.proceed`
 reading the proceed step rather than `match` (which would kill
 assignment-without-mention), the detect step's `if:` omitting
-`workflow_dispatch`/`schedule` (four empty bodies print `false`), those two
+`workflow_dispatch`/`schedule` (four empty bodies print `false`), the
+proceed step having no `if:` (a match-nonempty gate would skip it on
+dispatch/schedule and fail-close unattended runs), those two
 events still admitted at the job `if:` (gha#245), the trusted-author
 association gate living on `mention-filter` now that the agent job's only
 `if:` is `proceed`, `ubuntu-latest` rather than `inputs.runs-on`, no caller
