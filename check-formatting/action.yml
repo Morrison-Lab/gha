@@ -2,7 +2,8 @@ name: Check R formatting
 description: >-
   Fail when any R file in the caller would be rewritten by Air, Posit's
   R formatter. Check-only: it never writes. Complements lintr
-  (`lint-changed-lines`): Air settles layout; lintr decides the rest.
+  (`lint-changed-lines`): Air settles layout; lintr decides the rest
+  of R style.
   There is no R session to start -- Air is a Rust binary.
   As of Air 0.11.0 the CLI still formats `.R`/`.r` only
   (not `.Rmd`/`.qmd`; include set from 0.9.0, posit-dev/air#476; still
