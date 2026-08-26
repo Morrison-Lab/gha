@@ -30,7 +30,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, and `spellcheck` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, and `check-typos` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -47,6 +47,11 @@ which is why the capabilities above moved to `@v2`.
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
   exists to avoid).
+  `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
+  skip-not-fallback for misspellings: a whole-tree first run would reflag
+  every known misspelling the corpus already carries, and unknown jargon
+  is not an error, so there is no `inst/WORDLIST` to grow into the way
+  `spellcheck.yml` does.
   `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
   the history but the **index** (`git ls-files -i -c -X`), for tracked
   operating-system and editor detritus.
@@ -1127,6 +1132,36 @@ to, the sixth being the defaults-agreement check that `action.yml` and
 the gha#303 precedent, and here a drift would hand a consumer of the reusable
 workflow a different pattern set from a consumer of the composite with nothing
 red.
+
+`check-typos/tests/test_check_typos.py` is a pytest suite driving
+`check-typos.py` against throwaway git repos and a stub `typos` binary that
+writes canned JSONL -- no download, the same remedy check-secrets records
+for its scan script.
+The cases to keep if the suite is ever trimmed are the negative ones:
+empty / unresolvable `base-ref` skips rather than scanning the whole tree
+(a whole-tree fallback would reflag every known misspelling the corpus
+already carries), a pre-existing typo on an untouched line is not
+flagged, a filename typo on a content-only edit of an already-named
+file is not flagged (the finding is produced and then dropped, not
+skipped), a rename into a misspelled name is flagged, `fail: yes`
+still blocks, a named-but-missing config is an error rather than a
+silent fall back to defaults, a stub
+exit other than 0 or 2 is a tool error even when `fail` is false, an
+added line starting `++` plus a space is not parsed as a diff file
+header, and a checksum mismatch refuses to install the binary.
+CI runs it as the `typos-tests` job in `_selftest.yml`, alongside a
+`typos` job that exercises the real composite (real installer, real
+`typos` 1.49.0): a no-`base-ref` call against this repo's own tree (which
+carried a handful of pre-existing hits as of 2026-08-26, so a broken skip
+would fail it), a fixture whose only typo is pre-existing (diff-scoped
+pass, `base-ref: all` fail), and a newly-added `.qmd` typo that
+`spellcheck.yml` cannot see, plus that file exempted through
+`paths-ignore`.
+The fixture checkout is generated at runtime
+(`check-typos/tests/make-fixture.sh`).
+The misspelling is also used as fixture payload in the pytest sources, so
+a later whole-tree dogfood of this repo should `paths-ignore`
+`check-typos/tests/`.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
