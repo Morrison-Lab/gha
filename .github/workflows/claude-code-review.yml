@@ -219,6 +219,7 @@ jobs:
       stash-users: ${{ steps.stash.outputs.users }}
       stash-teams: ${{ steps.stash.outputs.teams }}
       stash-ai-users: ${{ steps.stash.outputs.ai_users }}
+      stash-head: ${{ steps.stash.outputs.head }}
       stashed: ${{ steps.stash.outputs.stashed }}
     steps:
       # Defense-in-depth for the workflow_dispatch path (gha#235): the
@@ -357,11 +358,18 @@ jobs:
             done
           }
 
+          PR_JSON=$(retry_gh_api "fetch PR details" "repos/$REPO/pulls/$PR_NUMBER")
+          HEAD_SHA=$(echo "$PR_JSON" | jq -r '.head.sha')
+          if [ -z "$HEAD_SHA" ] || [ "$HEAD_SHA" = "null" ]; then
+            echo "::error::Retrieved invalid or empty head SHA for PR #$PR_NUMBER." >&2
+            exit 1
+          fi
           REVIEWERS_JSON=$(retry_gh_api "fetch requested reviewers" "repos/$REPO/pulls/$PR_NUMBER/requested_reviewers")
           USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[].login]')
           TEAMS=$(echo "$REVIEWERS_JSON" | jq -c '[.teams[].slug]')
           AI_USERS=$(echo "$REVIEWERS_JSON" | jq -c '[.users[] | select(.type == "Bot") | .login]')
           {
+            echo "head=$HEAD_SHA"
             echo "users=$USERS"
             echo "teams=$TEAMS"
             echo "ai_users=$AI_USERS"
@@ -1148,12 +1156,14 @@ jobs:
   # already refused (gha#235), so this stays on pull_request /
   # workflow_dispatch with the job token -- no pull_request_target.
   #
-  # Runs when claude-review was cancelled so reviewers stashed by
-  # gather-context are restored. Does not post a review from a missing
-  # or partial artifact on that path.
+  # Runs whenever gather-context ran (including cancelled): that job is
+  # what clears reviewers, so restore cannot be gated on claude-review
+  # having started. Does not post a review from a missing or partial
+  # artifact, and does not take repo/PR/run identity from the artifact
+  # (those come from this job's github context).
   post-review:
     needs: [gather-context, claude-review]
-    if: always() && needs.claude-review.result != 'skipped'
+    if: always() && needs.gather-context.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -1162,9 +1172,55 @@ jobs:
       actions: read
 
     steps:
+      # Trusted identity for every write. The model job has unrestricted
+      # Bash, so values packed into the artifact after that turn are not
+      # a targeting source (gha#580 review).
+      - name: Parse caller workflow ref
+        id: caller-wf
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
+        with:
+          workflow-ref: ${{ github.workflow_ref }}
+
+      - name: Bound posting to this run's PR
+        id: target
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          STASH_HEAD: ${{ needs.gather-context.outputs.stash-head }}
+          CALLER_WF_PATH: ${{ steps.caller-wf.outputs.path }}
+        run: |
+          set -euo pipefail
+          {
+            echo "repo=$REPO"
+            echo "pr_number=$PR_NUMBER"
+            echo "run_id=$RUN_ID"
+            echo "run_url=$RUN_URL"
+            echo "caller_wf_path=$CALLER_WF_PATH"
+          } >> "$GITHUB_OUTPUT"
+          LIVE=""
+          if [ -n "$PR_NUMBER" ]; then
+            LIVE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+          fi
+          echo "live_head=$LIVE" >> "$GITHUB_OUTPUT"
+          # gather-context recorded the SHA before the model ran. If the
+          # head moved, a newer review owns the thread; do not post or
+          # collapse as if this run were current.
+          if [ -n "$STASH_HEAD" ] && [ -n "$LIVE" ] && [ "$LIVE" != "$STASH_HEAD" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::PR head moved ($STASH_HEAD -> $LIVE); not posting a stale review."
+          else
+            echo "stale=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Download review payload
         id: download
-        if: needs.claude-review.result != 'cancelled'
+        if: >-
+          steps.target.outputs.stale != 'true' &&
+          (needs.claude-review.result == 'success' ||
+           needs.claude-review.result == 'failure')
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -1191,24 +1247,16 @@ jobs:
             exit 1
           fi
           jq -r '
-            "pr_number=\(.pr_number)",
-            "repo=\(.repo)",
-            "run_url=\(.run_url)",
-            "run_id=\(.run_id)",
-            "event_name=\(.event_name)",
-            "caller_wf_path=\(.caller_wf_path)",
             "wf_path=\(.wf_path)",
             "self_mod=\(.self_mod)",
             "quota_exhausted=\(.quota_exhausted)",
             "cancelled=\(.cancelled)",
             "resolve_outcome=\(.resolve_outcome)",
-            "head_sha=\(.head_sha)",
             "total_cost_usd=\(.total_cost_usd)",
             "failure_kind=\(.failure_kind)",
             "denials=\(.denials)",
             "max_denials=\(.max_denials)",
             "attempts=\(.attempts)",
-            "track_progress=\(.track_progress)",
             "report_cost=\(.report_cost)",
             "review_present=\(.review_present)"
           ' "$PAYLOAD_DIR/payload.json" >> "$GITHUB_OUTPUT"
@@ -1231,20 +1279,20 @@ jobs:
 
       - name: Build self-review skip notice body
         id: build-notice
-        if: steps.payload.outputs.self_mod == 'true'
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.self_mod == 'true'
         uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
         with:
-          workflow-path: ${{ steps.payload.outputs.wf_path || steps.payload.outputs.caller_wf_path }}
-          caller-workflow-path: ${{ steps.payload.outputs.caller_wf_path }}
-          run-url: ${{ steps.payload.outputs.run_url }}
+          workflow-path: ${{ steps.payload.outputs.wf_path || steps.target.outputs.caller_wf_path }}
+          caller-workflow-path: ${{ steps.target.outputs.caller_wf_path }}
+          run-url: ${{ steps.target.outputs.run_url }}
 
       - name: Post a notice that self-review was skipped
         id: skip-notice
-        if: steps.payload.outputs.self_mod == 'true'
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.self_mod == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ steps.payload.outputs.repo }}
-          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
           BODY_FILE: ${{ steps.build-notice.outputs.body-file }}
         run: |
           set -euo pipefail
@@ -1260,12 +1308,12 @@ jobs:
           fi
 
       - name: Post quota-exhausted comment
-        if: steps.payload.outputs.quota_exhausted == 'true'
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.quota_exhausted == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ steps.payload.outputs.repo }}
-          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
-          RUN_URL: ${{ steps.payload.outputs.run_url }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          RUN_URL: ${{ steps.target.outputs.run_url }}
         run: |
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
           > **Claude review skipped — API credential or quota unavailable.** No \`CLAUDE_CODE_OAUTH_TOKEN\` or \`ANTHROPIC_API_KEY\` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset. [View run]($RUN_URL)"
@@ -1281,33 +1329,34 @@ jobs:
       # an input and itself puts it in env: before composing.
       - name: Post review-failure comment
         id: failure-notice
-        if: steps.payload.outputs.resolve_outcome == 'failure'
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.resolve_outcome == 'failure'
         uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         with:
           failure-kind: ${{ steps.payload.outputs.failure_kind }}
-          pr-number: ${{ steps.payload.outputs.pr_number }}
+          pr-number: ${{ steps.target.outputs.pr_number }}
           denials: ${{ steps.payload.outputs.denials }}
           denied-tools: ${{ steps.payload.outputs.denied_tools }}
           max-denials: ${{ steps.payload.outputs.max_denials }}
           total-cost-usd: ${{ steps.payload.outputs.total_cost_usd }}
           attempts: ${{ steps.payload.outputs.attempts }}
-          run-url: ${{ steps.payload.outputs.run_url }}
+          run-url: ${{ steps.target.outputs.run_url }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Post review comment
         id: post-comment
         if: >-
+          steps.target.outputs.stale != 'true' &&
           steps.payload.outputs.resolve_outcome == 'success' &&
           steps.payload.outputs.quota_exhausted != 'true' &&
           steps.payload.outputs.cancelled != 'true' &&
           steps.payload.outputs.review_present == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ steps.payload.outputs.repo }}
-          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
-          RUN_URL: ${{ steps.payload.outputs.run_url }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          RUN_URL: ${{ steps.target.outputs.run_url }}
           REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
-          HEAD_SHA: ${{ steps.payload.outputs.head_sha }}
+          HEAD_SHA: ${{ needs.gather-context.outputs.stash-head }}
         run: |
           REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
@@ -1325,6 +1374,7 @@ jobs:
 
       - name: Post cost comment
         if: >-
+          steps.target.outputs.stale != 'true' &&
           steps.payload.outputs.report_cost == 'true' &&
           steps.payload.outputs.resolve_outcome == 'success' &&
           steps.payload.outputs.quota_exhausted != 'true' &&
@@ -1332,9 +1382,9 @@ jobs:
           steps.payload.outputs.total_cost_usd != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ steps.payload.outputs.repo }}
-          PR_NUMBER: ${{ steps.payload.outputs.pr_number }}
-          RUN_URL: ${{ steps.payload.outputs.run_url }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          RUN_URL: ${{ steps.target.outputs.run_url }}
           TOTAL_COST: ${{ steps.payload.outputs.total_cost_usd }}
           COMMENT_URL: ${{ steps.post-comment.outputs.comment_url }}
         run: |
@@ -1347,16 +1397,17 @@ jobs:
 
       - name: Collapse previous Claude review comments
         if: >-
-          (!cancelled() && steps.failure-notice.outputs.posted == 'true') ||
+          steps.target.outputs.stale != 'true' &&
+          ((!cancelled() && steps.failure-notice.outputs.posted == 'true') ||
           (success() && (steps.skip-notice.outputs.posted == 'true' ||
           (steps.payload.outputs.resolve_outcome == 'success' &&
-          steps.payload.outputs.quota_exhausted != 'true')))
+          steps.payload.outputs.quota_exhausted != 'true'))))
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ steps.payload.outputs.repo || github.repository }}
-          PR_NUMBER: ${{ steps.payload.outputs.pr_number || github.event.pull_request.number || inputs.pr-number }}
-          CURRENT_RUN_ID: ${{ github.run_id }}
-          THIS_WF: ${{ steps.payload.outputs.caller_wf_path }}
+          REPO: ${{ steps.target.outputs.repo }}
+          PR_NUMBER: ${{ steps.target.outputs.pr_number }}
+          CURRENT_RUN_ID: ${{ steps.target.outputs.run_id }}
+          THIS_WF: ${{ steps.target.outputs.caller_wf_path }}
         run: |
           gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[]
@@ -1364,7 +1415,10 @@ jobs:
                   | "\(.node_id)\t\(((.body | capture("actions/runs/(?<r>[0-9]+)").r)?) // "")"' \
           | while IFS=$'\t' read -r NODE_ID RUN_ID; do
               [ -z "$RUN_ID" ] && continue
-              [ "$RUN_ID" = "$CURRENT_RUN_ID" ] && continue
+              [[ "$RUN_ID" =~ ^[0-9]+$ ]] || continue
+              # Never fold this run or a newer one. Run ids increase, so a
+              # stale posting job must not minimize a successor's comments.
+              [ "$RUN_ID" -ge "$CURRENT_RUN_ID" ] && continue
               WF_PATH=$(gh api "repos/$REPO/actions/runs/$RUN_ID" --jq '.path' 2>/dev/null || true)
               [ "$WF_PATH" = "$THIS_WF" ] || continue
               echo "Collapsing review comment $NODE_ID (run $RUN_ID)"
@@ -1414,12 +1468,12 @@ jobs:
             done
 
       - name: Re-assign reviewers after Claude finishes
-        if: always() && needs.gather-context.result == 'success'
+        if: always() && needs.gather-context.result != 'skipped'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          HEAD_BEFORE: ${{ steps.payload.outputs.head_sha }}
+          HEAD_BEFORE: ${{ needs.gather-context.outputs.stash-head }}
           USERS_BEFORE: ${{ needs.gather-context.outputs.stash-users }}
           TEAMS_BEFORE: ${{ needs.gather-context.outputs.stash-teams }}
           AI_USERS_BEFORE: ${{ needs.gather-context.outputs.stash-ai-users }}

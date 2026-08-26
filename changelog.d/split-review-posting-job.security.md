@@ -14,6 +14,8 @@
   measured 2026-08-26).
   `post-review` downloads the artifact and posts; it holds
   `pull-requests: write` / `issues: write` and does not invoke the model.
+  `gather-context` also holds those write grants (stash/early notice) but
+  never runs the model.
   Inline comments during the model turn are dropped
   (`classify_inline_comments: false`; the inline-comment MCP tool is not
   allowlisted): posting them would need a writable token in the model job.

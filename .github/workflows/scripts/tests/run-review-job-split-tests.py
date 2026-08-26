@@ -53,6 +53,11 @@ FORGE_WRITE = {
 }
 
 INLINE_TOOL = "mcp__github_inline_comment__create_inline_comment"
+MODEL_USES = ("run-claude-review-attempt", "anthropics/claude-code-action")
+
+
+def job_uses_model(job: dict) -> bool:
+    return any(any(m in u for m in MODEL_USES) for u in uses_of(job))
 
 
 def die(message: str) -> None:
@@ -186,6 +191,33 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         "the reusable workflow is pull_request_target-free (gha#235 already refuses forks)",
     )
 
+    for name, job in jobs.items():
+        if not job_uses_model(job):
+            continue
+        perms = job_permissions(job)
+        for key, val in FORGE_WRITE.items():
+            check(
+                perms.get(key) != val,
+                f"job {name} invokes the model and does not grant {key}: {val}",
+            )
+
+    if "gather-context" in jobs:
+        check(
+            not job_uses_model(jobs["gather-context"]),
+            "gather-context does not invoke the model",
+        )
+
+    post_blob = str(post)
+    check(
+        "payload.outputs.pr_number" not in post_blob
+        and not re.search(r"payload\.outputs\.repo(?:\s|}|$)", post_blob),
+        "post-review does not take repo/PR identity from the model-job artifact",
+    )
+    check(
+        any("parse-workflow-ref" in u for u in post_uses),
+        "post-review re-parses the caller workflow ref (trusted targeting)",
+    )
+
     action = load_yaml(action_path)
     steps = action.get("runs", {}).get("steps") or []
     claude_step = next(
@@ -196,8 +228,13 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         die(f"{action_path}: no step with claude_args")
     with_block = claude_step["with"]
     check(
-        "github_token" in with_block,
+        "github_token" in with_block and str(with_block.get("github_token") or "").strip() != "",
         "run-claude-review-attempt forwards github_token (skips the App-token write exchange)",
+    )
+    token_val = str(with_block.get("github_token") or "")
+    check(
+        "github.token" in token_val or "inputs.github-token" in token_val,
+        "forwarded github_token is the job token (github.token / inputs.github-token), not empty",
     )
     check(
         with_block.get("classify_inline_comments") == "false",
@@ -269,6 +306,12 @@ def run_self_test() -> int:
 on:
   workflow_call: {}
 jobs:
+  gather-context:
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - run: echo stash
   claude-review:
     permissions:
       contents: read
@@ -285,6 +328,7 @@ jobs:
       pull-requests: write
       issues: write
     steps:
+      - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
       - uses: actions/download-artifact@v4
 """
         )
@@ -346,6 +390,34 @@ runs:
             run(good_wf, with_inline),
             False,
             "inline-comment MCP tool is not allowlisted",
+        )
+
+        empty_token = root / "empty-token.yml"
+        empty_token.write_text(
+            good_action.read_text().replace(
+                "        github_token: ${{ inputs.github-token }}\n",
+                "        github_token: ''\n",
+            )
+        )
+        failures += expect(
+            "empty github_token forwarding fails",
+            run(good_wf, empty_token),
+            False,
+            "job token",
+        )
+
+        model_in_gather = root / "model-in-gather.yml"
+        model_in_gather.write_text(
+            good_wf.read_text().replace(
+                "      - run: echo stash\n",
+                "      - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2\n",
+            )
+        )
+        failures += expect(
+            "model in a writable gather-context job fails",
+            run(model_in_gather, good_action),
+            False,
+            "gather-context does not invoke the model",
         )
 
         with_prt = root / "prt.yml"

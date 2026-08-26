@@ -53,8 +53,9 @@ variable unset while the agent is live, or the mention is answered twice.
 Grant `contents: read`, `pull-requests: write`, `issues: write`, and
 `id-token: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
 `ANTHROPIC_API_KEY` secret.
-The model job itself is `contents: read` only; write is confined to the
-posting job that downloads the review artifact (gha#580).
+The model job itself is `contents: read` only; write is confined to jobs
+that never run the model (`gather-context` stashes reviewers; `post-review`
+downloads the review artifact and comments) (gha#580).
 
 ## The `require-review` gate
 
