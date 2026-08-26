@@ -339,6 +339,7 @@ which is why the capabilities above moved to `@v2`.
   no model invocation, no review re-dispatch.
   An allowlisted `issues.assigned` event is exempt from the mention check
   (gha#552) and still proceeds with no mention anywhere in the issue.
+
 - `.github/actions/report-push-failure/` -- wraps
   `scripts/classify-push-failure.sh`, which reads a failed `git push`'s output
   and names the failure kind (`workflows-permission`, `push-protection`,
