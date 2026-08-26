@@ -11,13 +11,14 @@
 #
 # The workflows' own `if:` expressions test the raw body with `contains()`,
 # which has no notion of Markdown, so a mention inside a code span, a fenced
-# block, or a blockquote invokes the agent. That is not merely wasteful: the
-# spawned run re-dispatches a review, and the per-PR `cancel-in-progress`
-# concurrency group makes that cancel whichever review was already in flight.
-# A comment *explaining* the concurrency race therefore reproduced it
-# (gha#342). An `if:` expression cannot strip markup, so the raw `contains()`
-# stays as a cheap pre-filter and this script makes the real decision inside
-# the job.
+# block, or a blockquote used to invoke the agent. That is not merely
+# wasteful: the spawned run re-dispatches a review, and the per-PR
+# `cancel-in-progress` concurrency group makes that cancel whichever review
+# was already in flight. A comment *explaining* the concurrency race
+# therefore reproduced it (gha#342). An `if:` expression cannot strip markup,
+# so the raw `contains()` stays as a cheap pre-filter on the caller and on
+# claude.yml's `mention-filter` job, and this script makes the real decision
+# that gates the expensive agent job (gha#554).
 #
 # THE BIAS HERE IS THE OPPOSITE OF detect-review-request.sh's, and the two
 # scripts must not be "harmonized" on this point. There, a false positive

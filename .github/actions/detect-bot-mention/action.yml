@@ -5,8 +5,9 @@ description: >-
   fenced code block, or a blockquote while writing about it. Wraps
   .github/workflows/scripts/detect-bot-mention.sh, located via
   github.action_path, for the same reason detect-review-request does:
-  claude.yml's steps run against the CALLER's checkout, not Morrison-Lab/gha's
-  own tree, and this one runs before any checkout has happened at all.
+  claude.yml's mention-filter job (and any other caller) has no checkout
+  of Morrison-Lab/gha's own tree, and this action runs before any
+  checkout has happened at all.
 
 inputs:
   comment-body:

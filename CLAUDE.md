@@ -299,8 +299,9 @@ which is why the capabilities above moved to `@v2`.
   `scripts/detect-bot-mention.sh`, which decides whether a body carries an
   `@claude` mention that is actually addressed to the bot rather than quoted
   while writing about it.
-  `claude.yml` calls it once, early, for all four reactive events, and feeds
-  the result into its "Decide whether this run should proceed" step.
+  `claude.yml` calls it from a cheap `mention-filter` job, for all four
+  reactive events, and gates the expensive agent job on that job's
+  `proceed` output (gha#554).
   It shares `strip-non-invoking-markup.sh` with `detect-review-request`
   (gha#342).
   **Its bias is the opposite of that script's, and the two must not be
@@ -313,11 +314,13 @@ which is why the capabilities above moved to `@v2`.
   That is also why the matching stays plain-substring and case-insensitive,
   mirroring the `contains()` call it backs: a word-boundary rule would buy
   very little and risk exactly the false negative this bias rules out.
-  Note what it does **not** fix: `claude-bot.yml`'s job-level `if:` still
-  tests the raw body, because a GitHub expression cannot strip Markdown, so
-  the job still starts and the runner still spins up.
-  What is avoided is the billed agent run and the review re-dispatch, which
-  are the two costs gha#342 actually names.
+  The caller-side job `if:` and `mention-filter`'s own `if:` still test the
+  raw body, because a GitHub expression cannot strip Markdown, so a quoted
+  mention still starts the filter job.
+  What it no longer starts is the agent job: no caller checkout, no billed
+  agent run, no review re-dispatch.
+  An allowlisted `issues.assigned` event is exempt from the mention check
+  (gha#552) and still proceeds with no mention anywhere in the issue.
 - `.github/actions/report-push-failure/` -- wraps
   `scripts/classify-push-failure.sh`, which reads a failed `git push`'s output
   and names the failure kind (`workflows-permission`, `push-protection`,
@@ -1413,6 +1416,31 @@ Both directions are asserted deliberately: the only behaviour this gate can
 cause is a skip, so the negative case is the bug and the positive case is what
 stops the fix from silencing real requests.
 Read its `true` rows as the guard rails rather than as filler.
+
+`.github/workflows/scripts/tests/run-mention-filter-tests.py` pins the gha#554
+job split that moved that decision out of the agent job.
+`_selftest.yml` cannot invoke `claude.yml` (that would be a live agent run),
+so the suite reads the workflow YAML and executes the `proceed` step's own
+script against a table: a real mention dispatches, a `match=false` quoted /
+code-span / fence mention does not start the agent job, and an allowlisted
+assignment still dispatches with no mention.
+It also asserts the wiring that would silently undo the split --
+`claude` needing `mention-filter`, the agent `if:` requiring `proceed ==
+'true'` rather than `!= 'false'` (empty output from a skipped filter would
+otherwise start the agent for an untrusted commenter), `outputs.proceed`
+reading the proceed step rather than `match` (which would kill
+assignment-without-mention), the detect step's `if:` omitting
+`workflow_dispatch`/`schedule` (four empty bodies print `false`), those two
+events still admitted at the job `if:` (gha#245), the trusted-author
+association gate living on `mention-filter` now that the agent job's only
+`if:` is `proceed`, `ubuntu-latest` rather than `inputs.runs-on`, no caller
+checkout, no concurrency group on the filter, and detect-bot-mention living
+only in the filter job.
+CI runs it as a step in the same `review-fail-check` job.
+The composite already exists at `@v2`; this suite pins the *workflow* job
+split by reading `claude.yml`, not by invoking it.
+`claude.yml@v2` itself picks the split up only when the major tag slides,
+the usual reusable-workflow lag, not a new-composite bootstrapping gap.
 
 `.github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh`
 covers the stripper that matcher now pipes its bodies through, as a table of

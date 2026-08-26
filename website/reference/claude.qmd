@@ -36,6 +36,16 @@ draft PR is set up and no reply comment is posted; use the `prompt-addendum`
 input to supply the actual task, and have it use whatever tools `claude-args`
 grants to persist output (e.g. `gh issue create`).
 
+A mention inside a code span, a fenced block, or a blockquote is not an
+invocation.
+The caller-side `if:` is formatting-blind -- a GitHub expression cannot strip
+Markdown -- so a quoted mention still invokes this reusable workflow.
+A cheap `mention-filter` job then runs `detect-bot-mention` and withholds the
+agent job, so the expensive runner never starts ([gha#554](https://github.com/Morrison-Lab/gha/issues/554)).
+Do not approximate CommonMark in the caller `if:`.
+Assignment remains a sufficient trigger when `dispatch-on-assignee` is set:
+an allowlisted `issues.assigned` event proceeds even with no mention.
+
 ## Inputs
 
 | Input                    | Type    | Default                     | Description                                                                                                                                                                                                                                                                                                                           |
@@ -59,7 +69,7 @@ grants to persist output (e.g. `gh issue create`).
 | `plugin-marketplaces`    | string  | `''`                        | Extra newline-separated Claude Code plugin marketplace Git URLs, added on top of the `Morrison-Lab/ai-config.git` marketplace `use-ai-config` adds. Pair with `plugins` below; empty adds none.                                                                                                                                        |
 | `plugins`                | string  | `''`                        | Extra newline-separated plugin refs to install (`<plugin>@<marketplace-name>`), added on top of whatever `use-ai-config` installs. Each marketplace name must match the name that marketplace declares in its own `.claude-plugin/marketplace.json`, not the URL given in `plugin-marketplaces`.                                       |
 | `claude-args`            | string  | `(long; see workflow file)` | Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with `git push` omitted and mutation API flags denied best-effort. Write safety is bounded by the trusted-author gate and workflow permissions.                                                                                  |
-| `runs-on`                | string  | `'ubuntu-latest'`           | Runner for the job.                                                                                                                                                                                                                                                                                                                   |
+| `runs-on`                | string  | `'ubuntu-latest'`           | Runner for the agent job. The `mention-filter` job always uses `ubuntu-latest`.                                                                                                                                                    |
 | `report-cost`            | boolean | `true`                      | Surface the run's dollar cost (`total_cost_usd`): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See [README.md](https://github.com/Morrison-Lab/gha#readme)'s feature-parity table for the upstream source citation. Set false to suppress it. |
 | `trusted-bot-logins`     | string  | `'[]'`                      | JSON array of GitHub bot logins allowed to trigger the workflow even when `author_association` is not OWNER/MEMBER/COLLABORATOR (App comments are usually `NONE`). Example: `'["cursor[bot]"]'`. Default `[]` keeps the human-collaborator-only gate. Mirror the same logins in the caller job `if:`, or the reusable workflow is never invoked. |
 | `dispatch-on-assignee`   | string  | `'[]'`                      | JSON array of GitHub logins for which an `issues.assigned` event dispatches a run on its own, with no `@claude` mention required anywhere in the issue -- the assignment is the request. Example: `'["claude"]'`. Default `[]` means assignment changes nothing. Gates on the **assignee**, not the assigner: the `assigned` payload carries no `author_association` for the sender. Purely additive -- an assigned issue that does mention `@claude` already dispatches without this. Mirror the assignment case in the caller job `if:` and add `assigned` to its `on: issues: types:`, or the reusable workflow is never invoked. |
@@ -113,6 +123,8 @@ jobs:
     # so an untrusted commenter's mention doesn't even spawn the
     # reusable-workflow run. This mirrors the reusable workflow's own
     # trusted-author gate as defense-in-depth.
+    # This `contains()` is formatting-blind; claude.yml's mention-filter job
+    # is what withholds the agent job for a quoted mention (gha#554).
     # To also admit a GitHub App bot, OR in a login check here and pass the
     # same JSON array as trusted-bot-logins (see examples/claude.yml).
     if: |
