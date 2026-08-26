@@ -1165,17 +1165,27 @@ a later whole-tree dogfood of this repo should `paths-ignore`
 
 `lint-changed-files/tests/test-lint-r-scope.R` is an R suite over
 `lint-r-scope.R`: scope validation, PR-file filtering (removed files
-dropped, 101 files kept so a missing `.limit = Inf` would truncate),
+dropped; walking 101 files only proves the walker does not drop list
+elements), a grep of `lint-changed-files.R` for `.limit = Inf` (that
+is the pagination pin -- `pr_changed_paths` never calls `gh::gh`),
 dotfile exclusions (an unchanged `.lintr.R` is excluded; `.git/` is not
 listed), and -- when lintr is installed from CRAN -- the
 `changed-files` exclusion pattern plus the DESCRIPTION vs no-DESCRIPTION
 split (`lint_package` vs `lint_dir`).
+Those lintr cases `setwd()` into the fixture and pass GitHub-shaped
+repo-relative filenames (`dirty.R`, `pkg/R/bad.R`), because
+`rel_to_path()` prefix-matches against `path` and an absolute
+`tempfile()` path would make every `changed-files` case return empty
+lints before lintr runs.
 Run it with `Rscript lint-changed-files/tests/test-lint-r-scope.R`; CI
 runs it as the `lint-changed-files-tests` job in `_selftest.yml`,
 alongside a `lint-changed-files` job that exercises the real composite
 (`uses: ./lint-changed-files`, not `@v2`) against a generated project
 fixture with no `DESCRIPTION` -- the setup path `lint-changed-lines`
 does not cover.
+That composite job uses `scope: project` only: untracked fixtures are
+invisible to the PR-files API, so `changed-files` `gh::gh` wiring is
+not an end-to-end selftest (the same gap `lint-changed-lines` has).
 The two fixtures differ in exactly one thing (`<-` vs `=` under a
 `.lintr.R` that enables only `assignment_linter`), so a default-config
 change on CRAN cannot turn the clean variant red.

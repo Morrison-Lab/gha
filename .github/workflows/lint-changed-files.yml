@@ -59,8 +59,10 @@ on:
         default: true
 
 jobs:
-  lint:
+  lint-changed-files:
     runs-on: ubuntu-latest
+    # Whole-tree package/project lint can exceed the 20-minute
+    # lint-changed-lines budget; 30 is still a hang-catch, not a tight SLA.
     timeout-minutes: 30
     permissions:
       contents: read

@@ -113,9 +113,34 @@ many <- lapply(seq_len(101L), function(i) {
   list(filename = sprintf("R/f%03d.R", i), status = "modified")
 })
 check(
-  "pr_changed_paths keeps all 101 files it is given",
+  "pr_changed_paths does not drop list elements (101 files)",
   length(pr_changed_paths(many)),
   101L
+)
+
+# Pagination lives in lint-changed-files.R's gh::gh(.limit = Inf) call,
+# not in pr_changed_paths. Walking 101 files does not pin that argument.
+script_candidates <- c(
+  "lint-changed-files/lint-changed-files.R",
+  "../lint-changed-files.R",
+  "lint-changed-files.R"
+)
+script_path <- NULL
+for (p in script_candidates) {
+  if (file.exists(p)) {
+    script_path <- p
+    break
+  }
+}
+if (is.null(script_path)) {
+  stop("could not locate lint-changed-files.R")
+}
+script_code <- readLines(script_path)
+script_code <- script_code[!grepl("^\\s*#", script_code)]
+check(
+  "lint-changed-files.R passes .limit = Inf to gh::gh (not only a comment)",
+  any(grepl(".limit = Inf", script_code, fixed = TRUE)),
+  TRUE
 )
 
 # --- list_project_files / exclusions --------------------------------------
@@ -298,6 +323,17 @@ write_lintr_config <- function(dir) {
   )
 }
 
+# GitHub "list PR files" filenames are repo-root-relative. rel_to_path()
+# prefix-matches those against `path`, so changed-files tests must run
+# with the fixture as cwd and path = "." / "pkg" -- an absolute tempfile
+# path never matches "dirty.R" and every case would return empty lints
+# before lintr ran.
+with_dir <- function(dir, expr) {
+  old <- setwd(dir)
+  on.exit(setwd(old), add = TRUE)
+  force(expr)
+}
+
 proj <- tempfile("lint-r-proj-")
 dir.create(proj)
 write_lintr_config(proj)
@@ -310,22 +346,26 @@ proj_files <- vapply(proj_lints, function(l) l$filename, character(1))
 check("project scope reports the dirty file", any(grepl("dirty\\.R$", proj_files)), TRUE)
 check("project scope reports no lint on the clean file", !any(grepl("clean\\.R$", proj_files)), TRUE)
 
-changed_only <- lint_with_scope(
-  "changed-files",
-  path = proj,
-  pr_files = list(list(filename = "clean.R", status = "modified"))
-)
+changed_only <- with_dir(proj, {
+  lint_with_scope(
+    "changed-files",
+    path = ".",
+    pr_files = list(list(filename = "clean.R", status = "modified"))
+  )
+})
 check(
   "changed-files excludes an unchanged dirty file (the r-lib exclusion pattern)",
   length(changed_only),
   0L
 )
 
-changed_dirty <- lint_with_scope(
-  "changed-files",
-  path = proj,
-  pr_files = list(list(filename = "dirty.R", status = "modified"))
-)
+changed_dirty <- with_dir(proj, {
+  lint_with_scope(
+    "changed-files",
+    path = ".",
+    pr_files = list(list(filename = "dirty.R", status = "modified"))
+  )
+})
 check(
   "changed-files reports a lint on a changed dirty file",
   length(changed_dirty) > 0L,
@@ -334,8 +374,11 @@ check(
 
 # Package with DESCRIPTION: lint_package, so a stray root .R file is not linted
 # even when it is in the changed-file set (rpt uses lint_package; qwt/win use
-# lint_dir because they have no DESCRIPTION).
-pkg <- tempfile("lint-r-pkg-")
+# lint_dir because they have no DESCRIPTION). Nested under a fake repo root
+# so path = "pkg" plus GitHub-shaped "pkg/..." filenames exercise rel_to_path.
+repo <- tempfile("lint-r-repo-")
+dir.create(repo)
+pkg <- file.path(repo, "pkg")
 dir.create(pkg)
 dir.create(file.path(pkg, "R"))
 writeLines(
@@ -350,18 +393,34 @@ writeLines(
 )
 write_lintr_config(pkg)
 writeLines("x <- 1", file.path(pkg, "R", "ok.R"))
+writeLines("x = 1", file.path(pkg, "R", "bad.R"))
 writeLines("x = 1", file.path(pkg, "stray.R"))
-on.exit(unlink(pkg, recursive = TRUE), add = TRUE)
+on.exit(unlink(repo, recursive = TRUE), add = TRUE)
 
-pkg_changed_stray <- lint_with_scope(
-  "changed-files",
-  path = pkg,
-  pr_files = list(list(filename = "stray.R", status = "modified"))
-)
+pkg_changed_stray <- with_dir(repo, {
+  lint_with_scope(
+    "changed-files",
+    path = "pkg",
+    pr_files = list(list(filename = "pkg/stray.R", status = "modified"))
+  )
+})
 check(
   "changed-files on a package uses lint_package, so a root stray.R is not linted",
   length(pkg_changed_stray),
   0L
+)
+
+pkg_changed_bad <- with_dir(repo, {
+  lint_with_scope(
+    "changed-files",
+    path = "pkg",
+    pr_files = list(list(filename = "pkg/R/bad.R", status = "modified"))
+  )
+})
+check(
+  "changed-files with path='pkg' reports a lint on pkg/R/bad.R",
+  length(pkg_changed_bad) > 0L,
+  TRUE
 )
 
 no_desc <- tempfile("lint-r-nodesc-")
@@ -369,11 +428,13 @@ dir.create(no_desc)
 write_lintr_config(no_desc)
 writeLines("x = 1", file.path(no_desc, "stray.R"))
 on.exit(unlink(no_desc, recursive = TRUE), add = TRUE)
-proj_stray <- lint_with_scope(
-  "changed-files",
-  path = no_desc,
-  pr_files = list(list(filename = "stray.R", status = "modified"))
-)
+proj_stray <- with_dir(no_desc, {
+  lint_with_scope(
+    "changed-files",
+    path = ".",
+    pr_files = list(list(filename = "stray.R", status = "modified"))
+  )
+})
 check(
   "changed-files without DESCRIPTION uses lint_dir, so stray.R is linted",
   length(proj_stray) > 0L,
@@ -381,6 +442,32 @@ check(
 )
 
 pkg_clean <- lint_with_scope("package", path = pkg)
-check("package scope on a clean package reports no lints", length(pkg_clean), 0L)
+check(
+  "package scope on a package with a dirty R/ file reports lints",
+  length(pkg_clean) > 0L,
+  TRUE
+)
+
+pkg_ok_only <- tempfile("lint-r-pkgok-")
+dir.create(pkg_ok_only)
+dir.create(file.path(pkg_ok_only, "R"))
+writeLines(
+  c(
+    "Package: lintfixtureok",
+    "Title: Lint Selftest Fixture",
+    "Version: 0.0.1",
+    "License: MIT",
+    "Encoding: UTF-8"
+  ),
+  file.path(pkg_ok_only, "DESCRIPTION")
+)
+write_lintr_config(pkg_ok_only)
+writeLines("x <- 1", file.path(pkg_ok_only, "R", "ok.R"))
+on.exit(unlink(pkg_ok_only, recursive = TRUE), add = TRUE)
+check(
+  "package scope on a clean package reports no lints",
+  length(lint_with_scope("package", path = pkg_ok_only)),
+  0L
+)
 
 cat("\nAll lint-r-scope tests passed.\n")

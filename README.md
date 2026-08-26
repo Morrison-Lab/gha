@@ -658,5 +658,6 @@ automatically. A **private** consumer must allow access to this repo under
 ## Scope
 
 This started as the pilot set (the byte-identical / near-identical workflow
-families) plus the PR-preview/publish family. Additional families
+families) plus the PR-preview/publish family.
+Additional families
 (pr-commands, R-CMD-check) may be added later.

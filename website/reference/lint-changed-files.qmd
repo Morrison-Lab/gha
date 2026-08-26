@@ -84,6 +84,7 @@ jobs:
     #   scope: 'changed-files'  # or 'package' / 'project'
     #   path: '.'               # R package or project root
     #   linter-file: ''         # empty: lintr auto-detects .lintr / .lintr.R
+    #   install-quarto: false   # true to install Quarto with R dependencies
     #   use-renv: false         # true to restore dependencies with setup-renv
     #   renv-cache-version: '1' # bump to invalidate renv cache
     #   apt-packages: ''        # system packages required for compilation
@@ -94,6 +95,9 @@ jobs:
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`lint-changed-files.yml`).
+
+Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
+exist at that tag.
 
 [r-lib-lint-changed-files]: https://github.com/r-lib/actions/blob/v2/examples/lint-changed-files.yaml
 [indrajeet-lint]: https://github.com/IndrajeetPatil/workflows/blob/main/.github/workflows/lint.yaml
