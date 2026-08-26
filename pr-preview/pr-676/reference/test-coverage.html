@@ -672,7 +672,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Measure R-package test coverage with <a href="https://covr.r-lib.org/"><code>{covr}</code></a> and upload the Cobertura report to <a href="https://about.codecov.io/">Codecov</a>. Adapts the <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> <code>test-coverage.yaml</code> example into the repo’s composite-plus-wrapper shape.</p>
-<p>An optional second job measures coverage from examples and vignettes, including <code>\donttest{}</code> and <code>\dontrun{}</code> blocks that <code>R CMD check</code> and the unit suite skip. A <code>min-coverage</code> input can fail the tests job below a chosen percent; it is off by default and does not inherit a 100% bar. It does not apply to the examples job, which measures a different execution path.</p>
+<p>An optional second job measures coverage from examples and vignettes. <code>\dontrun{}</code> never runs under <code>R CMD check</code>. <code>\donttest{}</code> is skipped unless <code>--as-cran</code> or <code>--run-donttest</code>. covr comments both out by default; the examples job passes <code>commentDonttest</code>/<code>commentDontrun</code> false so those blocks execute for coverage. A <code>min-coverage</code> input can fail the tests job below a chosen percent; it defaults to no threshold and does not apply to the examples job, which measures a different execution path.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -731,7 +731,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>min-coverage</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Minimum percent coverage required to pass the tests job (<code>covr::percent_coverage()</code>). Empty disables the threshold. Does not apply to the examples/vignettes job.</td>
+<td>Minimum percent coverage required to pass the tests job (<code>covr::percent_coverage()</code>). Empty defaults to no threshold. Does not apply to the examples/vignettes job.</td>
 </tr>
 </tbody>
 </table>
