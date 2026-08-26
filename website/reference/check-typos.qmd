@@ -85,9 +85,13 @@ jobs:
     #   base-ref: all                          # whole-tree scan instead of the PR diff
 ```
 
-See
-[`examples/check-typos.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-typos.yml)
+See `check-typos.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 for the full caller stub.
+(Linked to the directory rather than the file, for the reason
+[`check-secrets.qmd`](check-secrets.qmd) records: a `blob/main/...` link to a
+capability's own example 404s on the pull request that introduces it, and
+`check-links` rightly fails it.)
 
 ## Suppressing false positives
 

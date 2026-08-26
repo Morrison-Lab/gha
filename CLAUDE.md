@@ -1131,7 +1131,7 @@ already carries), a pre-existing typo on an untouched line is not
 flagged, `fail: yes` still blocks, a named-but-missing config is an error
 rather than a silent fall back to defaults, a stub exit other than
 0 or 2 is a tool error even when `fail` is false, an added line starting
-`++ ` is not parsed as a diff file header, and a checksum mismatch
+`++` plus a space is not parsed as a diff file header, and a checksum mismatch
 refuses to install the binary.
 CI runs it as the `typos-tests` job in `_selftest.yml`, alongside a
 `typos` job that exercises the real composite (real installer, real
