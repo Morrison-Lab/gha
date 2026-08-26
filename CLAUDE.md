@@ -1128,11 +1128,14 @@ The cases to keep if the suite is ever trimmed are the negative ones:
 empty / unresolvable `base-ref` skips rather than scanning the whole tree
 (a whole-tree fallback would reflag every known misspelling the corpus
 already carries), a pre-existing typo on an untouched line is not
-flagged, `fail: yes` still blocks, a named-but-missing config is an error
-rather than a silent fall back to defaults, a stub exit other than
-0 or 2 is a tool error even when `fail` is false, an added line starting
-`++` plus a space is not parsed as a diff file header, and a checksum mismatch
-refuses to install the binary.
+flagged, a filename typo on a content-only edit of an already-named
+file is not flagged (the finding is produced and then dropped, not
+skipped), a rename into a misspelled name is flagged, `fail: yes`
+still blocks, a named-but-missing config is an error rather than a
+silent fall back to defaults, a stub
+exit other than 0 or 2 is a tool error even when `fail` is false, an
+added line starting `++` plus a space is not parsed as a diff file
+header, and a checksum mismatch refuses to install the binary.
 CI runs it as the `typos-tests` job in `_selftest.yml`, alongside a
 `typos` job that exercises the real composite (real installer, real
 `typos` 1.49.0): a no-`base-ref` call against this repo's own tree (which

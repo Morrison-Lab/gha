@@ -3,7 +3,8 @@
 # pages, CONTRIBUTING.md-class Markdown, docs/, YAML, code comments, and
 # repositories that are not R packages. Uses crate-ci/typos, a
 # corrections-list checker, so it does not need a curated wordlist.
-# Diff-scoped, so it only ever flags what a PR itself adds -- a first run
+# Diff-scoped, so it only ever flags what a PR itself adds (added lines,
+# plus filename typos on paths the PR added or renamed). A first run
 # over an existing repo does not reflag years of drift. Pass base-ref: all
 # to scan the whole tree once you are ready to clean it.
 # Only contents:read is needed (the default), so no permissions block is required.

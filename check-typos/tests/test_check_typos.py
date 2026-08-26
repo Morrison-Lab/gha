@@ -11,6 +11,7 @@ because each pins a decision that is silent when reversed:
 
   * empty / unresolvable base-ref SKIPS rather than scanning the whole tree
   * a pre-existing typo on an untouched line is NOT flagged
+  * a filename typo on a content-only edit of an already-named file is NOT flagged
   * `fail: yes` still blocks (fail-closed)
   * a missing config file is an error, not a silent fall back
   * a stub exit other than 0 or 2 is a tool error even when fail is false
@@ -172,7 +173,10 @@ def test_diff_scope_does_not_reflag_pre_existing_typo(tmp_path, monkeypatch, cap
     assert ct.main() == 0
     out = capsys.readouterr().out
     assert "No typos found." in out
-    assert "1 finding(s) sit on lines this diff did not add" in out
+    assert (
+        "1 finding(s) sit outside this diff's added lines "
+        "and added/renamed paths; ignored (pre-existing drift)."
+    ) in out
     assert "::error" not in out
 
 
@@ -283,6 +287,57 @@ def test_filename_typo_on_an_untouched_file_is_not_in_scope(
     assert ct.main() == 0
     out = capsys.readouterr().out
     assert "::error" not in out
+
+
+def test_filename_typo_on_a_content_only_edit_is_not_in_scope(
+    tmp_path, monkeypatch, capsys
+):
+    """A pre-existing misspelled name is drift even when the PR edits the file.
+
+    The three-dot diff names the path, but the PR did not add or rename it.
+    """
+    _init_repo(tmp_path)
+    (tmp_path / "recieve.md").write_text("ok\n")
+    _commit(tmp_path, "badly named file already in tree")
+    (tmp_path / "recieve.md").write_text("ok\nmore\n")
+    _commit(tmp_path, "content-only edit")
+
+    bin_dir = _install_stub(
+        tmp_path, _typo_json(path="recieve.md", line=None, typo="recieve")
+    )
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 0
+    out = capsys.readouterr().out
+    assert "No typos found." in out
+    assert (
+        "1 finding(s) sit outside this diff's added lines "
+        "and added/renamed paths; ignored (pre-existing drift)."
+    ) in out
+    assert "::error" not in out
+    listed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
+    assert "recieve.md" in listed
+
+
+def test_filename_typo_on_a_renamed_file_is_in_scope(tmp_path, monkeypatch, capsys):
+    """A rename destination is a path the PR itself introduced."""
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    subprocess.run(
+        ["git", "mv", "notes.md", "recieve.md"], cwd=tmp_path, check=True
+    )
+    _commit(tmp_path, "rename into a misspelled name")
+
+    bin_dir = _install_stub(
+        tmp_path, _typo_json(path="recieve.md", line=None, typo="recieve")
+    )
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+    out = capsys.readouterr().out
+    assert "::error file=recieve.md::" in out
+    assert "::error file=recieve.md,line=" not in out
+    listed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
+    assert "recieve.md" in listed
 
 
 # ── fail gate ────────────────────────────────────────────────────────────────

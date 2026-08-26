@@ -4,8 +4,9 @@ description: >-
   site pages, CONTRIBUTING.md-class Markdown, docs/, YAML, code comments,
   and repositories that are not R packages -- using crate-ci/typos. A
   corrections-list checker rather than a dictionary checker, so it does not
-  need a curated wordlist. Scoped to lines a diff adds, so a first run over
-  an existing repo does not reflag years of drift; pass base-ref 'all' to
+  need a curated wordlist. Scoped to lines a diff adds, and to filename
+  typos only on paths the PR added or renamed, so a first run over an
+  existing repo does not reflag years of drift; pass base-ref 'all' to
   scan the whole tree. Blocking by default.
 inputs:
   version:
@@ -48,7 +49,9 @@ inputs:
   base-ref:
     description: >-
       Git ref/SHA to diff against; only lines added since this ref are
-      checked. The reusable workflow passes the PR base SHA automatically.
+      checked, plus filename typos on paths this ref's three-dot diff
+      added or renamed. The reusable workflow passes the PR base SHA
+      automatically.
       Diff mode needs the base commit in history (checkout with
       fetch-depth: 0); when the diff can't be computed (e.g. a shallow
       clone, or no base-ref given on a push run), the check is skipped

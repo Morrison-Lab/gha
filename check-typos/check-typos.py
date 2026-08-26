@@ -11,11 +11,15 @@ checker, so it does not need a curated wordlist.
 Design notes:
 - **Diff-scoped, by default.** Only lines *added* since ``TYPOS_BASE_REF``
   (a PR's base SHA) are checked, so a corpus's pre-existing typos are not
-  reflagged on every unrelated edit. typos flags known misspellings, not
-  unknown jargon, so there is no ``inst/WORDLIST`` to grow into the way
-  ``spellcheck.yml`` does -- a whole-tree first run still reflags every
-  known misspelling the corpus already carries (see gha#557). Pass
-  ``TYPOS_BASE_REF=all`` to scan the whole tracked tree.
+  reflagged on every unrelated edit. Filename findings have no line number
+  (crate-ci/typos 1.49.0, measured 2026-08-26), so they use a path filter
+  instead: in scope only when the PR added or renamed that path. A
+  content-only edit of a file whose misspelled name already existed is
+  pre-existing drift, same as an untouched file. typos flags known
+  misspellings, not unknown jargon, so there is no ``inst/WORDLIST`` to
+  grow into the way ``spellcheck.yml`` does -- a whole-tree first run still
+  reflags every known misspelling the corpus already carries (see gha#557).
+  Pass ``TYPOS_BASE_REF=all`` to scan the whole tracked tree.
 - **No base_ref to diff against, or the diff can't be computed** (e.g. an
   unset base-ref on a push run, or a shallow clone missing the base
   commit): the check is *skipped* with a warning. There is no whole-tree
@@ -54,15 +58,18 @@ _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 # the step, whatever `fail` says -- the same split check-secrets draws with
 # gitleaks --exit-code 0.
 _TYPOS_FOUND_EXIT = 2
-# Force literal paths and the default a/ b/ prefixes so a consumer's
-# diff.noprefix / quotepath config cannot reshape the unified diff this
-# parser reads.
+# Force literal paths, the default a/ b/ prefixes, and rename detection
+# so a consumer's diff.noprefix / quotepath / renames config cannot
+# reshape the unified diff this parser reads. Rename detection keeps a
+# 100% rename from looking like every line of the destination was added.
 _GIT = (
     "git",
     "-c",
     "core.quotepath=false",
     "-c",
     "diff.noprefix=false",
+    "-c",
+    "diff.renames=true",
 )
 
 
@@ -236,6 +243,32 @@ def _changed_paths(
     return {_normalize_path(p) for p in out.split("\0") if p}
 
 
+def _added_or_renamed_paths(
+    base_ref: str, pathspecs: List[str], cwd: Optional[str] = None
+) -> Set[str]:
+    """New paths in the diff: added files and rename destinations.
+
+    Filename findings have no ``line_num``, so they cannot use the
+    added-line filter. Restrict them to paths the PR itself introduced.
+    A content-only edit of a file whose misspelled name already existed
+    is pre-existing drift, same as an untouched file.
+    ``--name-only`` reports the destination path of a rename.
+    """
+    out = _run_git_checked(
+        [
+            "diff",
+            "--name-only",
+            "--diff-filter=AR",
+            "-z",
+            f"{base_ref}...HEAD",
+            "--",
+            *pathspecs,
+        ],
+        cwd=cwd,
+    )
+    return {_normalize_path(p) for p in out.split("\0") if p}
+
+
 def _tracked_files(pathspecs: List[str], cwd: Optional[str] = None) -> List[str]:
     out = _run_git_checked(["ls-files", "-z", "--", *pathspecs], cwd=cwd)
     return [_normalize_path(p) for p in out.split("\0") if p]
@@ -300,14 +333,16 @@ def _in_scope(
     finding: Finding,
     whole_tree: bool,
     added: Dict[str, Set[int]],
-    changed: Set[str],
+    filename_scope: Set[str],
 ) -> bool:
     if whole_tree:
         return True
     if finding.line is None:
         # Filename typo: no line_num (crate-ci/typos 1.49.0, measured
-        # 2026-08-26). File-level, so any path the diff names is in scope.
-        return finding.path in changed
+        # 2026-08-26). File-level, so only paths the PR itself added or
+        # renamed into. A content-only edit of a file whose misspelled
+        # name already existed is pre-existing drift.
+        return finding.path in filename_scope
     return finding.line in added.get(finding.path, set())
 
 
@@ -436,13 +471,18 @@ def collect_findings(
             if not _ignored(p, ignores) and (Path(cwd) / p).is_file()
         ]
         added: Dict[str, Set[int]] = {}
-        changed: Set[str] = set(files)
+        filename_scope: Set[str] = set(files)
     else:
         if not _ref_exists(base_ref, cwd):
             return [], True, 0
         added = _added_line_numbers(base_ref, pathspecs, cwd=cwd)
         changed = {
             p for p in _changed_paths(base_ref, pathspecs, cwd=cwd) if not _ignored(p, ignores)
+        }
+        filename_scope = {
+            p
+            for p in _added_or_renamed_paths(base_ref, pathspecs, cwd=cwd)
+            if not _ignored(p, ignores)
         }
         files = sorted(
             p
@@ -458,7 +498,7 @@ def collect_findings(
         )
     all_findings = [f for f in parsed if not _ignored(f.path, ignores)]
     in_scope = [
-        f for f in all_findings if _in_scope(f, whole_tree, added, changed)
+        f for f in all_findings if _in_scope(f, whole_tree, added, filename_scope)
     ]
     dropped = len(all_findings) - len(in_scope)
     return in_scope, False, dropped
@@ -552,8 +592,8 @@ def main() -> int:
 
     if dropped:
         print(
-            f"{dropped} finding(s) sit on lines this diff did not add; "
-            "ignored (pre-existing drift)."
+            f"{dropped} finding(s) sit outside this diff's added lines "
+            "and added/renamed paths; ignored (pre-existing drift)."
         )
 
     if not findings:

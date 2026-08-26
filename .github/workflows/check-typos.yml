@@ -39,8 +39,10 @@ on:
       base-ref:
         description: >-
           Git ref/SHA to diff against; only lines added since this ref are
-          checked. Empty (the default) uses the PR base SHA on pull_request
-          runs and skips on push. Pass `all` to scan the whole tracked tree.
+          checked, plus filename typos on paths this ref's three-dot diff
+          added or renamed. Empty (the default) uses the PR base SHA on
+          pull_request runs and skips on push. Pass `all` to scan the
+          whole tracked tree.
         type: string
         default: ''
       fail:

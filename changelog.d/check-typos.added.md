@@ -11,6 +11,9 @@
   Diff-scoped by default (only lines a PR adds), like
   `check-new-line-breaks`, so a first run over an existing repo does not
   reflag years of drift; pass `base-ref: all` to scan the whole tree.
+  Filename findings (no `line_num`) are in scope only for paths the PR
+  added or renamed, not for a content-only edit of a file whose
+  misspelled name already existed.
   The CLI is installed from a pinned GitHub release rather than wrapping
   the official `crate-ci/typos` action, which has no line-level diff
   filter, so the diff filter and the fail-closed `fail` gate have

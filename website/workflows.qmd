@@ -163,7 +163,8 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   [crate-ci/typos](https://github.com/crate-ci/typos): a Quarto site's
   non-vignette pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments,
   and repositories that are not R packages. Diff-scoped by default (only
-  lines a PR adds), so a first run over an existing repo does not reflag
+  lines a PR adds, plus filename typos on paths the PR added or renamed),
+  so a first run over an existing repo does not reflag
   years of drift; pass `base-ref: all` to scan the whole tree.
 - `test-coverage.yml` measures R-package test coverage with `covr` and uploads
   the Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the
