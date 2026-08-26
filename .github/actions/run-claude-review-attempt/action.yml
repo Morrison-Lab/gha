@@ -183,9 +183,10 @@ runs:
         # is intentionally NOT allowlisted, and neither is `mcp__github__*`
         # (the docker GitHub MCP): either prefix starts the inline-comment
         # server in prepareMcpConfig(). That server posts during the model
-        # turn, and gha#580 moved every forge write off this job. Tag mode's
-        # live tracking comment has the same problem and is forced off
-        # below. Findings go in the packed summary the posting job uploads.
+        # turn, and gha#580 moved every forge write off this job. Tag mode
+        # always starts github_comment (mcp__github_comment__update_claude_comment),
+        # not github_inline_comment, and is forced off below. Findings go
+        # in the packed summary the posting job uploads.
         # ...and keep this a REVIEW-ONLY run. Even with a read-only contents
         # token, tag mode hands the reviewer git add/commit/rm and the action's
         # default prompt tells it to commit+push, so it flails through
@@ -719,15 +720,21 @@ runs:
           explicit `### Verdict` status line required above — restating that
           the prior verdict stands is not itself the status line.
           ${{ inputs.prompt-addendum }}
-        # Forced off. Tag mode posts a live tracking comment and initializes
-        # the inline-comment MCP tool during the model turn, both of which
-        # need a writable token in this job. gha#580 moved every forge write
-        # onto the posting job, so live tracking cannot run here. The
-        # workflow still accepts the track-progress input (so existing
-        # callers do not fail at the call gate) but ignores it: the posting
-        # job submits the summary after the model finishes. Tag mode also
-        # hardcodes git write tools into ALLOWED_TOOLS regardless of
-        # --disallowedTools (serodynamics PR #175, commit 02af72b).
+        # Forced off. Tag mode posts a live tracking comment through the
+        # github_comment MCP server (tagModeTools includes
+        # mcp__github_comment__update_claude_comment; prepareMcpConfig
+        # always starts that server in tag mode) and hardcodes git write
+        # tools. It does not start github_inline_comment unless
+        # allowedTools contains mcp__github_inline_comment__* or
+        # mcp__github__* (pinned v1.0.196 src/modes/tag/index.ts and
+        # src/mcp/install-mcp-server.ts, measured 2026-08-26). gha#580
+        # moved every forge write onto the posting job, so live tracking
+        # cannot run here. The workflow still accepts the track-progress
+        # input (so existing callers do not fail at the call gate) but
+        # ignores it: the posting job submits the summary after the model
+        # finishes. Tag mode also hardcodes git write tools into
+        # ALLOWED_TOOLS regardless of --disallowedTools (serodynamics
+        # PR #175, commit 02af72b).
         track_progress: 'false'
         # Fresh tracking comment per run so each push surfaces as new PR
         # activity; claude-code-review.yml's collapse step folds priors up

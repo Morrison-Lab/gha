@@ -54,8 +54,9 @@ already include the right `permissions:` blocks; copy them as-is.
 - `claude-code-review` (read-only review) grants `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
-  The model job itself is `contents: read` only; write is confined to jobs
-  that never run the model (`gather-context` and `post-review`) (gha#580).
+  The model job holds no write
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  write is confined to jobs that never run the model (`gather-context` and `post-review`) (gha#580).
   `actions: read` is required on the caller: a `permissions:` block sets
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP

@@ -153,8 +153,10 @@ that need to write must have the **caller** grant it on the calling job:
 - `claude-code-review` (read-only review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
-  The model job itself is `contents: read` only; write is confined to jobs
-  that never run the model (`gather-context` stashes reviewers and posts
+  The model job holds no write
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  write is confined to jobs that never run the model
+  (`gather-context` stashes reviewers and posts
   the early dispatch notice; `post-review` downloads the review artifact
   and comments) (gha#580).
   `actions: read` is required on the caller: a `permissions:` block sets

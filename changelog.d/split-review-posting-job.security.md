@@ -27,10 +27,15 @@
   `classify_inline_comments: false` restores during-session posting and
   skips the post-session classify-and-post step
   (anthropics/claude-code-action #1048).
-  Immediate posts are a no-op because the inline-comment MCP tool is not
-  allowlisted; skipping the post-step is the point, so a leftover buffer
+  Immediate posts are a no-op because neither
+  `mcp__github_inline_comment__*` nor `mcp__github__*` is allowlisted
+  (either prefix starts the inline-comment server);
+  skipping the post-session step is the point, so a leftover buffer
   cannot 403 on this read-only token.
-  Tag mode (`track-progress: true`) is ignored for the same reason; the
-  input is kept so existing callers do not fail at the call gate.
+  Tag mode (`track-progress: true`) is ignored because it always starts
+  the `github_comment` server (`mcp__github_comment__update_claude_comment`
+  on tagModeTools) and hardcodes git write tools -- a different server
+  from `github_inline_comment`.
+  The input is kept so existing callers do not fail at the call gate.
   The posting job is `pull_request_target`-free: forks are already refused
   (gha#235), so same-repo `pull_request` / `workflow_dispatch` is enough.

@@ -24,12 +24,16 @@ name: Claude Code Review (reusable)
 # override mint that write token.
 #
 # Agent mode is forced (track_progress: false) regardless of the
-# track-progress input: tag mode posts a live tracking comment and
-# initializes the inline-comment MCP tool during the model turn, both of
-# which need a writable token in that job. Tag mode also hardcodes git
-# write tools regardless of --disallowedTools (serodynamics PR #175,
-# commit 02af72b). cancel-in-progress: true is safe because the model
-# job cannot push.
+# track-progress input: tag mode posts a live tracking comment through
+# the github_comment MCP server (tagModeTools includes
+# mcp__github_comment__update_claude_comment; prepareMcpConfig always
+# starts that server in tag mode) and hardcodes git write tools.
+# It does not start github_inline_comment unless allowedTools contains
+# mcp__github_inline_comment__* or mcp__github__* (pinned
+# anthropics/claude-code-action v1.0.196 src/modes/tag/index.ts and
+# src/mcp/install-mcp-server.ts, measured 2026-08-26). All of that
+# needs a writable token in the model job. cancel-in-progress: true is
+# safe because the model job cannot push.
 
 on:
   workflow_call:
@@ -63,11 +67,13 @@ on:
         default: 'github-actions[bot]'
       track-progress:
         description: >-
-          Ignored (gha#580). Tag mode posts a live tracking comment and
-          initializes the inline-comment MCP tool during the model turn, both
-          of which need a writable forge token in the same job as the model.
-          This workflow splits those: the model job is contents: read, and
-          the posting job submits the summary after the model finishes. The
+          Ignored (gha#580). Tag mode posts a live tracking comment through
+          the github_comment MCP server (mcp__github_comment__update_claude_comment)
+          and hardcodes git write tools; it does not start github_inline_comment
+          unless mcp__github_inline_comment__* or mcp__github__* is allowlisted.
+          All of that needs a writable forge token in the model job. This
+          workflow splits those: the model job holds no write, and the
+          posting job submits the summary after the model finishes. The
           input is kept so existing callers do not fail at the call gate.
           Tag mode also hardcodes git write tools regardless of
           --disallowedTools (serodynamics PR #175) until
@@ -214,6 +220,12 @@ jobs:
         github.event.pull_request.head.repo.full_name == github.repository &&
         github.event.sender.type != 'Bot'
       )
+    # Same group as claude-review / post-review: stash-and-clear mutates
+    # the reviewer list, and two runs for one PR can interleave DELETE
+    # with a superseded restore if only the model job is serialized.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -1179,12 +1191,19 @@ jobs:
   post-review:
     needs: [gather-context, claude-review]
     if: always() && needs.gather-context.result != 'skipped'
+    # Same group as gather-context / claude-review so a superseded
+    # restore cannot interleave with a newer stash-and-clear.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       pull-requests: write
       issues: write
       actions: read
+    outputs:
+      stale: ${{ steps.target.outputs.stale }}
 
     steps:
       # Trusted identity for every write. The model job has unrestricted
@@ -1249,7 +1268,7 @@ jobs:
       - name: Require the payload artifact on a finished review
         if: >-
           needs.claude-review.result == 'success' &&
-          steps.download.outcome != 'success'
+          steps.download.outcome == 'failure'
         run: |
           echo "::error::claude-review succeeded but the payload artifact was missing or could not be downloaded."
           exit 1
@@ -1630,8 +1649,12 @@ jobs:
     #     deliberately skipped --- gha#434)
     #   - cancelled=true (the review run was cancelled mid-job and resolved as
     #     a graceful skip -- gha#585)
+    #   - post-review reported stale (the PR head moved before posting;
+    #     a newer run owns the thread -- a green gate here would attest
+    #     a verdict that was withheld)
     #
-    # The last three are conditioned on the review job having SUCCEEDED.
+    # quota/self_mod/cancelled are conditioned on the review job having
+    # SUCCEEDED; stale is conditioned on post-review having succeeded.
     # A deliberate no-verdict skip and a job that blew up are different states,
     # and only the first is safe to gray out: without the success test, a
     # genuine failure in any step that still runs on those paths would be
@@ -1641,6 +1664,8 @@ jobs:
       always() &&
       needs.claude-review.result != 'skipped' &&
       needs.claude-review.result != 'cancelled' &&
+      !(needs.post-review.result == 'success' &&
+      fromJSON(needs.post-review.outputs.stale || 'false')) &&
       !(needs.claude-review.result == 'success' &&
       (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
       fromJSON(needs.claude-review.outputs.self_mod || 'false') ||

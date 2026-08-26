@@ -273,6 +273,60 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         "failure-notice missing-artifact path requires a finished review "
         "(does not fire on cancelled/skipped)",
     )
+    conc_group = "claude-review-${{ github.event.pull_request.number || inputs.pr-number }}"
+    for name in ("gather-context", "claude-review", "post-review"):
+        if name not in jobs:
+            continue
+        conc = jobs[name].get("concurrency")
+        if not isinstance(conc, dict):
+            check(False, f"{name} shares the per-PR concurrency group")
+            continue
+        check(
+            str(conc.get("group") or "") == conc_group,
+            f"{name} shares the per-PR concurrency group",
+        )
+        check(
+            conc.get("cancel-in-progress") is True,
+            f"{name} cancels in-progress runs of that group",
+        )
+    require_art = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict)
+            and "Require the payload artifact" in str(s.get("name") or "")
+        ),
+        None,
+    )
+    if require_art is None:
+        die(f"{workflow_path}: post-review has no Require the payload artifact step")
+    req_if_raw = require_art.get("if") or ""
+    if not isinstance(req_if_raw, str):
+        die(
+            f"{workflow_path}: Require the payload artifact if: is "
+            f"{type(req_if_raw).__name__}, expected a string"
+        )
+    req_if = " ".join(req_if_raw.split())
+    check(
+        "steps.download.outcome == 'failure'" in req_if
+        or 'steps.download.outcome == "failure"' in req_if,
+        "Require the payload artifact keys on download.outcome == 'failure' "
+        "(a skipped download is not a miss)",
+    )
+    check(
+        "!= 'success'" not in req_if and '!= "success"' not in req_if,
+        "Require the payload artifact does not treat a skipped download as a miss",
+    )
+    check(
+        "steps.target.outputs.stale" in str((post.get("outputs") or {}).get("stale") or ""),
+        "post-review surfaces stale so require-review can skip a withheld review",
+    )
+    if "require-review" in jobs:
+        rif = " ".join(str(jobs["require-review"].get("if") or "").split())
+        check(
+            "post-review.outputs.stale" in rif,
+            "require-review skips when post-review reports stale",
+        )
     reviewed_head = str((review.get("outputs") or {}).get("reviewed-head") or "")
     check(
         " ".join(reviewed_head.split()) == "${{ github.event.pull_request.head.sha }}",
@@ -499,19 +553,24 @@ def run_self_test() -> int:
             "(needs.claude-review.result == 'success' || "
             "needs.claude-review.result == 'failure')))"
         )
+        conc_block = (
+            "    concurrency:\n"
+            "      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}\n"
+            "      cancel-in-progress: true\n"
+        )
         good_wf.write_text(
             f"""
 on:
   workflow_call: {{}}
 jobs:
   gather-context:
-    permissions:
+{conc_block}    permissions:
       pull-requests: write
       issues: write
     steps:
       - run: echo stash
   claude-review:
-    outputs:
+{conc_block}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
     permissions:
       contents: read
@@ -524,6 +583,8 @@ jobs:
         if: "{pack_if}"
   post-review:
     needs: claude-review
+{conc_block}    outputs:
+      stale: ${{{{ steps.target.outputs.stale }}}}
     permissions:
       pull-requests: write
       issues: write
@@ -531,9 +592,17 @@ jobs:
     steps:
       - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
       - uses: actions/download-artifact@v4
+      - name: Require the payload artifact on a finished review
+        if: needs.claude-review.result == 'success' && steps.download.outcome == 'failure'
+        run: exit 1
       - uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
         if: "{notice_if}"
       - run: COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
+  require-review:
+    needs: [claude-review, post-review]
+    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
+    steps:
+      - run: echo ok
 """
         )
         good_action = root / "action.yml"
@@ -654,7 +723,7 @@ runs:
             "permissions: write-all on the model job fails",
             run(write_all, good_action),
             False,
-            "claude-review does not grant",
+            "claude-review does not grant pull-requests: write",
         )
 
         empty_token = root / "empty-token.yml"
@@ -888,6 +957,46 @@ runs:
             run(no_cancelled_guard, good_action),
             False,
             "failure-notice runs under !cancelled()",
+        )
+
+        skipped_is_miss = root / "skipped-is-miss.yml"
+        skipped_is_miss.write_text(
+            good_wf.read_text().replace(
+                "steps.download.outcome == 'failure'",
+                "steps.download.outcome != 'success'",
+                1,
+            )
+        )
+        failures += expect(
+            "treating a skipped download as a missing artifact fails",
+            run(skipped_is_miss, good_action),
+            False,
+            "does not treat a skipped download as a miss",
+        )
+
+        no_gather_conc = root / "no-gather-conc.yml"
+        no_gather_conc.write_text(good_wf.read_text().replace(conc_block, "", 1))
+        failures += expect(
+            "gather-context without the per-PR concurrency group fails",
+            run(no_gather_conc, good_action),
+            False,
+            "gather-context shares the per-PR concurrency group",
+        )
+
+        no_stale_skip = root / "no-stale-skip.yml"
+        no_stale_skip.write_text(
+            good_wf.read_text().replace(
+                "always() && !(needs.post-review.result == 'success' && "
+                "fromJSON(needs.post-review.outputs.stale || 'false'))",
+                "always()",
+                1,
+            )
+        )
+        failures += expect(
+            "require-review ignoring a stale post fails",
+            run(no_stale_skip, good_action),
+            False,
+            "require-review skips when post-review reports stale",
         )
 
     if failures:
