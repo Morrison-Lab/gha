@@ -11,6 +11,10 @@ left alone until a PR naturally edits it.
 Contrast with a whole-file "lint changed files" gate, which fails on function
 definitions a PR never touched -- forcing either a repo-wide reformat or
 disabling the linter. `lint-changed-lines` is the incremental alternative.
+The whole-file, whole-package, and whole-project forms live in
+[`lint-changed-files.yml`](lint-changed-files.qmd), selected by a `scope`
+input; that capability does not fold this one in, because the added-lines
+diffing here is different machinery.
 
 ## How it works
 

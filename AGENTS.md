@@ -106,6 +106,7 @@ python3 -m pytest check-phi/tests/ -q
 python3 -m pytest check-new-line-breaks/tests/ -q
 python3 -m pytest check-typos/tests/ -q
 bash check-junk-files/tests/test-check-junk-files.sh
+Rscript lint-changed-files/tests/test-lint-r-scope.R
 ```
 
 ## Worktree isolation
