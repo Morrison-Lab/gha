@@ -1181,7 +1181,10 @@ on PATH after a `continue-on-error` composite failure.
 The messy fixture plants both `x.R` and `y.r`, and a second compact
 dir contains only `y.r`, so a dropped `.r` include cannot ride on
 `x.R`.
-The pass fixture plants both extensions too.
+The rewrite assert is `grep -qxF`, not `grep -qx`: the planted line
+is `1+2:3*(4/5)`, and `*` is a BRE quantifier, so a regex match of
+that string fails on the unchanged fixture and reports a rewrite
+that did not happen.
 This repo's own `.R` files are not Air-formatted, and a capability PR
 must not reformat them (gha#333: each consumer opts in with its own
 reformat commit), so the job must not call the composite on `.`.

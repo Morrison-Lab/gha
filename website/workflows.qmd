@@ -156,8 +156,9 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   decides the rest of R style.
   Check-only -- it never rewrites the branch.
   Adopting it in a repo that is not already Air-formatted is a large
-  first-pass diff; commit an `air.toml` first (empty is enough), land
-  that reformat in its own commit, then enable the check.
+  first-pass diff; commit an `air.toml` first (empty is enough), run
+  `air format` and commit that rewrite on its own, then enable the
+  check.
 - `check-phi.yml` scans for content that looks like protected health
   information; see [below](#phi-scanning).
 - `check-secrets.yml` scans the repository's git **history** for committed

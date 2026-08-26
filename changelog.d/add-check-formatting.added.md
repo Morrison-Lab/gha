@@ -17,6 +17,6 @@
   Derived from
   [`IndrajeetPatil/workflows`](https://github.com/IndrajeetPatil/workflows)
   `check-formatting.yaml` (MIT).
-  Adopting this in a consumer is a separate reformat commit
-  (commit an `air.toml` first, even empty); this change lands the
-  capability only.
+  Adopting this in a consumer is a separate rewrite commit
+  (commit an `air.toml` first, even empty, then run `air format`);
+  this change lands the capability only.

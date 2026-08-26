@@ -27,8 +27,8 @@ Air's
 recommends that so editors and CI share settings rather than picking
 up IDE tab-width or a user-level `~/.config/air/air.toml`
 (user-level fallback added in Air 0.11.0, #309; checked 2026-08-26).
-Then land the reformat in its own commit (or PR), then enable the
-check, so the reformat is reviewable separately from the CI change.
+Run `air format` and commit that rewrite on its own, then enable the
+check, so the rewrite is reviewable separately from the CI change.
 
 Derived from
 [`IndrajeetPatil/workflows`](https://github.com/IndrajeetPatil/workflows)

@@ -3041,7 +3041,7 @@ jobs:
             exit 1
           fi
           for f in _ci-air-messy/x.R _ci-air-messy/y.r; do
-            if ! grep -qx '1+2:3*(4/5)' "$f"; then
+            if ! grep -qxF '1+2:3*(4/5)' "$f"; then
               echo "::error::check-formatting rewrote $f; --check must not write"
               exit 1
             fi
@@ -3065,7 +3065,7 @@ jobs:
             echo "::error::expected check-formatting to fail on compact .r, got outcome='$OUTCOME'"
             exit 1
           fi
-          if ! grep -qx '1+2:3*(4/5)' _ci-air-messy-r/y.r; then
+          if ! grep -qxF '1+2:3*(4/5)' _ci-air-messy-r/y.r; then
             echo "::error::check-formatting rewrote the .r fixture; --check must not write"
             exit 1
           fi
