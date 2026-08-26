@@ -1137,9 +1137,11 @@ would fail it), a fixture whose only typo is pre-existing (diff-scoped
 pass, `base-ref: all` fail), and a newly-added `.qmd` typo that
 `spellcheck.yml` cannot see, plus that file exempted through
 `paths-ignore`.
-The fixture is generated at runtime (`check-typos/tests/make-fixture.sh`)
-so a committed `recieve` is never swept into a later whole-tree scan of
-this repo.
+The fixture checkout is generated at runtime
+(`check-typos/tests/make-fixture.sh`).
+The misspelling is also used as fixture payload in the pytest sources, so
+a later whole-tree dogfood of this repo should `paths-ignore`
+`check-typos/tests/`.
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

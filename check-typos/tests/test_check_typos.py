@@ -88,12 +88,20 @@ def _install_stub(
     bin_dir.mkdir()
     stub = bin_dir / "typos"
     log_path = argv_log or (tmp_path / "typos-argv.txt")
+    file_list_copy = tmp_path / "typos-file-list.txt"
     stub.write_text(
         textwrap.dedent(
             f"""\
             #!/usr/bin/env bash
             set -eu
             printf '%s\\n' "$0" "$@" > "{log_path}"
+            prev=""
+            for arg in "$@"; do
+              if [ "$prev" = "--file-list" ]; then
+                cp "$arg" "{file_list_copy}"
+              fi
+              prev="$arg"
+            done
             cat <<'EOF'
             {jsonl}
             EOF
@@ -386,23 +394,86 @@ def test_not_a_git_repository_is_an_error(tmp_path, monkeypatch, capsys):
     assert "is not a git repository" in capsys.readouterr().out
 
 
-def test_file_list_is_passed_to_typos(tmp_path, monkeypatch):
-    """Diff mode must not scan the whole tree; the stub's argv is the proof."""
+def test_hidden_dot_path_is_not_stripped_before_the_scan(
+    tmp_path, monkeypatch
+):
+    """`.github/` must stay `.github/`. lstrip('./') would turn it into
+    `github/` and is_file() would drop it -- a silent skip of YAML."""
+    _init_repo(tmp_path)
+    github = tmp_path / ".github" / "workflows"
+    github.mkdir(parents=True)
+    (github / "ci.yml").write_text("name: ok\n")
+    _commit(tmp_path, "base")
+    (github / "ci.yml").write_text("name: recieve\n")
+    _commit(tmp_path, "add typo in hidden path")
+
+    bin_dir = _install_stub(
+        tmp_path, _typo_json(path=".github/workflows/ci.yml", line=1)
+    )
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+    passed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
+    assert ".github/workflows/ci.yml" in passed.splitlines()
+
+
+def test_file_list_is_diff_scoped_not_the_whole_tree(tmp_path, monkeypatch):
+    """Diff mode must not scan the whole tree; the stub's copied --file-list
+    is the proof. A pre-existing typo in CONTRIBUTING.md must not appear."""
+    _init_repo(tmp_path)
+    (tmp_path / "CONTRIBUTING.md").write_text("Please recieve this.\n")
+    _commit(tmp_path, "pre-existing typo")
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "new typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+    argv = (tmp_path / "typos-argv.txt").read_text(encoding="utf-8")
+    assert "--file-list" in argv
+    passed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
+    names = passed.splitlines()
+    assert "notes.md" in names
+    assert "CONTRIBUTING.md" not in names
+
+
+def test_deleted_file_is_not_passed_to_typos(tmp_path, monkeypatch):
+    _init_repo(tmp_path)
+    (tmp_path / "gone.md").write_text("This will recieve a fix.\n")
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "gone.md").unlink()
+    (tmp_path / "notes.md").write_text("still ok\n")
+    _commit(tmp_path, "delete the typo file")
+
+    bin_dir = _install_stub(tmp_path, "", exit_code=0)
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 0
+    passed = (tmp_path / "typos-file-list.txt").read_text(encoding="utf-8")
+    assert "gone.md" not in passed.splitlines()
+
+
+def test_fail_unset_uses_default_and_blocks(tmp_path, monkeypatch):
+    """If _env_fail stopped reading _DEFAULT_FAIL, inverting the getenv
+    fallback would not turn this red -- every other test sets TYPOS_FAIL."""
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("A short note.\n")
     _commit(tmp_path, "base")
     (tmp_path / "notes.md").write_text("A short note.\nThis will recieve a fix.\n")
     _commit(tmp_path, "add typo")
 
-    argv_log = tmp_path / "argv.txt"
-    bin_dir = _install_stub(
-        tmp_path, _typo_json(path="notes.md", line=2), argv_log=argv_log
-    )
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=2))
     _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
-    ct.main()
-    argv = argv_log.read_text(encoding="utf-8")
-    assert "--file-list" in argv
-    assert "--format" in argv
+    monkeypatch.delenv("TYPOS_FAIL", raising=False)
+    assert ct.main() == 1
+    assert ct._env_fail() is ct._DEFAULT_FAIL
+
+
+def test_normalize_path_keeps_leading_dot_on_hidden_paths():
+    assert ct._normalize_path(".github/workflows/ci.yml") == (
+        ".github/workflows/ci.yml"
+    )
+    assert ct._normalize_path("./notes.md") == "notes.md"
+    assert ct._normalize_path("./.gitignore") == ".gitignore"
 
 
 def test_clean_stub_exit_zero_reports_no_typos(tmp_path, monkeypatch, capsys):

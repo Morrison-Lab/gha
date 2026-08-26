@@ -2821,7 +2821,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$OUTCOME" != "failure" ]; then
-            echo "::error::expected check-typos base-ref=all to fail on a pre-existing recieve, got outcome='$OUTCOME'"
+            echo "::error::expected check-typos base-ref=all to fail on a pre-existing typo, got outcome='$OUTCOME'"
             exit 1
           fi
           echo "check-typos failed on a pre-existing typo in whole-tree mode, as expected."

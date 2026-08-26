@@ -120,7 +120,14 @@ def _split_list(value: str) -> List[str]:
 
 
 def _normalize_path(path: str) -> str:
-    return path.replace("\\", "/").lstrip("./")
+    # Strip a `./` prefix only. `str.lstrip("./")` would also eat the
+    # leading dot of `.github/`, `.gitignore`, `.lintr` -- every hidden
+    # path this check exists to cover -- and `(Path / mangled).is_file()`
+    # would then drop the file before typos runs.
+    path = path.replace("\\", "/")
+    while path.startswith("./"):
+        path = path[2:]
+    return path
 
 
 def _added_line_numbers(
@@ -176,8 +183,14 @@ def _tracked_files(pathspecs: List[str], cwd: Optional[str] = None) -> Optional[
 
 
 def _env_fail() -> bool:
-    """Fail-closed: only an explicit 'false' (trimmed, case-insensitive) opts out."""
-    raw = os.environ.get("TYPOS_FAIL", "true")
+    """Fail-closed: only an explicit 'false' (trimmed, case-insensitive) opts out.
+
+    Unset/missing uses ``_DEFAULT_FAIL``. An empty value is not unset --
+    it is a value other than ``false``, so it still blocks.
+    """
+    raw = os.environ.get("TYPOS_FAIL")
+    if raw is None:
+        return _DEFAULT_FAIL
     normalized = "".join(raw.split()).lower()
     return normalized != "false"
 
