@@ -146,9 +146,12 @@ runs:
         # action are write; additional_permissions cannot drop them. The
         # job token is contents:read (gha#580). See the github-token input.
         github_token: ${{ inputs.github-token }}
-        # The action's post-session step would post buffered inline comments
-        # with this job's token. That token cannot write, and posting belongs
-        # on the posting job, so skip the step.
+        # anthropics/claude-code-action #1048 (v1.0.196): 'false' restores
+        # during-session posting (pre-buffering), and skips the post-session
+        # Haiku classify-and-post step. It does NOT mean "do not post".
+        # Immediate posts are a no-op here because the inline-comment MCP
+        # tool is not allowlisted below; skipping the post-step is the
+        # point, so a leftover buffer cannot 403 on this read-only token.
         classify_inline_comments: 'false'
         # Leaving the ai-config and extra-* slots as blank lines is safe when
         # they're unset: the upstream action's installPlugins() trims and

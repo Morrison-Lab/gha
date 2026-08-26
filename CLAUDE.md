@@ -1566,11 +1566,19 @@ and that sidecar files are omitted when the corresponding input is empty
 (a missing `review.txt` must not look like a present empty review).
 The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
 and asserts the facts a future edit could reverse silently:
-the model job grants no forge-write, keeps `id-token: write` and
-`contents: read`, the posting job holds `pull-requests: write` /
-`issues: write` and does not invoke the model, `github_token` is forwarded
-so the App-token write exchange is skipped, and the inline-comment MCP
-tool is not allowlisted.
+the model job grants no forge-write (including no `id-token: write`)
+and keeps `contents: read`,
+the posting job holds `pull-requests: write` /
+`issues: write` and does not invoke the model,
+`github_token` is forwarded so the App-token write exchange is skipped,
+the inline-comment MCP tool is not allowlisted,
+pack still runs after a failed `resolve-final` (`!cancelled()` plus
+success/failure outcomes;
+a default `success()` gate would skip it),
+and `post-review` stale-checks against event-pinned
+`reviewed-head` (`github.event.pull_request.head.sha`),
+falling back to gather-context's stash-head on dispatch,
+rather than a later API fetch from the model job.
 CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
 `upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
 separate from `review-fail-check` so a failure is attributable at a glance.
@@ -2319,9 +2327,10 @@ files against the CALLER's review-workflow path (derived from
 downstream step: checkout, run review, post review comment.
 `review / claude-review` reports `success`, but every step past the guard shows
 `skipped`, and no verdict is ever produced.
-This is deliberate, since the action's own App-token exchange 401s on a workflow
-file that doesn't match the default branch's content until merge (see the
-guard's own comment).
+The skip is this workflow's own policy, not an action 401:
+gha#580 forwards `github_token`, which skips the App-token exchange
+that used to fail workflow-content validation until merge
+(see the guard's own comment).
 But a green `claude-review` check is easy to mistake for a real review.
 
 **`require-review` used to report `success` here too, which is what made this
@@ -2341,10 +2350,11 @@ workflow YAML file on `workflow_dispatch` (gha#386).** `WF_PATH` comes from
 file, which in this repo's dogfooding setup is `.github/workflows/claude-review.yml`
 (for a downstream consumer, their own copy of the caller stub). On automatic
 `pull_request` runs, only a PR that touches that one file trips `self_mod=true`.
-On `workflow_dispatch` runs, `claude-code-action`'s token exchange validates that
-all `.github/workflows/*.yml` files match `main` or it skips with an OIDC
-validation error; to prevent false-positive failures, the guard trips `self_mod=true`
-for any touched top-level workflow YAML file on dispatch (gha#386).
+On `workflow_dispatch` runs, the action's token exchange *used to*
+validate that all `.github/workflows/*.yml` files match `main` or skip
+with an OIDC validation error; to prevent false-positive failures, the
+guard still trips `self_mod=true` for any touched top-level workflow YAML
+file on dispatch (gha#386), as this workflow's own policy.
 `examples/claude-code-review.yml` lives under `examples/`, not
 `.github/workflows/`, so it never actually executes as a workflow in this
 repo and `github.workflow_ref` can never resolve to it either. Check the
@@ -2389,9 +2399,19 @@ silently skipped -- caught only by noticing the job finished in 4 seconds.
 Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
-**That guard is the workflow-level skip; the action carries its OWN
-workflow-content validation, which would fire if the guard were bypassed --
-and it does not print a literal `401`.**
+**That guard is the workflow-level skip.**
+Before gha#580 it also papered over the action's own workflow-content
+validation, which lived inside the OIDC App-token exchange and did not
+print a literal `401`.
+`run-claude-review-attempt` now forwards `github_token`
+(`${{ github.token }}` from the read-only model job), so
+`setupGitHubToken()` returns that token without calling `getIDToken()`
+or `exchangeForAppToken()`
+(anthropics/claude-code-action v1.0.196 `src/github/token.ts`,
+measured 2026-08-26).
+Bypassing `self_mod` therefore no longer hits that validation skip:
+the model would run on the job token.
+
 The section above skips every step of the review job when the PR edits the
 caller workflow `claude-review.yml` (the job itself still runs and reports
 `success`, green -- not a gray skipped job).
@@ -2401,16 +2421,17 @@ with no trigger gating, so an `@claude review` dispatch trips it exactly as an
 automatic run does -- the gha#286 example above is that case, the guard firing
 on a dispatched review (green job, every post-guard step `skipped`).
 So today a caller-editing PR just gets that silent skip.
-The review can still run and hit the action's OWN content validation by two
-paths.
-One is a deliberate bypass -- as gha#417 proposed and this repo rejected.
-The other is live and undeliberate: the guard sets `self_mod` from
+
+**Pre-gha#580, a bypass of that skip reddened the check with no verdict.**
+Two paths reached the action's content validation then.
+One was a deliberate bypass -- as gha#417 proposed and this repo rejected.
+The other is still live: the guard sets `self_mod` from
 `files=$(gh api .../files ... || true)` in `claude-code-review.yml`, so a
 transient `gh api` failure leaves `files` empty, `self_mod=false`, and the
 review proceeds even on a PR that does edit `claude-review.yml`.
-Either way the action's content validation then checks the running workflow
-against the default branch and gracefully skips on a mismatch.
-The "Run Claude Code Review" step then reads:
+Before the `github_token` override, the action then checked the running
+workflow against the default branch and gracefully skipped on a mismatch.
+The "Run Claude Code Review" step then read:
 
 ```text
 Exchanging OIDC token for app token...
@@ -2420,14 +2441,17 @@ version on the repository's default branch...
 Exiting due to workflow validation skip
 ```
 
-The action STEP reports `outcome=success` (it "gracefully skips"), runs only
-~4-11s, and writes NO execution output -- so `check-review-execution.sh`
-reports `Claude review produced no execution output -- treating as a failed
-review`, and `claude-review` + `require-review` go RED with no verdict.
-That is worse than the silent skip, which is why gha#417 was abandoned.
+The action STEP reported `outcome=success` (it "gracefully skips"), ran only
+~4-11s, and wrote NO execution output -- so `check-review-execution.sh`
+reported `Claude review produced no execution output -- treating as a failed
+review`, and `claude-review` + `require-review` went RED with no verdict.
+That was worse than the silent skip, which is why gha#417 was abandoned.
+The same abort is what a template test of a modified review workflow used
+to hit (confirmed empirically 2026-08-05; the failure surfaces as a fast
+`no execution output`, not a literal `401`).
 
-Diagnostic tells for that validation skip, so it is not misdiagnosed as a
-`401`:
+Diagnostic tells for that **historical** validation skip, so an older run
+log is not misdiagnosed as a `401`:
 
 - The "Run Claude Code Review" STEP finishes in seconds (~4-11s measured)
   while writing no execution output; total job time is not a reliable tell,
@@ -2438,17 +2462,19 @@ Diagnostic tells for that validation skip, so it is not misdiagnosed as a
   validation skip`, or just READ the "Run Claude Code Review" step's own
   output rather than grepping for a guessed string (per
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
-- The validation keys on workflow CONTENT vs. the default branch, independent
+- The validation keyed on workflow CONTENT vs. the default branch, independent
   of trigger type, so bypassing the self-review skip on a dispatched
-  `@claude review` does NOT help -- it just reddens the check with no verdict.
+  `@claude review` did NOT help -- it just reddened the check with no verdict.
 
-The likely fix for a PR editing the review workflow is a `github_token`
-override on the action, which would skip the OIDC exchange and its content
-check -- but that is untested: PR #420 only showed that bypassing `self_mod`
-*without* such an override is counterproductive (it hits this validation skip),
-and no `github_token` input is wired up in `run-claude-review-attempt` today.
+The skip remains this workflow's own policy (caller-stub edits on every
+event; any top-level workflow YAML on `workflow_dispatch`, gha#386).
+PR #420 showed that bypassing `self_mod` *without* the override
+was counterproductive (it hit the historical validation skip);
+with the override in place, a bypass would run the review rather
+than 401.
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
-section reaches the same OIDC content-validation from the testing angle.
+section used to hit that same OIDC content-validation abort;
+`github_token` forwarding is what skips it now (gha#580).
 
 ## A prompt instruction is a request; a permission rule is a constraint
 
@@ -2620,21 +2646,18 @@ To exercise a composite change, also repoint the nested `@v2` refs to the PR
 branch on the branch-pinned reusable workflow, or invoke the composite directly.
 
 A PR fixing a reusable **review** workflow (`claude-code-review.yml` or
-`claude.yml`) can't be verified this way at all.
-The review runs `anthropics/claude-code-action`, whose OIDC App-token exchange
-validates that the calling review-workflow content matches the repo's default
-branch.
-Testing the fix means running the review against a modified copy of that
-workflow, which makes the caller differ from its own default branch -- in `gha`
-or in a template repo alike -- so the action aborts with `Workflow validation
-failed` ("Exiting due to workflow validation skip"), produces no output, and
-reddens the check with no verdict.
-(Confirmed empirically 2026-08-05 via a throwaway dispatched review; the failure
-surfaces as a fast `no execution output`, not a literal `401`.)
+`claude.yml`) used to abort template tests at the action's OIDC
+workflow-content check
+(confirmed empirically 2026-08-05 via a throwaway dispatched review;
+the failure surfaces as a fast `no execution output`, not a literal `401`).
+`run-claude-review-attempt` now forwards `github_token` (gha#580),
+which skips that exchange and its content check.
+What still blocks dogfood review of such a PR in *this* repo is the
+caller-side `self_mod` skip:
+it fires when the PR edits the caller stub, and on `workflow_dispatch`
+when any top-level workflow YAML is in the diff.
 Fall back to the manual/offline path in
-[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
-or give the action a `github_token` override that skips the OIDC exchange
-(untested -- see the workflow-validation-skip note's `github_token` caveat above).
+[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge).
 
 ## Code review guidelines
 

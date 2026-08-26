@@ -11,11 +11,16 @@ name: Claude Code Review (reusable)
 #
 # The model and a writable forge token never share a job (gha#580).
 # `claude-review` runs the model with contents: read (plus pull-requests:
-# read, issues: read, actions: read, and id-token: write). It writes the
-# review to an artifact. `post-review` downloads that artifact and posts;
-# it holds pull-requests: write / issues: write and does not invoke the
-# model. The deny list on the model job is then a guard rail against
-# accidents, not a security boundary.
+# read, issues: read, and actions: read). It writes the review to an
+# artifact. `post-review` downloads that artifact and posts; it holds
+# pull-requests: write / issues: write and does not invoke the model.
+# The deny list on the model job is then a guard rail against accidents,
+# not a security boundary. `id-token: write` is omitted: forwarding
+# github.token skips claude-code-action's OIDC App-token exchange
+# (OVERRIDE_GITHUB_TOKEN), and that exchange's DEFAULT_PERMISSIONS are
+# write (anthropics/claude-code-action v1.0.196 src/github/token.ts,
+# measured 2026-08-26). Granting id-token: write would let a dropped
+# override mint that write token.
 #
 # Agent mode is forced (track_progress: false) regardless of the
 # track-progress input: tag mode posts a live tracking comment and
@@ -459,6 +464,14 @@ jobs:
       # instead of the same green (gha#434).
       self_mod: ${{ steps.selfmod.outputs.self_mod }}
       cancelled: ${{ steps.resolve-final.outputs.cancelled }}
+      # Event-pinned PR head (empty on workflow_dispatch). post-review
+      # compares live head to this, falling back to gather-context's
+      # stash-head when the event has no pull_request payload.
+      # Checkout is also event-pinned (`actions/checkout` with no `ref:`),
+      # so a later `gh api` of `.head.sha` can be newer than the tree the
+      # model reviewed; using that later SHA would post a stale review
+      # as current.
+      reviewed-head: ${{ github.event.pull_request.head.sha }}
 
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -466,25 +479,26 @@ jobs:
       contents: read
       pull-requests: read
       issues: read
-      id-token: write
+      # No id-token: write. github_token: github.token skips the App-token
+      # exchange; that exchange's defaults are write (see file header).
       # Let the action install its github_ci MCP server so the reviewer can
       # read CI/check-run status for the PR. Without actions: read it logs
       # "Skipping CI server installation" and reviews blind to CI state.
       actions: read
 
     steps:
-      # A PR that changes the review workflow file itself can't be reviewed by
-      # the action: its App-token exchange requires the workflow to match the
-      # default branch, so it 401s ("Workflow validation failed … must have
-      # identical content to the … default branch") until merged — the action
-      # says this is normal and to ignore it. Rather than post a failing check,
-      # detect that case and skip the review; it runs normally once merged. The
-      # file checked is the CALLER's review workflow, derived from
-      # github.workflow_ref (owner/repo/.github/workflows/<file>@ref ->
-      # .github/workflows/<file>): in a workflow_call run the github context is
-      # the caller's, so workflow_ref is the consumer's stub — the callee
-      # (reusable) path is exposed separately as github.job_workflow_ref — hence
-      # this matches whatever name the consumer's stub uses, not just the
+      # Skip when the PR edits the CALLER's review stub. That skip predates
+      # gha#580: claude-code-action's App-token exchange used to 401
+      # ("Workflow validation failed") until merge. Forwarding github_token
+      # now skips that exchange, so the skip is this workflow's own policy
+      # rather than a workaround for a 401 — a bypass would run the model
+      # with the read-only job token. The file checked is the CALLER's
+      # review workflow, derived from github.workflow_ref
+      # (owner/repo/.github/workflows/<file>@ref -> .github/workflows/<file>):
+      # in a workflow_call run the github context is the caller's, so
+      # workflow_ref is the consumer's stub — the callee (reusable) path is
+      # exposed separately as github.job_workflow_ref — hence this matches
+      # whatever name the consumer's stub uses, not just the
       # claude-code-review.yml convention. (Ported from qwt — gha #45.)
       - name: Parse caller workflow ref
         id: caller-wf
@@ -506,12 +520,12 @@ jobs:
           if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (the action 401s on workflow validation until merged; it runs after merge)."
+            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (this workflow skips when the PR edits the caller review stub; it runs after merge)."
           elif [ "$EVENT_NAME" = "workflow_dispatch" ] && printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
             mod_wf=$(printf '%s\n' "$files" | grep -m1 -E '^\.github/workflows/[^/]+\.ya?ml$')
             echo "self_mod=true" >> "$GITHUB_OUTPUT"
             echo "wf_path=$mod_wf" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (claude-code-action refuses token exchange on dispatched workflow changes until merged; gha#386)."
+            echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (dispatch also skips when any top-level workflow YAML changed; gha#386)."
           else
             echo "self_mod=false" >> "$GITHUB_OUTPUT"
             echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
@@ -1190,6 +1204,7 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           STASH_HEAD: ${{ needs.gather-context.outputs.stash-head }}
+          REVIEWED_HEAD: ${{ needs.claude-review.outputs.reviewed-head }}
           CALLER_WF_PATH: ${{ steps.caller-wf.outputs.path }}
         run: |
           set -euo pipefail
@@ -1205,12 +1220,15 @@ jobs:
             LIVE=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
           fi
           echo "live_head=$LIVE" >> "$GITHUB_OUTPUT"
-          # gather-context recorded the SHA before the model ran. If the
-          # head moved, a newer review owns the thread; do not post or
-          # collapse as if this run were current.
-          if [ -n "$STASH_HEAD" ] && [ -n "$LIVE" ] && [ "$LIVE" != "$STASH_HEAD" ]; then
+          # Prefer the event-pinned PR head (what checkout actually
+          # reviewed). Fall back to gather-context's stash-head on
+          # workflow_dispatch, which has no pull_request payload.
+          # Do not use a later API fetch from the model job: that SHA
+          # can move past the event-pinned tree.
+          COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"
+          if [ -n "$COMPARE" ] && [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR head moved ($STASH_HEAD -> $LIVE); not posting a stale review."
+            echo "::notice::PR head moved ($COMPARE -> $LIVE); not posting a stale review."
           else
             echo "stale=false" >> "$GITHUB_OUTPUT"
           fi

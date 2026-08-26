@@ -151,7 +151,7 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, `id-token: write`, and either the
+  `pull-requests: write`, `issues: write`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job itself is `contents: read` only; write is confined to jobs
   that never run the model (`gather-context` stashes reviewers and posts

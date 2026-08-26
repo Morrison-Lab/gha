@@ -9,17 +9,20 @@ through a redirect, both go around it. The close is architectural.
 This suite reads the workflow YAML and the attempt composite, and asserts
 the facts a future edit could reverse silently:
 
-1. The model job (`claude-review`) grants no forge-write permission.
-   `id-token: write` is the documented exception (OIDC for Anthropic /
-   the App-token exchange we now skip).
+1. The model job (`claude-review`) grants no forge-write permission
+   and no `id-token: write`. Forwarding `github_token` skips the
+   App-token exchange; that exchange's DEFAULT_PERMISSIONS are write
+   (anthropics/claude-code-action v1.0.196 `src/github/token.ts`,
+   measured 2026-08-26), so granting `id-token: write` would let a
+   dropped override mint a write token.
 2. The posting job (`post-review`) holds `pull-requests: write` and
    `issues: write`, and does not invoke the model.
-3. The attempt composite forwards `github_token` to claude-code-action,
-   which is how the App-token exchange (default contents/PRs/issues
-   write, measured in anthropics/claude-code-action v1.0.196
-   `src/github/token.ts` DEFAULT_PERMISSIONS, 2026-08-26) is skipped.
+3. The attempt composite forwards `github_token` to claude-code-action.
 4. The inline-comment MCP tool is not in the model job's allowlist,
    because it posts during the model turn.
+5. Pack still runs after a failed `resolve-final` (`!cancelled()` plus
+   success/failure outcomes) so a no-verdict run still reaches the
+   posting job (gha#543).
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -42,14 +45,15 @@ DEFAULT_WORKFLOW = ".github/workflows/claude-code-review.yml"
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
 
 # Permissions that would let the model mutate the forge or the checkout.
-# `id-token: write` is not one of them: it mints an OIDC JWT for Anthropic,
-# not a GitHub write token.
+# `id-token: write` is included: in the pinned action it is exchanged for a
+# GitHub App token whose DEFAULT_PERMISSIONS are contents/PRs/issues write.
 FORGE_WRITE = {
     "contents": "write",
     "pull-requests": "write",
     "issues": "write",
     "actions": "write",
     "workflows": "write",
+    "id-token": "write",
 }
 
 INLINE_TOOL = "mcp__github_inline_comment__create_inline_comment"
@@ -138,8 +142,9 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         "claude-review grants contents: read",
     )
     check(
-        review_perms.get("id-token") == "write",
-        "claude-review keeps id-token: write (gha#580)",
+        review_perms.get("id-token") != "write",
+        "claude-review does not grant id-token: write "
+        "(App-token exchange is skipped; its defaults are write)",
     )
     check(
         post_perms.get("pull-requests") == "write",
@@ -167,6 +172,53 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     check(
         not any("anthropics/claude-code-action" in u for u in post_uses),
         "post-review does not invoke claude-code-action",
+    )
+    pack_step = next(
+        (
+            s
+            for s in review.get("steps") or []
+            if isinstance(s, dict)
+            and "pack-review-payload" in str(s.get("uses", ""))
+        ),
+        None,
+    )
+    if pack_step is None:
+        die(f"{workflow_path}: claude-review has no pack-review-payload step")
+    pack_if = pack_step.get("if") or ""
+    if not isinstance(pack_if, str):
+        die(
+            f"{workflow_path}: pack-review-payload if: is "
+            f"{type(pack_if).__name__}, expected a string "
+            "(a default success() gate would skip packing after "
+            "resolve-final fails)"
+        )
+    check(
+        "!cancelled()" in pack_if,
+        "pack runs under !cancelled() so a failed resolve-final still packs",
+    )
+    check(
+        "self_mod" in pack_if,
+        "pack still runs on a self-mod skip so the skip notice can post",
+    )
+    pack_if_norm = " ".join(str(pack_if).split())
+    check(
+        "steps.resolve-final.outcome == 'failure'" in pack_if_norm
+        or 'steps.resolve-final.outcome == "failure"' in pack_if_norm,
+        "pack if: includes resolve-final.outcome == 'failure' (equality, not a negated comparison)",
+    )
+    check(
+        "steps.resolve-final.outcome == 'success'" in pack_if_norm
+        or 'steps.resolve-final.outcome == "success"' in pack_if_norm,
+        "pack if: includes resolve-final.outcome == 'success'",
+    )
+    check(
+        "!= 'failure'" not in pack_if_norm and '!= "failure"' not in pack_if_norm,
+        "pack if: does not negate the failure outcome",
+    )
+    reviewed_head = str((review.get("outputs") or {}).get("reviewed-head") or "")
+    check(
+        " ".join(reviewed_head.split()) == "${{ github.event.pull_request.head.sha }}",
+        "reviewed-head is exactly github.event.pull_request.head.sha",
     )
     check(
         any("pack-review-payload" in u for u in review_uses),
@@ -217,6 +269,18 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         any("parse-workflow-ref" in u for u in post_uses),
         "post-review re-parses the caller workflow ref (trusted targeting)",
     )
+    compare_values = []
+    for step in post.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        run = step.get("run")
+        if not isinstance(run, str):
+            continue
+        compare_values.extend(re.findall(r'COMPARE="([^"]*)"', run))
+    check(
+        compare_values == ["${REVIEWED_HEAD:-$STASH_HEAD}"],
+        "COMPARE is assigned exactly once to ${REVIEWED_HEAD:-$STASH_HEAD}",
+    )
 
     action = load_yaml(action_path)
     steps = action.get("runs", {}).get("steps") or []
@@ -238,7 +302,10 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     )
     check(
         with_block.get("classify_inline_comments") == "false",
-        "classify_inline_comments is false so the action does not post from the model job",
+        "classify_inline_comments is false so the post-session posting "
+        "step is skipped (false means post immediately during the "
+        "session, which is a no-op because the inline MCP tool is not "
+        "allowlisted; anthropics/claude-code-action #1048)",
     )
     claude_args = with_block["claude_args"]
     match = re.search(r'--allowedTools\s+"([^"]*)"', claude_args)
@@ -301,10 +368,16 @@ def run_self_test() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         good_wf = root / "good.yml"
+        pack_if = (
+            "!cancelled() && "
+            "(steps.selfmod.outputs.self_mod == 'true' || "
+            "steps.resolve-final.outcome == 'success' || "
+            "steps.resolve-final.outcome == 'failure')"
+        )
         good_wf.write_text(
-            """
+            f"""
 on:
-  workflow_call: {}
+  workflow_call: {{}}
 jobs:
   gather-context:
     permissions:
@@ -313,15 +386,17 @@ jobs:
     steps:
       - run: echo stash
   claude-review:
+    outputs:
+      reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
     permissions:
       contents: read
       pull-requests: read
       issues: read
-      id-token: write
       actions: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
       - uses: Morrison-Lab/gha/.github/actions/pack-review-payload@v2
+        if: "{pack_if}"
   post-review:
     needs: claude-review
     permissions:
@@ -330,6 +405,7 @@ jobs:
     steps:
       - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
       - uses: actions/download-artifact@v4
+      - run: COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
 """
         )
         good_action = root / "action.yml"
@@ -432,6 +508,138 @@ runs:
             run(with_prt, good_action),
             False,
             "pull_request_target-free",
+        )
+
+        with_id_token = root / "id-token.yml"
+        with_id_token.write_text(
+            good_wf.read_text().replace(
+                "      actions: read\n",
+                "      actions: read\n      id-token: write\n",
+                1,
+            )
+        )
+        failures += expect(
+            "id-token: write on the model job fails",
+            run(with_id_token, good_action),
+            False,
+            "claude-review does not grant id-token: write",
+        )
+
+        no_pack_if = root / "no-pack-if.yml"
+        no_pack_if.write_text(
+            good_wf.read_text().replace(
+                f'        if: "{pack_if}"\n',
+                "",
+            )
+        )
+        failures += expect(
+            "omitting pack if: (default success() gate) fails",
+            run(no_pack_if, good_action),
+            False,
+            "pack runs under !cancelled()",
+        )
+
+        success_gate = root / "success-gate.yml"
+        success_gate.write_text(
+            good_wf.read_text().replace(
+                f'        if: "{pack_if}"\n',
+                "        if: success()\n",
+            )
+        )
+        failures += expect(
+            "pack if: success() still fails",
+            run(success_gate, good_action),
+            False,
+            "pack runs under !cancelled()",
+        )
+
+        bool_if = root / "bool-if.yml"
+        bool_if.write_text(
+            good_wf.read_text().replace(
+                f'        if: "{pack_if}"\n',
+                "        if: true\n",
+            )
+        )
+        failures += expect(
+            "boolean pack if: fails",
+            run(bool_if, good_action),
+            False,
+            "expected a string",
+        )
+
+        flipped_failure = root / "flipped-failure.yml"
+        flipped_failure.write_text(
+            good_wf.read_text().replace(
+                "steps.resolve-final.outcome == 'failure'",
+                "steps.resolve-final.outcome != 'failure'",
+                1,
+            )
+        )
+        failures += expect(
+            "negated resolve-final failure comparison fails",
+            run(flipped_failure, good_action),
+            False,
+            "resolve-final.outcome == 'failure'",
+        )
+
+        late_sha = root / "late-sha.yml"
+        late_sha.write_text(
+            good_wf.read_text().replace(
+                "github.event.pull_request.head.sha",
+                "steps.stash.outputs.head_before",
+                1,
+            )
+        )
+        failures += expect(
+            "reviewed-head from a later API fetch fails",
+            run(late_sha, good_action),
+            False,
+            "exactly github.event.pull_request.head.sha",
+        )
+
+        stash_only = root / "stash-only.yml"
+        stash_only.write_text(
+            good_wf.read_text().replace(
+                'COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"',
+                'COMPARE="$STASH_HEAD"',
+                1,
+            )
+        )
+        failures += expect(
+            "stale check using only gather stash-head fails",
+            run(stash_only, good_action),
+            False,
+            "COMPARE is assigned exactly once",
+        )
+
+        extra_fallback = root / "extra-fallback.yml"
+        extra_fallback.write_text(
+            good_wf.read_text().replace(
+                "github.event.pull_request.head.sha",
+                "github.event.pull_request.head.sha || steps.stash.outputs.head_before",
+                1,
+            )
+        )
+        failures += expect(
+            "reviewed-head with a later-SHA fallback fails",
+            run(extra_fallback, good_action),
+            False,
+            "exactly github.event.pull_request.head.sha",
+        )
+
+        second_compare = root / "second-compare.yml"
+        second_compare.write_text(
+            good_wf.read_text().replace(
+                'COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"',
+                'COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"\n          COMPARE="$STASH_HEAD"',
+                1,
+            )
+        )
+        failures += expect(
+            "a later COMPARE=$STASH_HEAD assignment fails",
+            run(second_compare, good_action),
+            False,
+            "COMPARE is assigned exactly once",
         )
 
     if failures:

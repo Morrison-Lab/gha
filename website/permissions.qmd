@@ -52,7 +52,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `id-token: write`, `actions: write`, and add either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 - `claude-code-review` (read-only review) grants `contents: read`,
-  `pull-requests: write`, `issues: write`, `id-token: write`, and either the
+  `pull-requests: write`, `issues: write`, and either the
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job itself is `contents: read` only; write is confined to jobs
   that never run the model (`gather-context` and `post-review`) (gha#580).

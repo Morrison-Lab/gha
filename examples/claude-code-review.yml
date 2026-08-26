@@ -172,7 +172,8 @@ jobs:
       contents: read
       pull-requests: write   # posting job (gha#580); the model job is read-only
       issues: write
-      id-token: write
+      # No id-token: write: the reusable workflow forwards github.token
+      # and skips the App-token exchange (gha#580).
       actions: read   # lets the reviewer read CI status (github_ci MCP server)
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:

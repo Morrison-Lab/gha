@@ -50,8 +50,8 @@ variable unset while the agent is live, or the mention is answered twice.
 
 ## Permissions
 
-Grant `contents: read`, `pull-requests: write`, `issues: write`, and
-`id-token: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
+Grant `contents: read`, `pull-requests: write`, `issues: write`,
+and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
 `ANTHROPIC_API_KEY` secret.
 The model job itself is `contents: read` only; write is confined to jobs
 that never run the model (`gather-context` stashes reviewers; `post-review`
@@ -147,7 +147,6 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-      id-token: write
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key
