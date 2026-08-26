@@ -709,7 +709,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>track-progress</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Ignored (gha#580). Tag mode posts a live tracking comment and initializes the inline-comment MCP tool during the model turn, both of which need a writable forge token in the same job as the model. This workflow splits those: the model job is <code>contents: read</code>, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate.</td>
+<td>Ignored (gha#580). Tag mode posts a live tracking comment through the <code>github_comment</code> MCP server (<code>mcp__github_comment__update_claude_comment</code>) and hardcodes git write tools; it does not start <code>github_inline_comment</code> unless <code>mcp__github_inline_comment__*</code> or <code>mcp__github__*</code> is allowlisted. All of that needs a writable forge token in the model job. This workflow splits those: the model job’s <code>GITHUB_TOKEN</code> has no write scopes, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate.</td>
 </tr>
 <tr class="even">
 <td><code>show-full-output</code></td>
@@ -816,7 +816,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>actions: read</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret. The model job itself is <code>contents: read</code> only; write is confined to jobs that never run the model (<code>gather-context</code> stashes reviewers; <code>post-review</code> downloads the review artifact and comments) (gha#580). <code>actions: read</code> is required on the caller: a <code>permissions:</code> block sets unspecified scopes to none, and <code>post-review</code> needs it to download the packed artifact (the model job also uses it for the <code>github_ci</code> MCP server).</p>
+<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>actions: read</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret. The model job’s <code>GITHUB_TOKEN</code> has no write scopes (<code>contents</code> / <code>pull-requests</code> / <code>issues</code> / <code>actions: read</code>); write is confined to jobs that never run the model (<code>gather-context</code> stashes reviewers; <code>post-review</code> downloads the review artifact and comments) (gha#580). <code>actions: read</code> is required on the caller: a <code>permissions:</code> block sets unspecified scopes to none, and <code>post-review</code> needs it to download the packed artifact (the model job also uses it for the <code>github_ci</code> MCP server).</p>
 </section>
 <section id="the-require-review-gate" class="level2">
 <h2 class="anchored" data-anchor-id="the-require-review-gate">The <code>require-review</code> gate</h2>
