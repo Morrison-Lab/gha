@@ -98,7 +98,10 @@ def job_permissions(job: dict) -> dict:
     if perms == "read-all":
         return {"contents": "read"}
     if perms == "write-all":
-        return {"contents": "write"}
+        # write-all is a writable forge token for every scope, not just
+        # contents. Mapping only contents: write would let a model job
+        # with permissions: write-all pass the per-key FORGE_WRITE checks.
+        return {key: "write" for key in FORGE_WRITE}
     if isinstance(perms, dict):
         return perms
     die(f"unrecognised permissions value: {perms!r}")
@@ -304,8 +307,10 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         with_block.get("classify_inline_comments") == "false",
         "classify_inline_comments is false so the post-session posting "
         "step is skipped (false means post immediately during the "
-        "session, which is a no-op because the inline MCP tool is not "
-        "allowlisted; anthropics/claude-code-action #1048)",
+        "session; that path is closed because neither "
+        "mcp__github_inline_comment__ nor mcp__github__ is allowlisted, "
+        "so prepareMcpConfig does not start the server; "
+        "anthropics/claude-code-action #1048)",
     )
     claude_args = with_block["claude_args"]
     match = re.search(r'--allowedTools\s+"([^"]*)"', claude_args)
@@ -315,6 +320,14 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     check(
         INLINE_TOOL not in allowed,
         "the inline-comment MCP tool is not allowlisted on the model job",
+    )
+    check(
+        not any(
+            t.startswith("mcp__github_inline_comment__") or t.startswith("mcp__github__")
+            for t in allowed
+        ),
+        "neither mcp__github_inline_comment__ nor mcp__github__ is allowlisted "
+        "(either prefix starts the inline-comment MCP server)",
     )
 
     if FAILURES:
@@ -466,6 +479,67 @@ runs:
             run(good_wf, with_inline),
             False,
             "inline-comment MCP tool is not allowlisted",
+        )
+
+        with_github_mcp = root / "github-mcp.yml"
+        with_github_mcp.write_text(
+            good_action.read_text().replace(
+                '"Bash,Edit(//tmp/**),WebFetch,WebSearch"',
+                '"mcp__github__create_pull_request,Bash"',
+            )
+        )
+        failures += expect(
+            "mcp__github__ prefix on the allowlist fails",
+            run(good_wf, with_github_mcp),
+            False,
+            "mcp__github__",
+        )
+
+        classify_true = root / "classify-true.yml"
+        classify_true.write_text(
+            good_action.read_text().replace(
+                "        classify_inline_comments: 'false'\n",
+                "        classify_inline_comments: 'true'\n",
+            )
+        )
+        failures += expect(
+            "classify_inline_comments true fails (would run the post-session poster)",
+            run(good_wf, classify_true),
+            False,
+            "classify_inline_comments is false",
+        )
+
+        classify_omitted = root / "classify-omitted.yml"
+        classify_omitted.write_text(
+            good_action.read_text().replace(
+                "        classify_inline_comments: 'false'\n",
+                "",
+            )
+        )
+        failures += expect(
+            "omitting classify_inline_comments fails",
+            run(good_wf, classify_omitted),
+            False,
+            "classify_inline_comments is false",
+        )
+
+        write_all = root / "write-all.yml"
+        write_all.write_text(
+            good_wf.read_text().replace(
+                "    permissions:\n"
+                "      contents: read\n"
+                "      pull-requests: read\n"
+                "      issues: read\n"
+                "      actions: read\n",
+                "    permissions: write-all\n",
+                1,
+            )
+        )
+        failures += expect(
+            "permissions: write-all on the model job fails",
+            run(write_all, good_action),
+            False,
+            "claude-review does not grant",
         )
 
         empty_token = root / "empty-token.yml"
