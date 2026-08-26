@@ -1,0 +1,104 @@
+---
+title: "check-extra.yml"
+---
+
+Extra R-package checks that `R CMD check` passes over.
+Adapted from
+[`IndrajeetPatil/workflows`](https://github.com/IndrajeetPatil/workflows)
+`check-extra.yaml` (MIT).
+
+Three jobs run in parallel so every failure surfaces at once instead of
+short-circuiting at the first -- the extra R-install cost is the point,
+not an accident. Disable any job with the matching `check-*` input if a
+package has no tests, no vignettes, or no `README.Rmd`.
+
+## What it catches
+
+1. **Warnings as errors** on three surfaces, all under `options(warn = 2L)`:
+   `devtools::run_examples(fresh = TRUE, run_dontrun = TRUE, run_donttest = TRUE)`,
+   a testthat sweep, and a vignette render over
+   `fs::dir_ls("vignettes/", glob = "*.Rmd", recurse = TRUE)`.
+   A deprecation warning from a dependency is the motivating case: it is
+   invisible in a normal green check until the deprecation becomes an error
+   a release later.
+   Parallel testthat does not honor a global `warn` option
+   ([testthat#1912](https://github.com/r-lib/testthat/issues/1912)),
+   so the test sweep finds test scripts and calls
+   `testthat::test_file()` per file inside
+   `withr::local_options(list(warn = 2L))`.
+2. **Random test order.** `testthat::test_dir("tests/testthat", shuffle = TRUE)`
+   with a randomly drawn seed that is logged, so a failure is reproducible.
+   `TESTTHAT_PARALLEL=FALSE` via `withr::local_envvar`, because shuffling is
+   meaningless if tests run in parallel anyway.
+   This catches a test that only passes because an earlier one left state
+   behind.
+3. **README render**, also with warnings as errors.
+   When `check-readme-freshness` is on (the default), the job also fails if
+   `README.md` is modified or untracked after the render -- the freshness
+   half a consumer like `rpt` wants, so this workflow can replace a bespoke
+   `check-readme.yaml` rather than sit beside it.
+   Only an explicit `false` opts out of freshness.
+
+A missing `tests/testthat`, `vignettes/*.Rmd`, or `README.Rmd` is a skip
+with a log line, not a failure, so a package that has only some of these
+surfaces can leave every job enabled.
+
+`.qmd` vignettes and `README.qmd` are out of scope: the vignette glob is
+`*.Rmd`, matching upstream, and a Quarto README would need Quarto, which
+this check does not install.
+
+`purrr`, `withr`, `fs`, `cli`, and `pkgload` are declared in
+`extra-packages` rather than arriving transitively via `devtools`.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
+| `extra-packages` | string | `''` | Extra R packages forwarded to `setup-r-dependencies`. Use this for packages a README or example needs that are not in `DESCRIPTION`. |
+| `install-quarto` | boolean | `false` | Install Quarto when setting up R dependencies. |
+| `check-warnings` | boolean | `true` | Run examples, tests, and vignettes with warnings as errors. |
+| `check-random-order` | boolean | `true` | Run testthat with `shuffle = TRUE` and a logged seed. |
+| `check-readme` | boolean | `true` | Render `README.Rmd` with warnings as errors. |
+| `check-readme-freshness` | boolean | `true` | When the README job runs, fail if `README.md` is modified or untracked after the render. |
+
+Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
+exist at that tag.
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-extra.yml in your repo.
+name: Extra R-package checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  extra:
+    uses: Morrison-Lab/gha/.github/workflows/check-extra.yml@v2
+    # with:
+    #   path: '.'
+    #   extra-packages: 'any::ggthemes'
+    #   install-quarto: false
+    #   check-warnings: true
+    #   check-random-order: true
+    #   check-readme: true
+    #   check-readme-freshness: true
+```
+
+See `check-extra.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
+(Linked to the directory rather than the file, for the reason
+[`check-secrets.qmd`](check-secrets.qmd) records: a `blob/main/...` link to a
+capability's own example 404s on the pull request that introduces it, and
+`check-links` rightly fails it.)

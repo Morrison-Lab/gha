@@ -30,7 +30,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, and `check-typos` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, and `check-extra` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -40,7 +40,7 @@ which is why the capabilities above moved to `@v2`.
 
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
-  script -- e.g. `check-bibliography-dois/` (R), `check-non-standard-chars/`,
+  script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
   `check-phi/`, and `check-new-line-breaks/` (Python; the last mirrors
   `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
@@ -1162,6 +1162,24 @@ The fixture checkout is generated at runtime
 The misspelling is also used as fixture payload in the pytest sources, so
 a later whole-tree dogfood of this repo should `paths-ignore`
 `check-typos/tests/`.
+
+`check-extra/tests/test-check-extra.sh` is a shell+R suite over
+`check-extra.R`.
+The bash half pins that `action.yml` and
+`.github/workflows/check-extra.yml` declare the same
+`check-readme-freshness` default -- the gha#303 precedent, because a drift
+here would hand a consumer of the reusable workflow a different freshness
+gate from a consumer of the composite with nothing red.
+The R half pins the decisions that are silent when reversed: an unknown
+`check` name is an error, a missing `README.Rmd` / `tests/testthat` /
+`vignettes/` is a skip rather than a failure, a dirty or untracked
+`README.md` fails freshness, and `parse_flag` is fail-closed.
+CI runs it as a step in the `check-extra` job in `_selftest.yml`, after
+three real `uses: ./check-extra` calls against a generated fixture (one
+per check) and before a fourth call against a warning-in-example fixture
+that must fail.
+The fixture is generated at runtime
+(`check-extra/tests/make-fixture.sh`).
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for

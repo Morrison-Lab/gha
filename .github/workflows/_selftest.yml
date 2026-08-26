@@ -362,9 +362,9 @@ jobs:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
           # test fixtures that carry synthetic PHI-shaped strings by design (the
-          # detector unit tests, the coverage, spellcheck, and check-typos
-          # fixture generators' synthetic maintainer emails, and
-          # check-new-line-breaks'
+          # detector unit tests, the coverage, spellcheck, check-typos,
+          # and check-extra fixture generators' synthetic maintainer
+          # emails, and check-new-line-breaks'
           # throwaway git-repo test fixtures' placeholder git config email),
           # which are skipped via paths-ignore below.
           # This input REPLACES the default set rather than extending it, so a
@@ -378,6 +378,7 @@ jobs:
             check-new-line-breaks/tests/**
             spellcheck/tests/**
             check-typos/tests/**
+            check-extra/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
@@ -2538,6 +2539,67 @@ jobs:
             exit 1
           fi
           echo "The vignette fixture failed without 'exclude', so the exclude assertion is not vacuous."
+  # check-extra is brand new, so (like test-coverage/spellcheck above) it
+  # isn't at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-extra@v2` step resolves against yet.
+  # Exercise the local composite against a generated R-package fixture.
+  # Three sequential `uses: ./check-extra` calls (one per check) prove each
+  # `check` input's wiring; a fourth call against a warning-in-example
+  # fixture proves the warnings-as-errors path actually fails. The
+  # freshness gate and skip-if-missing surfaces are covered by the offline
+  # suite, because a generated untracked README.md would fail freshness
+  # vacuously relative to this repo's checkout.
+  check-extra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate the R package fixture
+        shell: bash
+        run: bash check-extra/tests/make-fixture.sh _ci-extra
+      - name: Warnings as errors on the fixture
+        uses: ./check-extra
+        with:
+          check: warnings
+          path: _ci-extra
+      - name: Random test order on the fixture
+        uses: ./check-extra
+        with:
+          check: random-order
+          path: _ci-extra
+      - name: README render on the fixture
+        uses: ./check-extra
+        with:
+          check: readme
+          path: _ci-extra
+          check-readme-freshness: false
+      - name: Run check-extra offline tests
+        shell: bash
+        run: bash check-extra/tests/test-check-extra.sh
+      - name: Generate a fixture whose examples warn
+        shell: bash
+        run: bash check-extra/tests/make-fixture.sh _ci-extra-warn --warn-example
+      - name: Warnings as errors must fail on a warning in an example
+        id: extra-warn
+        continue-on-error: true
+        uses: ./check-extra
+        with:
+          check: warnings
+          path: _ci-extra-warn
+      - name: Assert the warning-in-example fixture failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.extra-warn.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected check-extra warnings to fail on a warning() in an example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-extra failed on a warning in an example, as expected."
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't

@@ -61,6 +61,7 @@ not reference `@main` from consumers.
 | `summary.yml` | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`) | `endpoint`, `model` |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results` |
+| `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names` |
@@ -100,7 +101,7 @@ that need to write must have the **caller** grant it on the calling job:
   `models: read`, `contents: read`.
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-equation-renders`, `check-junk-files`,
+  `check-equation-renders`, `check-extra`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `check-typos`,
@@ -503,8 +504,8 @@ Pin
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, and
-`check-typos.yml`
+`spellcheck.yml`, `check-typos.yml`, and
+`check-extra.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -621,8 +622,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, and
-`check-typos.yml` at `@v2` -- see the
+`spellcheck.yml`, `check-typos.yml`, and
+`check-extra.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
