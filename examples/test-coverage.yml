@@ -16,8 +16,10 @@ jobs:
       # recommended -- tokenless uploads are rate-limited and flaky on PRs.
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     # with:
-    #   path: '.'                  # package root, if not the repo root
-    #   install-quarto: false      # set true if vignettes need Quarto to build
-    #   extra-packages: ''         # extra R packages for the coverage run
-    #   fail-ci-if-error: 'auto'   # 'true'/'false' to force; 'auto' applies the r-lib heuristic
-    #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)
+    #   path: '.'                    # package root, if not the repo root
+    #   install-quarto: false        # set true if vignettes need Quarto to build
+    #   extra-packages: ''           # extra R packages for the coverage run
+    #   fail-ci-if-error: 'auto'     # 'true'/'false' to force; 'auto' applies the r-lib heuristic
+    #   upload-test-results: true    # JUnit report to Codecov Test Analytics (default true)
+    #   examples-coverage: false     # second job: examples + vignettes, including \donttest/\dontrun
+    #   min-coverage: ''             # fail the tests job below this percent; empty disables the threshold

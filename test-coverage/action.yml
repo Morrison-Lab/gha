@@ -37,6 +37,37 @@ inputs:
       pre-migration convention at least one consumer (UCD-SERG/serocalculator)
       already used (gha#234).
     default: 'true'
+  upload-coverage:
+    description: >-
+      Upload the Cobertura report to Codecov. On by default for the tests job;
+      the examples/vignettes job turns this off so its report is not mixed
+      into the unit-test coverage percentage (gha#334).
+    default: 'true'
+  coverage-type:
+    description: >-
+      covr coverage type(s), comma-separated. Default 'tests' matches
+      covr::package_coverage()'s own default. Pass 'examples,vignettes' for
+      the examples/vignettes job (gha#334).
+    default: 'tests'
+  comment-donttest:
+    description: >-
+      covr's commentDonttest: when true (the covr default), \\donttest{}
+      examples are commented out and not run. The examples/vignettes job
+      passes false so those blocks actually execute (gha#334).
+    default: 'true'
+  comment-dontrun:
+    description: >-
+      covr's commentDontrun: when true (the covr default), \\dontrun{}
+      examples are commented out and not run. The examples/vignettes job
+      passes false so those blocks actually execute (gha#334).
+    default: 'true'
+  min-coverage:
+    description: >-
+      Minimum percent coverage required to pass, from covr::percent_coverage().
+      Empty (the default) disables the threshold, so current callers stay
+      green. Do not inherit a 100% bar; pass a number between 0 and 100 to
+      opt in (gha#334).
+    default: ''
 runs:
   using: composite
   steps:
@@ -59,22 +90,19 @@ runs:
         needs: coverage
 
     - name: Measure coverage
-      shell: Rscript {0}
+      id: coverage
+      shell: bash
       env:
         COVERAGE_PATH: ${{ inputs.path }}
+        COVERAGE_TYPE: ${{ inputs.coverage-type }}
+        COVERAGE_COMMENT_DONTTEST: ${{ inputs.comment-donttest }}
+        COVERAGE_COMMENT_DONTRUN: ${{ inputs.comment-dontrun }}
       run: |
-        # Keep the built+tested package tree around so the testthat output is
-        # available for the "Show testthat output" step on failure.
-        coverage <- covr::package_coverage(
-          path = Sys.getenv("COVERAGE_PATH"),
-          quiet = FALSE,
-          clean = FALSE,
-          install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
-        )
-        # Written to the working directory as cobertura.xml regardless of `path`.
-        covr::to_cobertura(coverage)
+        set -euo pipefail
+        Rscript "${{ github.action_path }}/run-coverage.R"
 
     - name: Upload coverage to Codecov
+      if: inputs.upload-coverage == 'true'
       uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
       with:
         token: ${{ inputs.token }}
@@ -82,6 +110,19 @@ runs:
         files: ./cobertura.xml
         plugins: noop
         disable_search: true
+
+    # After the upload so a threshold miss still publishes cobertura.xml
+    # (the artifact this capability exists to produce). Skipped when
+    # measurement itself failed, since there is then no percent to compare.
+    - name: Enforce min-coverage
+      if: steps.coverage.outcome == 'success'
+      shell: bash
+      env:
+        MIN_COVERAGE: ${{ inputs.min-coverage }}
+        COVERAGE_PERCENT: ${{ steps.coverage.outputs.percent }}
+      run: |
+        set -euo pipefail
+        Rscript "${{ github.action_path }}/enforce-min-coverage.R"
 
     # Runs the package's tests a second time (covr::package_coverage above
     # already ran them once) purely to get a JUnit-formatted report --

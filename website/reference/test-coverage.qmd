@@ -7,6 +7,12 @@ upload the Cobertura report to [Codecov](https://about.codecov.io/). Adapts the
 [`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.yaml` example
 into the repo's composite-plus-wrapper shape.
 
+An optional second job measures coverage from examples and vignettes, including
+`\donttest{}` and `\dontrun{}` blocks that `R CMD check` and the unit suite skip.
+A `min-coverage` input can fail the tests job below a chosen percent; it is off
+by default and does not inherit a 100% bar. It does not apply to the examples
+job, which measures a different execution path.
+
 ## Inputs
 
 | Input                 | Type    | Default  | Description                                                                                                                                                                                    |
@@ -16,6 +22,8 @@ into the repo's composite-plus-wrapper shape.
 | `extra-packages`      | string  | `''`     | Extra R packages for the coverage run (`covr` and `xml2` are always installed).                                                                                                                |
 | `fail-ci-if-error`    | string  | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it.     |
 | `upload-test-results` | boolean | `true`   | Also generate a JUnit test-results report (`testthat::JunitReporter`) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload. |
+| `examples-coverage`   | boolean | `false`  | Run a second job that measures coverage from examples and vignettes (`covr` `type = c("examples", "vignettes")`, `commentDonttest`/`commentDontrun` both `FALSE`). Off by default.             |
+| `min-coverage`        | string  | `''`     | Minimum percent coverage required to pass the tests job (`covr::percent_coverage()`). Empty disables the threshold. Does not apply to the examples/vignettes job.                               |
 
 ## Secrets
 
@@ -46,10 +54,13 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     # with:
-    #   path: '.'                  # package root, if not the repo root
-    #   install-quarto: false      # set true if vignettes need Quarto to build
-    #   extra-packages: ''         # extra R packages for the coverage run
-    #   upload-test-results: true  # JUnit report to Codecov Test Analytics (default true)
+    #   path: '.'                    # package root, if not the repo root
+    #   install-quarto: false        # set true if vignettes need Quarto to build
+    #   extra-packages: ''           # extra R packages for the coverage run
+    #   fail-ci-if-error: 'auto'     # 'true'/'false' to force; 'auto' applies the r-lib heuristic
+    #   upload-test-results: true    # JUnit report to Codecov Test Analytics (default true)
+    #   examples-coverage: false     # second job: examples + vignettes, including \donttest/\dontrun
+    #   min-coverage: ''             # fail the tests job below this percent; empty disables the threshold
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
