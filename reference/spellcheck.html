@@ -71,7 +71,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/check-typos.html" rel="next">
 <link href="../reference/version-check.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -623,12 +622,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
-          <li class="sidebar-item">
-  <div class="sidebar-item-container"> 
-  <a href="../reference/check-typos.html" class="sidebar-item-text sidebar-link">
- <span class="menu-text">check-typos.yml</span></a>
-  </div>
-</li>
       </ul>
   </li>
     </ul>
@@ -683,7 +676,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>Vignette sources under <code>vignettes/</code>, matched as <code>.md</code>/<code>.Rmd</code>/<code>.qmd</code>, plus <code>.Rnw</code>/<code>.Snw</code>. These are parsed as text, never rendered, which is why <code>install-quarto</code> defaults to <code>'false'</code> even for a <code>.qmd</code> vignette.</li>
 <li>Root-level Markdown whose name matches <code>readme</code>, <code>news</code>, <code>changes</code>, or <code>index</code>, case-insensitively. So a package’s own <code>README.md</code> and <code>NEWS.md</code> <strong>are</strong> checked.</li>
 </ul>
-<p>Everything else is out of reach of <code>spellcheck.yml</code>: a Quarto site’s other pages, <code>CONTRIBUTING.md</code>, code comments, YAML, and any repository that is not an R package at all. <a href="../reference/check-typos.html"><code>check-typos.yml</code></a> covers those with crate-ci/typos.</p>
+<p>Everything else is out of reach: a Quarto site’s other pages, <code>CONTRIBUTING.md</code>, code comments, YAML, and any repository that is not an R package at all. <a href="https://github.com/Morrison-Lab/gha/issues/557">gha#557</a> tracks covering those with a separate tool.</p>
 <p>The package’s own name and its authors’ names are added to the accepted vocabulary automatically, so neither needs a <code>WORDLIST</code> entry.</p>
 <p>Add a newly-accepted word with <code>spelling::update_wordlist()</code> in the package, and commit the result.</p>
 </section>
@@ -1203,9 +1196,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/check-typos.html" class="pagination-link" aria-label="check-typos.yml">
-        <span class="nav-page-text">check-typos.yml</span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->
