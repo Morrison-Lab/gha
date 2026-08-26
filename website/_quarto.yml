@@ -76,6 +76,7 @@ website:
           - reference/bump-dev-version.qmd
           - reference/version-check.qmd
           - reference/spellcheck.qmd
+          - reference/check-typos.qmd
 
 format:
   html:

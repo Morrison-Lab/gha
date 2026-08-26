@@ -1,0 +1,98 @@
+---
+title: "check-typos.yml"
+---
+
+Diff-scoped spellcheck of the files
+[`spellcheck.yml`](spellcheck.qmd) cannot see -- a Quarto site's
+non-vignette `.qmd` pages, `CONTRIBUTING.md`-class Markdown, `docs/`,
+YAML, code comments, and repositories that are not R packages -- with
+[crate-ci/typos](https://github.com/crate-ci/typos).
+typos is a corrections-list checker rather than a dictionary checker,
+so it does not need a curated wordlist and its false-positive rate on
+technical prose is far lower than hunspell's.
+
+It is a separate capability from `spellcheck.yml` because the two tools
+have different vocabularies and config formats, and because this repo
+is not an R package and can dogfood `check-typos`.
+`spellcheck.yml` remains the right check for an R package's
+`DESCRIPTION` Title/Description, `man/*.Rd`, vignettes, and root
+README/NEWS.
+
+Scoped to lines a diff adds, so a first run over an existing repo does
+not reflag years of drift -- the same adoption problem
+[`check-new-line-breaks.yml`](check-new-line-breaks.qmd) solves, and
+the one that matters more here because typos has no wordlist to grow
+into.
+Pass `base-ref: all` to scan the whole tracked tree once you are ready
+to clean it.
+When the diff cannot be computed (a push run with no base, a shallow
+clone), the check is skipped with a warning rather than falling back to
+a whole-tree scan.
+
+The CLI is installed from a pinned GitHub release rather than wrapping
+the official `crate-ci/typos` action, which scans the whole tree and
+has no line-level filter.
+Measured against crate-ci/typos v1.49.0 (released 2026-08-03; pin
+checked 2026-08-26): `--format json` exits 2 on findings and 0 when
+clean, and a filename typo has no `line_num` field.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `version` | string | `'1.49.0'` | crate-ci/typos release version to install (with or without the leading `v`). Bumping this requires bumping `checksums-sha256`. |
+| `checksums-sha256` | string | `'48bd2d58e02ce713b8c0f1aa239e68ee4f7d8c551013135806e6aed3938d9e10'` | Expected SHA-256 of the platform tarball. The default is linux x86_64 musl. |
+| `path` | string | `'.'` | Path to the repository root, relative to the workspace. |
+| `config` | string | `''` | Path (relative to `path`) to a typos config file. Empty lets typos auto-discover `_typos.toml`, `typos.toml`, or `.typos.toml`. A named but missing file is an error. |
+| `globs` | string | `''` | Space-separated git pathspecs of tracked files to check. Empty checks every tracked file typos would consider (recursive by default). |
+| `paths-ignore` | string | `''` | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
+| `base-ref` | string | `''` | Git ref/SHA to diff against. Empty uses the PR base SHA on `pull_request` runs and skips on push. Pass `all` to scan the whole tracked tree. |
+| `fail` | boolean | `true` | Fail the workflow when a typo is found; otherwise non-blocking. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-typos.yml in your repo.
+# Diff-scoped spellcheck of the files spellcheck.yml cannot see: Quarto site
+# pages, CONTRIBUTING.md-class Markdown, docs/, YAML, code comments, and
+# repositories that are not R packages. Uses crate-ci/typos, a
+# corrections-list checker, so it does not need a curated wordlist.
+# Diff-scoped, so it only ever flags what a PR itself adds -- a first run
+# over an existing repo does not reflag years of drift. Pass base-ref: all
+# to scan the whole tree once you are ready to clean it.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check typos
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-typos.yml@v2
+    # with:
+    #   globs: '*.md *.qmd'                    # pathspecs to check (recursive)
+    #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
+    #   config: '_typos.toml'                  # explicit config; empty auto-discovers
+    #   fail: false                            # warn-only instead of blocking (defaults to true)
+    #   base-ref: all                          # whole-tree scan instead of the PR diff
+```
+
+See
+[`examples/check-typos.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-typos.yml)
+for the full caller stub.
+
+## Suppressing false positives
+
+A hit is a known misspelling, not a word missing from a dictionary.
+Suppress one in a `_typos.toml` (or `typos.toml` / `.typos.toml`) at
+the repository root -- see
+[crate-ci/typos](https://github.com/crate-ci/typos) -- or skip the path
+with `paths-ignore`.

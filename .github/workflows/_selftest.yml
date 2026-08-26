@@ -2775,6 +2775,113 @@ jobs:
         shell: bash
         run: bash check-junk-files/tests/test-check-junk-files.sh
 
+  # check-typos is brand new, so (like check-junk-files above) it does not
+  # exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-typos@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual PR
+  # code. This repo's own tree currently carries a handful of pre-existing
+  # typos (`unparseable`, measured 2026-08-26), so the no-base-ref call below
+  # is a live proof of the skip: a whole-tree fallback would fail it.
+  typos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Skip when no base-ref is given
+        uses: ./check-typos
+
+      - name: Build a fixture with pre-existing drift
+        shell: bash
+        run: bash check-typos/tests/make-fixture.sh _ci-typos
+
+      - name: Diff-scoped call over an unrelated addition must pass
+        uses: ./check-typos
+        with:
+          path: _ci-typos
+          base-ref: HEAD~1
+
+      - name: Whole-tree call must fail on the pre-existing typo
+        id: typos-all-expected-failure
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          path: _ci-typos
+          base-ref: all
+
+      - name: Assert the whole-tree call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-all-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos base-ref=all to fail on a pre-existing recieve, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a pre-existing typo in whole-tree mode, as expected."
+
+      - name: Build a fixture with a newly-added Quarto typo
+        shell: bash
+        run: bash check-typos/tests/make-fixture.sh _ci-typos-qmd --new-typo
+
+      - name: Diff-scoped call must fail on the new .qmd typo
+        id: typos-qmd-expected-failure
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          path: _ci-typos-qmd
+          base-ref: HEAD~1
+
+      - name: Assert the new .qmd typo actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-qmd-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos to fail on a newly-added page.qmd typo, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a newly-added .qmd typo, as expected."
+
+      - name: The same .qmd typo is silent when paths-ignore exempts it
+        uses: ./check-typos
+        with:
+          path: _ci-typos-qmd
+          base-ref: HEAD~1
+          paths-ignore: 'page.qmd'
+
+  # The job above proves action.yml wires path, base-ref, and paths-ignore
+  # through a real uses: call, including the skip, the whole-tree fail, and
+  # a newly-added .qmd typo. Everything else -- fail-closed reading, the
+  # missing-config guard, JSONL parse errors, filename-typo scope -- runs
+  # only here against a stub binary, so a regression is caught even when
+  # this repo's own tree wouldn't trip it.
+  typos-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-typos unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-typos/tests/ -q
+
   save-pr-diff:
     runs-on: ubuntu-latest
     timeout-minutes: 20

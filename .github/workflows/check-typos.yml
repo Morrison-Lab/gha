@@ -1,0 +1,79 @@
+name: Check typos (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: >-
+          crate-ci/typos release version to install (with or without the
+          leading `v`). Bumping this requires bumping `checksums-sha256`.
+        type: string
+        default: '1.49.0'
+      checksums-sha256:
+        description: >-
+          Expected SHA-256 of the platform tarball this runner downloads.
+          The default is linux x86_64 musl.
+        type: string
+        default: '48bd2d58e02ce713b8c0f1aa239e68ee4f7d8c551013135806e6aed3938d9e10'
+      path:
+        description: Path to the repository root, relative to the workspace.
+        type: string
+        default: '.'
+      config:
+        description: >-
+          Path (relative to `path`) to a typos config file. Empty lets typos
+          auto-discover `_typos.toml`, `typos.toml`, or `.typos.toml`.
+        type: string
+        default: ''
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check. Empty
+          checks every tracked file typos would consider.
+        type: string
+        default: ''
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      base-ref:
+        description: >-
+          Git ref/SHA to diff against; only lines added since this ref are
+          checked. Empty (the default) uses the PR base SHA on pull_request
+          runs and skips on push. Pass `all` to scan the whole tracked tree.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when a typo is found (else non-blocking).
+          Defaults to true.
+        type: boolean
+        default: true
+
+jobs:
+  check-typos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added lines against the base.
+          fetch-depth: 0
+
+      - name: Check typos
+        uses: Morrison-Lab/gha/check-typos@v2
+        with:
+          version: ${{ inputs.version }}
+          checksums-sha256: ${{ inputs.checksums-sha256 }}
+          path: ${{ inputs.path }}
+          config: ${{ inputs.config }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          # On PRs, check only lines added relative to the base; otherwise
+          # (push) there's no base to diff against, so the check is skipped
+          # unless the caller passed base-ref (including `all`).
+          base-ref: ${{ inputs.base-ref != '' && inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}

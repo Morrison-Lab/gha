@@ -1,0 +1,452 @@
+"""Unit tests for check-typos.
+
+Covers the diff-scoping behavior that is the check's reason to exist: it
+must flag a typo a diff adds, and must NOT reflag pre-existing drift in an
+untouched line. Drive the script through a STUB typos binary that writes
+canned JSONL, so the branching runs offline with no download -- the same
+remedy check-secrets records for its scan script.
+
+The cases worth keeping if this is ever trimmed are the NEGATIVE ones,
+because each pins a decision that is silent when reversed:
+
+  * empty / unresolvable base-ref SKIPS rather than scanning the whole tree
+  * a pre-existing typo on an untouched line is NOT flagged
+  * `fail: yes` still blocks (fail-closed)
+  * a missing config file is an error, not a silent fall back
+  * a stub exit other than 0 or 2 is a tool error even when fail is false
+
+check-typos.py isn't an importable module name (the hyphen), so load it by
+path -- same pattern as check-new-line-breaks/tests.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import stat
+import subprocess
+import textwrap
+from pathlib import Path
+
+import pytest
+
+_MOD_PATH = Path(__file__).resolve().parent.parent / "check-typos.py"
+_ACTION_YML = Path(__file__).resolve().parent.parent / "action.yml"
+_WORKFLOW_YML = (
+    Path(__file__).resolve().parent.parent.parent
+    / ".github"
+    / "workflows"
+    / "check-typos.yml"
+)
+_spec = importlib.util.spec_from_file_location("check_typos", _MOD_PATH)
+assert _spec is not None and _spec.loader is not None, f"Could not load {_MOD_PATH}"
+ct = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(ct)
+
+_DEFAULT_VERSION = "1.49.0"
+_DEFAULT_CHECKSUM = (
+    "48bd2d58e02ce713b8c0f1aa239e68ee4f7d8c551013135806e6aed3938d9e10"
+)
+
+
+def _init_repo(tmp_path: Path) -> Path:
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.invalid"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "t"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "commit.gpgsign", "false"], cwd=tmp_path, check=True)
+    return tmp_path
+
+
+def _commit(tmp_path: Path, message: str) -> None:
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", message], cwd=tmp_path, check=True)
+
+
+def _typo_json(*, path: str, typo: str = "recieve", line: int | None = 1) -> str:
+    obj = {
+        "type": "typo",
+        "path": path,
+        "byte_offset": 0,
+        "typo": typo,
+        "corrections": ["receive"],
+    }
+    if line is not None:
+        obj["line_num"] = line
+    return json.dumps(obj)
+
+
+def _install_stub(
+    tmp_path: Path,
+    jsonl: str,
+    exit_code: int = 2,
+    *,
+    argv_log: Path | None = None,
+) -> Path:
+    """Write a stub `typos` that emits canned JSONL and records argv."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "typos"
+    log_path = argv_log or (tmp_path / "typos-argv.txt")
+    stub.write_text(
+        textwrap.dedent(
+            f"""\
+            #!/usr/bin/env bash
+            set -eu
+            printf '%s\\n' "$0" "$@" > "{log_path}"
+            cat <<'EOF'
+            {jsonl}
+            EOF
+            exit {exit_code}
+            """
+        ),
+        encoding="utf-8",
+    )
+    stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
+    return bin_dir
+
+
+def _main_env(tmp_path: Path, monkeypatch, bin_dir: Path, **env: str) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TYPOS_BIN_DIR", str(bin_dir))
+    monkeypatch.setenv("TYPOS_TARGET", str(tmp_path))
+    monkeypatch.setenv("TYPOS_FAIL", "true")
+    summary = tmp_path / "summary.md"
+    summary.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+
+
+def _declared_default(path: Path, input_name: str) -> str:
+    """Read an input's declared `default:` out of a YAML file, textually."""
+    lines = path.read_text().split("\n")
+    starts = [i for i, line in enumerate(lines) if line.strip() == f"{input_name}:"]
+    assert starts, f"input {input_name!r} not found in {path.name}"
+    for line in lines[starts[0] + 1 :]:
+        stripped = line.strip()
+        if stripped.startswith("default:"):
+            return stripped.split(":", 1)[1].strip().strip("'\"")
+    raise AssertionError(f"no default declared for {input_name!r} in {path.name}")
+
+
+# ── diff-scoping ─────────────────────────────────────────────────────────────
+
+
+def test_diff_scope_flags_newly_added_typo(tmp_path, monkeypatch):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("A short note.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("A short note.\nThis will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=2))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+
+
+def test_diff_scope_does_not_reflag_pre_existing_typo(tmp_path, monkeypatch, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "base with pre-existing typo")
+    (tmp_path / "notes.md").write_text(
+        "This will recieve a fix.\nA brand-new short line.\n"
+    )
+    _commit(tmp_path, "unrelated addition")
+
+    # Stub reports the pre-existing line-1 typo. The filter must drop it.
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 0
+    out = capsys.readouterr().out
+    assert "No typos found." in out
+    assert "1 finding(s) sit on lines this diff did not add" in out
+    assert "::error" not in out
+
+
+def test_unresolvable_base_ref_skips_rather_than_scanning_whole_tree(
+    tmp_path, monkeypatch, capsys
+):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="deadbeefdeadbeef")
+    assert ct.main() == 0
+    out = capsys.readouterr().out
+    assert "Skipping the typos check" in out
+    assert "::error" not in out
+
+
+def test_empty_base_ref_skips_rather_than_scanning_whole_tree(
+    tmp_path, monkeypatch, capsys
+):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="")
+    assert ct.main() == 0
+    out = capsys.readouterr().out
+    assert "Skipping the typos check" in out
+    assert "no base-ref given" in out
+    assert "::error" not in out
+
+
+def test_base_ref_all_flags_pre_existing_typo(tmp_path, monkeypatch):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=1))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="all")
+    assert ct.main() == 1
+
+
+def test_qmd_path_is_in_scope_for_a_new_file(tmp_path, monkeypatch):
+    """The gap spellcheck.yml cannot see: a Quarto page that is not a vignette."""
+    _init_repo(tmp_path)
+    (tmp_path / "README.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "page.qmd").write_text("# Page\n\nThis will recieve a heading.\n")
+    _commit(tmp_path, "add qmd")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="page.qmd", line=3))
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+
+
+def test_paths_ignore_drops_a_finding(tmp_path, monkeypatch, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "README.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "vendor").mkdir()
+    (tmp_path / "vendor" / "old.md").write_text("This will recieve a fix.\n")
+    _commit(tmp_path, "add ignored typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="vendor/old.md", line=1))
+    _main_env(
+        tmp_path,
+        monkeypatch,
+        bin_dir,
+        TYPOS_BASE_REF="HEAD~1",
+        TYPOS_PATHS_IGNORE="vendor/",
+    )
+    assert ct.main() == 0
+    assert "No typos found." in capsys.readouterr().out
+
+
+def test_filename_typo_on_a_new_file_is_in_scope(tmp_path, monkeypatch):
+    _init_repo(tmp_path)
+    (tmp_path / "README.md").write_text("ok\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "recieve.md").write_text("ok\n")
+    _commit(tmp_path, "add badly named file")
+
+    bin_dir = _install_stub(
+        tmp_path, _typo_json(path="recieve.md", line=None, typo="recieve")
+    )
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 1
+
+
+def test_filename_typo_on_an_untouched_file_is_not_in_scope(
+    tmp_path, monkeypatch, capsys
+):
+    _init_repo(tmp_path)
+    (tmp_path / "recieve.md").write_text("ok\n")
+    _commit(tmp_path, "badly named file already in tree")
+    (tmp_path / "notes.md").write_text("A short note.\n")
+    _commit(tmp_path, "unrelated addition")
+
+    bin_dir = _install_stub(
+        tmp_path, _typo_json(path="recieve.md", line=None, typo="recieve")
+    )
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    assert ct.main() == 0
+    out = capsys.readouterr().out
+    assert "::error" not in out
+
+
+# ── fail gate ────────────────────────────────────────────────────────────────
+
+
+def test_fail_false_warns_without_blocking(tmp_path, monkeypatch, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("A short note.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("A short note.\nThis will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=2))
+    _main_env(
+        tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1", TYPOS_FAIL="false"
+    )
+    assert ct.main() == 0
+    out = capsys.readouterr().out
+    assert "::warning file=notes.md,line=2::" in out
+    assert "::error file=" not in out
+
+
+@pytest.mark.parametrize("value", ["False", " false ", "FALSE"])
+def test_fail_normalization_opts_out_on_explicit_false(
+    tmp_path, monkeypatch, value
+):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("A short note.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("A short note.\nThis will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=2))
+    _main_env(
+        tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1", TYPOS_FAIL=value
+    )
+    assert ct.main() == 0
+
+
+@pytest.mark.parametrize("value", ["yes", "0", "no", "", "true"])
+def test_fail_normalization_still_blocks_on_non_false(
+    tmp_path, monkeypatch, value
+):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("A short note.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("A short note.\nThis will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    bin_dir = _install_stub(tmp_path, _typo_json(path="notes.md", line=2))
+    _main_env(
+        tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1", TYPOS_FAIL=value
+    )
+    assert ct.main() == 1
+
+
+# ── tool errors ──────────────────────────────────────────────────────────────
+
+
+def test_missing_config_is_an_error_not_a_silent_fallback(
+    tmp_path, monkeypatch, capsys
+):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, "", exit_code=0)
+    _main_env(
+        tmp_path,
+        monkeypatch,
+        bin_dir,
+        TYPOS_BASE_REF="all",
+        TYPOS_CONFIG="no-such-typos.toml",
+    )
+    assert ct.main() == 1
+    assert "does not exist" in capsys.readouterr().out
+
+
+def test_tool_error_fails_even_when_fail_is_false(tmp_path, monkeypatch, capsys):
+    """A stub exit other than 0/2 is a tool error, not a finding.
+
+    fail: false must not swallow an installer/config failure into a green
+    check -- the same split check-secrets draws with gitleaks --exit-code 0.
+    """
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, "could not read config", exit_code=78)
+    _main_env(
+        tmp_path,
+        monkeypatch,
+        bin_dir,
+        TYPOS_BASE_REF="all",
+        TYPOS_FAIL="false",
+    )
+    assert ct.main() == 1
+    assert "::error::check-typos:" in capsys.readouterr().out
+
+
+def test_malformed_jsonl_is_a_tool_error(tmp_path, monkeypatch):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, "{not json", exit_code=2)
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="all")
+    assert ct.main() == 1
+
+
+def test_not_a_git_repository_is_an_error(tmp_path, monkeypatch, capsys):
+    (tmp_path / "notes.md").write_text("ok\n")
+    bin_dir = _install_stub(tmp_path, "", exit_code=0)
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="all")
+    assert ct.main() == 1
+    assert "is not a git repository" in capsys.readouterr().out
+
+
+def test_file_list_is_passed_to_typos(tmp_path, monkeypatch):
+    """Diff mode must not scan the whole tree; the stub's argv is the proof."""
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("A short note.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("A short note.\nThis will recieve a fix.\n")
+    _commit(tmp_path, "add typo")
+
+    argv_log = tmp_path / "argv.txt"
+    bin_dir = _install_stub(
+        tmp_path, _typo_json(path="notes.md", line=2), argv_log=argv_log
+    )
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="HEAD~1")
+    ct.main()
+    argv = argv_log.read_text(encoding="utf-8")
+    assert "--file-list" in argv
+    assert "--format" in argv
+
+
+def test_clean_stub_exit_zero_reports_no_typos(tmp_path, monkeypatch, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("ok\n")
+    _commit(tmp_path, "only commit")
+
+    bin_dir = _install_stub(tmp_path, "", exit_code=0)
+    _main_env(tmp_path, monkeypatch, bin_dir, TYPOS_BASE_REF="all")
+    assert ct.main() == 0
+    assert "No typos found." in capsys.readouterr().out
+
+
+# ── declared defaults ────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_fail_default_is_true(path):
+    assert _declared_default(path, "fail") == "true"
+    assert ct._DEFAULT_FAIL is True
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_version_default_agrees(path):
+    assert _declared_default(path, "version") == _DEFAULT_VERSION
+
+
+@pytest.mark.parametrize("path", [_ACTION_YML, _WORKFLOW_YML])
+def test_declared_checksum_default_agrees(path):
+    assert _declared_default(path, "checksums-sha256") == _DEFAULT_CHECKSUM
+
+
+def test_parse_jsonl_skips_non_typo_records():
+    raw = "\n".join(
+        [
+            json.dumps({"type": "binary_file", "path": "x.bin"}),
+            _typo_json(path="notes.md", line=1),
+        ]
+    )
+    findings = ct._parse_jsonl(raw)
+    assert [f.path for f in findings] == ["notes.md"]
+
+
+def test_parse_jsonl_filename_typo_has_no_line():
+    findings = ct._parse_jsonl(_typo_json(path="recieve.md", line=None))
+    assert findings[0].line is None
+    assert findings[0].path == "recieve.md"

@@ -1,0 +1,88 @@
+name: Check typos
+description: >-
+  Diff-scoped spellcheck of the files spellcheck.yml cannot see -- Quarto
+  site pages, CONTRIBUTING.md-class Markdown, docs/, YAML, code comments,
+  and repositories that are not R packages -- using crate-ci/typos. A
+  corrections-list checker rather than a dictionary checker, so it does not
+  need a curated wordlist. Scoped to lines a diff adds, so a first run over
+  an existing repo does not reflag years of drift; pass base-ref 'all' to
+  scan the whole tree. Blocking by default.
+inputs:
+  version:
+    description: >-
+      crate-ci/typos release version to install (with or without the
+      leading `v`). Bumping this requires bumping `checksums-sha256` to
+      match that version's tarball for the runner you are on. Measured
+      against crate-ci/typos v1.49.0 (released 2026-08-03; pin checked
+      2026-08-26).
+    default: '1.49.0'
+  checksums-sha256:
+    description: >-
+      Expected SHA-256 of the platform tarball this runner downloads.
+      The default is linux x86_64 musl (`typos-v<version>-x86_64-unknown-linux-musl.tar.gz`),
+      which is what `ubuntu-latest` fetches. On another architecture, pass
+      that tarball's digest from the release page.
+    default: '48bd2d58e02ce713b8c0f1aa239e68ee4f7d8c551013135806e6aed3938d9e10'
+  path:
+    description: Path to the repository root, relative to the workspace.
+    default: '.'
+  config:
+    description: >-
+      Path (relative to `path`) to a typos config file. Empty lets typos
+      auto-discover `_typos.toml`, `typos.toml`, or `.typos.toml`. A named
+      but missing file is an error rather than a silent fall back to
+      defaults -- a typo'd path must not read as "no config".
+    default: ''
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked files to check. Empty
+      (the default) checks every tracked file typos would consider --
+      Markdown, Quarto, YAML, and source comments together. Git pathspecs
+      match at any depth, so `*.md *.qmd` is recursive.
+    default: ''
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against; only lines added since this ref are
+      checked. The reusable workflow passes the PR base SHA automatically.
+      Diff mode needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff can't be computed (e.g. a shallow
+      clone, or no base-ref given on a push run), the check is skipped
+      with a warning rather than falling back to a whole-tree scan, which
+      would reflag every pre-existing typo the corpus already carries.
+      Pass `all` to scan the whole tracked tree.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a typo is found (else non-blocking). Defaults
+      to blocking ('true'); set 'false' for non-blocking annotations only.
+      Read fail-closed -- only an explicit `false` (trimmed,
+      case-insensitive) opts out, so a typo cannot quietly downgrade the
+      gate to advisory.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install typos
+      shell: bash
+      env:
+        TYPOS_VERSION: ${{ inputs.version }}
+        TYPOS_CHECKSUMS_SHA256: ${{ inputs.checksums-sha256 }}
+        TYPOS_BIN_DIR: ${{ runner.temp }}/check-typos/bin
+      run: bash "$GITHUB_ACTION_PATH/install-typos.sh"
+
+    - name: Check typos
+      shell: bash
+      env:
+        TYPOS_BIN_DIR: ${{ runner.temp }}/check-typos/bin
+        TYPOS_TARGET: ${{ inputs.path }}
+        TYPOS_CONFIG: ${{ inputs.config }}
+        TYPOS_GLOBS: ${{ inputs.globs }}
+        TYPOS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        TYPOS_BASE_REF: ${{ inputs.base-ref }}
+        TYPOS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-typos.py"
