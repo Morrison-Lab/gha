@@ -159,6 +159,15 @@ which is why the capabilities above moved to `@v2`.
   `run-claude-review-attempt` retry above -- the same DRY rationale that
   motivated extracting that (much larger) composite action, just at a
   smaller scale (gha#201 review).
+- `.github/actions/pack-review-payload/` -- writes the files
+  `claude-code-review.yml`'s posting job needs (`payload.json` plus optional
+  `review.txt` / `denied_tools.txt`) and uploads them as a workflow artifact
+  (gha#580). The model job (`claude-review`) holds `contents: read` and
+  cannot post; `post-review` downloads this artifact and holds
+  `pull-requests: write` / `issues: write`. Located via `github.action_path`
+  because callers checkout their own repo. `_selftest.yml` exercises it via
+  a local `./` ref (`upload: false`); the reusable workflow's `@v2` call is
+  the usual bootstrap gap until the tag slides.
 - `.github/actions/extract-total-cost/` -- wraps
   `scripts/extract-total-cost.sh`, which extracts `total_cost_usd` from a
   claude-code-action execution-output file's last `result` event. `claude.yml`
@@ -1544,6 +1553,23 @@ normalization, the only judgment the composite makes for itself.
 As with `report-push-failure`, `claude-code-review.yml`'s own consumption of
 this composite via `@v2` is not covered here -- it does not resolve until `@v2`
 is advanced past this capability's merge.
+
+`.github/workflows/scripts/tests/run-pack-review-payload-tests.sh` and
+`.github/workflows/scripts/tests/run-review-job-split-tests.py` pin the
+gha#580 credential split. The pack suite asserts `payload.json`'s key set
+and that sidecar files are omitted when the corresponding input is empty
+(a missing `review.txt` must not look like a present empty review). The
+YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
+and asserts the facts a future edit could reverse silently: the model job
+grants no forge-write, keeps `id-token: write` and `contents: read`, the
+posting job holds `pull-requests: write` / `issues: write` and does not
+invoke the model, `github_token` is forwarded so the App-token write
+exchange is skipped, and the inline-comment MCP tool is not allowlisted.
+CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
+`upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
+separate from `review-fail-check` so a failure is attributable at a glance.
+`claude-code-review.yml`'s own `@v2` consumption of the new composite is
+the usual bootstrap gap until the tag slides.
 
 `run-fixture-tests.sh` gained three assertions alongside it, and the last two
 are the ones worth reading.

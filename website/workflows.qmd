@@ -260,6 +260,8 @@ The two Claude workflows are a pair.
 - `claude-code-review.yml` runs a read-only Claude review: a consolidated
   summary on dispatched runs by default; add a `pull_request` trigger in the
   caller if you also want automatic reviews on PR updates.
+  The model job is `contents: read` only; a separate posting job holds
+  `pull-requests: write` / `issues: write` (gha#580).
 
 An `@claude review` mention (or any commit Claude pushes) routes through
 `claude.yml`, which dispatches `claude-code-review.yml` via `workflow_dispatch`.

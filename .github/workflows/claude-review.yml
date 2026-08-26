@@ -120,7 +120,7 @@ jobs:
     if: github.event_name != 'issue_comment'
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: write   # posting job (gha#580); the model job is read-only
       issues: write
       id-token: write
       actions: read   # lets the reviewer read CI status (github_ci MCP server)
