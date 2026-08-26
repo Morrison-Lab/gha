@@ -46,10 +46,10 @@ job-level, so splitting the steps into a composite would add a nested
 | `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
 | `config` | string | (r-lib 5-way JSON) | JSON array of `{os, r, http-user-agent?}` objects for the full matrix. Ignored when `hard` is true. |
 | `setup-pandoc` | boolean | `true` | Install Pandoc before the check. |
-| `install-quarto` | boolean | `false` | Install Quarto before the check. Skipped on `ubuntu-latest` when `linux-container` is set. |
+| `install-quarto` | boolean | `false` | Install Quarto via `quarto-dev/quarto-actions/setup` before the check. Skipped on `ubuntu-latest` when `linux-container` is set. Separate from r-lib `setup-r-dependencies`' own `install-quarto` (default `auto` when the tree has `.qmd` files). |
 | `setup-julia` | boolean | `false` | Install Julia before the check (for JuliaCall packages). |
 | `julia-version` | string | `'1'` | Julia version to install. Only used when `setup-julia` is true. |
-| `linux-container` | string | `''` | Container image for `ubuntu-latest` cells of the full matrix (e.g. `rocker/verse:latest`). Ignored on the hard job. |
+| `linux-container` | string | `''` | Container image for `ubuntu-latest` cells of the full matrix (e.g. `rocker/verse:latest`). Ignored on the hard job. Any non-empty image skips the Quarto install on ubuntu (assumes the image already provides Quarto). |
 | `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules before the check. |
 | `timeout-minutes` | number | `90` | Job timeout. rpt's bespoke workflow used 50. |
 | `build-args` | string | `'c("--no-manual","--compact-vignettes=gs+qpdf")'` | R expression forwarded to `check-r-package` `build_args`. |
@@ -107,7 +107,9 @@ Do not migrate `rpt` until a follow-up actually passes these through.
 | `extra-packages: any::rcmdcheck` and `local::.` | `any::rcmdcheck` is always installed; pass `local::.` in `extra-packages` if you still want it. |
 | `error-on: '"note"'` | Default. |
 | `build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'` | Default `build-args`. |
-| (unset) `_R_CHECK_CRAN_INCOMING_REMOTE_`, `_R_CHECK_FORCE_SUGGESTS_`, `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_` | Inputs. Defaults match the issue's IndrajeetPatil values (`false`, `false`, `true`), not rpt. rpt leaves `_R_CHECK_FORCE_SUGGESTS_` at R's default `true`; pass `force-suggests: true` to match that. |
+| (unset) `_R_CHECK_CRAN_INCOMING_REMOTE_`, `_R_CHECK_FORCE_SUGGESTS_`, `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_` | Inputs. Defaults follow [issue #331](https://github.com/Morrison-Lab/gha/issues/331)'s description of IndrajeetPatil (`false`, `false`, `true`), not rpt and not the current upstream file (which only hard-codes `_R_CHECK_CRAN_INCOMING_REMOTE_: false`). rpt leaves `_R_CHECK_FORCE_SUGGESTS_` at R's default `true`; pass `force-suggests: true` to match that. |
+| `upload-snapshots: true` | Default `true`. |
+| (unset) `upload-results` (r-lib default `false`) | Default `true`. Pass `upload-results: false` to match rpt. |
 | No hard-deps job | Add the `R-CMD-check-hard` caller job from the example stub. |
 
 ## Example

@@ -104,6 +104,9 @@ on:
           (e.g. rocker/verse:latest). Empty means no container. Ignored
           on the hard job: a verse image already contains Suggested
           packages, which would silently defeat a hard-deps check.
+          Any non-empty image also skips the Quarto install step on
+          ubuntu-latest; that skip assumes the image already provides
+          Quarto, as rocker/verse does.
         type: string
         default: ''
       checkout-submodules:
