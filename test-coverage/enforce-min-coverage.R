@@ -4,29 +4,35 @@
 # (gha#334): a threshold miss should still publish the report this
 # capability exists to produce.
 #
-# Env: COVERAGE_PERCENT, MIN_COVERAGE, RUNNER_TEMP (optional failure file)
+# Env: COVERAGE_PERCENT, MIN_COVERAGE, RUNNER_TEMP, GITHUB_ACTION_PATH
+#
+# When the threshold is missed, the error text is also written to
+# ${RUNNER_TEMP}/min-coverage-failure.txt. That file is a test hook for
+# the selftest coverage job: an outcome=failure alone could be any inner
+# crash, so the assertion greps this file for "below the required".
 
-args <- commandArgs(trailingOnly = FALSE)
-file_arg <- grep("^--file=", args, value = TRUE)
-if (length(file_arg) != 1L) {
-  stop("Unable to locate enforce-min-coverage.R via --file=", call. = FALSE)
+action_path <- Sys.getenv("GITHUB_ACTION_PATH")
+if (!nzchar(action_path)) {
+  stop(
+    "GITHUB_ACTION_PATH is unset; run this script from the composite action.",
+    call. = FALSE
+  )
 }
-script_dir <- dirname(normalizePath(sub("^--file=", "", file_arg)))
-source(file.path(script_dir, "coverage-helpers.R"), local = FALSE)
+source(file.path(action_path, "coverage-helpers.R"), local = FALSE)
 
 err_file <- file.path(Sys.getenv("RUNNER_TEMP", tempdir()), "min-coverage-failure.txt")
 if (file.exists(err_file)) {
   unlink(err_file)
 }
 
-min_pct <- parse_min_coverage(Sys.getenv("MIN_COVERAGE", ""))
+min_pct <- parse_min_coverage(Sys.getenv("MIN_COVERAGE"))
 if (is.null(min_pct)) {
   quit(save = "no", status = 0)
 }
 
 pct_raw <- Sys.getenv("COVERAGE_PERCENT", "")
 pct <- suppressWarnings(as.numeric(pct_raw))
-if (!nzchar(pct_raw) || length(pct) != 1L || is.na(pct)) {
+if (!nzchar(pct_raw) || is.na(pct)) {
   stop(
     sprintf(
       "COVERAGE_PERCENT is missing or non-numeric (got %s).",

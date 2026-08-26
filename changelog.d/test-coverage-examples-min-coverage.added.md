@@ -1,10 +1,20 @@
 - **`test-coverage` gains examples/vignette coverage and a `min-coverage`
-  threshold** (#334). A new `examples-coverage` job (off by default) runs
+  threshold** ([#334](https://github.com/Morrison-Lab/gha/issues/334)).
+  A new `examples-coverage` job (off by default) runs
   `covr::package_coverage(type = c("examples", "vignettes"),
-  commentDonttest = FALSE, commentDontrun = FALSE)` so `\donttest{}` and
-  `\dontrun{}` blocks actually execute -- the paths `R CMD check` and the
-  unit suite skip. A `min-coverage` input (empty default, so current jobs
-  stay green) fails the tests job when `covr::percent_coverage()` is below
-  the given percent; it does not inherit a 100% bar and does not apply to
-  the examples job, which measures a different execution path. Adapted from
-  IndrajeetPatil/workflows `test-coverage.yaml` (MIT).
+  commentDonttest = FALSE, commentDontrun = FALSE)`.
+  `\dontrun{}` never runs under `R CMD check`.
+  `\donttest{}` is skipped unless `--as-cran` or `--run-donttest`
+  (r-lib's `check-r-package` defaults `--as-cran`, which *does* run them).
+  covr comments both out by default.
+  The examples job passes the flags false so those blocks execute for coverage.
+  A `min-coverage` input defaults to no threshold
+  (empty, so current jobs stay green)
+  and fails the tests job when `covr::percent_coverage()` is below
+  the given percent;
+  it does not apply to the examples job,
+  which measures a different execution path.
+  Checkout now sets `persist-credentials: false`.
+  New reusable-workflow `with:` keys are inert until `@v2` slides
+  past this change.
+  Adapted from IndrajeetPatil/workflows `test-coverage.yaml` (MIT).

@@ -170,7 +170,10 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   the Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the
   caller's `secrets:` block (optional for public repos, but recommended).
   Set `examples-coverage: true` for a second job that runs examples and
-  vignettes, including `\donttest{}`/`\dontrun{}` blocks. Set `min-coverage`
+  vignettes.
+  `\dontrun{}` never runs under `R CMD check`;
+  `\donttest{}` is skipped unless `--as-cran` or `--run-donttest`.
+  Set `min-coverage`
   to fail the tests job below a chosen percent (empty/off by default; does
   not apply to the examples job).
 

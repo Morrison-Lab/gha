@@ -2386,11 +2386,13 @@ jobs:
         run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch .Rprofile _ci-rprofile-sourced.txt
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
-  # composite against a minimal R-package fixture, with upload-coverage off so
-  # the fixture is not published to Codecov, and prove the covr -> Cobertura
-  # path works. The fixture is generated at run time
-  # (not committed) so its DESCRIPTION/R sources aren't discovered by the other
-  # jobs' repo-wide R dependency scanning (which can't resolve `covfixture`).
+  # composite against a minimal R-package fixture. The first call leaves
+  # upload-coverage at its default (true) with fail-ci-if-error: false so the
+  # Codecov step actually runs; a tokenless PR upload is a no-op that must
+  # not redden the job. Later calls turn upload off. The fixture is generated
+  # at run time (not committed) so its DESCRIPTION/R sources aren't discovered
+  # by the other jobs' repo-wide R dependency scanning (which can't resolve
+  # `covfixture`).
   coverage:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -2410,7 +2412,6 @@ jobs:
         with:
           path: _ci-rpkg
           fail-ci-if-error: 'false'
-          upload-coverage: false
       - name: Assert the Cobertura report was produced
         shell: bash
         run: |
@@ -2450,18 +2451,18 @@ jobs:
         uses: ./test-coverage
         with:
           path: _ci-rpkg
-          fail-ci-if-error: 'false'
-          upload-test-results: false
-          upload-coverage: false
+          upload-test-results: 'false'
+          upload-coverage: 'false'
+          failure-artifact-name: ''
           min-coverage: '100'
-      - name: Assert min-coverage=100 failed on uncovered examples
+      - name: Assert min-coverage=100 failed on uncovered unit-suite lines
         shell: bash
         env:
           OUTCOME: ${{ steps.coverage-min-fail.outcome }}
         run: |
           set -euo pipefail
           if [ "$OUTCOME" != "failure" ]; then
-            echo "::error::expected test-coverage to fail with min-coverage=100 on uncovered example-only functions, got outcome='$OUTCOME'"
+            echo "::error::expected test-coverage to fail with min-coverage=100 on functions uncovered by the unit suite, got outcome='$OUTCOME'"
             exit 1
           fi
           failure_file="${RUNNER_TEMP}/min-coverage-failure.txt"
@@ -2474,7 +2475,7 @@ jobs:
             cat "$failure_file"
             exit 1
           fi
-          echo "min-coverage=100 failed on uncovered example-only functions, as expected:"
+          echo "min-coverage=100 failed on functions uncovered by the unit suite, as expected:"
           cat "$failure_file"
       # The same 100% bar on type=examples,vignettes with both comment*
       # flags false must pass: that is the only combination that actually
@@ -2484,9 +2485,8 @@ jobs:
         uses: ./test-coverage
         with:
           path: _ci-rpkg
-          fail-ci-if-error: 'false'
-          upload-test-results: false
-          upload-coverage: false
+          upload-test-results: 'false'
+          upload-coverage: 'false'
           coverage-type: 'examples,vignettes'
           comment-donttest: 'false'
           comment-dontrun: 'false'

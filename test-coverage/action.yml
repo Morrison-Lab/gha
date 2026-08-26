@@ -39,35 +39,44 @@ inputs:
     default: 'true'
   upload-coverage:
     description: >-
-      Upload the Cobertura report to Codecov. On by default for the tests job;
-      the examples/vignettes job turns this off so its report is not mixed
-      into the unit-test coverage percentage (gha#334).
+      Upload the Cobertura report to Codecov. On by default. The
+      examples/vignettes reusable-workflow job turns this off so its report
+      is not mixed into the unit-test coverage percentage (gha#334).
     default: 'true'
   coverage-type:
     description: >-
-      covr coverage type(s), comma-separated. Default 'tests' matches
-      covr::package_coverage()'s own default. Pass 'examples,vignettes' for
-      the examples/vignettes job (gha#334).
+      covr coverage type(s), comma-separated: tests, vignettes, examples, all,
+      or none. Default 'tests' matches covr::package_coverage()'s own default.
+      Pass 'examples,vignettes' for the examples/vignettes job (gha#334).
     default: 'tests'
   comment-donttest:
     description: >-
-      covr's commentDonttest: when true (the covr default), \\donttest{}
-      examples are commented out and not run. The examples/vignettes job
-      passes false so those blocks actually execute (gha#334).
+      covr's commentDonttest: when true (the covr default), \donttest{}
+      examples are commented out and not run. Pass false so those blocks
+      execute. The examples/vignettes reusable-workflow job passes false
+      (gha#334).
     default: 'true'
   comment-dontrun:
     description: >-
-      covr's commentDontrun: when true (the covr default), \\dontrun{}
-      examples are commented out and not run. The examples/vignettes job
-      passes false so those blocks actually execute (gha#334).
+      covr's commentDontrun: when true (the covr default), \dontrun{}
+      examples are commented out and not run. Pass false so those blocks
+      execute. The examples/vignettes reusable-workflow job passes false
+      (gha#334).
     default: 'true'
   min-coverage:
     description: >-
       Minimum percent coverage required to pass, from covr::percent_coverage().
-      Empty (the default) disables the threshold, so current callers stay
-      green. Do not inherit a 100% bar; pass a number between 0 and 100 to
-      opt in (gha#334).
+      Empty (the default) disables the threshold. Pass a number between 0 and
+      100 to opt in (gha#334). The reusable workflow applies this to the
+      tests job only.
     default: ''
+  failure-artifact-name:
+    description: >-
+      Artifact name for the covr install tree uploaded when the job fails.
+      Default 'coverage-test-failures'. Pass empty to skip the upload (the
+      selftest fail-path does this so an expected threshold miss does not
+      publish a failure artifact).
+    default: 'coverage-test-failures'
 runs:
   using: composite
   steps:
@@ -99,7 +108,7 @@ runs:
         COVERAGE_COMMENT_DONTRUN: ${{ inputs.comment-dontrun }}
       run: |
         set -euo pipefail
-        Rscript "${{ github.action_path }}/run-coverage.R"
+        Rscript "$GITHUB_ACTION_PATH/run-coverage.R"
 
     - name: Upload coverage to Codecov
       if: inputs.upload-coverage == 'true'
@@ -112,17 +121,18 @@ runs:
         disable_search: true
 
     # After the upload so a threshold miss still publishes cobertura.xml
-    # (the artifact this capability exists to produce). Skipped when
-    # measurement itself failed, since there is then no percent to compare.
+    # (the artifact this capability exists to produce). success() is the
+    # default for a step with no always()/failure() gate; the extra
+    # min-coverage check skips spawning R when the caller left the bar off.
     - name: Enforce min-coverage
-      if: steps.coverage.outcome == 'success'
+      if: success() && inputs.min-coverage != ''
       shell: bash
       env:
         MIN_COVERAGE: ${{ inputs.min-coverage }}
         COVERAGE_PERCENT: ${{ steps.coverage.outputs.percent }}
       run: |
         set -euo pipefail
-        Rscript "${{ github.action_path }}/enforce-min-coverage.R"
+        Rscript "$GITHUB_ACTION_PATH/enforce-min-coverage.R"
 
     # Runs the package's tests a second time (covr::package_coverage above
     # already ran them once) purely to get a JUnit-formatted report --
@@ -156,8 +166,8 @@ runs:
         find "${RUNNER_TEMP}/package" -name 'testthat.Rout*' -exec cat '{}' \; || true
 
     - name: Upload test results on failure
-      if: failure()
+      if: failure() && inputs.failure-artifact-name != ''
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: coverage-test-failures
+        name: ${{ inputs.failure-artifact-name }}
         path: ${{ runner.temp }}/package

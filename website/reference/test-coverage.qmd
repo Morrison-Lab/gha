@@ -7,10 +7,14 @@ upload the Cobertura report to [Codecov](https://about.codecov.io/). Adapts the
 [`r-lib/actions`](https://github.com/r-lib/actions) `test-coverage.yaml` example
 into the repo's composite-plus-wrapper shape.
 
-An optional second job measures coverage from examples and vignettes, including
-`\donttest{}` and `\dontrun{}` blocks that `R CMD check` and the unit suite skip.
-A `min-coverage` input can fail the tests job below a chosen percent; it is off
-by default and does not inherit a 100% bar. It does not apply to the examples
+An optional second job measures coverage from examples and vignettes.
+`\dontrun{}` never runs under `R CMD check`.
+`\donttest{}` is skipped unless `--as-cran` or `--run-donttest`.
+covr comments both out by default;
+the examples job passes `commentDonttest`/`commentDontrun` false so those
+blocks execute for coverage.
+A `min-coverage` input can fail the tests job below a chosen percent;
+it defaults to no threshold and does not apply to the examples
 job, which measures a different execution path.
 
 ## Inputs
@@ -23,7 +27,7 @@ job, which measures a different execution path.
 | `fail-ci-if-error`    | string  | `'auto'` | Whether a Codecov upload error fails the job. `'auto'` applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); `'true'` or `'false'` force it.     |
 | `upload-test-results` | boolean | `true`   | Also generate a JUnit test-results report (`testthat::JunitReporter`) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload. |
 | `examples-coverage`   | boolean | `false`  | Run a second job that measures coverage from examples and vignettes (`covr` `type = c("examples", "vignettes")`, `commentDonttest`/`commentDontrun` both `FALSE`). Off by default.             |
-| `min-coverage`        | string  | `''`     | Minimum percent coverage required to pass the tests job (`covr::percent_coverage()`). Empty disables the threshold. Does not apply to the examples/vignettes job.                               |
+| `min-coverage`        | string  | `''`     | Minimum percent coverage required to pass the tests job (`covr::percent_coverage()`). Empty defaults to no threshold. Does not apply to the examples/vignettes job. |
 
 ## Secrets
 

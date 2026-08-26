@@ -1174,16 +1174,23 @@ selftest job runs before invoking the composite, instead of committing R
 package source files (gha#148).
 
 The same `coverage` job pins gha#334's two new inputs rather than only the
-happy path. The fixture exports `add()` (unit-tested) plus `from_donttest()`
-and `from_dontrun()` (covered only by those Rd example wrappers). A
-`min-coverage: '100'` call on the default tests type must fail -- otherwise
-the threshold is a no-op -- and a `coverage-type: 'examples,vignettes'` call
+happy path.
+The fixture exports `add()` (unit-tested) plus `from_donttest()`
+and `from_dontrun()` (covered only by those Rd example wrappers).
+A `min-coverage: '100'` call on the default tests type must fail;
+otherwise the threshold is a no-op.
+A `coverage-type: 'examples,vignettes'` call
 with both `comment-donttest`/`comment-dontrun` set false and the same
-100% bar must pass, which is the only combination that actually executes
-those blocks. The fail-path assertion greps
+100% bar must pass.
+That is the only combination that actually executes those blocks.
+There is no `vignettes/` directory in the fixture:
+`type=examples,vignettes` here proves the comma-split and the examples
+comment flags, not vignette execution.
+The fail-path assertion greps
 `${RUNNER_TEMP}/min-coverage-failure.txt` for `below the required`, so a
 composite crash that merely reddens `outcome` does not count as pinning
-the threshold. Parser-level cases (empty `min-coverage` disables the
+the threshold.
+Parser-level cases (empty `min-coverage` disables the
 threshold, comma-separated types, invalid values) live in
 `test-coverage/tests/test-coverage-helpers.R` and run after the first
 composite call, once `setup-r` has put `Rscript` on `PATH`.
