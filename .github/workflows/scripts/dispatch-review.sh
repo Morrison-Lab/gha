@@ -62,8 +62,8 @@ fi
 # branch's caller runs instead --- trusted YAML, and the review job
 # checkouts the PR head for the code. (gha#598)
 if [ -z "${PR_CHANGED_FILES+x}" ]; then
-  if ! PR_CHANGED_FILES=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
-    echo "::notice::Could not list files for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref so GitHub executes default-branch workflow YAML."
+  if ! PR_CHANGED_FILES=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$script_dir/list-pr-changed-files.sh"); then
+    echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref so GitHub executes default-branch workflow YAML."
     PR_CHANGED_FILES=""
     FORCE_DEFAULT_BRANCH_WORKFLOWS=true
   fi

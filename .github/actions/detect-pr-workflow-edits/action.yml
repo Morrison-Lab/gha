@@ -46,9 +46,9 @@ runs:
         CALLER_WF_PATH: ${{ inputs.caller-workflow-path }}
       run: |
         set -euo pipefail
-        SCRIPT="${{ github.action_path }}/../../workflows/scripts/detect-pr-workflow-edits.sh"
-        if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
-          echo "::warning::Could not list files for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown PR tree (gha#598)."
+        ACTION_SCRIPTS="${{ github.action_path }}/../../workflows/scripts"
+        if ! files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$ACTION_SCRIPTS/list-pr-changed-files.sh"); then
+          echo "::warning::Could not list a complete file set for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown or truncated PR tree (gha#598)."
           files=".github/workflows/unknown.yml"
         fi
-        PR_CHANGED_FILES="$files" bash "$SCRIPT"
+        PR_CHANGED_FILES="$files" bash "$ACTION_SCRIPTS/detect-pr-workflow-edits.sh"

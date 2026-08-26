@@ -588,6 +588,9 @@ jobs:
       - name: Run detect-pr-workflow-edits tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-pr-workflow-edits-tests.sh
+      - name: Run list-pr-changed-files tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh
       - name: Run restore-default-branch-workflows tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh

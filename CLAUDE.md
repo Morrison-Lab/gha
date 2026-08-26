@@ -136,6 +136,10 @@ which is why the capabilities above moved to `@v2`.
   default-branch caller rather than the PR head's YAML.
   A missing `PR_CHANGED_FILES` variable fails closed (exit 2) rather than
   reporting a clean tree.
+  Listing the PR's files goes through `list-pr-changed-files.sh`, which
+  fails closed when GitHub's files endpoint returns fewer paths than the
+  PR's `changed_files` count (that endpoint caps at 3000 files; a 200 with
+  a short list is not a complete tree).
 
 - `.github/actions/restore-default-branch-workflows/` -- wraps
   `scripts/restore-default-branch-workflows.sh`, which deletes
@@ -1605,6 +1609,15 @@ unset `PR_CHANGED_FILES` (must fail closed).
 CI runs it as a step in `review-fail-check`, which also calls
 `detect-pr-workflow-edits` through a real `uses: ./...` step on
 pull_request events for the `github.action_path`-resolution proof.
+
+`.github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh`
+exercises `list-pr-changed-files.sh` against a stub `gh`: a complete
+two-file list succeeds, a list shorter than `changed_files` fails
+closed, and a missing or non-numeric `changed_files` fails closed.
+CI runs it in the same `review-fail-check` job.
+The truncated-list case is the one to keep if the suite is ever trimmed:
+GitHub's files endpoint caps at 3000 and still returns 200, so treating
+that response as complete would dispatch `--ref` at an unknown tree.
 
 `.github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh`
 exercises `restore-default-branch-workflows.sh` against throwaway git

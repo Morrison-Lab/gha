@@ -92,6 +92,9 @@ checkout and passes `github_token` so `claude-code-action` skips its OIDC
 workflow-content check.
 On a dispatched review it also omits `--ref`, so GitHub executes the
 default-branch caller rather than the PR head's YAML.
+A files-list response shorter than the PR's `changed_files` count is
+treated the same as a failed listing (GitHub caps that endpoint at 3000
+files), so a large PR cannot hide a workflow edit behind the cap.
 Check-runs for that no-`--ref` dispatch land on the default branch
 ([#285](https://github.com/Morrison-Lab/gha/issues/285)); the review comment
 still posts on the PR.

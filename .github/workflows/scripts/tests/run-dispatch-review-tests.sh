@@ -143,10 +143,68 @@ echo "Unexpected gh invocation: $@" >&2
 exit 1
 EOF
 out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="131" PR_BRANCH="feature-api-fail" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
-if echo "$out" | grep -q 'Could not list files' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=131' && ! echo "$out" | grep -q -- '--ref feature-api-fail'; then
+if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=131' && ! echo "$out" | grep -q -- '--ref feature-api-fail'; then
   echo "OK   dispatch-review.sh omits --ref when the files API fails"
 else
   echo "::error::dispatch-review.sh did not omit --ref on files-API failure; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 11: A successful but truncated files list (listed < changed_files)
+# omits --ref. GitHub's endpoint caps at 3000 files and still returns 200,
+# so treating that 200 as complete would dispatch --ref at an unknown tree.
+# The notice must not be the "edits workflow files" one: truncation is not
+# a detected workflow edit.
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in
+    */files*)
+      printf 'README.md\nCLAUDE.md\n'
+      exit 0
+      ;;
+    */pulls/*)
+      echo '{"changed_files":5}'
+      exit 0
+      ;;
+  esac
+done
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="132" PR_BRANCH="feature-truncated" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=132' && ! echo "$out" | grep -q -- '--ref feature-truncated' && ! echo "$out" | grep -q 'edits workflow files'; then
+  echo "OK   dispatch-review.sh omits --ref when the files list is truncated"
+else
+  echo "::error::dispatch-review.sh did not omit --ref on a truncated files list; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 12: A complete non-workflow list keeps --ref. Without this, a
+# comparison that always failed would pass test 11 and still look like a
+# fix.
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in
+    */files*)
+      printf 'README.md\nCLAUDE.md\n'
+      exit 0
+      ;;
+    */pulls/*)
+      echo '{"changed_files":2}'
+      exit 0
+      ;;
+  esac
+done
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="133" PR_BRANCH="feature-complete" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref feature-complete -f pr_number=133'; then
+  echo "OK   dispatch-review.sh keeps --ref when the files list is complete"
+else
+  echo "::error::dispatch-review.sh omitted --ref for a complete non-workflow list; got: $out"
   failures=$((failures + 1))
 fi
 
