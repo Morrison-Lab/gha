@@ -14,7 +14,7 @@ inputs:
       Air release to install via posit-dev/setup-air (for example `0.11.0`).
       Pin a release rather than `latest`, so a formatter change cannot
       silently rewrite what this check accepts. Default is the version
-      IndrajeetPatil/workflows locked on 2026-08-26 (`0.11.0`; issue #333
+      IndrajeetPatil/workflows locked on 2026-08-26 (`0.11.0`; gha#333
       cited `0.9.0`, which that workflow has since bumped).
     default: '0.11.0'
   path:

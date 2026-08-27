@@ -75,23 +75,28 @@ check "opencode secret-skip notice" false opencode-skipped \
   "> **OpenCode review skipped — API key unavailable.** No \`OPENCODE_API_KEY\` secret is configured for this repository. [View run]($RUN_URL)"
 
 # --- the self-mod and dispatch-guard skips (gha#571, gha#573). The job reports
-#     `success` and every step after the guard reads `skipped`, so nothing
+#     `success` and every post-guard step reads `skipped`, so nothing
 #     about this looks like a failure -- which is why the marker list omitted
-#     it initially. All wordings (build-self-review-skip-notice.sh's two, plus
-#     gemini-code-review.yml's dispatch guard) are pinned, since they differ
-#     after the shared leading phrase.
-check "self-mod skip, caller-workflow wording" false self-mod-skip \
-  "> [!WARNING]
-> **No review ran --- this PR edits \`.github/workflows/claude-review.yml\`, the review workflow itself.**
-> \`claude-code-action\` requires that file to match the default branch.
->
-> [View run]($RUN_URL)"
+#     it initially. Pin the live skip-notice wording from
+#     build-self-review-skip-notice.sh (gha#598), not the retired
+#     "this PR edits" headlines that script no longer produces.
+#     check() only sees the shared `No review ran` prefix, so this needle
+#     is what fails when the generator drifts to a different No-review-ran
+#     headline. The Gemini dispatch-guard case below is a different live
+#     producer of that prefix (gha#573).
+SKIP_NOTICE="$(bash "$HERE/../build-self-review-skip-notice.sh" \
+  ".github/workflows/claude-review.yml" "$RUN_URL")"
+if [[ "$SKIP_NOTICE" != *"No review ran --- restoring default-branch workflow files failed."* ]]; then
+  echo "FAIL: live skip notice missing restore-failure wording"
+  echo "$SKIP_NOTICE"
+  failures=$((failures + 1))
+fi
+check "self-mod skip, restore-failure wording (gha#598)" false self-mod-skip \
+  "$SKIP_NOTICE"
 
-check "self-mod skip, other-workflow wording" false self-mod-skip \
-  "> [!WARNING]
-> **No review ran --- this PR edits \`.github/workflows/_selftest.yml\`.**
->
-> [View run]($RUN_URL)"
+EMPTY_NOTICE="$(bash "$HERE/../build-self-review-skip-notice.sh" "" "$RUN_URL")"
+check "self-mod skip, incomplete file list (gha#598)" false self-mod-skip \
+  "$EMPTY_NOTICE"
 
 check "gemini dispatch-guard skip, fork or Dependabot PR" false self-mod-skip \
   "> [!WARNING]
