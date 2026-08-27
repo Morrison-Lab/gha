@@ -88,6 +88,19 @@ jobs:
       # model: ''
       # prompt-addendum: |
       #   Repo-specific review guidance.
+      # Vertex AI via Workload Identity Federation. All four are needed:
+      # the first two authenticate to GCP, the last two are what route the
+      # SDK through Vertex. Without them GEMINI_API_KEY is still required.
+      # workload-identity-provider: 'projects/123/locations/global/workloadIdentityPools/p/providers/gh'
+      # service-account: 'review-bot@my-project.iam.gserviceaccount.com'
+      # gcp-project: 'my-project'
+      # gcp-location: 'us-central1'
+      # Skip the review on oversized diffs rather than spending on them.
+      # max-diff-lines: '2000'
+      # max-diff-files: '50'
+      # Set false only where a review is genuinely optional; the default
+      # reddens the check on a real error rather than passing silently.
+      # fail-on-error: true
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```

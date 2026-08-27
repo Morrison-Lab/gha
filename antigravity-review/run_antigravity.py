@@ -704,7 +704,17 @@ def main():
     if diff:
         # Check diff size limits
         lines = diff.splitlines()
-        changed_lines = sum(1 for line in lines if (line.startswith("+") and not line.startswith("+++")) or (line.startswith("-") and not line.startswith("---")))
+        # Header lines carry a trailing SPACE ("+++ b/path"), so match that
+        # rather than the bare marker: a genuine added line whose content
+        # begins "++" (C++ increments, nested Markdown markers) becomes
+        # "+++..." once the diff prefix is added, and a bare-marker test
+        # silently drops it from the count (gha#672 review, finding 6).
+        changed_lines = sum(
+            1
+            for line in lines
+            if (line.startswith("+") and not line.startswith("+++ "))
+            or (line.startswith("-") and not line.startswith("--- "))
+        )
         files_changed = sum(1 for line in lines if line.startswith("diff --git"))
         
         if changed_lines > args.max_diff_lines:
