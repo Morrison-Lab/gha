@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Exercises build-self-review-skip-notice.sh offline, verifying notice formatting
 # and the collapse step's run-ID matching contract (actions/runs/(?<r>[0-9]+)).
-# Wired into _selftest.yml's test suite (gha#441).
+# Wired into _selftest.yml's test suite (gha#441, gha#598).
 #
 # Usage: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
 set -euo pipefail
@@ -12,7 +12,7 @@ build_script="$repo_root/.github/workflows/scripts/build-self-review-skip-notice
 
 failures=0
 
-# Test 1: Standard self-review skip (edits review workflow itself)
+# Test 1: Restore-failure skip (gha#598)
 wf_path=".github/workflows/claude-code-review.yml"
 run_url="https://github.com/Morrison-Lab/gha/actions/runs/987654321"
 
@@ -25,10 +25,17 @@ else
   failures=$((failures + 1))
 fi
 
-if [[ "$got" == *"the review workflow itself"* ]]; then
-  echo "OK   build-self-review-skip-notice.sh contains 'the review workflow itself' phrasing"
+if [[ "$got" == *"No review ran --- restoring default-branch workflow files failed."* ]]; then
+  echo "OK   build-self-review-skip-notice.sh uses the live restore-failure headline"
 else
-  echo "::error::build-self-review-skip-notice.sh output missing 'the review workflow itself'"
+  echo "::error::build-self-review-skip-notice.sh output missing live headline 'No review ran --- restoring default-branch workflow files failed.'"
+  failures=$((failures + 1))
+fi
+
+if [[ "$got" == *"gha#598"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh cites gha#598"
+else
+  echo "::error::build-self-review-skip-notice.sh output missing gha#598"
   failures=$((failures + 1))
 fi
 
@@ -59,15 +66,70 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 2: Dispatched review skip on other workflow edit (gha#386)
-other_wf=".github/workflows/claude.yml"
+# Test 2: A different edited path still appears; the third arg is ignored.
+other_wf=".github/workflows/_selftest.yml"
 caller_wf=".github/workflows/claude-review.yml"
 got2="$(bash "$build_script" "$other_wf" "$run_url" "$caller_wf")"
 
-if [[ "$got2" == *"dispatched runs"* ]]; then
-  echo "OK   build-self-review-skip-notice.sh contains dispatched runs explanation for other workflow"
+if [[ "$got2" == *"$other_wf"* ]] && [[ "$got2" == *"restoring default-branch workflow files failed"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh names the edited path on a non-caller workflow"
 else
-  echo "::error::build-self-review-skip-notice.sh output missing 'dispatched runs' explanation"
+  echo "::error::build-self-review-skip-notice.sh did not name '$other_wf' in the restore-failure notice"
+  failures=$((failures + 1))
+fi
+
+# Test 2b: An empty workflow-path is the incomplete-list case (API failure
+# or GitHub's 3000-file cap). Do not name a fake file, and do not say
+# "This PR edits" (Bugbot on gha#674). A real `.github/workflows/unknown.yml`
+# is a legal workflow and must still be named if passed as the path.
+got_empty="$(bash "$build_script" "" "$run_url")"
+if [[ "$got_empty" == *"The PR changed-file list was incomplete"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh names an incomplete file list when the path is empty"
+else
+  echo "::error::build-self-review-skip-notice.sh empty-path notice missing incomplete-list wording"
+  failures=$((failures + 1))
+fi
+if [[ "$got_empty" == *"This PR edits"* ]]; then
+  echo "::error::build-self-review-skip-notice.sh empty-path notice still contains 'This PR edits'"
+  failures=$((failures + 1))
+else
+  echo "OK   build-self-review-skip-notice.sh empty-path notice does not say 'This PR edits'"
+fi
+if [[ "$got_empty" == *"unknown.yml"* ]]; then
+  echo "::error::build-self-review-skip-notice.sh empty-path notice still names unknown.yml"
+  failures=$((failures + 1))
+else
+  echo "OK   build-self-review-skip-notice.sh empty-path notice does not name unknown.yml"
+fi
+if [[ "$got_empty" == *"No review ran --- restoring default-branch workflow files failed."* ]]; then
+  echo "OK   build-self-review-skip-notice.sh empty-path notice keeps the live headline"
+else
+  echo "::error::build-self-review-skip-notice.sh empty-path notice dropped the live headline"
+  failures=$((failures + 1))
+fi
+
+real_unknown=".github/workflows/unknown.yml"
+got_real_unknown="$(bash "$build_script" "$real_unknown" "$run_url")"
+if [[ "$got_real_unknown" == *"This PR edits \`$real_unknown\`"* ]]; then
+  echo "OK   build-self-review-skip-notice.sh still names a real unknown.yml path"
+else
+  echo "::error::build-self-review-skip-notice.sh treated a real unknown.yml path as an incomplete list"
+  failures=$((failures + 1))
+fi
+
+# The detect composite must not stuff a fake filename into edited_path
+# (gha#303: two declarations of one sentinel would drift).
+detect_action="$repo_root/.github/actions/detect-pr-workflow-edits/action.yml"
+if grep -q 'unknown.yml' "$detect_action"; then
+  echo "::error::detect-pr-workflow-edits/action.yml still mentions unknown.yml; use list_incomplete=true and an empty edited_path"
+  failures=$((failures + 1))
+else
+  echo "OK   detect-pr-workflow-edits/action.yml does not use an unknown.yml sentinel"
+fi
+if grep -q 'list_incomplete=true' "$detect_action"; then
+  echo "OK   detect-pr-workflow-edits/action.yml sets list_incomplete=true on an incomplete list"
+else
+  echo "::error::detect-pr-workflow-edits/action.yml missing list_incomplete=true on the incomplete-list path"
   failures=$((failures + 1))
 fi
 
