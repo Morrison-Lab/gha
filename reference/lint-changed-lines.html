@@ -71,7 +71,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/lint-workflows.html" rel="next">
+<link href="../reference/lint-changed-files.html" rel="next">
 <link href="../reference/lint-qmd.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
@@ -451,6 +451,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-changed-files.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-changed-files.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">lint-workflows.yml</span></a>
   </div>
@@ -678,7 +684,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Run <a href="https://lintr.r-lib.org/"><code>lintr</code></a> over the R files a pull request changes, but report <strong>only</strong> the lints on lines the PR actually added or modified – not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.</p>
-<p>Contrast with a whole-file “lint changed files” gate, which fails on function definitions a PR never touched – forcing either a repo-wide reformat or disabling the linter. <code>lint-changed-lines</code> is the incremental alternative.</p>
+<p>Contrast with a whole-file “lint changed files” gate, which fails on function definitions a PR never touched – forcing either a repo-wide reformat or disabling the linter. <code>lint-changed-lines</code> is the incremental alternative. The whole-file, whole-package, and whole-project forms live in <a href="../reference/lint-changed-files.html"><code>lint-changed-files.yml</code></a>, selected by a <code>scope</code> input; that capability does not fold this one in, because the added-lines diffing here is different machinery.</p>
 <section id="how-it-works" class="level2">
 <h2 class="anchored" data-anchor-id="how-it-works">How it works</h2>
 <p>The workflow checks out the <strong>PR head commit</strong> (not the default <code>refs/pull/N/merge</code> ref), sets up R, installs the package (so <code>object_usage_linter</code> can resolve the package’s own functions), then runs <code>lintr</code> on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API <code>patch</code>, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.</p>
@@ -1204,8 +1210,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/lint-workflows.html" class="pagination-link" aria-label="lint-workflows.yml">
-        <span class="nav-page-text">lint-workflows.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/lint-changed-files.html" class="pagination-link" aria-label="lint-changed-files.yml">
+        <span class="nav-page-text">lint-changed-files.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
