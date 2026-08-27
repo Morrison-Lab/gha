@@ -487,6 +487,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/r-cmd-check.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">r-cmd-check.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">update-snapshots.yml</span></a>
   </div>
@@ -865,7 +871,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">      # the first two authenticate to GCP, the last two are what route the</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">      # SDK through Vertex. Without them GEMINI_API_KEY is still required.</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">      # workload-identity-provider: 'projects/123/locations/global/workloadIdentityPools/p/providers/gh'</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">      # service-account: 'review-bot@my-project.iam.gserviceaccount.com'</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">      # service-account: 'review-bot@my-project.iam.gserviceaccount.com'  # phi-allow: documentation placeholder, not a real address</span></span>
 <span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">      # gcp-project: 'my-project'</span></span>
 <span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">      # gcp-location: 'us-central1'</span></span>
 <span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">      # Skip the review on oversized diffs rather than spending on them.</span></span>
