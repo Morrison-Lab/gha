@@ -36,21 +36,55 @@ check <- function(label, actual, expected) {
   cat(sprintf("ok - %s\n", label))
 }
 
-check_error <- function(label, expr, pattern = NULL) {
-  err <- tryCatch({
-    force(expr)
-    NULL
-  }, error = function(e) e)
+check_error <- function(label, expr, pattern = NULL, error_pattern = NULL) {
+  # Match the pattern against the condition message AND anything the
+  # expression printed. testthat reports which warning fired through its
+  # reporter (stdout), while the condition it raises says only
+  # "Test failures." -- so a pattern naming the warning text could never
+  # match conditionMessage() alone, however the chain is walked. Messages are
+  # collected too, since cli::cli_inform() writes conditions rather than
+  # stdout.
+  msgs <- character()
+  err <- NULL
+  printed <- capture.output(
+    withCallingHandlers(
+      err <- tryCatch({
+        force(expr)
+        NULL
+      }, error = function(e) e),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+  )
   if (is.null(err)) {
     failures <<- failures + 1L
     cat(sprintf("FAIL: %s (expected an error, none raised)\n", label))
     return(invisible())
   }
-  if (!is.null(pattern) && !grepl(pattern, conditionMessage(err), perl = TRUE)) {
+  # `error_pattern` is checked against the CONDITION alone. Widening `pattern`
+  # to the printed output costs something real: an unrelated error passes so
+  # long as the text appears somewhere, since nothing ties the two together
+  # any more. Verified -- an expression that prints the pattern and then stops
+  # for another reason passes on `pattern` alone. Call sites that care assert
+  # the condition separately, which restores the link without requiring detail
+  # the condition does not carry.
+  if (!is.null(error_pattern) &&
+      !grepl(error_pattern, conditionMessage(err), perl = TRUE)) {
+    failures <<- failures + 1L
+    cat(sprintf(
+      "FAIL: %s (condition did not match /%s/): %s\n",
+      label, error_pattern, conditionMessage(err)
+    ))
+    return(invisible())
+  }
+  haystack <- paste(c(conditionMessage(err), printed, msgs), collapse = "\n")
+  if (!is.null(pattern) && !grepl(pattern, haystack, perl = TRUE)) {
     failures <<- failures + 1L
     cat(sprintf(
       "FAIL: %s (error did not match /%s/): %s\n",
-      label, pattern, conditionMessage(err)
+      label, pattern, haystack
     ))
     return(invisible())
   }
@@ -58,7 +92,22 @@ check_error <- function(label, expr, pattern = NULL) {
 }
 
 check_silent_ok <- function(label, expr, must_match = NULL) {
-  out <- paste(capture.output(force(expr)), collapse = "\n")
+  # The functions under test report a skip with cli::cli_inform(), which is a
+  # CONDITION written to stderr -- capture.output() only takes stdout, so it
+  # returned "" here and every must_match failed while the text leaked to the
+  # console. Collect messages alongside stdout, and muffle them so a passing
+  # run stays quiet.
+  msgs <- character()
+  stdout_lines <- capture.output(
+    withCallingHandlers(
+      force(expr),
+      message = function(m) {
+        msgs <<- c(msgs, conditionMessage(m))
+        invokeRestart("muffleMessage")
+      }
+    )
+  )
+  out <- paste(c(stdout_lines, msgs), collapse = "\n")
   if (!is.null(must_match) && !grepl(must_match, out, perl = TRUE)) {
     failures <<- failures + 1L
     cat(sprintf(
@@ -117,7 +166,17 @@ check_silent_ok(
 fresh_repo <- tempfile("extra-fresh-")
 dir.create(fresh_repo)
 git <- function(...) {
-  system2("git", c("-C", fresh_repo, ...), stdout = TRUE, stderr = TRUE)
+  # system2() pastes args into one command line WITHOUT quoting, so
+  # `-m "initial README"` reached git as `-m initial README`: message
+  # "initial", pathspec "README". The commit then failed, README.md stayed
+  # uncommitted, and the freshness check reported a dirty tree. Quoting here
+  # rather than at the call site also covers fresh_repo, a tempfile path.
+  # invisible(): every call site is a bare statement, and stdout = TRUE makes
+  # a silent git command return character(0), which R then auto-prints. That
+  # put five stray "character(0)" lines in the CI log for no reason.
+  invisible(
+    system2("git", shQuote(c("-C", fresh_repo, ...)), stdout = TRUE, stderr = TRUE)
+  )
 }
 git("init", "-q")
 git("config", "user.email", "fixture@example.com")
@@ -209,7 +268,8 @@ if (
   check_error(
     "warning in a test file fails the warnings sweep",
     withr::with_dir(warn_pkg, run_tests_warn2()),
-    pattern = "boom from extrafixture test|converted from warning"
+    pattern = "boom from extrafixture test|converted from warning",
+    error_pattern = "Test failures"
   )
   unlink(warn_pkg, recursive = TRUE)
 }
