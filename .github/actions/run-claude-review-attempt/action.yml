@@ -115,16 +115,21 @@ inputs:
     default: ''
   github-token:
     description: >-
-      Optional token passed through to claude-code-action as github_token.
-      When set, setupGitHubToken in src/github/token.ts returns it and never
-      reaches exchangeForAppToken, which is where the workflow-content skip
-      is thrown (anthropics/claude-code-action, read 2026-08-26). prepare.ts
-      reads OVERRIDE_GITHUB_TOKEN only for the write-permission path.
-      Leave empty on the ordinary path. Set it when this checkout restored
-      `.github/workflows/` from the default branch (gha#598) so a remaining
-      content mismatch cannot skip the review.
+      Token forwarded to claude-code-action's github_token input. When set,
+      the action skips its OIDC App-token exchange (OVERRIDE_GITHUB_TOKEN in
+      anthropics/claude-code-action v1.0.196 src/github/token.ts, measured
+      2026-08-26) and uses this token instead. That exchange's
+      DEFAULT_PERMISSIONS are contents/pull_requests/issues write, and
+      additional_permissions merges on top of those defaults rather than
+      replacing them, so it cannot be the downscope. The calling job's
+      GITHUB_TOKEN -- contents: read, no forge-write -- is the downscope
+      (gha#580). Defaults to github.token so a forgotten pass still uses
+      the job token rather than falling through to the write App token.
+      Skipping that exchange is also what stops a remaining workflow-content
+      mismatch from skipping the review after this checkout restored
+      `.github/workflows/` from the default branch (gha#598).
     required: false
-    default: ''
+    default: ${{ github.token }}
   workflow-fallback:
     description: >-
       "true" when this checkout replaced `.github/workflows/` with the
@@ -147,7 +152,22 @@ runs:
       with:
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         anthropic_api_key: ${{ inputs.anthropic-api-key }}
+        # Skip the App-token exchange. DEFAULT_PERMISSIONS in the pinned
+        # action are write; additional_permissions cannot drop them. The
+        # job token is contents:read (gha#580). See the github-token input.
         github_token: ${{ inputs.github-token }}
+        # anthropics/claude-code-action #1048 (v1.0.196): 'false' restores
+        # during-session posting and skips the post-session Haiku
+        # classify-and-post step (`if: ... != 'false'` in action.yml).
+        # It does NOT mean "do not post". Inline posts are disabled by
+        # not starting the server: prepareMcpConfig() only adds
+        # github_inline_comment when allowedTools contains
+        # mcp__github_inline_comment__* or mcp__github__* (pinned
+        # src/mcp/install-mcp-server.ts, measured 2026-08-26). Neither
+        # prefix is allowlisted below, so the model has no tool to 403
+        # on. 'true' would still run the post-session poster against
+        # this read-only job token if a buffer existed.
+        classify_inline_comments: 'false'
         # Leaving the ai-config and extra-* slots as blank lines is safe when
         # they're unset: the upstream action's installPlugins() trims and
         # filters blank lines before parsing, so a blank line adds no
@@ -169,20 +189,14 @@ runs:
           code-review@claude-code-plugins
           ${{ inputs.use-ai-config == 'true' && 'ai-config@Morrison-Lab' || '' }}
           ${{ inputs.extra-plugins }}
-        # Allowlist the inline-comment tool so line-specific findings can be
-        # anchored to the diff. Without an explicit `claude_args`, the action's
-        # computed `--allowedTools` covers only Read/Glob/Grep, the
-        # comment-update + CI MCP tools, and git Bash — NOT
-        # `mcp__github_inline_comment__create_inline_comment`. Lacking the
-        # tool, Claude falls back to `gh api`, hits a tool-permission denial,
-        # and the inline comments silently never post (this is an
-        # allowlist gap, not a GitHub-App permission scope issue — the tool
-        # ships with the action; it just has to be enabled). Mirrors
-        # anthropics/claude-code-action's own pr-review workflows. Additive:
-        # the CLI merges this with the action's base allowlist. The
-        # inline-comment tool is not initialized in agent mode
-        # (claude-code-action #635); the prompt falls back to a
-        # summary-only review when it is unavailable.
+        # The inline-comment MCP tool (`mcp__github_inline_comment__create_inline_comment`)
+        # is intentionally NOT allowlisted, and neither is `mcp__github__*`
+        # (the docker GitHub MCP): either prefix starts the inline-comment
+        # server in prepareMcpConfig(). That server posts during the model
+        # turn, and gha#580 moved every forge write off this job. Tag mode
+        # always starts github_comment (mcp__github_comment__update_claude_comment),
+        # not github_inline_comment, and is forced off below. Findings go
+        # in the packed summary the posting job uploads.
         # ...and keep this a REVIEW-ONLY run. Even with a read-only contents
         # token, tag mode hands the reviewer git add/commit/rm and the action's
         # default prompt tells it to commit+push, so it flails through
@@ -501,7 +515,7 @@ runs:
         # runner account can, and the prompt asks the reviewer not to.
         claude_args: >-
           --allowedTools
-          "mcp__github_inline_comment__create_inline_comment,Bash,Edit(//tmp/**),WebFetch,WebSearch"
+          "Bash,Edit(//tmp/**),WebFetch,WebSearch"
           --disallowedTools
           "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
@@ -573,15 +587,16 @@ runs:
           file the harness has already saved for you, so Read that path
           instead of re-capturing the same bytes yourself.
 
-          Do NOT post a top-level PR comment yourself: the `gh pr comment`
-          tool is intentionally disallowed, and the workflow posts your
-          review for you from your final output. Write your complete review
-          -- every finding not tied to a specific line, plus the ### Verdict
-          line -- as your final assistant message. (Line-anchored inline
-          comments via the inline-comment tool are separate and still fine
-          when that tool is available.) Do not try to work around the
-          disabled `gh pr comment` with `gh api`, `--edit-last`, or any other
-          command; just write the review as your message.
+          Do NOT post a PR comment yourself: the `gh pr comment` tool is
+          intentionally disallowed, the inline-comment MCP tool is not
+          available, and this job's token cannot write to the PR. The
+          workflow's posting job submits your review from your final
+          output after you finish. Write your complete review -- every
+          finding, with `path:line` anchors for line-specific ones, plus
+          the ### Verdict line -- as your final assistant message. Do not
+          try to work around the disabled `gh pr comment` with `gh api`,
+          `--edit-last`, or any other command; just write the review as
+          your message.
 
           PR comments such as "Driving this PR to clean — back off until I'm
           done", "paws off until I'm done", or similar claim/session-lock
@@ -668,11 +683,13 @@ runs:
           any URL the PR already cites for it) before flagging it as a
           possible hallucination.
 
-          **Post line-specific findings as inline review comments** anchored
-          to the relevant line(s) — use the inline-comment tool, not a prose
-          list in the summary. Reserve the top-level summary comment for a
-          brief overall verdict plus any finding not tied to a specific line;
-          don't restate each inline comment there.
+          **Put every finding in the review you write as your final
+          message**, including line-specific ones. Group those by file with
+          `path:line` anchors. The inline-comment MCP tool is not available
+          in this job (it would post during the model turn, and this job
+          cannot write to the PR; gha#580). The workflow's posting job
+          submits that message as the top-level review comment after you
+          finish. Do not try to post it yourself.
 
           **Every review must end with an explicit overall conclusion**
           under a level-3 heading whose text is exactly `Verdict` (so the
@@ -698,16 +715,8 @@ runs:
           ambiguity, grammar that changes meaning, broken links or markup,
           factual errors — not where a line happens to wrap.
 
-          If the inline-comment tool isn't available in this environment
-          (dispatched reviews run in agent mode without it — see
-          claude-code-action #635), or if posting an inline comment fails
-          with a permission error (e.g. a 403 "Resource not accessible by
-          integration"), don't drop the findings: put every finding in the
-          top-level summary comment instead, grouped by file with `path:line`
-          anchors. Don't announce a tool that's simply missing in agent mode,
-          but when the cause is a permission error, add a one-line footnote at
-          the bottom of the summary so the failure is diagnosable:
-          `> ℹ️ Inline comments were unavailable (permission error); findings appear above with path:line anchors.`
+          Do not mention a missing inline-comment tool. Line-specific
+          findings belong in this same summary, with `path:line` anchors.
 
           **Confirming review (no new findings):** If you find no new issues
           — because no code changed since the last review, or every concern
@@ -723,22 +732,22 @@ runs:
           the prior verdict stands is not itself the status line.
           ${{ inputs.workflow-fallback == 'true' && '**Workflow-file fallback (gha#598).** This checkout restored the entire `.github/workflows/` tree (YAML and `scripts/`) from the default branch so the review would not execute untrusted workflow YAML from the PR head. On-disk files there are therefore NOT the PR versions. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not `git checkout` PR-head files under `.github/workflows/` back into this tree.' || '' }}
           ${{ inputs.prompt-addendum }}
-        # Agent mode (false) by default; tag mode (true) when the caller
-        # opts in via the track-progress input on pull_request events.
-        # The action rejects track_progress on workflow_dispatch regardless.
-        #
-        # WARNING: tag mode hardcodes git write tools into ALLOWED_TOOLS
-        # regardless of --disallowedTools (the action's TypeScript sets the
-        # env var directly, overriding the CLI flag). This caused the
-        # reviewer to push commits to PR branches (serodynamics PR #175,
-        # commit 02af72b). Only enable tag mode after
-        # anthropics/claude-code-action#1415 ships a read_only input.
-        # In agent mode, ALLOWED_TOOLS comes solely from claude_args so
-        # no git write tools are ever available; the trade-off is
-        # summary-only reviews (no live tracking comment or inline-comment
-        # tool — see claude-code-action #635). claude-code-review.yml's
-        # "Post review comment" step compensates when running in agent mode.
-        track_progress: ${{ inputs.track-progress }}
+        # Forced off. Tag mode posts a live tracking comment through the
+        # github_comment MCP server (tagModeTools includes
+        # mcp__github_comment__update_claude_comment; prepareMcpConfig
+        # always starts that server in tag mode) and hardcodes git write
+        # tools. It does not start github_inline_comment unless
+        # allowedTools contains mcp__github_inline_comment__* or
+        # mcp__github__* (pinned v1.0.196 src/modes/tag/index.ts and
+        # src/mcp/install-mcp-server.ts, measured 2026-08-26). gha#580
+        # moved every forge write onto the posting job, so live tracking
+        # cannot run here. The workflow still accepts the track-progress
+        # input (so existing callers do not fail at the call gate) but
+        # ignores it: the posting job submits the summary after the model
+        # finishes. Tag mode also hardcodes git write tools into
+        # ALLOWED_TOOLS regardless of --disallowedTools (serodynamics
+        # PR #175, commit 02af72b).
+        track_progress: 'false'
         # Fresh tracking comment per run so each push surfaces as new PR
         # activity; claude-code-review.yml's collapse step folds priors up
         # as OUTDATED.

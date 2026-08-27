@@ -27,7 +27,7 @@ variable unset while the agent is live, or the mention is answered twice.
 | `prompt-addendum`     | string  | `''`                    | Repo-specific review guidance appended to the plugin prompt.                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `checkout-submodules` | boolean | `false`                 | Check out submodules so the reviewer can read their contents. Private submodules require the `SUBMODULES_TOKEN` secret.                                                                                                                                                                                                                                                                                                                                                                   |
 | `allowed-bots`        | string  | `'github-actions[bot]'` | Comma-separated bot actors the reviewer accepts, so a dispatched review is not rejected as non-human.                                                                                                                                                                                                                                                                                                                                                                                     |
-| `track-progress`      | boolean | `false`                 | Enable tag mode: live tracking comment + inline-comment tool on `pull_request` events. Default `false` (agent/summary-only mode) is safe. **Only set `true` after [anthropics/claude-code-action#1415](https://github.com/anthropics/claude-code-action/issues/1415) ships a `read_only` input** - until then, tag mode exposes git write tools and the reviewer may push commits to the branch.                                                                                          |
+| `track-progress`      | boolean | `false`                 | Ignored (gha#580). Tag mode posts a live tracking comment through the `github_comment` MCP server (`mcp__github_comment__update_claude_comment`) and hardcodes git write tools; it does not start `github_inline_comment` unless `mcp__github_inline_comment__*` or `mcp__github__*` is allowlisted. All of that needs a writable forge token in the model job. This workflow splits those: the model job's `GITHUB_TOKEN` has no write scopes, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate. |
 | `show-full-output`    | boolean | `false`                 | Show the full JSON output from Claude Code. Turn it on to diagnose a review that fails inside the model call.                                                                                                                                                                                                                                                                                                                                                                             |
 | `apt-packages`        | string  | `''`                    | Space-separated system packages to `apt-get install` before the review runs (e.g. `maxima` for a computer algebra system). Empty to skip.                                                                                                                                                                                                                                                                                                                                                 |
 | `pip-packages`        | string  | `''`                    | Space-separated pip packages to install with `pip3 --break-system-packages` before the review runs (e.g. `sympy`). Empty to skip.                                                                                                                                                                                                                                                                                                                                                         |
@@ -50,9 +50,18 @@ variable unset while the agent is live, or the mention is answered twice.
 
 ## Permissions
 
-Grant `contents: read`, `pull-requests: write`, `issues: write`, and
-`id-token: write`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
+Grant `contents: read`, `pull-requests: write`, `issues: write`,
+`actions: read`, and add either the `CLAUDE_CODE_OAUTH_TOKEN` or
 `ANTHROPIC_API_KEY` secret.
+The model job's `GITHUB_TOKEN` has no write scopes
+(`contents` / `pull-requests` / `issues` / `actions: read`);
+write is confined to jobs that never run the model
+(`gather-context` stashes reviewers; `post-review`
+downloads the review artifact and comments) (gha#580).
+`actions: read` is required on the caller: a `permissions:` block sets
+unspecified scopes to none, and `post-review` needs it to download the
+packed artifact (the model job also uses it for the `github_ci` MCP
+server).
 
 ## The `require-review` gate
 
@@ -156,7 +165,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-      id-token: write
+      actions: read
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key
@@ -169,7 +178,7 @@ jobs:
     # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
-    #   track-progress: true        # tag mode: live tracking comment + inline comments (unsafe until anthropics/claude-code-action#1415 ships)
+    #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job
     #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)
     #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS
     #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos

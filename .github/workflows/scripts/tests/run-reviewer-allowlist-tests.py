@@ -3,21 +3,22 @@
 
 gha#566 and gha#572 widened `Bash` from a handful of named commands to the
 whole tool, because naming commands one at a time kept starving real reviews
-(five measured runs, no verdict, tens of dollars). That widening moved the deny
-list from belt-and-braces to load-bearing: before it, `gh pr merge` was
-unreachable because it was simply not on the allowlist; after it, only an
-explicit denial keeps it unreachable.
-
-Nothing else would notice that going away. A future edit trimming the deny list
-"because the allowlist is narrow anyway" would silently hand a review job with
-`pull-requests: write` the ability to merge the PR it is reviewing, and no
-check would turn red. This suite is that check.
+(five measured runs, no verdict, tens of dollars). After that widening, a
+prefix deny list cannot be a security boundary: wrapping a denied command,
+or writing through a redirect, both go around it (gha#580). The close is
+architectural -- the model job holds `contents: read` and the posting job
+holds forge-write, so they never coincide. This suite still pins the deny
+list as a *guard rail* against accidents. Nothing else would notice a
+future edit trimming it "because the allowlist is narrow anyway" or
+"because the job is read-only"; both misreadings would silently drop
+rules that still stop a confused model from *trying* a merge.
 
 **What it does not do.** It asserts the declared lists, not the behaviour of
-Claude Code's permission matcher. Simulating that matcher here would be
-testing a model of the system rather than the system -- the fixture trap -- so
-every assertion below is about a rule this repo controls and can be read
-straight out of the file.
+Claude Code's permission matcher, and it is not the credential split --
+that is `run-review-job-split-tests.py`. Simulating the matcher here would
+be testing a model of the system rather than the system -- the fixture
+trap -- so every assertion below is about a rule this repo controls and
+can be read straight out of the file.
 
 Usage::
 
@@ -34,10 +35,11 @@ import sys
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
 
 # Capabilities that were unreachable before the gha#566/gha#572 widening
-# (absent from a narrow allowlist) and that must stay unreachable after it
-# (present in the deny list). Each entry is the deny rule that must exist,
-# beside what it prevents -- the reviewer holds `pull-requests: write` and
-# `issues: write`, so these are the forge mutations an accident could reach.
+# (absent from a narrow allowlist) and that must stay denied as a guard
+# rail after it. Each entry is the deny rule that must exist, beside what
+# an accident could still *attempt* -- gha#580 moved forge-write off the
+# model job, so these no longer succeed, but a confused model retrying
+# them still wastes the run.
 REQUIRED_DENIALS = {
     "Bash(git add:*)": "stage changes in the checkout under review",
     "Bash(git commit:*)": "commit to the branch under review",

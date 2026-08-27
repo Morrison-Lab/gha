@@ -194,10 +194,11 @@ jobs:
     if: github.event_name != 'issue_comment'
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: write   # posting job (gha#580); the model job is read-only
       issues: write
-      id-token: write
-      actions: read   # lets the reviewer read CI status (github_ci MCP server)
+      # No id-token: write: the reusable workflow forwards github.token
+      # and skips the App-token exchange (gha#580).
+      actions: read   # post-review download-artifact; model job github_ci MCP
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # Max-plan OAuth; empty when using API key
