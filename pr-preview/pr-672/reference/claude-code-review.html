@@ -475,6 +475,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-extra.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">update-snapshots.yml</span></a>
   </div>
@@ -623,6 +629,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-typos.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-typos.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -709,7 +721,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>track-progress</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Enable tag mode: live tracking comment + inline-comment tool on <code>pull_request</code> events. Default <code>false</code> (agent/summary-only mode) is safe. <strong>Only set <code>true</code> after <a href="https://github.com/anthropics/claude-code-action/issues/1415">anthropics/claude-code-action#1415</a> ships a <code>read_only</code> input</strong> - until then, tag mode exposes git write tools and the reviewer may push commits to the branch.</td>
+<td>Ignored (gha#580). Tag mode posts a live tracking comment through the <code>github_comment</code> MCP server (<code>mcp__github_comment__update_claude_comment</code>) and hardcodes git write tools; it does not start <code>github_inline_comment</code> unless <code>mcp__github_inline_comment__*</code> or <code>mcp__github__*</code> is allowlisted. All of that needs a writable forge token in the model job. This workflow splits those: the model job’s <code>GITHUB_TOKEN</code> has no write scopes, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate.</td>
 </tr>
 <tr class="even">
 <td><code>show-full-output</code></td>
@@ -816,7 +828,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and <code>id-token: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</p>
+<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>actions: read</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret. The model job’s <code>GITHUB_TOKEN</code> has no write scopes (<code>contents</code> / <code>pull-requests</code> / <code>issues</code> / <code>actions: read</code>); write is confined to jobs that never run the model (<code>gather-context</code> stashes reviewers; <code>post-review</code> downloads the review artifact and comments) (gha#580). <code>actions: read</code> is required on the caller: a <code>permissions:</code> block sets unspecified scopes to none, and <code>post-review</code> needs it to download the packed artifact (the model job also uses it for the <code>github_ci</code> MCP server).</p>
 </section>
 <section id="the-require-review-gate" class="level2">
 <h2 class="anchored" data-anchor-id="the-require-review-gate">The <code>require-review</code> gate</h2>
@@ -852,9 +864,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The gate skips gray whenever no review was attempted. That covers anything that made the <code>claude-review</code> job’s own <code>if:</code> false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:</p>
 <ul>
 <li>the API quota was exhausted — either before any review work happened, or part-way through the run, which leaves a <code>429</code> behind after real turns and real cost (<a href="https://github.com/Morrison-Lab/gha/issues/520">#520</a>);</li>
-<li>the PR edits the caller’s own review workflow file.</li>
+<li>restoring default-branch copies of <code>.github/workflows/</code> failed, so the review was skipped rather than executing workflow YAML from the PR head (<a href="https://github.com/Morrison-Lab/gha/issues/598">#598</a>).</li>
 </ul>
-<p>That last case deserves care. <code>claude-code-action</code> requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and <strong>no re-run or re-dispatch will change that</strong> — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.</p>
+<p>PRs that edit workflow files are reviewed when that restore succeeds. The job replaces <code>.github/workflows/</code> with the default-branch tree after checkout and passes <code>github_token</code> so <code>claude-code-action</code> skips its OIDC workflow-content check. On a dispatched review it also omits <code>--ref</code>, so GitHub executes the default-branch caller rather than the PR head’s YAML. A files-list response shorter than the PR’s <code>changed_files</code> count is treated the same as a failed listing (GitHub caps that endpoint at 3000 files), so a large PR cannot hide a workflow edit behind the cap. Check-runs for that no-<code>--ref</code> dispatch land on the default branch (<a href="https://github.com/Morrison-Lab/gha/issues/285">#285</a>); the review comment still posts on the PR.</p>
+<p>A gray skip here still means no review ran. Do not read it as an all-clear. A later re-run can recover if fetching the default branch was the problem.</p>
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
@@ -902,7 +915,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> read</span></span>
 <span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2</span></span>
 <span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
 <span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span><span class="co"> # Max-plan OAuth; empty when using API key</span></span>
@@ -915,7 +928,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
 <span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # tag mode: live tracking comment + inline comments (unsafe until anthropics/claude-code-action#1415 ships)</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job</span></span>
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)</span></span>
 <span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
 <span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>

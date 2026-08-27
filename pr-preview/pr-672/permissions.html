@@ -440,6 +440,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/check-extra.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-extra.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">update-snapshots.yml</span></a>
   </div>
@@ -588,6 +594,12 @@ ul.task-list li input[type="checkbox"] {
  <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./reference/check-typos.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-typos.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -634,7 +646,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="per-workflow-grants">Per-workflow grants</h2>
 <ul>
 <li><!--readonly-workflows:begin-->
-<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-equation-renders</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-phi</code>, <code>check-secrets</code>, <code>cursor-code-review</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
+<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-phi</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
 <li><code>check-links</code> opens an issue on <code>main</code> failures, so grant <code>issues: write</code>, <code>pull-requests: read</code>, <code>contents: read</code>.</li>
 <li><code>summary</code> comments on issues and calls the models API, so grant <code>issues: write</code>, <code>models: read</code>, <code>contents: read</code>.</li>
 <li><code>update-snapshots</code> pushes the snapshot-update commit back to the branch, so grant <code>contents: write</code>.</li>
@@ -645,7 +657,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>bump-submodule</code>, <code>sync-shared-fragments</code>, <code>sync-upstream</code> open a PR, so grant <code>contents: write</code>, <code>pull-requests: write</code>, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.</li>
 <li><code>report-failure</code> files or updates the issue tracking a failing workflow, so grant <code>issues: write</code> on the reporting job – and nothing else. It performs no checkout, so it needs no <code>contents</code> grant; the job it watches keeps its own permissions.</li>
 <li><code>claude</code> pushes branches, opens PRs, and dispatches the review workflow, so grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, <code>actions: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</li>
-<li><code>claude-code-review</code> (read-only review) grants <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</li>
+<li><code>claude-code-review</code> (read-only review) grants <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>actions: read</code>, and either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret. The model job’s <code>GITHUB_TOKEN</code> has no write scopes (<code>contents</code> / <code>pull-requests</code> / <code>issues</code> / <code>actions: read</code>); write is confined to jobs that never run the model (<code>gather-context</code> and <code>post-review</code>) (gha#580). <code>actions: read</code> is required on the caller: a <code>permissions:</code> block sets unspecified scopes to none, and <code>post-review</code> needs it to download the packed artifact (the model job also uses it for the <code>github_ci</code> MCP server).</li>
 <li><code>cursor-code-review</code> queues a Cursor Bugbot review. It is read-only, above, but does need the <code>CURSOR_API_KEY</code> secret (Enterprise, <code>admin:*</code> scope).</li>
 <li><code>opencode-code-review</code> is a read-only review that posts its own comment, so grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and set the <code>OPENCODE_API_KEY</code> secret (<a href="https://opencode.ai/docs/zen/">OpenCode Zen</a>).</li>
 <li><code>request-dependabot-review</code> requests a reviewer on the PR, so grant <code>pull-requests: write</code>.</li>

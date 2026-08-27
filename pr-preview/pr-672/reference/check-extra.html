@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>gemini-code-review.yml – Morrison-Lab/gha</title>
+<title>check-extra.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/antigravity-code-review.html" rel="next">
-<link href="../reference/gemini.html" rel="prev">
+<link href="../reference/update-snapshots.html" rel="next">
+<link href="../reference/test-coverage.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/gemini-code-review.html">gemini-code-review.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-extra.html">check-extra.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -475,7 +475,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-extra.yml</span></a>
   </div>
 </li>
@@ -547,7 +547,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/gemini-code-review.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/gemini-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">gemini-code-review.yml</span></a>
   </div>
 </li>
@@ -647,22 +647,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
+  <li><a href="#what-it-catches" id="toc-what-it-catches" class="nav-link active" data-scroll-target="#what-it-catches">What it catches</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
-  <li><a href="#what-it-refuses-to-review" id="toc-what-it-refuses-to-review" class="nav-link" data-scroll-target="#what-it-refuses-to-review">What it refuses to review</a></li>
-  <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/gemini-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-extra.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/gemini-code-review.html">gemini-code-review.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-extra.html">check-extra.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">gemini-code-review.yml</h1>
+<h1 class="title">check-extra.yml</h1>
 </div>
 
 
@@ -679,9 +677,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Read-only Gemini PR code review. The default caller stub is dispatch-triggered: <a href="../reference/gemini.html"><code>gemini.yml</code></a> re-dispatches this workflow on an <code>@gemini review</code> mention, so keep the stub named <code>gemini-code-review.yml</code> (or set <code>gemini.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. Add a <code>pull_request</code> trigger in the caller if you also want automatic reviews on PR updates.</p>
-<p>The stub deliberately has no <code>issue_comment</code> path. <code>gemini.yml</code> already owns the <code>@gemini review</code> mention, so a second comment-triggered dispatch job would review the same PR twice on the one phrasing both matchers accept — the double-dispatch <a href="https://github.com/UCD-SERG/serodynamics/issues/277">UCD-SERG/serodynamics#277</a> ran into.</p>
-<p>Requires a <code>GEMINI_API_KEY</code> secret.</p>
+<p>Extra R-package checks that <code>R CMD check</code> passes over. Adapted from <a href="https://github.com/IndrajeetPatil/workflows"><code>IndrajeetPatil/workflows</code></a> <code>check-extra.yaml</code> (MIT).</p>
+<p>Three jobs run in parallel so every failure surfaces at once instead of short-circuiting at the first – the extra R-install cost is the point, not an accident. Disable any job with the matching <code>check-*</code> input if a package has no tests, no vignettes, or no <code>README.Rmd</code>.</p>
+<section id="what-it-catches" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-catches">What it catches</h2>
+<ol type="1">
+<li><strong>Warnings as errors</strong> on three surfaces, all under <code>options(warn = 2L)</code>. Examples run in a fresh R session with <code>run_dontrun</code> and <code>run_donttest</code> on (the <code>devtools::run_examples(fresh = TRUE, ...)</code> equivalent), because a parent <code>warn=2</code> does not reach <code>callr</code>’s child. Tests use a per-file sweep: <code>testthat::test_file()</code> inside <code>withr::local_options(list(warn = 2L))</code>. A session-wide <code>warn=2</code> crashes parallel testthat workers (<a href="https://github.com/r-lib/testthat/issues/1912">testthat#1912</a>); this is the workaround that issue closed on. Vignettes render via <code>fs::dir_ls("vignettes/", glob = "*.Rmd", recurse = TRUE)</code>. A deprecation warning from a dependency is the motivating case: it is invisible in a normal green check until the deprecation becomes an error a release later.</li>
+<li><strong>Random test order.</strong> <code>testthat::test_dir("tests/testthat", shuffle = TRUE)</code> with a randomly drawn seed that is logged, so a failure is reproducible. <code>TESTTHAT_PARALLEL=FALSE</code> via <code>withr::local_envvar</code>, because shuffling is meaningless if tests run in parallel anyway. This catches a test that only passes because an earlier one left state behind. A missing <code>tests/testthat</code> fails this job; disable it with <code>check-random-order: false</code> if the package has no tests.</li>
+<li><strong>README render</strong>, also with warnings as errors. When <code>check-readme-freshness</code> is on (the default), the job also fails if <code>README.md</code> is modified or untracked after the render – so a consumer does not need a second workflow for that half. Only an explicit <code>false</code> opts out of freshness. A missing <code>README.Rmd</code> fails this job; disable it with <code>check-readme: false</code> if the package has none.</li>
+</ol>
+<p>A missing <code>tests/testthat</code> or <code>vignettes/*.Rmd</code> inside the combined warnings job is a skip with a log line, not a failure, so a package that has only examples still gets those checked.</p>
+<p><code>.qmd</code> vignettes and <code>README.qmd</code> are out of scope: the vignette glob is <code>*.Rmd</code>, matching upstream, and a Quarto README would need Quarto, which this check does not install.</p>
+<p><code>purrr</code>, <code>withr</code>, <code>fs</code>, <code>cli</code>, and <code>pkgload</code> are declared in <code>extra-packages</code> rather than arriving transitively via <code>devtools</code>.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -701,116 +709,79 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>pr-number</code></td>
+<td><code>path</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Pull request number to review. Required on <code>workflow_dispatch</code>; taken from the event on <code>pull_request</code>.</td>
+<td><code>'.'</code></td>
+<td>Path to the R package root (the directory holding <code>DESCRIPTION</code>).</td>
 </tr>
 <tr class="even">
-<td><code>prompt-addendum</code></td>
+<td><code>extra-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Extra prompt instructions appended to the review prompt.</td>
+<td>Extra R packages forwarded to <code>setup-r-dependencies</code>. Use this for packages a README or example needs that are not in <code>DESCRIPTION</code>.</td>
 </tr>
 <tr class="odd">
-<td><code>checkout-submodules</code></td>
+<td><code>install-quarto</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Check out git submodules.</td>
+<td>Install Quarto when setting up R dependencies.</td>
 </tr>
 <tr class="even">
-<td><code>gemini-model</code></td>
-<td>string</td>
-<td><code>'gemini-2.5-flash'</code></td>
-<td>Model passed to <code>run-gemini-cli</code>.</td>
+<td><code>check-warnings</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Run examples, tests, and vignettes with warnings as errors.</td>
 </tr>
 <tr class="odd">
-<td><code>extra-secret-names</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Space-, comma-, or newline-separated caller secret names to export into the reviewer environment (e.g.&nbsp;<code>'EPI202_TOKEN EPI204_TOKEN'</code>). Requires <code>secrets: inherit</code> on the caller <code>uses:</code>. Secret names must match <code>[A-Z_][A-Z0-9_]*</code> and cannot shadow protected workflow environment variables. Empty to skip.</td>
+<td><code>check-random-order</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Run testthat with <code>shuffle = TRUE</code> and a logged seed.</td>
+</tr>
+<tr class="even">
+<td><code>check-readme</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Render <code>README.Rmd</code> with warnings as errors.</td>
+</tr>
+<tr class="odd">
+<td><code>check-readme-freshness</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>When the README job runs, fail if <code>README.md</code> is modified or untracked after the render.</td>
 </tr>
 </tbody>
 </table>
-</section>
-<section id="secrets" class="level2">
-<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Secret</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>GEMINI_API_KEY</code></td>
-<td>no</td>
-<td>Gemini API key. Without it the run reaches Gemini CLI and fails there.</td>
-</tr>
-<tr class="even">
-<td><code>SUBMODULES_TOKEN</code></td>
-<td>no</td>
-<td>Token used to check out private submodules.</td>
-</tr>
-</tbody>
-</table>
+<p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and <code>id-token: write</code>.</p>
-</section>
-<section id="what-it-refuses-to-review" class="level2">
-<h2 class="anchored" data-anchor-id="what-it-refuses-to-review">What it refuses to review</h2>
-<p>The automatic <code>pull_request</code> path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.</p>
-<p>A <code>workflow_dispatch</code> run carries none of that payload, only <code>pr-number</code>, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad <code>pr-number</code>) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.</p>
-<p>Only one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.</p>
-</section>
-<section id="concurrency" class="level2">
-<h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
-<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>gemini-code-review.yml</code> manages per-PR concurrency internally on its <code>review</code> job (<code>group: gemini-review-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
+<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/gemini-code-review.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Gemini Code Review</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-extra.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Extra R-package checks</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">  # Optional: automatic review on PR activity.</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">  # pull_request:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">  #   types: [opened, synchronize, ready_for_review, reopened]</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">inputs</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr_number</span><span class="kw">:</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> </span><span class="st">'Pull request number to review'</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">required</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> string</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">review</span><span class="kw">:</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/gemini-code-review.yml@v2</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-model: gemini-2.5-flash</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>gemini-code-review.yml</code>).</p>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">extra</span><span class="kw">:</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-extra.yml@v2</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: 'any::ggthemes'</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-warnings: true</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-random-order: true</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-readme: true</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-readme-freshness: true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <code>check-extra.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, for the reason <a href="../reference/check-secrets.html"><code>check-secrets.qmd</code></a> records: a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it, and <code>check-links</code> rightly fails it.)</p>
 
 
 </section>
@@ -1231,13 +1202,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/gemini.html" class="pagination-link" aria-label="gemini.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">gemini.yml</span>
+      <a href="../reference/test-coverage.html" class="pagination-link" aria-label="test-coverage.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">test-coverage.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/antigravity-code-review.html" class="pagination-link" aria-label="antigravity-code-review.yml">
-        <span class="nav-page-text">antigravity-code-review.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/update-snapshots.html" class="pagination-link" aria-label="update-snapshots.yml">
+        <span class="nav-page-text">update-snapshots.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1246,4 +1217,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/gemini-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-extra.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
