@@ -1,0 +1,99 @@
+name: Lint R files (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      scope:
+        description: >-
+          What to lint: changed-files (only files this PR changed; requires a
+          pull_request event), package (lintr::lint_package()), or project
+          (lintr::lint_dir()).
+        type: string
+        default: 'changed-files'
+      path:
+        description: Path to the R package or project root.
+        type: string
+        default: '.'
+      linter-file:
+        description: >-
+          Path to a lintr config ('.lintr' or '.lintr.R'). Empty lets lintr
+          auto-detect.
+        type: string
+        default: ''
+      install-quarto:
+        description: Install Quarto when setting up R dependencies.
+        type: boolean
+        default: false
+      use-renv:
+        description: >-
+          Restore R dependencies with renv (r-lib/actions/setup-renv) instead of
+          DESCRIPTION-based setup-r-dependencies. Set true for renv-pinned repos.
+        type: boolean
+        default: false
+      renv-cache-version:
+        description: Cache version suffix passed to setup-renv.
+        type: string
+        default: '1'
+      apt-packages:
+        description: Extra apt packages to install before setting up R/renv dependencies (space-separated).
+        type: string
+        default: ''
+      extra-packages:
+        description: >-
+          Extra R packages to install (space- or comma-separated; passed to
+          setup-r-dependencies under DESCRIPTION, or installed from CRAN under
+          use-renv: true or when path has no DESCRIPTION). gh and lintr are
+          always installed from CRAN, never from GitHub HEAD.
+        type: string
+        default: ''
+      install-package:
+        description: >-
+          Run `R CMD INSTALL` before linting so object_usage_linter can
+          resolve the package's own functions. Skipped when path has no
+          DESCRIPTION. Set false to skip even when DESCRIPTION is present.
+        type: boolean
+        default: true
+      fail:
+        description: Fail the workflow when lintr reports a lint.
+        type: boolean
+        default: true
+
+jobs:
+  lint-changed-files:
+    runs-on: ubuntu-latest
+    # Whole-tree package/project lint can exceed the 20-minute
+    # lint-changed-lines budget; 30 is still a hang-catch, not a tight SLA.
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Require a pull request for changed-files scope
+        if: ${{ inputs.scope == 'changed-files' && !github.event.pull_request.number }}
+        shell: bash
+        run: |
+          echo "::error::scope=changed-files requires a pull_request event (the changed-file set comes from the PR)."
+          exit 1
+
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # changed-files lints the PR's own files, so check out the PR head
+          # (not the merge ref). package/project scopes use github.sha, which
+          # is the merge commit on a pull_request event -- matching the r-lib
+          # example and the qwt/qbt whole-project workflows.
+          ref: ${{ inputs.scope == 'changed-files' && github.event.pull_request.head.sha || github.sha }}
+
+      - name: Lint R files
+        uses: Morrison-Lab/gha/lint-changed-files@v2
+        with:
+          scope: ${{ inputs.scope }}
+          path: ${{ inputs.path }}
+          linter-file: ${{ inputs.linter-file }}
+          install-quarto: ${{ inputs.install-quarto }}
+          use-renv: ${{ inputs.use-renv }}
+          renv-cache-version: ${{ inputs.renv-cache-version }}
+          apt-packages: ${{ inputs.apt-packages }}
+          extra-packages: ${{ inputs.extra-packages }}
+          install-package: ${{ inputs.install-package }}
+          fail: ${{ inputs.fail }}

@@ -1,0 +1,103 @@
+---
+title: "lint-changed-files.yml"
+---
+
+Run [`lintr`](https://lintr.r-lib.org/) at one of three scopes, selected by
+the `scope` input:
+
+- `changed-files` (default) -- lint only the files a pull request changed.
+  This is the [r-lib example][r-lib-lint-changed-files] pattern
+  several lab repos carry as a bespoke copy
+  (`ucdavis/win`, `Morrison-Lab/rpt`, `d-morrison/qwt`).
+- `package` -- `lintr::lint_package()` over the whole package.
+- `project` -- `lintr::lint_dir()` over the whole project
+  (`d-morrison/qwt`'s `lint-project.yaml`, `d-morrison/qbt`).
+
+lintr is installed from CRAN (`any::lintr` / `install.packages()`), never
+from `r-lib/lintr` on GitHub HEAD.
+An unpinned HEAD install is the one dependency
+[IndrajeetPatil/workflows][indrajeet-lint] leaves floating;
+an upstream commit can break callers' CI with no change on either side.
+
+This is a whole-file gate. For the incremental alternative that reports only
+the lints on lines a PR added or modified, see
+[`lint-changed-lines.yml`](lint-changed-lines.qmd). That capability stays
+separate: its added-lines diffing is different machinery from these three
+scopes.
+
+## How it works
+
+The reusable workflow checks out the **PR head** when `scope` is
+`changed-files` (the changed-file set comes from the GitHub "list PR files"
+API, whose paths are relative to the head commit) and `github.sha` otherwise
+(the merge commit on a `pull_request` event, matching the r-lib example and
+the qwt/qbt whole-project workflows). It then sets up R, installs lintr from
+CRAN, optionally installs the package (so `object_usage_linter` can resolve
+the package's own functions; skipped when `path` has no `DESCRIPTION`),
+and runs lintr at the requested scope.
+
+`changed-files` requires a `pull_request` event. It lints with
+`lint_package()` when `path` holds a `DESCRIPTION` (the rpt form) and with
+`lint_dir()` otherwise (the win/qwt form). Unchanged files are passed as
+lintr `exclusions`, including dotfiles, so an unchanged `.lintr.R` is not
+re-linted on every PR. The GitHub API call uses `.limit = Inf` so a PR that
+changes more files than one API page is not silently under-linted.
+
+`package` and `project` can run on `push` as well as `pull_request`.
+
+## Inputs
+
+| Input                | Type    | Default            | Description                                                                                                                                                       |
+| -------------------- | ------- | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scope`              | string  | `'changed-files'`  | What to lint: `changed-files`, `package`, or `project`.                                                                                                           |
+| `path`               | string  | `'.'`              | Path to the R package or project root (the directory holding `DESCRIPTION`, when there is one).                                                                   |
+| `linter-file`        | string  | `''`               | Path to a lintr config (`.lintr` or `.lintr.R`). Empty lets lintr auto-detect `.lintr` / `.lintr.R`.                                                              |
+| `install-quarto`     | boolean | `false`            | Install Quarto when setting up R dependencies.                                                                                                                    |
+| `use-renv`           | boolean | `false`            | Restore dependencies with `renv` (`setup-renv`) instead of DESCRIPTION-based `setup-r-dependencies`.                                                              |
+| `renv-cache-version` | string  | `'1'`              | Cache version suffix passed to `setup-renv`.                                                                                                                      |
+| `apt-packages`       | string  | `''`               | Extra apt packages to install before setting up dependencies (space-separated).                                                                                   |
+| `extra-packages`     | string  | `''`               | Extra R packages to install (space- or comma-separated). `gh` and `lintr` are always installed from CRAN.                                                         |
+| `install-package`    | boolean | `true`             | Run `R CMD INSTALL` before linting so `object_usage_linter` can resolve the package's own functions. Skipped when `path` has no `DESCRIPTION`. Set `false` to skip even when `DESCRIPTION` is present. |
+| `fail`               | boolean | `true`             | Fail the workflow when lintr reports a lint (rather than warn only).                                                                                              |
+
+## Permissions
+
+`contents: read` and `pull-requests: read` (to read the PR's changed-file
+list when `scope` is `changed-files`). `package` / `project` do not need
+the pull-request grant; it is still read-only, so no caller `permissions:`
+block is required.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/lint-changed-files.yml in your repo.
+# Default: lint the files a pull request changed.
+name: lint-changed-files
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    uses: Morrison-Lab/gha/.github/workflows/lint-changed-files.yml@v2
+    # with:
+    #   scope: 'changed-files'  # or 'package' / 'project'
+    #   path: '.'               # R package or project root
+    #   linter-file: ''         # empty: lintr auto-detects .lintr / .lintr.R
+    #   install-quarto: false   # true to install Quarto with R dependencies
+    #   use-renv: false         # true to restore dependencies with setup-renv
+    #   renv-cache-version: '1' # bump to invalidate renv cache
+    #   apt-packages: ''        # system packages required for compilation
+    #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)
+    #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present
+    #   fail: false             # warn instead of failing on lints
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for the full caller stub (`lint-changed-files.yml`).
+
+Pin `@v2`: this capability was added after `@v1` was frozen, so it does not
+exist at that tag.
+
+[r-lib-lint-changed-files]: https://github.com/r-lib/actions/blob/v2/examples/lint-changed-files.yaml
+[indrajeet-lint]: https://github.com/IndrajeetPatil/workflows/blob/main/.github/workflows/lint.yaml
