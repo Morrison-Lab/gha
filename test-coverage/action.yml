@@ -122,9 +122,14 @@ runs:
         disable_search: true
 
     # After the upload so a threshold miss still publishes cobertura.xml
-    # (the artifact this capability exists to produce). An `if:` replaces
-    # the implicit success() default, so success() is load-bearing: without
-    # it this step would run after a failed measurement (empty percent).
+    # (the artifact this capability exists to produce).
+    # `success()` here is EXPLICIT, not load-bearing. A step's implicit
+    # success() is overridden only when the `if:` contains a status check
+    # function (success/failure/always/cancelled); a plain expression like
+    # `inputs.min-coverage != ''` still requires every earlier step to have
+    # succeeded -- see lint-changed-lines/action.yml, which relies on that
+    # implicit behaviour in three places. Kept for readability, since a
+    # threshold gate is where a reader most wants the ordering spelled out.
     # The min-coverage check skips spawning R when the caller left the bar off.
     - name: Enforce min-coverage
       if: success() && inputs.min-coverage != ''
