@@ -451,6 +451,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/lint-changed-files.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">lint-changed-files.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">lint-workflows.yml</span></a>
   </div>
@@ -694,6 +700,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="projects-v2-needs-its-own-token" class="level2">
 <h2 class="anchored" data-anchor-id="projects-v2-needs-its-own-token">Projects v2 needs its own token</h2>
 <p><code>GITHUB_TOKEN</code> cannot read or write Projects v2, and the <code>repository-projects</code> scope covers only the sunset classic Projects. Without <code>PROJECTS_TOKEN</code>, labelling still works and the board step is a no-op — which is the common case for modern consumers. Supply a PAT or GitHub App token carrying the <code>project</code> scope to enable the board step.</p>
+<p>Note that supplying it changes the identity of the <strong>whole step</strong>, not just the Projects call: <code>GH_TOKEN</code> is set once for the step, so the label edit and any comment run under the same token. Scope it accordingly.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -757,7 +764,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="odd">
 <td><code>PROJECTS_TOKEN</code></td>
 <td>no</td>
-<td>PAT or App token with the <code>project</code> scope, for Projects v2 writes.</td>
+<td>PAT or App token with the <code>project</code> scope, for Projects v2 writes. <strong>Step-global</strong>: when set it backs every <code>gh</code> call in the step, not only the board add.</td>
 </tr>
 </tbody>
 </table>
