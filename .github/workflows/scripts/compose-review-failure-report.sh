@@ -38,14 +38,17 @@
 #
 # Inputs come from the environment so a caller never has to quote a denied
 # command string onto an argv:
-#   FAILURE_KIND  `high-denial`, `stub`, `hard-error`, `no-output`,
-#                 `deferred`, or `short-circuit`, as written by
-#                 check-review-execution.sh -- or `short-circuit` /
-#                 `bad-credential`, which claude-code-review.yml's own
-#                 "Resolve final review outcome" step writes directly, the
-#                 second of them before that guard ever runs. Anything else
-#                 normalizes to `unknown` and gets generic advice rather than
-#                 a wrong story
+#   FAILURE_KIND  `high-denial`, `stub`, `short-circuit`, `hard-error`,
+#                 `no-output`, or `deferred`, as written by
+#                 check-review-execution.sh. Two of them also come straight
+#                 from claude-code-review.yml's own "Resolve final review
+#                 outcome" step: `short-circuit`, which that step sets as
+#                 `attempt_kind` when the retry left no checkable execution
+#                 file, and `bad-credential`, which the guard never writes at
+#                 all -- it is decided from the pre-flight credential check,
+#                 and is tested before that step consults the guard's own
+#                 outcome (gha#686). Anything else normalizes to `unknown` and
+#                 gets generic advice rather than a wrong story
 #   DENIALS       permission_denials_count, or the 999999 sentinel, or empty
 #   DENIED_TOOLS  check-review-execution.sh's denied_tools output (may be empty)
 #   MAX_DENIALS   the stub-retry threshold the guard compared against; empty

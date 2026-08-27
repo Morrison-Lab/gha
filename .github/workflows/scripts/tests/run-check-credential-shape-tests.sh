@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Exercises check-credential-shape.sh offline against a table of credential
-# values (gha#686). Wired into _selftest.yml's `review-fail-check` job.
+# values (gha#686). Wired into _selftest.yml's `credential-shape` job.
 #
 # The negative cases are the ones to keep if this suite is ever trimmed. A
 # validator that answers `true` too eagerly BLOCKS review entirely for a
@@ -33,8 +33,21 @@ run() {
   # The two-line contract is read by fixed line offset in the calling step, so
   # a reordering would break the caller silently. Assert the shape, not just
   # the verdict -- the same reasoning run-classify-push-failure-tests.sh gives.
-  if [[ "$(wc -l <<< "$out")" != "2" ]]; then
-    echo "::error::$name: expected a 2-line contract, got $(wc -l <<< "$out") lines"
+  # Arithmetic, not string, comparison: BSD/macOS `wc -l` pads its output with
+  # leading spaces, so `!= "2"` fails every case on a maintainer's own machine
+  # while CI stays green (gha#688). The sibling
+  # run-classify-opencode-run-tests.sh also compares numerically, though its
+  # `-ge 4` is an ordinal threshold rather than a portability decision, so it
+  # is precedent for the form and not evidence of the reason.
+  # No CI guard catches a reintroduction: this job runs on ubuntu-latest only,
+  # and the string form is valid shell that shellcheck will not flag. A macOS
+  # leg was considered and left to gha#690 rather than decided here, so this
+  # comment is the only thing standing between the next author and the same
+  # bug.
+  local line_count
+  line_count="$(wc -l <<< "$out")"
+  if [[ "$line_count" -ne 2 ]]; then
+    echo "::error::$name: expected a 2-line contract, got $((line_count)) lines"
     failures=$((failures + 1))
     return
   fi

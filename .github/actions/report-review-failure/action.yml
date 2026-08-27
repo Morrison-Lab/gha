@@ -27,7 +27,9 @@ inputs:
       `bad-credential` (gha#686 -- the pre-flight check found every configured
       credential secret structurally unusable, so no review was attempted).
       Anything else is normalized to `unknown` and gets generic advice rather
-      than a wrong story.
+      than a wrong story. Keep this list in step with the arms
+      compose-review-failure-report.sh actually handles: the field is not
+      validated against an enum here, so a drift is silent.
     required: true
   pr-number:
     description: >-

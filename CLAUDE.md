@@ -1643,6 +1643,23 @@ counting `::error::` lines, which is how the first draft of this paragraph
 reported each one inflated by one: the summary is itself an `::error::` line,
 so a `grep -c` over them counts a fourteenth thing that is not a case
 (gha#687 review finding 4).
+The two-line contract assertion compares the line count **arithmetically**,
+which is portability rather than taste: BSD/macOS `wc -l` pads its output with
+leading spaces, so a string comparison against `"2"` failed all 14 cases on a
+maintainer's own machine while CI stayed green (gha#688).
+A suite meant to be runnable off-runner failing off-runner is the least visible
+failure available, and a red local run reads as the change under test having
+broken something.
+No other site in the repo compares a raw `wc -l` result as a string, but the
+enumeration needs three buckets rather than two: three sites compare
+arithmetically (`run-classify-opencode-run-tests.sh`,
+`run-classify-gemini-failure-tests.sh`, `run-classify-push-failure-tests.sh`),
+four strip the padding first with `tr -d` (`check-junk-files.sh` twice,
+`claude.yml`, `inject-canonical-urls/action.yml`), and three never compare at
+all, interpolating the count into a message where the padding is harmless
+(`_selftest.yml` twice, `claude.yml`).
+That third bucket is why "every other site compares safely" would have been
+false: those three avoid the bug by not being a comparison.
 CI runs it as the `credential-shape` job in `_selftest.yml`, kept separate from
 `review-fail-check` so a failure is attributable at a glance --- the same
 one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.

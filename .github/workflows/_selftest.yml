@@ -1169,10 +1169,11 @@ jobs:
           fi
           echo "pack-review-payload wrote payload.json and the denied_tools sidecar"
 
+  # gha#686: the pre-flight credential-shape check claude-code-review.yml runs
+  # before it spends money on an SDK call that a malformed secret dooms.
   # Kept as its own job rather than folded into review-fail-check, so a failure
   # here is attributable at a glance -- the same one-capability-per-job split
-  # phi-tests, gemini-review-fail-check, and review-failure-report use
-  # (gha#686).
+  # phi-tests, gemini-review-fail-check, and review-failure-report use.
   credential-shape:
     runs-on: ubuntu-latest
     timeout-minutes: 20
