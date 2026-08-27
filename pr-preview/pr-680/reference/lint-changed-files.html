@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>antigravity-code-review.yml – Morrison-Lab/gha</title>
+<title>lint-changed-files.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/cursor-code-review.html" rel="next">
-<link href="../reference/gemini-code-review.html" rel="prev">
+<link href="../reference/lint-workflows.html" rel="next">
+<link href="../reference/lint-changed-lines.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/antigravity-code-review.html">antigravity-code-review.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/lint-changed-files.html">lint-changed-files.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -457,7 +457,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/lint-changed-files.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/lint-changed-files.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">lint-changed-files.yml</span></a>
   </div>
 </li>
@@ -565,7 +565,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/antigravity-code-review.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/antigravity-code-review.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">antigravity-code-review.yml</span></a>
   </div>
 </li>
@@ -659,21 +659,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
+  <li><a href="#how-it-works" id="toc-how-it-works" class="nav-link active" data-scroll-target="#how-it-works">How it works</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
-  <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/antigravity-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/lint-changed-files.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/antigravity-code-review.html">antigravity-code-review.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/lint-changed-files.html">lint-changed-files.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">antigravity-code-review.yml</h1>
+<h1 class="title">lint-changed-files.yml</h1>
 </div>
 
 
@@ -690,17 +689,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Automated agentic code review, security audit, or test-suite generation via the Google Antigravity Python SDK (<code>google-antigravity</code>).</p>
-<p>Supports three operational modes (<code>code-review</code>, <code>security-audit</code>, <code>test-generation</code>) and two execution policies (<code>on-push</code> for automatic PR updates and <code>on-request</code> for manual/dispatch runs).</p>
-<p>Requires a <code>GEMINI_API_KEY</code> secret.</p>
+<p>Run <a href="https://lintr.r-lib.org/"><code>lintr</code></a> at one of three scopes, selected by the <code>scope</code> input:</p>
+<ul>
+<li><code>changed-files</code> (default) – lint only the files a pull request changed. This is the <a href="https://github.com/r-lib/actions/blob/v2/examples/lint-changed-files.yaml">r-lib example</a> pattern several lab repos carry as a bespoke copy (<code>ucdavis/win</code>, <code>Morrison-Lab/rpt</code>, <code>d-morrison/qwt</code>).</li>
+<li><code>package</code> – <code>lintr::lint_package()</code> over the whole package.</li>
+<li><code>project</code> – <code>lintr::lint_dir()</code> over the whole project (<code>d-morrison/qwt</code>’s <code>lint-project.yaml</code>, <code>d-morrison/qbt</code>).</li>
+</ul>
+<p>lintr is installed from CRAN (<code>any::lintr</code> / <code>install.packages()</code>), never from <code>r-lib/lintr</code> on GitHub HEAD. An unpinned HEAD install is the one dependency <a href="https://github.com/IndrajeetPatil/workflows/blob/main/.github/workflows/lint.yaml">IndrajeetPatil/workflows</a> leaves floating; an upstream commit can break callers’ CI with no change on either side.</p>
+<p>This is a whole-file gate. For the incremental alternative that reports only the lints on lines a PR added or modified, see <a href="../reference/lint-changed-lines.html"><code>lint-changed-lines.yml</code></a>. That capability stays separate: its added-lines diffing is different machinery from these three scopes.</p>
+<section id="how-it-works" class="level2">
+<h2 class="anchored" data-anchor-id="how-it-works">How it works</h2>
+<p>The reusable workflow checks out the <strong>PR head</strong> when <code>scope</code> is <code>changed-files</code> (the changed-file set comes from the GitHub “list PR files” API, whose paths are relative to the head commit) and <code>github.sha</code> otherwise (the merge commit on a <code>pull_request</code> event, matching the r-lib example and the qwt/qbt whole-project workflows). It then sets up R, installs lintr from CRAN, optionally installs the package (so <code>object_usage_linter</code> can resolve the package’s own functions; skipped when <code>path</code> has no <code>DESCRIPTION</code>), and runs lintr at the requested scope.</p>
+<p><code>changed-files</code> requires a <code>pull_request</code> event. It lints with <code>lint_package()</code> when <code>path</code> holds a <code>DESCRIPTION</code> (the rpt form) and with <code>lint_dir()</code> otherwise (the win/qwt form). Unchanged files are passed as lintr <code>exclusions</code>, including dotfiles, so an unchanged <code>.lintr.R</code> is not re-linted on every PR. The GitHub API call uses <code>.limit = Inf</code> so a PR that changes more files than one API page is not silently under-linted.</p>
+<p><code>package</code> and <code>project</code> can run on <code>push</code> as well as <code>pull_request</code>.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
+<col style="width: 9%">
+<col style="width: 3%">
+<col style="width: 8%">
+<col style="width: 78%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -712,121 +722,97 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>mode</code></td>
+<td><code>scope</code></td>
 <td>string</td>
-<td><code>'code-review'</code></td>
-<td>Operational mode: <code>code-review</code>, <code>security-audit</code>, or <code>test-generation</code>.</td>
+<td><code>'changed-files'</code></td>
+<td>What to lint: <code>changed-files</code>, <code>package</code>, or <code>project</code>.</td>
 </tr>
 <tr class="even">
-<td><code>pr-number</code></td>
+<td><code>path</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Pull request number to analyze (required for <code>workflow_dispatch</code>).</td>
+<td><code>'.'</code></td>
+<td>Path to the R package or project root (the directory holding <code>DESCRIPTION</code>, when there is one).</td>
 </tr>
 <tr class="odd">
-<td><code>prompt-addendum</code></td>
+<td><code>linter-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Extra prompt instructions appended to the agent task prompt.</td>
+<td>Path to a lintr config (<code>.lintr</code> or <code>.lintr.R</code>). Empty lets lintr auto-detect <code>.lintr</code> / <code>.lintr.R</code>.</td>
 </tr>
 <tr class="even">
-<td><code>checkout-submodules</code></td>
+<td><code>install-quarto</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Check out git submodules.</td>
+<td>Install Quarto when setting up R dependencies.</td>
 </tr>
 <tr class="odd">
-<td><code>model</code></td>
+<td><code>use-renv</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Restore dependencies with <code>renv</code> (<code>setup-renv</code>) instead of DESCRIPTION-based <code>setup-r-dependencies</code>.</td>
+</tr>
+<tr class="even">
+<td><code>renv-cache-version</code></td>
+<td>string</td>
+<td><code>'1'</code></td>
+<td>Cache version suffix passed to <code>setup-renv</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Antigravity / Gemini model override passed to the SDK (optional).</td>
+<td>Extra apt packages to install before setting up dependencies (space-separated).</td>
 </tr>
 <tr class="even">
-<td><code>trigger-policy</code></td>
+<td><code>extra-packages</code></td>
 <td>string</td>
-<td><code>'any'</code></td>
-<td>Enforcement mode: <code>any</code>, <code>on-push</code>, or <code>on-request</code>.</td>
+<td><code>''</code></td>
+<td>Extra R packages to install (space- or comma-separated). <code>gh</code> and <code>lintr</code> are always installed from CRAN.</td>
 </tr>
-</tbody>
-</table>
-</section>
-<section id="secrets" class="level2">
-<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Secret</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
 <tr class="odd">
-<td><code>GEMINI_API_KEY</code></td>
-<td>no</td>
-<td>Gemini / Antigravity API key.</td>
+<td><code>install-package</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Run <code>R CMD INSTALL</code> before linting so <code>object_usage_linter</code> can resolve the package’s own functions. Skipped when <code>path</code> has no <code>DESCRIPTION</code>. Set <code>false</code> to skip even when <code>DESCRIPTION</code> is present.</td>
 </tr>
 <tr class="even">
-<td><code>SUBMODULES_TOKEN</code></td>
-<td>no</td>
-<td>Token used to check out private submodules.</td>
+<td><code>fail</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Fail the workflow when lintr reports a lint (rather than warn only).</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and <code>id-token: write</code>.</p>
-</section>
-<section id="concurrency" class="level2">
-<h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
-<p>Do not declare a top-level <code>concurrency:</code> block in your caller workflow. <code>antigravity-code-review.yml</code> manages per-PR concurrency internally on its <code>antigravity-review</code> job (<code>group: antigravity-review-&lt;mode&gt;-&lt;PR&gt;</code>). Adding a top-level <code>concurrency:</code> block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (<a href="https://github.com/Morrison-Lab/gha/issues/437">gha#437</a>).</p>
+<p><code>contents: read</code> and <code>pull-requests: read</code> (to read the PR’s changed-file list when <code>scope</code> is <code>changed-files</code>). <code>package</code> / <code>project</code> do not need the pull-request grant; it is still read-only, so no caller <code>permissions:</code> block is required.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/antigravity-code-review.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Antigravity Code Review &amp; Audit</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">opened</span><span class="kw">,</span><span class="at"> synchronize</span><span class="kw">,</span><span class="at"> ready_for_review</span><span class="kw">,</span><span class="at"> reopened</span><span class="kw">]</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">inputs</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">mode</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> </span><span class="st">'Operational mode: code-review, security-audit, or test-generation'</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="st">'code-review'</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> choice</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">options</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="kw">-</span><span class="at"> code-review</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="kw">-</span><span class="at"> security-audit</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="kw">-</span><span class="at"> test-generation</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr_number</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> </span><span class="st">'Pull request number'</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> string</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">antigravity-review</span><span class="kw">:</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/antigravity-code-review.yml@v2</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">mode</span><span class="kw">:</span><span class="at"> ${{ inputs.mode || 'code-review' }}</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">trigger-policy</span><span class="kw">:</span><span class="at"> ${{ github.event_name == 'pull_request' &amp;&amp; 'on-push' || 'on-request' }}</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">      # checkout-submodules: true</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">      # model: ''</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">      # prompt-addendum: |</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">      #   Repo-specific review guidance.</span></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/lint-changed-files.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Default: lint the files a pull request changed.</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> lint-changed-files</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">lint</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/lint-changed-files.yml@v2</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   scope: 'changed-files'  # or 'package' / 'project'</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'               # R package or project root</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   linter-file: ''         # empty: lintr auto-detects .lintr / .lintr.R</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false   # true to install Quarto with R dependencies</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-renv: false         # true to restore dependencies with setup-renv</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   renv-cache-version: '1' # bump to invalidate renv cache</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # system packages required for compilation</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false             # warn instead of failing on lints</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-changed-files.yml</code>).</p>
+<p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag.</p>
 
 
 </section>
@@ -1247,13 +1233,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/gemini-code-review.html" class="pagination-link" aria-label="gemini-code-review.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">gemini-code-review.yml</span>
+      <a href="../reference/lint-changed-lines.html" class="pagination-link" aria-label="lint-changed-lines.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">lint-changed-lines.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/cursor-code-review.html" class="pagination-link" aria-label="cursor-code-review.yml">
-        <span class="nav-page-text">cursor-code-review.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/lint-workflows.html" class="pagination-link" aria-label="lint-workflows.yml">
+        <span class="nav-page-text">lint-workflows.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1262,4 +1248,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/antigravity-code-review.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/lint-changed-files.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
