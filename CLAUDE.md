@@ -2634,6 +2634,7 @@ log is not misdiagnosed as a `401`:
   validation skip`, or just READ the "Run Claude Code Review" step's own
   output rather than grepping for a guessed string (per
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
+
 - The validation keys on workflow CONTENT vs. the default branch, independent
   of trigger type.
 
