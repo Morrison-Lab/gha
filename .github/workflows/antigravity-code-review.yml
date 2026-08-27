@@ -77,6 +77,16 @@ on:
 
 jobs:
   antigravity-review:
+    # `safe-to-test` (referenced in the gate below) is a TRUST BOUNDARY, not a
+    # convenience label: it lets a fork PR's code run with GEMINI_API_KEY (and,
+    # where configured, GCP credentials) in scope. Apply it only after a
+    # maintainer has read the fork's diff, and re-apply per push -- a label set
+    # before a later push still admits that push. This is the repo's only
+    # ok-to-test-style bypass (gha#672 review, finding 3).
+    #
+    # Keep this comment OUTSIDE the `if:` block. Inside a folded scalar `#` is
+    # literal text, not a comment, so it lands in the expression and breaks the
+    # gate -- which is what happened here, and which YAML parsing cannot see.
     if: >-
       (inputs.trigger-policy == 'any' ||
        (inputs.trigger-policy == 'on-push' && github.event_name == 'pull_request') ||
@@ -85,12 +95,6 @@ jobs:
         github.event_name == 'workflow_dispatch' ||
         (
           github.event.pull_request.draft == false &&
-          # `safe-to-test` is a TRUST BOUNDARY, not a convenience label: it lets a
-          # fork PR's code run with GEMINI_API_KEY (and, where configured, GCP
-          # credentials) in scope. Apply it only after a maintainer has read the
-          # fork's diff, and re-apply per push -- a label set before a later push
-          # still admits that push. This is the repo's only ok-to-test-style
-          # bypass (gha#672 review, finding 3).
           (github.event.pull_request.head.repo.full_name == github.repository || contains(github.event.pull_request.labels.*.name, 'safe-to-test')) &&
           github.event.sender.type != 'Bot'
         )
