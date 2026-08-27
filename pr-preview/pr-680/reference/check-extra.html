@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>lint-workflows.yml – Morrison-Lab/gha</title>
+<title>check-extra.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/check-news.html" rel="next">
-<link href="../reference/lint-changed-lines.html" rel="prev">
+<link href="../reference/update-snapshots.html" rel="next">
+<link href="../reference/test-coverage.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/lint-workflows.html">lint-workflows.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-extra.html">check-extra.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -457,7 +457,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/lint-workflows.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">lint-workflows.yml</span></a>
   </div>
 </li>
@@ -481,7 +481,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-extra.yml</span></a>
   </div>
 </li>
@@ -653,21 +653,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs">Outputs</a></li>
+  <li><a href="#what-it-catches" id="toc-what-it-catches" class="nav-link active" data-scroll-target="#what-it-catches">What it catches</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
-  <li><a href="#landing-on-a-repo-with-pre-existing-findings" id="toc-landing-on-a-repo-with-pre-existing-findings" class="nav-link" data-scroll-target="#landing-on-a-repo-with-pre-existing-findings">Landing on a repo with pre-existing findings</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/lint-workflows.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-extra.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/lint-workflows.html">lint-workflows.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-extra.html">check-extra.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">lint-workflows.yml</h1>
+<h1 class="title">check-extra.yml</h1>
 </div>
 
 
@@ -684,15 +683,27 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Audit the caller’s GitHub Actions workflows and composite actions with <a href="https://github.com/rhysd/actionlint"><code>actionlint</code></a> (syntax/semantics – unknown keys, bad <code>runs-on</code> labels, invalid expression syntax, shellcheck over <code>run:</code> blocks) and <a href="https://github.com/zizmorcore/zizmor"><code>zizmor</code></a> (security – template-injection sinks, credential persistence, overly broad permissions, unpinned actions). The two tools check different things and both are worth running.</p>
+<p>Extra R-package checks that <code>R CMD check</code> passes over. Adapted from <a href="https://github.com/IndrajeetPatil/workflows"><code>IndrajeetPatil/workflows</code></a> <code>check-extra.yaml</code> (MIT).</p>
+<p>Three jobs run in parallel so every failure surfaces at once instead of short-circuiting at the first – the extra R-install cost is the point, not an accident. Disable any job with the matching <code>check-*</code> input if a package has no tests, no vignettes, or no <code>README.Rmd</code>.</p>
+<section id="what-it-catches" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-catches">What it catches</h2>
+<ol type="1">
+<li><strong>Warnings as errors</strong> on three surfaces, all under <code>options(warn = 2L)</code>. Examples run in a fresh R session with <code>run_dontrun</code> and <code>run_donttest</code> on (the <code>devtools::run_examples(fresh = TRUE, ...)</code> equivalent), because a parent <code>warn=2</code> does not reach <code>callr</code>’s child. Tests use a per-file sweep: <code>testthat::test_file()</code> inside <code>withr::local_options(list(warn = 2L))</code>. A session-wide <code>warn=2</code> crashes parallel testthat workers (<a href="https://github.com/r-lib/testthat/issues/1912">testthat#1912</a>); this is the workaround that issue closed on. Vignettes render via <code>fs::dir_ls("vignettes/", glob = "*.Rmd", recurse = TRUE)</code>. A deprecation warning from a dependency is the motivating case: it is invisible in a normal green check until the deprecation becomes an error a release later.</li>
+<li><strong>Random test order.</strong> <code>testthat::test_dir("tests/testthat", shuffle = TRUE)</code> with a randomly drawn seed that is logged, so a failure is reproducible. <code>TESTTHAT_PARALLEL=FALSE</code> via <code>withr::local_envvar</code>, because shuffling is meaningless if tests run in parallel anyway. This catches a test that only passes because an earlier one left state behind. A missing <code>tests/testthat</code> fails this job; disable it with <code>check-random-order: false</code> if the package has no tests.</li>
+<li><strong>README render</strong>, also with warnings as errors. When <code>check-readme-freshness</code> is on (the default), the job also fails if <code>README.md</code> is modified or untracked after the render – so a consumer does not need a second workflow for that half. Only an explicit <code>false</code> opts out of freshness. A missing <code>README.Rmd</code> fails this job; disable it with <code>check-readme: false</code> if the package has none.</li>
+</ol>
+<p>A missing <code>tests/testthat</code> or <code>vignettes/*.Rmd</code> inside the combined warnings job is a skip with a log line, not a failure, so a package that has only examples still gets those checked.</p>
+<p><code>.qmd</code> vignettes and <code>README.qmd</code> are out of scope: the vignette glob is <code>*.Rmd</code>, matching upstream, and a Quarto README would need Quarto, which this check does not install.</p>
+<p><code>purrr</code>, <code>withr</code>, <code>fs</code>, <code>cli</code>, and <code>pkgload</code> are declared in <code>extra-packages</code> rather than arriving transitively via <code>devtools</code>.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 10%">
-<col style="width: 3%">
-<col style="width: 32%">
-<col style="width: 54%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -707,105 +718,76 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
-<td>Root path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting <code>.gitignore</code>.</td>
+<td>Path to the R package root (the directory holding <code>DESCRIPTION</code>).</td>
 </tr>
 <tr class="even">
-<td><code>actionlint-version</code></td>
+<td><code>extra-packages</code></td>
 <td>string</td>
-<td><code>'v1.7.12'</code></td>
-<td>actionlint release tag to install.</td>
+<td><code>''</code></td>
+<td>Extra R packages forwarded to <code>setup-r-dependencies</code>. Use this for packages a README or example needs that are not in <code>DESCRIPTION</code>.</td>
 </tr>
 <tr class="odd">
-<td><code>actionlint-checksum</code></td>
-<td>string</td>
-<td>(pinned SHA-256 for the default version’s <code>linux_amd64</code> tarball)</td>
-<td>Expected SHA-256 of the pinned <code>actionlint-version</code>’s <code>linux_amd64</code> release tarball, verified before extracting it. Update alongside <code>actionlint-version</code>.</td>
-</tr>
-<tr class="even">
-<td><code>zizmor-version</code></td>
-<td>string</td>
-<td><code>'1.28.0'</code></td>
-<td>zizmor PyPI package version to install.</td>
-</tr>
-<tr class="odd">
-<td><code>python-version</code></td>
-<td>string</td>
-<td><code>'3.x'</code></td>
-<td>Python version to set up (for installing zizmor via pip).</td>
-</tr>
-<tr class="even">
-<td><code>pedantic</code></td>
+<td><code>install-quarto</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Run zizmor with <code>--pedantic</code> (also emit code-smell findings, not just security issues).</td>
-</tr>
-<tr class="odd">
-<td><code>fail</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Fail the workflow when either tool reports a finding.</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="outputs" class="level2">
-<h2 class="anchored" data-anchor-id="outputs">Outputs</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 26%">
-<col style="width: 73%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Output</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>actionlint-found</code></td>
-<td><code>'true'</code> if actionlint reported any finding.</td>
+<td>Install Quarto when setting up R dependencies.</td>
 </tr>
 <tr class="even">
-<td><code>zizmor-found</code></td>
-<td><code>'true'</code> if zizmor reported any finding.</td>
+<td><code>check-warnings</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Run examples, tests, and vignettes with warnings as errors.</td>
+</tr>
+<tr class="odd">
+<td><code>check-random-order</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Run testthat with <code>shuffle = TRUE</code> and a logged seed.</td>
+</tr>
+<tr class="even">
+<td><code>check-readme</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Render <code>README.Rmd</code> with warnings as errors.</td>
+</tr>
+<tr class="odd">
+<td><code>check-readme-freshness</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>When the README job runs, fail if <code>README.md</code> is modified or untracked after the render.</td>
 </tr>
 </tbody>
 </table>
+<p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
 <p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
-<section id="landing-on-a-repo-with-pre-existing-findings" class="level2">
-<h2 class="anchored" data-anchor-id="landing-on-a-repo-with-pre-existing-findings">Landing on a repo with pre-existing findings</h2>
-<p>A repo that has never run either tool before will likely see a real backlog of findings on the first run – neither tool is diff-scoped, so both audit every workflow and action file in <code>path</code>, not just what a given PR touches. Rather than block adoption on fixing everything at once, set <code>fail: false</code> to land the capability as a warn-only baseline, then work through the backlog and flip <code>fail</code> back to <code>true</code> (the default) once it’s clean. The <code>actionlint-found</code>/<code>zizmor-found</code> outputs let a caller track progress (e.g. by asserting they eventually both come back <code>'false'</code>) without hand-parsing either tool’s own output.</p>
-</section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/lint-workflows.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Audits GitHub Actions workflows and composite actions with actionlint</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># (syntax/semantics) and zizmor (security). Only contents:read is needed</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># (the default), so no permissions block is required.</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Lint Workflows</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">lint</span><span class="kw">:</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/lint-workflows.yml@v2</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'                       # root path to audit</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pedantic: true                  # also emit zizmor code-smell findings</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false                     # warn instead of failing on findings --</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                   # useful while working through a</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                                   # pre-existing backlog</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-workflows.yml</code>).</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-extra.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Extra R-package checks</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">extra</span><span class="kw">:</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-extra.yml@v2</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: 'any::ggthemes'</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-warnings: true</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-random-order: true</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-readme: true</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-readme-freshness: true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <code>check-extra.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, for the reason <a href="../reference/check-secrets.html"><code>check-secrets.qmd</code></a> records: a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it, and <code>check-links</code> rightly fails it.)</p>
 
 
 </section>
@@ -1226,13 +1208,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/lint-changed-lines.html" class="pagination-link" aria-label="lint-changed-lines.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">lint-changed-lines.yml</span>
+      <a href="../reference/test-coverage.html" class="pagination-link" aria-label="test-coverage.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">test-coverage.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/check-news.html" class="pagination-link" aria-label="check-news.yml">
-        <span class="nav-page-text">check-news.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/update-snapshots.html" class="pagination-link" aria-label="update-snapshots.yml">
+        <span class="nav-page-text">update-snapshots.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1241,4 +1223,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/lint-workflows.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-extra.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
