@@ -25,7 +25,9 @@ Requires a `GEMINI_API_KEY` secret.
 | `service-account` | string | `''` | GCP Service Account email to impersonate. |
 | `max-diff-lines` | string | `'2000'` | Maximum modified lines allowed in a PR diff before skipping review. |
 | `max-diff-files` | string | `'50'` | Maximum modified files allowed in a PR diff before skipping review. |
-| `fail-on-error` | boolean | `false` | Whether to fail the workflow run if the orchestration engine throws an error. |
+| `gcp-project` | string | `''` | GCP project id. Required alongside `workload-identity-provider` for the OIDC credentials to be used: minting them authenticates to GCP, but the SDK only routes through Vertex AI when told to. |
+| `gcp-location` | string | `''` | Vertex AI location (e.g. `us-central1`). Used with `gcp-project`. |
+| `fail-on-error` | boolean | `true` | Whether a genuine error (metadata fetch, diff fetch, empty diff, execution failure) reddens the check. Defaults to `true`: those paths return before any PR comment is posted, so exiting 0 leaves a green check over a silent thread. |
 
 ## Secrets
 
