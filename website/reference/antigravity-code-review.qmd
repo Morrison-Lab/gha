@@ -94,7 +94,7 @@ jobs:
       # the first two authenticate to GCP, the last two are what route the
       # SDK through Vertex. Without them GEMINI_API_KEY is still required.
       # workload-identity-provider: 'projects/123/locations/global/workloadIdentityPools/p/providers/gh'
-      # service-account: 'review-bot@my-project.iam.gserviceaccount.com'
+      # service-account: 'review-bot@my-project.iam.gserviceaccount.com'  # phi-allow: documentation placeholder, not a real address
       # gcp-project: 'my-project'
       # gcp-location: 'us-central1'
       # Skip the review on oversized diffs rather than spending on them.
