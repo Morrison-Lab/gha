@@ -452,6 +452,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/r-cmd-check.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">r-cmd-check.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">update-snapshots.yml</span></a>
   </div>
@@ -652,7 +658,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="per-workflow-grants">Per-workflow grants</h2>
 <ul>
 <li><!--readonly-workflows:begin-->
-<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-phi</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-files</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
+<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-phi</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-files</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>r-cmd-check</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
 <li><code>check-links</code> opens an issue on <code>main</code> failures, so grant <code>issues: write</code>, <code>pull-requests: read</code>, <code>contents: read</code>.</li>
 <li><code>summary</code> comments on issues and calls the models API, so grant <code>issues: write</code>, <code>models: read</code>, <code>contents: read</code>.</li>
 <li><code>update-snapshots</code> pushes the snapshot-update commit back to the branch, so grant <code>contents: write</code>.</li>
@@ -674,7 +680,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="optional-secrets">Optional secrets</h2>
 <ul>
 <li><strong><code>WORKFLOW_TOKEN</code></strong> (a PAT or GitHub App token with <code>contents:write</code> + <code>workflows:write</code>). The integrated <code>GITHUB_TOKEN</code> cannot push changes to files under <code>.github/workflows/</code>; GitHub rejects them without the <code>workflows</code> scope. Add this secret if <code>claude</code> will edit workflow files, to push to a protected branch, or – for <code>bump-dev-version</code> with its default <code>auto-merge</code> in a repo with required status checks – to let the bump PR’s checks run so it can merge (a <code>GITHUB_TOKEN</code>-authored PR’s <code>pull_request</code> checks never report, so the merge stays blocked; see its <a href="./reference/bump-dev-version.html">reference page</a>). Unlike <code>GITHUB_TOKEN</code>, a PAT or App-token push <strong>does</strong> trigger other <code>push</code>-based workflows, so enabling it can set off extra CI runs. When the secret is absent and <code>claude</code> does edit a workflow file, the rejected push is reported as an error naming this secret, and the commits are posted to the thread as a <code>git format-patch</code> so they survive the run.</li>
-<li><strong><code>SUBMODULES_TOKEN</code>.</strong> Public submodules clone anonymously; private ones need this secret. Relevant to <code>claude</code>, <code>claude-code-review</code>, and <code>bump-submodule</code> when <code>checkout-submodules</code> (or the submodule update) touches a private submodule.</li>
+<li><strong><code>SUBMODULES_TOKEN</code>.</strong> Public submodules clone anonymously; private ones need this secret. Relevant to <code>claude</code>, <code>claude-code-review</code>, <code>r-cmd-check</code>, and <code>bump-submodule</code> when <code>checkout-submodules</code> (or the submodule update) touches a private submodule.</li>
 </ul>
 </section>
 <section id="notes-for-private-consumers" class="level2">
