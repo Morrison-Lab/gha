@@ -15,7 +15,7 @@
     "href": "permissions.html#per-workflow-grants",
     "title": "Permissions",
     "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\n\ncheck-ai-tells, check-bibliography-dois, check-equation-renders, check-junk-files, check-new-line-breaks, check-news, check-non-standard-chars, check-phi, check-secrets, check-typos, cursor-code-review, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, spellcheck, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
+    "text": "Per-workflow grants\n\n\ncheck-ai-tells, check-bibliography-dois, check-equation-renders, check-extra, check-junk-files, check-new-line-breaks, check-news, check-non-standard-chars, check-phi, check-secrets, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, spellcheck, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
     "crumbs": [
       "Overview",
       "Permissions"
@@ -48,7 +48,7 @@
     "href": "versioning.html",
     "title": "Versioning",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, and check-typos.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, and check-extra.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -70,7 +70,7 @@
     "href": "versioning.html#pinning-third-party-actions",
     "title": "Versioning",
     "section": "Pinning third-party actions",
-    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, and check-typos.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
+    "text": "Pinning third-party actions\nEvery third-party action is pinned to a full commit SHA, with the human-readable version in a trailing comment:\nuses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0\nThis follows GitHub’s recommended hardening posture: a SHA is immutable, so a re-pointed tag or a compromised upstream cannot silently change what runs. That matters here because jobs like the preview deploy run with contents: write and pull-requests: write. .github/dependabot.yml bumps these pins as upstreams publish releases, so they stay current instead of freezing. When adding a new third-party action, pin it the same way.\nFirst-party Morrison-Lab/gha/* self-references and most examples/ templates intentionally track the moving major tag (currently @v1, except preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, test-coverage.yml, check-equation-renders.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, check-news.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, and check-extra.yml at @v2 - see the versioning note above), so they are not SHA-pinned.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -361,6 +361,66 @@
       "Overview",
       "Reference",
       "sync-upstream.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-changed-lines.html",
+    "href": "reference/lint-changed-lines.html",
+    "title": "lint-changed-lines.yml",
+    "section": "",
+    "text": "Run lintr over the R files a pull request changes, but report only the lints on lines the PR actually added or modified – not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.\nContrast with a whole-file “lint changed files” gate, which fails on function definitions a PR never touched – forcing either a repo-wide reformat or disabling the linter. lint-changed-lines is the incremental alternative. The whole-file, whole-package, and whole-project forms live in lint-changed-files.yml, selected by a scope input; that capability does not fold this one in, because the added-lines diffing here is different machinery.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-changed-lines.html#how-it-works",
+    "href": "reference/lint-changed-lines.html#how-it-works",
+    "title": "lint-changed-lines.yml",
+    "section": "How it works",
+    "text": "How it works\nThe workflow checks out the PR head commit (not the default refs/pull/N/merge ref), sets up R, installs the package (so object_usage_linter can resolve the package’s own functions), then runs lintr on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API patch, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.\nMust be triggered by pull_request (the changed-line set comes from the PR).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-changed-lines.html#inputs",
+    "href": "reference/lint-changed-lines.html#inputs",
+    "title": "lint-changed-lines.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nuse-renv\nboolean\nfalse\nRestore dependencies with renv (setup-renv) instead of DESCRIPTION-based setup-r-dependencies.\n\n\nrenv-cache-version\nstring\n'1'\nCache version suffix passed to setup-renv.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setting up dependencies (space-separated).\n\n\nextra-packages\nstring\n''\nExtra R packages to install (space- or comma-separated; passed to setup-r-dependencies, or installed from CRAN under use-renv: true). gh and lintr are always installed.\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL before linting so object_usage_linter can resolve the package’s own functions. Set false for a repo that is not an installable R package.\n\n\nfail\nboolean\ntrue\nFail the workflow when a lint is found on a changed line (rather than warn only).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-changed-lines.html#permissions",
+    "href": "reference/lint-changed-lines.html#permissions",
+    "title": "lint-changed-lines.yml",
+    "section": "Permissions",
+    "text": "Permissions\ncontents: read and pull-requests: read (to read the PR’s changed-file patches).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-changed-lines.html#example",
+    "href": "reference/lint-changed-lines.html#example",
+    "title": "lint-changed-lines.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-changed-lines.yml in your repo.\n# Lints only the lines a pull request adds or modifies (not whole changed\n# files), so lint rules can be adopted or tightened incrementally.\nname: lint-changed-lines\n\non:\n  pull_request:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2\n    # with:\n    #   path: '.'               # R package root (holding DESCRIPTION)\n    #   use-renv: false         # true to restore dependencies with setup-renv\n    #   renv-cache-version: '1' # bump to invalidate renv cache\n    #   apt-packages: ''        # system packages required for compilation\n    #   extra-packages: ''      # extra R deps (gh + lintr always installed)\n    #   install-package: false  # skip R CMD INSTALL for a non-package repo\n    #   fail: false             # warn instead of failing on lints\nSee the examples/ directory for the full caller stub (lint-changed-lines.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-changed-lines.yml"
     ]
   },
   {
@@ -1340,7 +1400,7 @@
     "href": "reference/claude-code-review.html#the-require-review-gate",
     "title": "claude-code-review.yml",
     "section": "The require-review gate",
-    "text": "The require-review gate\nPut review / require-review in branch protection’s required checks, not review / claude-review: the review job reports success in cases where no verdict was produced, and this gate job exists to distinguish them.\nRead its result as follows.\n\n\n\n\n\n\n\nResult\nWhat it attests\n\n\n\n\nGreen\nA reviewer ran and the job did not fail. Not that the reviewer approved — read the posted verdict for that.\n\n\nGray (skipped)\nNo review ran. Does not block merging.\n\n\nRed\nThe review job did not succeed. Blocks merging.\n\n\n\nOne red result is not a review failure at all: a claude-review run canceled by a newer run of the same PR (cancel-in-progress) also turns this gate red. Check whether claude-review’s conclusion is cancelled rather than failure before investigating the diff, and trust the surviving run’s review.\nThe gate skips gray whenever no review was attempted. That covers anything that made the claude-review job’s own if: false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:\n\nthe API quota was exhausted — either before any review work happened, or part-way through the run, which leaves a 429 behind after real turns and real cost (#520);\nthe PR edits the caller’s own review workflow file.\n\nThat last case deserves care. claude-code-action requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and no re-run or re-dispatch will change that — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.",
+    "text": "The require-review gate\nPut review / require-review in branch protection’s required checks, not review / claude-review: the review job reports success in cases where no verdict was produced, and this gate job exists to distinguish them.\nRead its result as follows.\n\n\n\n\n\n\n\nResult\nWhat it attests\n\n\n\n\nGreen\nA reviewer ran and the job did not fail. Not that the reviewer approved — read the posted verdict for that.\n\n\nGray (skipped)\nNo review ran. Does not block merging.\n\n\nRed\nThe review job did not succeed. Blocks merging.\n\n\n\nOne red result is not a review failure at all: a claude-review run canceled by a newer run of the same PR (cancel-in-progress) also turns this gate red. Check whether claude-review’s conclusion is cancelled rather than failure before investigating the diff, and trust the surviving run’s review.\nThe gate skips gray whenever no review was attempted. That covers anything that made the claude-review job’s own if: false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:\n\nthe API quota was exhausted — either before any review work happened, or part-way through the run, which leaves a 429 behind after real turns and real cost (#520);\nrestoring default-branch copies of .github/workflows/ failed, so the review was skipped rather than executing workflow YAML from the PR head (#598).\n\nPRs that edit workflow files are reviewed when that restore succeeds. The job replaces .github/workflows/ with the default-branch tree after checkout and passes github_token so claude-code-action skips its OIDC workflow-content check. On a dispatched review it also omits --ref, so GitHub executes the default-branch caller rather than the PR head’s YAML. A files-list response shorter than the PR’s changed_files count is treated the same as a failed listing (GitHub caps that endpoint at 3000 files), so a large PR cannot hide a workflow edit behind the cap. Check-runs for that no---ref dispatch land on the default branch (#285); the review comment still posts on the PR.\nA gray skip here still means no review ran. Do not read it as an all-clear. A later re-run can recover if fetching the default branch was the problem.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -2368,63 +2428,123 @@
     ]
   },
   {
-    "objectID": "reference/lint-changed-lines.html",
-    "href": "reference/lint-changed-lines.html",
-    "title": "lint-changed-lines.yml",
+    "objectID": "reference/lint-changed-files.html",
+    "href": "reference/lint-changed-files.html",
+    "title": "lint-changed-files.yml",
     "section": "",
-    "text": "Run lintr over the R files a pull request changes, but report only the lints on lines the PR actually added or modified – not whole changed files. This lets lint rules be adopted or tightened incrementally: new and edited code must comply, while untouched legacy code in the same file is left alone until a PR naturally edits it.\nContrast with a whole-file “lint changed files” gate, which fails on function definitions a PR never touched – forcing either a repo-wide reformat or disabling the linter. lint-changed-lines is the incremental alternative.",
+    "text": "Run lintr at one of three scopes, selected by the scope input:\nlintr is installed from CRAN (any::lintr / install.packages()), never from r-lib/lintr on GitHub HEAD. An unpinned HEAD install is the one dependency IndrajeetPatil/workflows leaves floating; an upstream commit can break callers’ CI with no change on either side.\nThis is a whole-file gate. For the incremental alternative that reports only the lints on lines a PR added or modified, see lint-changed-lines.yml. That capability stays separate: its added-lines diffing is different machinery from these three scopes.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-changed-lines.yml"
+      "lint-changed-files.yml"
     ]
   },
   {
-    "objectID": "reference/lint-changed-lines.html#how-it-works",
-    "href": "reference/lint-changed-lines.html#how-it-works",
-    "title": "lint-changed-lines.yml",
+    "objectID": "reference/lint-changed-files.html#how-it-works",
+    "href": "reference/lint-changed-files.html#how-it-works",
+    "title": "lint-changed-files.yml",
     "section": "How it works",
-    "text": "How it works\nThe workflow checks out the PR head commit (not the default refs/pull/N/merge ref), sets up R, installs the package (so object_usage_linter can resolve the package’s own functions), then runs lintr on each changed R file and keeps only the lints whose line falls on a line the PR added or modified. Those changed lines are parsed from the GitHub “list PR files” API patch, whose line numbers are relative to the PR head – which is why the checkout is pinned to the head commit, so on-disk line numbers match.\nMust be triggered by pull_request (the changed-line set comes from the PR).",
+    "text": "How it works\nThe reusable workflow checks out the PR head when scope is changed-files (the changed-file set comes from the GitHub “list PR files” API, whose paths are relative to the head commit) and github.sha otherwise (the merge commit on a pull_request event, matching the r-lib example and the qwt/qbt whole-project workflows). It then sets up R, installs lintr from CRAN, optionally installs the package (so object_usage_linter can resolve the package’s own functions; skipped when path has no DESCRIPTION), and runs lintr at the requested scope.\nchanged-files requires a pull_request event. It lints with lint_package() when path holds a DESCRIPTION (the rpt form) and with lint_dir() otherwise (the win/qwt form). Unchanged files are passed as lintr exclusions, including dotfiles, so an unchanged .lintr.R is not re-linted on every PR. The GitHub API call uses .limit = Inf so a PR that changes more files than one API page is not silently under-linted.\npackage and project can run on push as well as pull_request.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-changed-lines.yml"
+      "lint-changed-files.yml"
     ]
   },
   {
-    "objectID": "reference/lint-changed-lines.html#inputs",
-    "href": "reference/lint-changed-lines.html#inputs",
-    "title": "lint-changed-lines.yml",
+    "objectID": "reference/lint-changed-files.html#inputs",
+    "href": "reference/lint-changed-files.html#inputs",
+    "title": "lint-changed-files.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nuse-renv\nboolean\nfalse\nRestore dependencies with renv (setup-renv) instead of DESCRIPTION-based setup-r-dependencies.\n\n\nrenv-cache-version\nstring\n'1'\nCache version suffix passed to setup-renv.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setting up dependencies (space-separated).\n\n\nextra-packages\nstring\n''\nExtra R packages to install (space- or comma-separated; passed to setup-r-dependencies, or installed from CRAN under use-renv: true). gh and lintr are always installed.\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL before linting so object_usage_linter can resolve the package’s own functions. Set false for a repo that is not an installable R package.\n\n\nfail\nboolean\ntrue\nFail the workflow when a lint is found on a changed line (rather than warn only).",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nscope\nstring\n'changed-files'\nWhat to lint: changed-files, package, or project.\n\n\npath\nstring\n'.'\nPath to the R package or project root (the directory holding DESCRIPTION, when there is one).\n\n\nlinter-file\nstring\n''\nPath to a lintr config (.lintr or .lintr.R). Empty lets lintr auto-detect .lintr / .lintr.R.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nuse-renv\nboolean\nfalse\nRestore dependencies with renv (setup-renv) instead of DESCRIPTION-based setup-r-dependencies.\n\n\nrenv-cache-version\nstring\n'1'\nCache version suffix passed to setup-renv.\n\n\napt-packages\nstring\n''\nExtra apt packages to install before setting up dependencies (space-separated).\n\n\nextra-packages\nstring\n''\nExtra R packages to install (space- or comma-separated). gh and lintr are always installed from CRAN.\n\n\ninstall-package\nboolean\ntrue\nRun R CMD INSTALL before linting so object_usage_linter can resolve the package’s own functions. Skipped when path has no DESCRIPTION. Set false to skip even when DESCRIPTION is present.\n\n\nfail\nboolean\ntrue\nFail the workflow when lintr reports a lint (rather than warn only).",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-changed-lines.yml"
+      "lint-changed-files.yml"
     ]
   },
   {
-    "objectID": "reference/lint-changed-lines.html#permissions",
-    "href": "reference/lint-changed-lines.html#permissions",
-    "title": "lint-changed-lines.yml",
+    "objectID": "reference/lint-changed-files.html#permissions",
+    "href": "reference/lint-changed-files.html#permissions",
+    "title": "lint-changed-files.yml",
     "section": "Permissions",
-    "text": "Permissions\ncontents: read and pull-requests: read (to read the PR’s changed-file patches).",
+    "text": "Permissions\ncontents: read and pull-requests: read (to read the PR’s changed-file list when scope is changed-files). package / project do not need the pull-request grant; it is still read-only, so no caller permissions: block is required.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-changed-lines.yml"
+      "lint-changed-files.yml"
     ]
   },
   {
-    "objectID": "reference/lint-changed-lines.html#example",
-    "href": "reference/lint-changed-lines.html#example",
-    "title": "lint-changed-lines.yml",
+    "objectID": "reference/lint-changed-files.html#example",
+    "href": "reference/lint-changed-files.html#example",
+    "title": "lint-changed-files.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-changed-lines.yml in your repo.\n# Lints only the lines a pull request adds or modifies (not whole changed\n# files), so lint rules can be adopted or tightened incrementally.\nname: lint-changed-lines\n\non:\n  pull_request:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-changed-lines.yml@v2\n    # with:\n    #   path: '.'               # R package root (holding DESCRIPTION)\n    #   use-renv: false         # true to restore dependencies with setup-renv\n    #   renv-cache-version: '1' # bump to invalidate renv cache\n    #   apt-packages: ''        # system packages required for compilation\n    #   extra-packages: ''      # extra R deps (gh + lintr always installed)\n    #   install-package: false  # skip R CMD INSTALL for a non-package repo\n    #   fail: false             # warn instead of failing on lints\nSee the examples/ directory for the full caller stub (lint-changed-lines.yml).",
+    "text": "Example\n# Copy to .github/workflows/lint-changed-files.yml in your repo.\n# Default: lint the files a pull request changed.\nname: lint-changed-files\n\non:\n  pull_request:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-changed-files.yml@v2\n    # with:\n    #   scope: 'changed-files'  # or 'package' / 'project'\n    #   path: '.'               # R package or project root\n    #   linter-file: ''         # empty: lintr auto-detects .lintr / .lintr.R\n    #   install-quarto: false   # true to install Quarto with R dependencies\n    #   use-renv: false         # true to restore dependencies with setup-renv\n    #   renv-cache-version: '1' # bump to invalidate renv cache\n    #   apt-packages: ''        # system packages required for compilation\n    #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)\n    #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present\n    #   fail: false             # warn instead of failing on lints\nSee the examples/ directory for the full caller stub (lint-changed-files.yml).\nPin @v2: this capability was added after @v1 was frozen, so it does not exist at that tag.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-changed-lines.yml"
+      "lint-changed-files.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-extra.html",
+    "href": "reference/check-extra.html",
+    "title": "check-extra.yml",
+    "section": "",
+    "text": "Extra R-package checks that R CMD check passes over. Adapted from IndrajeetPatil/workflows check-extra.yaml (MIT).\nThree jobs run in parallel so every failure surfaces at once instead of short-circuiting at the first – the extra R-install cost is the point, not an accident. Disable any job with the matching check-* input if a package has no tests, no vignettes, or no README.Rmd.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-extra.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-extra.html#what-it-catches",
+    "href": "reference/check-extra.html#what-it-catches",
+    "title": "check-extra.yml",
+    "section": "What it catches",
+    "text": "What it catches\n\nWarnings as errors on three surfaces, all under options(warn = 2L). Examples run in a fresh R session with run_dontrun and run_donttest on (the devtools::run_examples(fresh = TRUE, ...) equivalent), because a parent warn=2 does not reach callr’s child. Tests use a per-file sweep: testthat::test_file() inside withr::local_options(list(warn = 2L)). A session-wide warn=2 crashes parallel testthat workers (testthat#1912); this is the workaround that issue closed on. Vignettes render via fs::dir_ls(\"vignettes/\", glob = \"*.Rmd\", recurse = TRUE). A deprecation warning from a dependency is the motivating case: it is invisible in a normal green check until the deprecation becomes an error a release later.\nRandom test order. testthat::test_dir(\"tests/testthat\", shuffle = TRUE) with a randomly drawn seed that is logged, so a failure is reproducible. TESTTHAT_PARALLEL=FALSE via withr::local_envvar, because shuffling is meaningless if tests run in parallel anyway. This catches a test that only passes because an earlier one left state behind. A missing tests/testthat fails this job; disable it with check-random-order: false if the package has no tests.\nREADME render, also with warnings as errors. When check-readme-freshness is on (the default), the job also fails if README.md is modified or untracked after the render – so a consumer does not need a second workflow for that half. Only an explicit false opts out of freshness. A missing README.Rmd fails this job; disable it with check-readme: false if the package has none.\n\nA missing tests/testthat or vignettes/*.Rmd inside the combined warnings job is a skip with a log line, not a failure, so a package that has only examples still gets those checked.\n.qmd vignettes and README.qmd are out of scope: the vignette glob is *.Rmd, matching upstream, and a Quarto README would need Quarto, which this check does not install.\npurrr, withr, fs, cli, and pkgload are declared in extra-packages rather than arriving transitively via devtools.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-extra.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-extra.html#inputs",
+    "href": "reference/check-extra.html#inputs",
+    "title": "check-extra.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\nextra-packages\nstring\n''\nExtra R packages forwarded to setup-r-dependencies. Use this for packages a README or example needs that are not in DESCRIPTION.\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\ncheck-warnings\nboolean\ntrue\nRun examples, tests, and vignettes with warnings as errors.\n\n\ncheck-random-order\nboolean\ntrue\nRun testthat with shuffle = TRUE and a logged seed.\n\n\ncheck-readme\nboolean\ntrue\nRender README.Rmd with warnings as errors.\n\n\ncheck-readme-freshness\nboolean\ntrue\nWhen the README job runs, fail if README.md is modified or untracked after the render.\n\n\n\nPin @v2: this capability was added after @v1 was frozen, so it does not exist at that tag.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-extra.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-extra.html#permissions",
+    "href": "reference/check-extra.html#permissions",
+    "title": "check-extra.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-extra.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-extra.html#example",
+    "href": "reference/check-extra.html#example",
+    "title": "check-extra.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/check-extra.yml in your repo.\nname: Extra R-package checks\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  extra:\n    uses: Morrison-Lab/gha/.github/workflows/check-extra.yml@v2\n    # with:\n    #   path: '.'\n    #   extra-packages: 'any::ggthemes'\n    #   install-quarto: false\n    #   check-warnings: true\n    #   check-random-order: true\n    #   check-readme: true\n    #   check-readme-freshness: true\nSee check-extra.yml in examples/ for the full caller stub. (Linked to the directory rather than the file, for the reason check-secrets.qmd records: a blob/main/... link to a capability’s own example 404s on the pull request that introduces it, and check-links rightly fails it.)",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "check-extra.yml"
     ]
   },
   {
@@ -2695,7 +2815,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, and check-typos.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, and check-extra.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
@@ -2706,7 +2826,7 @@
     "href": "workflows.html#quality-checks",
     "title": "Workflows",
     "section": "Quality checks",
-    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-ai-tells.yml scans narrative prose in Markdown and Quarto files for AI tell patterns and density.\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-junk-files.yml fails when the repository tracks operating-system or editor detritus – a .DS_Store, an AppleDouble ._* sidecar, an .Rhistory or .RData. It reports each file, the git rm --cached line that clears it, and the per-machine fix that stops it recurring in every other repository too.\ncheck-non-standard-chars.yml flags curly quotes, en/em dashes, and the multiplication sign in .qmd, .R, and .md files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: x or * in\ncode, and $\\times$ or &times; in prose, since Pandoc renders a \\uXXXX escape literally rather than decoding it.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\nlint-yaml.yml runs yamllint over tracked YAML with a bundled config, plus a check that flags long run: script blocks as decomposition candidates.\nlint-markdown.yml runs markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.\nlint-qmd.yml runs markdownlint over the prose sections of tracked .qmd Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.\nlint-changed-lines.yml runs lintr over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ncheck-secrets.yml scans the repository’s git history for committed credentials; see below.\nspellcheck.yml spellchecks an R package’s prose with the {spelling} package, treating the package’s own inst/WORDLIST as the accepted vocabulary. It reads DESCRIPTION’s Title and Description fields, man/*.Rd, vignette sources (.Rmd, .qmd, .Rnw), and root README/NEWS/CHANGES/index Markdown – so a Quarto site’s other pages, and any repo that is not an R package, are out of its reach. It replaces the bespoke check-spelling.yaml several lab repos carry, and needs no wordlist migration, since that file is {spelling}’s own format.\ncheck-typos.yml spellchecks those remaining files with crate-ci/typos: a Quarto site’s non-vignette pages, CONTRIBUTING.md-class Markdown, YAML, code comments, and repositories that are not R packages. Diff-scoped by default (only lines a PR adds, plus filename typos on paths the PR added or renamed), so a first run over an existing repo does not reflag years of drift; pass base-ref: all to scan the whole tree.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended). Set examples-coverage: true for a second job that runs examples and vignettes. \\dontrun{} does not run under R CMD check by default (only with --run-dontrun, which --as-cran does not imply); \\donttest{} is skipped unless --as-cran or --run-donttest. That job does not upload to Codecov, produce a JUnit report, or apply min-coverage. On failure it uploads examples-coverage-test-failures. The percent appears in the log and step summary. Enabling it adds a check named &lt;caller job&gt; / Examples and vignettes coverage. Set min-coverage to fail the tests job when coverage falls below a chosen percent (empty/off by default). It does not apply to the examples job.",
+    "text": "Quality checks\nThese run on pull requests (and often on main) to keep a repo’s content clean.\n\ncheck-ai-tells.yml scans narrative prose in Markdown and Quarto files for AI tell patterns and density.\ncheck-bibliography-dois.yml confirms BibTeX entries have DOIs that resolve and match CrossRef metadata.\ncheck-junk-files.yml fails when the repository tracks operating-system or editor detritus – a .DS_Store, an AppleDouble ._* sidecar, an .Rhistory or .RData. It reports each file, the git rm --cached line that clears it, and the per-machine fix that stops it recurring in every other repository too.\ncheck-non-standard-chars.yml flags curly quotes, en/em dashes, and the multiplication sign in .qmd, .R, and .md files, which can break Quarto and R rendering. The multiplication sign’s ASCII replacement depends on context: x or * in\ncode, and $\\times$ or &times; in prose, since Pandoc renders a \\uXXXX escape literally rather than decoding it.\ncheck-links.yml runs a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when main breaks.\ncheck-news.yml enforces a NEWS.md changelog entry on each PR.\nlint-yaml.yml runs yamllint over tracked YAML with a bundled config, plus a check that flags long run: script blocks as decomposition candidates.\nlint-markdown.yml runs markdownlint-cli2 over tracked Markdown with a bundled config, plus a check that flags long fenced code blocks as decomposition candidates.\nlint-qmd.yml runs markdownlint over the prose sections of tracked .qmd Quarto files; code chunks are stripped before linting and YAML front matter is skipped natively. A default 80-char line-length ceiling encourages semantic line breaks.\nlint-changed-lines.yml runs lintr over only the lines a pull request adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally: new and edited code must comply while untouched legacy code is left alone.\nlint-changed-files.yml runs lintr at one of three scopes selected by scope: the files a pull request changed (default), a whole package (lintr::lint_package()), or a whole project (lintr::lint_dir()). lintr is installed from CRAN, not GitHub HEAD.\ncheck-phi.yml scans for content that looks like protected health information; see below.\ncheck-secrets.yml scans the repository’s git history for committed credentials; see below.\nspellcheck.yml spellchecks an R package’s prose with the {spelling} package, treating the package’s own inst/WORDLIST as the accepted vocabulary. It reads DESCRIPTION’s Title and Description fields, man/*.Rd, vignette sources (.Rmd, .qmd, .Rnw), and root README/NEWS/CHANGES/index Markdown – so a Quarto site’s other pages, and any repo that is not an R package, are out of its reach. It replaces the bespoke check-spelling.yaml several lab repos carry, and needs no wordlist migration, since that file is {spelling}’s own format.\ncheck-typos.yml spellchecks those remaining files with crate-ci/typos: a Quarto site’s non-vignette pages, CONTRIBUTING.md-class Markdown, YAML, code comments, and repositories that are not R packages. Diff-scoped by default (only lines a PR adds, plus filename typos on paths the PR added or renamed), so a first run over an existing repo does not reflag years of drift; pass base-ref: all to scan the whole tree.\ntest-coverage.yml measures R-package test coverage with covr and uploads the Cobertura report to Codecov; pass the CODECOV_TOKEN secret through the caller’s secrets: block (optional for public repos, but recommended). Set examples-coverage: true for a second job that runs examples and vignettes. \\dontrun{} does not run under R CMD check by default (only with --run-dontrun, which --as-cran does not imply); \\donttest{} is skipped unless --as-cran or --run-donttest. That job does not upload to Codecov, produce a JUnit report, or apply min-coverage. On failure it uploads examples-coverage-test-failures. The percent appears in the log and step summary. Enabling it adds a check named &lt;caller job&gt; / Examples and vignettes coverage. Set min-coverage to fail the tests job when coverage falls below a chosen percent (empty/off by default). It does not apply to the examples job.\ncheck-extra.yml runs three R-package checks that R CMD check passes over: warnings as errors on examples, tests, and vignettes; tests in random order with a logged seed; and a README.Rmd render that also fails when the knitted README.md is stale. Each check is its own job so every failure surfaces at once.",
     "crumbs": [
       "Overview",
       "Workflows"
