@@ -15,6 +15,79 @@ Guidance for Claude Code when working in this repository.
   outstanding review findings), unless explicitly instructed otherwise for a
   specific PR or session.
 
+## Standing tag-slide policy
+
+- **Sliding this repo's major tag is a standing grant**: AI agent sessions may
+  dispatch `slide-major-tag.yml` on their own judgment, without asking first
+  (user directive, 2026-08-27), unless explicitly instructed otherwise for a
+  specific occasion or session.
+  Like the `mwc` grant above, it removes the *asking* and not the judgment.
+
+- **The readiness bar is the same one `mwc` uses, on the commit being slid.**
+  Every check run on that exact commit is green or skipped, with none pending,
+  read from the paginated check-runs endpoint rather than `gh pr checks`.
+  "Merged work that consumers need" is the motivation, not the gate.
+
+- **Re-read `main`'s tip immediately before dispatching, and again after.**
+  `slide-major-tag.yml` tags `$GITHUB_SHA` --- whatever `main` points at when
+  the run executes --- rather than a SHA you nominate.
+  The standing `mwc` grant above means another session may squash-merge while
+  you are deciding, so the commit you vetted and the commit that gets tagged
+  are not guaranteed to be the same one.
+  Confirm afterwards that the tag landed on a commit you actually checked.
+
+- **This matters more here than the wording suggests.**
+  Consumers pin the floating tag, so advancing it is what rolls a change out to
+  everyone at once --- which is precisely why the slide is
+  `workflow_dispatch`-only rather than automatic on merge
+  (`slide-major-tag.yml`'s own header states this).
+  An unslid tag therefore means merged review-infrastructure fixes reach
+  nothing, gha's own PRs included.
+  Measured 2026-08-27: gha#674 merged, and all seven then-open PRs stayed
+  unreviewable until the tag moved --- each of the seven edits a top-level
+  workflow file, which is what the pre-#674 guard skipped on.
+
+- **Verify the slide from the remote, never a local tag.**
+  A plain `git fetch --tags` refuses to move an existing tag, so a local
+  `git rev-parse` reports the pre-slide SHA and reads exactly like a slide that
+  did not happen --- see [Re-running failed jobs cannot verify a tag
+  slide](#re-running-failed-jobs-cannot-verify-a-tag-slide) for the mechanism.
+  Derive the tag name rather than hard-coding `v2`: `resolve-major-tag.sh`
+  takes it from the latest `vX.Y.Z` tag, so a `v3.0.0` would make this slide
+  `v3`.
+  Derive it from the REMOTE too, for the same reason the check itself reads the
+  remote --- a local `git tag --list` is subject to exactly the staleness this
+  bullet is about.
+  Note the repo publishes no GitHub Releases, so `gh release list` returns `[]`
+  here and cannot be the source:
+
+  ```bash
+  major=$(git ls-remote --tags origin 'v*.*.*' \
+    | sed 's#.*refs/tags/##; s/\^{}$//' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+  git ls-remote origin "refs/tags/$major" "refs/tags/$major^{}"
+  ```
+
+  Both refspecs, because an annotated tag's bare line is the tag object rather
+  than the commit; they agree today only because this workflow writes
+  lightweight tags.
+
+- **Say what moved, because a slide is effectively one-way.**
+  There is no un-slide workflow: `slide-major-tag.yml` only ever force-moves
+  the tag forward to `main`'s tip.
+  Reverting means a manual `git push --force` by someone holding
+  `contents: write`, and any consumer run that already resolved the tag during
+  a bad window cannot be recalled at all.
+  So name the old SHA, the new SHA, and which merged PRs the tag now carries
+  --- that report is what makes a bad slide *detectable*, which is the most the
+  reporting can buy.
+
+- **Do:** slide when the commit is green and consumers need it, then report both
+  SHAs.
+
+- **Don't:** read this as covering a release or version bump, another
+  repository, or a slide over a commit whose checks you have not read.
+
 ## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
@@ -26,11 +99,11 @@ major tag each capability's own reference page documents (`@v1` for most,
 `check-phi`, `check-junk-files`, `check-links`,
 `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
-`lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
+`lint-qmd`, `lint-changed-lines`, `lint-changed-files`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, and `check-typos` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, and `check-extra` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -40,7 +113,7 @@ which is why the capabilities above moved to `@v2`.
 
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
-  script -- e.g. `check-bibliography-dois/` (R), `check-non-standard-chars/`,
+  script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,
   `check-phi/`, and `check-new-line-breaks/` (Python; the last mirrors
   `check-phi`'s diff-scoped-by-`base-ref` pattern, but skips the check
   entirely rather than falling back to a whole-tree scan when the diff can't
@@ -129,6 +202,32 @@ which is why the capabilities above moved to `@v2`.
   before any checkout has happened -- a composite action's own files are
   available via `uses:` regardless of checkout state, which a bare script path
   is not.
+
+- `.github/actions/detect-pr-workflow-edits/` -- wraps
+  `scripts/detect-pr-workflow-edits.sh`, which classifies whether a PR's
+  changed-file list includes top-level `.github/workflows/*.yml` / `.yaml`
+  (not `scripts/` nested under that directory, and not composite
+  `action.yml` files).
+  `claude-code-review.yml` uses it to restore
+  default-branch workflow copies instead of skipping the review (gha#598);
+  `dispatch-review.sh` uses it to omit `--ref` so GitHub executes the
+  default-branch caller rather than the PR head's YAML.
+  A missing `PR_CHANGED_FILES` variable fails closed (exit 2) rather than
+  reporting a clean tree.
+  Listing the PR's files goes through `list-pr-changed-files.sh`, which
+  fails closed when GitHub's files endpoint returns fewer paths than the
+  PR's `changed_files` count (that endpoint caps at 3000 files; a 200 with
+  a short list is not a complete tree).
+
+- `.github/actions/restore-default-branch-workflows/` -- wraps
+  `scripts/restore-default-branch-workflows.sh`, which deletes
+  `.github/workflows/` then checks it out from `origin/<default-branch>`.
+  A pathspec checkout alone does not delete a workflow the PR added, so
+  the `rm -rf` is load-bearing (pinned by the suite's extra-file case).
+  The script probes `git cat-file -e "$ref:.github/workflows"` *before*
+  deleting, so a missing tree on the trusted ref fails rather than
+  wiping the working copy.
+
 - `.github/actions/run-review-guard/` -- a thin composite-action wrapper around
   `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
   "Fail the check if the review did not complete (attempt 1)" step (and again
@@ -549,6 +648,38 @@ which is why the capabilities above moved to `@v2`.
   jq's `//` treats JSON `false` as empty, so `.dry_run // empty` drops the
   common `"dry_run":false` response and falls back to the locally requested
   value (gha#511); parse with a null check instead.
+
+- `.github/actions/check-credential-shape/` -- wraps
+  `scripts/check-credential-shape.sh`, which decides whether a configured API
+  credential secret is structurally usable as an HTTP `Authorization` header
+  value.
+  `claude-code-review.yml` calls it from a pre-flight step, before the review
+  spends anything (gha#686).
+  Three things constrain any change to it.
+  **The rule is INTERIOR whitespace, not any whitespace.**
+  A header value may carry none at all, so the strictest reading would reject a
+  trailing newline too --- which `gh secret set < file` produces routinely, and
+  which consumers may well be running on successfully today if the action trims
+  before sending.
+  Rejecting that turns a hardening change into an outage, and the asymmetry runs
+  one way: a missed detection costs the badly-worded `hard-error` comment
+  consumers already get, while a false detection blocks review entirely.
+  **The verdict is "every configured credential is unusable", never "some
+  credential is".**
+  Which of the two secrets `claude-code-action` actually sends is its own
+  precedence rule rather than something this workflow knows, so blocking while a
+  well-formed alternative is configured would be a guess.
+  The selftest's mixed good/bad case is what pins that, and it is the one case
+  that passes under a narrowed verdict while every other case still passes.
+  **It never repairs the value.**
+  The observed case was 2931 characters on 62 lines, which is not a token with a
+  stray newline but different content entirely, so stripping the whitespace would
+  send a credential nobody chose and turn a nameable configuration defect into an
+  opaque rejection.
+  It fails fast and names the remedy instead.
+  The detail line it emits reaches a PR comment, so it carries counts and a
+  position and never any part of the value --- the same figures the SDK's own
+  rejection message already prints.
 
 - `.github/actions/build-reviewer-args/` -- wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
@@ -1163,6 +1294,56 @@ The misspelling is also used as fixture payload in the pytest sources, so
 a later whole-tree dogfood of this repo should `paths-ignore`
 `check-typos/tests/`.
 
+`check-extra/tests/test-check-extra.sh` is a shell+R suite over
+`check-extra.R`.
+The bash half pins that `action.yml` and
+`.github/workflows/check-extra.yml` declare the same
+`check-readme-freshness` default -- the gha#303 precedent, because a drift
+here would hand a consumer of the reusable workflow a different freshness
+gate from a consumer of the composite with nothing red.
+The R half pins the decisions that are silent when reversed: an unknown
+`check` name is an error, a missing `tests/testthat` or `vignettes/`
+inside the combined warnings job is a skip rather than a failure, a
+missing `README.Rmd` or `tests/testthat` on the dedicated README /
+random-order jobs is a failure, a dirty or untracked `README.md` fails
+freshness, `parse_flag` is fail-closed, and a `warning()` in a test file
+fails the warnings sweep (when pkgload and testthat are installed).
+CI runs it as a step in the `check-extra` job in `_selftest.yml`, after
+three real `uses: ./check-extra` calls against a generated fixture (one
+per check) and before a fourth call against a warning-in-example fixture
+that must fail.
+The fixture is generated at runtime
+(`check-extra/tests/make-fixture.sh`).
+
+`lint-changed-files/tests/test-lint-r-scope.R` is an R suite over
+`lint-r-scope.R`: scope validation, PR-file filtering (removed files
+dropped; walking 101 files only proves the walker does not drop list
+elements), a grep of `lint-changed-files.R` for `.limit = Inf` (that
+is the pagination pin -- `pr_changed_paths` never calls `gh::gh`),
+dotfile exclusions (an unchanged `.lintr.R` is excluded; `.git/` is not
+listed), and -- when lintr is installed from CRAN -- the
+`changed-files` exclusion pattern plus the DESCRIPTION vs no-DESCRIPTION
+split (`lint_package` vs `lint_dir`).
+Those lintr cases `setwd()` into the fixture and pass GitHub-shaped
+repo-relative filenames (`dirty.R`, `pkg/R/bad.R`), because
+`rel_to_path()` prefix-matches against `path` and an absolute
+`tempfile()` path would make every `changed-files` case return empty
+lints before lintr runs.
+Run it with `Rscript lint-changed-files/tests/test-lint-r-scope.R`; CI
+runs it as the `lint-changed-files-tests` job in `_selftest.yml`,
+alongside a `lint-changed-files` job that exercises the real composite
+(`uses: ./lint-changed-files`, not `@v2`) against a generated project
+fixture with no `DESCRIPTION` -- the setup path `lint-changed-lines`
+does not cover.
+That composite job uses `scope: project` only: untracked fixtures are
+invisible to the PR-files API, so `changed-files` `gh::gh` wiring is
+not an end-to-end selftest (the same gap `lint-changed-lines` has).
+The two fixtures differ in exactly one thing (`<-` vs `=` under a
+`.lintr.R` that enables only `assignment_linter`), so a default-config
+change on CRAN cannot turn the clean variant red.
+The fixture is generated at runtime
+(`lint-changed-files/tests/make-fixture.sh`).
+
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
 `test-coverage`) gets swept into OTHER selftest jobs' repo-wide scans: the
@@ -1621,6 +1802,64 @@ As with `report-push-failure`, `claude-code-review.yml`'s own consumption of
 this composite via `@v2` is not covered here -- it does not resolve until `@v2`
 is advanced past this capability's merge.
 
+`.github/workflows/scripts/tests/run-check-credential-shape-tests.sh` exercises
+`check-credential-shape.sh` (see Layout above) offline against a table of
+credential values.
+The **negative** cases are the ones to keep if the suite is ever trimmed, which
+inverts this file's usual advice for a detector: everywhere else an
+over-cautious verdict is free, and here it is the expensive error, because a
+`true` answered too eagerly blocks review for a consumer whose credential works
+today.
+So a plain token, a trailing newline, a leading newline, surrounding spaces, and
+an empty value must all pass through untouched.
+Three mutations were confirmed to turn it red rather than assumed to --- dropping
+the trimming (4 failures), disabling the detector outright (7), and matching only
+newlines rather than any whitespace (3).
+Read those counts off the suite's own `N of 14` summary line rather than by
+counting `::error::` lines, which is how the first draft of this paragraph
+reported each one inflated by one: the summary is itself an `::error::` line,
+so a `grep -c` over them counts a fourteenth thing that is not a case
+(gha#687 review finding 4).
+The two-line contract assertion compares the line count **arithmetically**,
+which is portability rather than taste: BSD/macOS `wc -l` pads its output with
+leading spaces, so a string comparison against `"2"` failed all 14 cases on a
+maintainer's own machine while CI stayed green (gha#688).
+A suite meant to be runnable off-runner failing off-runner is the least visible
+failure available, and a red local run reads as the change under test having
+broken something.
+No other site in the repo compares a raw `wc -l` result as a string, but the
+enumeration needs three buckets rather than two: three sites compare
+arithmetically (`run-classify-opencode-run-tests.sh`,
+`run-classify-gemini-failure-tests.sh`, `run-classify-push-failure-tests.sh`),
+four strip the padding first with `tr -d` (`check-junk-files.sh` twice,
+`claude.yml`, `inject-canonical-urls/action.yml`), and three never compare at
+all, interpolating the count into a message where the padding is harmless
+(`_selftest.yml` twice, `claude.yml`).
+That third bucket is why "every other site compares safely" would have been
+false: those three avoid the bug by not being a comparison.
+CI runs it as the `credential-shape` job in `_selftest.yml`, kept separate from
+`review-fail-check` so a failure is attributable at a glance --- the same
+one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.
+That job also calls the composite through three real `uses: ./...` steps, for the
+`github.action_path`-resolution proof the other composite e2e steps give plus the
+one decision the composite makes for itself, which the offline table cannot
+reach: combining two secrets into a single verdict.
+`claude-code-review.yml`'s own `@v2` consumption of the new composite is the usual
+bootstrap gap until the tag slides.
+
+`run-compose-review-failure-report-tests.sh` gained the `bad-credential` kind
+alongside it, and its two **negative** assertions are the ones worth reading.
+That kind is the only one where no review process ever started, so the shared
+opening paragraph's "finished without producing" would be false of it, and both
+the denied-tools line and the cost line would describe a run that never happened
+--- "not recorded" would send a triager to look at permissions on a run that
+never reached them.
+Both suppressions were confirmed load-bearing by mutation, which matters more
+than usual here: a negative assertion written against an empty output passes
+under every mutation, and the first draft of these did exactly that (the test
+helper is `$COMPOSE`, and `$compose_script` silently produced no output under the
+suite's `set -uo pipefail`).
+
 `.github/workflows/scripts/tests/run-pack-review-payload-tests.sh` and
 `.github/workflows/scripts/tests/run-review-job-split-tests.py` pin the
 gha#580 credential split.
@@ -1683,6 +1922,41 @@ The distinction it protects reaches the PR comment: an ABSENT value means
 "never counted", an EMPTY-but-present one means "counted, and there were none",
 and only the second licenses saying the reviewer was not blocked by
 permissions.
+
+`.github/workflows/scripts/tests/run-detect-pr-workflow-edits-tests.sh`
+exercises `detect-pr-workflow-edits.sh` (see Layout above) offline against
+a table of changed-file lists: a top-level workflow, the caller workflow,
+a nested `workflows/scripts/` path, a composite `action.yml`, and an
+unset `PR_CHANGED_FILES` (must fail closed).
+CI runs it as a step in `review-fail-check`, which also calls
+`detect-pr-workflow-edits` through a real `uses: ./...` step on
+pull_request events for the `github.action_path`-resolution proof.
+That e2e asserts the composite's `workflow_edits` matches an independent
+classify of the same PR (the scripts the composite wraps), not merely
+that the output is the string `true` or `false` --- a detector that
+always returned `false` would still pass the boolean-only check on a
+workflow-editing PR.
+
+`.github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh`
+exercises `list-pr-changed-files.sh` against a stub `gh`: a complete
+two-file list succeeds, a list shorter than `changed_files` fails
+closed, and a missing or non-numeric `changed_files` fails closed.
+CI runs it in the same `review-fail-check` job.
+The truncated-list case is the one to keep if the suite is ever trimmed:
+GitHub's files endpoint caps at 3000 and still returns 200, so treating
+that response as complete would dispatch `--ref` at an unknown tree.
+
+`.github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh`
+exercises `restore-default-branch-workflows.sh` against throwaway git
+repos in `$TMPDIR`: a modified workflow plus a PR-only file must be
+replaced/deleted, a missing `DEFAULT_BRANCH` fails closed, a ref with no
+`.github/workflows` tree fails *before* deleting, and a pathspec-only
+checkout is shown not to delete the PR-only file (so the `rm -rf` is
+load-bearing).
+CI runs it in the same `review-fail-check` job.
+There is no live `uses:` of the restore composite against this checkout:
+restoring this repo's own `.github/workflows/` mid-selftest would clobber
+later steps.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
@@ -2394,119 +2668,94 @@ about the branch to verify rather than as a record of it, per the
 SHA-comparison rule in
 [`Morrison-Lab/ai-config`'s `shared/workflow/ardi.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/ardi.md).
 
-**A third, more direct mechanism produces the identical symptom without
-`@v2` even entering the picture.** `claude-code-review.yml`'s own `Skip
-self-review when the PR edits this workflow` step compares the PR's changed
-files against the CALLER's review-workflow path (derived from
-`github.workflow_ref`) and, when the PR itself edits that file, skips every
-downstream step: checkout, run review, post review comment.
-`review / claude-review` reports `success`, but every step past the guard shows
-`skipped`, and no verdict is ever produced.
-The skip is this workflow's own policy, not an action 401:
-gha#580 forwards `github_token`, which skips the App-token exchange
-that used to fail workflow-content validation until merge
-(see the guard's own comment).
-But a green `claude-review` check is easy to mistake for a real review.
+**A third, more direct mechanism used to produce the identical symptom without
+`@v2` even entering the picture.**
+`claude-code-review.yml` used to skip the review whenever the PR edited
+the caller workflow (and, on dispatch, any top-level
+`.github/workflows/*.yml` -- gha#386).
+`review / claude-review` reported `success` with every post-guard step
+`skipped`, and no verdict was produced.
+Since gha#440 that skip is a `self_mod` job output and `require-review` is
+gray rather than green.
+gha#598 keeps the gray skip only when restoring default-branch workflow
+files *fails*.
+A successful restore continues into the review.
+The skip is this workflow's own policy rather than an action 401: gha#580
+forwards `github_token`, which skips the App-token exchange that used to fail
+workflow-content validation until merge.
+A green `claude-review` check is still easy to mistake for a real review.
 
-**`require-review` used to report `success` here too, which is what made this
-indistinguishable from a clean review on a required check (gha#434).**
-Since gha#440 the skip is surfaced as a `self_mod` job output that
-`require-review` excludes, so that gate shows a gray *skipped* instead, and the
-review job posts a PR comment explaining that no review ran.
-Read the gray as "nobody reviewed this", not as an all-clear.
-Note the usual tag lag: consumers pinned to `@v2`, this repo's own dogfood
-caller included, keep the old both-green behaviour until `@v2` slides past that
-merge, so a green `require-review` on an older run is this case rather than a
-contradiction.
+**Reviews of workflow-editing PRs restore the default-branch
+`.github/workflows/` tree after checkout (gha#598).**
+`detect-pr-workflow-edits` classifies top-level workflow YAML (not
+`workflows/scripts/`, not composite `action.yml`).
+`restore-default-branch-workflows` then `rm -rf`s `.github/workflows/` and
+checks it out from `origin/<default-branch>`, so a workflow the PR added is
+deleted rather than left on disk.
+`run-claude-review-attempt` passes `github_token` (`GITHUB_TOKEN`) on that
+path so `claude-code-action` skips its OIDC App-token exchange and the
+workflow-content check that exchange runs.
+`setupGitHubToken` in `src/github/token.ts` returns early on
+`OVERRIDE_GITHUB_TOKEN` and never calls `exchangeForAppToken`, which is
+where the skip is thrown (anthropics/claude-code-action, read 2026-08-26).
+`prepare.ts` reads that env var only for the write-permission path.
+The prompt tells the reviewer that on-disk workflow files are the
+default-branch copies and to take workflow diffs from the saved PR diff.
 
-**The guard checks the caller review workflow on all events, plus any top-level
-workflow YAML file on `workflow_dispatch` (gha#386).** `WF_PATH` comes from
-`github.workflow_ref` -- in a `workflow_call` run that's the CALLER's own workflow
-file, which in this repo's dogfooding setup is `.github/workflows/claude-review.yml`
-(for a downstream consumer, their own copy of the caller stub). On automatic
-`pull_request` runs, only a PR that touches that one file trips `self_mod=true`.
-On `workflow_dispatch` runs, the action's token exchange *used to*
-validate that all `.github/workflows/*.yml` files match `main` or skip
-with an OIDC validation error; to prevent false-positive failures, the
-guard still trips `self_mod=true` for any touched top-level workflow YAML
-file on dispatch (gha#386), as this workflow's own policy.
-`examples/claude-code-review.yml` lives under `examples/`, not
-`.github/workflows/`, so it never actually executes as a workflow in this
-repo and `github.workflow_ref` can never resolve to it either. Check the
-job's step list, not just its conclusion, before trusting a green
-`claude-review` on a PR that touches `.github/workflows/claude-review.yml` (or
-any workflow on dispatch): every step after the guard reading `skipped` means no
-review ran, regardless of what `@v2` currently points at. (gha#286: an `@claude
-review` comment produced only a `$0.60` cost comment, no verdict -- the guard had
-set `self_mod=true` and skipped straight through, because the PR touched
-`claude-review.yml` itself.)
+**Dispatched reviews omit `--ref` when the PR edits workflow YAML**, so
+GitHub executes the default-branch *caller* rather than the PR head's copy.
+That is the trusted-YAML half; the restore is the trusted-on-disk half.
+Fork PRs already omitted `--ref` (gha#289).
+A no-`--ref` dispatch's check-runs land on the default branch (gha#285);
+the review comment still posts on the PR.
+Before gha#598 the guard instead skipped outright, which is what gha#286
+recorded: an `@claude review` comment produced only a `$0.60` cost comment and
+no verdict, because the PR touched `claude-review.yml` itself.
+Check the job's step list rather than its conclusion when reading any run from
+that era.
 
-**This section's title says "a PR fixing" the review workflow, but the guard
-does not check intent -- it checks whether workflow files are in the
-changed-file list.** So it also fires on a PR that has nothing to do with the
-review system and touches that file only incidentally: a repo-wide sweep, a
-lint fix, a formatting pass, a dependency bump.
-That case is the dangerous one, because the two cases above at least give you
-a reason to be suspicious of a green `claude-review`.
-Here nothing prompts the thought -- the PR is "about" something else
-entirely, `claude-review.yml` is one file among dozens, and the check is
-green.
+**This does not switch to `pull_request_target`.**
+`pull_request` executes the PR's triggering workflow YAML.
+`pull_request_target` executes the base copy and hands the job secrets plus
+a write token -- a pwn-request if the job then runs code from the PR head.
+Same-repo `pull_request` already has secrets.
+The safe default-branch YAML for *dispatch* is "omit `--ref`".
+For an automatic `pull_request` review of a PR that edits the *caller*,
+GitHub has already selected that caller YAML before any step runs, so the
+restore cannot un-execute it.
+That path stays same-repo only (forks are skipped).
+Do not "fix" it by flipping the trigger to `pull_request_target`.
 
-Before trusting a green `claude-review`, run
-`git diff --name-only origin/main | grep -E '^\.github/workflows/[^/]+\.ya?ml$'` rather than
-asking yourself whether the PR is *about* the review workflow.
-A hit means no review ran, whatever the check says, and the fallback is to
-self-review and say so on the PR (see the "Do the review yourself when the
-@claude workflow doesn't produce a verdict" section of
-[`Morrison-Lab/ai-config`'s own `CLAUDE.md`](https://github.com/Morrison-Lab/ai-config/blob/main/CLAUDE.md)
--- the root file, not one of the `shared/` fragments).
-Note the guard cannot clear before merge, since it keys on the PR's own diff
--- re-triggering is not a workaround, so don't spend rounds on it.
+**`self_mod` now means the restore failed**, not "the PR edits a workflow
+file".
+`require-review` still grays that case out.
+A later re-run can recover if fetching the default branch was the problem.
+Until `@v2` slides past this merge, consumers (this repo's dogfood caller
+included) keep the pre-#598 skip: a green or gray `require-review` on an
+older pin is that tag lag, not a contradiction.
+
+**The action still carries its own workflow-content validation**, and it
+does not print a literal `401`.
+If restore fails, or `github_token` is not passed, a remaining content
+mismatch still hits:
 
 Splitting the offending line into a follow-up PR *would* clear the guard, at
 the cost of leaving the sweep incomplete and its own docs overclaiming for a
 release cycle.
-Whether that trade is worth it depends on how much the review is worth for
-the rest of the diff; for a mechanically uniform change it usually is not.
 (gha#329: a `timeout-minutes` hardening sweep across all 36 workflows touched
-`claude-review.yml` for exactly one inserted line, and its review was
-silently skipped -- caught only by noticing the job finished in 4 seconds.
+`claude-review.yml` for exactly one inserted line, and its review was silently
+skipped -- caught only by noticing the job finished in 4 seconds.
 Copilot, requested as a fallback, refused separately for quota, so the PR
 merged on CI plus a self-review with no external verdict at all.)
 
-**That guard is the workflow-level skip.**
-Before gha#580 it also papered over the action's own workflow-content
-validation, which lived inside the OIDC App-token exchange and did not
-print a literal `401`.
-`run-claude-review-attempt` now forwards `github_token`
-(`${{ github.token }}` from the read-only model job), so
-`setupGitHubToken()` returns that token without calling `getIDToken()`
-or `exchangeForAppToken()`
-(anthropics/claude-code-action v1.0.196 `src/github/token.ts`,
-measured 2026-08-26).
-Bypassing `self_mod` therefore no longer hits that validation skip:
-the model would run on the job token.
-
-The section above skips every step of the review job when the PR edits the
-caller workflow `claude-review.yml` (the job itself still runs and reports
-`success`, green -- not a gray skipped job).
-That `self_mod` skip fires on every such run, dispatched or automatic alike:
-`PR_NUMBER` resolves via `github.event.pull_request.number || inputs.pr-number`
-with no trigger gating, so an `@claude review` dispatch trips it exactly as an
-automatic run does -- the gha#286 example above is that case, the guard firing
-on a dispatched review (green job, every post-guard step `skipped`).
-So today a caller-editing PR just gets that silent skip.
-
-**Pre-gha#580, a bypass of that skip reddened the check with no verdict.**
-Two paths reached the action's content validation then.
-One was a deliberate bypass -- as gha#417 proposed and this repo rejected.
-The other is still live: the guard sets `self_mod` from
-`files=$(gh api .../files ... || true)` in `claude-code-review.yml`, so a
-transient `gh api` failure leaves `files` empty, `self_mod=false`, and the
-review proceeds even on a PR that does edit `claude-review.yml`.
-Before the `github_token` override, the action then checked the running
-workflow against the default branch and gracefully skipped on a mismatch.
-The "Run Claude Code Review" step then read:
+**gha#580 is why the restore is paired with a token.**
+`run-claude-review-attempt` forwards `github_token`
+(`${{ github.token }}` from the read-only model job), so `setupGitHubToken()`
+returns that token without calling `getIDToken()` or `exchangeForAppToken()`
+(anthropics/claude-code-action v1.0.196 `src/github/token.ts`, measured
+2026-08-26).
+That exchange is where the workflow-content skip was thrown, so forwarding the
+job token is what lets a restored checkout review at all.
 
 ```text
 Exchanging OIDC token for app token...
@@ -2516,14 +2765,12 @@ version on the repository's default branch...
 Exiting due to workflow validation skip
 ```
 
-The action STEP reported `outcome=success` (it "gracefully skips"), ran only
-~4-11s, and wrote NO execution output -- so `check-review-execution.sh`
-reported `Claude review produced no execution output -- treating as a failed
-review`, and `claude-review` + `require-review` went RED with no verdict.
-That was worse than the silent skip, which is why gha#417 was abandoned.
-The same abort is what a template test of a modified review workflow used
-to hit (confirmed empirically 2026-08-05; the failure surfaces as a fast
-`no execution output`, not a literal `401`).
+The action STEP reports `outcome=success` (it "gracefully skips"), runs only
+~4-11s, and writes NO execution output -- so `check-review-execution.sh`
+reports `Claude review produced no execution output -- treating as a failed
+review`, and `claude-review` + `require-review` go RED with no verdict.
+That is why gha#417 (bypass the skip without a token) was abandoned, and
+why gha#598 pairs the restore with `github_token`.
 
 Diagnostic tells for that **historical** validation skip, so an older run
 log is not misdiagnosed as a `401`:
@@ -2539,16 +2786,9 @@ log is not misdiagnosed as a `401`:
   output rather than grepping for a guessed string (per
   [`Morrison-Lab/ai-config`'s `shared/principles/fail-fast.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/principles/fail-fast.md)).
 
-- The validation keyed on workflow CONTENT vs. the default branch, independent
-  of trigger type, so bypassing the self-review skip on a dispatched
-  `@claude review` did NOT help -- it just reddened the check with no verdict.
+- The validation keys on workflow CONTENT vs. the default branch, independent
+  of trigger type.
 
-The skip remains this workflow's own policy (caller-stub edits on every
-event; any top-level workflow YAML on `workflow_dispatch`, gha#386).
-PR #420 showed that bypassing `self_mod` *without* the override
-was counterproductive (it hit the historical validation skip);
-with the override in place, a bypass would run the review rather
-than 401.
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
 section used to hit that same OIDC content-validation abort;
 `github_token` forwarding is what skips it now (gha#580).
@@ -2734,7 +2974,9 @@ caller-side `self_mod` skip:
 it fires when the PR edits the caller stub, and on `workflow_dispatch`
 when any top-level workflow YAML is in the diff.
 Fall back to the manual/offline path in
-[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge).
+[A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge](#a-pr-fixing-claude-code-reviewyml-or-claudeyml-itself-cant-self-verify-before-merge),
+or give the action a `github_token` override that skips the OIDC exchange
+(wired on the gha#598 workflow-fallback path in `run-claude-review-attempt`).
 
 ## Code review guidelines
 

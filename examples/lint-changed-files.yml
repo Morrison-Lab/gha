@@ -1,0 +1,32 @@
+# Copy to .github/workflows/lint-changed-files.yml in your repo.
+# Runs lintr at one of three scopes (changed-files / package / project).
+# Default is changed-files: lint the files a pull request changed, not the
+# whole tree. That form must be triggered by pull_request.
+#
+# For a whole-package or whole-project lint, set scope.
+# Those forms can also run on push.
+# R CMD INSTALL is skipped automatically when path has no DESCRIPTION;
+# set install-package: false to skip it on a package too.
+#
+# Contrast with lint-changed-lines.yml, which reports only the lints on
+# lines the PR actually added or modified -- the incremental-adoption gate
+# for a repo with a large existing backlog.
+name: lint-changed-files
+
+on:
+  pull_request:
+
+jobs:
+  lint:
+    uses: Morrison-Lab/gha/.github/workflows/lint-changed-files.yml@v2
+    # with:
+    #   scope: 'changed-files'  # or 'package' / 'project'
+    #   path: '.'               # R package or project root
+    #   linter-file: ''         # empty: lintr auto-detects .lintr / .lintr.R
+    #   install-quarto: false   # true to install Quarto with R dependencies
+    #   use-renv: false         # true to restore dependencies with setup-renv
+    #   renv-cache-version: '1' # bump to invalidate renv cache
+    #   apt-packages: ''        # system packages required for compilation
+    #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)
+    #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present
+    #   fail: false             # warn instead of failing on lints

@@ -125,8 +125,18 @@ inputs:
       GITHUB_TOKEN -- contents: read, no forge-write -- is the downscope
       (gha#580). Defaults to github.token so a forgotten pass still uses
       the job token rather than falling through to the write App token.
+      Skipping that exchange is also what stops a remaining workflow-content
+      mismatch from skipping the review after this checkout restored
+      `.github/workflows/` from the default branch (gha#598).
     required: false
     default: ${{ github.token }}
+  workflow-fallback:
+    description: >-
+      "true" when this checkout replaced `.github/workflows/` with the
+      default-branch tree (gha#598). The prompt then tells the reviewer to
+      take workflow diffs from the saved PR diff, not from on-disk YAML.
+    required: false
+    default: 'false'
 
 outputs:
   execution_file:
@@ -545,6 +555,7 @@ runs:
           working directory. You do NOT need to (and must not) run
           `gh pr checkout` or `git checkout` — the working tree already
           contains the exact files and commits under review.
+          ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598): the entire `.github/workflows/` tree on disk (YAML and `scripts/`) is the default-branch copy, not the PR. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head files under `.github/workflows/` back into this tree.' || '' }}
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
           curl to verify a computed value or figure against rendered
@@ -719,6 +730,7 @@ runs:
           rather than leaving the PR thread silent. Still close with the
           explicit `### Verdict` status line required above — restating that
           the prior verdict stands is not itself the status line.
+          ${{ inputs.workflow-fallback == 'true' && '**Workflow-file fallback (gha#598).** This checkout restored the entire `.github/workflows/` tree (YAML and `scripts/`) from the default branch so the review would not execute untrusted workflow YAML from the PR head. On-disk files there are therefore NOT the PR versions. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not `git checkout` PR-head files under `.github/workflows/` back into this tree.' || '' }}
           ${{ inputs.prompt-addendum }}
         # Forced off. Tag mode posts a live tracking comment through the
         # github_comment MCP server (tagModeTools includes

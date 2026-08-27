@@ -55,12 +55,14 @@ not reference `@main` from consumers.
 | `check-new-line-breaks.yml` | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
+| `lint-changed-files.yml` | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope` | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-workflows.yml` | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail` |
 | `spellcheck.yml` | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto` |
 | `check-typos.yml` | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail` |
 | `summary.yml` | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`) | `endpoint`, `model` |
 | `check-news.yml` | Enforce a `NEWS.md` changelog entry on PRs (wraps `UCD-SERG/changelog-check-action`) | `changelog`, `no-changelog-label` |
 | `test-coverage.yml` | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage` |
+| `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names` |
@@ -100,11 +102,11 @@ that need to write must have the **caller** grant it on the calling job:
   `models: read`, `contents: read`.
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-equation-renders`, `check-junk-files`,
+  `check-equation-renders`, `check-extra`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `check-typos`,
-  `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
+  `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> → only
   `contents: read` (the default), so no `permissions:` block is needed.
@@ -501,10 +503,11 @@ Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, and
-`check-typos.yml`
+`spellcheck.yml`, `check-typos.yml`, and
+`check-extra.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -615,14 +618,14 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
-`lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
+`lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, and
-`check-typos.yml` at `@v2` -- see the
+`spellcheck.yml`, `check-typos.yml`, and
+`check-extra.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
@@ -656,5 +659,6 @@ automatically. A **private** consumer must allow access to this repo under
 ## Scope
 
 This started as the pilot set (the byte-identical / near-identical workflow
-families) plus the PR-preview/publish family. Additional families (spell check,
-lint-changed-files, pr-commands, R-CMD-check) may be added later.
+families) plus the PR-preview/publish family.
+Additional families
+(pr-commands, R-CMD-check) may be added later.
