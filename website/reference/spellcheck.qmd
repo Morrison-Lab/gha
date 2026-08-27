@@ -24,10 +24,10 @@ against a fixture (2026-08-21):
   `index`, case-insensitively. So a package's own `README.md` and `NEWS.md`
   **are** checked.
 
-Everything else is out of reach: a Quarto site's other pages, `CONTRIBUTING.md`,
-code comments, YAML, and any repository that is not an R package at all.
-[gha#557](https://github.com/Morrison-Lab/gha/issues/557) tracks covering those
-with a separate tool.
+Everything else is out of reach of `spellcheck.yml`: a Quarto site's other
+pages, `CONTRIBUTING.md`, code comments, YAML, and any repository that is
+not an R package at all.
+[`check-typos.yml`](check-typos.qmd) covers those with crate-ci/typos.
 
 The package's own name and its authors' names are added to the accepted
 vocabulary automatically, so neither needs a `WORDLIST` entry.

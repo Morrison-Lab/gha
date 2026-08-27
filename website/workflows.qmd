@@ -22,8 +22,10 @@ input tables and a copy-paste example.
 | [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                                              |
 | [`lint-workflows.yml`](reference/lint-workflows.qmd)                       | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions                                                                                                              | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail`                                                                         |
 | [`spellcheck.yml`](reference/spellcheck.qmd)                               | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto`                                                                                               |
+| [`check-typos.yml`](reference/check-typos.qmd)                             | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos                                     | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail`                                                                    |
 | [`check-news.yml`](reference/check-news.qmd)                               | Enforce a `NEWS.md` changelog entry on PRs                                                                                                                                                                                        | `changelog`, `no-changelog-label`                                                                                                                                                   |
 | [`test-coverage.yml`](reference/test-coverage.qmd)                         | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov                                                                                                                                            | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`                                                                                               |
+| [`check-extra.yml`](reference/check-extra.qmd)                             | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale                                    | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness`                                                        |
 | [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`                                                                                                       |
 | [`summary.yml`](reference/summary.qmd)                                     | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`)                                                                                                       | `endpoint`, `model`                                                                                                                                                                 |
 | [`quarto-publish.yml`](reference/quarto-publish.qmd)                       | Render a Quarto site and deploy it to GitHub Pages                                                                                                                                                                                | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `deploy` |
@@ -59,8 +61,9 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
-`lint-workflows.yml`, and
-`spellcheck.yml`
+`lint-workflows.yml`,
+`spellcheck.yml`, `check-typos.yml`, and
+`check-extra.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
@@ -157,9 +160,21 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   package, are out of its reach. It replaces the bespoke `check-spelling.yaml`
   several lab repos carry, and needs no wordlist migration, since that file is
   {spelling}'s own format.
+- `check-typos.yml` spellchecks those remaining files with
+  [crate-ci/typos](https://github.com/crate-ci/typos): a Quarto site's
+  non-vignette pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments,
+  and repositories that are not R packages. Diff-scoped by default (only
+  lines a PR adds, plus filename typos on paths the PR added or renamed),
+  so a first run over an existing repo does not reflag
+  years of drift; pass `base-ref: all` to scan the whole tree.
 - `test-coverage.yml` measures R-package test coverage with `covr` and uploads
   the Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the
   caller's `secrets:` block (optional for public repos, but recommended).
+- `check-extra.yml` runs three R-package checks that `R CMD check` passes
+  over: warnings as errors on examples, tests, and vignettes; tests in
+  random order with a logged seed; and a `README.Rmd` render that also
+  fails when the knitted `README.md` is stale. Each check is its own job
+  so every failure surfaces at once.
 
 ## PHI scanning {#phi-scanning}
 
@@ -260,6 +275,13 @@ The two Claude workflows are a pair.
 - `claude-code-review.yml` runs a read-only Claude review: a consolidated
   summary on dispatched runs by default; add a `pull_request` trigger in the
   caller if you also want automatic reviews on PR updates.
+  The model job's `GITHUB_TOKEN` has no write scopes
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  jobs that hold `pull-requests: write` / `issues: write`
+  never invoke the model (gha#580).
+  The caller still grants `actions: read`: `post-review` downloads the
+  packed artifact, and a `permissions:` block sets unspecified scopes to
+  none.
 
 An `@claude review` mention (or any commit Claude pushes) routes through
 `claude.yml`, which dispatches `claude-code-review.yml` via `workflow_dispatch`.

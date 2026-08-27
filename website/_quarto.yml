@@ -51,6 +51,7 @@ website:
           - reference/check-news.qmd
           - reference/assemble-news.qmd
           - reference/test-coverage.qmd
+          - reference/check-extra.qmd
           - reference/update-snapshots.qmd
           - reference/summary.qmd
           - reference/quarto-publish.qmd
@@ -76,6 +77,7 @@ website:
           - reference/bump-dev-version.qmd
           - reference/version-check.qmd
           - reference/spellcheck.qmd
+          - reference/check-typos.qmd
 
 format:
   html:

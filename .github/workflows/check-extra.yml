@@ -1,0 +1,117 @@
+# Derived from IndrajeetPatil/workflows check-extra.yaml (MIT):
+# https://github.com/IndrajeetPatil/workflows
+#
+# Each check below runs as a separate parallel job on its own runner.
+# This means R and dependencies are installed once per job -- not shared
+# between jobs. That redundancy is intentional: parallel jobs give each
+# check an independent status badge and surface all failures at once,
+# rather than stopping at the first failure as sequential steps would.
+name: Extra R-package checks (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: >-
+          Path to the R package root (the directory holding DESCRIPTION).
+          Defaults to the repository root.
+        type: string
+        default: '.'
+      extra-packages:
+        description: >-
+          Extra R packages to install, forwarded to setup-r-dependencies.
+          Use this for packages a README or example needs that are not in
+          DESCRIPTION (e.g. `any::ggthemes`).
+        type: string
+        default: ''
+      install-quarto:
+        description: Install Quarto when setting up R dependencies.
+        type: boolean
+        default: false
+      check-warnings:
+        description: >-
+          Run examples, tests, and vignettes with warnings as errors
+          (`options(warn = 2L)`).
+        type: boolean
+        default: true
+      check-random-order:
+        description: >-
+          Run testthat with `shuffle = TRUE` and a logged seed.
+        type: boolean
+        default: true
+      check-readme:
+        description: Render README.Rmd with warnings as errors.
+        type: boolean
+        default: true
+      check-readme-freshness:
+        description: >-
+          When the README job runs, fail if README.md is modified or
+          untracked after the render. Opt out with `false` if you only
+          want the warnings-as-errors half.
+        type: boolean
+        default: true
+
+jobs:
+  check-no-warnings:
+    name: Check for warnings
+    if: ${{ inputs.check-warnings }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Warnings as errors
+        uses: Morrison-Lab/gha/check-extra@v2
+        with:
+          check: warnings
+          path: ${{ inputs.path }}
+          extra-packages: ${{ inputs.extra-packages }}
+          install-quarto: ${{ inputs.install-quarto }}
+
+  check-random-test-order:
+    name: Check random test order
+    if: ${{ inputs.check-random-order }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Random test order
+        uses: Morrison-Lab/gha/check-extra@v2
+        with:
+          check: random-order
+          path: ${{ inputs.path }}
+          extra-packages: ${{ inputs.extra-packages }}
+          install-quarto: ${{ inputs.install-quarto }}
+
+  check-readme:
+    name: Check README rendering
+    if: ${{ inputs.check-readme }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: README render
+        uses: Morrison-Lab/gha/check-extra@v2
+        with:
+          check: readme
+          path: ${{ inputs.path }}
+          extra-packages: ${{ inputs.extra-packages }}
+          install-quarto: ${{ inputs.install-quarto }}
+          check-readme-freshness: ${{ inputs.check-readme-freshness }}

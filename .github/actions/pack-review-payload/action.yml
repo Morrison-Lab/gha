@@ -1,0 +1,184 @@
+name: Pack a Claude review payload for the posting job
+description: >-
+  Writes the files the claude-code-review.yml posting job needs (payload.json
+  plus optional review.txt / denied_tools.txt) and uploads them as a workflow
+  artifact. Extracted so the model job can finish without holding
+  pull-requests: write / issues: write: those grants live on the posting job,
+  which downloads this artifact (gha#580). Located via github.action_path
+  because callers checkout their own repo, not Morrison-Lab/gha.
+
+inputs:
+  pr-number:
+    description: PR number the posting job will comment on.
+    required: true
+  payload-dir:
+    description: >-
+      Directory to write the payload into. Defaults to a temp dir so a
+      caller that only wants the artifact does not have to pick a path.
+    required: false
+    default: ''
+  repo:
+    description: owner/repo. Defaults to github.repository.
+    required: false
+    default: ${{ github.repository }}
+  run-url:
+    description: Actions run URL included in posted comments so collapse can match them.
+    required: false
+    default: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+  run-id:
+    description: github.run_id, packed so the posting job can skip its own comments when collapsing.
+    required: false
+    default: ${{ github.run_id }}
+  event-name:
+    description: github.event_name (pull_request vs workflow_dispatch), for the track-progress skip.
+    required: false
+    default: ${{ github.event_name }}
+  caller-wf-path:
+    description: Caller workflow path from parse-workflow-ref, used to scope collapse.
+    required: false
+    default: ''
+  wf-path:
+    description: Workflow path named in the self-review skip notice, when self_mod is true.
+    required: false
+    default: ''
+  self-mod:
+    description: "'true' when the self-review guard skipped the model."
+    required: false
+    default: 'false'
+  skip-notice-posted:
+    description: >-
+      Unused by the posting job's own skip-notice step (that step posts, it
+      does not read this). Packed so a payload dump of a self_mod run is
+      inspectable. Defaults to false.
+    required: false
+    default: 'false'
+  quota-exhausted:
+    description: "'true' when the review was skipped for quota/auth."
+    required: false
+    default: 'false'
+  cancelled:
+    description: "'true' when resolve-final recorded a cancelled run."
+    required: false
+    default: 'false'
+  resolve-outcome:
+    description: "success, failure, or empty when resolve-final did not run (self_mod)."
+    required: false
+    default: ''
+  head-sha:
+    description: PR head SHA recorded before the model ran.
+    required: false
+    default: ''
+  total-cost-usd:
+    description: Summed attempt cost, for the cost comment and the failure report.
+    required: false
+    default: ''
+  failure-kind:
+    description: resolve-final's failure_kind, empty on a clean review.
+    required: false
+    default: ''
+  denials:
+    description: Guard denial count (may be the 999999 sentinel or empty).
+    required: false
+    default: ''
+  denied-tools:
+    description: >-
+      Guard denied_tools summary. Agent-authored free text; the composite
+      passes it through env: into the pack script, never interpolates it
+      into a run: body (gha#541).
+    required: false
+    default: ''
+  max-denials:
+    description: Stub-retry threshold the guard compared against.
+    required: false
+    default: ''
+  attempts:
+    description: "'1' or '2'."
+    required: false
+    default: ''
+  track-progress:
+    description: Already-resolved 'true'/'false' for whether tag mode would have auto-posted.
+    required: false
+    default: 'false'
+  report-cost:
+    description: "'true' to have the posting job emit the cost comment."
+    required: false
+    default: 'true'
+  review-text-file:
+    description: Path to the extracted review text. Empty when there is none.
+    required: false
+    default: ''
+  artifact-name:
+    description: Name of the uploaded artifact. Overridable so selftest can avoid colliding.
+    required: false
+    default: ''
+  upload:
+    description: >-
+      'true' (default) to upload the directory as an artifact. 'false' for
+      offline/selftest calls that only need the files.
+    required: false
+    default: 'true'
+
+outputs:
+  dir:
+    description: Directory containing payload.json and any sidecar files.
+    value: ${{ steps.pack.outputs.dir }}
+  artifact-name:
+    description: Artifact name used for the upload, when upload was true.
+    value: ${{ steps.pack.outputs.artifact-name }}
+
+runs:
+  using: composite
+  steps:
+    - name: Pack review payload
+      id: pack
+      shell: bash
+      env:
+        INPUT_PAYLOAD_DIR: ${{ inputs.payload-dir }}
+        PR_NUMBER: ${{ inputs.pr-number }}
+        REPO: ${{ inputs.repo }}
+        RUN_URL: ${{ inputs.run-url }}
+        RUN_ID: ${{ inputs.run-id }}
+        EVENT_NAME: ${{ inputs.event-name }}
+        CALLER_WF_PATH: ${{ inputs.caller-wf-path }}
+        WF_PATH: ${{ inputs.wf-path }}
+        SELF_MOD: ${{ inputs.self-mod }}
+        SKIP_NOTICE_POSTED: ${{ inputs.skip-notice-posted }}
+        QUOTA_EXHAUSTED: ${{ inputs.quota-exhausted }}
+        CANCELLED: ${{ inputs.cancelled }}
+        RESOLVE_OUTCOME: ${{ inputs.resolve-outcome }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        TOTAL_COST_USD: ${{ inputs.total-cost-usd }}
+        FAILURE_KIND: ${{ inputs.failure-kind }}
+        DENIALS: ${{ inputs.denials }}
+        DENIED_TOOLS: ${{ inputs.denied-tools }}
+        MAX_DENIALS: ${{ inputs.max-denials }}
+        ATTEMPTS: ${{ inputs.attempts }}
+        TRACK_PROGRESS: ${{ inputs.track-progress }}
+        REPORT_COST: ${{ inputs.report-cost }}
+        REVIEW_TEXT_FILE: ${{ inputs.review-text-file }}
+        INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
+        PACK_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/pack-review-payload.sh
+      run: |
+        set -euo pipefail
+        if [[ -n "$INPUT_PAYLOAD_DIR" ]]; then
+          PAYLOAD_DIR="$INPUT_PAYLOAD_DIR"
+        else
+          PAYLOAD_DIR="$(mktemp -d)"
+        fi
+        export PAYLOAD_DIR
+        bash "$PACK_SCRIPT"
+        echo "dir=$PAYLOAD_DIR" >> "$GITHUB_OUTPUT"
+        if [[ -n "$INPUT_ARTIFACT_NAME" ]]; then
+          echo "artifact-name=$INPUT_ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+        else
+          echo "artifact-name=claude-review-payload-${RUN_ID}-${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload review payload
+      if: inputs.upload == 'true' && steps.pack.outcome == 'success'
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      with:
+        name: ${{ steps.pack.outputs.artifact-name }}
+        path: ${{ steps.pack.outputs.dir }}
+        retention-days: 14
+        if-no-files-found: error

@@ -2,8 +2,9 @@ name: Dispatch code review
 description: >-
   Resolves PR_BRANCH / PR_HEAD_REPO (including API lookup fallback when checkout
   was skipped), determines whether --ref should be passed (omitting --ref for
-  fork PRs or when PR_BRANCH cannot be resolved), and dispatches the code review
-  workflow via `gh workflow run`. Wraps
+  fork PRs, when PR_BRANCH cannot be resolved, or when the PR edits top-level
+  workflow YAML so GitHub executes the default-branch caller --- gha#598),
+  and dispatches the code review workflow via `gh workflow run`. Wraps
   .github/workflows/scripts/dispatch-review.sh, located via
   github.action_path. (gha#419)
 

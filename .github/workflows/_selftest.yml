@@ -362,8 +362,9 @@ jobs:
           # Run every detector (incl. the off-by-default phone/email) so CI
           # exercises them all; this repo's tree is identifier-free apart from
           # test fixtures that carry synthetic PHI-shaped strings by design (the
-          # detector unit tests, the coverage and spellcheck fixture
-          # generators' synthetic maintainer emails, and check-new-line-breaks'
+          # detector unit tests, the coverage, spellcheck, check-typos,
+          # and check-extra fixture generators' synthetic maintainer
+          # emails, and check-new-line-breaks'
           # throwaway git-repo test fixtures' placeholder git config email),
           # which are skipped via paths-ignore below.
           # This input REPLACES the default set rather than extending it, so a
@@ -376,6 +377,8 @@ jobs:
             test-coverage/tests/**
             check-new-line-breaks/tests/**
             spellcheck/tests/**
+            check-typos/tests/**
+            check-extra/tests/**
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
   # The phi job above proves the action runs clean on an identifier-free tree;
   # this job unit-tests the detector functions directly (positive + negative
@@ -544,6 +547,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -584,6 +588,15 @@ jobs:
       - name: Run dispatch-review tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-dispatch-review-tests.sh
+      - name: Run detect-pr-workflow-edits tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-detect-pr-workflow-edits-tests.sh
+      - name: Run list-pr-changed-files tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh
+      - name: Run restore-default-branch-workflows tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh
       - name: Run resolve-pr-info tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-resolve-pr-info-tests.sh
@@ -604,6 +617,70 @@ jobs:
         with:
           workflow-path: .github/workflows/claude-code-review.yml
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise build-self-review-skip-notice with an empty workflow-path
+        id: skip-notice-incomplete-e2e
+        uses: ./.github/actions/build-self-review-skip-notice
+        with:
+          workflow-path: ''
+          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise detect-pr-workflow-edits composite action end-to-end
+        id: detect-wf-e2e
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/detect-pr-workflow-edits
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          caller-workflow-path: .github/workflows/claude-review.yml
+      - name: Assert detect-pr-workflow-edits matches an independent classify
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          WORKFLOW_EDITS: ${{ steps.detect-wf-e2e.outputs.workflow_edits }}
+          EDITED_PATH: ${{ steps.detect-wf-e2e.outputs.edited_path }}
+          LIST_INCOMPLETE: ${{ steps.detect-wf-e2e.outputs.list_incomplete }}
+        run: |
+          set -euo pipefail
+          if [[ "$WORKFLOW_EDITS" != "true" && "$WORKFLOW_EDITS" != "false" ]]; then
+            echo "::error::detect-pr-workflow-edits did not produce a boolean workflow_edits output (got '$WORKFLOW_EDITS')"
+            exit 1
+          fi
+          if [[ "$LIST_INCOMPLETE" != "true" && "$LIST_INCOMPLETE" != "false" ]]; then
+            echo "::error::detect-pr-workflow-edits did not produce a boolean list_incomplete output (got '$LIST_INCOMPLETE')"
+            exit 1
+          fi
+          if [[ "$LIST_INCOMPLETE" == "true" && -n "$EDITED_PATH" ]]; then
+            echo "::error::detect-pr-workflow-edits set list_incomplete=true but edited_path='$EDITED_PATH' (must be empty, not a fake path)"
+            exit 1
+          fi
+          # The boolean-only check cannot catch a composite that always
+          # returns false: this PR edits workflow YAML, so that bug would
+          # still look green. Classify the same PR independently via the
+          # scripts the composite wraps; a wiring skip that never calls
+          # them disagrees on a workflow-editing PR.
+          if files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash .github/workflows/scripts/list-pr-changed-files.sh); then
+            want=$(PR_CHANGED_FILES="$files" CALLER_WF_PATH=".github/workflows/claude-review.yml" bash .github/workflows/scripts/detect-pr-workflow-edits.sh | sed -n 's/^workflow_edits=//p')
+            # A composite that always takes the incomplete-list branch
+            # (workflow_edits=true, list_incomplete=true, empty path)
+            # would still match want=true on this PR. The list succeeded
+            # here, so list_incomplete must be false.
+            if [ "$LIST_INCOMPLETE" != "false" ]; then
+              echo "::error::detect-pr-workflow-edits list_incomplete='$LIST_INCOMPLETE' but the independent file list succeeded (want false)"
+              exit 1
+            fi
+          else
+            want=true
+            if [ "$LIST_INCOMPLETE" != "true" ]; then
+              echo "::error::detect-pr-workflow-edits list_incomplete='$LIST_INCOMPLETE' but the independent file list failed (want true)"
+              exit 1
+            fi
+          fi
+          if [ "$WORKFLOW_EDITS" != "$want" ]; then
+            echo "::error::detect-pr-workflow-edits workflow_edits='$WORKFLOW_EDITS' but independent classify wants '$want' (edited_path='$EDITED_PATH')"
+            exit 1
+          fi
+          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH list_incomplete=$LIST_INCOMPLETE (matches independent classify)"
       - name: Exercise export-extra-secrets composite action end-to-end
         uses: ./.github/actions/export-extra-secrets
         with:
@@ -622,6 +699,7 @@ jobs:
         shell: bash
         env:
           BODY_FILE: ${{ steps.skip-notice-e2e.outputs.body-file }}
+          INCOMPLETE_BODY_FILE: ${{ steps.skip-notice-incomplete-e2e.outputs.body-file }}
         run: |
           set -euo pipefail
           if [[ ! -s "$BODY_FILE" ]]; then
@@ -629,6 +707,19 @@ jobs:
             exit 1
           fi
           echo "build-self-review-skip-notice correctly generated body file at $BODY_FILE"
+          if [[ ! -s "$INCOMPLETE_BODY_FILE" ]]; then
+            echo "::error::build-self-review-skip-notice empty-path call did not generate a non-empty body file"
+            exit 1
+          fi
+          if grep -q 'This PR edits' "$INCOMPLETE_BODY_FILE"; then
+            echo "::error::empty-path skip notice still contains 'This PR edits'"
+            exit 1
+          fi
+          if ! grep -q 'changed-file list was incomplete' "$INCOMPLETE_BODY_FILE"; then
+            echo "::error::empty-path skip notice missing incomplete-list wording"
+            exit 1
+          fi
+          echo "build-self-review-skip-notice empty-path notice names an incomplete list"
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -1085,6 +1176,177 @@ jobs:
             exit 1
           fi
           echo "report-push-failure withheld the patch for a secret-scanning rejection"
+
+  # gha#580: the model job must not hold forge-write. Kept as its own job
+  # rather than folded into review-fail-check, so a failure here is
+  # attributable at a glance -- the same one-capability-per-job split
+  # phi-tests / review-failure-report already use.
+  review-job-split:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run pack-review-payload tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-pack-review-payload-tests.sh
+      - name: Run review-job-split self-tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-review-job-split-tests.py --self-test
+      - name: Run review-job-split assertions against this checkout
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-review-job-split-tests.py
+      # Real `uses:` call, proving pack-review-payload's github.action_path
+      # resolution of pack-review-payload.sh works end-to-end. The offline
+      # table above calls the script directly, so it cannot see whether
+      # action.yml wires its inputs through at all.
+      #
+      # upload: false so this neither uploads an artifact nor depends on
+      # actions: write. claude-code-review.yml's own consumption via @v2
+      # is the documented bootstrap gap until the tag slides.
+      - name: Exercise pack-review-payload composite action end-to-end
+        id: pack-e2e
+        uses: ./.github/actions/pack-review-payload
+        with:
+          pr-number: '12'
+          upload: 'false'
+          payload-dir: ${{ runner.temp }}/pack-e2e
+          repo: Morrison-Lab/gha
+          run-url: https://example.invalid/run
+          run-id: '99'
+          event-name: pull_request
+          caller-wf-path: .github/workflows/claude-review.yml
+          self-mod: 'false'
+          quota-exhausted: 'false'
+          cancelled: 'false'
+          resolve-outcome: success
+          head-sha: abc123
+          total-cost-usd: '1.25'
+          denials: '0'
+          denied-tools: 'Bash(echo "$(gh pr merge)")'
+          max-denials: '5'
+          attempts: '1'
+          track-progress: 'false'
+          report-cost: 'true'
+      - name: Assert pack-review-payload wrote payload.json and sidecars
+        shell: bash
+        env:
+          DIR: ${{ steps.pack-e2e.outputs.dir }}
+        run: |
+          set -euo pipefail
+          if [[ ! -f "$DIR/payload.json" ]]; then
+            echo "::error::pack-review-payload did not write payload.json"
+            exit 1
+          fi
+          if [[ "$(jq -r .pr_number "$DIR/payload.json")" != "12" ]]; then
+            echo "::error::pack-review-payload did not wire pr-number through (got $(jq -r .pr_number "$DIR/payload.json"))"
+            exit 1
+          fi
+          if [[ "$(jq -r .review_present "$DIR/payload.json")" != "false" ]]; then
+            echo "::error::pack-review-payload treated a missing review as present"
+            exit 1
+          fi
+          if [[ ! -f "$DIR/denied_tools.txt" ]]; then
+            echo "::error::pack-review-payload dropped denied-tools"
+            exit 1
+          fi
+          if [[ -f "$DIR/review.txt" ]]; then
+            echo "::error::pack-review-payload wrote review.txt with no review-text-file"
+            exit 1
+          fi
+          echo "pack-review-payload wrote payload.json and the denied_tools sidecar"
+
+  # gha#686: the pre-flight credential-shape check claude-code-review.yml runs
+  # before it spends money on an SDK call that a malformed secret dooms.
+  # Kept as its own job rather than folded into review-fail-check, so a failure
+  # here is attributable at a glance -- the same one-capability-per-job split
+  # phi-tests, gemini-review-fail-check, and review-failure-report use.
+  credential-shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run check-credential-shape tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-credential-shape-tests.sh
+      # Two real `uses:` calls, proving the composite's own
+      # github.action_path resolution of check-credential-shape.sh works
+      # end-to-end. The offline table above calls the script directly, so it
+      # cannot see whether action.yml wires its inputs through at all -- the
+      # gap that let #191's job_workflow_ref regression through fixture tests
+      # (gha#196), and the reason every sibling composite here has an e2e step
+      # beside its unit tests. It also covers the one decision the composite
+      # makes for itself, which the script cannot: combining two secrets into
+      # a single verdict.
+      #
+      # The values below are obvious non-secrets, and the composite is
+      # documented never to print any part of a credential -- so nothing here
+      # depends on Actions masking, which does not apply to a literal.
+      - name: Exercise check-credential-shape on a malformed credential
+        id: shape-bad
+        uses: ./.github/actions/check-credential-shape
+        with:
+          oauth-token: "not-a-token\nsecond-line"
+      - name: Exercise check-credential-shape on a well-formed credential
+        id: shape-good
+        uses: ./.github/actions/check-credential-shape
+        with:
+          oauth-token: 'not-a-real-token-but-single-line'
+      # The discriminating case: one malformed secret beside one well-formed
+      # one must NOT block, because which credential the action sends is its
+      # own precedence rule rather than something this workflow knows. Without
+      # this, narrowing the verdict to "any malformed secret" would pass every
+      # other case here while blocking review for a repo that has a working
+      # credential configured.
+      - name: Exercise check-credential-shape with one good and one bad secret
+        id: shape-mixed
+        uses: ./.github/actions/check-credential-shape
+        with:
+          oauth-token: "not-a-token\nsecond-line"
+          anthropic-api-key: 'not-a-real-key-but-single-line'
+      - name: Assert the composite wired its inputs and outputs through
+        shell: bash
+        env:
+          BAD: ${{ steps.shape-bad.outputs.malformed }}
+          BAD_DETAIL: ${{ steps.shape-bad.outputs.detail }}
+          GOOD: ${{ steps.shape-good.outputs.malformed }}
+          MIXED: ${{ steps.shape-mixed.outputs.malformed }}
+        run: |
+          set -euo pipefail
+          if [[ "$BAD" != "true" ]]; then
+            echo "::error::a multi-line credential must report malformed=true, got '$BAD'"
+            exit 1
+          fi
+          if [[ "$GOOD" != "false" ]]; then
+            echo "::error::a single-line credential must report malformed=false, got '$GOOD'"
+            exit 1
+          fi
+          if [[ "$MIXED" != "false" ]]; then
+            echo "::error::a well-formed credential beside a malformed one must not block, got '$MIXED'"
+            exit 1
+          fi
+          # The detail line is what reaches the run annotation, so an empty one
+          # would leave the failure unexplained even with the verdict correct.
+          if [[ -z "$BAD_DETAIL" ]]; then
+            echo "::error::a malformed verdict must carry a detail line"
+            exit 1
+          fi
+          # It must name the secret without quoting any of its value.
+          if [[ "$BAD_DETAIL" != *CLAUDE_CODE_OAUTH_TOKEN* ]]; then
+            echo "::error::the detail line does not name the affected secret: $BAD_DETAIL"
+            exit 1
+          fi
+          if [[ "$BAD_DETAIL" == *"not-a-token"* ]]; then
+            echo "::error::the detail line leaked part of the credential value"
+            exit 1
+          fi
+          echo "check-credential-shape wired through correctly: $BAD_DETAIL"
+
   # gha#543: the review-failure comment claude-code-review.yml posts when a
   # review run finishes without a usable verdict. Kept as its own job rather
   # than folded into review-fail-check, so a failure here is attributable at a
@@ -2454,6 +2716,67 @@ jobs:
             exit 1
           fi
           echo "The vignette fixture failed without 'exclude', so the exclude assertion is not vacuous."
+  # check-extra is brand new, so (like test-coverage/spellcheck above) it
+  # isn't at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-extra@v2` step resolves against yet.
+  # Exercise the local composite against a generated R-package fixture.
+  # Three sequential `uses: ./check-extra` calls (one per check) prove each
+  # `check` input's wiring; a fourth call against a warning-in-example
+  # fixture proves the warnings-as-errors path actually fails. The
+  # freshness gate and skip-if-missing surfaces are covered by the offline
+  # suite, because a generated untracked README.md would fail freshness
+  # vacuously relative to this repo's checkout.
+  check-extra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate the R package fixture
+        shell: bash
+        run: bash check-extra/tests/make-fixture.sh _ci-extra
+      - name: Warnings as errors on the fixture
+        uses: ./check-extra
+        with:
+          check: warnings
+          path: _ci-extra
+      - name: Random test order on the fixture
+        uses: ./check-extra
+        with:
+          check: random-order
+          path: _ci-extra
+      - name: README render on the fixture
+        uses: ./check-extra
+        with:
+          check: readme
+          path: _ci-extra
+          check-readme-freshness: false
+      - name: Run check-extra offline tests
+        shell: bash
+        run: bash check-extra/tests/test-check-extra.sh
+      - name: Generate a fixture whose examples warn
+        shell: bash
+        run: bash check-extra/tests/make-fixture.sh _ci-extra-warn --warn-example
+      - name: Warnings as errors must fail on a warning in an example
+        id: extra-warn
+        continue-on-error: true
+        uses: ./check-extra
+        with:
+          check: warnings
+          path: _ci-extra-warn
+      - name: Assert the warning-in-example fixture failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.extra-warn.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected check-extra warnings to fail on a warning() in an example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-extra failed on a warning in an example, as expected."
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't
@@ -2774,6 +3097,133 @@ jobs:
       - name: Run check-junk-files tests
         shell: bash
         run: bash check-junk-files/tests/test-check-junk-files.sh
+
+  # check-typos is brand new, so (like check-junk-files above) it does not
+  # exist at the released `@v2` tag its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-typos@v2` step resolves against yet.
+  # Exercise the local composite directly so the selftest covers the actual PR
+  # code. This repo's own tree currently carries a handful of pre-existing
+  # typos (`unparseable`, measured 2026-08-26), so the no-base-ref call below
+  # is a live proof of the skip: a whole-tree fallback would fail it.
+  typos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Skip when no base-ref is given
+        uses: ./check-typos
+
+      - name: A named-but-missing config must fail
+        id: typos-missing-config
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          config: definitely-missing.toml
+
+      - name: Assert the missing-config call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-missing-config.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos to fail on a missing config file, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a named-but-missing config, as expected."
+
+      - name: Build a fixture with pre-existing drift
+        shell: bash
+        run: bash check-typos/tests/make-fixture.sh _ci-typos
+
+      - name: Diff-scoped call over an unrelated addition must pass
+        uses: ./check-typos
+        with:
+          path: _ci-typos
+          base-ref: HEAD~1
+
+      - name: Whole-tree call must fail on the pre-existing typo
+        id: typos-all-expected-failure
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          path: _ci-typos
+          base-ref: all
+
+      - name: Assert the whole-tree call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-all-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos base-ref=all to fail on a pre-existing typo, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a pre-existing typo in whole-tree mode, as expected."
+
+      - name: Build a fixture with a newly-added Quarto typo
+        shell: bash
+        run: bash check-typos/tests/make-fixture.sh _ci-typos-qmd --new-typo
+
+      - name: Diff-scoped call must fail on the new .qmd typo
+        id: typos-qmd-expected-failure
+        continue-on-error: true
+        uses: ./check-typos
+        with:
+          path: _ci-typos-qmd
+          base-ref: HEAD~1
+
+      - name: Assert the new .qmd typo actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typos-qmd-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typos to fail on a newly-added page.qmd typo, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typos failed on a newly-added .qmd typo, as expected."
+
+      - name: The same .qmd typo is silent when paths-ignore exempts it
+        uses: ./check-typos
+        with:
+          path: _ci-typos-qmd
+          base-ref: HEAD~1
+          paths-ignore: 'page.qmd'
+
+  # The job above proves action.yml wires path, base-ref, paths-ignore, and
+  # config through a real uses: call, including the skip, the missing-config
+  # fail, the whole-tree fail, and a newly-added .qmd typo. Everything else
+  # -- fail-closed reading, JSONL parse errors, filename-typo scope, the
+  # checksum gate -- runs only here against a stub binary (and a stub curl
+  # for the installer), so a regression is caught even when this repo's
+  # own tree wouldn't trip it.
+  typos-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-typos unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-typos/tests/ -q
 
   save-pr-diff:
     runs-on: ubuntu-latest

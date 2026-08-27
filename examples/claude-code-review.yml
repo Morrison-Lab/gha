@@ -157,6 +157,30 @@ jobs:
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE without --ref."
             REF_ARGS=()
           fi
+          # When the PR edits top-level workflow YAML, omit --ref so GitHub
+          # executes the default-branch caller rather than the PR head
+          # (gha#598). Nested paths under workflows/scripts/ are not workflows.
+          # Keep this grep in sync with detect-pr-workflow-edits.sh.
+          # GET .../files is capped at 3000 files (GitHub REST "List pull
+          # requests files", read 2026-08-26). A 200 with a short list is
+          # not a complete tree. Keep in sync with list-pr-changed-files.sh.
+          changed=$(jq -r '.changed_files' <<< "$PR_JSON")
+          listed=0
+          if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
+            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE without --ref so GitHub executes default-branch workflow YAML (gha#598)."
+            REF_ARGS=()
+          else
+            if [ -n "$files" ]; then
+              listed=$(printf '%s\n' "$files" | grep -c . || true)
+            fi
+            if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
+              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE without --ref so GitHub executes default-branch workflow YAML (gha#598)."
+              REF_ARGS=()
+            elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+              echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $WF_FILE from the default branch so GitHub executes trusted workflow YAML (gha#598)."
+              REF_ARGS=()
+            fi
+          fi
           # --repo is required: this job doesn't check out the repo, so gh has no
           # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
@@ -170,10 +194,11 @@ jobs:
     if: github.event_name != 'issue_comment'
     permissions:
       contents: read
-      pull-requests: write
+      pull-requests: write   # posting job (gha#580); the model job is read-only
       issues: write
-      id-token: write
-      actions: read   # lets the reviewer read CI status (github_ci MCP server)
+      # No id-token: write: the reusable workflow forwards github.token
+      # and skips the App-token exchange (gha#580).
+      actions: read   # post-review download-artifact; model job github_ci MCP
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # Max-plan OAuth; empty when using API key

@@ -1,0 +1,27 @@
+# Copy to .github/workflows/check-extra.yml in your repo.
+# Extra R-package checks that R CMD check passes over: warnings as errors
+# on examples/tests/vignettes, tests in random order, and a README.Rmd
+# render that also fails when the knitted README.md is stale.
+# Each check is its own job so every failure surfaces at once.
+# Only contents:read is needed (the default), so no permissions block
+# is required.
+name: Extra R-package checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  extra:
+    uses: Morrison-Lab/gha/.github/workflows/check-extra.yml@v2
+    # with:
+    #   path: '.'                         # package root, if not the repo root
+    #   extra-packages: 'any::ggthemes'   # extra R packages a README/example needs
+    #   install-quarto: false
+    #   check-warnings: true              # examples + tests + vignettes under warn=2
+    #   check-random-order: true          # testthat shuffle=TRUE with a logged seed
+    #   check-readme: true                # render README.Rmd under warn=2
+    #   check-readme-freshness: true      # also fail if README.md changed

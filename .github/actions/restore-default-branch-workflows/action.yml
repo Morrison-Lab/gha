@@ -1,0 +1,23 @@
+name: Restore default-branch workflow files
+description: >-
+  Replaces `.github/workflows/` in the current checkout with the copy from
+  the repository's default branch, so a review job does not leave untrusted
+  workflow YAML from the PR head on disk. Wraps
+  restore-default-branch-workflows.sh via github.action_path (gha#598).
+
+inputs:
+  default-branch:
+    description: Repository default branch (e.g. main).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Restore .github/workflows from the default branch
+      shell: bash
+      env:
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
+      run: |
+        set -euo pipefail
+        SCRIPT="${{ github.action_path }}/../../workflows/scripts/restore-default-branch-workflows.sh"
+        bash "$SCRIPT"
