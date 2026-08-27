@@ -1,0 +1,298 @@
+name: R-CMD-check (reusable)
+
+# Run R CMD check. The full OS x R-version matrix is the default; pass
+# hard: true from a second caller job for a Depends/Imports/LinkingTo-only
+# check that is gated to pull_request.
+#
+# Two designs come from IndrajeetPatil/workflows R-CMD-check.yaml (MIT):
+# the hard input, and cache: false on that job so a restored pak cache
+# cannot silently contain Suggests. Do not copy that file's concurrency
+# group of github.workflow-github.head_ref with no github.ref fallback --
+# head_ref is empty on push, so every push across every branch collapsed
+# into one group. This reusable workflow sets no concurrency; the example
+# stub keys on github.ref.
+#
+# Matrix, container, timeout, error-on, and the _R_CHECK_* knobs are
+# inputs rather than hard-coded. Julia, Quarto, pandoc, recursive
+# submodules, and a Linux container (rocker/verse on rpt) are inputs so a
+# consumer can match a bespoke workflow step-for-step; see the reference
+# page's migration table. The hard job never uses linux-container: a
+# verse image already contains Suggested packages, which would defeat
+# the check.
+
+on:
+  workflow_call:
+    inputs:
+      hard:
+        description: >-
+          Run a hard-dependencies-only check (Depends/Imports/LinkingTo,
+          plus knitr/rcmdcheck/rmarkdown/curl/testthat). Only runs on
+          pull_request. Mutually exclusive with the full matrix: call
+          this workflow twice from the stub if you want both.
+        type: boolean
+        default: false
+      extra-packages:
+        description: >-
+          Extra r-lib/actions package specs appended after the check's
+          own extras (any::rcmdcheck on the full matrix; knitr,
+          rcmdcheck, rmarkdown, curl, and testthat on the hard job).
+        type: string
+        default: ''
+      error-on:
+        description: >-
+          R expression for r-lib/actions/check-r-package error-on on
+          the full matrix. Default '"note"' matches rpt (NOTEs fail),
+          not r-lib's '"warning"'. The hard job omits this input so
+          r-lib's '"warning"' default applies: missing Suggests are
+          NOTEs, and error-on note would fail the job for the
+          condition it exists to tolerate.
+        type: string
+        default: '"note"'
+      cran-incoming-remote:
+        description: >-
+          Value for _R_CHECK_CRAN_INCOMING_REMOTE_ and
+          _R_CHECK_CRAN_INCOMING_. r-lib/actions/check-r-package
+          sets INCOMING false when unset, so REMOTE alone cannot
+          turn incoming checks on. {devtools} uses incoming =
+          remote; this input drives both. Default false matches
+          r-lib's skip.
+        type: boolean
+        default: false
+      force-suggests:
+        description: >-
+          Value for _R_CHECK_FORCE_SUGGESTS_ on the full matrix. The
+          hard job always sets this false, because Suggests are not
+          installed there.
+        type: boolean
+        default: false
+      stop-on-invalid-numeric-version-inputs:
+        description: >-
+          Value for _R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_.
+        type: boolean
+        default: true
+      path:
+        description: >-
+          Path to the R package root (the directory holding DESCRIPTION).
+          Defaults to the repository root.
+        type: string
+        default: '.'
+      config:
+        description: >-
+          JSON array of {os, r, http-user-agent?} objects for the full
+          matrix. Ignored when hard is true. Default is r-lib's
+          check-standard 5-way matrix (macos/windows release, ubuntu
+          devel with http-user-agent release, ubuntu release, ubuntu
+          oldrel-1).
+        type: string
+        default: >-
+          [{"os":"macos-latest","r":"release"},{"os":"windows-latest","r":"release"},{"os":"ubuntu-latest","r":"devel","http-user-agent":"release"},{"os":"ubuntu-latest","r":"release"},{"os":"ubuntu-latest","r":"oldrel-1"}]
+      setup-pandoc:
+        description: Install Pandoc before the check.
+        type: boolean
+        default: true
+      install-quarto:
+        description: >-
+          Install Quarto before the check. On the full matrix, skipped
+          on ubuntu-latest only when linux-container contains 'verse'
+          (rocker/verse already includes Quarto). Other images still
+          get the install step.
+        type: boolean
+        default: false
+      setup-julia:
+        description: Install Julia before the check (for JuliaCall packages).
+        type: boolean
+        default: false
+      julia-version:
+        description: Julia version to install. Only used when setup-julia is true.
+        type: string
+        default: '1'
+      linux-container:
+        description: >-
+          Container image for ubuntu-latest cells of the full matrix
+          (e.g. rocker/verse:latest). Empty means no container. Ignored
+          on the hard job: a verse image already contains Suggested
+          packages, which would silently defeat a hard-deps check.
+          The Quarto install step is skipped on ubuntu-latest only
+          when this image name contains 'verse'.
+        type: string
+        default: ''
+      checkout-submodules:
+        description: Initialize the caller's git submodules before the check.
+        type: boolean
+        default: false
+      timeout-minutes:
+        description: >-
+          Job timeout. Default 90 is the hang ceiling, not a budget;
+          rpt's bespoke workflow used 50.
+        type: number
+        default: 90
+      build-args:
+        description: R expression forwarded to check-r-package build_args.
+        type: string
+        default: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+      upload-snapshots:
+        description: >-
+          Upload all testthat snapshots as an artifact (r-lib's
+          wording). Default true uploads on success as well as
+          failure; pass false to skip.
+        type: boolean
+        default: true
+      upload-results:
+        description: Upload the check results directory as a workflow artifact.
+        type: boolean
+        default: true
+    secrets:
+      SUBMODULES_TOKEN:
+        description: >-
+          Token with read access to private submodules (only needed when
+          checkout-submodules is true).
+        required: false
+
+jobs:
+  R-CMD-check:
+    if: ${{ !inputs.hard }}
+    runs-on: ${{ matrix.config.os }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    container: ${{ matrix.config.os == 'ubuntu-latest' && inputs.linux-container || null }}
+    name: ${{ matrix.config.os }} (${{ matrix.config.r }})
+    strategy:
+      fail-fast: false
+      matrix:
+        config: ${{ fromJSON(inputs.config) }}
+    permissions:
+      contents: read
+    env:
+      GITHUB_PAT: ${{ github.token }}
+      R_KEEP_PKG_SOURCE: yes
+      # r-lib/check-r-package sets INCOMING false when unset, so REMOTE
+      # alone cannot enable incoming checks. Drive both from this input
+      # ({devtools} uses incoming = remote).
+      _R_CHECK_CRAN_INCOMING_: ${{ inputs.cran-incoming-remote }}
+      _R_CHECK_CRAN_INCOMING_REMOTE_: ${{ inputs.cran-incoming-remote }}
+      _R_CHECK_FORCE_SUGGESTS_: ${{ inputs.force-suggests }}
+      _R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_: ${{ inputs.stop-on-invalid-numeric-version-inputs }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout submodules
+        if: inputs.checkout-submodules
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        with:
+          submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Set up Pandoc
+        if: inputs.setup-pandoc
+        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+
+      - name: Set up Julia
+        if: inputs.setup-julia
+        uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
+        with:
+          version: ${{ inputs.julia-version }}
+
+      - name: Set up Quarto
+        if: inputs.install-quarto && !(matrix.config.os == 'ubuntu-latest' && contains(inputs.linux-container, 'verse'))
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          r-version: ${{ matrix.config.r }}
+          http-user-agent: ${{ matrix.config.http-user-agent }}
+          use-public-rspm: true
+
+      - name: Set up R dependencies
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          working-directory: ${{ inputs.path }}
+          extra-packages: |
+            any::rcmdcheck
+            ${{ inputs.extra-packages }}
+          needs: check
+
+      - name: Check
+        uses: r-lib/actions/check-r-package@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          working-directory: ${{ inputs.path }}
+          upload-snapshots: ${{ inputs.upload-snapshots }}
+          upload-results: ${{ inputs.upload-results }}
+          error-on: ${{ inputs.error-on }}
+          build_args: ${{ inputs.build-args }}
+
+  R-CMD-check-hard:
+    name: Hard dependencies only
+    if: ${{ inputs.hard && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    env:
+      GITHUB_PAT: ${{ github.token }}
+      R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_CRAN_INCOMING_: ${{ inputs.cran-incoming-remote }}
+      _R_CHECK_CRAN_INCOMING_REMOTE_: ${{ inputs.cran-incoming-remote }}
+      # Always false here: Suggests are not installed, so forcing them
+      # would make this job fail for the wrong reason.
+      _R_CHECK_FORCE_SUGGESTS_: false
+      _R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_: ${{ inputs.stop-on-invalid-numeric-version-inputs }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout submodules
+        if: inputs.checkout-submodules
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        with:
+          submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Set up Pandoc
+        if: inputs.setup-pandoc
+        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+
+      - name: Set up Julia
+        if: inputs.setup-julia
+        uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
+        with:
+          version: ${{ inputs.julia-version }}
+
+      - name: Set up Quarto
+        if: inputs.install-quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          use-public-rspm: true
+
+      - name: Set up R dependencies
+        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          working-directory: ${{ inputs.path }}
+          dependencies: '"hard"'
+          # A restored cache may already contain a Suggested package,
+          # which would silently defeat a hard-deps-only check
+          # (IndrajeetPatil/workflows; gha#331).
+          cache: false
+          extra-packages: |
+            any::knitr
+            any::rcmdcheck
+            any::rmarkdown
+            any::curl
+            any::testthat
+            ${{ inputs.extra-packages }}
+          needs: check
+
+      - name: Check
+        uses: r-lib/actions/check-r-package@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        with:
+          working-directory: ${{ inputs.path }}
+          upload-snapshots: ${{ inputs.upload-snapshots }}
+          upload-results: ${{ inputs.upload-results }}
+          # Omit error-on: r-lib's default '"warning"' keeps missing-Suggests
+          # NOTEs from failing the job that exists to tolerate them.
+          build_args: ${{ inputs.build-args }}

@@ -27,6 +27,7 @@ input tables and a copy-paste example.
 | [`check-news.yml`](reference/check-news.qmd)                               | Enforce a `NEWS.md` changelog entry on PRs                                                                                                                                                                                        | `changelog`, `no-changelog-label`                                                                                                                                                   |
 | [`test-coverage.yml`](reference/test-coverage.qmd)                         | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov                                                                                                                                            | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`                                                                                               |
 | [`check-extra.yml`](reference/check-extra.qmd)                             | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale                                    | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness`                                                        |
+| [`r-cmd-check.yml`](reference/r-cmd-check.qmd)                             | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request`                                                                                                           | `hard`, `error-on`, `force-suggests`, `setup-julia`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes`                                                        |
 | [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`                                                                                                       |
 | [`summary.yml`](reference/summary.qmd)                                     | AI summary comment on newly opened issues (GitHub Models brownout notice: configure `endpoint`/`model` or use `claude.yml`)                                                                                                       | `endpoint`, `model`                                                                                                                                                                 |
 | [`quarto-publish.yml`](reference/quarto-publish.qmd)                       | Render a Quarto site and deploy it to GitHub Pages                                                                                                                                                                                | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `deploy` |
@@ -64,8 +65,7 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, and
-`check-extra.yml`
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, and `r-cmd-check.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
 frozen on the older GitHub Actions Pages-artifact deploy, while `@v2` deploys to
@@ -181,6 +181,11 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   random order with a logged seed; and a `README.Rmd` render that also
   fails when the knitted `README.md` is stale. Each check is its own job
   so every failure surfaces at once.
+- `r-cmd-check.yml` runs `R CMD check` across an OS x R-version matrix
+  (r-lib's 5-way default).
+  A second caller job with `hard: true` runs a
+  Depends/Imports/LinkingTo-only check on pull requests, with `cache: false`
+  so a restored pak cache cannot silently contain Suggests.
 
 ## PHI scanning {#phi-scanning}
 

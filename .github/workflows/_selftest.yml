@@ -2841,6 +2841,65 @@ jobs:
             exit 1
           fi
           echo "check-extra failed on a warning in an example, as expected."
+  # r-cmd-check is workflow-only wrapping r-lib/actions; this repo is not an
+  # R package, so a live R CMD check is out of reach. Parse the workflow and
+  # example stub for the contracts that would be silent if reversed
+  # (cache: false on the hard job, pull_request gate, github.ref concurrency,
+  # error-on omit/forward, INCOMING env, verse-gated Quarto skip).
+  r-cmd-check-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Generate the R package fixture
+        shell: bash
+        run: bash check-extra/tests/make-fixture.sh _ci-extra
+      - name: Warnings as errors on the fixture
+        uses: ./check-extra
+        with:
+          check: warnings
+          path: _ci-extra
+      - name: Random test order on the fixture
+        uses: ./check-extra
+        with:
+          check: random-order
+          path: _ci-extra
+      - name: README render on the fixture
+        uses: ./check-extra
+        with:
+          check: readme
+          path: _ci-extra
+          check-readme-freshness: false
+      - name: Run check-extra offline tests
+        shell: bash
+        run: bash check-extra/tests/test-check-extra.sh
+      - name: Generate a fixture whose examples warn
+        shell: bash
+        run: bash check-extra/tests/make-fixture.sh _ci-extra-warn --warn-example
+      - name: Warnings as errors must fail on a warning in an example
+        id: extra-warn
+        continue-on-error: true
+        uses: ./check-extra
+        with:
+          check: warnings
+          path: _ci-extra-warn
+      - name: Assert the warning-in-example fixture failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.extra-warn.outcome }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTCOME" != "failure" ]]; then
+            echo "::error::expected check-extra warnings to fail on a warning() in an example, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-extra failed on a warning in an example, as expected."
+      - name: Run r-cmd-check workflow contract tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test
   # claude.yml hardcodes a mirror of claude-code-action's SENSITIVE_PATHS list
   # (from src/github/operations/restore-config.ts) so its auto-commit step
   # never reverts a PR's own edits to those files (#39). That mirror can't
