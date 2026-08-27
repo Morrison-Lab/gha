@@ -33,8 +33,15 @@ run() {
   # The two-line contract is read by fixed line offset in the calling step, so
   # a reordering would break the caller silently. Assert the shape, not just
   # the verdict -- the same reasoning run-classify-push-failure-tests.sh gives.
-  if [[ "$(wc -l <<< "$out")" != "2" ]]; then
-    echo "::error::$name: expected a 2-line contract, got $(wc -l <<< "$out") lines"
+  # Arithmetic, not string, comparison: BSD/macOS `wc -l` pads its output with
+  # leading spaces, so `!= "2"` fails every case off-runner while CI stays
+  # green, which is the least visible place for a suite whose whole point is
+  # that it runs offline. The sibling run-classify-opencode-run-tests.sh
+  # compares numerically for the same reason (gha#688).
+  local line_count
+  line_count="$(wc -l <<< "$out")"
+  if [[ "$line_count" -ne 2 ]]; then
+    echo "::error::$name: expected a 2-line contract, got $line_count lines"
     failures=$((failures + 1))
     return
   fi

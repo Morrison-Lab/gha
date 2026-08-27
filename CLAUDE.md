@@ -1643,6 +1643,16 @@ counting `::error::` lines, which is how the first draft of this paragraph
 reported each one inflated by one: the summary is itself an `::error::` line,
 so a `grep -c` over them counts a fourteenth thing that is not a case
 (gha#687 review finding 4).
+The two-line contract assertion compares the line count **arithmetically**,
+which is portability rather than taste: BSD/macOS `wc -l` pads its output with
+leading spaces, so a string comparison against `"2"` failed all 14 cases
+off-runner while CI stayed green (gha#688).
+A suite whose whole point is that it runs offline fails there in the least
+visible place there is, and a red local run reads as the change under test
+having broken something.
+Every other `wc -l` in the repo already avoids this, by arithmetic comparison
+(`run-classify-opencode-run-tests.sh`) or by explicit stripping
+(`check-junk-files.sh`'s `tr -d '[:space:]'`).
 CI runs it as the `credential-shape` job in `_selftest.yml`, kept separate from
 `review-fail-check` so a failure is attributable at a glance --- the same
 one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.
