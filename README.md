@@ -55,6 +55,7 @@ not reference `@main` from consumers.
 | `check-new-line-breaks.yml` | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
+| `lint-changed-files.yml` | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope` | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-workflows.yml` | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail` |
 | `spellcheck.yml` | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto` |
 | `check-typos.yml` | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail` |
@@ -106,7 +107,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `check-typos`,
-  `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
+  `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> → only
   `contents: read` (the default), so no `permissions:` block is needed.
@@ -503,6 +504,7 @@ Pin
 `preview.yml`, `preview-deploy.yml`, `cleanup-pr-previews.yml`, and
 `quarto-publish.yml` to `@v2`; `test-coverage.yml`, `check-equation-renders.yml`,
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, and `r-cmd-check.yml`
@@ -616,7 +618,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-bibliography-dois.yml`, `check-phi.yml`, `check-links.yml`,
 `check-non-standard-chars.yml`, `claude.yml`, `claude-code-review.yml`,
 `update-snapshots.yml`, `lint-yaml.yml`, `lint-markdown.yml`,
-`lint-qmd.yml`, `lint-changed-lines.yml`, `check-new-line-breaks.yml`,
+`lint-qmd.yml`, `lint-changed-lines.yml`, `lint-changed-files.yml`, `check-new-line-breaks.yml`,
 `check-secrets.yml`, `check-junk-files.yml`, `request-dependabot-review.yml`,
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
@@ -660,4 +662,4 @@ automatically. A **private** consumer must allow access to this repo under
 This started as the pilot set (the byte-identical / near-identical workflow
 families) plus the PR-preview/publish family.
 Additional families
-(lint-changed-files, pr-commands) may be added later.
+(pr-commands) may be added later.

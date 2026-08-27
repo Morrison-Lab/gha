@@ -15,7 +15,8 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `check-typos`,
-  `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
+  `cursor-code-review`, `lint-changed-files`,
+  `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> need only
   `contents: read` (the default), so no `permissions:` block is needed.

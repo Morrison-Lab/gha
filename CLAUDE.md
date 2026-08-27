@@ -99,7 +99,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `check-phi`, `check-junk-files`, `check-links`,
 `check-non-standard-chars`, `claude`,
 `claude-code-review`, `update-snapshots`, `lint-yaml`, `lint-markdown`,
-`lint-qmd`, `lint-changed-lines`, `check-new-line-breaks`, `check-secrets`,
+`lint-qmd`, `lint-changed-lines`, `lint-changed-files`, `check-new-line-breaks`, `check-secrets`,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
@@ -1318,6 +1318,35 @@ per check) and before a fourth call against a warning-in-example fixture
 that must fail.
 The fixture is generated at runtime
 (`check-extra/tests/make-fixture.sh`).
+
+`lint-changed-files/tests/test-lint-r-scope.R` is an R suite over
+`lint-r-scope.R`: scope validation, PR-file filtering (removed files
+dropped; walking 101 files only proves the walker does not drop list
+elements), a grep of `lint-changed-files.R` for `.limit = Inf` (that
+is the pagination pin -- `pr_changed_paths` never calls `gh::gh`),
+dotfile exclusions (an unchanged `.lintr.R` is excluded; `.git/` is not
+listed), and -- when lintr is installed from CRAN -- the
+`changed-files` exclusion pattern plus the DESCRIPTION vs no-DESCRIPTION
+split (`lint_package` vs `lint_dir`).
+Those lintr cases `setwd()` into the fixture and pass GitHub-shaped
+repo-relative filenames (`dirty.R`, `pkg/R/bad.R`), because
+`rel_to_path()` prefix-matches against `path` and an absolute
+`tempfile()` path would make every `changed-files` case return empty
+lints before lintr runs.
+Run it with `Rscript lint-changed-files/tests/test-lint-r-scope.R`; CI
+runs it as the `lint-changed-files-tests` job in `_selftest.yml`,
+alongside a `lint-changed-files` job that exercises the real composite
+(`uses: ./lint-changed-files`, not `@v2`) against a generated project
+fixture with no `DESCRIPTION` -- the setup path `lint-changed-lines`
+does not cover.
+That composite job uses `scope: project` only: untracked fixtures are
+invisible to the PR-files API, so `changed-files` `gh::gh` wiring is
+not an end-to-end selftest (the same gap `lint-changed-lines` has).
+The two fixtures differ in exactly one thing (`<-` vs `=` under a
+`.lintr.R` that enables only `assignment_linter`), so a default-config
+change on CRAN cannot turn the clean variant red.
+The fixture is generated at runtime
+(`lint-changed-files/tests/make-fixture.sh`).
 
 **Generate selftest fixtures at runtime; don't commit them.** A fixture
 committed under a composite's `tests/` dir (e.g. a minimal R package for
