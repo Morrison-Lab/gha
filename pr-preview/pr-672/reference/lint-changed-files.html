@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>check-extra.yml – Morrison-Lab/gha</title>
+<title>lint-changed-files.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/update-snapshots.html" rel="next">
-<link href="../reference/test-coverage.html" rel="prev">
+<link href="../reference/lint-workflows.html" rel="next">
+<link href="../reference/lint-changed-lines.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-extra.html">check-extra.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/lint-changed-files.html">lint-changed-files.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -451,7 +451,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/lint-changed-files.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/lint-changed-files.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">lint-changed-files.yml</span></a>
   </div>
 </li>
@@ -481,7 +481,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/check-extra.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-extra.yml</span></a>
   </div>
 </li>
@@ -653,20 +653,20 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#what-it-catches" id="toc-what-it-catches" class="nav-link active" data-scroll-target="#what-it-catches">What it catches</a></li>
+  <li><a href="#how-it-works" id="toc-how-it-works" class="nav-link active" data-scroll-target="#how-it-works">How it works</a></li>
   <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-extra.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/lint-changed-files.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-extra.html">check-extra.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/lint-changed-files.html">lint-changed-files.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">check-extra.yml</h1>
+<h1 class="title">lint-changed-files.yml</h1>
 </div>
 
 
@@ -683,27 +683,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Extra R-package checks that <code>R CMD check</code> passes over. Adapted from <a href="https://github.com/IndrajeetPatil/workflows"><code>IndrajeetPatil/workflows</code></a> <code>check-extra.yaml</code> (MIT).</p>
-<p>Three jobs run in parallel so every failure surfaces at once instead of short-circuiting at the first – the extra R-install cost is the point, not an accident. Disable any job with the matching <code>check-*</code> input if a package has no tests, no vignettes, or no <code>README.Rmd</code>.</p>
-<section id="what-it-catches" class="level2">
-<h2 class="anchored" data-anchor-id="what-it-catches">What it catches</h2>
-<ol type="1">
-<li><strong>Warnings as errors</strong> on three surfaces, all under <code>options(warn = 2L)</code>. Examples run in a fresh R session with <code>run_dontrun</code> and <code>run_donttest</code> on (the <code>devtools::run_examples(fresh = TRUE, ...)</code> equivalent), because a parent <code>warn=2</code> does not reach <code>callr</code>’s child. Tests use a per-file sweep: <code>testthat::test_file()</code> inside <code>withr::local_options(list(warn = 2L))</code>. A session-wide <code>warn=2</code> crashes parallel testthat workers (<a href="https://github.com/r-lib/testthat/issues/1912">testthat#1912</a>); this is the workaround that issue closed on. Vignettes render via <code>fs::dir_ls("vignettes/", glob = "*.Rmd", recurse = TRUE)</code>. A deprecation warning from a dependency is the motivating case: it is invisible in a normal green check until the deprecation becomes an error a release later.</li>
-<li><strong>Random test order.</strong> <code>testthat::test_dir("tests/testthat", shuffle = TRUE)</code> with a randomly drawn seed that is logged, so a failure is reproducible. <code>TESTTHAT_PARALLEL=FALSE</code> via <code>withr::local_envvar</code>, because shuffling is meaningless if tests run in parallel anyway. This catches a test that only passes because an earlier one left state behind. A missing <code>tests/testthat</code> fails this job; disable it with <code>check-random-order: false</code> if the package has no tests.</li>
-<li><strong>README render</strong>, also with warnings as errors. When <code>check-readme-freshness</code> is on (the default), the job also fails if <code>README.md</code> is modified or untracked after the render – so a consumer does not need a second workflow for that half. Only an explicit <code>false</code> opts out of freshness. A missing <code>README.Rmd</code> fails this job; disable it with <code>check-readme: false</code> if the package has none.</li>
-</ol>
-<p>A missing <code>tests/testthat</code> or <code>vignettes/*.Rmd</code> inside the combined warnings job is a skip with a log line, not a failure, so a package that has only examples still gets those checked.</p>
-<p><code>.qmd</code> vignettes and <code>README.qmd</code> are out of scope: the vignette glob is <code>*.Rmd</code>, matching upstream, and a Quarto README would need Quarto, which this check does not install.</p>
-<p><code>purrr</code>, <code>withr</code>, <code>fs</code>, <code>cli</code>, and <code>pkgload</code> are declared in <code>extra-packages</code> rather than arriving transitively via <code>devtools</code>.</p>
+<p>Run <a href="https://lintr.r-lib.org/"><code>lintr</code></a> at one of three scopes, selected by the <code>scope</code> input:</p>
+<ul>
+<li><code>changed-files</code> (default) – lint only the files a pull request changed. This is the <a href="https://github.com/r-lib/actions/blob/v2/examples/lint-changed-files.yaml">r-lib example</a> pattern several lab repos carry as a bespoke copy (<code>ucdavis/win</code>, <code>Morrison-Lab/rpt</code>, <code>d-morrison/qwt</code>).</li>
+<li><code>package</code> – <code>lintr::lint_package()</code> over the whole package.</li>
+<li><code>project</code> – <code>lintr::lint_dir()</code> over the whole project (<code>d-morrison/qwt</code>’s <code>lint-project.yaml</code>, <code>d-morrison/qbt</code>).</li>
+</ul>
+<p>lintr is installed from CRAN (<code>any::lintr</code> / <code>install.packages()</code>), never from <code>r-lib/lintr</code> on GitHub HEAD. An unpinned HEAD install is the one dependency <a href="https://github.com/IndrajeetPatil/workflows/blob/main/.github/workflows/lint.yaml">IndrajeetPatil/workflows</a> leaves floating; an upstream commit can break callers’ CI with no change on either side.</p>
+<p>This is a whole-file gate. For the incremental alternative that reports only the lints on lines a PR added or modified, see <a href="../reference/lint-changed-lines.html"><code>lint-changed-lines.yml</code></a>. That capability stays separate: its added-lines diffing is different machinery from these three scopes.</p>
+<section id="how-it-works" class="level2">
+<h2 class="anchored" data-anchor-id="how-it-works">How it works</h2>
+<p>The reusable workflow checks out the <strong>PR head</strong> when <code>scope</code> is <code>changed-files</code> (the changed-file set comes from the GitHub “list PR files” API, whose paths are relative to the head commit) and <code>github.sha</code> otherwise (the merge commit on a <code>pull_request</code> event, matching the r-lib example and the qwt/qbt whole-project workflows). It then sets up R, installs lintr from CRAN, optionally installs the package (so <code>object_usage_linter</code> can resolve the package’s own functions; skipped when <code>path</code> has no <code>DESCRIPTION</code>), and runs lintr at the requested scope.</p>
+<p><code>changed-files</code> requires a <code>pull_request</code> event. It lints with <code>lint_package()</code> when <code>path</code> holds a <code>DESCRIPTION</code> (the rpt form) and with <code>lint_dir()</code> otherwise (the win/qwt form). Unchanged files are passed as lintr <code>exclusions</code>, including dotfiles, so an unchanged <code>.lintr.R</code> is not re-linted on every PR. The GitHub API call uses <code>.limit = Inf</code> so a PR that changes more files than one API page is not silently under-linted.</p>
+<p><code>package</code> and <code>project</code> can run on <code>push</code> as well as <code>pull_request</code>.</p>
 </section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
+<col style="width: 9%">
+<col style="width: 3%">
+<col style="width: 8%">
+<col style="width: 78%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -715,79 +716,97 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
+<td><code>scope</code></td>
+<td>string</td>
+<td><code>'changed-files'</code></td>
+<td>What to lint: <code>changed-files</code>, <code>package</code>, or <code>project</code>.</td>
+</tr>
+<tr class="even">
 <td><code>path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
-<td>Path to the R package root (the directory holding <code>DESCRIPTION</code>).</td>
-</tr>
-<tr class="even">
-<td><code>extra-packages</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Extra R packages forwarded to <code>setup-r-dependencies</code>. Use this for packages a README or example needs that are not in <code>DESCRIPTION</code>.</td>
+<td>Path to the R package or project root (the directory holding <code>DESCRIPTION</code>, when there is one).</td>
 </tr>
 <tr class="odd">
+<td><code>linter-file</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Path to a lintr config (<code>.lintr</code> or <code>.lintr.R</code>). Empty lets lintr auto-detect <code>.lintr</code> / <code>.lintr.R</code>.</td>
+</tr>
+<tr class="even">
 <td><code>install-quarto</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Install Quarto when setting up R dependencies.</td>
 </tr>
-<tr class="even">
-<td><code>check-warnings</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Run examples, tests, and vignettes with warnings as errors.</td>
-</tr>
 <tr class="odd">
-<td><code>check-random-order</code></td>
+<td><code>use-renv</code></td>
 <td>boolean</td>
-<td><code>true</code></td>
-<td>Run testthat with <code>shuffle = TRUE</code> and a logged seed.</td>
+<td><code>false</code></td>
+<td>Restore dependencies with <code>renv</code> (<code>setup-renv</code>) instead of DESCRIPTION-based <code>setup-r-dependencies</code>.</td>
 </tr>
 <tr class="even">
-<td><code>check-readme</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Render <code>README.Rmd</code> with warnings as errors.</td>
+<td><code>renv-cache-version</code></td>
+<td>string</td>
+<td><code>'1'</code></td>
+<td>Cache version suffix passed to <code>setup-renv</code>.</td>
 </tr>
 <tr class="odd">
-<td><code>check-readme-freshness</code></td>
+<td><code>apt-packages</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Extra apt packages to install before setting up dependencies (space-separated).</td>
+</tr>
+<tr class="even">
+<td><code>extra-packages</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Extra R packages to install (space- or comma-separated). <code>gh</code> and <code>lintr</code> are always installed from CRAN.</td>
+</tr>
+<tr class="odd">
+<td><code>install-package</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>When the README job runs, fail if <code>README.md</code> is modified or untracked after the render.</td>
+<td>Run <code>R CMD INSTALL</code> before linting so <code>object_usage_linter</code> can resolve the package’s own functions. Skipped when <code>path</code> has no <code>DESCRIPTION</code>. Set <code>false</code> to skip even when <code>DESCRIPTION</code> is present.</td>
+</tr>
+<tr class="even">
+<td><code>fail</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Fail the workflow when lintr reports a lint (rather than warn only).</td>
 </tr>
 </tbody>
 </table>
-<p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
+<p><code>contents: read</code> and <code>pull-requests: read</code> (to read the PR’s changed-file list when <code>scope</code> is <code>changed-files</code>). <code>package</code> / <code>project</code> do not need the pull-request grant; it is still read-only, so no caller <code>permissions:</code> block is required.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-extra.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Extra R-package checks</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">extra</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-extra.yml@v2</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: 'any::ggthemes'</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-warnings: true</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-random-order: true</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-readme: true</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   check-readme-freshness: true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <code>check-extra.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub. (Linked to the directory rather than the file, for the reason <a href="../reference/check-secrets.html"><code>check-secrets.qmd</code></a> records: a <code>blob/main/...</code> link to a capability’s own example 404s on the pull request that introduces it, and <code>check-links</code> rightly fails it.)</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/lint-changed-files.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Default: lint the files a pull request changed.</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> lint-changed-files</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">lint</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/lint-changed-files.yml@v2</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   scope: 'changed-files'  # or 'package' / 'project'</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    #   path: '.'               # R package or project root</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   linter-file: ''         # empty: lintr auto-detects .lintr / .lintr.R</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: false   # true to install Quarto with R dependencies</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-renv: false         # true to restore dependencies with setup-renv</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    #   renv-cache-version: '1' # bump to invalidate renv cache</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # system packages required for compilation</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-packages: ''      # extra R deps (gh + lintr always installed from CRAN)</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: false  # skip R CMD INSTALL even when DESCRIPTION is present</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false             # warn instead of failing on lints</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>lint-changed-files.yml</code>).</p>
+<p>Pin <code>@v2</code>: this capability was added after <code>@v1</code> was frozen, so it does not exist at that tag.</p>
 
 
 </section>
@@ -1208,13 +1227,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/test-coverage.html" class="pagination-link" aria-label="test-coverage.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">test-coverage.yml</span>
+      <a href="../reference/lint-changed-lines.html" class="pagination-link" aria-label="lint-changed-lines.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">lint-changed-lines.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/update-snapshots.html" class="pagination-link" aria-label="update-snapshots.yml">
-        <span class="nav-page-text">update-snapshots.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/lint-workflows.html" class="pagination-link" aria-label="lint-workflows.yml">
+        <span class="nav-page-text">lint-workflows.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1223,4 +1242,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-extra.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/lint-changed-files.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
