@@ -18,40 +18,77 @@ Guidance for Claude Code when working in this repository.
 ## Standing tag-slide policy
 
 - **Sliding this repo's major tag is a standing grant**: AI agent sessions may
-  dispatch `slide-major-tag.yml` on their own judgment when `main` carries
-  merged work that consumers need, without asking first (user directive,
-  2026-08-27).
-  Like the `mwc` grant above, it removes the *asking* and not the judgment ---
-  the content still has to be ready.
+  dispatch `slide-major-tag.yml` on their own judgment, without asking first
+  (user directive, 2026-08-27), unless explicitly instructed otherwise for a
+  specific occasion or session.
+  Like the `mwc` grant above, it removes the *asking* and not the judgment.
+
+- **The readiness bar is the same one `mwc` uses, on the commit being slid.**
+  Every check run on that exact commit is green or skipped, with none pending,
+  read from the paginated check-runs endpoint rather than `gh pr checks`.
+  "Merged work that consumers need" is the motivation, not the gate.
+
+- **Re-read `main`'s tip immediately before dispatching, and again after.**
+  `slide-major-tag.yml` tags `$GITHUB_SHA` --- whatever `main` points at when
+  the run executes --- rather than a SHA you nominate.
+  The standing `mwc` grant above means another session may squash-merge while
+  you are deciding, so the commit you vetted and the commit that gets tagged
+  are not guaranteed to be the same one.
+  Confirm afterwards that the tag landed on a commit you actually checked.
 
 - **This matters more here than the wording suggests.**
-  `claude-review.yml` calls
-  `Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2`, and `v2` does
-  not move on merge: `slide-major-tag.yml` is `workflow_dispatch`-only by
-  design, so every consumer picks the change up at once.
+  Consumers pin the floating tag, so advancing it is what rolls a change out to
+  everyone at once --- which is precisely why the slide is
+  `workflow_dispatch`-only rather than automatic on merge
+  (`slide-major-tag.yml`'s own header states this).
   An unslid tag therefore means merged review-infrastructure fixes reach
   nothing, gha's own PRs included.
-  Measured 2026-08-27: gha#674 merged and all seven remaining open PRs stayed
-  unreviewable until the tag moved.
+  Measured 2026-08-27: gha#674 merged, and all seven then-open PRs stayed
+  unreviewable until the tag moved --- each of the seven edits a top-level
+  workflow file, which is what the pre-#674 guard skipped on.
 
 - **Verify the slide from the remote, never a local tag.**
-  `git ls-remote origin 'refs/tags/v2'` is the reading that answers.
   A plain `git fetch --tags` refuses to move an existing tag, so a local
-  `git rev-parse v2` reports the pre-slide SHA and reads exactly like a slide
-  that did not happen --- see "Re-running failed jobs cannot verify a tag slide"
-  below for the full mechanism.
+  `git rev-parse` reports the pre-slide SHA and reads exactly like a slide that
+  did not happen --- see [Re-running failed jobs cannot verify a tag
+  slide](#re-running-failed-jobs-cannot-verify-a-tag-slide) for the mechanism.
+  Derive the tag name rather than hard-coding `v2`: `resolve-major-tag.sh`
+  takes it from the latest `vX.Y.Z` tag, so a `v3.0.0` would make this slide
+  `v3`.
+  Derive it from the REMOTE too, for the same reason the check itself reads the
+  remote --- a local `git tag --list` is subject to exactly the staleness this
+  bullet is about.
+  Note the repo publishes no GitHub Releases, so `gh release list` returns `[]`
+  here and cannot be the source:
 
-- **Say what moved.**
-  Name the old SHA, the new SHA, and which merged PRs the tag now carries, so
-  the decision stays cheap to countermand.
+  ```bash
+  major=$(git ls-remote --tags origin 'v*.*.*' \
+    | sed 's#.*refs/tags/##; s/\^{}$//' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+  git ls-remote origin "refs/tags/$major" "refs/tags/$major^{}"
+  ```
 
-- **Do:** slide the tag when merged work is ready for consumers, and report it
-  in the past tense with both SHAs.
+  Both refspecs, because an annotated tag's bare line is the tag object rather
+  than the commit; they agree today only because this workflow writes
+  lightweight tags.
+
+- **Say what moved, because a slide is effectively one-way.**
+  There is no un-slide workflow: `slide-major-tag.yml` only ever force-moves
+  the tag forward to `main`'s tip.
+  Reverting means a manual `git push --force` by someone holding
+  `contents: write`, and any consumer run that already resolved the tag during
+  a bad window cannot be recalled at all.
+  So name the old SHA, the new SHA, and which merged PRs the tag now carries
+  --- that report is what makes a bad slide *detectable*, which is the most the
+  reporting can buy.
+
+- **Do:** slide when the commit is green and consumers need it, then report both
+  SHAs.
 
 - **Don't:** read this as covering a release or version bump, another
-  repository, or a slide over a `main` whose state has not been confirmed.
+  repository, or a slide over a commit whose checks you have not read.
 
-## About this repo
+## About this repo## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
 and Quarto repositories (see [`README.md`](README.md)). Each capability ships as a
