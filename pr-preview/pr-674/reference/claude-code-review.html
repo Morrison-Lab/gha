@@ -623,6 +623,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">spellcheck.yml</span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-typos.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-typos.yml</span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -709,7 +715,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>track-progress</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Enable tag mode: live tracking comment + inline-comment tool on <code>pull_request</code> events. Default <code>false</code> (agent/summary-only mode) is safe. <strong>Only set <code>true</code> after <a href="https://github.com/anthropics/claude-code-action/issues/1415">anthropics/claude-code-action#1415</a> ships a <code>read_only</code> input</strong> - until then, tag mode exposes git write tools and the reviewer may push commits to the branch.</td>
+<td>Ignored (gha#580). Tag mode posts a live tracking comment through the <code>github_comment</code> MCP server (<code>mcp__github_comment__update_claude_comment</code>) and hardcodes git write tools; it does not start <code>github_inline_comment</code> unless <code>mcp__github_inline_comment__*</code> or <code>mcp__github__*</code> is allowlisted. All of that needs a writable forge token in the model job. This workflow splits those: the model job’s <code>GITHUB_TOKEN</code> has no write scopes, and the posting job submits the summary after the model finishes. The input is kept so existing callers do not fail at the call gate.</td>
 </tr>
 <tr class="even">
 <td><code>show-full-output</code></td>
@@ -816,7 +822,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, and <code>id-token: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</p>
+<p>Grant <code>contents: read</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>actions: read</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret. The model job’s <code>GITHUB_TOKEN</code> has no write scopes (<code>contents</code> / <code>pull-requests</code> / <code>issues</code> / <code>actions: read</code>); write is confined to jobs that never run the model (<code>gather-context</code> stashes reviewers; <code>post-review</code> downloads the review artifact and comments) (gha#580). <code>actions: read</code> is required on the caller: a <code>permissions:</code> block sets unspecified scopes to none, and <code>post-review</code> needs it to download the packed artifact (the model job also uses it for the <code>github_ci</code> MCP server).</p>
 </section>
 <section id="the-require-review-gate" class="level2">
 <h2 class="anchored" data-anchor-id="the-require-review-gate">The <code>require-review</code> gate</h2>
@@ -903,7 +909,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> read</span></span>
 <span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2</span></span>
 <span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
 <span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span><span class="co"> # Max-plan OAuth; empty when using API key</span></span>
@@ -916,7 +922,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
 <span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # tag mode: live tracking comment + inline comments (unsafe until anthropics/claude-code-action#1415 ships)</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job</span></span>
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)</span></span>
 <span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS</span></span>
 <span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos</span></span>
