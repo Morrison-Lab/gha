@@ -550,6 +550,38 @@ which is why the capabilities above moved to `@v2`.
   common `"dry_run":false` response and falls back to the locally requested
   value (gha#511); parse with a null check instead.
 
+- `.github/actions/check-credential-shape/` -- wraps
+  `scripts/check-credential-shape.sh`, which decides whether a configured API
+  credential secret is structurally usable as an HTTP `Authorization` header
+  value.
+  `claude-code-review.yml` calls it from a pre-flight step, before the review
+  spends anything (gha#686).
+  Three things constrain any change to it.
+  **The rule is INTERIOR whitespace, not any whitespace.**
+  A header value may carry none at all, so the strictest reading would reject a
+  trailing newline too --- which `gh secret set < file` produces routinely, and
+  which consumers may well be running on successfully today if the action trims
+  before sending.
+  Rejecting that turns a hardening change into an outage, and the asymmetry runs
+  one way: a missed detection costs the badly-worded `hard-error` comment
+  consumers already get, while a false detection blocks review entirely.
+  **The verdict is "every configured credential is unusable", never "some
+  credential is".**
+  Which of the two secrets `claude-code-action` actually sends is its own
+  precedence rule rather than something this workflow knows, so blocking while a
+  well-formed alternative is configured would be a guess.
+  The selftest's mixed good/bad case is what pins that, and it is the one case
+  that passes under a narrowed verdict while every other case still passes.
+  **It never repairs the value.**
+  The observed case was 2931 characters on 62 lines, which is not a token with a
+  stray newline but different content entirely, so stripping the whitespace would
+  send a credential nobody chose and turn a nameable configuration defect into an
+  opaque rejection.
+  It fails fast and names the remedy instead.
+  The detail line it emits reaches a PR comment, so it carries counts and a
+  position and never any part of the value --- the same figures the SDK's own
+  rejection message already prints.
+
 - `.github/actions/build-reviewer-args/` -- wraps
   `scripts/build-reviewer-args.sh`, which splits a comma-separated reviewers
   list into a JSON array of trimmed, non-empty usernames.
@@ -1592,6 +1624,42 @@ normalization, the only judgment the composite makes for itself.
 As with `report-push-failure`, `claude-code-review.yml`'s own consumption of
 this composite via `@v2` is not covered here -- it does not resolve until `@v2`
 is advanced past this capability's merge.
+
+`.github/workflows/scripts/tests/run-check-credential-shape-tests.sh` exercises
+`check-credential-shape.sh` (see Layout above) offline against a table of
+credential values.
+The **negative** cases are the ones to keep if the suite is ever trimmed, which
+inverts this file's usual advice for a detector: everywhere else an
+over-cautious verdict is free, and here it is the expensive error, because a
+`true` answered too eagerly blocks review for a consumer whose credential works
+today.
+So a plain token, a trailing newline, a leading newline, surrounding spaces, and
+an empty value must all pass through untouched.
+Three mutations were confirmed to turn it red rather than assumed to --- dropping
+the trimming (5 failures), disabling the detector outright (8), and matching only
+newlines rather than any whitespace (4).
+CI runs it as the `credential-shape` job in `_selftest.yml`, kept separate from
+`review-fail-check` so a failure is attributable at a glance --- the same
+one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.
+That job also calls the composite through three real `uses: ./...` steps, for the
+`github.action_path`-resolution proof the other composite e2e steps give plus the
+one decision the composite makes for itself, which the offline table cannot
+reach: combining two secrets into a single verdict.
+`claude-code-review.yml`'s own `@v2` consumption of the new composite is the usual
+bootstrap gap until the tag slides.
+
+`run-compose-review-failure-report-tests.sh` gained the `bad-credential` kind
+alongside it, and its two **negative** assertions are the ones worth reading.
+That kind is the only one where no review process ever started, so the shared
+opening paragraph's "finished without producing" would be false of it, and both
+the denied-tools line and the cost line would describe a run that never happened
+--- "not recorded" would send a triager to look at permissions on a run that
+never reached them.
+Both suppressions were confirmed load-bearing by mutation, which matters more
+than usual here: a negative assertion written against an empty output passes
+under every mutation, and the first draft of these did exactly that (the test
+helper is `$COMPOSE`, and `$compose_script` silently produced no output under the
+suite's `set -uo pipefail`).
 
 `.github/workflows/scripts/tests/run-pack-review-payload-tests.sh` and
 `.github/workflows/scripts/tests/run-review-job-split-tests.py` pin the

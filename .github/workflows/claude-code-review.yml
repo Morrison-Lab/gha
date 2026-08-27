@@ -834,11 +834,29 @@ jobs:
             echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret available for review execution (gha#396)."
           fi
 
+      # A secret that is SET but structurally unusable passes the emptiness
+      # test above, so the run starts, the SDK rejects the request at the door,
+      # and check-review-execution.sh classifies the result as `hard-error` --
+      # a kind whose PR comment says the cause "lies elsewhere" and points at
+      # the run log. That is true and unhelpful: the cause is a repository
+      # secret only an admin can repair, and nothing on the thread says so.
+      # Deciding it here instead costs nothing and names the remedy
+      # (gha#686; observed on UCD-SERG/serodynamics#298, where the SDK's own
+      # result read "Invalid Authorization header value from
+      # CLAUDE_CODE_OAUTH_TOKEN: it contains a line break at character 56").
+      - name: Pre-flight credential shape check
+        id: preflight-credential
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true'
+        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v2
+        with:
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
       # Export requested consumer secrets into the reviewer environment (gha#618).
       # Validates secret names against naming conventions and protected environment
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
-        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && inputs.extra-secret-names != ''
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true' && inputs.extra-secret-names != ''
         uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
         with:
           extra-secret-names: ${{ inputs.extra-secret-names }}
@@ -853,7 +871,7 @@ jobs:
       # a DRY violation this repo's CLAUDE.md flags).
       - name: Run Claude Code Review
         id: claude-review
-        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true'
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
         # gha#520: the action exits 1 on any is_error result, including quota
         # exhaustion -- so without this, a failed step reddens the job no matter
         # what the guard below concludes, and the graceful-skip path is
@@ -1086,6 +1104,23 @@ jobs:
             echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
             echo "Pre-flight account status check detected missing/exhausted quota (gha#396)."
             exit 0
+          fi
+          # A malformed credential is a configuration defect rather than an
+          # account condition, so it does NOT take the graceful-skip path above.
+          # It exits 1, which reddens require-review -- correctly: no review
+          # happened, and a repo whose reviewer cannot authenticate must not
+          # read as reviewed. It routes through the ordinary failure-report
+          # machinery so the PR thread carries the remedy (gha#686).
+          if [[ "${{ steps.preflight-credential.outputs.malformed }}" == "true" ]]; then
+            {
+              echo "failure_kind=bad-credential"
+              echo "denials="
+              echo "denied_tools="
+              echo "max_denials="
+              echo "total_cost_usd=$TOTAL_COST"
+            } >> "$GITHUB_OUTPUT"
+            echo "::error::The configured API credential secret is not a usable Authorization header value, so no review was run (gha#686). See the Pre-flight credential shape check step."
+            exit 1
           fi
           if [[ "${{ steps.fail-check.outcome }}" == "success" ]]; then
             echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
