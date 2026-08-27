@@ -1636,8 +1636,13 @@ today.
 So a plain token, a trailing newline, a leading newline, surrounding spaces, and
 an empty value must all pass through untouched.
 Three mutations were confirmed to turn it red rather than assumed to --- dropping
-the trimming (5 failures), disabling the detector outright (8), and matching only
-newlines rather than any whitespace (4).
+the trimming (4 failures), disabling the detector outright (7), and matching only
+newlines rather than any whitespace (3).
+Read those counts off the suite's own `N of 14` summary line rather than by
+counting `::error::` lines, which is how the first draft of this paragraph
+reported each one inflated by one: the summary is itself an `::error::` line,
+so a `grep -c` over them counts a fourteenth thing that is not a case
+(gha#687 review finding 4).
 CI runs it as the `credential-shape` job in `_selftest.yml`, kept separate from
 `review-fail-check` so a failure is attributable at a glance --- the same
 one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.

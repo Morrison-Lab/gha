@@ -1169,11 +1169,6 @@ jobs:
           fi
           echo "pack-review-payload wrote payload.json and the denied_tools sidecar"
 
-  # gha#543: the review-failure comment claude-code-review.yml posts when a
-  # review run finishes without a usable verdict. Kept as its own job rather
-  # than folded into review-fail-check, so a failure here is attributable at a
-  # glance -- the same one-capability-per-job split phi-tests /
-  # new-line-breaks-tests / gemini-review-fail-check already use.
   # Kept as its own job rather than folded into review-fail-check, so a failure
   # here is attributable at a glance -- the same one-capability-per-job split
   # phi-tests, gemini-review-fail-check, and review-failure-report use
@@ -1262,6 +1257,11 @@ jobs:
           fi
           echo "check-credential-shape wired through correctly: $BAD_DETAIL"
 
+  # gha#543: the review-failure comment claude-code-review.yml posts when a
+  # review run finishes without a usable verdict. Kept as its own job rather
+  # than folded into review-fail-check, so a failure here is attributable at a
+  # glance -- the same one-capability-per-job split phi-tests /
+  # new-line-breaks-tests / gemini-review-fail-check already use.
   review-failure-report:
     runs-on: ubuntu-latest
     timeout-minutes: 20
