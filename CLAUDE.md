@@ -88,7 +88,7 @@ Guidance for Claude Code when working in this repository.
 - **Don't:** read this as covering a release or version bump, another
   repository, or a slide over a commit whose checks you have not read.
 
-## About this repo## About this repo
+## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
 and Quarto repositories (see [`README.md`](README.md)). Each capability ships as a
