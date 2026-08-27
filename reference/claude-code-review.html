@@ -864,9 +864,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>The gate skips gray whenever no review was attempted. That covers anything that made the <code>claude-review</code> job’s own <code>if:</code> false — a draft, fork, or bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the context-gathering job having been cancelled — plus two cases where the job ran and stopped early:</p>
 <ul>
 <li>the API quota was exhausted — either before any review work happened, or part-way through the run, which leaves a <code>429</code> behind after real turns and real cost (<a href="https://github.com/Morrison-Lab/gha/issues/520">#520</a>);</li>
-<li>the PR edits the caller’s own review workflow file.</li>
+<li>restoring default-branch copies of <code>.github/workflows/</code> failed, so the review was skipped rather than executing workflow YAML from the PR head (<a href="https://github.com/Morrison-Lab/gha/issues/598">#598</a>).</li>
 </ul>
-<p>That last case deserves care. <code>claude-code-action</code> requires the calling workflow to match the default branch, so a PR editing it cannot be reviewed by this workflow at all, and <strong>no re-run or re-dispatch will change that</strong> — the skip lifts only if the PR stops editing the file, which is rarely what the PR is for. The review job posts a PR comment saying so. Merge such a PR on a self-review or a human review; do not read the gray gate as an all-clear.</p>
+<p>PRs that edit workflow files are reviewed when that restore succeeds. The job replaces <code>.github/workflows/</code> with the default-branch tree after checkout and passes <code>github_token</code> so <code>claude-code-action</code> skips its OIDC workflow-content check. On a dispatched review it also omits <code>--ref</code>, so GitHub executes the default-branch caller rather than the PR head’s YAML. A files-list response shorter than the PR’s <code>changed_files</code> count is treated the same as a failed listing (GitHub caps that endpoint at 3000 files), so a large PR cannot hide a workflow edit behind the cap. Check-runs for that no-<code>--ref</code> dispatch land on the default branch (<a href="https://github.com/Morrison-Lab/gha/issues/285">#285</a>); the review comment still posts on the PR.</p>
+<p>A gray skip here still means no review ran. Do not read it as an all-clear. A later re-run can recover if fetching the default branch was the problem.</p>
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
