@@ -15,6 +15,42 @@ Guidance for Claude Code when working in this repository.
   outstanding review findings), unless explicitly instructed otherwise for a
   specific PR or session.
 
+## Standing tag-slide policy
+
+- **Sliding this repo's major tag is a standing grant**: AI agent sessions may
+  dispatch `slide-major-tag.yml` on their own judgment when `main` carries
+  merged work that consumers need, without asking first (user directive,
+  2026-08-27).
+  Like the `mwc` grant above, it removes the *asking* and not the judgment ---
+  the content still has to be ready.
+
+- **This matters more here than the wording suggests.**
+  `claude-review.yml` calls
+  `Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2`, and `v2` does
+  not move on merge: `slide-major-tag.yml` is `workflow_dispatch`-only by
+  design, so every consumer picks the change up at once.
+  An unslid tag therefore means merged review-infrastructure fixes reach
+  nothing, gha's own PRs included.
+  Measured 2026-08-27: gha#674 merged and all seven remaining open PRs stayed
+  unreviewable until the tag moved.
+
+- **Verify the slide from the remote, never a local tag.**
+  `git ls-remote origin 'refs/tags/v2'` is the reading that answers.
+  A plain `git fetch --tags` refuses to move an existing tag, so a local
+  `git rev-parse v2` reports the pre-slide SHA and reads exactly like a slide
+  that did not happen --- see "Re-running failed jobs cannot verify a tag slide"
+  below for the full mechanism.
+
+- **Say what moved.**
+  Name the old SHA, the new SHA, and which merged PRs the tag now carries, so
+  the decision stays cheap to countermand.
+
+- **Do:** slide the tag when merged work is ready for consumers, and report it
+  in the past tense with both SHAs.
+
+- **Don't:** read this as covering a release or version bump, another
+  repository, or a slide over a `main` whose state has not been confirmed.
+
 ## About this repo
 
 Central, reusable GitHub Actions for `d-morrison` / `UCD-SERG` / `ucdavis` R-package
