@@ -65,7 +65,7 @@ run_compose() {
 # Every kind check-review-execution.sh can emit must survive unchanged; only a
 # value it cannot emit normalizes. A kind silently rewritten to `unknown` would
 # print generic advice under a specific headline, which is worse than either.
-for kind in high-denial stub short-circuit hard-error no-output deferred; do
+for kind in high-denial stub short-circuit hard-error no-output deferred bad-credential; do
   out="$(run_compose "$kind" 0)"
   check "kind passthrough: $kind" "kind=$kind" "$(sed -n 1p <<<"$out")"
 done
@@ -211,11 +211,31 @@ if LC_ALL=C grep -q '[^[:print:][:space:]]' <<<"$out"; then
   failures=$((failures + 1))
 fi
 
+# --- the bad-credential kind describes a run that never started -------------
+# Its three claims are each false of the other kinds and each actionable, so
+# they are asserted rather than left to the headline. A reader acts on "this is
+# a repo secret, not the diff", so that is the one to keep if trimmed.
+out="$(FAILURE_KIND=bad-credential DENIALS='' DENIED_TOOLS='' MAX_DENIALS='' \
+  TOTAL_COST=0.0000 ATTEMPTS=1 bash "$COMPOSE")"
+check_contains "bad-credential names the secret" 'CLAUDE_CODE_OAUTH_TOKEN' "$out"
+check_contains "bad-credential exonerates the diff" 'rather than anything about the diff' "$out"
+# A run that never started has no denial data and no spend. Reporting either
+# would send a triager to look at permissions or at cost on a run that reached
+# neither -- the same wrong-place-to-look problem the denied-tools trio exists
+# to prevent, which is why these are NEGATIVE assertions rather than reworded
+# positive ones. Both were confirmed to fail before the suppression landed.
+check_not_contains "bad-credential reports no denial line" '**Denied tools:**' "$out"
+check_not_contains "bad-credential reports no cost line" '**Cost:**' "$out"
+# The shared opening paragraph claims the review "finished without producing" a
+# verdict, which is false of a run the pre-flight stopped before it started.
+check_not_contains "bad-credential does not claim the review finished" \
+  'The review finished without producing' "$out"
+
 # --- every kind produces a non-empty, distinct headline ---------------------
 # A kind whose headline duplicated another's would misdescribe the failure
 # while looking fine in isolation.
 seen=""
-for kind in high-denial stub short-circuit hard-error no-output deferred unknown; do
+for kind in high-denial stub short-circuit hard-error no-output deferred bad-credential unknown; do
   headline="$(run_compose "$kind" 0 | sed -n '2s/^headline=//p')"
   checks=$((checks + 1))
   if [[ -z "$headline" ]]; then

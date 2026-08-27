@@ -106,6 +106,7 @@ python3 -m pytest check-phi/tests/ -q
 python3 -m pytest check-new-line-breaks/tests/ -q
 python3 -m pytest check-typos/tests/ -q
 bash check-junk-files/tests/test-check-junk-files.sh
+bash check-extra/tests/test-check-extra.sh
 python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test
 ```
 
