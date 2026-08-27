@@ -63,6 +63,11 @@ jobs:
         uses: anthropics/claude-code-action@e2a4b761cd77a1138a5b41410eda9b28581f9bcd  # v1.0.196
         env:
           # Prefer a Projects-capable token when the consumer supplies one.
+          # NOTE: this is step-global. When PROJECTS_TOKEN is supplied it
+          # backs EVERY gh call in the step -- the label edit and the
+          # comment as well as the board add -- not just the Projects
+          # ones. Scope the token accordingly: it is the token the whole
+          # step runs as (gha#670 round 2, finding 3).
           GH_TOKEN: ${{ secrets.PROJECTS_TOKEN || secrets.GITHUB_TOKEN }}
           # Untrusted issue content reaches the prompt through the environment
           # rather than `${{ }}` interpolation, so it can never be parsed as
@@ -75,7 +80,13 @@ jobs:
           # No `Bash(gh api:*)`: an unrestricted wildcard grants arbitrary
           # REST/GraphQL under the job token, far past what labelling and a
           # board add require (gha#670 review, finding 2).
-          claude_args: --allowedTools "Bash(gh issue edit:*),Bash(gh issue view:*),Bash(gh project item-add:*),Bash(gh project list:*)"
+          # `gh issue comment` is here because the prompt below tells the
+          # agent to report an injection attempt. Without it that
+          # instruction is unfollowable, and the agent would either fail
+          # the call or silently skip the report (gha#670 round 2,
+          # finding 2). It needs no permission beyond the `issues: write`
+          # the labelling already requires.
+          claude_args: --allowedTools "Bash(gh issue edit:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(gh project item-add:*),Bash(gh project list:*)"
           prompt: |
             You are a project manager triaging a newly-opened issue,
             #${{ github.event.issue.number }}.

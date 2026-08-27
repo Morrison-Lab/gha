@@ -30,6 +30,10 @@ than instructions.
 is the common case for modern consumers. Supply a PAT or GitHub App token
 carrying the `project` scope to enable the board step.
 
+Note that supplying it changes the identity of the **whole step**, not
+just the Projects call: `GH_TOKEN` is set once for the step, so the label
+edit and any comment run under the same token. Scope it accordingly.
+
 ## Inputs
 
 | Input                | Type   | Default | Description                                                                                            |
@@ -43,7 +47,7 @@ carrying the `project` scope to enable the board step.
 | ------------------------- | -------- | ------------------------------------------------------------------ |
 | `CLAUDE_CODE_OAUTH_TOKEN` | yes      | Claude Code OAuth token.                                             |
 | `ANTHROPIC_API_KEY`       | no       | Alternative to the OAuth token.                                      |
-| `PROJECTS_TOKEN`          | no       | PAT or App token with the `project` scope, for Projects v2 writes.   |
+| `PROJECTS_TOKEN`          | no       | PAT or App token with the `project` scope, for Projects v2 writes. **Step-global**: when set it backs every `gh` call in the step, not only the board add. |
 
 ## Example
 

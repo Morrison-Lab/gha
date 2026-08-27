@@ -105,7 +105,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-equation-renders`, `check-extra`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
-  `check-typos`,
+  `check-typos`, `claude-manage-project`,
   `cursor-code-review`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> → only
@@ -505,8 +505,8 @@ Pin
 `lint-yaml.yml`, `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, and
-`check-extra.yml`
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, and
+`claude-manage-project.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -623,8 +623,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, and
-`check-extra.yml` at `@v2` -- see the
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, and
+`claude-manage-project.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
