@@ -1169,6 +1169,94 @@ jobs:
           fi
           echo "pack-review-payload wrote payload.json and the denied_tools sidecar"
 
+  # Kept as its own job rather than folded into review-fail-check, so a failure
+  # here is attributable at a glance -- the same one-capability-per-job split
+  # phi-tests, gemini-review-fail-check, and review-failure-report use
+  # (gha#686).
+  credential-shape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run check-credential-shape tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-check-credential-shape-tests.sh
+      # Two real `uses:` calls, proving the composite's own
+      # github.action_path resolution of check-credential-shape.sh works
+      # end-to-end. The offline table above calls the script directly, so it
+      # cannot see whether action.yml wires its inputs through at all -- the
+      # gap that let #191's job_workflow_ref regression through fixture tests
+      # (gha#196), and the reason every sibling composite here has an e2e step
+      # beside its unit tests. It also covers the one decision the composite
+      # makes for itself, which the script cannot: combining two secrets into
+      # a single verdict.
+      #
+      # The values below are obvious non-secrets, and the composite is
+      # documented never to print any part of a credential -- so nothing here
+      # depends on Actions masking, which does not apply to a literal.
+      - name: Exercise check-credential-shape on a malformed credential
+        id: shape-bad
+        uses: ./.github/actions/check-credential-shape
+        with:
+          oauth-token: "not-a-token\nsecond-line"
+      - name: Exercise check-credential-shape on a well-formed credential
+        id: shape-good
+        uses: ./.github/actions/check-credential-shape
+        with:
+          oauth-token: 'not-a-real-token-but-single-line'
+      # The discriminating case: one malformed secret beside one well-formed
+      # one must NOT block, because which credential the action sends is its
+      # own precedence rule rather than something this workflow knows. Without
+      # this, narrowing the verdict to "any malformed secret" would pass every
+      # other case here while blocking review for a repo that has a working
+      # credential configured.
+      - name: Exercise check-credential-shape with one good and one bad secret
+        id: shape-mixed
+        uses: ./.github/actions/check-credential-shape
+        with:
+          oauth-token: "not-a-token\nsecond-line"
+          anthropic-api-key: 'not-a-real-key-but-single-line'
+      - name: Assert the composite wired its inputs and outputs through
+        shell: bash
+        env:
+          BAD: ${{ steps.shape-bad.outputs.malformed }}
+          BAD_DETAIL: ${{ steps.shape-bad.outputs.detail }}
+          GOOD: ${{ steps.shape-good.outputs.malformed }}
+          MIXED: ${{ steps.shape-mixed.outputs.malformed }}
+        run: |
+          set -euo pipefail
+          if [[ "$BAD" != "true" ]]; then
+            echo "::error::a multi-line credential must report malformed=true, got '$BAD'"
+            exit 1
+          fi
+          if [[ "$GOOD" != "false" ]]; then
+            echo "::error::a single-line credential must report malformed=false, got '$GOOD'"
+            exit 1
+          fi
+          if [[ "$MIXED" != "false" ]]; then
+            echo "::error::a well-formed credential beside a malformed one must not block, got '$MIXED'"
+            exit 1
+          fi
+          # The detail line is what reaches the run annotation, so an empty one
+          # would leave the failure unexplained even with the verdict correct.
+          if [[ -z "$BAD_DETAIL" ]]; then
+            echo "::error::a malformed verdict must carry a detail line"
+            exit 1
+          fi
+          # It must name the secret without quoting any of its value.
+          if [[ "$BAD_DETAIL" != *CLAUDE_CODE_OAUTH_TOKEN* ]]; then
+            echo "::error::the detail line does not name the affected secret: $BAD_DETAIL"
+            exit 1
+          fi
+          if [[ "$BAD_DETAIL" == *"not-a-token"* ]]; then
+            echo "::error::the detail line leaked part of the credential value"
+            exit 1
+          fi
+          echo "check-credential-shape wired through correctly: $BAD_DETAIL"
+
   # gha#543: the review-failure comment claude-code-review.yml posts when a
   # review run finishes without a usable verdict. Kept as its own job rather
   # than folded into review-fail-check, so a failure here is attributable at a

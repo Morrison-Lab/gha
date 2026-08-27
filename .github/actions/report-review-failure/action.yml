@@ -21,8 +21,13 @@ inputs:
       no verdict, denial count above the stub-retry threshold, deliberately not
       retried), `stub` (gha#185's -- no verdict on both attempts at a low denial
       count), `short-circuit` (gha#368 -- no execution file or no result
-      object), or `hard-error` (an SDK-level error state). Anything else is
-      normalized to `unknown` and gets generic advice rather than a wrong story.
+      object), `hard-error` (an SDK-level error state), `no-output` (a clean
+      run that emitted no assistant text at all), `deferred` (gha#527 -- the
+      reviewer stood down over a session-lock claim comment), or
+      `bad-credential` (gha#686 -- the pre-flight check found every configured
+      credential secret structurally unusable, so no review was attempted).
+      Anything else is normalized to `unknown` and gets generic advice rather
+      than a wrong story.
     required: true
   pr-number:
     description: >-

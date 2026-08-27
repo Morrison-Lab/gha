@@ -38,10 +38,14 @@
 #
 # Inputs come from the environment so a caller never has to quote a denied
 # command string onto an argv:
-#   FAILURE_KIND  `high-denial`, `stub`, `short-circuit`, `hard-error`,
-#                 `no-output`, or `deferred`, as written by
-#                 check-review-execution.sh; anything else normalizes to
-#                 `unknown` and gets generic advice rather than a wrong story
+#   FAILURE_KIND  `high-denial`, `stub`, `hard-error`, `no-output`,
+#                 `deferred`, or `short-circuit`, as written by
+#                 check-review-execution.sh -- or `short-circuit` /
+#                 `bad-credential`, which claude-code-review.yml's own
+#                 "Resolve final review outcome" step writes directly, the
+#                 second of them before that guard ever runs. Anything else
+#                 normalizes to `unknown` and gets generic advice rather than
+#                 a wrong story
 #   DENIALS       permission_denials_count, or the 999999 sentinel, or empty
 #   DENIED_TOOLS  check-review-execution.sh's denied_tools output (may be empty)
 #   MAX_DENIALS   the stub-retry threshold the guard compared against; empty
@@ -73,7 +77,7 @@ TOTAL_COST="${TOTAL_COST:-}"
 ATTEMPTS="${ATTEMPTS:-}"
 
 case "$FAILURE_KIND" in
-  high-denial|stub|short-circuit|hard-error|no-output|deferred) kind="$FAILURE_KIND" ;;
+  high-denial|stub|short-circuit|hard-error|no-output|deferred|bad-credential) kind="$FAILURE_KIND" ;;
   *) kind=unknown ;;
 esac
 
@@ -123,6 +127,9 @@ case "$kind" in
   deferred)
     headline="Claude review did not run: the reviewer stood down over a session-lock claim comment."
     ;;
+  bad-credential)
+    headline="Claude review did not run: the configured API credential is unusable."
+    ;;
   *)
     headline="Claude review did not finish: no usable verdict was produced."
     ;;
@@ -140,7 +147,16 @@ printf '\n'
 # got as far as reviewing, and a deferred reviewer stopped on purpose. A
 # shared sentence has to be true of the whole set, or it contradicts the very
 # headline printed two lines above it.
-printf 'The review finished without producing a `### Verdict`, so **this PR has not been reviewed**. This comment exists so that fact is visible from the PR itself rather than only from the run log (gha#543).\n\n'
+# `bad-credential` is the one kind where no review process ever started, so the
+# shared sentence's "finished without producing" would be false of it -- and a
+# shared sentence has to be true of the whole set, or it contradicts the
+# headline printed two lines above it, which is the same reason this paragraph
+# already avoids "ran to completion".
+if [[ "$kind" == "bad-credential" ]]; then
+  printf 'No review ran at all, so **this PR has not been reviewed**. This comment exists so that fact is visible from the PR itself rather than only from the run log (gha#543).\n\n'
+else
+  printf 'The review finished without producing a `### Verdict`, so **this PR has not been reviewed**. This comment exists so that fact is visible from the PR itself rather than only from the run log (gha#543).\n\n'
+fi
 
 case "$kind" in
   high-denial)
@@ -189,6 +205,12 @@ case "$kind" in
     printf 'The reviewer read a session-lock claim comment on this PR (`paws off until I am done`, `back off until done`, or similar) as an instruction to itself, and stopped without reviewing the diff (gha#527).\n\n'
     printf 'Those comments coordinate parallel **write** sessions. They are not addressed to automated review, and they never mean a review already ran. Re-trigger the review by pushing a commit; if it defers again, the claim comment is worth rewording.\n\n'
     ;;
+  bad-credential)
+    printf 'The pre-flight check found that every configured API credential secret carries whitespace inside its value, so it cannot be sent as an HTTP `Authorization` header. The request would be rejected at the door, so the review was not attempted and no money was spent.\n\n'
+    printf 'This is a repository configuration defect rather than anything about the diff. Nothing about this PR needs to change, and re-running the workflow will fail identically until the secret is repaired.\n\n'
+    printf 'A repository admin fixes it under **Settings -> Secrets and variables -> Actions** by re-setting `CLAUDE_CODE_OAUTH_TOKEN` (or `ANTHROPIC_API_KEY`) to a single-line value with no spaces or line breaks. The usual cause is pasting a multi-line block -- a PEM key, a JSON credential file, a wrapped terminal copy -- where the token belongs. `claude setup-token` prints a fresh token to copy.\n\n'
+    printf 'The `Pre-flight credential shape check` step in the linked run names which secret is affected and where the whitespace falls, without printing the value itself.\n\n'
+    ;;
   *)
     printf 'The specific failure mode was not identified. The `Resolve final review outcome` step in the linked run carries the annotation naming it.\n\n'
     ;;
@@ -219,7 +241,13 @@ esac
 # delimiter closes early there and mangles the rest of the posted comment --
 # the same failure report-push-failure hit with its patch bodies, which is why
 # fence_for exists (gha#548 review, finding 2).
-if [[ -n "$DENIED_TOOLS" ]]; then
+# Skipped entirely for `bad-credential`: no review process started, so no tool
+# call was ever attempted. "not recorded" would invite a triager to wonder
+# about permissions on a run that never reached them, which is the same
+# wrong-place-to-look problem the three-case split above exists to avoid.
+if [[ "$kind" == "bad-credential" ]]; then
+  :
+elif [[ -n "$DENIED_TOOLS" ]]; then
   denied_fence="$(fence_for "$DENIED_TOOLS")"
   printf '**Denied tools:**\n\n%stext\n%s\n%s\n\n' \
     "$denied_fence" "$DENIED_TOOLS" "$denied_fence"
@@ -229,7 +257,11 @@ else
   printf '**Denied tools:** not recorded. This run produced no usable denial data, so nothing can be concluded either way about tool permissions.\n\n'
 fi
 
-if [[ -n "$TOTAL_COST" ]]; then
+# Likewise skipped for `bad-credential`. The workflow does report a cost of
+# 0.0000 there, but "spent on a run that produced no review" describes a run
+# that ran; here the pre-flight stopped before one started, and the point worth
+# making is that nothing was spent at all -- which the advice body says.
+if [[ "$kind" != "bad-credential" && -n "$TOTAL_COST" ]]; then
   printf '**Cost:** $%s' "$TOTAL_COST"
   if [[ -n "$ATTEMPTS" ]]; then
     printf ' across %s attempt' "$ATTEMPTS"

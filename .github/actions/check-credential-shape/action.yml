@@ -1,0 +1,88 @@
+name: Check API credential shape
+description: >-
+  Decides whether the configured API credential secrets are structurally usable
+  as an HTTP Authorization header value, before a review run spends money
+  finding out (gha#686). Wraps check-credential-shape.sh, located via
+  github.action_path for the same reason sum-costs and run-review-guard do:
+  claude-code-review.yml's steps run against the CALLER's checkout, not
+  Morrison-Lab/gha's own tree.
+
+inputs:
+  oauth-token:
+    description: CLAUDE_CODE_OAUTH_TOKEN's value, or empty when not configured.
+    required: false
+    default: ''
+  anthropic-api-key:
+    description: ANTHROPIC_API_KEY's value, or empty when not configured.
+    required: false
+    default: ''
+
+outputs:
+  malformed:
+    description: >-
+      `true` when every CONFIGURED credential is structurally unusable. Empty
+      credentials are not configured rather than malformed, and are ignored
+      here -- the caller's own not-configured branch owns that condition.
+    value: ${{ steps.run.outputs.malformed }}
+  detail:
+    description: >-
+      A single line naming which secret is malformed and why, safe to print:
+      it carries counts and a position, never any part of a credential.
+      Empty when malformed is not `true`.
+    value: ${{ steps.run.outputs.detail }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run check-credential-shape.sh
+      id: run
+      shell: bash
+      # Values reach the script through the environment, never on argv, which
+      # is readable via `ps` / /proc/<pid>/cmdline -- the same reasoning
+      # trigger-bugbot-review.sh records for its own API key.
+      env:
+        OAUTH_TOKEN: ${{ inputs.oauth-token }}
+        ANTHROPIC_API_KEY_VALUE: ${{ inputs.anthropic-api-key }}
+        SHAPE_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/check-credential-shape.sh
+      run: |
+        set -euo pipefail
+
+        # A credential is only decided ON when it is configured. The verdict is
+        # "every configured credential is unusable", never "some credential is
+        # unusable": which of the two the action actually sends is its own
+        # precedence rule rather than something this workflow knows, so
+        # blocking while a well-formed alternative is present would be a guess
+        # -- and a wrong guess blocks review entirely, where a missed detection
+        # only costs the badly-worded failure comment consumers already get.
+        configured=0
+        malformed=0
+        detail=''
+
+        for name in CLAUDE_CODE_OAUTH_TOKEN ANTHROPIC_API_KEY; do
+          case "$name" in
+            CLAUDE_CODE_OAUTH_TOKEN) value="${OAUTH_TOKEN-}" ;;
+            ANTHROPIC_API_KEY) value="${ANTHROPIC_API_KEY_VALUE-}" ;;
+          esac
+          [[ -n "$value" ]] || continue
+          configured=$((configured + 1))
+          out="$(CREDENTIAL_VALUE="$value" CREDENTIAL_NAME="$name" bash "$SHAPE_SCRIPT")"
+          if [[ "$(sed -n '1s/^malformed=//p' <<< "$out")" == "true" ]]; then
+            malformed=$((malformed + 1))
+            # Report every malformed secret, so a repo that set both wrongly
+            # is not sent to fix one and re-run into the other.
+            this_detail="$(sed -n '2s/^detail=//p' <<< "$out")"
+            detail="${detail:+$detail }$this_detail"
+          fi
+        done
+
+        if [[ "$configured" -gt 0 && "$malformed" -eq "$configured" ]]; then
+          echo "malformed=true" >> "$GITHUB_OUTPUT"
+          echo "detail=$detail" >> "$GITHUB_OUTPUT"
+          echo "::error::$detail Re-set the secret with a single-line value (Settings -> Secrets and variables -> Actions); no review was run."
+        else
+          echo "malformed=false" >> "$GITHUB_OUTPUT"
+          echo "detail=" >> "$GITHUB_OUTPUT"
+          if [[ "$malformed" -gt 0 ]]; then
+            echo "::warning::$detail A well-formed credential is also configured, so the review was attempted anyway."
+          fi
+        fi
