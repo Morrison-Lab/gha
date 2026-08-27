@@ -20,6 +20,7 @@ input tables and a copy-paste example.
 | [`check-new-line-breaks.yml`](reference/check-new-line-breaks.qmd)         | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line                                                                                                     | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length`                                                                                  |
 | [`lint-qmd.yml`](reference/lint-qmd.qmd)                                   | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length`                                                                                                                   |
 | [`lint-changed-lines.yml`](reference/lint-changed-lines.qmd)               | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally                                                                                                | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                                              |
+| [`lint-changed-files.yml`](reference/lint-changed-files.qmd)               | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope`                                                                                                                                         | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail`                                      |
 | [`lint-workflows.yml`](reference/lint-workflows.qmd)                       | actionlint (syntax/semantics) and zizmor (security) over the caller's GitHub Actions workflows and composite actions                                                                                                              | `path`, `actionlint-version`, `actionlint-checksum`, `zizmor-version`, `python-version`, `pedantic`, `fail`                                                                         |
 | [`spellcheck.yml`](reference/spellcheck.qmd)                               | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto`                                                                                               |
 | [`check-typos.yml`](reference/check-typos.qmd)                             | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos                                     | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail`                                                                    |
@@ -61,6 +62,7 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`, and `quarto-publish.yml` to
 `@v2`**; `test-coverage.yml`, `check-equation-renders.yml`, `lint-yaml.yml`,
 `lint-markdown.yml`, `lint-qmd.yml`, `lint-changed-lines.yml`,
+`lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, and
@@ -148,6 +150,10 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   lines a pull request adds or modifies (not whole changed files), so lint rules
   can be adopted or tightened incrementally: new and edited code must comply
   while untouched legacy code is left alone.
+- `lint-changed-files.yml` runs [lintr](https://lintr.r-lib.org/) at one of
+  three scopes selected by `scope`: the files a pull request changed (default),
+  a whole package (`lintr::lint_package()`), or a whole project
+  (`lintr::lint_dir()`). lintr is installed from CRAN, not GitHub HEAD.
 - `check-phi.yml` scans for content that looks like protected health
   information; see [below](#phi-scanning).
 - `check-secrets.yml` scans the repository's git **history** for committed
