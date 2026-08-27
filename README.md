@@ -106,7 +106,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-equation-renders`, `check-extra`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
-  `check-typos`, `claude-manage-project`,
+  `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> → only
