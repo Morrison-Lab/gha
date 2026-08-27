@@ -547,6 +547,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      pull-requests: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -587,6 +588,15 @@ jobs:
       - name: Run dispatch-review tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-dispatch-review-tests.sh
+      - name: Run detect-pr-workflow-edits tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-detect-pr-workflow-edits-tests.sh
+      - name: Run list-pr-changed-files tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh
+      - name: Run restore-default-branch-workflows tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh
       - name: Run resolve-pr-info tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-resolve-pr-info-tests.sh
@@ -607,6 +617,70 @@ jobs:
         with:
           workflow-path: .github/workflows/claude-code-review.yml
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise build-self-review-skip-notice with an empty workflow-path
+        id: skip-notice-incomplete-e2e
+        uses: ./.github/actions/build-self-review-skip-notice
+        with:
+          workflow-path: ''
+          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise detect-pr-workflow-edits composite action end-to-end
+        id: detect-wf-e2e
+        if: github.event_name == 'pull_request'
+        uses: ./.github/actions/detect-pr-workflow-edits
+        with:
+          pr-number: ${{ github.event.pull_request.number }}
+          caller-workflow-path: .github/workflows/claude-review.yml
+      - name: Assert detect-pr-workflow-edits matches an independent classify
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          WORKFLOW_EDITS: ${{ steps.detect-wf-e2e.outputs.workflow_edits }}
+          EDITED_PATH: ${{ steps.detect-wf-e2e.outputs.edited_path }}
+          LIST_INCOMPLETE: ${{ steps.detect-wf-e2e.outputs.list_incomplete }}
+        run: |
+          set -euo pipefail
+          if [[ "$WORKFLOW_EDITS" != "true" && "$WORKFLOW_EDITS" != "false" ]]; then
+            echo "::error::detect-pr-workflow-edits did not produce a boolean workflow_edits output (got '$WORKFLOW_EDITS')"
+            exit 1
+          fi
+          if [[ "$LIST_INCOMPLETE" != "true" && "$LIST_INCOMPLETE" != "false" ]]; then
+            echo "::error::detect-pr-workflow-edits did not produce a boolean list_incomplete output (got '$LIST_INCOMPLETE')"
+            exit 1
+          fi
+          if [[ "$LIST_INCOMPLETE" == "true" && -n "$EDITED_PATH" ]]; then
+            echo "::error::detect-pr-workflow-edits set list_incomplete=true but edited_path='$EDITED_PATH' (must be empty, not a fake path)"
+            exit 1
+          fi
+          # The boolean-only check cannot catch a composite that always
+          # returns false: this PR edits workflow YAML, so that bug would
+          # still look green. Classify the same PR independently via the
+          # scripts the composite wraps; a wiring skip that never calls
+          # them disagrees on a workflow-editing PR.
+          if files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash .github/workflows/scripts/list-pr-changed-files.sh); then
+            want=$(PR_CHANGED_FILES="$files" CALLER_WF_PATH=".github/workflows/claude-review.yml" bash .github/workflows/scripts/detect-pr-workflow-edits.sh | sed -n 's/^workflow_edits=//p')
+            # A composite that always takes the incomplete-list branch
+            # (workflow_edits=true, list_incomplete=true, empty path)
+            # would still match want=true on this PR. The list succeeded
+            # here, so list_incomplete must be false.
+            if [ "$LIST_INCOMPLETE" != "false" ]; then
+              echo "::error::detect-pr-workflow-edits list_incomplete='$LIST_INCOMPLETE' but the independent file list succeeded (want false)"
+              exit 1
+            fi
+          else
+            want=true
+            if [ "$LIST_INCOMPLETE" != "true" ]; then
+              echo "::error::detect-pr-workflow-edits list_incomplete='$LIST_INCOMPLETE' but the independent file list failed (want true)"
+              exit 1
+            fi
+          fi
+          if [ "$WORKFLOW_EDITS" != "$want" ]; then
+            echo "::error::detect-pr-workflow-edits workflow_edits='$WORKFLOW_EDITS' but independent classify wants '$want' (edited_path='$EDITED_PATH')"
+            exit 1
+          fi
+          echo "detect-pr-workflow-edits workflow_edits=$WORKFLOW_EDITS edited_path=$EDITED_PATH list_incomplete=$LIST_INCOMPLETE (matches independent classify)"
       - name: Exercise export-extra-secrets composite action end-to-end
         uses: ./.github/actions/export-extra-secrets
         with:
@@ -625,6 +699,7 @@ jobs:
         shell: bash
         env:
           BODY_FILE: ${{ steps.skip-notice-e2e.outputs.body-file }}
+          INCOMPLETE_BODY_FILE: ${{ steps.skip-notice-incomplete-e2e.outputs.body-file }}
         run: |
           set -euo pipefail
           if [[ ! -s "$BODY_FILE" ]]; then
@@ -632,6 +707,19 @@ jobs:
             exit 1
           fi
           echo "build-self-review-skip-notice correctly generated body file at $BODY_FILE"
+          if [[ ! -s "$INCOMPLETE_BODY_FILE" ]]; then
+            echo "::error::build-self-review-skip-notice empty-path call did not generate a non-empty body file"
+            exit 1
+          fi
+          if grep -q 'This PR edits' "$INCOMPLETE_BODY_FILE"; then
+            echo "::error::empty-path skip notice still contains 'This PR edits'"
+            exit 1
+          fi
+          if ! grep -q 'changed-file list was incomplete' "$INCOMPLETE_BODY_FILE"; then
+            echo "::error::empty-path skip notice missing incomplete-list wording"
+            exit 1
+          fi
+          echo "build-self-review-skip-notice empty-path notice names an incomplete list"
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually

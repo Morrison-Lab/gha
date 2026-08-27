@@ -531,55 +531,153 @@ jobs:
       actions: read
 
     steps:
-      # Skip when the PR edits the CALLER's review stub. That skip predates
-      # gha#580: claude-code-action's App-token exchange used to 401
-      # ("Workflow validation failed") until merge. Forwarding github_token
-      # now skips that exchange, so the skip is this workflow's own policy
-      # rather than a workaround for a 401 — a bypass would run the model
-      # with the read-only job token. The file checked is the CALLER's
-      # review workflow, derived from github.workflow_ref
-      # (owner/repo/.github/workflows/<file>@ref -> .github/workflows/<file>):
-      # in a workflow_call run the github context is the caller's, so
-      # workflow_ref is the consumer's stub — the callee (reusable) path is
-      # exposed separately as github.job_workflow_ref — hence this matches
-      # whatever name the consumer's stub uses, not just the
-      # claude-code-review.yml convention. (Ported from qwt — gha #45.)
+      # The caller's review-workflow path still matters: it is what GitHub
+      # executes on `pull_request`, and what `workflow_dispatch --ref $branch`
+      # would execute. Derived from github.workflow_ref (owner/repo/.github/
+      # workflows/<file>@ref -> .github/workflows/<file>): in a workflow_call
+      # run the github context is the caller's, so workflow_ref is the
+      # consumer's stub. (Ported from qwt — gha #45.)
       - name: Parse caller workflow ref
         id: caller-wf
         uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
-      - name: Skip self-review when the PR edits this workflow
+      # A PR that edits `.github/workflows/*.yml` used to skip the review
+      # outright (gha#386, gha#434): claude-code-action's App-token exchange
+      # requires the running workflow to match the default branch. Skipping
+      # left workflow-editing PRs unreviewed. Restore the default-branch
+      # copies after checkout instead, pass github_token so the action does
+      # not need that exchange, and (on dispatch) checkout the PR head so
+      # the reviewer still sees the code. GitHub then executes trusted YAML;
+      # the PR's workflow changes stay in the saved diff (gha#598).
+      - name: Detect whether the PR edits workflow files
+        id: wf-edits
+        uses: Morrison-Lab/gha/.github/actions/detect-pr-workflow-edits@v2
+        with:
+          pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
+          caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # workflow_dispatch with no --ref (the trusted-YAML fallback, or a fork)
+      # checkouts the default branch. Pin to the PR head so the reviewer sees
+      # the code under review. On pull_request the event checkout is already
+      # the merge commit; this step is skipped and `ref:` stays empty.
+      - name: Resolve PR head SHA
+        id: prhead
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+        run: |
+          set -euo pipefail
+          sha=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq .head.sha)
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve a 40-character head SHA for PR #$PR_NUMBER."
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # Post an early comment linking the run for dispatched reviews (gha#424).
+      # On workflow_dispatch, from the PR there is otherwise no link to the run
+      # and no sign a review is in progress if the job stalls during setup/model execution.
+      - name: Post early review dispatch notice
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          [ -z "$PR_NUMBER" ] && exit 0
+          HEAD_SHA=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)
+          if [ -n "$HEAD_SHA" ]; then
+            SHA_SHORT="${HEAD_SHA:0:7}"
+            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER at \`$SHA_SHORT\`."
+          else
+            BODY="👀 **Claude Review Dispatched** — [run]($RUN_URL) reviewing PR #$PR_NUMBER."
+          fi
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "$BODY" 2>/dev/null || true
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          ref: ${{ steps.prhead.outputs.sha }}
+
+      - name: Restore default-branch workflow files
+        id: restore-wf
+        if: success() && steps.wf-edits.outputs.workflow_edits == 'true'
+        continue-on-error: true
+        uses: Morrison-Lab/gha/.github/actions/restore-default-branch-workflows@v2
+        with:
+          default-branch: ${{ github.event.repository.default_branch }}
+
+      # self_mod now means "the fallback could not restore trusted YAML",
+      # not "the PR edits a workflow file". A successful restore continues
+      # into the review. Keep the name: require-review and the skip-notice
+      # path already key on it.
+      - name: Record restore failure as a skip
         id: selfmod
+        env:
+          RESTORE_OUTCOME: ${{ steps.restore-wf.outcome }}
+          WORKFLOW_EDITS: ${{ steps.wf-edits.outputs.workflow_edits }}
+          EDITED_PATH: ${{ steps.wf-edits.outputs.edited_path }}
+          CALLER_PATH: ${{ steps.caller-wf.outputs.path }}
+          LIST_INCOMPLETE: ${{ steps.wf-edits.outputs.list_incomplete }}
+        run: |
+          set -euo pipefail
+          # An incomplete file list must not fall back to the caller path:
+          # that would claim the PR edited claude-review.yml when we do
+          # not know which files changed.
+          if [ "$LIST_INCOMPLETE" = "true" ]; then
+            wf_path=""
+          else
+            wf_path="${EDITED_PATH:-$CALLER_PATH}"
+          fi
+          echo "wf_path=$wf_path" >> "$GITHUB_OUTPUT"
+          if [ "$WORKFLOW_EDITS" = "true" ] && [ "$RESTORE_OUTCOME" = "failure" ]; then
+            echo "self_mod=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Could not restore default-branch workflow files; skipping the review rather than executing PR-head YAML (gha#598)."
+          else
+            echo "self_mod=false" >> "$GITHUB_OUTPUT"
+            if [ "$WORKFLOW_EDITS" = "true" ]; then
+              echo "::notice::PR edits workflow files; restored .github/workflows/ from the default branch and passing github_token so the review can run without executing PR-head workflow YAML (gha#598)."
+            fi
+          fi
+
+      - name: Build self-review skip notice body
+        id: build-notice
+        if: steps.selfmod.outputs.self_mod == 'true'
+        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
+        with:
+          workflow-path: ${{ steps.selfmod.outputs.wf_path }}
+          caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
+          run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+      - name: Post a notice that self-review was skipped
+        id: skip-notice
+        if: steps.selfmod.outputs.self_mod == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
-          WF_PATH: ${{ steps.caller-wf.outputs.path }}
-          EVENT_NAME: ${{ github.event_name }}
+          BODY_FILE: ${{ steps.build-notice.outputs.body-file }}
         run: |
           set -euo pipefail
-          files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename' 2>/dev/null || true)
-          if printf '%s\n' "$files" | grep -qxF "$WF_PATH"; then
-            echo "self_mod=true" >> "$GITHUB_OUTPUT"
-            echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $WF_PATH — skipping self-review (this workflow skips when the PR edits the caller review stub; it runs after merge)."
-          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
-            mod_wf=$(printf '%s\n' "$files" | grep -m1 -E '^\.github/workflows/[^/]+\.ya?ml$')
-            echo "self_mod=true" >> "$GITHUB_OUTPUT"
-            echo "wf_path=$mod_wf" >> "$GITHUB_OUTPUT"
-            echo "::notice::PR #$PR_NUMBER edits $mod_wf on workflow_dispatch — skipping review (dispatch also skips when any top-level workflow YAML changed; gha#386)."
+          # Warn rather than fail: require-review is gray either way, so the gate
+          # stays honest without this comment, and the next run posts again. A
+          # red claude-review here would mislabel a comment-posting failure as a
+          # review failure, on a PR where no review was ever attempted.
+          #
+          if gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"; then
+            echo "posted=true" >> "$GITHUB_OUTPUT"
           else
-            echo "self_mod=false" >> "$GITHUB_OUTPUT"
-            echo "wf_path=$WF_PATH" >> "$GITHUB_OUTPUT"
+            echo "posted=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
           fi
-
-      - name: Checkout repository
-        if: steps.selfmod.outputs.self_mod != 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 1
 
       # Initialize submodules so the reviewer can read their contents — without
       # this, reviews of files that include or reference a submodule report it
@@ -908,6 +1006,7 @@ jobs:
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
           github-token: ${{ github.token }}
+          workflow-fallback: ${{ steps.wf-edits.outputs.workflow_edits }}
 
       # Guard: fail the check when the Claude run ended with is_error:true.
       # The action exits 0 even in that case (the result object's subtype is
@@ -1017,6 +1116,7 @@ jobs:
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
           github-token: ${{ github.token }}
+          workflow-fallback: ${{ steps.wf-edits.outputs.workflow_edits }}
           is-retry: 'true'
 
       - name: Resolve and upload execution file path (retry)
@@ -1694,9 +1794,10 @@ jobs:
 
 
   # Gate job: skipped (gray) when the claude-review job was itself skipped
-  # (fork/draft/bot), when the API quota was exhausted, or when the self-review
-  # guard skipped the review because the PR edits the caller workflow. Passes on
-  # a clean review, fails when the review job failed for a real reason.
+  # (fork/draft/bot), when the API quota was exhausted, or when restoring
+  # default-branch workflow YAML failed so the review was skipped rather than
+  # executing PR-head workflow files (gha#598). Passes on a clean review, fails
+  # when the review job failed for a real reason.
   #
   # GitHub Actions can only produce a "skipped" job conclusion via a false
   # `if:` — a running job can only conclude success or failure. This second
@@ -1714,10 +1815,10 @@ jobs:
   # branch protection required-checks instead of (or in addition to)
   # `review / claude-review`. A skipped result does not block merging; a
   # failing result does. Skipping rather than failing is deliberate for the
-  # self-review case: no re-run or re-dispatch clears that condition, and the
-  # only thing that does is the PR ceasing to edit the file, so failing would
-  # force an admin override on every workflow-editing PR. The gray icon plus the
-  # PR comment the posting job writes carry the signal instead.
+  # restore-failure case: the PR was not reviewed, and failing would look like
+  # the reviewer found a defect. A later re-run can recover if fetching the
+  # default branch was the problem. The gray icon plus the PR comment the
+  # review job posts carry the signal instead.
   require-review:
     needs: [claude-review, post-review]
     # Run when the claude-review job ran and produced a real verdict.
@@ -1728,8 +1829,10 @@ jobs:
     #   - claude-review was cancelled (the cancel-in-progress race, gha#585)
     #   - quota_exhausted=true (the API rejected the request, either before
     #     any work or part-way through the review -- gha#520)
-    #   - self_mod=true (the PR edits the caller workflow, so the review was
-    #     deliberately skipped --- gha#434)
+    #   - self_mod=true (restoring default-branch workflow YAML failed, so
+    #     the review was skipped rather than executing PR-head YAML ---
+    #     gha#598; before that change this also fired whenever the PR
+    #     merely edited the caller workflow --- gha#434)
     #   - cancelled=true (the review run was cancelled mid-job and resolved as
     #     a graceful skip -- gha#585)
     #   - post-review reported stale (the PR head moved before posting;
