@@ -439,6 +439,114 @@ class TestRunAntigravity(unittest.TestCase):
         self.assertIn("Always use strict typing.", prompt)
         self.assertIn("Extra advice", prompt)
 
+
+    @patch("sys.exit")
+    @patch("run_antigravity.get_pr_diff")
+    @patch("run_antigravity.get_pr_metadata")
+    @patch("sys.stderr", new_callable=MagicMock)
+    def test_diff_limits(self, mock_stderr, mock_get_meta, mock_get_diff, mock_exit):
+        mock_exit.side_effect = SystemExit
+        """Verify max-diff-lines and max-diff-files triggers exit 0 and warning."""
+        mock_get_meta.return_value = {"number": 1, "title": "A PR"}
+        # Exceeds max-diff-lines
+        mock_get_diff.return_value = "diff --git a/file.txt b/file.txt\n" + "+line\n" * 2001
+        
+        args = ["--pr-number", "1", "--max-diff-lines", "2000"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(0)
+        warning_msg = "".join(call[0][0] for call in mock_stderr.write.call_args_list)
+        self.assertIn("exceeds max-diff-lines", warning_msg)
+
+        # Exceeds max-diff-files
+        mock_stderr.reset_mock()
+        mock_exit.reset_mock()
+        mock_get_diff.return_value = "".join(f"diff --git a/file{i}.txt b/file{i}.txt\n" for i in range(51))
+        args = ["--pr-number", "1", "--max-diff-files", "50"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(0)
+        warning_msg2 = "".join(call[0][0] for call in mock_stderr.write.call_args_list)
+        self.assertIn("exceeds max-diff-files", warning_msg2)
+
+    @patch("sys.exit")
+    @patch("run_antigravity.get_pr_diff")
+    @patch("run_antigravity.get_pr_metadata")
+    def test_fail_on_error_false(self, mock_get_meta, mock_get_diff, mock_exit):
+        mock_exit.side_effect = SystemExit
+        """Verify fail-on-error=false exits with 0 on metadata/diff failure."""
+        mock_get_meta.side_effect = Exception("Meta failed")
+        args = ["--pr-number", "1"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(0)
+
+        mock_get_meta.side_effect = None
+        mock_get_meta.return_value = {"number": 1, "title": "A PR"}
+        mock_get_diff.side_effect = Exception("Diff failed")
+        args = ["--pr-number", "1"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(0)
+        
+        mock_get_diff.side_effect = None
+        mock_get_diff.return_value = ""
+        args = ["--pr-number", "1"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(0)
+
+    @patch("sys.exit")
+    @patch("run_antigravity.get_pr_diff")
+    @patch("run_antigravity.get_pr_metadata")
+    def test_fail_on_error_true(self, mock_get_meta, mock_get_diff, mock_exit):
+        mock_exit.side_effect = SystemExit
+        """Verify fail-on-error=true exits with 1 on metadata/diff failure."""
+        mock_get_meta.side_effect = Exception("Meta failed")
+        args = ["--pr-number", "1", "--fail-on-error"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(1)
+
+        mock_get_meta.side_effect = None
+        mock_get_meta.return_value = {"number": 1, "title": "A PR"}
+        mock_get_diff.side_effect = Exception("Diff failed")
+        args = ["--pr-number", "1", "--fail-on-error"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(1)
+        
+        mock_get_diff.side_effect = None
+        mock_get_diff.return_value = ""
+        args = ["--pr-number", "1", "--fail-on-error"]
+        with patch('sys.argv', ['run_antigravity.py'] + args):
+            try:
+                run_antigravity.main()
+            except SystemExit:
+                pass
+        mock_exit.assert_called_with(1)
+
     def test_parse_diff_valid_lines(self):
         sample_diff = (
             "diff --git a/src/main.py b/src/main.py\n"

@@ -115,6 +115,23 @@ def parse_args(args=None):
         action="store_true",
         help="Print prompt and diff without executing agent or posting comments",
     )
+    parser.add_argument(
+        "--fail-on-error",
+        action="store_true",
+        help="Whether to fail the workflow run if the orchestration engine throws an error",
+    )
+    parser.add_argument(
+        "--max-diff-lines",
+        type=int,
+        default=2000,
+        help="Maximum modified lines allowed in a PR diff before skipping review",
+    )
+    parser.add_argument(
+        "--max-diff-files",
+        type=int,
+        default=50,
+        help="Maximum modified files allowed in a PR diff before skipping review",
+    )
     return parser.parse_args(args)
 
 
@@ -669,9 +686,10 @@ def main():
             pr_meta = {}
         else:
             print(f"::error::Failed to fetch PR metadata: {err}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(1 if args.fail_on_error else 0)
 
     pr_num = args.pr_number or pr_meta.get("number")
+
 
     try:
         diff = get_pr_diff(pr_num)
@@ -681,7 +699,68 @@ def main():
             diff = ""
         else:
             print(f"::error::Failed to fetch PR diff: {err}", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(1 if args.fail_on_error else 0)
+
+    if diff:
+        # Check diff size limits
+        lines = diff.splitlines()
+        # Header lines carry a trailing SPACE ("+++ b/path"), so match that
+        # rather than the bare marker: a genuine added line whose content
+        # begins "++" (C++ increments, nested Markdown markers) becomes
+        # "+++..." once the diff prefix is added, and a bare-marker test
+        # silently drops it from the count (gha#672 review, finding 6).
+        changed_lines = sum(
+            1
+            for line in lines
+            if (line.startswith("+") and not line.startswith("+++ "))
+            or (line.startswith("-") and not line.startswith("--- "))
+        )
+        files_changed = sum(1 for line in lines if line.startswith("diff --git"))
+        
+        def _skip_notice(what: str, actual: int, limit: int) -> None:
+            """Announce a size skip on the THREAD, not just in the job log.
+
+            A size skip is not a failure, so it exits 0 regardless of
+            --fail-on-error -- which means a green check is all the PR shows.
+            Logging to stderr and exiting leaves the thread indistinguishable
+            from "the reviewer has not run yet", the same silent-thread class
+            the error paths above were fixed for, and the one
+            report-gemini-failure (gha#379) posts a comment for even on a
+            graceful skip. gha#672 review, round 3.
+            """
+            msg = (
+                f"::warning::PR diff exceeds {what} ({actual} > {limit}). "
+                "Skipping review."
+            )
+            print(msg, file=sys.stderr)
+            # `not args.dry_run` is load-bearing, not belt-and-braces: this
+            # block sits BEFORE main()'s dry-run early return, so unlike
+            # every other side-effecting path here it is not covered by
+            # that guard. Without this, --dry-run would post a real PR
+            # comment (gha#672 review, round 4).
+            if args.post_comment and not args.dry_run:
+                body = (
+                    f"> [!WARNING]\n"
+                    f"> **Antigravity review skipped: diff too large.**\n"
+                    f"> This PR's diff has {actual} {what.replace('max-diff-', '')}, "
+                    f"over the `{what}` limit of {limit}.\n"
+                    f">\n"
+                    f"> The check is green because a size skip is not a failure, "
+                    f"but **no review was performed**. Raise `{what}` on the "
+                    f"caller, or split the PR."
+                )
+                try:
+                    post_github_comment(pr_num, body, args.mode, diff=diff)
+                except Exception as err:  # never let the notice fail the run
+                    print(f"::warning::Could not post the size-skip notice: {err}", file=sys.stderr)
+
+        if changed_lines > args.max_diff_lines:
+            _skip_notice("max-diff-lines", changed_lines, args.max_diff_lines)
+            sys.exit(0)
+        
+        if files_changed > args.max_diff_files:
+            _skip_notice("max-diff-files", files_changed, args.max_diff_files)
+            sys.exit(0)
 
     system_instruction = (
         f"You are the Google Antigravity AI Agent running in automated mode ({args.mode}). "
@@ -701,7 +780,7 @@ def main():
 
     if not diff:
         print("::error::Empty diff fetched for analysis.", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(1 if args.fail_on_error else 0)
 
     try:
         report = asyncio.run(run_antigravity_agent(full_prompt, system_instruction, model=args.model))
@@ -709,7 +788,7 @@ def main():
             post_github_comment(pr_num, report, args.mode, diff=diff)
     except Exception as err:
         print(f"Execution failed: {err}", file=sys.stderr)
-        sys.exit(1)
+        sys.exit(1 if args.fail_on_error else 0)
 
 
 if __name__ == "__main__":
