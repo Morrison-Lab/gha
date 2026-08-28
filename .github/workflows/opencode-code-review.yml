@@ -369,7 +369,15 @@ jobs:
               if [[ "$rc" -eq 0 ]] || [[ "$attempt" -ge "$OPENCODE_ATTEMPTS" ]]; then
                 break
               fi
-              if ! grep -Eq 'finish_reason: network[-_]error' review-error.log review-output.md; then
+              # Scoped to stderr ONLY (gha#706): review-output.md is the
+              # model-generated review text, i.e. untrusted content -- a
+              # review that merely QUOTES the signature (a review of this
+              # workflow, say) must not make an unrelated failure retryable.
+              # The real signature lands on stderr: gha#600's three observed
+              # failures each show the CLI's progress narration and the
+              # 'Error: Provider finish_reason: network_error' line together
+              # in the posted error-file block (review-error.log).
+              if ! grep -Eq 'finish_reason: network[-_]error' review-error.log; then
                 echo "Not the transient network_error class; not retrying." >&2
                 break
               fi
