@@ -4,7 +4,9 @@ description: >-
   sentence/clause onto a single source line -- the "semantic line breaks"
   convention (one clause/sentence per line), which keeps a diff scoped to the
   changed sentence instead of a whole reflowed paragraph. Scoped to lines a
-  diff adds, so it never reflags a corpus's pre-existing long lines -- useful
+  diff adds -- and an added line whose exact text was also deleted in the same
+  diff is treated as moved rather than new (gha#684) -- so it never reflags a
+  corpus's pre-existing long lines -- useful
   alongside lint-markdown when markdownlint's MD013 is disabled because the
   corpus already carries long-line drift. Blocking by default.
 inputs:

@@ -7,7 +7,15 @@ more than one sentence/clause onto a single source line -- the "semantic
 line breaks" convention (one clause/sentence per line), which keeps a diff
 scoped to the changed sentence instead of a whole reflowed paragraph. Scoped
 to lines a diff adds, so it never reflags a corpus's pre-existing long
-lines. Pairs well with [`lint-markdown.yml`](lint-markdown.qmd) when
+lines -- including lines a PR merely relocates: an added line whose exact
+text was also deleted somewhere in the same diff is treated as moved
+rather than new and is not reported
+([gha#684](https://github.com/Morrison-Lab/gha/issues/684)).
+The pairing is a diff-wide multiset (N deletions of a text exempt at most
+N additions of it, in any file), not a per-file match -- a deliberate
+tradeoff, since even a coincidental delete-here/add-there pairing leaves
+the corpus's count of violating lines unchanged.
+Pairs well with [`lint-markdown.yml`](lint-markdown.qmd) when
 markdownlint's MD013 (line-length) is disabled because the corpus already
 carries long-line drift from before the convention was adopted.
 
