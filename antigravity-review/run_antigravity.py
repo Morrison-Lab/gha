@@ -733,7 +733,12 @@ def main():
                 "Skipping review."
             )
             print(msg, file=sys.stderr)
-            if args.post_comment:
+            # `not args.dry_run` is load-bearing, not belt-and-braces: this
+            # block sits BEFORE main()'s dry-run early return, so unlike
+            # every other side-effecting path here it is not covered by
+            # that guard. Without this, --dry-run would post a real PR
+            # comment (gha#672 review, round 4).
+            if args.post_comment and not args.dry_run:
                 body = (
                     f"> [!WARNING]\n"
                     f"> **Antigravity review skipped: diff too large.**\n"
