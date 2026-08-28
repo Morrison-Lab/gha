@@ -40,6 +40,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Set, Tuple
 
@@ -484,6 +485,49 @@ def _added_line_numbers(base_ref: str, pathspecs: List[str]) -> Optional[dict]:
     return result
 
 
+def _preexisting_lines(base_ref: str, candidates: List[str]) -> Optional[Set[str]]:
+    """Return the subset of ``candidates`` that exist verbatim as whole lines
+    anywhere in the merge-base tree of ``base_ref`` and HEAD, or None when the
+    membership check could not run (no merge-base, or ``git grep`` errored).
+
+    A PR that moves an existing block into a brand-new file shows every moved
+    line as freshly added -- there is no deletion to pair against, since the
+    source file still exists (gha#684). A line that already exists verbatim in
+    the base tree is relocated content rather than new writing, so it keeps
+    whatever grandfathering it had.
+    """
+    patterns = sorted({line for line in candidates if line})
+    if not patterns:
+        return set()
+    merge_base = _run_git(["merge-base", base_ref, "HEAD"])
+    if merge_base is None:
+        return None
+    tree = merge_base.strip()
+    if not tree:
+        return None
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False,
+                                     suffix=".nlb-patterns") as handle:
+        handle.write("\n".join(patterns) + "\n")
+        pattern_file = handle.name
+    try:
+        # git grep has no whole-line switch, so match fixed substrings and do
+        # the exact whole-line comparison in Python: -h prints each matching
+        # line verbatim, and a candidate is pre-existing only when one of
+        # those printed lines equals it exactly.
+        proc = subprocess.run(
+            ["git", "grep", "-h", "-F", "--no-color", "-f", pattern_file, tree],
+            capture_output=True, encoding="utf-8", errors="replace",
+        )
+    finally:
+        os.unlink(pattern_file)
+    if proc.returncode == 1:
+        return set()
+    if proc.returncode != 0:
+        return None
+    matched = set(proc.stdout.split("\n"))
+    return {line for line in patterns if line in matched}
+
+
 class Violation(NamedTuple):
     """One flagged line. ``reason`` names which check flagged it."""
 
@@ -525,6 +569,7 @@ def find_violations(
         return [], True
 
     violations: List[Violation] = []
+    raw_by_violation: dict = {}
     for rel_path in sorted(scope):
         if _ignored(rel_path, ignores):
             continue
@@ -542,11 +587,37 @@ def find_violations(
         for line_no in sorted(target_lines):
             if line_no < 1 or line_no > len(lines):
                 continue
-            content = line_content(lines[line_no - 1])
+            raw = lines[line_no - 1]
+            content = line_content(raw)
             reason = classify_line(content, clause_breaks, clause_min_length)
             if reason is not None:
                 preview = content if len(content) <= 80 else content[:77] + "..."
                 violations.append(Violation(rel_path, line_no, preview, reason))
+                raw_by_violation[len(violations) - 1] = raw
+
+    # Moved-content exemption (gha#684): a "new" line that exists verbatim in
+    # the merge-base tree is relocated, not written, so it keeps whatever
+    # grandfathering it had. Checked only for would-be violations, so the
+    # membership query stays one small git grep. On error the exemption is
+    # skipped (the pre-gha#684 behavior) rather than silently exempting.
+    if raw_by_violation:
+        preexisting = _preexisting_lines(
+            base_ref, list(raw_by_violation.values()))
+        if preexisting is None:
+            print(
+                "Warning: could not check the base tree for moved content; "
+                "relocated pre-existing lines may be flagged as new (gha#684)."
+            )
+        elif preexisting:
+            kept = [v for idx, v in enumerate(violations)
+                    if raw_by_violation.get(idx) not in preexisting]
+            exempted = len(violations) - len(kept)
+            if exempted:
+                print(
+                    f"Note: {exempted} flagged line(s) exist verbatim in the "
+                    "base tree (moved, not new) and were not reported."
+                )
+            violations = kept
     return violations, False
 
 
