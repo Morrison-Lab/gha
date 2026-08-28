@@ -2036,31 +2036,48 @@ There is no live `uses:` of the restore composite against this checkout:
 restoring this repo's own `.github/workflows/` mid-selftest would clobber
 later steps.
 
-`.github/workflows/scripts/tests/run-list-workflow-files-tests.sh`
-exercises `list-workflow-files.sh`, the shared discovery helper
-`_selftest.yml`'s `SUBMODULES_TOKEN` and SHA-pin audits now call instead of
-globbing `*.yml` themselves (gha#716, the sibling of the gha#705 job-guard
-gap).
-The negative cases are the ones to keep if the suite is ever trimmed, because
-each pins a decision that is silent when reversed: an empty directory is an
-error rather than an empty list, a nested `scripts/foo.yml` is not a workflow,
-and a `.txt` file is not swept in.
-All four mutations were confirmed to turn it red rather than assumed to ---
-a `*.yml`-only `find`, a dropped fail-closed guard, and a dropped
-`-maxdepth 1` each fail a named case.
-CI runs it as a step in the `lint-checkout-tokens` job, before the two audits
-that consume it.
+`.github/workflows/scripts/tests/run-list-workflow-files-tests.sh` and
+`run-workflow-audit-tests.sh` cover the workflow-discovery helper and the two
+audits built on it (gha#716).
+`_selftest.yml`'s `SUBMODULES_TOKEN` and SHA-pin audits used to be inline
+`run:` blocks globbing `*.yml`; they are now
+`audit-workflow-token-usage.sh` and `audit-workflow-action-pins.sh`, both
+discovering through `list-workflow-files.sh`.
 
-**The two audits reach the helper through command substitution, not process
-substitution, and that is load-bearing rather than style.**
+**Testing the helper is not testing the audits, and this repo's own tree is
+why.**
+It carries 63 `.yml` workflows and zero `.yaml` ones, so a consumer reverted
+to a `*.yml`-only glob leaves every check green --- the audits pass because
+there is nothing for the wider glob to find, not because discovery works.
+So each audit gets a fixture whose violation lives in a `.yaml` file.
+Those two cases are the ones to keep if the suite is ever trimmed.
+
+**`grep` answers three ways, and both audits used to read two.**
+`0` found, `1` clean, and anything else means the check did not run --- an
+unreadable or vanished file.
+The old inline forms collapsed that third case into "clean": one used `grep`
+directly as an `if` condition, the other ended its pipeline in `|| true`.
+Each audit now reads the status explicitly and exits `2` on it, pinned by an
+unreadable-file case (skipped as root, where the permission bit does not
+bite).
+
+**Discovery is reached by command substitution, not process substitution.**
 `mapfile -t WORKFLOWS < <(bash list-workflow-files.sh)` does not propagate the
 helper's exit status, so a fail-closed refusal would leave the array empty and
 `set -e` would not fire --- and `grep PATTERN` with no file arguments then
-reads **stdin**, which in a runner step is an immediate EOF.
-The audit passes, having examined nothing, which is exactly the state the
-helper's own fail-closed guard exists to prevent.
-Assigning to a variable first (`WORKFLOW_LIST="$(bash ...)"`) makes `set -e`
-abort the step.
+reads **stdin**, an immediate EOF in a runner step.
+The audit passes having examined nothing, which is the state the helper's own
+fail-closed guard exists to prevent.
+Verified directly on bash 5.3 rather than reasoned about: the command
+substitution aborts, the process substitution does not.
+
+**The SHA-pin audit is still blind to the `- uses:` list form (gha#720).**
+Its anchor is a line-leading `uses:`, so five action references in this repo
+are exempt today purely by how their step is written.
+The one-character widening is not the fix --- it hits `_selftest.yml`'s
+heredoc-written flawed fixture, which is not a real reference --- so the gap
+is documented in the script header and pinned by a test asserting *current*
+behaviour, which the eventual parsed-YAML fix will turn red.
 
 `run-permissions-docs-tests.py` gained the same discovery fix and two cases
 alongside it (10 and 11).
@@ -2071,6 +2088,12 @@ The second asserts `discover_workflows` directly, so reverting the glob cannot
 be "fixed" by widening it to everything.
 Every case that predates them names only `.yml` fixtures, which is why none of
 them could see the gap.
+
+CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
+Six mutations were confirmed to turn the suites red rather than assumed to: a
+`*.yml`-only `find`, a dropped fail-closed guard, a dropped `-maxdepth 1`, a
+`*.yml`-only `discover_workflows`, a helper that prints correctly and then
+exits non-zero, and a `.yaml`-carried violation under yml-only discovery.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

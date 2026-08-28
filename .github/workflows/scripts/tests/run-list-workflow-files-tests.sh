@@ -24,8 +24,19 @@ cases=0
 expect_output() {
   local label="$1" dir="$2" want="$3"
   cases=$((cases + 1))
-  local got
-  got="$(bash "$LIST" "$dir" 2>/dev/null | xargs -n1 basename 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+  local raw rc got
+  # The helper's own exit status is asserted, not just its text: a helper that
+  # printed the right names and then exited non-zero would otherwise report OK,
+  # since this suite deliberately runs without `set -e` so one failing case does
+  # not abort the rest.
+  raw="$(bash "$LIST" "$dir" 2>/dev/null)"
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "::error::$label: expected exit 0, got $rc" >&2
+    failures=$((failures + 1))
+    return
+  fi
+  got="$(printf '%s\n' "$raw" | xargs -n1 basename 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
   if [ "$got" != "$want" ]; then
     echo "::error::$label: expected '$want', got '$got'" >&2
     failures=$((failures + 1))

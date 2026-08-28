@@ -3019,16 +3019,10 @@ jobs:
           fi
           echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."
 
-  # gha#442: SUBMODULES_TOKEN authenticates a cross-owner SUBMODULE fetch
-  # (via the checkout-submodules composite's `submodules-token:` input) and
-  # must never gate the caller's own repo checkout --- a consumer that sets
-  # it correctly for its own submodule is exactly the consumer whose main
-  # checkout then fails, since the token has no reason to be able to read the
-  # caller's repo. The anchor is `^\s*token:`, not a bare `token:` substring
-  # match, so this does not also flag `submodules-token:` (which legitimately
-  # carries the secret) --- a trimmed line starting with "submodules-token:"
-  # never matches a pattern requiring "token:" immediately after the leading
-  # whitespace.
+  # Runs the two workflow-wide audits: no top-level checkout may take
+  # SUBMODULES_TOKEN (gha#442), and every third-party action must be SHA-pinned
+  # (gha#328). The rationale and the exact anchors for each live beside the
+  # audit in its own script, so this comment does not restate them (gha#716).
   lint-checkout-tokens:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -3037,54 +3031,25 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # The two audits below discover workflow files through the shared
-      # list-workflow-files.sh helper, so its own behaviour --- both
-      # extensions, top-level only, fail-closed on an empty list --- is
-      # pinned offline first (gha#716).
-      - name: Run workflow-discovery helper unit tests
+      # Both audits below moved out of this file into scripts (gha#716) so
+      # their grep exit status can be read three ways rather than two, and so
+      # each is exercised offline against fixtures whose violation lives in a
+      # `.yaml` file --- the real tree carries none, so a discovery regression
+      # would otherwise leave every check green.
+      - name: Run workflow-discovery and workflow-audit unit tests
         shell: bash
-        run: bash .github/workflows/scripts/tests/run-list-workflow-files-tests.sh
+        run: |
+          set -euo pipefail
+          bash .github/workflows/scripts/tests/run-list-workflow-files-tests.sh
+          bash .github/workflows/scripts/tests/run-workflow-audit-tests.sh
 
       - name: Assert no workflow passes SUBMODULES_TOKEN to a top-level checkout's token input
         shell: bash
-        run: |
-          set -euo pipefail
-          # GitHub loads .yml and .yaml workflow files alike, so discovery goes
-          # through the shared helper rather than a *.yml glob --- a .yaml
-          # workflow bypassing this audit is the gha#705 / gha#716 gap. The
-          # helper fails closed on an empty list, so this step cannot pass
-          # having examined nothing.
-          # Command substitution, not process substitution: a helper failure
-          # inside `< <(...)` does not reach mapfile, so the array would come
-          # back empty and grep would fall through to reading stdin.
-          WORKFLOW_LIST="$(bash .github/workflows/scripts/list-workflow-files.sh)"
-          mapfile -t WORKFLOWS <<< "$WORKFLOW_LIST"
-          if grep -nE '^\s*token:\s*\$\{\{[^}]*SUBMODULES_TOKEN' "${WORKFLOWS[@]}"; then
-            echo "::error::A workflow above passes SUBMODULES_TOKEN to a top-level actions/checkout 'token:' input (see gha#442) --- it authenticates a cross-owner submodule fetch, not the caller's own repo. Use the checkout-submodules composite's 'submodules-token:' input instead."
-            exit 1
-          fi
-          echo "No workflow passes SUBMODULES_TOKEN to a top-level checkout token: input."
+        run: bash .github/workflows/scripts/audit-workflow-token-usage.sh
 
       - name: Assert all third-party actions in workflows are SHA-pinned
         shell: bash
-        run: |
-          set -euo pipefail
-          # GitHub loads .yml and .yaml workflow files alike, so discovery goes
-          # through the shared helper rather than a *.yml glob --- a .yaml
-          # workflow bypassing this audit is the gha#705 / gha#716 gap. The
-          # helper fails closed on an empty list, so this step cannot pass
-          # having examined nothing.
-          # Command substitution, not process substitution: a helper failure
-          # inside `< <(...)` does not reach mapfile, so the array would come
-          # back empty and grep would fall through to reading stdin.
-          WORKFLOW_LIST="$(bash .github/workflows/scripts/list-workflow-files.sh)"
-          mapfile -t WORKFLOWS <<< "$WORKFLOW_LIST"
-          UNPINNED=$(grep -nE '^\s*uses:' "${WORKFLOWS[@]}" | grep -v 'uses:\s*\./' | grep -v 'uses:\s*\.' | grep -v 'Morrison-Lab/gha' | grep -vE '@[0-9a-f]{40}' || true)
-          if [ -n "$UNPINNED" ]; then
-            echo "::error::Unpinned third-party actions found in workflows (see gha#328):\n$UNPINNED"
-            exit 1
-          fi
-          echo "All third-party actions in ${#WORKFLOWS[@]} workflow file(s) are SHA-pinned."
+        run: bash .github/workflows/scripts/audit-workflow-action-pins.sh
 
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,
