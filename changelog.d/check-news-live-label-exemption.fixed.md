@@ -9,10 +9,12 @@
   A new fail-loud, case-insensitive live-label step is now the authority,
   matching both the configurable input label and the wrapped action's
   hardcoded "no changelog".
-  **Consumer note:** the job now also requests `issues: read`;
+  **Consumer note:** the job now also requests `issues: read` and
+  `pull-requests: read` (GitHub checks a PR's label read against the
+  pull-requests permission);
   a caller that explicitly pins the calling job's `permissions` to
-  `contents: read` alone must add `issues: read` or the workflow fails at
-  startup requesting it.
+  `contents: read` alone must add both, or the workflow fails at
+  startup requesting them.
   Callers with no explicit `permissions` block are unaffected.
   `version-check` has the same stale-payload defect, tracked separately
   (#722).

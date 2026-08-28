@@ -18,11 +18,12 @@ release time to collate `news.d/` fragments into `NEWS.md` under section heading
 
 ## Permissions
 
-Read-only: `contents: read` plus `issues: read`
-(the live-label read behind the skip-label exemption).
+Read-only: `contents: read` plus `issues: read` and `pull-requests: read`
+(the live-label read behind the skip-label exemption;
+GitHub checks a PR's label read against the pull-requests permission).
 A caller with no explicit `permissions:` block needs nothing;
 a caller that pins the calling job's `permissions` must include
-`issues: read` alongside `contents: read`.
+`issues: read` and `pull-requests: read` alongside `contents: read`.
 
 ## Example
 

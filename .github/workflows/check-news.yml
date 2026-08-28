@@ -55,8 +55,14 @@ jobs:
     permissions:
       contents: read
       # For the live-label read below; the event payload's labels are stale
-      # for any label applied after the triggering event.
+      # for any label applied after the triggering event. Both scopes: GitHub
+      # authorizes a label read on an issue object that is a pull request
+      # against the pull-requests permission (issues: read alone returned
+      # 403 "Resource not accessible by integration" on the first consumer
+      # run); issues: read is kept defensively, though this workflow never
+      # actually runs against a plain issue.
       issues: read
+      pull-requests: read
     if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
       - name: Check live labels for an exemption
