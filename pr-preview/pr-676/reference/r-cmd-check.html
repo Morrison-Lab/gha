@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>check-news.yml – Morrison-Lab/gha</title>
+<title>r-cmd-check.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/assemble-news.html" rel="next">
-<link href="../reference/lint-workflows.html" rel="prev">
+<link href="../reference/update-snapshots.html" rel="next">
+<link href="../reference/check-extra.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-news.html">check-news.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/r-cmd-check.html">r-cmd-check.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -463,7 +463,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/check-news.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-news.yml</span></a>
   </div>
 </li>
@@ -487,7 +487,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/r-cmd-check.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/r-cmd-check.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">r-cmd-check.yml</span></a>
   </div>
 </li>
@@ -660,18 +660,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
+  <li><a href="#hard-dependencies-check" id="toc-hard-dependencies-check" class="nav-link" data-scroll-target="#hard-dependencies-check">Hard-dependencies check</a></li>
+  <li><a href="#migrating-from-rpt" id="toc-migrating-from-rpt" class="nav-link" data-scroll-target="#migrating-from-rpt">Migrating from rpt</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-news.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/r-cmd-check.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-news.html">check-news.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/r-cmd-check.html">r-cmd-check.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">check-news.yml</h1>
+<h1 class="title">r-cmd-check.yml</h1>
 </div>
 
 
@@ -688,7 +691,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Enforce a changelog entry on each pull request (wraps <code>UCD-SERG/changelog-check-action</code>). Supports both direct changelog edits (<code>NEWS.md</code>/<code>CHANGELOG.md</code>) and fragment-based changelog files (<code>news.d/</code> or <code>changelog.d/</code> files named <code>&lt;slug&gt;.&lt;category&gt;.md</code>). R package repos can use the <a href="../reference/assemble-news.html"><code>assemble-news</code></a> composite action (<code>uses: Morrison-Lab/gha/.github/actions/assemble-news@v2</code>) at release time to collate <code>news.d/</code> fragments into <code>NEWS.md</code> under section headings.</p>
+<p>Run <a href="https://r-pkgs.org/check.html"><code>R CMD check</code></a> across an OS x R-version matrix, wrapping <a href="https://github.com/r-lib/actions"><code>r-lib/actions</code></a> <code>setup-r</code>, <code>setup-r-dependencies</code>, and <code>check-r-package</code>. A second caller job with <code>hard: true</code> runs a Depends/Imports/LinkingTo-only check that is gated to <code>pull_request</code>.</p>
+<p>Two designs come from <a href="https://github.com/IndrajeetPatil/workflows"><code>IndrajeetPatil/workflows</code></a> <code>R-CMD-check.yaml</code> (MIT): the <code>hard</code> input, and <code>cache: false</code> on that job so a restored pak cache cannot silently contain Suggests. Do not copy that file’s <code>concurrency.group</code> of <code>${{ github.workflow }}-${{ github.head_ref }}</code> with no <code>github.ref</code> fallback: <code>head_ref</code> is empty on <code>push</code>, so every push across every branch collapsed into one group. This reusable workflow sets no concurrency; the <a href="#example">example stub</a> keys on <code>github.ref</code>.</p>
+<p><code>error-on</code> defaults to <code>'"note"'</code> to match <a href="https://github.com/Morrison-Lab/rpt"><code>rpt</code></a>’s bespoke workflow, not r-lib’s <code>'"warning"'</code>. The <code>_R_CHECK_*</code> knobs, the matrix, the timeout, and rpt’s Julia / Quarto / pandoc / <code>rocker/verse</code> steps are inputs rather than hard-coded. See <a href="#migrating-from-rpt">Migrating from rpt</a> before treating this as a drop-in for that file.</p>
+<p>This capability is workflow-only (no root composite): the matrix, the two mutually exclusive jobs, and the optional Linux container are job-level, so splitting the steps into a composite would add a nested <code>@v2</code> bootstrap without reuse value, the same shape as <code>update-snapshots.yml</code>.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -708,16 +714,136 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>changelog</code></td>
-<td>string</td>
-<td><code>'NEWS.md'</code></td>
-<td>Path to the changelog file to check.</td>
+<td><code>hard</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Run the hard-dependencies-only job instead of the full matrix. Gated to <code>pull_request</code>. Call the workflow twice from the stub if you want both.</td>
 </tr>
 <tr class="even">
-<td><code>no-changelog-label</code></td>
+<td><code>extra-packages</code></td>
 <td>string</td>
-<td><code>'no-changelog'</code></td>
-<td>PR label that skips this workflow’s own changelog check. Set to an empty string to disable this workflow’s escape hatch. The wrapped <code>UCD-SERG/changelog-check-action</code> separately, unconditionally recognizes its own hardcoded <code>no changelog</code> (space) label - not controlled by this input.</td>
+<td><code>''</code></td>
+<td>Extra r-lib/actions package specs appended after the check’s own extras (<code>any::rcmdcheck</code> on the full matrix; knitr, rcmdcheck, rmarkdown, curl, and testthat on the hard job).</td>
+</tr>
+<tr class="odd">
+<td><code>error-on</code></td>
+<td>string</td>
+<td><code>'"note"'</code></td>
+<td>R expression for <code>check-r-package</code> <code>error-on</code> on the full matrix. Default matches rpt (NOTEs fail). The hard job omits this so r-lib’s <code>'"warning"'</code> default applies.</td>
+</tr>
+<tr class="even">
+<td><code>cran-incoming-remote</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Value for <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code> and <code>_R_CHECK_CRAN_INCOMING_</code>. r-lib’s <code>check-r-package</code> sets INCOMING false when unset, so REMOTE alone cannot turn incoming checks on.</td>
+</tr>
+<tr class="odd">
+<td><code>force-suggests</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Value for <code>_R_CHECK_FORCE_SUGGESTS_</code> on the full matrix. The hard job always sets this <code>false</code>.</td>
+</tr>
+<tr class="even">
+<td><code>stop-on-invalid-numeric-version-inputs</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Value for <code>_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>path</code></td>
+<td>string</td>
+<td><code>'.'</code></td>
+<td>Path to the R package root (the directory holding <code>DESCRIPTION</code>).</td>
+</tr>
+<tr class="even">
+<td><code>config</code></td>
+<td>string</td>
+<td>(r-lib 5-way JSON)</td>
+<td>JSON array of <code>{os, r, http-user-agent?}</code> objects for the full matrix. Ignored when <code>hard</code> is true.</td>
+</tr>
+<tr class="odd">
+<td><code>setup-pandoc</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Install Pandoc before the check.</td>
+</tr>
+<tr class="even">
+<td><code>install-quarto</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Install Quarto via <code>quarto-dev/quarto-actions/setup</code> before the check. On the full matrix, skipped on <code>ubuntu-latest</code> only when <code>linux-container</code> contains <code>verse</code>. Separate from r-lib <code>setup-r-dependencies</code>’ own <code>install-quarto</code> (default <code>auto</code> when the tree has <code>.qmd</code> files).</td>
+</tr>
+<tr class="odd">
+<td><code>setup-julia</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Install Julia before the check (for JuliaCall packages).</td>
+</tr>
+<tr class="even">
+<td><code>julia-version</code></td>
+<td>string</td>
+<td><code>'1'</code></td>
+<td>Julia version to install. Only used when <code>setup-julia</code> is true.</td>
+</tr>
+<tr class="odd">
+<td><code>linux-container</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Container image for <code>ubuntu-latest</code> cells of the full matrix (e.g.&nbsp;<code>rocker/verse:latest</code>). Ignored on the hard job. Quarto install is skipped on ubuntu only when this image name contains <code>verse</code>.</td>
+</tr>
+<tr class="even">
+<td><code>checkout-submodules</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Initialize the caller’s git submodules before the check.</td>
+</tr>
+<tr class="odd">
+<td><code>timeout-minutes</code></td>
+<td>number</td>
+<td><code>90</code></td>
+<td>Job timeout. rpt’s bespoke workflow used 50.</td>
+</tr>
+<tr class="even">
+<td><code>build-args</code></td>
+<td>string</td>
+<td><code>'c("--no-manual","--compact-vignettes=gs+qpdf")'</code></td>
+<td>R expression forwarded to <code>check-r-package</code> <code>build_args</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>upload-snapshots</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Upload all testthat snapshots as an artifact (r-lib’s wording). Default uploads on success too.</td>
+</tr>
+<tr class="even">
+<td><code>upload-results</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Upload the check results directory as a workflow artifact.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="secrets" class="level2">
+<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Secret</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>SUBMODULES_TOKEN</code></td>
+<td>No</td>
+<td>Token with read access to private submodules. Only needed when <code>checkout-submodules</code> is true.</td>
 </tr>
 </tbody>
 </table>
@@ -726,24 +852,124 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
 <p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
+<section id="hard-dependencies-check" class="level2">
+<h2 class="anchored" data-anchor-id="hard-dependencies-check">Hard-dependencies check</h2>
+<p>The standard matrix installs Suggests, so it cannot see a package that works for the author and breaks for a user who did not install them. <code>hard: true</code> installs only Depends, Imports, and LinkingTo, then adds back <code>knitr</code>, <code>rcmdcheck</code>, <code>rmarkdown</code>, <code>curl</code>, and <code>testthat</code> so the check itself can run.</p>
+<p><code>cache: false</code> on that job is load-bearing, not a speed knob: a restored pak cache may already contain a Suggested package, which would make a green hard-deps run meaningless. It is hard-coded, not an input.</p>
+<p>The hard job also never uses <code>linux-container</code>. <code>rocker/verse</code> ships a large set of R packages, which is the same silent-Suggests failure <code>cache: false</code> exists to prevent. It omits <code>error-on</code> so r-lib’s <code>'"warning"'</code> default applies: missing Suggests are NOTEs, and <code>error-on: note</code> would fail the job for the condition it exists to tolerate.</p>
+</section>
+<section id="migrating-from-rpt" class="level2">
+<h2 class="anchored" data-anchor-id="migrating-from-rpt">Migrating from rpt</h2>
+<p><a href="https://github.com/Morrison-Lab/rpt"><code>rpt</code></a>’s bespoke <code>.github/workflows/R-CMD-check.yaml</code> is not a drop-in for this workflow’s defaults. Each of its steps has an equivalent or an input; none is silently dropped. This table is the feature-by-feature diff <code>CLAUDE.md</code> asks for before calling a reusable capability drop-in. Do not migrate <code>rpt</code> until a follow-up actually passes these through.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>rpt step</th>
+<th>This workflow</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>5-way OS x R-version matrix, <code>fail-fast: false</code>, devel <code>http-user-agent: release</code></td>
+<td>Default <code>config</code> JSON.</td>
+</tr>
+<tr class="even">
+<td><code>container: rocker/verse:latest</code> on <code>ubuntu-latest</code></td>
+<td><code>linux-container: rocker/verse:latest</code> on the full job. The hard job never uses it.</td>
+</tr>
+<tr class="odd">
+<td><code>timeout-minutes: 50</code></td>
+<td><code>timeout-minutes: 50</code> (default here is 90).</td>
+</tr>
+<tr class="even">
+<td><code>actions/checkout</code> with <code>submodules: recursive</code></td>
+<td><code>checkout-submodules: true</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>r-lib/actions/setup-pandoc</code></td>
+<td><code>setup-pandoc: true</code> (the default).</td>
+</tr>
+<tr class="even">
+<td><code>julia-actions/setup-julia@v3</code></td>
+<td><code>setup-julia: true</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>quarto-dev/quarto-actions/setup@v2</code> when <code>os != ubuntu-latest</code></td>
+<td><code>install-quarto: true</code>. Skipped on ubuntu only when <code>linux-container</code> contains <code>verse</code>.</td>
+</tr>
+<tr class="even">
+<td><code>setup-r</code> with <code>r-version</code>, <code>http-user-agent</code>, <code>use-public-rspm: true</code></td>
+<td>Always.</td>
+</tr>
+<tr class="odd">
+<td><code>extra-packages: any::rcmdcheck</code> and <code>local::.</code></td>
+<td><code>any::rcmdcheck</code> is always installed; pass <code>local::.</code> in <code>extra-packages</code> if you still want it.</td>
+</tr>
+<tr class="even">
+<td><code>error-on: '"note"'</code></td>
+<td>Default on the full matrix. The hard job omits <code>error-on</code> so r-lib’s <code>'"warning"'</code> default applies (missing-Suggests NOTEs must not fail that job).</td>
+</tr>
+<tr class="odd">
+<td><code>build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'</code></td>
+<td>Default <code>build-args</code>.</td>
+</tr>
+<tr class="even">
+<td>(unset) <code>_R_CHECK_CRAN_INCOMING_REMOTE_</code>, <code>_R_CHECK_FORCE_SUGGESTS_</code>, <code>_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_</code></td>
+<td>Inputs. <code>IndrajeetPatil/workflows</code> currently sets only <code>_R_CHECK_CRAN_INCOMING_REMOTE_: false</code> on the full job (fetched 2026-08-26); it does not set the other two. This workflow’s <code>cran-incoming-remote</code> also sets <code>_R_CHECK_CRAN_INCOMING_</code>, because <code>check-r-package</code> forces INCOMING false when unset. <code>force-suggests: false</code> matches r-lib’s unset override (and therefore rpt, which also leaves it unset). <code>stop-on-invalid-numeric-version-inputs: true</code> restates R’s default (stop unless that env is <code>false</code>).</td>
+</tr>
+<tr class="odd">
+<td><code>upload-snapshots: true</code></td>
+<td>Default <code>true</code>.</td>
+</tr>
+<tr class="even">
+<td>(unset) <code>upload-results</code> (r-lib default <code>false</code>)</td>
+<td>Default <code>true</code>. Pass <code>upload-results: false</code> to match rpt.</td>
+</tr>
+<tr class="odd">
+<td>No hard-deps job</td>
+<td>Add the <code>R-CMD-check-hard</code> caller job from the example stub.</td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/news.yaml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check NEWS.md Changelog</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/r-cmd-check.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> R-CMD-check</span></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">assigned</span><span class="kw">,</span><span class="at"> opened</span><span class="kw">,</span><span class="at"> synchronize</span><span class="kw">,</span><span class="at"> reopened</span><span class="kw">,</span><span class="at"> labeled</span><span class="kw">,</span><span class="at"> unlabeled</span><span class="kw">]</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-news.yml@v2</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changelog: NEWS.md</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="co">    #   no-changelog-label: no-changelog</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-news.yml"><code>examples/check-news.yml</code></a> for the full caller stub.</p>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">concurrency</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">group</span><span class="kw">:</span><span class="at"> r-cmd-check-${{ github.ref }}</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">cancel-in-progress</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">R-CMD-check</span><span class="kw">:</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   error-on: '"note"'</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   cran-incoming-remote: false</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   force-suggests: false         # matches r-lib/check-r-package when unset</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-julia: true</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: true</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   linux-container: rocker/verse:latest</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">R-CMD-check-hard</span><span class="kw">:</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">hard</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub.</p>
+<p>A brand-new capability is not usable at <code>@v2</code> until that tag slides past this merge; pin the example as-is and wait for the slide, or point a template repo at this branch to try it.</p>
 
 
 </section>
@@ -1164,13 +1390,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/lint-workflows.html" class="pagination-link" aria-label="lint-workflows.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">lint-workflows.yml</span>
+      <a href="../reference/check-extra.html" class="pagination-link" aria-label="check-extra.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-extra.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/assemble-news.html" class="pagination-link" aria-label="assemble-news">
-        <span class="nav-page-text">assemble-news</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/update-snapshots.html" class="pagination-link" aria-label="update-snapshots.yml">
+        <span class="nav-page-text">update-snapshots.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1179,4 +1405,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-news.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/r-cmd-check.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
