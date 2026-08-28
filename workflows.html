@@ -826,7 +826,7 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
-<td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
+<td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent.</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reviewer</code>, <code>report-cost</code>, <code>trusted-bot-logins</code>, <code>dispatch-on-assignee</code>, <code>extra-secret-names</code></td>
 </tr>
 <tr class="odd">
@@ -987,7 +987,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="claude-bots">Claude bots</h2>
 <p>The two Claude workflows are a pair.</p>
 <ul>
-<li><code>claude.yml</code> runs the agent-mode Claude Code bot: it responds to <code>@claude</code> mentions, edits files, and opens or updates PRs.</li>
+<li><code>claude.yml</code> runs the agent-mode Claude Code bot: it responds to <code>@claude</code> mentions, edits files, and opens or updates PRs. A mention inside a code span, fence, or blockquote is not an invocation: a cheap <code>mention-filter</code> job runs <code>detect-bot-mention</code> and withholds the agent job (<a href="https://github.com/Morrison-Lab/gha/issues/554">gha#554</a>).</li>
 <li><code>claude-code-review.yml</code> runs a read-only Claude review: a consolidated summary on dispatched runs by default; add a <code>pull_request</code> trigger in the caller if you also want automatic reviews on PR updates. The model job’s <code>GITHUB_TOKEN</code> has no write scopes (<code>contents</code> / <code>pull-requests</code> / <code>issues</code> / <code>actions: read</code>); jobs that hold <code>pull-requests: write</code> / <code>issues: write</code> never invoke the model (gha#580). The caller still grants <code>actions: read</code>: <code>post-review</code> downloads the packed artifact, and a <code>permissions:</code> block sets unspecified scopes to none.</li>
 </ul>
 <p>An <code>@claude review</code> mention (or any commit Claude pushes) routes through <code>claude.yml</code>, which dispatches <code>claude-code-review.yml</code> via <code>workflow_dispatch</code>. Install both, and keep the review stub named <code>claude-code-review.yml</code> (or set <code>claude.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. If you also want the direct <code>/review</code> path, enable <code>issue_comment</code> in the review stub too. Enabling <code>issue_comment</code> is required for <strong>either</strong> comment path, since <code>dispatch-on-comment</code> only ever runs on that event. If you have disabled <code>claude.yml</code>, enable it and also set the repository variable <code>CLAUDE_AGENT_DISABLED</code> to <code>true</code>, so an <code>@claude review</code> mention dispatches a review from the stub rather than reaching a workflow that no longer answers it.</p>
