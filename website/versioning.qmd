@@ -109,7 +109,8 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `ai-code-review.yml`, `bump-dev-version.yml`, `version-check.yml`,
 `small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`,
 `spellcheck.yml`,
-`check-typos.yml`, `check-extra.yml`, `claude-manage-project.yml`, and `r-cmd-check.yml` at
+`check-typos.yml`, `check-extra.yml`, `claude-manage-project.yml`,
+and `r-cmd-check.yml` at
 `@v2` - see the
 versioning note above), so
 they are **not** SHA-pinned.
