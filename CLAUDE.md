@@ -2145,16 +2145,29 @@ an annotation, so an unmuted suite decorates a passing job with a dozen errors
 it deliberately provoked.
 
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Eighteen mutations were confirmed to turn it red rather than assumed to: a
-`*.yml`-only discovery (against both consumers), a dropped empty-directory
-guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
-step-level `uses:` walk, a token lookup matching any key containing `token`, a
-bare-prefix self-exemption, a substring secret match, a skipped malformed
-`steps`, a tolerated missing `jobs`, a skipped non-string step-level `uses:`,
-a pin regex rejecting a `docker://` image digest, a pin test accepting
-either form everywhere, a token walk skipping job-level blocks, and a skip of every scalar block
-rather than of `secrets: inherit` alone, and a case-sensitive input-key
-match.
+Nineteen mutations were confirmed to turn a named case red rather than assumed
+to, enumerated so the count is checkable against the list rather than asserted
+over it:
+
+1. a `*.yml`-only discovery, read by the audit suite;
+2. the same, read by the permissions-docs suite;
+3. a dropped empty-directory guard;
+4. a swallowed parse error;
+5. a pin regex accepting any `@ref`;
+6. a skipped step-level `uses:` walk;
+7. a token lookup matching any key containing `token`;
+8. a bare-prefix self-exemption;
+9. a substring secret match;
+10. a skipped malformed `steps`;
+11. a tolerated missing `jobs`;
+12. a skipped non-string step-level `uses:`;
+13. a pin regex rejecting a `docker://` image digest;
+14. a pin test accepting either form everywhere;
+15. a token walk skipping job-level blocks;
+16. a refused `secrets: inherit`;
+17. a skip of every scalar block rather than of `secrets: inherit` alone;
+18. a tolerated container-valued `token:`;
+19. a case-sensitive input-key match.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

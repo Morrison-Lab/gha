@@ -140,10 +140,11 @@ def main(argv: list[str] | None = None) -> int:
             print(line)
         print(
             "::error::A step above passes SUBMODULES_TOKEN to a 'token:' input "
-            "(see gha#442) --- it authenticates a cross-owner submodule fetch, "
-            "not the caller's own repo, so it must not gate a checkout of the "
-            "caller's own repository. Use the checkout-submodules composite's "
-            "'submodules-token:' input instead."
+            "(see gha#442). That secret authenticates a cross-owner submodule "
+            "fetch and cannot authenticate against the caller's own "
+            "repository, so no action may be handed it as a general-purpose "
+            "token. Where the step is a checkout, use the checkout-submodules "
+            "composite's 'submodules-token:' input instead."
         )
         return 1
 
