@@ -157,11 +157,14 @@ fi
 #      block.
 # The text POSTED to the PR is the verdict-bearing block (below).
 #
-# POSTING text: the review summary is the LAST assistant block that
-# carries a verdict line — not necessarily the final block, since a
-# short wrap-up ("I've posted my findings") can follow it in agent mode
-# (gha#173, sparta#590/#594). Fall back to the final block when no block
-# carries a verdict (the check below then fails the run regardless).
+# POSTING text: the span of verdict-bearing assistant blocks -- from the
+# FIRST block carrying a verdict line through the LAST, blocks between
+# included (gha#710: a review split across blocks used to post only its
+# tail). A single verdict-bearing block posts alone -- not necessarily the
+# final block, since a short wrap-up ("I've posted my findings") can follow
+# it in agent mode (gha#173, sparta#590/#594). Fall back to the final block
+# when no block carries a verdict (the check below then fails the run
+# regardless).
 #
 # denials is computed here (not just at its original use site further
 # below) because it also gates one of the "blocks" candidates next: a
@@ -587,11 +590,29 @@ jq -s --argjson denials "$denials" '
         end ]
 ' "$EXECUTION_FILE" > "$blocks_file" 2>/dev/null || echo '[]' > "$blocks_file"
 review_text_file="$(mktemp)"
+# gha#710: a review can span SEVERAL assistant blocks, each carrying a
+# verdict line -- the full review with its ### Verdict in one block, then a
+# follow-up section ("my verdict stands unchanged") in a later one. Taking
+# only the LAST verdict-bearing block posted the tail: a comment referencing
+# analysis it never included, opening mid-argument (measured on
+# Morrison-Lab/ai-config#2522, run 33159592591). So when more than one block
+# carries a verdict line, post the whole span from the FIRST verdict-bearing
+# block through the LAST, blocks between included. The widening errs toward
+# verbosity on purpose: extra narration between two verdict mentions is
+# noise, while a dropped analysis section is a comment asserting evidence
+# the reader cannot see. A single-verdict transcript (the common case, and
+# the gha#173 wrap-up-after-verdict shape) selects exactly that one block,
+# unchanged.
 jq -r '
   . as $blocks
-  | ( [ $blocks[] | select(test("(?im)^[\\s>*_#-]*verdict\\b")) ] | last )
-    // ( $blocks | last )
-    // ""
+  | [ range(0; $blocks | length)
+      | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
+  | if ($vidx | length) > 1
+      then $blocks[($vidx | first):(($vidx | last) + 1)] | join("\n\n")
+    elif ($vidx | length) == 1
+      then $blocks[$vidx | first]
+    else ( $blocks | last ) // ""
+    end
 ' "$blocks_file" > "$review_text_file" 2>/dev/null || true
 all_text_file="$(mktemp)"
 jq -r '.[]' "$blocks_file" > "$all_text_file" 2>/dev/null || true
