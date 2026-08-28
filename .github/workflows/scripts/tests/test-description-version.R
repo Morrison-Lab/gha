@@ -22,7 +22,7 @@ if (!sourced) stop("could not locate description-version.R")
 sourced <- FALSE
 candidates <- c(
   ".github/workflows/scripts/tests/r-test-helpers.R",
-  "../tests/r-test-helpers.R",
+  "tests/r-test-helpers.R",
   "r-test-helpers.R"
 )
 for (p in candidates) {

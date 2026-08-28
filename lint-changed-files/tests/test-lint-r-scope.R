@@ -25,8 +25,8 @@ if (!sourced) {
 sourced <- FALSE
 candidates <- c(
   ".github/workflows/scripts/tests/r-test-helpers.R",
-  "../../.github/workflows/scripts/tests/r-test-helpers.R",
-  "r-test-helpers.R"
+  "../.github/workflows/scripts/tests/r-test-helpers.R",
+  "../../.github/workflows/scripts/tests/r-test-helpers.R"
 )
 for (p in candidates) {
   if (file.exists(p)) {
