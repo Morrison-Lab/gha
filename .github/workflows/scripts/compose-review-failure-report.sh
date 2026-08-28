@@ -80,7 +80,7 @@ TOTAL_COST="${TOTAL_COST:-}"
 ATTEMPTS="${ATTEMPTS:-}"
 
 case "$FAILURE_KIND" in
-  high-denial|stub|short-circuit|hard-error|no-output|deferred|bad-credential) kind="$FAILURE_KIND" ;;
+  high-denial|stub|background-agent|short-circuit|hard-error|no-output|deferred|bad-credential) kind="$FAILURE_KIND" ;;
   *) kind=unknown ;;
 esac
 
@@ -117,6 +117,9 @@ case "$kind" in
     else
       headline="Claude review did not finish: no verdict, and the retry never ran to completion."
     fi
+    ;;
+  background-agent)
+    headline="Claude review did not finish: the reviewer spawned background agents and ended its turn waiting on them."
     ;;
   short-circuit)
     headline="Claude review did not finish: the action exited without writing an execution result."
@@ -189,6 +192,10 @@ case "$kind" in
       printf ', and the automatic same-prompt retry did not run to completion, so there is only ONE attempt behind this result rather than two.\n\n'
       printf 'That makes a one-off more plausible than it would be after two agreeing attempts. Pushing a new commit re-triggers the review and is worth a try.\n\n'
     fi
+    ;;
+  background-agent)
+    printf 'The transcript shows at least one executed background `Agent`/`Task` spawn (`run_in_background` absent or `true`, with no matching denial). In a headless CI run the completion notifications such a spawn waits for never arrive, so the turn ends with the review unfinished (gha#392). The workflow deliberately did **not** retry: a same-prompt retry of a run that just ignored the synchronous-only instruction has a poor recovery record (gha#536: eight stub attempts across three PRs, two recoveries), and each attempt costs real money.\n\n'
+    printf 'Pushing a new commit re-triggers the review and is worth one try. If the pattern recurs, the fix is upstream in `run-claude-review-attempt`'"'"'s deny rules and prompt (an omitted `run_in_background` is what the deny rule cannot match), not in this PR.\n\n'
     ;;
   short-circuit)
     printf 'The action exited before writing an execution-output file, so there is no transcript to check for a verdict (gha#368). Nothing can be concluded about the diff from this run.\n\n'

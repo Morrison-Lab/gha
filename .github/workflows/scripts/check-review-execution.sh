@@ -52,9 +52,18 @@
 #     error alike), also writes total_cost_usd=<value> to $GITHUB_OUTPUT —
 #     the run incurs cost regardless of how it concluded, and the caller
 #     (claude-code-review.yml) surfaces it in a PR comment (gha#219).
+#   - a no-verdict run whose transcript carries an EXECUTED (not denied)
+#     background Agent/Task spawn -- a tool_use block whose input's
+#     run_in_background is absent or true, with no matching entry in
+#     permission_denials -- is classified `background-agent` instead of
+#     `stub`, and stub_review is NOT written: gha#392's failure shape ends
+#     the turn waiting on completion notifications a headless CI run never
+#     delivers, and a same-prompt retry of it has a poor recovery record
+#     (gha#536: 8 stub attempts across 3 PRs, 2 recoveries; gha#551).
 #   - on every path that exits 1, first writes failure_kind=<kind> to
 #     $GITHUB_OUTPUT: `short-circuit`, `hard-error`, `no-output`, `stub`,
-#     `high-denial`, or `deferred`. This script is the thing that KNOWS which
+#     `high-denial`, `background-agent`, or `deferred`. This script is the
+#     thing that KNOWS which
 #     one happened, so it says so, rather than leaving claude-code-review.yml
 #     to re-derive it from the other outputs -- a second copy of one
 #     classification, free to drift out of step with this one, which is the
@@ -256,6 +265,58 @@ starvation_denials="$denials"
 if (( intended_denials > 0 )) && (( denials >= intended_denials )); then
   starvation_denials=$(( denials - intended_denials ))
   echo "Excluding $intended_denials deliberate background-spawn denial(s) from the stub-retry gate (gha#550); starvation-relevant count is $starvation_denials of $denials."
+fi
+# gha#551: a no-verdict run whose transcript shows an EXECUTED background
+# Agent/Task spawn is gha#392's failure shape -- the turn ended waiting on
+# completion notifications a headless CI run never delivers -- and gha#536's
+# tally (8 stub attempts across 3 PRs, 2 recoveries) makes a same-prompt
+# retry of it a poor bet. The no-verdict branch below classifies it as its
+# own non-retryable failure_kind rather than a retryable gha#185 stub.
+#
+# Detection keys on the structured tool_use field, never on the final
+# message's prose (classify-gemini-failure.sh's rule, gha#380 finding 1).
+# Confirmed against the real run-32347489886 execution artifact
+# (Morrison-Lab/ai-config#1744): backgrounded spawns appear as
+# assistant-event tool_use blocks carrying run_in_background true,
+# synchronous ones carry false, and the parameter can also be omitted (the
+# tool's default is true, and an omitted parameter is exactly what the
+# gha#550 deny rule cannot match) -- so both scans test
+# run_in_background != false rather than == true.
+#
+# The subtraction mirrors gha#550's with the opposite sign: a spawn that was
+# DENIED never backgrounded anything, so only spawns with no matching denial
+# count as executed. Both scans require an object-typed input and are
+# ?-suppressed, so a malformed entry neither aborts the script (the
+# permission-denials-malformed-entries.json lesson) nor counts as evidence
+# -- an unreadable spawn errs toward keeping the retry, the same direction
+# gha#550 chose for unnamed denials. A jq // default is avoided on the
+# run_in_background reads because // treats JSON false as empty (the
+# gha#511 lesson); the direct == false comparison handles absent (null),
+# true, and false correctly.
+bg_spawn_uses="$(jq -s '
+  [ flatten | .[]?
+    | select(type == "object" and .type == "assistant")
+    | .message.content? // [] | .[]?
+    | select(type == "object" and .type == "tool_use")
+    | select(((.name? // "") | tostring) == "Agent"
+             or ((.name? // "") | tostring) == "Task")
+    | select((.input? | type) == "object")
+    | select((.input.run_in_background? == false) | not)
+  ] | length
+' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
+[[ "$bg_spawn_uses" =~ ^[0-9]+$ ]] || bg_spawn_uses=0
+bg_spawn_denials="$(jq -r '
+  [ .permission_denials[]?
+    | select(((.tool_name? // "") | tostring) == "Agent"
+             or ((.tool_name? // "") | tostring) == "Task")
+    | select((.tool_input? | type) == "object")
+    | select((.tool_input.run_in_background? == false) | not)
+  ] | length
+' <<< "$result" 2>/dev/null || echo 0)"
+[[ "$bg_spawn_denials" =~ ^[0-9]+$ ]] || bg_spawn_denials=0
+executed_bg_spawns=$(( bg_spawn_uses > bg_spawn_denials ? bg_spawn_uses - bg_spawn_denials : 0 ))
+if (( executed_bg_spawns > 0 )); then
+  echo "executed_background_spawns=$executed_bg_spawns (tool_use with run_in_background != false: $bg_spawn_uses; denied: $bg_spawn_denials)"
 fi
 # The threshold is emitted rather than left for a caller to restate. It is
 # overridable via STUB_RETRY_MAX_DENIALS, so a caller hard-coding "5" to quote
@@ -593,7 +654,17 @@ if ! has_verdict "$all_text_file"; then
   # non-recovering pattern. (denials was already computed above, where it
   # also gates the Bash-tool-use blocks candidate.)
   echo "permission_denials_count=$denials (stub-retry max_denials=$max_denials, starvation-relevant=$starvation_denials)"
-  if [[ "$starvation_denials" -le "$max_denials" ]]; then
+  # gha#551: the executed-background-spawn test runs FIRST, because it names
+  # the mechanism that ended the run (the turn parked behind spawns that will
+  # never notify) rather than a count correlated with it -- and because the
+  # low-denial arm below would otherwise mark this shape retryable, which is
+  # the misclassification the kind exists to remove. stub_review is
+  # deliberately NOT written, so claude-code-review.yml's retry gate
+  # (keyed on stub_review == 'true') never fires for it.
+  if (( executed_bg_spawns > 0 )); then
+    echo "failure_kind=background-agent" >> "$GITHUB_OUTPUT"
+    echo "::warning::Claude review produced no verdict after $executed_bg_spawns executed background Agent/Task spawn(s) (run_in_background absent or true, no matching denial) -- the turn ended waiting on completion notifications a headless CI run never delivers (gha#392). Not marking as retryable: a same-prompt retry of a run that ignored the synchronous-only instruction has a poor recovery record (gha#536: 8 stub attempts, 2 recoveries; gha#551)."
+  elif [[ "$starvation_denials" -le "$max_denials" ]]; then
     echo "stub_review=true" >> "$GITHUB_OUTPUT"
     echo "failure_kind=stub" >> "$GITHUB_OUTPUT"
     echo "Claude review produced no verdict with low permission_denials_count ($starvation_denials <= $max_denials, excluding $intended_denials deliberate spawn denial(s)) — marking as a retryable stub review (gha#185)."
