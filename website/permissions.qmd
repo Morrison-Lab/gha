@@ -70,6 +70,32 @@ already include the right `permissions:` blocks; copy them as-is.
 - `opencode-code-review` is a read-only review that posts its own comment, so
   grant `contents: read`, `pull-requests: write`, `issues: write`, and set the
   `OPENCODE_API_KEY` secret ([OpenCode Zen](https://opencode.ai/docs/zen/)).
+- `ai-code-review` selects the first available AI reviewer and dispatches its
+  review workflow, so grant `contents: read`, `pull-requests: read`,
+  `issues: read`, `actions: write`, and pass the secrets of whichever agent
+  review workflows are installed (see
+  [`examples/ai-code-review.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/ai-code-review.yml)).
+  `issues: read` is required since the delivery classifier's comment scan
+  landed ([gha#638](https://github.com/Morrison-Lab/gha/pull/638)); a caller
+  missing it fails at parse time with no API-visible diagnostic
+  ([gha#685](https://github.com/Morrison-Lab/gha/issues/685)).
+- `gemini` pushes branches, opens PRs, and dispatches the review workflow, so
+  grant `contents: write`, `pull-requests: write`, `issues: write`,
+  `id-token: write`, `actions: write`, and add the `GEMINI_API_KEY` secret.
+- `gemini-code-review` posts the Gemini review, so grant `contents: read`,
+  `pull-requests: write`, `issues: write`, `id-token: write`, and the
+  `GEMINI_API_KEY` secret.
+- `antigravity-code-review` posts the Antigravity review, so grant
+  `contents: read`, `pull-requests: write`, `issues: write`,
+  `id-token: write`, and the `GEMINI_API_KEY` secret.
+- `small-model-agent` posts the small-model agent's PR comment, so grant
+  `contents: read`, `pull-requests: write`.
+- `claude-manage-project` files issues and updates the project board, so grant
+  `contents: read`, `issues: write`, `repository-projects: write`.
+- `altdoc-multiversion-docs` deploys to `gh-pages`, comments PR previews, and
+  rewrites rendered links, so grant `contents: write`,
+  `pull-requests: write`, and `issues: write`, and set Settings -> Pages ->
+  Source to "Deploy from a branch", branch `gh-pages` / `(root)` once.
 - `request-dependabot-review` requests a reviewer on the PR, so grant
   `pull-requests: write`.
 - `bump-dev-version` opens (or auto-merges) a PR, so grant `contents: write`,

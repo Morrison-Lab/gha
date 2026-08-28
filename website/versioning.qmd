@@ -31,6 +31,25 @@ only ever shipped at
 capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,
 and so on) with migration steps.
 
+## Widening permissions is a breaking change
+
+A reusable workflow's job-level `permissions:` block is part of its caller
+contract: a nested job cannot request more than the caller grants, so adding
+a permission - even a `read` - fails every caller written against the old
+contract at **parse time** (`Invalid workflow file`), with no API-visible
+diagnostic (a `startup_failure` run exposes no jobs, logs, or annotations;
+the error text appears only on the run page in the UI).
+[gha#685](https://github.com/Morrison-Lab/gha/issues/685) measured this when
+[gha#638](https://github.com/Morrison-Lab/gha/pull/638) added `issues: read`
+to `ai-code-review.yml` and the `v2` slide delivered it: every consumer run
+concluded `startup_failure` until the caller-side grant landed.
+So treat a `permissions:` widening like any other breaking change: prefer a
+major-version bump; where a bump is disproportionate, sweep the registered
+consumers
+([`REVDEPS.md`](https://github.com/Morrison-Lab/gha/blob/main/REVDEPS.md))
+and PR the caller-side grant **before** sliding the tag, and name the
+required caller edit in the change's changelog fragment.
+
 ## Advancing a major tag
 
 Unlike `r-lib/actions`, a major tag here does not slide automatically on every
