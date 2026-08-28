@@ -144,7 +144,7 @@ def validate_workflow_files(files: list[pathlib.Path]) -> list[str]:
     return all_errors
 
 
-def discover_workflows(workflows_dir) -> list:
+def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
     """Return the workflow files GitHub itself would discover.
 
     Both extensions, not just ``*.yml``: GitHub loads ``.yml`` and ``.yaml``
@@ -357,7 +357,7 @@ def main(argv: list[str] | None = None) -> None:
         "files",
         nargs="*",
         type=pathlib.Path,
-        help="Specific workflow files to validate (defaults to all *.yml in --workflows-dir).",
+        help="Specific workflow files to validate (defaults to all *.yml and *.yaml in --workflows-dir).",
     )
 
     args = parser.parse_args(argv)
