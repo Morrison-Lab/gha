@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>check-links.yml – Morrison-Lab/gha</title>
+<title>claude-manage-project.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/lint-yaml.html" rel="next">
-<link href="../reference/check-secrets.html" rel="prev">
+<link href="../reference/gemini.html" rel="next">
+<link href="../reference/claude-code-review.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-links.html">check-links.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/claude-manage-project.html">claude-manage-project.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -415,7 +415,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-links.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/check-links.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-links.yml</span></a>
   </div>
 </li>
@@ -553,7 +553,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/claude-manage-project.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/claude-manage-project.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">claude-manage-project.yml</span></a>
   </div>
 </li>
@@ -665,19 +665,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
+  <li><a href="#security-the-trust-gate-is-load-bearing" id="toc-security-the-trust-gate-is-load-bearing" class="nav-link active" data-scroll-target="#security-the-trust-gate-is-load-bearing">Security: the trust gate is load-bearing</a></li>
+  <li><a href="#projects-v2-needs-its-own-token" id="toc-projects-v2-needs-its-own-token" class="nav-link" data-scroll-target="#projects-v2-needs-its-own-token">Projects v2 needs its own token</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-links.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/claude-manage-project.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-links.html">check-links.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/claude-manage-project.html">claude-manage-project.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">check-links.yml</h1>
+<h1 class="title">claude-manage-project.yml</h1>
 </div>
 
 
@@ -694,15 +696,26 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Run a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when links break on <code>main</code>.</p>
+<p>Triage a newly-opened issue: apply a priority label, and add the issue to the repository’s project board where the token allows.</p>
+<section id="security-the-trust-gate-is-load-bearing" class="level2">
+<h2 class="anchored" data-anchor-id="security-the-trust-gate-is-load-bearing">Security: the trust gate is load-bearing</h2>
+<p>This workflow feeds the issue’s title and body into the prompt of an agent holding write scopes. On a public repository that content is written by whoever opened the issue, so the job is gated to authors whose <code>author_association</code> is <code>OWNER</code>, <code>MEMBER</code>, or <code>COLLABORATOR</code>, exactly as <a href="../reference/claude.html"><code>claude.yml</code></a> gates its mention-triggered runs.</p>
+<p><strong>The caller stub must carry the same gate.</strong> A reusable workflow’s <code>if:</code> cannot stop the caller’s job from starting, so a caller without one spins up a runner for every issue anybody opens. Widen the set only through <code>trusted-bot-logins</code>, and mirror any widening on both sides.</p>
+<p>The issue’s title and body reach the prompt through environment variables rather than <code>${{ }}</code> interpolation, and the prompt names them as data rather than instructions.</p>
+</section>
+<section id="projects-v2-needs-its-own-token" class="level2">
+<h2 class="anchored" data-anchor-id="projects-v2-needs-its-own-token">Projects v2 needs its own token</h2>
+<p><code>GITHUB_TOKEN</code> cannot read or write Projects v2, and the <code>repository-projects</code> scope covers only the sunset classic Projects. Without <code>PROJECTS_TOKEN</code>, labelling still works and the board step is a no-op — which is the common case for modern consumers. Supply a PAT or GitHub App token carrying the <code>project</code> scope to enable the board step.</p>
+<p>Note that supplying it changes the identity of the <strong>whole step</strong>, not just the Projects call: <code>GH_TOKEN</code> is set once for the step, so the label edit and any comment run under the same token. Scope it accordingly.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 15%">
+<col style="width: 14%">
+<col style="width: 4%">
 <col style="width: 5%">
-<col style="width: 17%">
-<col style="width: 61%">
+<col style="width: 75%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -714,73 +727,72 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>lychee-config</code></td>
+<td><code>prompt-addendum</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Path in the caller repo to a lychee config; falls back to the bundled default.</td>
+<td>Repo-specific project management guidance appended to the prompt.</td>
 </tr>
 <tr class="even">
-<td><code>lychee-args</code></td>
+<td><code>trusted-bot-logins</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Arguments and globs passed to lychee; a sensible default glob set is used when empty.</td>
-</tr>
-<tr class="odd">
-<td><code>fail-if-empty</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Fail the run when no links are found.</td>
-</tr>
-<tr class="even">
-<td><code>create-issue-on-main</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>File an issue when links break on the <code>main</code> branch.</td>
-</tr>
-<tr class="odd">
-<td><code>skip-label</code></td>
-<td>string</td>
-<td><code>'links checked by hand'</code></td>
-<td>PR label that skips the link check.</td>
+<td><code>'[]'</code></td>
+<td>JSON array of bot logins allowed to trigger the workflow despite a non-collaborator <code>author_association</code>.</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="permissions" class="level2">
-<h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>issues: write</code>, <code>pull-requests: read</code>, and <code>contents: read</code> (it opens an issue on <code>main</code> failures).</p>
+<section id="secrets" class="level2">
+<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 8%">
+<col style="width: 66%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Secret</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>CLAUDE_CODE_OAUTH_TOKEN</code></td>
+<td>yes</td>
+<td>Claude Code OAuth token.</td>
+</tr>
+<tr class="even">
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td>no</td>
+<td>Alternative to the OAuth token.</td>
+</tr>
+<tr class="odd">
+<td><code>PROJECTS_TOKEN</code></td>
+<td>no</td>
+<td>PAT or App token with the <code>project</code> scope, for Projects v2 writes. <strong>Step-global</strong>: when set it backs every <code>gh</code> call in the step, not only the board add.</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-links.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: the calling job grants issues:write so the workflow can open an issue</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># when links break on main. Required because repos default to a read-only token.</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check Links</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">opened</span><span class="kw">,</span><span class="at"> synchronize</span><span class="kw">,</span><span class="at"> reopened</span><span class="kw">,</span><span class="at"> labeled</span><span class="kw">,</span><span class="at"> unlabeled</span><span class="kw">]</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="co">    # Run weekly on Mondays at 9:00 UTC to catch link rot</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">cron</span><span class="kw">:</span><span class="at"> </span><span class="st">"0 9 * * 1"</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-links.yml@v2</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   lychee-config: lychee.toml       # use a repo-local config instead of the bundled default</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-if-empty: true              # fail when no links are found (default: false)</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   create-issue-on-main: true</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   skip-label: 'links checked by hand'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-links.yml"><code>examples/check-links.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Claude Manage Project</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">issues</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">opened</span><span class="kw">]</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">manage</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">    if</span><span class="kw">: </span><span class="ch">&gt;-</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">repository-projects</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/claude-manage-project.yml@v2</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span><span class="at"> inherit</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -1201,13 +1213,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/check-secrets.html" class="pagination-link" aria-label="check-secrets.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-secrets.yml</span>
+      <a href="../reference/claude-code-review.html" class="pagination-link" aria-label="claude-code-review.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">claude-code-review.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/lint-yaml.html" class="pagination-link" aria-label="lint-yaml.yml">
-        <span class="nav-page-text">lint-yaml.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/gemini.html" class="pagination-link" aria-label="gemini.yml">
+        <span class="nav-page-text">gemini.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1216,4 +1228,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-links.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/claude-manage-project.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
