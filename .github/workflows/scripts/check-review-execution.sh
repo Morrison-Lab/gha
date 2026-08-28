@@ -46,8 +46,11 @@
 #     stub_review must NOT fire for it (an earlier version of this fix
 #     claimed this exclusion without actually implementing it — caught in
 #     review on gha#201);
-#   - otherwise writes review_text_file=<path> (the verdict-bearing assistant
-#     block, falling back to the final block) to $GITHUB_OUTPUT and exits 0.
+#   - otherwise writes review_text_file=<path> to $GITHUB_OUTPUT and exits 0.
+#     That file holds the span of verdict-bearing assistant blocks -- from
+#     the first block carrying a verdict line through the last, blocks
+#     between included (gha#710) -- or the final block when none carries a
+#     verdict.
 #   - whenever a result object is found (success, quota-skip, stub, or hard
 #     error alike), also writes total_cost_usd=<value> to $GITHUB_OUTPUT —
 #     the run incurs cost regardless of how it concluded, and the caller

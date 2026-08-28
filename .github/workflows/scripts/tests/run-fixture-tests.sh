@@ -136,7 +136,10 @@ declare -A expected=(
 # (gha#173): the block it must contain, and a block it must NOT contain.
 declare -A must_contain=(
   [verdict-not-last-block.json]='Ready for merge'
-  [verdict-split-across-blocks.json]='boundary case at line 42'
+  # The needle is the MIDDLE, non-verdict block: it discriminates both the
+  # pre-#710 tail-only extraction (which drops it along with block A) and a
+  # hypothetical first+last-only join (which keeps A but drops it).
+  [verdict-split-across-blocks.json]='middle-pass rerun of the suite'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'

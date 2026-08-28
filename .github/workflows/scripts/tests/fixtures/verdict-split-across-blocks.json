@@ -24,6 +24,21 @@
       "content": [
         {
           "type": "text",
+          "text": "Continuing the verification: the middle-pass rerun of the suite also exits 0, with the fixture table unchanged."
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "f-a3",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
           "text": "One follow-up: the instrument re-run also exits 0, so no check has failed (verified above). My verdict stands unchanged:\n\nVerdict: Ready for merge.\n\n**Stopping Point**: Clean stopping point reached -- review posted."
         }
       ]
