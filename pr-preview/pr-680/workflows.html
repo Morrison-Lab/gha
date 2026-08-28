@@ -458,6 +458,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/r-cmd-check.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">r-cmd-check.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">update-snapshots.yml</span></a>
   </div>
@@ -768,121 +774,126 @@ ul.task-list li input[type="checkbox"] {
 <td><code>path</code>, <code>extra-packages</code>, <code>install-quarto</code>, <code>check-warnings</code>, <code>check-random-order</code>, <code>check-readme</code>, <code>check-readme-freshness</code></td>
 </tr>
 <tr class="odd">
+<td><a href="./reference/r-cmd-check.html"><code>r-cmd-check.yml</code></a></td>
+<td>Run <code>R CMD check</code> across an OS x R-version matrix, with an optional hard-dependencies-only job gated to <code>pull_request</code></td>
+<td><code>hard</code>, <code>error-on</code>, <code>force-suggests</code>, <code>setup-julia</code>, <code>install-quarto</code>, <code>linux-container</code>, <code>extra-packages</code>, <code>timeout-minutes</code></td>
+</tr>
+<tr class="even">
 <td><a href="./reference/update-snapshots.html"><code>update-snapshots.yml</code></a></td>
 <td>Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit</td>
 <td><code>ref</code>, <code>pr-mode</code>, <code>julia</code>, <code>extra-packages</code>, <code>apt-packages</code>, <code>commit-message</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/summary.html"><code>summary.yml</code></a></td>
 <td>AI summary comment on newly opened issues (GitHub Models brownout notice: configure <code>endpoint</code>/<code>model</code> or use <code>claude.yml</code>)</td>
 <td><code>endpoint</code>, <code>model</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/quarto-publish.html"><code>quarto-publish.yml</code></a></td>
 <td>Render a Quarto site and deploy it to GitHub Pages</td>
 <td><code>path</code>, <code>setup-r</code>, <code>r-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>tinytex</code>, <code>apt-packages</code>, <code>output-dir</code>, <code>render-profile</code>, <code>formats</code>, <code>freeze-cache</code>, <code>deno-v8-options</code>, <code>checkout-submodules</code>, <code>pre-render-artifact</code>, <code>pre-render-artifact-path</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code>, <code>deploy</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/report-failure.html"><code>report-failure.yml</code></a></td>
 <td>File an issue when a watched job fails, or comment on the issue already open for that failure</td>
 <td><code>title</code>, <code>body</code>, <code>labels</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/preview.html"><code>preview.yml</code></a></td>
 <td>Build half of the PR-preview family: render in the PR context and upload an artifact (read-only)</td>
 <td><code>path</code>, <code>r-version</code>, <code>r-packages</code>, <code>apt-packages</code>, <code>use-renv</code>, <code>install-package</code>, <code>setup-chrome</code>, <code>submodules</code>, <code>render-profile</code>, <code>output-dir</code>, <code>fail-on-render-warning</code>, <code>forbid-log-patterns</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/preview-deploy.html"><code>preview-deploy.yml</code></a></td>
 <td>Deploy half: publish the artifact to <code>gh-pages</code> and comment the preview link</td>
 <td><code>pages-base-url</code>, <code>pages-base-path</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a></td>
 <td>Crawl the build artifact with a headless browser and fail on equations MathJax can’t render</td>
 <td><code>fail</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/cleanup-pr-previews.html"><code>cleanup-pr-previews.yml</code></a></td>
 <td>Housekeeping: delete preview directories for closed PRs</td>
 <td><code>preview-dir</code>, <code>compact-history</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/claude.html"><code>claude.yml</code></a></td>
 <td>Agent-mode Claude Code bot: responds to <code>@claude</code>, edits files, opens/updates PRs</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>reviewer</code>, <code>report-cost</code>, <code>trusted-bot-logins</code>, <code>dispatch-on-assignee</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/claude-code-review.html"><code>claude-code-review.yml</code></a></td>
 <td>Read-only Claude PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>allowed-bots</code>, <code>track-progress</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>lab-manual</code>, <code>check-latex-macros</code>, <code>use-ai-config</code>, <code>plugin-marketplaces</code>, <code>plugins</code>, <code>report-cost</code>, <code>model</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/gemini.html"><code>gemini.yml</code></a></td>
 <td>Agent-mode Gemini CLI bot: responds to <code>@gemini</code> and <code>@gemini-cli</code>, edits files, opens/updates PRs</td>
 <td><code>setup-r</code>, <code>install-quarto</code>, <code>use-renv</code>, <code>renv-cache-version</code>, <code>r-extra-packages</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>eager-pr</code>, <code>reviewer</code>, <code>mark-ready-for-review</code>, <code>prompt-addendum</code>, <code>gemini-model</code>, <code>review-workflow-file</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a></td>
 <td>Read-only Gemini PR review (default stub is mention-triggered via <code>workflow_dispatch</code>; add <code>pull_request</code> for automatic reviews)</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>gemini-model</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/antigravity-code-review.html"><code>antigravity-code-review.yml</code></a></td>
 <td>Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (<code>google-antigravity</code>)</td>
 <td><code>mode</code>, <code>pr-number</code>, <code>prompt-addendum</code>, <code>trigger-policy</code>, <code>checkout-submodules</code>, <code>model</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/cursor-code-review.html"><code>cursor-code-review.yml</code></a></td>
 <td>Queue a Cursor Bugbot PR review via the Enterprise Bugbot API; success means the review was queued</td>
 <td><code>pr-number</code>, <code>dry-run</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/opencode-code-review.html"><code>opencode-code-review.yml</code></a></td>
 <td>Read-only OpenCode PR review running the opencode CLI headless (default stub is dispatch-triggered; add <code>pull_request</code> for automatic reviews)</td>
 <td><code>pr-number</code>, <code>prompt-addendum</code>, <code>checkout-submodules</code>, <code>opencode-model</code>, <code>opencode-version</code>, <code>opencode-attempts</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/ai-code-review.html"><code>ai-code-review.yml</code></a></td>
 <td>Multi-agent PR review: picks one configured agent at random and dispatches its review workflow, falling through when one can’t be dispatched or fails during execution</td>
 <td><code>agents</code>, <code>pr-number</code>, <code>claude-review-workflow-file</code>, <code>gemini-review-workflow-file</code>, <code>antigravity-review-workflow-file</code>, <code>cursor-review-workflow-file</code>, <code>opencode-review-workflow-file</code>, <code>watch-timeout</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/small-model-agent.html"><code>small-model-agent.yml</code></a></td>
 <td>Small or self-hosted model PR agent: runs a small-model agent against a PR diff with bounded verification gates (<code>wai#39</code>, <code>ai-config#1292</code>)</td>
 <td><code>pr-number</code>, <code>endpoint-url</code>, <code>model</code>, <code>max-iterations</code>, <code>setup-r</code>, <code>install-quarto</code>, <code>apt-packages</code>, <code>pip-packages</code>, <code>checkout-submodules</code>, <code>run-gates</code>, <code>dry-run</code>, <code>extra-secret-names</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/bump-submodule.html"><code>bump-submodule.yml</code></a></td>
 <td>Update a submodule to upstream HEAD and open a PR when the pointer moves</td>
 <td><code>submodule-path</code>, <code>remote-branch</code>, <code>base-branch</code>, <code>pr-branch</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/sync-shared-fragments.html"><code>sync-shared-fragments.yml</code></a></td>
 <td>Vendor files from an upstream repo (pinned to a commit) and open a PR when they change</td>
 <td><code>source-repo</code>, <code>source-ref</code>, <code>source-paths</code>, <code>dest-dir</code>, <code>manifest-path</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/sync-upstream.html"><code>sync-upstream.yml</code></a></td>
 <td>Merge an upstream repo’s branch into a fork and open a PR when the merge brings changes</td>
 <td><code>upstream-repo</code>, <code>upstream-branch</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>fail-on-conflict</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/request-dependabot-review.html"><code>request-dependabot-review.yml</code></a></td>
 <td>Request review from configured reviewers when a PR’s author matches a bot actor (Dependabot by default)</td>
 <td><code>reviewers</code>, <code>bot-actor</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/altdoc-multiversion-docs.html"><code>altdoc-multiversion-docs.yml</code></a></td>
 <td>Render an altdoc-based R package’s docs and deploy multiple versions side by side on <code>gh-pages</code> (<code>/dev/</code>, <code>/latest-tag/</code>, <code>/vX.Y.Z/</code>, plus PR previews and a root redirect)</td>
 <td><code>r-packages</code>, <code>needs</code>, <code>apt-packages</code>, <code>setup-julia</code>, <code>checkout-submodules</code>, <code>default-branch</code>, <code>quarto-config-path</code>, <code>docs-base-url</code>, <code>preview-branch</code>, <code>timeout-minutes</code>, <code>rewrite-pr-preview-links</code>, <code>rewrite-issue-links</code>, <code>dispatch-version</code>, <code>dispatch-release-tag</code>, <code>legacy-paths</code>, <code>version-dropdown-title-template</code>, <code>version-in-navbar-title</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><a href="./reference/bump-dev-version.html"><code>bump-dev-version.yml</code></a></td>
 <td>Bump an R package’s <code>DESCRIPTION</code> dev-version counter after every merge to <code>main</code>, and open/auto-merge a PR to carry it in</td>
 <td><code>description-path</code>, <code>base-branch</code>, <code>pr-branch</code>, <code>auto-merge</code>, <code>dry-run</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><a href="./reference/version-check.html"><code>version-check.yml</code></a></td>
 <td>Fail a PR whose <code>DESCRIPTION</code> <code>Version:</code> differs from the base branch’s</td>
 <td><code>description-path</code>, <code>no-version-increment-label</code>, <code>bump-branch</code></td>
@@ -891,7 +902,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <section id="versioning" class="level2">
 <h2 class="anchored" data-anchor-id="versioning">Versioning</h2>
-<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>lint-changed-files.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>check-junk-files.yml</code>, <code>lint-workflows.yml</code>, <code>spellcheck.yml</code>, <code>check-typos.yml</code>, <code>check-extra.yml</code>, and <code>check-formatting.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
+<p><code>@v1</code> was frozen at the pre-<code>2.0.0</code> snapshot when the breaking <code>quarto-publish</code> change cut <code>@v2</code>, so any capability pinned there has picked up no fixes since - including non-breaking ones, like <code>cleanup-pr-previews</code>’s <code>compact-history</code> input, which does not exist at <code>@v1</code> at all. <strong>Pin <code>preview.yml</code>, <code>preview-deploy.yml</code>, <code>cleanup-pr-previews.yml</code>, and <code>quarto-publish.yml</code> to <code>@v2</code></strong>; <code>test-coverage.yml</code>, <code>check-equation-renders.yml</code>, <code>lint-yaml.yml</code>, <code>lint-markdown.yml</code>, <code>lint-qmd.yml</code>, <code>lint-changed-lines.yml</code>, <code>lint-changed-files.yml</code>, <code>check-new-line-breaks.yml</code>, <code>check-secrets.yml</code>, <code>check-junk-files.yml</code>, <code>lint-workflows.yml</code>, <code>spellcheck.yml</code>, <code>check-typos.yml</code>, <code>check-extra.yml</code>, <code>check-formatting.yml</code>, and <code>r-cmd-check.yml</code> only ever shipped at <code>@v2</code> (too new to exist at the frozen <code>@v1</code> tag). <code>quarto-publish.yml</code> additionally has a genuine behavioral fork: <code>@v1</code> stays frozen on the older GitHub Actions Pages-artifact deploy, while <code>@v2</code> deploys to the <code>gh-pages</code> branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. <code>check-bibliography-dois.yml</code>, <code>check-phi.yml</code>, <code>check-links.yml</code>, <code>check-non-standard-chars.yml</code>, <code>claude.yml</code>, <code>claude-code-review.yml</code>, and <code>update-snapshots.yml</code> also pin <code>@v2</code>: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on <code>@v1</code> would miss (audited in <a href="https://github.com/Morrison-Lab/gha/issues/182">gha#182</a>). <code>request-dependabot-review.yml</code> only ever shipped at <code>@v2</code> too (it postdates the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/252">gha#252</a>), as does <code>sync-upstream.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/254">gha#254</a>), <code>altdoc-multiversion-docs.yml</code> (added after the freeze), and <code>report-failure.yml</code> (added after the freeze - see <a href="https://github.com/Morrison-Lab/gha/issues/325">gha#325</a>). <code>gemini.yml</code>, <code>gemini-code-review.yml</code>, <code>antigravity-code-review.yml</code>, <code>cursor-code-review.yml</code>, <code>opencode-code-review.yml</code>, and <code>ai-code-review.yml</code> likewise only ever shipped at <code>@v2</code>, having been added well after the freeze - see <a href="https://github.com/Morrison-Lab/gha/pull/357">gha#357</a>, <a href="https://github.com/Morrison-Lab/gha/issues/510">gha#510</a>, and <a href="https://github.com/Morrison-Lab/gha/issues/586">gha#586</a>. <code>bump-dev-version.yml</code> and <code>version-check.yml</code> postdate the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/388">gha#388</a>); pin both to <code>@v2</code>. <code>small-model-agent.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/436">gha#436</a>); pin to <code>@v2</code>. <code>check-ai-tells.yml</code> postdates the freeze too (added in <a href="https://github.com/Morrison-Lab/gha/issues/382">gha#382</a>); pin to <code>@v2</code>. <code>summary.yml</code>, <code>bump-submodule.yml</code>, and <code>sync-shared-fragments.yml</code> were audited in the same pass and found unchanged since the freeze, so <code>@v1</code> remains current for them. <code>check-news.yml</code> was initially grouped with them, but later gained the configurable <code>no-changelog-label</code> input at <a href="https://github.com/Morrison-Lab/gha/issues/143">gha#143</a> - pin it to <code>@v2</code> too. The stubs in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> carry the tag and <code>permissions:</code> block documented on each workflow’s own reference page; copy the specific stub you need as-is.</p>
 </section>
 <section id="quality-checks" class="level2">
 <h2 class="anchored" data-anchor-id="quality-checks">Quality checks</h2>
@@ -916,6 +927,7 @@ ul.task-list li input[type="checkbox"] {
 <li><p><code>check-typos.yml</code> spellchecks those remaining files with <a href="https://github.com/crate-ci/typos">crate-ci/typos</a>: a Quarto site’s non-vignette pages, <code>CONTRIBUTING.md</code>-class Markdown, YAML, code comments, and repositories that are not R packages. Diff-scoped by default (only lines a PR adds, plus filename typos on paths the PR added or renamed), so a first run over an existing repo does not reflag years of drift; pass <code>base-ref: all</code> to scan the whole tree.</p></li>
 <li><p><code>test-coverage.yml</code> measures R-package test coverage with <code>covr</code> and uploads the Cobertura report to Codecov; pass the <code>CODECOV_TOKEN</code> secret through the caller’s <code>secrets:</code> block (optional for public repos, but recommended).</p></li>
 <li><p><code>check-extra.yml</code> runs three R-package checks that <code>R CMD check</code> passes over: warnings as errors on examples, tests, and vignettes; tests in random order with a logged seed; and a <code>README.Rmd</code> render that also fails when the knitted <code>README.md</code> is stale. Each check is its own job so every failure surfaces at once.</p></li>
+<li><p><code>r-cmd-check.yml</code> runs <code>R CMD check</code> across an OS x R-version matrix (r-lib’s 5-way default). A second caller job with <code>hard: true</code> runs a Depends/Imports/LinkingTo-only check on pull requests, with <code>cache: false</code> so a restored pak cache cannot silently contain Suggests.</p></li>
 </ul>
 </section>
 <section id="phi-scanning" class="level2">
