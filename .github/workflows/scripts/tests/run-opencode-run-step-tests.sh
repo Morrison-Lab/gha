@@ -51,6 +51,10 @@ kind=$(sed -n "${n}p" "$state")
 case "$kind" in
   net)  echo "Error: Provider finish_reason: network_error" >&2; exit 1 ;;
   auth) echo "Error: 401 Unauthorized" >&2; exit 1 ;;
+  # gha#706: the marker appears ONLY in stdout (review text quoting it);
+  # the real failure is a different stderr error. Must NOT retry.
+  textnet) printf 'The retry greps for finish_reason: network_error here.\n'
+           echo "Error: 500 Internal" >&2; exit 1 ;;
   ok)   printf '# review\n\n### Verdict\nAPPROVE\n' ; exit 0 ;;
   *)    echo "unknown kind '$kind'" >&2; exit 70 ;;
 esac
@@ -117,6 +121,13 @@ assert_outputs exhaust 1 3
 printf 'ok\n'             > "$tmp/s-clean.tsv"
 run_scenario clean 3 "$tmp/s-clean.tsv"
 assert_outputs clean 0 1
+
+# gha#706: the signature quoted in UNTRUSTED stdout must not trigger the
+# retry -- only stderr counts. Pre-fix (grep over both files) this retried
+# to exhaustion; post-fix it is single-shot like any non-network failure.
+printf 'textnet\ntextnet\ntextnet\n' > "$tmp/s-textnet.tsv"
+run_scenario textnet 3 "$tmp/s-textnet.tsv"
+assert_outputs textnet 1 1
 
 printf 'ok\n'             > "$tmp/s-badinput.tsv"
 run_scenario badinput 99 "$tmp/s-badinput.tsv"
