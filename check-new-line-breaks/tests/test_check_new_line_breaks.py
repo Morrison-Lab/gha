@@ -480,6 +480,97 @@ def test_duplicate_of_untouched_base_line_is_still_flagged(tmp_path):
     assert [(v.path, v.line) for v in violations] == [("fresh.md", 1)]
 
 
+def test_one_deletion_exempts_at_most_one_addition(tmp_path):
+    # The deleted-lines record is a multiset: deleting a violating line once
+    # while adding its exact text three times exempts only one of the three,
+    # so a single legitimate deletion cannot launder unlimited duplicates.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- Grandfathered drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "base with pre-existing drift")
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    (tmp_path / "a.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    (tmp_path / "b.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    (tmp_path / "c.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "one deletion, three identical additions")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert len(violations) == 2
+
+
+def test_two_deletions_exempt_two_additions(tmp_path):
+    # The legitimate mirror of the case above: a base file carrying two
+    # identical grandfathered lines that both move keeps both exemptions.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- Grandfathered drift. Two sentences on one line.\n"
+        "\n## Later\n\n- Grandfathered drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "base with the same drift twice")
+    (tmp_path / "notes.md").write_text("# Notes\n\n## Later\n")
+    (tmp_path / "a.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    (tmp_path / "b.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "two deletions, two identical additions")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert violations == []
+
+
+def test_moved_line_starting_with_two_dashes_is_exempt(tmp_path):
+    # In the raw diff a deleted line whose content starts with "--" renders
+    # as "---<content>", which prefix-sniffing mistook for a file header and
+    # dropped from the deleted set, denying a real move its exemption. The
+    # parser now decides header-vs-body by hunk position instead.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n-- Dashed drift, yes. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "base with dashed drift")
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    (tmp_path / "moved.md").write_text(
+        "-- Dashed drift, yes. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "move the dashed line")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert violations == []
+
+
+def test_added_line_starting_with_two_pluses_is_still_flagged(tmp_path):
+    # The added-line mirror: "++<content>" renders as "+++<content>", which
+    # prefix-sniffing mistook for a file header -- skipping the line AND
+    # desynchronizing the line counter for everything after it. Both the
+    # dashed line and the ordinary one after it must be flagged, at the
+    # right line numbers.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n++ Plussed drift, yes. Two sentences on one line.\n"
+        "- Ordinary new drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "add a plussed line and an ordinary one")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [
+        ("notes.md", 3), ("notes.md", 4)]
+
+
 def test_unresolvable_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("- Long-standing violation. Two sentences.\n")
