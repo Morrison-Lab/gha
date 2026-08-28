@@ -598,6 +598,15 @@ runs:
           `--edit-last`, or any other command; just write the review as
           your message.
 
+          Your final message IS the posted review comment -- an artifact
+          read later on the PR thread, not a terminal session recap. Do
+          NOT end it with a session-recap "Stopping Point" declaration
+          or any similar terminal wrap-up marker: that convention exists
+          for a human reading a live session, and in a posted review it
+          is at best noise and at worst (in a harness that posts only the
+          final message) replaces the review itself (gha#694). End with
+          the ### Verdict line and nothing after it.
+
           PR comments such as "Driving this PR to clean — back off until I'm
           done", "paws off until I'm done", or similar claim/session-lock
           lines block parallel *write* sessions (commits, pushes, competing
