@@ -33,6 +33,29 @@ on:
           Cobertura line-coverage upload. On by default.
         type: boolean
         default: true
+      examples-coverage:
+        description: >-
+          Run a second job that measures coverage from examples and vignettes
+          via covr::package_coverage(type = c("examples", "vignettes"),
+          commentDonttest = FALSE, commentDontrun = FALSE), so \dontrun{}
+          blocks execute (they do not run under R CMD check by default,
+          only with --run-dontrun, which --as-cran does not imply) and
+          \donttest{} blocks execute even when a check without --as-cran
+          would skip them. Off by default -- those paths can need extra
+          suggested packages or Quarto, and turning this on without that
+          setup would fail a job that currently passes (gha#334).
+        type: boolean
+        default: false
+      min-coverage:
+        description: >-
+          Minimum percent coverage required to pass the tests job, from
+          covr::percent_coverage(). Empty (the default) disables the
+          threshold. Does not apply to the examples/vignettes job -- that
+          job is a different measurement (example/vignette execution, not
+          unit-test coverage), and sharing one bar would make the two
+          inputs non-independent (gha#334).
+        type: string
+        default: ''
     secrets:
       CODECOV_TOKEN:
         description: >-
@@ -49,6 +72,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Test coverage
         uses: Morrison-Lab/gha/test-coverage@v2
@@ -62,3 +87,32 @@ jobs:
           # explicit 'true'/'false' from the caller overrides it.
           fail-ci-if-error: ${{ inputs.fail-ci-if-error != 'auto' && inputs.fail-ci-if-error || (github.event_name != 'pull_request' || secrets.CODECOV_TOKEN != '') }}
           upload-test-results: ${{ inputs.upload-test-results }}
+          min-coverage: ${{ inputs.min-coverage }}
+
+  examples-coverage:
+    if: ${{ inputs.examples-coverage }}
+    name: Examples and vignettes coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Examples and vignettes coverage
+        uses: Morrison-Lab/gha/test-coverage@v2
+        with:
+          path: ${{ inputs.path }}
+          install-quarto: ${{ inputs.install-quarto }}
+          extra-packages: ${{ inputs.extra-packages }}
+          # Examples/vignettes coverage is a different measurement from the
+          # unit-test report; skip Codecov and JUnit so they are not mixed in.
+          upload-coverage: 'false'
+          upload-test-results: 'false'
+          failure-artifact-name: 'examples-coverage-test-failures'
+          coverage-type: 'examples,vignettes'
+          comment-donttest: 'false'
+          comment-dontrun: 'false'

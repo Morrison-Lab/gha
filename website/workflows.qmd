@@ -25,7 +25,7 @@ input tables and a copy-paste example.
 | [`spellcheck.yml`](reference/spellcheck.qmd)                               | Spellcheck an R package's prose -- `DESCRIPTION`'s `Title`/`Description`, `man/*.Rd`, vignette sources, and root `README`/`NEWS`/`CHANGES`/`index` Markdown -- with {spelling}, accepting the package's own `inst/WORDLIST` | `path`, `exclude`, `fail`, `additional-options`, `install-quarto`                                                                                               |
 | [`check-typos.yml`](reference/check-typos.qmd)                             | Diff-scoped spellcheck of the files `spellcheck.yml` cannot see -- Quarto site pages, `CONTRIBUTING.md`-class Markdown, YAML, code comments, and non-R-package repos -- with crate-ci/typos                                     | `version`, `checksums-sha256`, `path`, `config`, `globs`, `paths-ignore`, `base-ref`, `fail`                                                                    |
 | [`check-news.yml`](reference/check-news.qmd)                               | Enforce a `NEWS.md` changelog entry on PRs                                                                                                                                                                                        | `changelog`, `no-changelog-label`                                                                                                                                                   |
-| [`test-coverage.yml`](reference/test-coverage.qmd)                         | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov                                                                                                                                            | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`                                                                                               |
+| [`test-coverage.yml`](reference/test-coverage.qmd)                         | Measure R-package test coverage with `covr` and upload the Cobertura report to Codecov                                                                                                                                            | `path`, `install-quarto`, `extra-packages`, `fail-ci-if-error`, `upload-test-results`, `examples-coverage`, `min-coverage`                                                         |
 | [`check-extra.yml`](reference/check-extra.qmd)                             | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale                                    | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness`                                                        |
 | [`r-cmd-check.yml`](reference/r-cmd-check.qmd)                             | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request`                                                                                                           | `hard`, `error-on`, `force-suggests`, `setup-julia`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes`                                                        |
 | [`update-snapshots.yml`](reference/update-snapshots.qmd)                   | Regenerate testthat snapshots, accept the new output, commit, and push; snapshot correctness is judged at PR review of the pushed commit                                                                                          | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message`                                                                                                       |
@@ -178,6 +178,22 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
 - `test-coverage.yml` measures R-package test coverage with `covr` and uploads
   the Cobertura report to Codecov; pass the `CODECOV_TOKEN` secret through the
   caller's `secrets:` block (optional for public repos, but recommended).
+  Set `examples-coverage: true` for a second job that runs examples and
+  vignettes.
+  [`\dontrun{}`](https://cran.r-project.org/doc/manuals/R-exts.html#Documenting-functions)
+  does not run under `R CMD check` by default
+  (only with `--run-dontrun`, which `--as-cran` does not imply);
+  [`\donttest{}`](https://cran.r-project.org/doc/manuals/R-exts.html#Documenting-functions)
+  is skipped unless `--as-cran` or `--run-donttest`.
+  That job does not upload to Codecov, produce a JUnit report, or apply
+  `min-coverage`.
+  On failure it uploads `examples-coverage-test-failures`.
+  The percent appears in the log and step summary.
+  Enabling it adds a check named
+  `<caller job> / Examples and vignettes coverage`.
+  Set `min-coverage` to fail the tests job when coverage falls below
+  a chosen percent (empty/off by default).
+  It does not apply to the examples job.
 - `check-extra.yml` runs three R-package checks that `R CMD check` passes
   over: warnings as errors on examples, tests, and vignettes; tests in
   random order with a logged seed; and a `README.Rmd` render that also

@@ -37,6 +37,46 @@ inputs:
       pre-migration convention at least one consumer (UCD-SERG/serocalculator)
       already used (gha#234).
     default: 'true'
+  upload-coverage:
+    description: >-
+      Upload the Cobertura report to Codecov. On by default. The
+      examples/vignettes reusable-workflow job turns this off so its report
+      is not mixed into the unit-test coverage percentage (gha#334).
+    default: 'true'
+  coverage-type:
+    description: >-
+      covr coverage type(s), comma-separated: tests, vignettes, examples, all,
+      or none. Default 'tests' matches covr::package_coverage()'s own default.
+      Pass 'examples,vignettes' for the examples/vignettes job (gha#334).
+    default: 'tests'
+  comment-donttest:
+    description: >-
+      covr's commentDonttest: when true (the covr default), \donttest{}
+      examples are commented out and not run. Pass false so those blocks
+      execute. The examples/vignettes reusable-workflow job passes false
+      (gha#334).
+    default: 'true'
+  comment-dontrun:
+    description: >-
+      covr's commentDontrun: when true (the covr default), \dontrun{}
+      examples are commented out and not run. Pass false so those blocks
+      execute. The examples/vignettes reusable-workflow job passes false
+      (gha#334).
+    default: 'true'
+  min-coverage:
+    description: >-
+      Minimum percent coverage required to pass, from covr::percent_coverage().
+      Empty (the default) disables the threshold. Pass a number between 0 and
+      100 to opt in (gha#334). The reusable workflow applies this to the
+      tests job only.
+    default: ''
+  failure-artifact-name:
+    description: >-
+      Artifact name for the covr install tree uploaded when the job fails.
+      Default 'coverage-test-failures'. Pass empty to skip the upload.
+      The examples/vignettes reusable-workflow job uses a distinct name so
+      the two jobs cannot 409 on the same artifact in one run.
+    default: 'coverage-test-failures'
 runs:
   using: composite
   steps:
@@ -59,22 +99,20 @@ runs:
         needs: coverage
 
     - name: Measure coverage
-      shell: Rscript {0}
+      id: coverage
+      shell: bash
       env:
         COVERAGE_PATH: ${{ inputs.path }}
+        COVERAGE_TYPE: ${{ inputs.coverage-type }}
+        COVERAGE_COMMENT_DONTTEST: ${{ inputs.comment-donttest }}
+        COVERAGE_COMMENT_DONTRUN: ${{ inputs.comment-dontrun }}
+        MIN_COVERAGE: ${{ inputs.min-coverage }}
       run: |
-        # Keep the built+tested package tree around so the testthat output is
-        # available for the "Show testthat output" step on failure.
-        coverage <- covr::package_coverage(
-          path = Sys.getenv("COVERAGE_PATH"),
-          quiet = FALSE,
-          clean = FALSE,
-          install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
-        )
-        # Written to the working directory as cobertura.xml regardless of `path`.
-        covr::to_cobertura(coverage)
+        set -euo pipefail
+        Rscript "$GITHUB_ACTION_PATH/run-coverage.R"
 
     - name: Upload coverage to Codecov
+      if: inputs.upload-coverage == 'true'
       uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
       with:
         token: ${{ inputs.token }}
@@ -82,6 +120,26 @@ runs:
         files: ./cobertura.xml
         plugins: noop
         disable_search: true
+
+    # After the upload so a threshold miss still publishes cobertura.xml
+    # (the artifact this capability exists to produce).
+    # `success()` here is EXPLICIT, not load-bearing. A step's implicit
+    # success() is overridden only when the `if:` contains a status check
+    # function (success/failure/always/cancelled); a plain expression like
+    # `inputs.min-coverage != ''` still requires every earlier step to have
+    # succeeded -- see lint-changed-lines/action.yml, which relies on that
+    # implicit behaviour in three places. Kept for readability, since a
+    # threshold gate is where a reader most wants the ordering spelled out.
+    # The min-coverage check skips spawning R when the caller left the bar off.
+    - name: Enforce min-coverage
+      if: success() && inputs.min-coverage != ''
+      shell: bash
+      env:
+        MIN_COVERAGE: ${{ inputs.min-coverage }}
+        COVERAGE_PERCENT: ${{ steps.coverage.outputs.percent }}
+      run: |
+        set -euo pipefail
+        Rscript --vanilla "$GITHUB_ACTION_PATH/enforce-min-coverage.R"
 
     # Runs the package's tests a second time (covr::package_coverage above
     # already ran them once) purely to get a JUnit-formatted report --
@@ -110,13 +168,15 @@ runs:
     - name: Show testthat output
       if: always()
       shell: bash
+      env:
+        INSTALL_PATH: ${{ steps.coverage.outputs.install_path || format('{0}/package', runner.temp) }}
       run: |
         set -euo pipefail
-        find "${RUNNER_TEMP}/package" -name 'testthat.Rout*' -exec cat '{}' \; || true
+        find "$INSTALL_PATH" -name 'testthat.Rout*' -exec cat '{}' \; || true
 
     - name: Upload test results on failure
-      if: failure()
+      if: failure() && inputs.failure-artifact-name != ''
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
-        name: coverage-test-failures
-        path: ${{ runner.temp }}/package
+        name: ${{ inputs.failure-artifact-name }}
+        path: ${{ steps.coverage.outputs.install_path || format('{0}/package', runner.temp) }}

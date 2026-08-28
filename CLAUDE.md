@@ -1388,6 +1388,34 @@ dropping `_R_CHECK_FORCE_SUGGESTS_` from the full job, restoring rpt's
 skip-Quarto-on-every-ubuntu condition, and a verse-only skip that is
 not limited to `ubuntu-latest`.
 
+The same `coverage` job exercises the new composite inputs
+(`coverage-type`, `comment-donttest`, `comment-dontrun`, `min-coverage`,
+`upload-coverage`, `failure-artifact-name`) rather than only the happy
+path.
+It cannot exercise the reusable workflow's `examples-coverage` input:
+that layer calls `Morrison-Lab/gha/test-coverage@v2`, which does not
+resolve the new keys until `@v2` slides (the same bootstrapping gap
+`dependabot-review` and `failure-issue` record).
+The fixture exports `add()` (unit-tested) plus `from_donttest()`
+and `from_dontrun()` (covered only by those Rd example wrappers).
+A `min-coverage: '100'` call on the default tests type must fail;
+otherwise the threshold is a no-op.
+A `coverage-type: 'examples,vignettes'` call
+with both `comment-donttest`/`comment-dontrun` set false and the same
+100% bar must pass.
+That is the only combination that actually executes those blocks.
+There is no `vignettes/` directory in the fixture:
+`type=examples,vignettes` here proves the comma-split and the examples
+comment flags, not vignette execution.
+The fail-path assertion greps
+`${RUNNER_TEMP}/min-coverage-failure.txt` for `below the required`, so a
+composite crash that merely reddens `outcome` does not count as pinning
+the threshold.
+Parser-level cases (empty `min-coverage` disables the
+threshold, comma-separated types, invalid values) live in
+`test-coverage/tests/test-coverage-helpers.R` and run after the first
+composite call, once `setup-r` has put `Rscript` on `PATH`.
+
 `.github/workflows/scripts/check-review-execution.sh` holds
 `claude-code-review.yml`'s fail-check guard logic (stub/placeholder-review
 detection, quota-exhaustion skip) as a standalone script, so it can run

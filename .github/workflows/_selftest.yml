@@ -2628,11 +2628,13 @@ jobs:
         run: rm -rf _ci-dev-version-bin _ci-dev-version-fixture _ci-dev-version-compare-match _ci-dev-version-compare-mismatch .Rprofile _ci-rprofile-sourced.txt
   # test-coverage is brand new, so (like check-phi/quarto-publish above) it isn't
   # at the released tag the reusable workflow pins yet. Exercise the local
-  # composite against a minimal R-package fixture, with no Codecov token and
-  # fail-ci-if-error off, so the upload step is a harmless no-op and the job
-  # proves the covr -> Cobertura path works. The fixture is generated at run time
-  # (not committed) so its DESCRIPTION/R sources aren't discovered by the other
-  # jobs' repo-wide R dependency scanning (which can't resolve `covfixture`).
+  # composite against a minimal R-package fixture. The first call leaves
+  # upload-coverage at its default (true) with fail-ci-if-error: false so the
+  # Codecov step actually runs; a tokenless PR upload is a no-op that must
+  # not redden the job. Later calls turn upload off. The fixture is generated
+  # at run time (not committed) so its DESCRIPTION/R sources aren't discovered
+  # by the other jobs' repo-wide R dependency scanning (which can't resolve
+  # `covfixture`).
   coverage:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -2644,6 +2646,9 @@ jobs:
       - name: Generate the R package fixture
         shell: bash
         run: bash test-coverage/tests/make-fixture.sh _ci-rpkg
+      # Default min-coverage is empty (off). The fixture has two functions
+      # covered only by Rd examples, so this call also proves a partial
+      # coverage report does not fail the job unless a threshold is set.
       - name: Measure coverage on the fixture package
         uses: ./test-coverage
         with:
@@ -2669,6 +2674,66 @@ jobs:
           fi
           echo "junit.xml produced ($(wc -l < "${RUNNER_TEMP}/junit.xml") lines):"
           head -n 20 "${RUNNER_TEMP}/junit.xml"
+      # setup-r from the composite call above put Rscript on PATH. These are
+      # parser tests (no covr): empty min-coverage disables the bar, invalid
+      # values error, comma-separated types split. Confirmed by mutation
+      # rather than assumed -- dropping parse_min_coverage("") -> NULL turns
+      # the empty-is-disabled case red.
+      - name: Test coverage helper parsers
+        if: ${{ !cancelled() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript test-coverage/tests/test-coverage-helpers.R
+      # The fixture's from_donttest/from_dontrun are uncovered by the unit
+      # suite, so a 100% bar on type=tests must fail. A step that cannot fail
+      # cannot prove the threshold is wired (gha#334).
+      - name: Measure coverage with min-coverage=100 (expect failure)
+        id: coverage-min-fail
+        continue-on-error: true
+        uses: ./test-coverage
+        with:
+          path: _ci-rpkg
+          upload-test-results: 'false'
+          upload-coverage: 'false'
+          failure-artifact-name: ''
+          min-coverage: '100'
+      - name: Assert min-coverage=100 failed on uncovered unit-suite lines
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.coverage-min-fail.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected test-coverage to fail with min-coverage=100 on functions uncovered by the unit suite, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          failure_file="${RUNNER_TEMP}/min-coverage-failure.txt"
+          if [ ! -s "$failure_file" ]; then
+            echo "::error::min-coverage failure produced no ${failure_file}; the step failed for some other reason"
+            exit 1
+          fi
+          if ! grep -q 'below the required' "$failure_file"; then
+            echo "::error::min-coverage failure file did not name the threshold:"
+            cat "$failure_file"
+            exit 1
+          fi
+          echo "min-coverage=100 failed on functions uncovered by the unit suite, as expected:"
+          cat "$failure_file"
+      # The same 100% bar on type=examples,vignettes with both comment*
+      # flags false must pass: that is the only combination that actually
+      # runs \donttest{} and \dontrun{}. If either flag stays at covr's
+      # default TRUE, those functions stay uncovered and this step fails.
+      - name: Measure examples/vignettes coverage with min-coverage=100
+        uses: ./test-coverage
+        with:
+          path: _ci-rpkg
+          upload-test-results: 'false'
+          upload-coverage: 'false'
+          coverage-type: 'examples,vignettes'
+          comment-donttest: 'false'
+          comment-dontrun: 'false'
+          min-coverage: '100'
   # Exercises the spellcheck composite through a real `uses: ./spellcheck` call
   # against a generated R package fixture, not the @v2-pinned reusable-workflow
   # chain -- a brand-new capability is not at the tag yet, and a `@v2` reference
