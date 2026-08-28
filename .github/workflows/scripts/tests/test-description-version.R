@@ -19,24 +19,20 @@ for (p in candidates) {
 }
 if (!sourced) stop("could not locate description-version.R")
 
-check <- function(label, actual, expected) {
-  if (!identical(actual, expected)) {
-    stop(sprintf(
-      "FAIL: %s\n  expected: %s\n  actual:   %s",
-      label, paste(expected, collapse = ","), paste(actual, collapse = ",")
-    ))
+sourced <- FALSE
+candidates <- c(
+  ".github/workflows/scripts/tests/r-test-helpers.R",
+  "tests/r-test-helpers.R",
+  "r-test-helpers.R"
+)
+for (p in candidates) {
+  if (file.exists(p)) {
+    source(p)
+    sourced <- TRUE
+    break
   }
-  cat(sprintf("ok - %s\n", label))
 }
-
-check_error <- function(label, expr) {
-  ok <- tryCatch({
-    force(expr)
-    FALSE
-  }, error = function(e) TRUE)
-  if (!ok) stop(sprintf("FAIL: %s (expected an error, none raised)", label))
-  cat(sprintf("ok - %s\n", label))
-}
+if (!sourced) stop("could not locate r-test-helpers.R")
 
 write_description <- function(version) {
   path <- tempfile(fileext = "_DESCRIPTION")

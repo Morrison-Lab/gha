@@ -21,15 +21,20 @@ for (p in candidates) {
 }
 if (!sourced) stop("could not locate added-lines.R")
 
-check <- function(label, actual, expected) {
-  if (!identical(actual, expected)) {
-    stop(sprintf(
-      "FAIL: %s\n  expected: %s\n  actual:   %s",
-      label, paste(expected, collapse = ","), paste(actual, collapse = ",")
-    ))
+sourced <- FALSE
+candidates <- c(
+  ".github/workflows/scripts/tests/r-test-helpers.R",
+  "../.github/workflows/scripts/tests/r-test-helpers.R",
+  "../../.github/workflows/scripts/tests/r-test-helpers.R"
+)
+for (p in candidates) {
+  if (file.exists(p)) {
+    source(p)
+    sourced <- TRUE
+    break
   }
-  cat(sprintf("ok - %s\n", label))
 }
+if (!sourced) stop("could not locate r-test-helpers.R")
 
 # Simple hunk: one deletion, two additions, surrounded by context.
 p1 <- paste(
