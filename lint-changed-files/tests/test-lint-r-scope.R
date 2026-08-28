@@ -22,39 +22,20 @@ if (!sourced) {
   stop("could not locate lint-r-scope.R")
 }
 
-check <- function(label, actual, expected) {
-  if (!identical(actual, expected)) {
-    stop(sprintf(
-      "FAIL: %s\n  expected: %s\n  actual:   %s",
-      label,
-      paste(deparse(expected), collapse = " "),
-      paste(deparse(actual), collapse = " ")
-    ))
+sourced <- FALSE
+candidates <- c(
+  ".github/workflows/scripts/tests/r-test-helpers.R",
+  "../.github/workflows/scripts/tests/r-test-helpers.R",
+  "../../.github/workflows/scripts/tests/r-test-helpers.R"
+)
+for (p in candidates) {
+  if (file.exists(p)) {
+    source(p)
+    sourced <- TRUE
+    break
   }
-  cat(sprintf("ok - %s\n", label))
 }
-
-check_error <- function(label, expr, needle) {
-  err <- tryCatch(
-    {
-      expr
-      NULL
-    },
-    error = function(e) e
-  )
-  if (is.null(err)) {
-    stop(sprintf("FAIL: %s -- expected an error containing %s", label, needle))
-  }
-  if (!grepl(needle, conditionMessage(err), fixed = TRUE)) {
-    stop(sprintf(
-      "FAIL: %s -- error %s did not contain %s",
-      label,
-      encodeString(conditionMessage(err), quote = "'"),
-      needle
-    ))
-  }
-  cat(sprintf("ok - %s\n", label))
-}
+if (!sourced) stop("could not locate r-test-helpers.R")
 
 # --- validate_scope -------------------------------------------------------
 
@@ -64,12 +45,14 @@ check("validate_scope accepts project", validate_scope("project"), "project")
 check_error(
   "validate_scope rejects an unknown value",
   validate_scope("lines"),
-  "Unknown scope"
+  "Unknown scope",
+  fixed = TRUE
 )
 check_error(
   "validate_scope rejects a changed-lines alias",
   validate_scope("changed-lines"),
-  "Unknown scope"
+  "Unknown scope",
+  fixed = TRUE
 )
 
 # --- rel_to_path ----------------------------------------------------------
@@ -229,12 +212,14 @@ check(
 check_error(
   "changed-files without pr_files errors",
   lint_with_scope("changed-files", path = tmp),
-  "pull request's file list"
+  "pull request's file list",
+  fixed = TRUE
 )
 check_error(
   "package scope without DESCRIPTION errors clearly",
   lint_with_scope("package", path = tmp),
-  "requires a DESCRIPTION"
+  "requires a DESCRIPTION",
+  fixed = TRUE
 )
 
 # --- defaults agreement (action.yml vs reusable workflow) -----------------
