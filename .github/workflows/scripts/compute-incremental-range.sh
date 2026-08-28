@@ -68,7 +68,12 @@ until git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; do
   if [ "$deepened" -ge "$DEEPEN_MAX" ]; then
     exit 0
   fi
-  git fetch -q --deepen="$DEEPEN_STEP" origin 2>/dev/null || exit 0
+  # Deepen against the checked-out SHA explicitly: a bare
+  # `git fetch --deepen` covers only the default refs/heads/* refspec, and
+  # the ordinary pull_request checkout is refs/pull/<n>/merge -- not on any
+  # branch -- so the bare form never reaches the prior there (gha#717
+  # review round 2, confirmed against both checkout topologies).
+  git fetch -q --deepen="$DEEPEN_STEP" origin "$HEAD_NOW" 2>/dev/null || exit 0
   deepened=$((deepened + DEEPEN_STEP))
 done
 

@@ -18,7 +18,7 @@ script="$here/../compute-incremental-range.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-GIT="git -c user.email=t@e.st -c user.name=t -c init.defaultBranch=main"
+GIT="git -c user.email=t@e.st -c user.name=t -c init.defaultBranch=main"  # phi-allow: synthetic fixture identity
 
 # --- origin repo with five commits ---------------------------------------
 origin="$tmp/origin"
@@ -80,6 +80,31 @@ check "shallow precondition: prior unreachable before the script runs" "no" \
 out=$(DEEPEN_STEP=1 run_in "$shallow" "$tmp/comments-c3.json")
 check "shallow clone: deepen loop reaches the prior and lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "shallow clone: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 2b. PR-MERGE-REF topology (the PRIMARY production case): the checkout is
+#     a refs/pull/<n>/merge commit on no branch, fetched at depth 1 the way
+#     actions/checkout does. A bare `git fetch --deepen` cannot reach the
+#     prior here; only the explicit-SHA form can (gha#717 review round 2).
+( cd "$origin"
+  $GIT branch feature HEAD~1 >/dev/null 2>&1 || true
+  merge_tree=$($GIT rev-parse 'HEAD^{tree}')
+  merge_sha=$($GIT commit-tree "$merge_tree" -p HEAD~1 -p HEAD -m "Merge pull request #1")
+  $GIT update-ref refs/pull/1/merge "$merge_sha"
+  $GIT config uploadpack.allowReachableSHA1InWant true
+)
+prmerge="$tmp/prmerge"
+mkdir -p "$prmerge"
+( cd "$prmerge"
+  $GIT init -q
+  $GIT remote add origin "file://$origin"
+  $GIT fetch -q --depth=1 origin '+refs/pull/1/merge:refs/remotes/pull/1/merge'
+  $GIT checkout -q --detach refs/remotes/pull/1/merge
+)
+check "pr-merge precondition: prior unreachable before the script runs" "no" \
+  "$(cd "$prmerge" && git cat-file -e "$C3" 2>/dev/null && echo yes || echo no)"
+out=$(DEEPEN_STEP=1 run_in "$prmerge" "$tmp/comments-c3.json")
+check "pr-merge-ref checkout: deepen reaches the prior and lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "pr-merge-ref checkout: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
 # 3. DEEPEN_MAX bounds the loop: a cap too small to reach the prior emits
 #    nothing rather than looping or failing.
