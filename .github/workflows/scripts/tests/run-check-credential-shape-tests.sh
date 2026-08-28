@@ -39,11 +39,9 @@ run() {
   # run-classify-opencode-run-tests.sh also compares numerically, though its
   # `-ge 4` is an ordinal threshold rather than a portability decision, so it
   # is precedent for the form and not evidence of the reason.
-  # No CI guard catches a reintroduction: this job runs on ubuntu-latest only,
-  # and the string form is valid shell that shellcheck will not flag. A macOS
-  # leg was considered and left to gha#690 rather than decided here, so this
-  # comment is the only thing standing between the next author and the same
-  # bug.
+  # The CI guard for a reintroduction is the credential-shape job's macOS
+  # matrix leg (gha#690): the string form is valid shell that shellcheck will
+  # not flag, so only running the suite on BSD userland catches it.
   local line_count
   line_count="$(wc -l <<< "$out")"
   if [[ "$line_count" -ne 2 ]]; then
