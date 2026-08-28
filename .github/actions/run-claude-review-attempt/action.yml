@@ -25,6 +25,17 @@ inputs:
     description: Prior-round review context, from claude-code-review.yml's gather-context job.
     required: false
     default: ''
+  incremental-context:
+    description: >-
+      The computed what-changed-since-the-last-round section, from
+      claude-code-review.yml's "Compute what changed since the last reviewed
+      commit" step (gha#709). Empty on a first round, or when the prior
+      reviewed commit is not reachable in this checkout. Computed by the
+      workflow with git itself, because a reviewer deriving the range from
+      comment history has misstated it and approved over the commit it
+      missed.
+    required: false
+    default: ''
   labmanual-guidance:
     description: Lab-manual review guidance, from claude-code-review.yml's Compose lab-manual review guidance step.
     required: false
@@ -671,6 +682,8 @@ runs:
           ${{ inputs.pr-state != '' && format('**Authoritative PR status** (fetched live from the GitHub API at the start of this run, before you started exploring): state=`{0}`, merged=`{1}`. Trust this over any inference you draw from commit messages, branch names, or `git log` output. In particular, a commit on THIS PR''s own branch whose message mentions "merge" or "into <branch>" (e.g. a routine `Merge remote-tracking branch ''origin/main'' into <branch>` resolving a merge conflict) is NOT evidence the PR itself was merged — only the state/merged fields above are. If state is `closed` or merged is `true`, stop here and post only a brief "no action — PR is closed/merged" note as your ### Verdict. Otherwise, this PR is open and unmerged regardless of what any commit message might suggest: proceed with the full review below.', inputs.pr-state, inputs.pr-merged) || '' }}
 
           ${{ inputs.prior-context }}
+
+          ${{ inputs.incremental-context }}
 
           ${{ inputs.labmanual-guidance }}
 

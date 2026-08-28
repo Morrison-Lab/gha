@@ -971,6 +971,57 @@ jobs:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
 
+      # gha#709: compute what changed since the last reviewed commit with git
+      # itself, and hand it to the reviewer as authoritative. A reviewer
+      # deriving the incremental range from comment history has misstated it
+      # -- naming one commit where the range held two -- and then approved on
+      # the strength of the misstated range, so the only behaviour change in
+      # the round went unexamined (d-morrison/altdoc#125). The prior reviewed
+      # SHA comes from the machine-written "Reviewed commit:" line of the
+      # last verdict comment (the same population gather-context's fetch step
+      # matches on); when there is no prior round, or the SHA is not
+      # reachable in this checkout (a force-push, a shallow fetch), the step
+      # emits nothing and the round proceeds exactly as before. Indented
+      # blocks rather than fences, so a commit subject carrying backticks
+      # cannot close the block early.
+      - name: Compute what changed since the last reviewed commit
+        id: increment
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+        run: |
+          set -euo pipefail
+          CONTEXT=""
+          PRIOR=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null \
+            | jq -rs 'add // [] | [ .[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]") and (.body | test("### (Code Review|Verdict)"))) ] | last | .body // ""' \
+            | grep -oE 'Reviewed commit: [0-9a-f]{40}' | tail -1 | awk '{print $3}' || true)
+          HEAD_NOW=$(git rev-parse HEAD 2>/dev/null || true)
+          if [ -n "$PRIOR" ] && [ -n "$HEAD_NOW" ] && [ "$PRIOR" != "$HEAD_NOW" ] \
+            && git cat-file -e "$PRIOR" 2>/dev/null; then
+            LOG=$(git log --oneline "$PRIOR..HEAD" 2>/dev/null | sed 's/^/    /' || true)
+            STAT=$(git diff --stat "$PRIOR" HEAD 2>/dev/null | sed 's/^/    /' || true)
+            if [ -n "$LOG" ]; then
+              CONTEXT=$(printf '%s\n' \
+                '## What changed since the last review round (computed)' \
+                '' \
+                "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The range below was computed by the workflow with git itself. When you describe what changed since the last round, describe THIS range rather than deriving your own, and examine every commit and file in it:" \
+                '' \
+                "    \$ git log --oneline ${PRIOR:0:8}..${HEAD_NOW:0:8}" \
+                "$LOG" \
+                '' \
+                "    \$ git diff --stat ${PRIOR:0:8} ${HEAD_NOW:0:8}" \
+                "$STAT")
+            fi
+          fi
+          DELIMITER="eof_$(openssl rand -hex 8)"
+          {
+            echo "context<<${DELIMITER}"
+            printf '%s\n' "$CONTEXT"
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
+
       # The actual claude-code-action call (allowedTools/disallowedTools,
       # system prompt, review prompt) lives in the run-claude-review-attempt
       # composite action so it can be invoked a second time, unchanged, as a
@@ -1003,6 +1054,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
+          incremental-context: ${{ steps.increment.outputs.context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
@@ -1115,6 +1167,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
+          incremental-context: ${{ steps.increment.outputs.context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
