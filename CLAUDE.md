@@ -1879,7 +1879,10 @@ all, interpolating the count into a message where the padding is harmless
 (`_selftest.yml` twice, `claude.yml`).
 That third bucket is why "every other site compares safely" would have been
 false: those three avoid the bug by not being a comparison.
-CI runs it as the `credential-shape` job in `_selftest.yml`, kept separate from
+CI runs it as the `credential-shape` job in `_selftest.yml` --- on a
+`[ubuntu-latest, macos-latest]` matrix since gha#690, so the BSD/GNU `wc`
+padding class the suite exists to catch is exercised on BSD userland rather
+than only narrated --- kept separate from
 `review-fail-check` so a failure is attributable at a glance --- the same
 one-capability-per-job split `phi-tests` and `gemini-review-fail-check` use.
 That job also calls the composite through three real `uses: ./...` steps, for the
