@@ -334,6 +334,14 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
             f"{name} does not share the canceling review group "
             "(a cancelled run's post-review would cancel the new model job)",
         )
+    # gha#679: the gate must sit in NEITHER group. In the canceling group a
+    # newer run cancels the gate itself; in the stash group it queues behind
+    # another run's stash/restore for no reason. It reads results, not shared
+    # state.
+    check(
+        concurrency_of("require-review") is None,
+        "require-review sits in neither concurrency group (gha#679)",
+    )
     gather_needs = (jobs.get("gather-context") or {}).get("needs")
     if isinstance(gather_needs, str):
         gather_needs = [gather_needs]
@@ -473,6 +481,127 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
             "unverifiable live-head writes stale=true before exit 1 "
             "(failure notice and collapse key on stale != true)",
         )
+        # gha#679: with neither an event-pinned head nor a stash-head there is
+        # no SHA to bound the review to, so an empty COMPARE must fail closed
+        # rather than fall through to stale=false and a live-head stamp.
+        empty_compare = re.search(
+            r'if \[ -z "\$COMPARE" \].*?exit 1',
+            target_run,
+            re.S,
+        )
+        check(
+            empty_compare is not None
+            and "stale=true" in empty_compare.group(0)
+            and empty_compare.group(0).find("stale=true")
+            < empty_compare.group(0).find("exit 1"),
+            "empty COMPARE fails closed, writing stale=true before exit 1 (gha#679)",
+        )
+        check(
+            'reviewed_sha=$COMPARE' in target_run,
+            "target exports reviewed_sha=$COMPARE for the posting step (gha#679)",
+        )
+
+    # gha#679: the comment stamps the SHA the stale test bounded, never a
+    # later live-head fetch -- a later fetch can name a commit the model
+    # never read.
+    post_comment = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict) and s.get("id") == "post-comment"
+        ),
+        None,
+    )
+    if post_comment is None:
+        check(False, "post-review has a post-comment step stamping the reviewed SHA")
+    else:
+        head_sha_env = " ".join(
+            str((post_comment.get("env") or {}).get("HEAD_SHA") or "").split()
+        )
+        check(
+            head_sha_env == "${{ steps.target.outputs.reviewed_sha }}",
+            "post-comment stamps steps.target.outputs.reviewed_sha (gha#679)",
+        )
+        check(
+            ".head.sha" not in str(post_comment.get("run") or ""),
+            "post-comment has no live-head API fallback (gha#679)",
+        )
+
+    review_if = " ".join(str(review.get("if") or "").split())
+    check(
+        "github.event_name == 'workflow_dispatch' && "
+        "needs.gather-context.outputs.dispatch-guard-blocked != 'true' && "
+        "needs.gather-context.result != 'failure'" in review_if,
+        "claude-review's dispatch arm excludes a failed gather-context (gha#679)",
+    )
+    # gha#704 review round 1: the exclusion must not ALSO apply to
+    # pull_request events -- there reviewed-head comes from the event payload
+    # independent of gather-context, so a recoverable stash failure would
+    # silently skip a perfectly verifiable review. One occurrence, inside the
+    # dispatch arm, is the correct shape; a second (top-level or
+    # pull_request-arm) occurrence is the over-reach.
+    check(
+        review_if.count("needs.gather-context.result != 'failure'") == 1,
+        "the failed-gather exclusion appears exactly once, scoped to the "
+        "dispatch arm (gha#704)",
+    )
+
+    # gha#679: a renamed artifact on either side downloads nothing and lands
+    # in the missing-artifact notice, silently. The pack composite's default
+    # is claude-review-payload-<run_id>-<run_attempt> (pinned by its own
+    # suite), so the download must name exactly that, and the pack call must
+    # not override it away from what the download expects.
+    download = next(
+        (
+            s
+            for s in post.get("steps") or []
+            if isinstance(s, dict) and "download-artifact" in str(s.get("uses") or "")
+        ),
+        None,
+    )
+    if download is None:
+        check(False, "post-review downloads the payload artifact by name")
+    else:
+        dl_name = " ".join(str((download.get("with") or {}).get("name") or "").split())
+        check(
+            dl_name
+            == "claude-review-payload-${{ github.run_id }}-${{ github.run_attempt }}",
+            "download names the run_id+run_attempt artifact the pack default "
+            "produces (gha#679)",
+        )
+    pack_step = next(
+        (
+            s
+            for s in review.get("steps") or []
+            if isinstance(s, dict) and "pack-review-payload" in str(s.get("uses") or "")
+        ),
+        None,
+    )
+    if pack_step is not None:
+        check(
+            "artifact-name" not in (pack_step.get("with") or {}),
+            "pack keeps the composite's default artifact name, matching the "
+            "download (gha#679)",
+        )
+
+    # gha#541: denied_tools is agent-authored free text, so it reaches shell
+    # only through env:/with: (runner substitution), never through a ${{ }}
+    # interpolation inside a run: body, which is arbitrary command execution.
+    interpolated = []
+    for name, job in jobs.items():
+        for step in job.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            run = step.get("run")
+            if isinstance(run, str) and re.search(
+                r"\$\{\{[^}]*denied_tools[^}]*\}\}", run
+            ):
+                interpolated.append(f"{name}/{step.get('id') or step.get('name')}")
+    check(
+        not interpolated,
+        "denied_tools is never interpolated into a run: body (gha#541); "
+        f"violations: {interpolated or 'none'}",
+    )
 
     action = load_yaml(action_path)
     steps = action.get("runs", {}).get("steps") or []
@@ -661,6 +790,14 @@ jobs:
     steps:
       - run: echo stash
   claude-review:
+    if: >-
+      always() &&
+      needs.gather-context.result != 'skipped' &&
+      needs.gather-context.result != 'cancelled' &&
+      (
+        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true' && needs.gather-context.result != 'failure') ||
+        github.event_name != 'workflow_dispatch'
+      )
 {review_conc}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
     permissions:
@@ -683,6 +820,8 @@ jobs:
     steps:
       - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
       - uses: actions/download-artifact@v4
+        with:
+          name: claude-review-payload-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}
       - name: Require the payload artifact on a finished review
         if: needs.claude-review.result == 'success' && steps.download.outcome == 'failure'
         run: exit 1
@@ -696,6 +835,17 @@ jobs:
             exit 1
           fi
           COMPARE="${{REVIEWED_HEAD:-$STASH_HEAD}}"
+          if [ -z "$COMPARE" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "no reviewed SHA"
+            exit 1
+          fi
+          echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
+      - id: post-comment
+        env:
+          HEAD_SHA: ${{{{ steps.target.outputs.reviewed_sha }}}}
+        run: |
+          echo "Reviewed commit: $HEAD_SHA"
   require-review:
     needs: [claude-review, post-review]
     if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
@@ -1180,6 +1330,85 @@ runs:
             run(no_stale_skip, good_action),
             False,
             "require-review skips when post-review reports stale",
+        )
+
+        # gha#679 pins. Each mutation is a single string replacement of the
+        # good template, and each replacement is asserted to have applied by
+        # the changed-text check inside expect (a needle the mutated run must
+        # mention) -- a replacement whose old string drifts from the template
+        # produces an identical file, and an identical file passes, which is
+        # the vacuous-mutation shape gha#702's own CLAUDE.md paragraph records.
+        def mutate(label: str, old: str, new: str, needle: str) -> int:
+            mutated = root / (label.replace(" ", "-") + ".yml")
+            text = good_wf.read_text()
+            if old not in text:
+                print(
+                    f"::error::self-test mutation {label!r}: replacement "
+                    "target not found in the good template (vacuous)",
+                    file=sys.stderr,
+                )
+                return 1
+            mutated.write_text(text.replace(old, new, 1))
+            return expect(label, run(mutated, good_action), False, needle)
+
+        failures += mutate(
+            "dropping the empty-COMPARE fail-closed branch fails",
+            '          if [ -z "$COMPARE" ]; then\n'
+            '            echo "stale=true" >> "$GITHUB_OUTPUT"\n'
+            '            echo "no reviewed SHA"\n'
+            "            exit 1\n"
+            "          fi\n",
+            "",
+            "empty COMPARE fails closed",
+        )
+        failures += mutate(
+            "dropping the reviewed_sha export fails",
+            '          echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"\n',
+            "",
+            "target exports reviewed_sha=$COMPARE",
+        )
+        failures += mutate(
+            "post-comment stamping stash-head fails",
+            "          HEAD_SHA: ${{ steps.target.outputs.reviewed_sha }}",
+            "          HEAD_SHA: ${{ needs.gather-context.outputs.stash-head }}",
+            "post-comment stamps steps.target.outputs.reviewed_sha",
+        )
+        failures += mutate(
+            "post-comment live-head fallback fails",
+            '          echo "Reviewed commit: $HEAD_SHA"',
+            '          COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/x/y/pulls/1" --jq .head.sha)}"',
+            "post-comment has no live-head API fallback",
+        )
+        failures += mutate(
+            "claude-review admitting a failed gather-context fails",
+            " && needs.gather-context.result != 'failure')",
+            ")",
+            "dispatch arm excludes a failed gather-context",
+        )
+        failures += mutate(
+            "hoisting the failed-gather exclusion to the top level fails",
+            "      needs.gather-context.result != 'cancelled' &&\n",
+            "      needs.gather-context.result != 'cancelled' &&\n"
+            "      needs.gather-context.result != 'failure' &&\n",
+            "appears exactly once, scoped to the dispatch arm",
+        )
+        failures += mutate(
+            "download artifact name without run_attempt fails",
+            "          name: claude-review-payload-${{ github.run_id }}-${{ github.run_attempt }}",
+            "          name: claude-review-payload-${{ github.run_id }}",
+            "download names the run_id+run_attempt artifact",
+        )
+        failures += mutate(
+            "require-review in the canceling group fails",
+            "  require-review:\n",
+            "  require-review:\n" + review_conc,
+            "require-review sits in neither concurrency group",
+        )
+        failures += mutate(
+            "denied_tools interpolated into a run body fails",
+            '          echo "Reviewed commit: $HEAD_SHA"',
+            '          echo "${{ steps.payload.outputs.denied_tools }}"',
+            "denied_tools is never interpolated into a run: body",
         )
 
     if failures:

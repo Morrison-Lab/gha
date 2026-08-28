@@ -487,12 +487,23 @@ jobs:
     # PRs (forks can't read the OAuth token), and bot-triggered `synchronize`
     # events (e.g. @claude pushing a commit), which would otherwise red-X an
     # automatic review of a bot-authored diff.
+    # On workflow_dispatch, a FAILED gather-context is excluded too (gha#679):
+    # that trigger has no event-pinned head, so a failed gather-context leaves
+    # the posting job with no stash-head either -- the model would run with no
+    # SHA anywhere to bound what it reviewed, and the review could only be
+    # posted against a live-head fetch, which is exactly the
+    # unverifiable-review shape post-review now fails closed on.
+    # The exclusion sits INSIDE the dispatch arm deliberately (gha#704 review
+    # round 1): on pull_request events reviewed-head comes straight from the
+    # event payload, independent of gather-context, so a recoverable
+    # pull_request-side stash failure must not suppress a review the
+    # event-pinned head makes perfectly verifiable.
     if: >-
       always() &&
       needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
       (
-        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
+        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true' && needs.gather-context.result != 'failure') ||
         (
           github.event_name != 'workflow_dispatch' &&
           github.event.pull_request.draft == false &&
@@ -1431,7 +1442,25 @@ jobs:
           # Do not use a later API fetch from the model job: that SHA
           # can move past the event-pinned tree.
           COMPARE="${REVIEWED_HEAD:-$STASH_HEAD}"
-          if [ -n "$COMPARE" ] && [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
+          # Fail CLOSED when both are empty (gha#679): with no reviewed SHA
+          # there is nothing to bound the review to a commit, so the stale
+          # test's non-empty guard would silently write stale=false and the
+          # posting step would stamp whatever the live head happens to be --
+          # an unverifiable review. Empty COMPARE is reachable on
+          # workflow_dispatch (no event-pinned head) when gather-context's
+          # stash-head is empty too. stale=true is written first for the
+          # same reason the LIVE-fetch failure above writes it: !cancelled()
+          # posting steps key on stale != 'true'.
+          if [ -z "$COMPARE" ]; then
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+            echo "::error::No reviewed SHA available (no event-pinned head, and gather-context produced no stash-head); not posting an unverifiable review."
+            exit 1
+          fi
+          # The posting step stamps THIS value, so the SHA a comment names is
+          # always the one the stale test bounded (gha#679) -- never a later
+          # live-head fetch.
+          echo "reviewed_sha=$COMPARE" >> "$GITHUB_OUTPUT"
+          if [ -n "$LIVE" ] && [ "$LIVE" != "$COMPARE" ]; then
             echo "stale=true" >> "$GITHUB_OUTPUT"
             echo "::notice::PR head moved ($COMPARE -> $LIVE); not posting a stale review."
           else
@@ -1594,14 +1623,18 @@ jobs:
           PR_NUMBER: ${{ steps.target.outputs.pr_number }}
           RUN_URL: ${{ steps.target.outputs.run_url }}
           REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
-          HEAD_SHA: ${{ needs.gather-context.outputs.stash-head }}
+          # The SHA the stale check bounded (gha#679): reviewed-head first,
+          # stash-head on dispatch, and the step already failed closed when
+          # both were empty -- so no live-head API fallback exists here. A
+          # later fetch could name a commit the model never read.
+          HEAD_SHA: ${{ steps.target.outputs.reviewed_sha }}
         run: |
           REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
             echo "No review text found in execution output; skipping comment."
             exit 0
           fi
-          COMMIT_SHA="${HEAD_SHA:-$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.head.sha' 2>/dev/null || true)}"
+          COMMIT_SHA="$HEAD_SHA"
           BODY_FILE="$(mktemp)"
           printf '%s\n\n---\n\n%s\n\nReviewed commit: %s' \
             "**Claude finished review** — [View run]($RUN_URL)" \
