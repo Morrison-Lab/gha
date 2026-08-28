@@ -17,7 +17,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`,
   `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
-  `lint-workflows`, `lint-yaml`, `preview`, `spellcheck`, `test-coverage`,
+  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
   `version-check`<!--readonly-workflows:end--> need only
   `contents: read` (the default), so no `permissions:` block is needed.
   This list is checked against the workflows' own `permissions:` blocks by
@@ -95,9 +95,9 @@ already include the right `permissions:` blocks; copy them as-is.
   rejected push is reported as an error naming this secret, and the commits
   are posted to the thread as a `git format-patch` so they survive the run.
 - **`SUBMODULES_TOKEN`.** Public submodules clone anonymously; private ones need
-  this secret. Relevant to `claude`, `claude-code-review`, and `bump-submodule`
-  when `checkout-submodules` (or the submodule update) touches a private
-  submodule.
+  this secret. Relevant to `claude`, `claude-code-review`, `r-cmd-check`, and
+  `bump-submodule` when `checkout-submodules` (or the submodule update) touches
+  a private submodule.
 
 ## Notes for private consumers
 
