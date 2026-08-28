@@ -273,10 +273,13 @@ jobs:
         run: |
           set -euo pipefail
           # Audits this repo's own .github/workflows/*.yml using actionlint
-          # (gha#582, gha#591). Shellcheck is disabled here because inline
-          # script style checks are covered by the dedicated shellcheck passes;
-          # actionlint here enforces GitHub Actions schema, syntax, expression,
-          # and reusable workflow caller rules across all workflows.
+          # (gha#582, gha#591). Shellcheck is disabled here deliberately: no
+          # repository-wide shellcheck pass exists, and enabling it inside
+          # this audit would reflag long-standing style notes across every
+          # inline script rather than the schema regressions the audit is
+          # for (gha#708); actionlint here enforces GitHub Actions schema,
+          # syntax, expression, and reusable workflow caller rules across
+          # all workflows.
           actionlint -shellcheck ""
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against

@@ -63,8 +63,8 @@
 #   - on every path that exits 1, first writes failure_kind=<kind> to
 #     $GITHUB_OUTPUT: `short-circuit`, `hard-error`, `no-output`, `stub`,
 #     `high-denial`, `background-agent`, or `deferred`. This script is the
-#     thing that KNOWS which
-#     one happened, so it says so, rather than leaving claude-code-review.yml
+#     thing that KNOWS which one happened, so it says so, rather than
+#     leaving claude-code-review.yml
 #     to re-derive it from the other outputs -- a second copy of one
 #     classification, free to drift out of step with this one, which is the
 #     problem detect-review-request.sh records at pattern scale. The kinds are
