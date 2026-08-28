@@ -82,9 +82,15 @@ check "shallow clone: deepen loop reaches the prior and lists subject-c4" "yes" 
 check "shallow clone: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
 # 2b. PR-MERGE-REF topology (the PRIMARY production case): the checkout is
-#     a refs/pull/<n>/merge commit on no branch, fetched at depth 1 the way
-#     actions/checkout does. A bare `git fetch --deepen` cannot reach the
-#     prior here; only the explicit-SHA form can (gha#717 review round 2).
+#     a refs/pull/<n>/merge commit on no branch, with actions/checkout's
+#     narrow fetch refspec, fetched at depth 1. What this case PINS is that
+#     the script works on that topology at all. What it cannot pin is the
+#     explicit-SHA-vs-bare deepen distinction the script's own comment
+#     records (gha#717 review round 2): a local file:// server deepens along
+#     any advertised ref, so the bare form passes here while failing against
+#     GitHub's server, where the failure was measured empirically. Per
+#     fixtures-are-not-evidence, do not read this fixture as proof either
+#     way about that server-side behavior.
 ( cd "$origin"
   $GIT branch feature HEAD~1 >/dev/null 2>&1 || true
   merge_tree=$($GIT rev-parse 'HEAD^{tree}')
@@ -97,7 +103,11 @@ mkdir -p "$prmerge"
 ( cd "$prmerge"
   $GIT init -q
   $GIT remote add origin "file://$origin"
-  $GIT fetch -q --depth=1 origin '+refs/pull/1/merge:refs/remotes/pull/1/merge'
+  # actions/checkout REPLACES the default fetch refspec with the narrow
+  # merge-ref one; mirror that, or a bare deepen can reach the prior via
+  # refs/heads/* here when it cannot in production.
+  $GIT config remote.origin.fetch '+refs/pull/1/merge:refs/remotes/pull/1/merge'
+  $GIT fetch -q --depth=1 origin
   $GIT checkout -q --detach refs/remotes/pull/1/merge
 )
 check "pr-merge precondition: prior unreachable before the script runs" "no" \
