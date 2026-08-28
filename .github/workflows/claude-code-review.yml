@@ -971,6 +971,45 @@ jobs:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
 
+      # gha#709: compute what changed since the last reviewed commit with git
+      # itself, and hand it to the reviewer as authoritative. A reviewer
+      # deriving the incremental range from comment history has misstated it
+      # -- naming one commit where the range held two -- and then approved on
+      # the strength of the misstated range, so the only behaviour change in
+      # the round went unexamined (d-morrison/altdoc#125). The logic lives in
+      # compute-incremental-range.sh (installed below, since this checkout is
+      # the CALLER's repo) so it has offline table tests -- including the
+      # shallow-checkout deepen loop, without which the prior SHA is
+      # unreachable at fetch-depth: 1 and the feature is inert on every real
+      # round (gha#717 review round 1). Every not-computable path emits
+      # nothing and the round proceeds exactly as before.
+      - name: Install the incremental-range script
+        id: increment-scripts
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v2
+        with:
+          scripts: 'compute-incremental-range.sh'
+      - name: Compute what changed since the last reviewed commit
+        id: increment
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
+          SCRIPTS_DIR: ${{ steps.increment-scripts.outputs.dir }}
+        run: |
+          set -euo pipefail
+          COMMENTS_FILE="$(mktemp)"
+          gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null \
+            | jq -s 'add // []' > "$COMMENTS_FILE" || echo '[]' > "$COMMENTS_FILE"
+          CONTEXT=$(bash "$SCRIPTS_DIR/compute-incremental-range.sh" "$COMMENTS_FILE" || true)
+          DELIMITER="eof_$(openssl rand -hex 8)"
+          {
+            echo "context<<${DELIMITER}"
+            printf '%s\n' "$CONTEXT"
+            echo "${DELIMITER}"
+          } >> "$GITHUB_OUTPUT"
+
       # The actual claude-code-action call (allowedTools/disallowedTools,
       # system prompt, review prompt) lives in the run-claude-review-attempt
       # composite action so it can be invoked a second time, unchanged, as a
@@ -1003,6 +1042,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
+          incremental-context: ${{ steps.increment.outputs.context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
@@ -1115,6 +1155,7 @@ jobs:
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           prior-context: ${{ needs.gather-context.outputs.prior-context }}
+          incremental-context: ${{ steps.increment.outputs.context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}

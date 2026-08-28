@@ -666,6 +666,9 @@ jobs:
       - name: Run restore-default-branch-workflows tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-restore-default-branch-workflows-tests.sh
+      - name: Run compute-incremental-range tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-compute-incremental-range-tests.sh
       - name: Run resolve-pr-info tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-resolve-pr-info-tests.sh
