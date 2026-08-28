@@ -2036,6 +2036,42 @@ There is no live `uses:` of the restore composite against this checkout:
 restoring this repo's own `.github/workflows/` mid-selftest would clobber
 later steps.
 
+`.github/workflows/scripts/tests/run-list-workflow-files-tests.sh`
+exercises `list-workflow-files.sh`, the shared discovery helper
+`_selftest.yml`'s `SUBMODULES_TOKEN` and SHA-pin audits now call instead of
+globbing `*.yml` themselves (gha#716, the sibling of the gha#705 job-guard
+gap).
+The negative cases are the ones to keep if the suite is ever trimmed, because
+each pins a decision that is silent when reversed: an empty directory is an
+error rather than an empty list, a nested `scripts/foo.yml` is not a workflow,
+and a `.txt` file is not swept in.
+All four mutations were confirmed to turn it red rather than assumed to ---
+a `*.yml`-only `find`, a dropped fail-closed guard, and a dropped
+`-maxdepth 1` each fail a named case.
+CI runs it as a step in the `lint-checkout-tokens` job, before the two audits
+that consume it.
+
+**The two audits reach the helper through command substitution, not process
+substitution, and that is load-bearing rather than style.**
+`mapfile -t WORKFLOWS < <(bash list-workflow-files.sh)` does not propagate the
+helper's exit status, so a fail-closed refusal would leave the array empty and
+`set -e` would not fire --- and `grep PATTERN` with no file arguments then
+reads **stdin**, which in a runner step is an immediate EOF.
+The audit passes, having examined nothing, which is exactly the state the
+helper's own fail-closed guard exists to prevent.
+Assigning to a variable first (`WORKFLOW_LIST="$(bash ...)"`) makes `set -e`
+abort the step.
+
+`run-permissions-docs-tests.py` gained the same discovery fix and two cases
+alongside it (10 and 11).
+The first is end-to-end: a `.yaml` reusable workflow that discovery misses is
+absent from the expected read-only set, so a doc *correctly* listing it reads
+as "listed but the workflow does not exist".
+The second asserts `discover_workflows` directly, so reverting the glob cannot
+be "fixed" by widening it to everything.
+Every case that predates them names only `.yml` fixtures, which is why none of
+them could see the gap.
+
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
 stub `curl`: a successful queue, `DRY_RUN=true` in the JSON body, HTTP 400
