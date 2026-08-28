@@ -2036,64 +2036,60 @@ There is no live `uses:` of the restore composite against this checkout:
 restoring this repo's own `.github/workflows/` mid-selftest would clobber
 later steps.
 
-`.github/workflows/scripts/tests/run-list-workflow-files-tests.sh` and
-`run-workflow-audit-tests.sh` cover the workflow-discovery helper and the two
-audits built on it (gha#716).
-`_selftest.yml`'s `SUBMODULES_TOKEN` and SHA-pin audits used to be inline
-`run:` blocks globbing `*.yml`; they are now
-`audit-workflow-token-usage.sh` and `audit-workflow-action-pins.sh`, both
-discovering through `list-workflow-files.sh`.
+`.github/workflows/scripts/tests/run-workflow-audit-tests.py` covers the two
+workflow-wide audits `_selftest.yml` runs and the discovery module beneath
+them (gha#716, gha#720).
+Both audits used to be inline `run:` blocks in `_selftest.yml` grepping
+`.github/workflows/*.yml`; they are now `audit_workflow_token_usage.py` and
+`audit_workflow_action_pins.py`, sharing `workflow_discovery.py` with
+`run-permissions-docs-tests.py` --- one copy of the discovery rule rather than
+three places for it to drift back to `*.yml` only.
 
-**Testing the helper is not testing the audits, and this repo's own tree is
+**Parsing replaced grepping because a line anchor cannot see either thing that
+matters here.**
+`^\s*uses:` matches the continuation form and not `- uses: ...`, and this repo
+writes both --- five action references were exempt from the pin audit on that
+basis alone.
+Widening the anchor is not the fix: the one new hit it produces in this tree is
+`_selftest.yml`'s heredoc-written flawed fixture, which is text inside a `run:`
+block rather than a reference GitHub resolves.
+A walk over parsed `jobs.*.steps[].uses` and `jobs.*.uses` sees both spellings
+by construction and cannot reach heredoc content at all.
+The same argument applies to the token audit, which now tells `token:` from
+`submodules-token:` by key rather than by what precedes the colon.
+
+**Testing the discovery is not testing the audits, and this repo's own tree is
 why.**
-It carries 63 `.yml` workflows and zero `.yaml` ones, so a consumer reverted
-to a `*.yml`-only glob leaves every check green --- the audits pass because
-there is nothing for the wider glob to find, not because discovery works.
-So each audit gets a fixture whose violation lives in a `.yaml` file.
-Those two cases are the ones to keep if the suite is ever trimmed.
+It carries 63 `.yml` workflows and zero `.yaml` ones, so a consumer reverted to
+a `*.yml`-only glob leaves every check green --- the audits pass because there
+is nothing for the wider glob to find, not because discovery works.
+Each audit therefore gets a fixture whose violation lives in a `.yaml` file.
+Those cases are the ones to keep if the suite is ever trimmed, alongside the
+negative ones: an unparsable workflow is an error rather than a clean file, an
+empty or missing directory fails closed rather than returning an empty list,
+`submodules-token:` is not flagged, and a `uses:` inside a `run:` block is not
+a reference.
 
-**`grep` answers three ways, and both audits used to read two.**
-`0` found, `1` clean, and anything else means the check did not run --- an
-unreadable or vanished file.
-The old inline forms collapsed that third case into "clean": one used `grep`
-directly as an `if` condition, the other ended its pipeline in `|| true`.
-Each audit now reads the status explicitly and exits `2` on it, pinned by an
-unreadable-file case (skipped as root, where the permission bit does not
-bite).
-
-**Discovery is reached by command substitution, not process substitution.**
-`mapfile -t WORKFLOWS < <(bash list-workflow-files.sh)` does not propagate the
-helper's exit status, so a fail-closed refusal would leave the array empty and
-`set -e` would not fire --- and `grep PATTERN` with no file arguments then
-reads **stdin**, an immediate EOF in a runner step.
-The audit passes having examined nothing, which is the state the helper's own
-fail-closed guard exists to prevent.
-Verified directly on bash 5.3 rather than reasoned about: the command
-substitution aborts, the process substitution does not.
-
-**The SHA-pin audit is still blind to the `- uses:` list form (gha#720).**
-Its anchor is a line-leading `uses:`, so five action references in this repo
-are exempt today purely by how their step is written.
-The one-character widening is not the fix --- it hits `_selftest.yml`'s
-heredoc-written flawed fixture, which is not a real reference --- so the gap
-is documented in the script header and pinned by a test asserting *current*
-behaviour, which the eventual parsed-YAML fix will turn red.
-
-`run-permissions-docs-tests.py` gained the same discovery fix and two cases
-alongside it (10 and 11).
+`run-permissions-docs-tests.py` gained two cases of its own (10 and 11).
 The first is end-to-end: a `.yaml` reusable workflow that discovery misses is
 absent from the expected read-only set, so a doc *correctly* listing it reads
 as "listed but the workflow does not exist".
-The second asserts `discover_workflows` directly, so reverting the glob cannot
-be "fixed" by widening it to everything.
+The second asserts `discover_workflows` directly, so reverting it cannot be
+"fixed" by widening the glob to everything.
 Every case that predates them names only `.yml` fixtures, which is why none of
 them could see the gap.
 
+**The suite mutes each audit's own output.**
+An expected failure still prints `::error::`, and GitHub renders every one as
+an annotation, so an unmuted suite decorates a passing job with a dozen errors
+it deliberately provoked.
+
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Six mutations were confirmed to turn the suites red rather than assumed to: a
-`*.yml`-only `find`, a dropped fail-closed guard, a dropped `-maxdepth 1`, a
-`*.yml`-only `discover_workflows`, a helper that prints correctly and then
-exits non-zero, and a `.yaml`-carried violation under yml-only discovery.
+Seven mutations were confirmed to turn it red rather than assumed to: a
+`*.yml`-only discovery (against both consumers), a dropped empty-directory
+guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
+step-level `uses:` walk, and a token lookup matching any key containing
+`token`.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

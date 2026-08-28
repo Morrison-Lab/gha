@@ -4,10 +4,12 @@
   `_selftest.yml`'s `SUBMODULES_TOKEN` and SHA-pin audits, each globbed
   `*.yml` alone, so a `.yaml` workflow bypassed all three silently --- the
   sibling of the job-guard gap fixed in #712.
-  The two shell audits move into `audit-workflow-token-usage.sh` and
-  `audit-workflow-action-pins.sh`, sharing a `list-workflow-files.sh` that
-  fails closed on an empty or missing directory, and each now distinguishes
-  `grep`'s "check did not run" status from "found nothing" rather than
-  reporting both as clean.
-  Both are covered offline by fixtures whose violation lives in a `.yaml`
-  file, which this repo's own all-`.yml` tree cannot supply.
+  All three now share one `workflow_discovery` module, which fails closed on
+  an empty or missing directory rather than handing an audit nothing to
+  examine.
+- **The SHA-pin audit now sees the `- uses:` list form** (#720).
+  It matched workflow text against a line-leading `uses:`, so five action
+  references in this repo were exempt purely by how their step was written.
+  Both audits moved out of `_selftest.yml` into scripts that walk parsed YAML,
+  which sees both spellings and cannot mistake a `uses:` written inside a
+  `run:` heredoc for a real reference.
