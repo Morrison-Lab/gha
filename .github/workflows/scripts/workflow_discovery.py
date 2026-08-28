@@ -154,8 +154,10 @@ def iter_job_inputs(path: pathlib.Path, doc):
     incidentally; a walk that visits only steps does not, which would be a
     coverage regression rather than a refactor.
 
-    ``secrets: inherit`` is a string rather than a mapping and is legitimate,
-    so it is skipped rather than refused.
+    ``secrets: inherit`` is the one legitimate scalar here, so it alone is
+    skipped.  Any other scalar --- a string ``with:``, or a ``secrets:`` naming
+    anything else --- is malformed, and skipping it would leave a block the
+    audit never examined reported as clean.
     """
     for job_id, job in require_jobs(path, doc).items():
         if not isinstance(job, dict):
@@ -164,12 +166,16 @@ def iter_job_inputs(path: pathlib.Path, doc):
             )
         for block_name in ("with", "secrets"):
             block = job.get(block_name)
-            if block is None or isinstance(block, str):
+            if block is None:
+                continue
+            if block_name == "secrets" and block == "inherit":
                 continue
             if not isinstance(block, dict):
                 raise Unparsable(
                     f"{path}: job '{job_id}' has '{block_name}' as "
                     f"{type(block).__name__}, not a mapping"
+                    + (" (only 'secrets: inherit' is a valid scalar here)"
+                       if block_name == "secrets" else "")
                 )
             for key, value in block.items():
                 yield str(job_id), block_name, str(key), value

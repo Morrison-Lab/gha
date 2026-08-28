@@ -55,12 +55,28 @@ SECRET = "SUBMODULES_TOKEN"
 SECRET_REF = re.compile(rf"\b{SECRET}\b")
 
 
+def _reject_container(path: pathlib.Path, where: str, value) -> None:
+    """Refuse a `token:` that is a list or mapping.
+
+    An input value may legitimately be a string, number, or boolean, so those
+    are left alone. A container is not a value any input takes, so it is a
+    shape this audit did not evaluate rather than one it cleared.
+    """
+    if isinstance(value, (list, dict)):
+        raise Unparsable(
+            f"{path}: {where} is {type(value).__name__}, not a scalar"
+        )
+
+
 def violations(path: pathlib.Path, doc) -> list[str]:
     found = []
     # Job level first: a reusable-workflow caller passes values through `with:`
     # and `secrets:`, which no walk over `steps` can see.
     for job_id, block_name, key, value in iter_job_inputs(path, doc):
-        if key == "token" and isinstance(value, str) and SECRET_REF.search(value):
+        if key != "token":
+            continue
+        _reject_container(path, f"job '{job_id}' {block_name}.token", value)
+        if isinstance(value, str) and SECRET_REF.search(value):
             found.append(
                 f"{path}: job '{job_id}' passes {SECRET} as '{block_name}.token'"
             )
@@ -76,6 +92,7 @@ def violations(path: pathlib.Path, doc) -> list[str]:
         # Exactly the `token` key. `submodules-token` legitimately carries this
         # secret and is a different key, so no prefix or suffix matching here.
         value = with_block.get("token")
+        _reject_container(path, f"job '{job_id}' step {index} with.token", value)
         if isinstance(value, str) and SECRET_REF.search(value):
             action = step.get("uses")
             named = f" ({action})" if isinstance(action, str) else ""

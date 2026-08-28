@@ -2126,8 +2126,12 @@ A parsed walk that visits only `steps` would have been a coverage regression
 wearing a refactor's clothes --- which is the general risk when replacing a
 text scan with a structural one, since the text scan's reach was never written
 down anywhere.
-`secrets: inherit` is a string rather than a mapping and is skipped rather
-than refused.
+`secrets: inherit` is the one legitimate scalar in either block and is skipped;
+a scalar `with:`, or a `secrets:` naming anything else, is refused, because
+skipping every string would leave a block the audit never examined reported as
+clean.
+A `token:` whose value is a list or mapping is refused for the same reason,
+while a number or boolean --- which an input may legitimately be --- is not.
 
 **The suite mutes each audit's own output.**
 An expected failure still prints `::error::`, and GitHub renders every one as
@@ -2135,14 +2139,15 @@ an annotation, so an unmuted suite decorates a passing job with a dozen errors
 it deliberately provoked.
 
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Fifteen mutations were confirmed to turn it red rather than assumed to: a
+Seventeen mutations were confirmed to turn it red rather than assumed to: a
 `*.yml`-only discovery (against both consumers), a dropped empty-directory
 guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
 step-level `uses:` walk, a token lookup matching any key containing `token`, a
 bare-prefix self-exemption, a substring secret match, a skipped malformed
 `steps`, a tolerated missing `jobs`, a skipped non-string step-level `uses:`,
 a pin regex rejecting a `docker://` image digest, a pin test accepting
-either form everywhere, and a token walk skipping job-level blocks.
+either form everywhere, a token walk skipping job-level blocks, and a skip of every scalar block
+rather than of `secrets: inherit` alone.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

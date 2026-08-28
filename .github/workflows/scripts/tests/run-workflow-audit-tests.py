@@ -312,8 +312,46 @@ def main() -> int:
             "    secrets: inherit\n",
         )
         check(
-            "token: 'secrets: inherit' is a string and is not refused",
+            "token: 'secrets: inherit' is the one legitimate scalar",
             audit(token, inherit) == 0,
+        )
+
+        # ... and it is the ONLY one. A scalar `with:`, or a `secrets:` naming
+        # anything else, is a block the audit never examined.
+        bad_scalars = {
+            "with-scalar": "    with: bad\n",
+            "secrets-scalar": "    secrets: not-inherit\n",
+        }
+        for shape, tail in bad_scalars.items():
+            bad = root / f"token-{shape}"
+            write(
+                bad,
+                "a.yml",
+                "jobs:\n"
+                "  call:\n"
+                "    uses: other/repo/.github/workflows/x.yml@" + ("b" * 40) + "\n"
+                + tail,
+            )
+            check(
+                f"token: a job-level '{shape}' is an error, not clean",
+                audit(token, bad) == 2,
+            )
+
+        container_token = root / "token-container-value"
+        write(
+            container_token,
+            "a.yml",
+            "jobs:\n"
+            "  run:\n"
+            "    steps:\n"
+            f"      - uses: actions/checkout@{'a' * 40}\n"
+            "        with:\n"
+            "          token:\n"
+            "            - SUBMODULES_TOKEN\n",
+        )
+        check(
+            "token: a list-valued 'token:' is an error, not clean",
+            audit(token, container_token) == 2,
         )
 
         # The two pin forms are not interchangeable: neither crossed spelling
