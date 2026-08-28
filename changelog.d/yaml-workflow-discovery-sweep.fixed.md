@@ -4,9 +4,9 @@
   `_selftest.yml`'s `SUBMODULES_TOKEN` and SHA-pin audits, each globbed
   `*.yml` alone, so a `.yaml` workflow bypassed all three silently --- the
   sibling of the job-guard gap fixed in #712.
-  All three now share one `workflow_discovery` module, which fails closed on
-  an empty or missing directory rather than handing an audit nothing to
-  examine.
+  All of them, plus the job-guard suite #712 fixed separately, now share one
+  `workflow_discovery` module, which fails closed on an empty or missing
+  directory rather than handing an audit nothing to examine.
 - **The SHA-pin audit now sees the `- uses:` list form** (#720).
   It matched workflow text against a line-leading `uses:`, so three action
   references in this repo were exempt purely by how their step was written.

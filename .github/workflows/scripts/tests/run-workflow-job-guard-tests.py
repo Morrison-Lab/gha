@@ -41,6 +41,13 @@ import pathlib
 import sys
 import tempfile
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+# Shared with the two workflow audits and the permissions-docs suite rather
+# than re-globbed here: a fourth copy of the discovery rule is a fourth place
+# for it to drift back to `*.yml` only (gha#705, gha#716).
+from workflow_discovery import discover_workflows  # noqa: E402
+
 DEFAULT_WORKFLOWS_DIR = ".github/workflows"
 
 # Allowed top-level keys for a job that calls a reusable workflow via `uses:`.
@@ -142,17 +149,6 @@ def validate_workflow_files(files: list[pathlib.Path]) -> list[str]:
         errors = validate_workflow_doc(doc, str(file_path))
         all_errors.extend(errors)
     return all_errors
-
-
-def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
-    """Return the workflow files GitHub itself would discover.
-
-    Both extensions, not just ``*.yml``: GitHub loads ``.yml`` and ``.yaml``
-    workflow files alike, and this repo's own detect-pr-workflow-edits.sh
-    recognizes both -- a ``.yaml`` workflow silently bypassing this guard is
-    exactly the coverage gap gha#705 records.
-    """
-    return sorted([*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")])
 
 
 def run_self_test() -> None:

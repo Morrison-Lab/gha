@@ -2042,8 +2042,10 @@ them (gha#716, gha#720).
 Both audits used to be inline `run:` blocks in `_selftest.yml` grepping
 `.github/workflows/*.yml`; they are now `audit_workflow_token_usage.py` and
 `audit_workflow_action_pins.py`, sharing `workflow_discovery.py` with
-`run-permissions-docs-tests.py` --- one copy of the discovery rule rather than
-three places for it to drift back to `*.yml` only.
+`run-permissions-docs-tests.py` and `run-workflow-job-guard-tests.py`.
+That is one copy of the discovery rule in the repo rather than four places for
+it to drift back to `*.yml` only --- which is the drift #712 and #716 each
+fixed separately, in two of those four.
 
 **Parsing replaced grepping because a line anchor cannot see either thing that
 matters here.**
