@@ -119,9 +119,9 @@ which is why the capabilities above moved to `@v2`.
   entirely rather than falling back to a whole-tree scan when the diff can't
   be computed, since a whole-tree scan here would reflag a corpus's
   pre-existing long-line drift, which is exactly what the diff-scoping
-  exists to avoid; since gha#684 a flagged line that exists verbatim in the
-  base tree is exempted as moved-not-new, so a file split does not reflag
-  relocated content either).
+  exists to avoid; since gha#684 an added line whose exact text was also
+  deleted in the same diff is exempted as moved-not-new, so a file split
+  does not reflag relocated content either).
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
   every known misspelling the corpus already carries, and unknown jargon

@@ -459,6 +459,27 @@ def test_line_edited_during_move_is_flagged(tmp_path):
     assert [(v.path, v.line) for v in violations] == [("moved.md", 1)]
 
 
+def test_duplicate_of_untouched_base_line_is_still_flagged(tmp_path):
+    # The exemption is keyed on the diff's own deleted lines, never on mere
+    # membership in the base tree: a genuinely new line that happens to
+    # duplicate a pre-existing line in a file this PR never touched is new
+    # writing, and exempting it would hand authors a silent bypass (write any
+    # known-grandfathered line verbatim and the check waves it through).
+    _init_repo(tmp_path)
+    (tmp_path / "untouched.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "base with pre-existing drift elsewhere")
+    (tmp_path / "fresh.md").write_text(
+        "- Grandfathered drift. Two sentences on one line.\n"
+    )
+    _commit(tmp_path, "new file duplicating an untouched line")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("fresh.md", 1)]
+
+
 def test_unresolvable_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("- Long-standing violation. Two sentences.\n")

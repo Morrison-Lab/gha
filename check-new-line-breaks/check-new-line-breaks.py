@@ -40,7 +40,6 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import List, NamedTuple, Optional, Set, Tuple
 
@@ -458,13 +457,26 @@ def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
-def _added_line_numbers(base_ref: str, pathspecs: List[str]) -> Optional[dict]:
-    """Return {file: {new-file line numbers added}} vs the merge-base of
-    base_ref and HEAD, or None if the diff could not be computed."""
+def _added_line_numbers(
+    base_ref: str, pathspecs: List[str]
+) -> Optional[Tuple[dict, Set[str]]]:
+    """Return ({file: {new-file line numbers added}}, {deleted line contents})
+    vs the merge-base of base_ref and HEAD, or None if the diff could not be
+    computed.
+
+    The deleted-contents set feeds the moved-content exemption (gha#684): an
+    added line whose exact text was also deleted somewhere in the same diff is
+    relocated content rather than new writing. Collecting it here costs no
+    extra git call, and keying the exemption on the diff's own deletions --
+    rather than on membership anywhere in the base tree -- is what stops a
+    genuinely new line that happens to duplicate untouched base content from
+    being silently exempted.
+    """
     diff = _run_git(["diff", "--unified=0", "--no-color", f"{base_ref}...HEAD", "--", *pathspecs])
     if diff is None:
         return None
     result: dict = {}
+    deleted: Set[str] = set()
     cur_path: Optional[str] = None
     new_lineno = 0
     for raw in diff.splitlines():
@@ -478,54 +490,14 @@ def _added_line_numbers(base_ref: str, pathspecs: List[str]) -> Optional[dict]:
             m = _HUNK_RE.match(raw)
             new_lineno = int(m.group(1)) if m else 0
             continue
+        if raw.startswith("-") and not raw.startswith("---"):
+            deleted.add(raw[1:])
+            continue
         if raw.startswith("+") and not raw.startswith("+++"):
             if cur_path is not None:
                 result[cur_path].add(new_lineno)
             new_lineno += 1
-    return result
-
-
-def _preexisting_lines(base_ref: str, candidates: List[str]) -> Optional[Set[str]]:
-    """Return the subset of ``candidates`` that exist verbatim as whole lines
-    anywhere in the merge-base tree of ``base_ref`` and HEAD, or None when the
-    membership check could not run (no merge-base, or ``git grep`` errored).
-
-    A PR that moves an existing block into a brand-new file shows every moved
-    line as freshly added -- there is no deletion to pair against, since the
-    source file still exists (gha#684). A line that already exists verbatim in
-    the base tree is relocated content rather than new writing, so it keeps
-    whatever grandfathering it had.
-    """
-    patterns = sorted({line for line in candidates if line})
-    if not patterns:
-        return set()
-    merge_base = _run_git(["merge-base", base_ref, "HEAD"])
-    if merge_base is None:
-        return None
-    tree = merge_base.strip()
-    if not tree:
-        return None
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False,
-                                     suffix=".nlb-patterns") as handle:
-        handle.write("\n".join(patterns) + "\n")
-        pattern_file = handle.name
-    try:
-        # git grep has no whole-line switch, so match fixed substrings and do
-        # the exact whole-line comparison in Python: -h prints each matching
-        # line verbatim, and a candidate is pre-existing only when one of
-        # those printed lines equals it exactly.
-        proc = subprocess.run(
-            ["git", "grep", "-h", "-F", "--no-color", "-f", pattern_file, tree],
-            capture_output=True, encoding="utf-8", errors="replace",
-        )
-    finally:
-        os.unlink(pattern_file)
-    if proc.returncode == 1:
-        return set()
-    if proc.returncode != 0:
-        return None
-    matched = set(proc.stdout.split("\n"))
-    return {line for line in patterns if line in matched}
+    return result, deleted
 
 
 class Violation(NamedTuple):
@@ -564,12 +536,13 @@ def find_violations(
     """
     if not base_ref:
         return [], True
-    scope = _added_line_numbers(base_ref, globs)
-    if scope is None:
+    scoped = _added_line_numbers(base_ref, globs)
+    if scoped is None:
         return [], True
+    scope, deleted_contents = scoped
 
     violations: List[Violation] = []
-    raw_by_violation: dict = {}
+    exempted_moves = 0
     for rel_path in sorted(scope):
         if _ignored(rel_path, ignores):
             continue
@@ -592,32 +565,22 @@ def find_violations(
             reason = classify_line(content, clause_breaks, clause_min_length)
             if reason is not None:
                 preview = content if len(content) <= 80 else content[:77] + "..."
+                # Moved-content exemption (gha#684): an added line whose
+                # exact text was also deleted somewhere in this same diff is
+                # relocated rather than new, so it keeps whatever
+                # grandfathering it had. Keyed on the diff's own deletions,
+                # never on mere membership in the base tree, so a new line
+                # that happens to duplicate untouched base content still
+                # flags.
+                if raw in deleted_contents:
+                    exempted_moves += 1
+                    continue
                 violations.append(Violation(rel_path, line_no, preview, reason))
-                raw_by_violation[len(violations) - 1] = raw
-
-    # Moved-content exemption (gha#684): a "new" line that exists verbatim in
-    # the merge-base tree is relocated, not written, so it keeps whatever
-    # grandfathering it had. Checked only for would-be violations, so the
-    # membership query stays one small git grep. On error the exemption is
-    # skipped (the pre-gha#684 behavior) rather than silently exempting.
-    if raw_by_violation:
-        preexisting = _preexisting_lines(
-            base_ref, list(raw_by_violation.values()))
-        if preexisting is None:
-            print(
-                "Warning: could not check the base tree for moved content; "
-                "relocated pre-existing lines may be flagged as new (gha#684)."
-            )
-        elif preexisting:
-            kept = [v for idx, v in enumerate(violations)
-                    if raw_by_violation.get(idx) not in preexisting]
-            exempted = len(violations) - len(kept)
-            if exempted:
-                print(
-                    f"Note: {exempted} flagged line(s) exist verbatim in the "
-                    "base tree (moved, not new) and were not reported."
-                )
-            violations = kept
+    if exempted_moves:
+        print(
+            f"Note: {exempted_moves} added line(s) also appear among this "
+            "diff's deleted lines (moved, not new) and were not reported."
+        )
     return violations, False
 
 
@@ -673,6 +636,9 @@ def main() -> int:
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)
     clause_min_length = _env_int("NLB_CLAUSE_MIN_LENGTH", _DEFAULT_CLAUSE_MIN_LENGTH)
 
+    if base_ref:
+        print(f"Checking for missing semantic line breaks (lines added since {base_ref[:12]})\n")
+
     violations, skipped = find_violations(
         base_ref, globs, ignore, clause_breaks, clause_min_length
     )
@@ -685,8 +651,6 @@ def main() -> int:
             f"reflag pre-existing long lines)."
         )
         return 0
-
-    print(f"Checking for missing semantic line breaks (lines added since {base_ref[:12]})\n")
 
     if not violations:
         print("No lines missing semantic breaks.")
