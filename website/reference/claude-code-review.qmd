@@ -77,16 +77,19 @@ Read its result as follows.
 | Gray (skipped) | No review ran. Does not block merging. |
 | Red | The review job did not succeed. Blocks merging. |
 
-One red result is not a review failure at all: a `claude-review` run canceled
-by a newer run of the same PR (`cancel-in-progress`) also turns this gate red.
-Check whether `claude-review`'s conclusion is `cancelled` rather than `failure`
-before investigating the diff, and trust the surviving run's review.
-
 The gate skips gray whenever no review was attempted. That covers anything that
 made the `claude-review` job's own `if:` false --- a draft, fork, or
 bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the
-context-gathering job having been cancelled --- plus two cases where the job
-ran and stopped early:
+context-gathering job having been cancelled or failed --- plus a
+`claude-review` run canceled by a newer run of the same PR
+(`cancel-in-progress`,
+[#585](https://github.com/Morrison-Lab/gha/issues/585)):
+the superseded run's gate skips gray rather than going red, and the
+surviving run's review is the one to read.
+The gate also skips gray when the posting job reported the review **stale**
+--- the PR head moved between the review and the post, so no comment was
+posted and the next head's own run carries the verdict.
+Two further cases where the job ran and stopped early also skip gray:
 
 - the API quota was exhausted --- either before any review work happened, or
   part-way through the run, which leaves a `429` behind after real turns and
