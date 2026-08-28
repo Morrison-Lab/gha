@@ -1,0 +1,58 @@
+[
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "f-a1",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review of the diff\n\nThe frobnicator rename is sound; the boundary case at line 42 is handled by the new guard, and the docs match the shipped behavior.\n\n### Verdict\nReady for merge - no blocking findings."
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "f-a2",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "Continuing the verification: the middle-pass rerun of the suite also exits 0, with the fixture table unchanged."
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "f-a3",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "One follow-up: the instrument re-run also exits 0, so no check has failed (verified above). My verdict stands unchanged:\n\nVerdict: Ready for merge.\n\n**Stopping Point**: Clean stopping point reached -- review posted."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 7,
+    "total_cost_usd": 1.11,
+    "session_id": "fixture",
+    "uuid": "f-r1",
+    "result": "Review complete.",
+    "permission_denials": []
+  }
+]

@@ -96,6 +96,11 @@ declare -A expected=(
   [quota-exhausted-midrun.json]=skip
   [quota-exhausted-midrun-with-verdict.json]=pass
   [verdict-label-format.json]=pass
+  # gha#710: a review split across assistant blocks, each carrying a verdict
+  # line -- the posted text must be the whole span, not the tail. The
+  # must_contain needle is block A's analysis, which the pre-#710 last-block
+  # extraction dropped.
+  [verdict-split-across-blocks.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -131,6 +136,10 @@ declare -A expected=(
 # (gha#173): the block it must contain, and a block it must NOT contain.
 declare -A must_contain=(
   [verdict-not-last-block.json]='Ready for merge'
+  # The needle is the MIDDLE, non-verdict block: it discriminates both the
+  # pre-#710 tail-only extraction (which drops it along with block A) and a
+  # hypothetical first+last-only join (which keeps A but drops it).
+  [verdict-split-across-blocks.json]='middle-pass rerun of the suite'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -251,6 +260,7 @@ assert_log() {
 declare -A expected_cost=(
   [genuine-finished-review.json]=0.42
   [spawn-denials-only-retryable.json]=4.21
+  [verdict-split-across-blocks.json]=1.11
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
