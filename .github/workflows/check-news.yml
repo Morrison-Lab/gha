@@ -12,6 +12,14 @@ name: Check NEWS.md Changelog (reusable)
 # can't be overridden from here, so a PR labeled literally "no changelog"
 # still short-circuits the check even when no-changelog-label is set to ''
 # below.
+#
+# Both the job-level `if` and the composite's own recognition read the
+# labels frozen into the TRIGGERING EVENT's payload, which is stale for any
+# label applied after that event (bump-dev-version labels its PR after
+# opening it) and stays stale across run approvals and re-runs. The
+# live-labels step inside the job is the authority for that case: it reads
+# the labels as they are now and skips the check when either the input label
+# or the composite's hardcoded spelling is present (gha#721).
 
 on:
   workflow_call:
@@ -46,14 +54,47 @@ jobs:
     # everything else from the event payload.
     permissions:
       contents: read
+      # For the live-label read below; the event payload's labels are stale
+      # for any label applied after the triggering event.
+      issues: read
     if: ${{ !contains(github.event.pull_request.labels.*.name, inputs.no-changelog-label) }}
     steps:
+      - name: Check live labels for an exemption
+        id: live-labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_LABEL: ${{ inputs.no-changelog-label }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # The job-level `if` above reads the labels frozen into the
+          # triggering event's payload. A label applied AFTER that event --
+          # e.g. bump-dev-version labels its PR after opening it -- is
+          # invisible there, and approving or re-running a gated run reuses
+          # the same stale payload, so the exemption could never fire for
+          # such a run. This step is the authority: it reads the labels as
+          # they are NOW, matching both the configurable input label and the
+          # spelling the wrapped action hardcodes ("no changelog").
+          exempt=false
+          if [ -n "$PR_NUMBER" ]; then
+            while IFS= read -r label; do
+              [ -z "$label" ] && continue
+              if { [ -n "$INPUT_LABEL" ] && [ "$label" = "$INPUT_LABEL" ]; }                  || [ "$label" = "no changelog" ]; then
+                exempt=true
+              fi
+            done < <(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/labels" --jq '.[].name')
+          fi
+          echo "exempt=$exempt" >> "$GITHUB_OUTPUT"
+          echo "live-label exemption: $exempt"
+
       - name: Checkout repository
+        if: steps.live-labels.outputs.exempt != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Check for added news/changelog fragments
+        if: steps.live-labels.outputs.exempt != 'true'
         id: check-fragments
         env:
           BASE_REF: ${{ github.base_ref || 'main' }}
@@ -68,7 +109,9 @@ jobs:
           fi
 
       - name: Check Changelog Action
-        if: steps.check-fragments.outputs.fragment_found != 'true'
+        if: >-
+          steps.live-labels.outputs.exempt != 'true' &&
+          steps.check-fragments.outputs.fragment_found != 'true'
         uses: UCD-SERG/changelog-check-action@0189fc7eedec3ef3e9648c713908f6f2a6e99057 # v2 (major-only tag; no vX.Y.Z published)
         with:
           changelog: ${{ inputs.changelog }}
