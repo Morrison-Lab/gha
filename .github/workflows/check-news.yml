@@ -75,14 +75,26 @@ jobs:
           # such a run. This step is the authority: it reads the labels as
           # they are NOW, matching both the configurable input label and the
           # spelling the wrapped action hardcodes ("no changelog").
+          #
+          # The API read is deliberately fail-loud: captured in a plain
+          # assignment so `set -e` sees a failure, because an empty label
+          # stream from a swallowed error would silently reproduce exactly
+          # the stale-exemption defect this step exists to fix. Matching is
+          # case-insensitive on both sides, mirroring the `contains()`
+          # comparison the job-level `if` performs on the payload path.
           exempt=false
           if [ -n "$PR_NUMBER" ]; then
+            labels=$(gh api --paginate               "repos/${{ github.repository }}/issues/$PR_NUMBER/labels"               --jq '.[].name')
+            input_lc=$(printf '%s' "$INPUT_LABEL" | tr '[:upper:]' '[:lower:]')
             while IFS= read -r label; do
               [ -z "$label" ] && continue
-              if { [ -n "$INPUT_LABEL" ] && [ "$label" = "$INPUT_LABEL" ]; }                  || [ "$label" = "no changelog" ]; then
+              label_lc=$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')
+              if { [ -n "$input_lc" ] && [ "$label_lc" = "$input_lc" ]; } ||
+                 [ "$label_lc" = "no changelog" ]; then
                 exempt=true
+                break
               fi
-            done < <(gh api "repos/${{ github.repository }}/issues/$PR_NUMBER/labels" --jq '.[].name')
+            done <<< "$labels"
           fi
           echo "exempt=$exempt" >> "$GITHUB_OUTPUT"
           echo "live-label exemption: $exempt"
