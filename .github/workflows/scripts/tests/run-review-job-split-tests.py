@@ -529,8 +529,21 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
 
     review_if = " ".join(str(review.get("if") or "").split())
     check(
+        "github.event_name == 'workflow_dispatch' && "
+        "needs.gather-context.outputs.dispatch-guard-blocked != 'true' && "
         "needs.gather-context.result != 'failure'" in review_if,
-        "claude-review excludes a failed gather-context (gha#679)",
+        "claude-review's dispatch arm excludes a failed gather-context (gha#679)",
+    )
+    # gha#704 review round 1: the exclusion must not ALSO apply to
+    # pull_request events -- there reviewed-head comes from the event payload
+    # independent of gather-context, so a recoverable stash failure would
+    # silently skip a perfectly verifiable review. One occurrence, inside the
+    # dispatch arm, is the correct shape; a second (top-level or
+    # pull_request-arm) occurrence is the over-reach.
+    check(
+        review_if.count("needs.gather-context.result != 'failure'") == 1,
+        "the failed-gather exclusion appears exactly once, scoped to the "
+        "dispatch arm (gha#704)",
     )
 
     # gha#679: a renamed artifact on either side downloads nothing and lands
@@ -781,7 +794,10 @@ jobs:
       always() &&
       needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
-      needs.gather-context.result != 'failure'
+      (
+        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true' && needs.gather-context.result != 'failure') ||
+        github.event_name != 'workflow_dispatch'
+      )
 {review_conc}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
     permissions:
@@ -1365,9 +1381,16 @@ runs:
         )
         failures += mutate(
             "claude-review admitting a failed gather-context fails",
-            "      needs.gather-context.result != 'failure'",
-            "      true",
-            "claude-review excludes a failed gather-context",
+            " && needs.gather-context.result != 'failure')",
+            ")",
+            "dispatch arm excludes a failed gather-context",
+        )
+        failures += mutate(
+            "hoisting the failed-gather exclusion to the top level fails",
+            "      needs.gather-context.result != 'cancelled' &&\n",
+            "      needs.gather-context.result != 'cancelled' &&\n"
+            "      needs.gather-context.result != 'failure' &&\n",
+            "appears exactly once, scoped to the dispatch arm",
         )
         failures += mutate(
             "download artifact name without run_attempt fails",

@@ -80,7 +80,9 @@ Read its result as follows.
 The gate skips gray whenever no review was attempted. That covers anything that
 made the `claude-review` job's own `if:` false --- a draft, fork, or
 bot-authored PR, a dispatch blocked by the fork/Dependabot guard, or the
-context-gathering job having been cancelled or failed --- plus a
+context-gathering job having been cancelled (or, on a dispatched review,
+failed --- an ordinary PR event keeps its event-pinned head, so a failed
+context-gather does not suppress its review) --- plus a
 `claude-review` run canceled by a newer run of the same PR
 (`cancel-in-progress`,
 [#585](https://github.com/Morrison-Lab/gha/issues/585)):

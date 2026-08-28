@@ -6,8 +6,9 @@
   wrote `stale=false`,
   and stamped the posted comment with a live-head API fetch --
   an unverifiable review naming a commit the model may never have read.
-  The `claude-review` job's `if:` now also excludes a failed
-  `gather-context`,
+  The `claude-review` job's dispatch arm now also excludes a failed
+  `gather-context` (scoped to `workflow_dispatch` only,
+  since a PR event's head is event-pinned regardless),
   the posted comment stamps exactly the SHA the stale test bounded
   (no live-head fallback),
   and the consumer reference page catches up with gha#585

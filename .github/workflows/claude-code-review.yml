@@ -487,19 +487,23 @@ jobs:
     # PRs (forks can't read the OAuth token), and bot-triggered `synchronize`
     # events (e.g. @claude pushing a commit), which would otherwise red-X an
     # automatic review of a bot-authored diff.
-    # A FAILED gather-context is excluded too (gha#679): on workflow_dispatch
-    # there is no event-pinned head, so a failed gather-context leaves the
-    # posting job with no stash-head either -- the model would run with no SHA
-    # anywhere to bound what it reviewed, and the review could only be posted
-    # against a live-head fetch, which is exactly the unverifiable-review
-    # shape post-review now fails closed on.
+    # On workflow_dispatch, a FAILED gather-context is excluded too (gha#679):
+    # that trigger has no event-pinned head, so a failed gather-context leaves
+    # the posting job with no stash-head either -- the model would run with no
+    # SHA anywhere to bound what it reviewed, and the review could only be
+    # posted against a live-head fetch, which is exactly the
+    # unverifiable-review shape post-review now fails closed on.
+    # The exclusion sits INSIDE the dispatch arm deliberately (gha#704 review
+    # round 1): on pull_request events reviewed-head comes straight from the
+    # event payload, independent of gather-context, so a recoverable
+    # pull_request-side stash failure must not suppress a review the
+    # event-pinned head makes perfectly verifiable.
     if: >-
       always() &&
       needs.gather-context.result != 'skipped' &&
       needs.gather-context.result != 'cancelled' &&
-      needs.gather-context.result != 'failure' &&
       (
-        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true') ||
+        (github.event_name == 'workflow_dispatch' && needs.gather-context.outputs.dispatch-guard-blocked != 'true' && needs.gather-context.result != 'failure') ||
         (
           github.event_name != 'workflow_dispatch' &&
           github.event.pull_request.draft == false &&
