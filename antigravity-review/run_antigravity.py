@@ -717,12 +717,44 @@ def main():
         )
         files_changed = sum(1 for line in lines if line.startswith("diff --git"))
         
+        def _skip_notice(what: str, actual: int, limit: int) -> None:
+            """Announce a size skip on the THREAD, not just in the job log.
+
+            A size skip is not a failure, so it exits 0 regardless of
+            --fail-on-error -- which means a green check is all the PR shows.
+            Logging to stderr and exiting leaves the thread indistinguishable
+            from "the reviewer has not run yet", the same silent-thread class
+            the error paths above were fixed for, and the one
+            report-gemini-failure (gha#379) posts a comment for even on a
+            graceful skip. gha#672 review, round 3.
+            """
+            msg = (
+                f"::warning::PR diff exceeds {what} ({actual} > {limit}). "
+                "Skipping review."
+            )
+            print(msg, file=sys.stderr)
+            if args.post_comment:
+                body = (
+                    f"> [!WARNING]\n"
+                    f"> **Antigravity review skipped: diff too large.**\n"
+                    f"> This PR's diff has {actual} {what.replace('max-diff-', '')}, "
+                    f"over the `{what}` limit of {limit}.\n"
+                    f">\n"
+                    f"> The check is green because a size skip is not a failure, "
+                    f"but **no review was performed**. Raise `{what}` on the "
+                    f"caller, or split the PR."
+                )
+                try:
+                    post_github_comment(pr_num, body, args.mode, diff=diff)
+                except Exception as err:  # never let the notice fail the run
+                    print(f"::warning::Could not post the size-skip notice: {err}", file=sys.stderr)
+
         if changed_lines > args.max_diff_lines:
-            print(f"::warning::PR diff exceeds max-diff-lines ({changed_lines} > {args.max_diff_lines}). Skipping review.", file=sys.stderr)
+            _skip_notice("max-diff-lines", changed_lines, args.max_diff_lines)
             sys.exit(0)
         
         if files_changed > args.max_diff_files:
-            print(f"::warning::PR diff exceeds max-diff-files ({files_changed} > {args.max_diff_files}). Skipping review.", file=sys.stderr)
+            _skip_notice("max-diff-files", files_changed, args.max_diff_files)
             sys.exit(0)
 
     system_instruction = (
