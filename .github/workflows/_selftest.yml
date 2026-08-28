@@ -272,7 +272,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Audits this repo's own .github/workflows/*.yml using actionlint
+          # Audits this repo's own workflows using actionlint, which does its
+          # own discovery and covers .yml and .yaml alike (gha#716)
           # (gha#582, gha#591). Shellcheck is disabled here deliberately: no
           # repository-wide shellcheck pass exists, and enabling it inside
           # this audit would surface pre-existing shellcheck findings across
@@ -3036,11 +3037,29 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The two audits below discover workflow files through the shared
+      # list-workflow-files.sh helper, so its own behaviour --- both
+      # extensions, top-level only, fail-closed on an empty list --- is
+      # pinned offline first (gha#716).
+      - name: Run workflow-discovery helper unit tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-list-workflow-files-tests.sh
+
       - name: Assert no workflow passes SUBMODULES_TOKEN to a top-level checkout's token input
         shell: bash
         run: |
           set -euo pipefail
-          if grep -rnE '^\s*token:\s*\$\{\{[^}]*SUBMODULES_TOKEN' .github/workflows/*.yml; then
+          # GitHub loads .yml and .yaml workflow files alike, so discovery goes
+          # through the shared helper rather than a *.yml glob --- a .yaml
+          # workflow bypassing this audit is the gha#705 / gha#716 gap. The
+          # helper fails closed on an empty list, so this step cannot pass
+          # having examined nothing.
+          # Command substitution, not process substitution: a helper failure
+          # inside `< <(...)` does not reach mapfile, so the array would come
+          # back empty and grep would fall through to reading stdin.
+          WORKFLOW_LIST="$(bash .github/workflows/scripts/list-workflow-files.sh)"
+          mapfile -t WORKFLOWS <<< "$WORKFLOW_LIST"
+          if grep -nE '^\s*token:\s*\$\{\{[^}]*SUBMODULES_TOKEN' "${WORKFLOWS[@]}"; then
             echo "::error::A workflow above passes SUBMODULES_TOKEN to a top-level actions/checkout 'token:' input (see gha#442) --- it authenticates a cross-owner submodule fetch, not the caller's own repo. Use the checkout-submodules composite's 'submodules-token:' input instead."
             exit 1
           fi
@@ -3050,12 +3069,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          UNPINNED=$(grep -rnE '^\s*uses:' .github/workflows/*.yml | grep -v 'uses:\s*\./' | grep -v 'uses:\s*\.' | grep -v 'Morrison-Lab/gha' | grep -vE '@[0-9a-f]{40}' || true)
+          # GitHub loads .yml and .yaml workflow files alike, so discovery goes
+          # through the shared helper rather than a *.yml glob --- a .yaml
+          # workflow bypassing this audit is the gha#705 / gha#716 gap. The
+          # helper fails closed on an empty list, so this step cannot pass
+          # having examined nothing.
+          # Command substitution, not process substitution: a helper failure
+          # inside `< <(...)` does not reach mapfile, so the array would come
+          # back empty and grep would fall through to reading stdin.
+          WORKFLOW_LIST="$(bash .github/workflows/scripts/list-workflow-files.sh)"
+          mapfile -t WORKFLOWS <<< "$WORKFLOW_LIST"
+          UNPINNED=$(grep -nE '^\s*uses:' "${WORKFLOWS[@]}" | grep -v 'uses:\s*\./' | grep -v 'uses:\s*\.' | grep -v 'Morrison-Lab/gha' | grep -vE '@[0-9a-f]{40}' || true)
           if [ -n "$UNPINNED" ]; then
             echo "::error::Unpinned third-party actions found in workflows (see gha#328):\n$UNPINNED"
             exit 1
           fi
-          echo "All third-party actions in .github/workflows/*.yml are SHA-pinned."
+          echo "All third-party actions in ${#WORKFLOWS[@]} workflow file(s) are SHA-pinned."
 
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,
