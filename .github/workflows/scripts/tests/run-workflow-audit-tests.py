@@ -316,6 +316,58 @@ def main() -> int:
             audit(token, inherit) == 0,
         )
 
+        # GitHub resolves an action's inputs case-insensitively, so a
+        # differently-cased key is the same input and must not slip through.
+        for spelling in ("Token", "TOKEN"):
+            cased = root / f"token-cased-{spelling}"
+            write(
+                cased,
+                "a.yml",
+                "jobs:\n"
+                "  run:\n"
+                "    steps:\n"
+                f"      - uses: actions/checkout@{'a' * 40}\n"
+                "        with:\n"
+                f"          {spelling}: {EXPR} secrets.SUBMODULES_TOKEN }}}}\n",
+            )
+            check(
+                f"token: a step input spelled '{spelling}' is still flagged",
+                audit(token, cased) == 1,
+            )
+
+        cased_job = root / "token-cased-job"
+        write(
+            cased_job,
+            "a.yml",
+            "jobs:\n"
+            "  call:\n"
+            "    uses: other/repo/.github/workflows/x.yml@" + ("b" * 40) + "\n"
+            "    secrets:\n"
+            f"      Token: {EXPR} secrets.SUBMODULES_TOKEN }}}}\n",
+        )
+        check(
+            "token: a job-level input spelled 'Token' is still flagged",
+            audit(token, cased_job) == 1,
+        )
+
+        # A differently-cased `submodules-token` is still a DIFFERENT key, so
+        # case-insensitivity must not widen the match to it.
+        cased_ok = root / "token-cased-submodules"
+        write(
+            cased_ok,
+            "a.yml",
+            "jobs:\n"
+            "  run:\n"
+            "    steps:\n"
+            f"      - uses: actions/checkout@{'a' * 40}\n"
+            "        with:\n"
+            f"          Submodules-Token: {EXPR} secrets.SUBMODULES_TOKEN }}}}\n",
+        )
+        check(
+            "token: 'Submodules-Token' is still a different key",
+            audit(token, cased_ok) == 0,
+        )
+
         # ... and it is the ONLY one. A scalar `with:`, or a `secrets:` naming
         # anything else, is a block the audit never examined.
         bad_scalars = {

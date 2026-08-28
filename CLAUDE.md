@@ -2052,9 +2052,9 @@ writes both --- three action references, all in `altdoc-multiversion-docs.yml`,
 were exempt from the pin audit on that basis alone (measured 2026-08-28 against
 `main` at 7719d04; two further `- uses:` lines match textually but sit inside
 `_selftest.yml` heredocs and are not references).
-Widening the anchor is not the fix: the one new hit it produces in this tree is
-`_selftest.yml`'s heredoc-written flawed fixture, which is text inside a `run:`
-block rather than a reference GitHub resolves.
+Widening the anchor is not the fix: two of the five lines it newly matches are
+`_selftest.yml`'s heredoc-written fixture workflows, which are text inside a
+`run:` block rather than references GitHub resolves.
 A walk over parsed `jobs.*.steps[].uses` and `jobs.*.uses` sees both spellings
 by construction and cannot reach heredoc content at all.
 The same argument applies to the token audit, which now tells `token:` from
@@ -2126,6 +2126,10 @@ A parsed walk that visits only `steps` would have been a coverage regression
 wearing a refactor's clothes --- which is the general risk when replacing a
 text scan with a structural one, since the text scan's reach was never written
 down anywhere.
+Input keys are compared case-insensitively, because GitHub's runner resolves
+an action's inputs that way --- so a `Token:` that reads as a different key here
+is the same input there, and matching case-sensitively would leave a one-keystroke
+bypass of the whole audit.
 `secrets: inherit` is the one legitimate scalar in either block and is skipped;
 a scalar `with:`, or a `secrets:` naming anything else, is refused, because
 skipping every string would leave a block the audit never examined reported as
@@ -2139,7 +2143,7 @@ an annotation, so an unmuted suite decorates a passing job with a dozen errors
 it deliberately provoked.
 
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Seventeen mutations were confirmed to turn it red rather than assumed to: a
+Eighteen mutations were confirmed to turn it red rather than assumed to: a
 `*.yml`-only discovery (against both consumers), a dropped empty-directory
 guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
 step-level `uses:` walk, a token lookup matching any key containing `token`, a
@@ -2147,7 +2151,8 @@ bare-prefix self-exemption, a substring secret match, a skipped malformed
 `steps`, a tolerated missing `jobs`, a skipped non-string step-level `uses:`,
 a pin regex rejecting a `docker://` image digest, a pin test accepting
 either form everywhere, a token walk skipping job-level blocks, and a skip of every scalar block
-rather than of `secrets: inherit` alone.
+rather than of `secrets: inherit` alone, and a case-sensitive input-key
+match.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

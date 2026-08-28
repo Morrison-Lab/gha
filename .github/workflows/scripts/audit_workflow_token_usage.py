@@ -49,6 +49,11 @@ from workflow_discovery import (  # noqa: E402
 
 SECRET = "SUBMODULES_TOKEN"
 
+# GitHub resolves an action's inputs case-insensitively, so `Token:` and
+# `token:` are the same input. Comparing case-sensitively would leave a
+# one-keystroke bypass of this whole audit.
+TOKEN_KEY = "token"
+
 # The identifier, not a substring of one: `NOT_SUBMODULES_TOKEN` is a different
 # secret, and blocking a workflow that uses it would be a false positive on a
 # check whose whole value is that a failure means something.
@@ -73,7 +78,7 @@ def violations(path: pathlib.Path, doc) -> list[str]:
     # Job level first: a reusable-workflow caller passes values through `with:`
     # and `secrets:`, which no walk over `steps` can see.
     for job_id, block_name, key, value in iter_job_inputs(path, doc):
-        if key != "token":
+        if key.lower() != TOKEN_KEY:
             continue
         _reject_container(path, f"job '{job_id}' {block_name}.token", value)
         if isinstance(value, str) and SECRET_REF.search(value):
@@ -89,9 +94,15 @@ def violations(path: pathlib.Path, doc) -> list[str]:
                 f"{path}: job '{job_id}' step {index} has 'with' as "
                 f"{type(with_block).__name__}, not a mapping"
             )
-        # Exactly the `token` key. `submodules-token` legitimately carries this
-        # secret and is a different key, so no prefix or suffix matching here.
-        value = with_block.get("token")
+        # Exactly the `token` key, case-insensitively. `submodules-token`
+        # legitimately carries this secret and is a different key, so no prefix
+        # or suffix matching --- but GitHub resolves an action's inputs
+        # case-insensitively, so `Token:` is the same input and matching case
+        # exactly would leave a one-keystroke bypass.
+        value = next(
+            (v for k, v in with_block.items() if str(k).lower() == TOKEN_KEY),
+            None,
+        )
         _reject_container(path, f"job '{job_id}' step {index} with.token", value)
         if isinstance(value, str) and SECRET_REF.search(value):
             action = step.get("uses")
