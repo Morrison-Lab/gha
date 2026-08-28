@@ -7,8 +7,9 @@ A GitHub Actions workflow job must either run on a runner (declaring ``runs-on``
 or call a reusable workflow (declaring ``uses``).
 
 1. **Runner jobs (`runs-on`)**: Every job running on a runner must declare
-   ``timeout-minutes`` to prevent runaway jobs from consuming infinite runner
-   minutes (gha#328, gha#504).
+   ``timeout-minutes`` so the bound on a runaway job is deliberate and
+   usually far tighter than GitHub's own 360-minute default job timeout
+   (gha#328, gha#504).
 2. **Caller jobs (`uses`)**: A job invoking a reusable workflow cannot legally
    set ``timeout-minutes`` -- GitHub Actions rejects it outright at workflow
    load time (startup failure with 0 jobs, gha#582). Only the following keys
@@ -112,7 +113,10 @@ def validate_workflow_doc(doc, filename: str) -> list[str]:
                 )
             else:
                 timeout = job["timeout-minutes"]
-                # Must be an integer or expression/string
+                # Reject only a missing or empty value here; whether the
+                # value is a well-formed integer or expression is the
+                # adjacent actionlint audit's job (schema validation), not
+                # this guard's.
                 if timeout is None or (isinstance(timeout, str) and not timeout.strip()):
                     errors.append(
                         f"{filename}: runner job '{job_id}' has empty 'timeout-minutes'"
@@ -138,6 +142,17 @@ def validate_workflow_files(files: list[pathlib.Path]) -> list[str]:
         errors = validate_workflow_doc(doc, str(file_path))
         all_errors.extend(errors)
     return all_errors
+
+
+def discover_workflows(workflows_dir) -> list:
+    """Return the workflow files GitHub itself would discover.
+
+    Both extensions, not just ``*.yml``: GitHub loads ``.yml`` and ``.yaml``
+    workflow files alike, and this repo's own detect-pr-workflow-edits.sh
+    recognizes both -- a ``.yaml`` workflow silently bypassing this guard is
+    exactly the coverage gap gha#705 records.
+    """
+    return sorted([*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")])
 
 
 def run_self_test() -> None:
@@ -305,6 +320,23 @@ jobs:
                             f"Got errors: {errors}"
                         )
 
+    # gha#705: the table above hands content straight to the validator, so it
+    # cannot see the DISCOVERY glob -- which is where the .yaml gap lived. A
+    # tmpdir carrying one file per extension (plus one non-workflow file that
+    # must be ignored) pins discovery itself; reverting discover_workflows to
+    # a *.yml-only glob turns this red (confirmed by mutation).
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+        (tmp_path / "a.yml").write_text("name: a\n", encoding="utf-8")
+        (tmp_path / "b.yaml").write_text("name: b\n", encoding="utf-8")
+        (tmp_path / "c.txt").write_text("not a workflow\n", encoding="utf-8")
+        found = [p.name for p in discover_workflows(tmp_path)]
+        if found != ["a.yml", "b.yaml"]:
+            die(
+                "Self-test 'discovery_both_extensions' failed: expected "
+                f"['a.yml', 'b.yaml'], got {found} (gha#705)"
+            )
+
     print("All run-workflow-job-guard self-tests passed cleanly.")
 
 
@@ -338,7 +370,7 @@ def main(argv: list[str] | None = None) -> None:
     if not files_to_check:
         if not args.workflows_dir.is_dir():
             die(f"Workflows directory not found: {args.workflows_dir}")
-        files_to_check = sorted(args.workflows_dir.glob("*.yml"))
+        files_to_check = discover_workflows(args.workflows_dir)
 
     if not files_to_check:
         die("No workflow files found to validate.")
