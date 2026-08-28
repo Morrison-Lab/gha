@@ -188,7 +188,11 @@ def check(workflows_dir: pathlib.Path, docs: list[pathlib.Path]) -> int:
             if extra:
                 print(
                     f"::error file={doc_path}::listed as read-only but the "
-                    f"workflow declares a write permission (or does not exist): "
+                    f"workflow declares write permissions, leaves at least "
+                    f"one job's permissions undeclared with no workflow-level "
+                    f"default (inheriting potentially-writable caller "
+                    f"permissions), is not a reusable workflow, or does not "
+                    f"exist: "
                     f"{', '.join(extra)}"
                 )
         else:
@@ -327,7 +331,7 @@ def run_self_test() -> int:
             "a write-permissioned capability in the list fails",
             run(wf, [doc("extra.md", "`alpha`, `beta`, `gamma`")]),
             False,
-            "declares a write permission",
+            "declares write permissions",
         )
 
         # 4. A non-reusable workflow is not part of the expected set, so listing
@@ -382,7 +386,7 @@ def run_self_test() -> int:
             "a partially declared workflow is not read-only",
             run(wf3, [doc("partial.md", "`alpha`, `partial`")]),
             False,
-            "declares a write permission",
+            "declares write permissions",
         )
 
     if failures:
