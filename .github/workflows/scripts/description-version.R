@@ -5,6 +5,11 @@ here <- dirname(sub("^--file=", "", grep("^--file=", commandArgs(FALSE), value =
 file_candidates <- c(
   file.path(here, "..", "..", "ghatools", "R", "version_helpers.R"),
   file.path(here, "..", "..", "..", "ghatools", "R", "version_helpers.R"),
+  # Four levels up covers the test suite: source()d from
+  # test-description-version.R, `here` is the --file= dir of the TEST file
+  # (scripts/tests/), so repo root is one level further than when this
+  # script is invoked directly (gha#703).
+  file.path(here, "..", "..", "..", "..", "ghatools", "R", "version_helpers.R"),
   "ghatools/R/version_helpers.R"
 )
 rpkg_file <- file_candidates[file.exists(file_candidates)][1]
