@@ -1,0 +1,40 @@
+name: Check R formatting
+description: >-
+  Fail when any R file in the caller would be rewritten by Air, Posit's
+  R formatter. Check-only: it never writes. Complements lintr
+  (`lint-changed-lines`): Air settles layout; lintr decides the rest
+  of R style.
+  There is no R session to start -- Air is a Rust binary.
+  As of Air 0.11.0 the CLI still formats `.R`/`.r` only
+  (not `.Rmd`/`.qmd`; include set from 0.9.0, posit-dev/air#476; still
+  current as of 0.11.0, checked 2026-08-26).
+inputs:
+  version:
+    description: >-
+      Air release to install via posit-dev/setup-air (for example `0.11.0`).
+      Pin a release rather than `latest`, so a formatter change cannot
+      silently rewrite what this check accepts. Default is the version
+      IndrajeetPatil/workflows locked on 2026-08-26 (`0.11.0`; gha#333
+      cited `0.9.0`, which that workflow has since bumped).
+    default: '0.11.0'
+  path:
+    description: >-
+      Path to format, relative to the repository root. Passed after
+      `--` to `air format --check -- <path>` so a path that looks like
+      a flag is still a path. Defaults to `.` (the whole tree),
+      matching upstream.
+    default: '.'
+runs:
+  using: composite
+  steps:
+    - name: Install Air
+      uses: posit-dev/setup-air@cf390573ff4fe0f198f35df3a642b1409328d859 # v1.0.1
+      with:
+        version: ${{ inputs.version }}
+        github-token: ${{ github.token }}
+
+    - name: Check formatting
+      shell: bash
+      env:
+        AIR_PATH: ${{ inputs.path }}
+      run: air format --check -- "$AIR_PATH"

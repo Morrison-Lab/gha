@@ -1,0 +1,36 @@
+name: Check Formatting (reusable)
+
+# Derived from IndrajeetPatil/workflows check-formatting.yaml (MIT).
+# https://github.com/IndrajeetPatil/workflows/blob/main/.github/workflows/check-formatting.yaml
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: >-
+          Air release to install via posit-dev/setup-air (for example `0.11.0`).
+          Pin a release rather than `latest`.
+        type: string
+        default: '0.11.0'
+      path:
+        description: >-
+          Path to format, relative to the repository root. Passed after
+          `--` to `air format --check -- <path>`.
+        type: string
+        default: '.'
+
+jobs:
+  check-formatting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check R formatting
+        uses: Morrison-Lab/gha/check-formatting@v2
+        with:
+          version: ${{ inputs.version }}
+          path: ${{ inputs.path }}

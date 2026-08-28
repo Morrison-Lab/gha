@@ -103,7 +103,7 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `claude-manage-project`, and `r-cmd-check` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, and `r-cmd-check` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -125,6 +125,14 @@ which is why the capabilities above moved to `@v2`.
   every known misspelling the corpus already carries, and unknown jargon
   is not an error, so there is no `inst/WORDLIST` to grow into the way
   `spellcheck.yml` does.
+  `check-formatting/` wraps `posit-dev/setup-air` and
+  `air format --check -- <path>`.
+  It has no helper script: Air is a Rust binary, so there is no R
+  session.
+  Whole-tree (not diff-scoped): the check is check-only, and consumers
+  opt in with their own reformat commit, so a first run going red on an
+  unformatted tree is the intended adoption cost rather than
+  pre-existing drift to tolerate.
   `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
   the history but the **index** (`git ls-files -i -c -X`), for tracked
   operating-system and editor detritus.

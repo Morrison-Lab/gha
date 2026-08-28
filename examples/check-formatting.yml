@@ -1,0 +1,28 @@
+# Copy to .github/workflows/check-formatting.yml in your repo.
+#
+# Adopting this in a repo that is not already Air-formatted is a large,
+# noisy first-pass diff. Commit an air.toml at the project root first
+# (empty is enough -- Air then ignores IDE tab-width and any user-level
+# ~/.config/air/air.toml). Run air format and commit that rewrite on
+# its own, then enable this check. The check itself never rewrites
+# the branch.
+#
+# Only contents:read is needed (the default), so no permissions block
+# is required.
+name: Check Formatting
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-formatting.yml@v2
+    # with:
+    #   # Pin a different Air release than the default (0.11.0).
+    #   version: '0.10.0'
+    #   # Limit the check to a subdirectory.
+    #   path: 'R'

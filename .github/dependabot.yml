@@ -18,6 +18,7 @@ updates:
       - "/" # .github/workflows/
       - "/antigravity-review"
       - "/check-bibliography-dois"
+      - "/check-formatting"
       - "/check-links"
       - "/check-non-standard-chars"
       - "/check-phi"
