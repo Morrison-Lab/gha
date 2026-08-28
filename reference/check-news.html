@@ -736,7 +736,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
+<p>Read-only: <code>contents: read</code> plus <code>issues: read</code> (the live-label read behind the skip-label exemption). A caller with no explicit <code>permissions:</code> block needs nothing; a caller that pins the calling job’s <code>permissions</code> must include <code>issues: read</code> alongside <code>contents: read</code>.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
