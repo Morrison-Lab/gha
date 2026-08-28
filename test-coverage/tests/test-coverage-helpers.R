@@ -4,12 +4,6 @@
 # logic used by run-coverage.R. Run with:
 #   Rscript test-coverage/tests/test-coverage-helpers.R
 # Does not load {covr}.
-#
-# adapted from
-# .github/workflows/scripts/tests/test-description-version.R;
-# check_error() here adds a message-pattern argument.
-# Extracting a shared helper is tracked in
-# https://github.com/Morrison-Lab/gha/issues/682.
 
 sourced <- FALSE
 candidates <- c(
@@ -26,36 +20,20 @@ for (p in candidates) {
 }
 if (!sourced) stop("could not locate coverage-helpers.R")
 
-check <- function(label, actual, expected) {
-  if (!identical(actual, expected)) {
-    stop(sprintf(
-      "FAIL: %s\n  expected: %s\n  actual:   %s",
-      label,
-      paste(deparse(expected), collapse = " "),
-      paste(deparse(actual), collapse = " ")
-    ))
+sourced <- FALSE
+candidates <- c(
+  ".github/workflows/scripts/tests/r-test-helpers.R",
+  "../../.github/workflows/scripts/tests/r-test-helpers.R",
+  "r-test-helpers.R"
+)
+for (p in candidates) {
+  if (file.exists(p)) {
+    source(p)
+    sourced <- TRUE
+    break
   }
-  cat(sprintf("ok - %s\n", label))
 }
-
-check_error <- function(label, expr, pattern) {
-  msg <- tryCatch({
-    force(expr)
-    NA_character_
-  }, error = function(e) conditionMessage(e))
-  if (is.na(msg)) {
-    stop(sprintf("FAIL: %s (expected an error, none raised)", label))
-  }
-  if (!grepl(pattern, msg)) {
-    stop(sprintf(
-      "FAIL: %s\n  expected message matching: %s\n  actual: %s",
-      label,
-      pattern,
-      msg
-    ))
-  }
-  cat(sprintf("ok - %s\n", label))
-}
+if (!sourced) stop("could not locate r-test-helpers.R")
 
 check("empty type defaults to tests", parse_coverage_type(""), "tests")
 check(
