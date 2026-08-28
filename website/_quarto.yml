@@ -54,6 +54,7 @@ website:
           - reference/assemble-news.qmd
           - reference/test-coverage.qmd
           - reference/check-extra.qmd
+          - reference/r-cmd-check.qmd
           - reference/update-snapshots.qmd
           - reference/summary.qmd
           - reference/quarto-publish.qmd

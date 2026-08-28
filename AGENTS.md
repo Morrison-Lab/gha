@@ -108,6 +108,7 @@ python3 -m pytest check-typos/tests/ -q
 bash check-junk-files/tests/test-check-junk-files.sh
 bash check-extra/tests/test-check-extra.sh
 Rscript lint-changed-files/tests/test-lint-r-scope.R
+python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test
 bash check-formatting/tests/test-check-formatting.sh
 ```
 

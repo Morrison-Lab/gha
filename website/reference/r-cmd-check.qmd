@@ -1,0 +1,158 @@
+---
+title: "r-cmd-check.yml"
+---
+
+Run [`R CMD check`](https://r-pkgs.org/check.html) across an OS x R-version
+matrix, wrapping [`r-lib/actions`](https://github.com/r-lib/actions)
+`setup-r`, `setup-r-dependencies`, and `check-r-package`.
+A second caller job with `hard: true` runs a Depends/Imports/LinkingTo-only
+check that is gated to `pull_request`.
+
+Two designs come from
+[`IndrajeetPatil/workflows`](https://github.com/IndrajeetPatil/workflows)
+`R-CMD-check.yaml` (MIT): the `hard` input, and `cache: false` on that job
+so a restored pak cache cannot silently contain Suggests.
+Do not copy that file's `concurrency.group` of
+`${{ github.workflow }}-${{ github.head_ref }}` with no `github.ref`
+fallback: `head_ref` is empty on `push`, so every push across every branch
+collapsed into one group.
+This reusable workflow sets no concurrency;
+the [example stub](#example) keys on `github.ref`.
+
+`error-on` defaults to `'"note"'` to match
+[`rpt`](https://github.com/Morrison-Lab/rpt)'s bespoke workflow, not
+r-lib's `'"warning"'`.
+The `_R_CHECK_*` knobs, the matrix, the timeout, and rpt's Julia / Quarto /
+pandoc / `rocker/verse` steps are inputs rather than hard-coded.
+See [Migrating from rpt](#migrating-from-rpt) before treating this as a
+drop-in for that file.
+
+This capability is workflow-only (no root composite): the matrix, the
+two mutually exclusive jobs, and the optional Linux container are
+job-level, so splitting the steps into a composite would add a nested
+`@v2` bootstrap without reuse value, the same shape as
+`update-snapshots.yml`.
+
+## Inputs
+
+| Input | Type | Default | Description |
+|---|---|---|---|
+| `hard` | boolean | `false` | Run the hard-dependencies-only job instead of the full matrix. Gated to `pull_request`. Call the workflow twice from the stub if you want both. |
+| `extra-packages` | string | `''` | Extra r-lib/actions package specs appended after the check's own extras (`any::rcmdcheck` on the full matrix; knitr, rcmdcheck, rmarkdown, curl, and testthat on the hard job). |
+| `error-on` | string | `'"note"'` | R expression for `check-r-package` `error-on` on the full matrix. Default matches rpt (NOTEs fail). The hard job omits this so r-lib's `'"warning"'` default applies. |
+| `cran-incoming-remote` | boolean | `false` | Value for `_R_CHECK_CRAN_INCOMING_REMOTE_` and `_R_CHECK_CRAN_INCOMING_`. r-lib's `check-r-package` sets INCOMING false when unset, so REMOTE alone cannot turn incoming checks on. |
+| `force-suggests` | boolean | `false` | Value for `_R_CHECK_FORCE_SUGGESTS_` on the full matrix. The hard job always sets this `false`. |
+| `stop-on-invalid-numeric-version-inputs` | boolean | `true` | Value for `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_`. |
+| `path` | string | `'.'` | Path to the R package root (the directory holding `DESCRIPTION`). |
+| `config` | string | (r-lib 5-way JSON) | JSON array of `{os, r, http-user-agent?}` objects for the full matrix. Ignored when `hard` is true. |
+| `setup-pandoc` | boolean | `true` | Install Pandoc before the check. |
+| `install-quarto` | boolean | `false` | Install Quarto via `quarto-dev/quarto-actions/setup` before the check. On the full matrix, skipped on `ubuntu-latest` only when `linux-container` contains `verse`. Separate from r-lib `setup-r-dependencies`' own `install-quarto` (default `auto` when the tree has `.qmd` files). |
+| `setup-julia` | boolean | `false` | Install Julia before the check (for JuliaCall packages). |
+| `julia-version` | string | `'1'` | Julia version to install. Only used when `setup-julia` is true. |
+| `linux-container` | string | `''` | Container image for `ubuntu-latest` cells of the full matrix (e.g. `rocker/verse:latest`). Ignored on the hard job. Quarto install is skipped on ubuntu only when this image name contains `verse`. |
+| `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules before the check. |
+| `timeout-minutes` | number | `90` | Job timeout. rpt's bespoke workflow used 50. |
+| `build-args` | string | `'c("--no-manual","--compact-vignettes=gs+qpdf")'` | R expression forwarded to `check-r-package` `build_args`. |
+| `upload-snapshots` | boolean | `true` | Upload all testthat snapshots as an artifact (r-lib's wording). Default uploads on success too. |
+| `upload-results` | boolean | `true` | Upload the check results directory as a workflow artifact. |
+
+## Secrets
+
+| Secret | Required | Description |
+|---|---|---|
+| `SUBMODULES_TOKEN` | No | Token with read access to private submodules. Only needed when `checkout-submodules` is true. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Hard-dependencies check
+
+The standard matrix installs Suggests, so it cannot see a package that
+works for the author and breaks for a user who did not install them.
+`hard: true` installs only Depends, Imports, and LinkingTo, then adds
+back `knitr`, `rcmdcheck`, `rmarkdown`, `curl`, and `testthat` so the
+check itself can run.
+
+`cache: false` on that job is load-bearing, not a speed knob: a restored
+pak cache may already contain a Suggested package, which would make a
+green hard-deps run meaningless.
+It is hard-coded, not an input.
+
+The hard job also never uses `linux-container`.
+`rocker/verse` ships a large set of R packages, which is the same
+silent-Suggests failure `cache: false` exists to prevent.
+It omits `error-on` so r-lib's `'"warning"'` default applies:
+missing Suggests are NOTEs, and `error-on: note` would fail the
+job for the condition it exists to tolerate.
+
+## Migrating from rpt
+
+[`rpt`](https://github.com/Morrison-Lab/rpt)'s bespoke
+`.github/workflows/R-CMD-check.yaml` is not a drop-in for this
+workflow's defaults.
+Each of its steps has an equivalent or an input; none is silently
+dropped.
+This table is the feature-by-feature diff `CLAUDE.md` asks for before
+calling a reusable capability drop-in.
+Do not migrate `rpt` until a follow-up actually passes these through.
+
+| rpt step | This workflow |
+|---|---|
+| 5-way OS x R-version matrix, `fail-fast: false`, devel `http-user-agent: release` | Default `config` JSON. |
+| `container: rocker/verse:latest` on `ubuntu-latest` | `linux-container: rocker/verse:latest` on the full job. The hard job never uses it. |
+| `timeout-minutes: 50` | `timeout-minutes: 50` (default here is 90). |
+| `actions/checkout` with `submodules: recursive` | `checkout-submodules: true`. |
+| `r-lib/actions/setup-pandoc` | `setup-pandoc: true` (the default). |
+| `julia-actions/setup-julia@v3` | `setup-julia: true`. |
+| `quarto-dev/quarto-actions/setup@v2` when `os != ubuntu-latest` | `install-quarto: true`. Skipped on ubuntu only when `linux-container` contains `verse`. |
+| `setup-r` with `r-version`, `http-user-agent`, `use-public-rspm: true` | Always. |
+| `extra-packages: any::rcmdcheck` and `local::.` | `any::rcmdcheck` is always installed; pass `local::.` in `extra-packages` if you still want it. |
+| `error-on: '"note"'` | Default on the full matrix. The hard job omits `error-on` so r-lib's `'"warning"'` default applies (missing-Suggests NOTEs must not fail that job). |
+| `build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'` | Default `build-args`. |
+| (unset) `_R_CHECK_CRAN_INCOMING_REMOTE_`, `_R_CHECK_FORCE_SUGGESTS_`, `_R_CHECK_STOP_ON_INVALID_NUMERIC_VERSION_INPUTS_` | Inputs. `IndrajeetPatil/workflows` currently sets only `_R_CHECK_CRAN_INCOMING_REMOTE_: false` on the full job (fetched 2026-08-26); it does not set the other two. This workflow's `cran-incoming-remote` also sets `_R_CHECK_CRAN_INCOMING_`, because `check-r-package` forces INCOMING false when unset. `force-suggests: false` matches r-lib's unset override (and therefore rpt, which also leaves it unset). `stop-on-invalid-numeric-version-inputs: true` restates R's default (stop unless that env is `false`). |
+| `upload-snapshots: true` | Default `true`. |
+| (unset) `upload-results` (r-lib default `false`) | Default `true`. Pass `upload-results: false` to match rpt. |
+| No hard-deps job | Add the `R-CMD-check-hard` caller job from the example stub. |
+
+## Example
+
+```yaml
+# Copy to .github/workflows/r-cmd-check.yml in your repo.
+name: R-CMD-check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: r-cmd-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  R-CMD-check:
+    uses: Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2
+    # with:
+    #   error-on: '"note"'
+    #   cran-incoming-remote: false
+    #   force-suggests: false         # matches r-lib/check-r-package when unset
+    #   setup-julia: true
+    #   install-quarto: true
+    #   linux-container: rocker/verse:latest
+    #   checkout-submodules: true
+    #   timeout-minutes: 50
+  R-CMD-check-hard:
+    uses: Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2
+    with:
+      hard: true
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for the full caller stub.
+
+A brand-new capability is not usable at `@v2` until that tag slides past
+this merge; pin the example as-is and wait for the slide, or point a
+template repo at this branch to try it.
