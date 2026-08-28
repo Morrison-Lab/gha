@@ -103,7 +103,10 @@ runs:
         source "$FENCE_TRUNCATE_SCRIPT"
 
         if [[ -f "$REVIEW_FILE" ]]; then
-          review_bytes="$(wc -c < "$REVIEW_FILE")"
+          # BSD/macOS wc pads with leading spaces, and classify-opencode-run
+          # validates its argv as ^[0-9]+$ -- strip so a padded count is not
+          # rejected as non-numeric (gha#691; same class as gha#688).
+          review_bytes="$(wc -c < "$REVIEW_FILE" | tr -d '[:space:]')"
           review_text="$(cat "$REVIEW_FILE")"
         else
           review_bytes=0
