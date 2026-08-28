@@ -275,11 +275,13 @@ jobs:
           # Audits this repo's own .github/workflows/*.yml using actionlint
           # (gha#582, gha#591). Shellcheck is disabled here deliberately: no
           # repository-wide shellcheck pass exists, and enabling it inside
-          # this audit would reflag long-standing style notes across every
-          # inline script rather than the schema regressions the audit is
-          # for (gha#708); actionlint here enforces GitHub Actions schema,
-          # syntax, expression, and reusable workflow caller rules across
-          # all workflows.
+          # this audit would surface pre-existing shellcheck findings across
+          # a subset of workflows (36 findings in 10 of 63 files, mostly
+          # info/style, measured 2026-08-28 at shellcheck v1.7.12) rather
+          # than the schema regressions the audit is for (gha#708);
+          # actionlint here enforces GitHub Actions schema, syntax,
+          # expression, and reusable workflow caller rules across all
+          # workflows.
           actionlint -shellcheck ""
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
