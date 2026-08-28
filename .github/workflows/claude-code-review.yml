@@ -1088,7 +1088,9 @@ jobs:
       #    produced real text without a verdict, with a low denial count.
       # 2) Action short-circuits (gha#368): missing execution file or missing
       #    result object (e.g. transient setup/runner crash).
-      # A hard SDK error or high-denial stub (gha#198) is excluded.
+      # A hard SDK error or high-denial stub (gha#198) is excluded, and so is
+      # a background-agent stub (gha#551: an executed background spawn parked
+      # the turn; the guard withholds stub_review, so this gate never fires).
       - name: Retry Claude Code Review after a stub result or action short-circuit
         id: claude-review-retry
         if: >-

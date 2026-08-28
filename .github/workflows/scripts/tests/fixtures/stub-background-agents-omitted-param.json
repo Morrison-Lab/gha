@@ -1,0 +1,71 @@
+[
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "fixture-a1",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "Dispatching review passes."
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_bg01",
+          "name": "Agent",
+          "input": {
+            "description": "Review pass 1",
+            "prompt": "Review the diff for CLAUDE.md compliance and report findings.",
+            "subagent_type": "general-purpose"
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_bg02",
+          "name": "Agent",
+          "input": {
+            "description": "Review pass 2",
+            "prompt": "Review the diff for CLAUDE.md compliance and report findings.",
+            "subagent_type": "general-purpose"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "fixture-a1",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "I dispatched the review passes. **Stopping Point**: Not a clean stopping point / work remains queued: four background review agents (2 CLAUDE.md compliance passes, 2 Opus bug-scan passes) are still running. Once they complete, I still need to validate any flagged issues, then produce the final review output ending in a `### Verdict` line."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 13,
+    "total_cost_usd": 4.18,
+    "session_id": "fixture",
+    "uuid": "fixture-r1",
+    "result": "I dispatched the review passes. **Stopping Point**: Not a clean stopping point / work remains queued: four background review agents (2 CLAUDE.md compliance passes, 2 Opus bug-scan passes) are still running. Once they complete, I still need to validate any flagged issues, then produce the final review output ending in a `### Verdict` line.",
+    "permission_denials": [
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_d01",
+        "tool_input": {
+          "command": "gh pr view 1 --json title"
+        }
+      }
+    ]
+  }
+]

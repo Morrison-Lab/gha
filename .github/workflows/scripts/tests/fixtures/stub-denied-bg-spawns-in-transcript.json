@@ -1,0 +1,86 @@
+[
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "fixture-a1",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "Dispatching review passes."
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_dbg01",
+          "name": "Agent",
+          "input": {
+            "description": "Review pass 1",
+            "prompt": "Review the diff and report findings.",
+            "subagent_type": "general-purpose",
+            "run_in_background": true
+          }
+        },
+        {
+          "type": "tool_use",
+          "id": "toolu_dbg02",
+          "name": "Agent",
+          "input": {
+            "description": "Review pass 2",
+            "prompt": "Review the diff and report findings.",
+            "subagent_type": "general-purpose",
+            "run_in_background": true
+          }
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "session_id": "fixture",
+    "uuid": "fixture-a2",
+    "message": {
+      "role": "assistant",
+      "type": "message",
+      "content": [
+        {
+          "type": "text",
+          "text": "The spawn attempts were denied; summarizing what I have. No verdict was reached before the turn ended."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "total_cost_usd": 4.16,
+    "session_id": "fixture",
+    "uuid": "fixture-r1",
+    "result": "The spawn attempts were denied; summarizing what I have. No verdict was reached before the turn ended.",
+    "permission_denials": [
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_dbg01",
+        "tool_input": {
+          "description": "Review pass 1",
+          "prompt": "Review the diff and report findings.",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      },
+      {
+        "tool_name": "Agent",
+        "tool_use_id": "toolu_dbg02",
+        "tool_input": {
+          "description": "Review pass 2",
+          "prompt": "Review the diff and report findings.",
+          "subagent_type": "general-purpose",
+          "run_in_background": true
+        }
+      }
+    ]
+  }
+]
