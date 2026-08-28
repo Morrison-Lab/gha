@@ -86,33 +86,74 @@ def load_workflow(path: pathlib.Path):
     return doc
 
 
-def iter_steps(doc):
+def require_jobs(path: pathlib.Path, doc) -> dict:
+    """Return a workflow's ``jobs`` mapping, refusing anything else.
+
+    Skipping a malformed shape is the parsed-walk version of reading grep's
+    exit 2 as exit 1: the audit walks nothing and reports clean, and the file
+    that produced that verdict is the one nobody looked at. Every workflow
+    GitHub will run has a ``jobs`` mapping, so its absence or wrong type is a
+    defect in the file rather than a file with nothing to audit.
+    """
+    if not doc:
+        raise Unparsable(f"{path}: empty workflow --- nothing to audit")
+    jobs = doc.get("jobs")
+    if jobs is None:
+        raise Unparsable(f"{path}: no 'jobs' mapping --- nothing to audit")
+    if not isinstance(jobs, dict) or not jobs:
+        raise Unparsable(
+            f"{path}: 'jobs' is {type(jobs).__name__}, not a non-empty mapping"
+        )
+    return jobs
+
+
+def iter_steps(path: pathlib.Path, doc):
     """Yield ``(job_id, step_index, step)`` for every parsed step in a workflow.
 
     Steps written as ``- uses: x`` and as ``- name: y`` / ``uses: x`` are the
     same parsed mapping, which is the whole reason to walk structure instead of
     text: the two spellings are indistinguishable here, where a line-anchored
     regex sees only the second (gha#720).
+
+    A job with no ``steps`` is legitimate --- that is what a reusable-workflow
+    caller looks like --- but a ``steps`` that is present and not a list of
+    mappings is malformed, and is refused rather than skipped.
     """
-    jobs = doc.get("jobs")
-    if not isinstance(jobs, dict):
-        return
-    for job_id, job in jobs.items():
+    for job_id, job in require_jobs(path, doc).items():
         if not isinstance(job, dict):
-            continue
+            raise Unparsable(
+                f"{path}: job '{job_id}' is {type(job).__name__}, not a mapping"
+            )
         steps = job.get("steps")
-        if not isinstance(steps, list):
+        if steps is None:
             continue
+        if not isinstance(steps, list):
+            raise Unparsable(
+                f"{path}: job '{job_id}' has 'steps' as {type(steps).__name__}, "
+                "not a list"
+            )
         for index, step in enumerate(steps):
-            if isinstance(step, dict):
-                yield str(job_id), index, step
+            if not isinstance(step, dict):
+                raise Unparsable(
+                    f"{path}: job '{job_id}' step {index} is "
+                    f"{type(step).__name__}, not a mapping"
+                )
+            yield str(job_id), index, step
 
 
-def iter_job_uses(doc):
+def iter_job_uses(path: pathlib.Path, doc):
     """Yield ``(job_id, uses)`` for every reusable-workflow call in a workflow."""
-    jobs = doc.get("jobs")
-    if not isinstance(jobs, dict):
-        return
-    for job_id, job in jobs.items():
-        if isinstance(job, dict) and isinstance(job.get("uses"), str):
-            yield str(job_id), job["uses"]
+    for job_id, job in require_jobs(path, doc).items():
+        if not isinstance(job, dict):
+            raise Unparsable(
+                f"{path}: job '{job_id}' is {type(job).__name__}, not a mapping"
+            )
+        uses = job.get("uses")
+        if uses is None:
+            continue
+        if not isinstance(uses, str):
+            raise Unparsable(
+                f"{path}: job '{job_id}' has 'uses' as {type(uses).__name__}, "
+                "not a string"
+            )
+        yield str(job_id), uses

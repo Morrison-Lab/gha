@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -37,17 +38,27 @@ from workflow_discovery import (  # noqa: E402
 
 SECRET = "SUBMODULES_TOKEN"
 
+# The identifier, not a substring of one: `NOT_SUBMODULES_TOKEN` is a different
+# secret, and blocking a workflow that uses it would be a false positive on a
+# check whose whole value is that a failure means something.
+SECRET_REF = re.compile(rf"\b{SECRET}\b")
+
 
 def violations(path: pathlib.Path, doc) -> list[str]:
     found = []
-    for job_id, index, step in iter_steps(doc):
+    for job_id, index, step in iter_steps(path, doc):
         with_block = step.get("with")
-        if not isinstance(with_block, dict):
+        if with_block is None:
             continue
+        if not isinstance(with_block, dict):
+            raise Unparsable(
+                f"{path}: job '{job_id}' step {index} has 'with' as "
+                f"{type(with_block).__name__}, not a mapping"
+            )
         # Exactly the `token` key. `submodules-token` legitimately carries this
         # secret and is a different key, so no prefix or suffix matching here.
         value = with_block.get("token")
-        if isinstance(value, str) and SECRET in value:
+        if isinstance(value, str) and SECRET_REF.search(value):
             found.append(
                 f"{path}: job '{job_id}' step {index} passes {SECRET} to 'token:'"
             )
@@ -68,11 +79,12 @@ def main(argv: list[str] | None = None) -> int:
     found = []
     for path in files:
         try:
-            doc = load_workflow(path)
+            # The walk itself can raise, not just the parse -- see the sibling
+            # audit's note.
+            found.extend(violations(path, load_workflow(path)))
         except Unparsable as exc:
             print(f"::error::audit-workflow-token-usage: {exc}", file=sys.stderr)
             return 2
-        found.extend(violations(path, doc))
 
     if found:
         for line in found:

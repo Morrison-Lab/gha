@@ -196,7 +196,62 @@ def main() -> int:
             audit(pins, heredoc) == 0,
         )
 
+        # A prefix is not a repository boundary: gha-evil is somebody else's
+        # repo, and the exemption exists to say "this code is ours".
+        lookalike = root / "pins-lookalike-owner"
+        write(
+            lookalike,
+            "a.yml",
+            "jobs:\n"
+            "  run:\n"
+            "    steps:\n"
+            "      - uses: Morrison-Lab/gha-evil/action@main\n",
+        )
+        check(
+            "pins: a repo merely PREFIXED by Morrison-Lab/gha is not exempt",
+            audit(pins, lookalike) == 1,
+        )
+
+        # The identifier, not a substring of one. A false positive here blocks
+        # a valid workflow, which is the expensive direction for this check.
+        other_secret = root / "token-lookalike-secret"
+        write(
+            other_secret,
+            "a.yml",
+            "jobs:\n"
+            "  run:\n"
+            "    steps:\n"
+            "      - name: checkout\n"
+            f"        uses: {PINNED}\n"
+            "        with:\n"
+            f"          token: {EXPR} secrets.NOT_SUBMODULES_TOKEN }}}}\n",
+        )
+        check(
+            "token: a secret merely CONTAINING the name is not flagged",
+            audit(token, other_secret) == 0,
+        )
+
         # ------------------------------------- refusals, not silent passes
+        # A structurally malformed workflow is one the audit walked NOTHING in,
+        # which is not the same as one it found nothing in. Skipping these was
+        # the parsed-walk version of reading grep's exit 2 as exit 1.
+        malformed = {
+            "empty-file": "",
+            "no-jobs": "name: only\n",
+            "jobs-not-mapping": "jobs: not-a-mapping\n",
+            "job-not-mapping": "jobs:\n  run: not-a-mapping\n",
+            "steps-not-list": "jobs:\n  run:\n    steps: not-a-list\n",
+            "step-not-mapping": "jobs:\n  run:\n    steps:\n      - just-a-string\n",
+        }
+        for name, module in (("token", token), ("pins", pins)):
+            for shape, body in malformed.items():
+                bad = root / f"{name}-{shape}"
+                write(bad, "a.yml", body)
+                check(
+                    f"{name}: '{shape}' is an error, not a clean workflow",
+                    audit(module, bad) == 2,
+                )
+
         for name, module in (("token", token), ("pins", pins)):
             unparsable = root / f"{name}-unparsable"
             write(unparsable, "a.yml", "jobs:\n  run:\n   - bad\n  : : :\n")

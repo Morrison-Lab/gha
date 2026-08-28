@@ -2079,17 +2079,35 @@ The second asserts `discover_workflows` directly, so reverting it cannot be
 Every case that predates them names only `.yml` fixtures, which is why none of
 them could see the gap.
 
+**Both audits refuse a malformed workflow rather than walking past it.**
+An absent or wrongly-typed `jobs`, `steps`, `with`, or step entry means the
+audit examined nothing in that file, which is not the same as finding nothing
+in it --- the parsed-walk version of reading grep's exit 2 as exit 1.
+`actionlint` catches these too, so this is defence in depth rather than the
+only detector, but an audit that reports clean over a file it never walked is
+the exact failure both of these exist to prevent.
+
+**Two matches are anchored deliberately, and a bare `in` gets each wrong in
+opposite directions.**
+The self-exemption is `Morrison-Lab/gha` or `Morrison-Lab/gha/...`, not a bare
+prefix, which would also exempt `Morrison-Lab/gha-evil` --- somebody else's
+repository, under an exemption that exists to say the code is ours.
+The secret test is the identifier `SUBMODULES_TOKEN` on word boundaries, not a
+substring, so `NOT_SUBMODULES_TOKEN` is a different secret rather than a
+blocked workflow.
+
 **The suite mutes each audit's own output.**
 An expected failure still prints `::error::`, and GitHub renders every one as
 an annotation, so an unmuted suite decorates a passing job with a dozen errors
 it deliberately provoked.
 
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Seven mutations were confirmed to turn it red rather than assumed to: a
+Eleven mutations were confirmed to turn it red rather than assumed to: a
 `*.yml`-only discovery (against both consumers), a dropped empty-directory
 guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
-step-level `uses:` walk, and a token lookup matching any key containing
-`token`.
+step-level `uses:` walk, a token lookup matching any key containing `token`, a
+bare-prefix self-exemption, a substring secret match, a skipped malformed
+`steps`, and a tolerated missing `jobs`.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

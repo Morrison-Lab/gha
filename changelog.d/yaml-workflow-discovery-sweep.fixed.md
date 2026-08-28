@@ -13,3 +13,7 @@
   Both audits moved out of `_selftest.yml` into scripts that walk parsed YAML,
   which sees both spellings and cannot mistake a `uses:` written inside a
   `run:` heredoc for a real reference.
+- **Both workflow audits now refuse a malformed workflow instead of walking
+  past it**, and their two exemptions are anchored: `Morrison-Lab/gha-evil` is
+  no longer exempt from SHA-pinning by prefix, and a secret merely containing
+  `SUBMODULES_TOKEN` in its name no longer trips the checkout-token audit.

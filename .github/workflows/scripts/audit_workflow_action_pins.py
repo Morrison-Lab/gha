@@ -48,19 +48,28 @@ from workflow_discovery import (  # noqa: E402
 )
 
 SHA_PINNED = re.compile(r"@[0-9a-f]{40}$")
-SELF_OWNER = "Morrison-Lab/gha"
+SELF_REPO = "Morrison-Lab/gha"
 
 
 def is_exempt(uses: str) -> bool:
-    return uses.startswith(".") or uses.startswith(SELF_OWNER)
+    """Local refs and this repo's own refs need no SHA.
+
+    Both tests are anchored at a path boundary rather than a bare prefix: a
+    plain `startswith(SELF_REPO)` would also exempt `Morrison-Lab/gha-evil`,
+    which is a different repository under someone else's control, and the
+    exemption exists precisely to say "this code is ours".
+    """
+    if uses == "." or uses.startswith("./") or uses.startswith("../"):
+        return True
+    return uses == SELF_REPO or uses.startswith(SELF_REPO + "/")
 
 
 def violations(path: pathlib.Path, doc) -> list[str]:
     found = []
-    for job_id, uses in iter_job_uses(doc):
+    for job_id, uses in iter_job_uses(path, doc):
         if not is_exempt(uses) and not SHA_PINNED.search(uses):
             found.append(f"{path}: job '{job_id}' calls '{uses}'")
-    for job_id, index, step in iter_steps(doc):
+    for job_id, index, step in iter_steps(path, doc):
         uses = step.get("uses")
         if not isinstance(uses, str):
             continue
@@ -83,14 +92,13 @@ def main(argv: list[str] | None = None) -> int:
     found = []
     for path in files:
         try:
-            doc = load_workflow(path)
+            # The walk itself can raise, not just the parse: a malformed
+            # `jobs`/`steps` shape means the audit examined nothing in that
+            # file, which is not the same as finding nothing in it.
+            found.extend(violations(path, load_workflow(path)))
         except Unparsable as exc:
-            # Unreadable is not clean. A file the audit could not parse was
-            # never examined, and reporting that as a pass is the failure this
-            # whole audit exists to prevent.
             print(f"::error::audit-workflow-action-pins: {exc}", file=sys.stderr)
             return 2
-        found.extend(violations(path, doc))
 
     if found:
         for line in found:
