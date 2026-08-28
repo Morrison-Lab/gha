@@ -4,8 +4,9 @@ name: Claude Code (reusable)
 # issue comments, PR review comments, and PR reviews, and can edit files and
 # open/update PRs in response. Also runs unattended on workflow_dispatch/
 # schedule events (e.g. a periodic "run this skill" automation with no human
-# comment to react to) — see the job's `if:` below for the trust model those
-# two events use instead of the @claude-mention/author_association check.
+# comment to react to) — see mention-filter's `if:` below for the trust
+# model those two events use instead of the @claude-mention/author_association
+# check.
 # Ported from the canonical d-morrison versions (serocalculator / rme) and
 # parameterized so one workflow serves R packages, Quarto books, and static
 # repos.
@@ -27,6 +28,13 @@ name: Claude Code (reusable)
 #     (questions/reviews) that agent mode would otherwise discard.
 #   - "Dispatch <review-workflow-file> on @claude review" routes review
 #     requests to the dedicated reviewer instead of self-reviewing.
+#   - A cheap `mention-filter` job runs detect-bot-mention (which strips
+#     non-invoking markup) and gates the agent job on its `proceed` output, so
+#     a mention inside a code span, fence, or blockquote never starts the
+#     expensive runner (gha#554). The caller's job-level `if:` still tests the
+#     raw body -- a GitHub expression cannot strip Markdown -- and stays as
+#     the cheap pre-filter that keeps an untrusted commenter from invoking
+#     this workflow at all.
 #   - "Skip if this comment was already handled by an active run" + the
 #     "React to comments Claude absorbed via polling" post-step dedup a late
 #     @claude comment that a still-running session already absorbed via the
@@ -191,7 +199,9 @@ on:
           --disallowedTools
           "Bash(gh api -X:*),Bash(gh api --method:*),Bash(gh api graphql:*),Bash(git push:*),Bash(git push --force:*),Bash(git push -f:*),Bash(git push --delete:*),Bash(git push -d:*),Bash(git push --mirror:*),Bash(git push --tags:*),Bash(git push --all:*),Bash(git push origin:*),Bash(git push -u origin:*)"
       runs-on:
-        description: Runner for the job.
+        description: >-
+          Runner for the agent job. The mention-filter job always uses
+          ubuntu-latest, so a quoted mention never bills a larger runner.
         type: string
         default: 'ubuntu-latest'
       report-cost:
@@ -261,8 +271,8 @@ on:
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
-      # required secrets before this workflow's job-level `if:` can run. The
-      # trusted-author `if:` already gates who can trigger a run.
+      # required secrets before this workflow's mention-filter `if:` can run.
+      # The trusted-author `if:` already gates who can trigger a run.
       CLAUDE_CODE_OAUTH_TOKEN:
         required: false
       ANTHROPIC_API_KEY:
@@ -277,11 +287,26 @@ on:
         required: false
 
 jobs:
-  claude:
+  # Cheap pre-job filter (gha#554 / direction 2 of the issue). The trusted-
+  # author `if:` below is still formatting-blind -- a GitHub expression cannot
+  # strip Markdown -- so a quoted or code-span mention still starts THIS job.
+  # That is the accepted residual: one short runner, no checkout of the
+  # caller, no write-scoped secrets, no `inputs.runs-on` (a consumer may have
+  # pointed that at a large runner for the agent). detect-bot-mention reuses
+  # the #342 stripper rather than approximating CommonMark in the expression
+  # language, and `claude` below starts only when this job's `proceed` output
+  # is true.
+  #
+  # An allowlisted `issues.assigned` run proceeds even with no mention
+  # (gha#552): detect-bot-mention returns `false` for a mention-free body, and
+  # without the assignment exemption here that event would be admitted by the
+  # `if:` and then discarded, a trigger that can never fire.
+  mention-filter:
     # Only trigger for trusted authors (OWNER / MEMBER / COLLABORATOR) on the
     # four reactive comment/review/issue events below. Without this, anyone
     # who can comment on a public issue or PR could trigger an LLM run with a
-    # write-scoped GITHUB_TOKEN.
+    # write-scoped GITHUB_TOKEN -- this job itself is cheap, but it is also
+    # what admits the agent job, so the gate stays here.
     #
     # trusted-bot-logins is the opt-in escape hatch for GitHub App bots whose
     # author_association is NONE (e.g. cursor[bot] posting `@claude review`
@@ -303,13 +328,102 @@ jobs:
       (github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON(inputs.dispatch-on-assignee), github.event.assignee.login)) ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      proceed: ${{ steps.proceed.outputs.proceed }}
+    steps:
+      # The job `if:` above tests the raw body with `contains()`, which has no
+      # notion of Markdown, so writing *about* the bot used to invoke the
+      # agent job: a mention inside a code span, a fenced block, or a
+      # blockquote reads exactly like one addressed to it (gha#342, gha#554).
+      #
+      # This runs for all four reactive events. On workflow_dispatch/schedule
+      # it does not run at all, leaving its output empty, which the proceed
+      # step below treats as "proceed". That skip is load-bearing: four empty
+      # bodies still make detect-bot-mention.sh print `false` (it counts them),
+      # so running it on an unattended event would withhold the agent.
+      # The proceed `else` is not what fail-opens dispatch/schedule -- this
+      # `if:` is.
+      - name: Detect a genuine @claude mention
+        id: mention
+        # Fail open: a shell-level error here must not fail the job. Without
+        # this the job fails closed -- `proceed` never runs (Actions
+        # implicitly ANDs `success()` onto a step with no status-check
+        # function), its output stays empty, and the agent job is skipped,
+        # silently dropping a genuine request. That is the exact outcome the
+        # empty-value contract below is written to prevent (gha#343 review).
+        continue-on-error: true
+        if: >-
+          github.event_name == 'issue_comment' ||
+          github.event_name == 'pull_request_review_comment' ||
+          github.event_name == 'pull_request_review' ||
+          github.event_name == 'issues'
+        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
+        with:
+          comment-body: ${{ github.event.comment.body }}
+          review-body: ${{ github.event.review.body }}
+          # Scoped to the `issues` event, because only there are these the
+          # trigger. On an `issue_comment` event `github.event.issue` is the
+          # ENCLOSING issue or PR, so passing them unconditionally means an
+          # old unquoted mention in the thread's own title or description
+          # makes every later comment match -- including one that merely
+          # quotes the mention, which is precisely the case this gate exists
+          # to stand down on (gha#343 review). The job's own `if:` above
+          # already scopes the issue fields this way.
+          issue-body: ${{ github.event_name == 'issues' && github.event.issue.body || '' }}
+          issue-title: ${{ github.event_name == 'issues' && github.event.issue.title || '' }}
+
+      # Only an explicit `false` from detect-bot-mention withholds the agent
+      # job. An empty value means that step did not run (workflow_dispatch/
+      # schedule, or a step failure), and the run must proceed: a genuine
+      # request that goes unanswered is a far worse outcome than an
+      # unnecessary run.
+      #
+      # An allowlisted `issues.assigned` run is exempt from the mention check,
+      # and the exemption is load-bearing rather than tidy-up (gha#298,
+      # gha#552). `detect-bot-mention` is fed the issue body and title on
+      # `issues` events, and an assigned issue that never mentions the bot
+      # has no mention to find -- so it returns exactly the `false` this step
+      # would otherwise withhold on. Measured, not assumed: piping a
+      # mention-free body to detect-bot-mention.sh prints `false`.
+      - name: Decide whether the agent job should proceed
+        id: proceed
+        env:
+          MENTION_MATCH: ${{ steps.mention.outputs.match }}
+          ASSIGNMENT_TRIGGER: ${{ github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON(inputs.dispatch-on-assignee), github.event.assignee.login) }}
+        run: |
+          set -euo pipefail
+          if [ "$ASSIGNMENT_TRIGGER" = "true" ]; then
+            echo "Proceeding: this issue was assigned to an allowlisted assignee, which is itself the request -- no @claude mention is expected or required."
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          elif [ "$MENTION_MATCH" = "false" ]; then
+            echo "Standing down: every @claude mention here sits inside a code span, a fenced block, or a blockquote, so it is being quoted rather than invoked."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  claude:
+    needs: mention-filter
+    # Skipped when mention-filter is skipped (untrusted author / no raw
+    # mention; a dependent job without always() stays skipped) and when it
+    # ran but `proceed` is not true (quoted / code-span / fence mention).
+    # Keep `== 'true'`. `!= 'false'` still withholds a quoted mention
+    # (`proceed=false`) and still skips when the filter job is skipped.
+    # It fail-opens an empty output from a *successful* filter job, and it
+    # is the second half of `always() && != 'false'`.
+    if: needs.mention-filter.outputs.proceed == 'true'
 
     # Serialize @claude sessions per issue/PR so rapid mentions don't fire
     # competing runs that race to push the same branch. `cancel-in-progress:
     # false` queues a new mention behind the running session rather than
     # killing it. `|| github.run_id` is a defensive fallback so an unexpected
     # event with no issue/PR number doesn't collapse the group to `claude-`
-    # and serialize every session globally.
+    # and serialize every session globally. Quoted mentions never take a slot
+    # here: they stop at mention-filter, which has no concurrency group.
     concurrency:
       group: claude-${{ github.event.issue.number || github.event.pull_request.number || github.run_id }}
       cancel-in-progress: false
@@ -383,98 +497,19 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # --- Quoted-mention gate (gha#342) -----------------------------------
-      # The job `if:` above tests the raw body with `contains()`, which has no
-      # notion of Markdown, so writing *about* the bot invokes it: a mention
-      # inside a code span, a fenced block, or a blockquote reads exactly like
-      # one addressed to it. The cost compounds: the spawned run re-dispatches
-      # a review, and the per-PR `cancel-in-progress` group makes that cancel
-      # whichever review was already in flight, so a comment explaining the
-      # concurrency race reproduces it.
-      #
-      # An `if:` expression cannot strip markup, so the raw `contains()` stays
-      # as the cheap pre-filter (it also keeps an untrusted commenter from
-      # spawning this job at all) and the real decision happens here.
-      #
-      # This runs for all four reactive events, unlike the dedup step above,
-      # which only covers the two that can carry a reaction. On
-      # workflow_dispatch/schedule it does not run at all, leaving its output
-      # empty, which the gate below treats as "proceed", since those events
-      # have no body to quote a mention in.
-      - name: Detect a genuine @claude mention
-        id: mention
-        # Fail open, for the same reason the dedup step above does: a
-        # shell-level error here must not fail the job. Without this the job
-        # fails closed -- `gate` never runs (Actions implicitly ANDs
-        # `success()` onto a step with no status-check function), its output
-        # stays empty, and every downstream step including "Run Claude Code"
-        # is skipped, silently dropping a genuine request. That is the exact
-        # outcome the empty-value contract below is written to prevent, so
-        # without this line the step contradicts its own documentation
-        # (gha#343 review).
-        continue-on-error: true
-        if: >-
-          github.event_name == 'issue_comment' ||
-          github.event_name == 'pull_request_review_comment' ||
-          github.event_name == 'pull_request_review' ||
-          github.event_name == 'issues'
-        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
-        with:
-          comment-body: ${{ github.event.comment.body }}
-          review-body: ${{ github.event.review.body }}
-          # Scoped to the `issues` event, because only there are these the
-          # trigger. On an `issue_comment` event `github.event.issue` is the
-          # ENCLOSING issue or PR, so passing them unconditionally means an
-          # old unquoted mention in the thread's own title or description
-          # makes every later comment match -- including one that merely
-          # quotes the mention, which is precisely the case this gate exists
-          # to stand down on (gha#343 review). The job's own `if:` above
-          # already scopes the issue fields this way.
-          issue-body: ${{ github.event_name == 'issues' && github.event.issue.body || '' }}
-          issue-title: ${{ github.event_name == 'issues' && github.event.issue.title || '' }}
-
-      # One decision point for "should this run do anything?", so each of the
-      # ~27 downstream steps keeps a single condition instead of repeating a
-      # compound one that would have to be edited again for the next reason to
-      # stand down. Two independent reasons exist today: the comment was
-      # already absorbed by an active session, or the mention was quoted
-      # rather than addressed to the bot.
-      #
-      # Only an explicit `false` from the mention gate skips. An empty value
-      # means that step did not run (workflow_dispatch/schedule, or a step
-      # failure), and the run must proceed: a genuine request that goes
-      # unanswered is a far worse outcome than an unnecessary run.
-      #
-      # An allowlisted `issues.assigned` run is exempt from the mention check,
-      # and the exemption is load-bearing rather than tidy-up (gha#298).
-      # `detect-bot-mention` is fed the issue body and title on `issues`
-      # events, and an assigned issue that never mentions the bot has no
-      # mention to find -- so it returns exactly the `false` this gate skips
-      # on. Measured, not assumed: piping a mention-free body to
-      # detect-bot-mention.sh prints `false`. Splitting the job-level `if:`
-      # WITHOUT this would admit the event at the gate and then discard it one
-      # step later, silently, with no comment on the issue -- a trigger that
-      # can never fire.
-      #
-      # Scoped to the assignment case alone: the quoted-mention gate this
-      # exempts from exists to stop a code span dispatching a run (gha#342,
-      # gha#343), and it keeps that job unchanged for every other event.
+      # Quoted-mention filtering now lives in the mention-filter job (gha#554),
+      # so this step only has to honour the dedup marker above. Keeping a
+      # single `steps.gate.outputs.skip` is what lets each of the ~27
+      # downstream steps keep one condition. An empty DEDUP_SKIP (the dedup
+      # step did not run, or failed open) must proceed.
       - name: Decide whether this run should proceed
         id: gate
         env:
           DEDUP_SKIP: ${{ steps.dedup.outputs.skip }}
-          MENTION_MATCH: ${{ steps.mention.outputs.match }}
-          ASSIGNMENT_TRIGGER: ${{ github.event_name == 'issues' && github.event.action == 'assigned' && contains(fromJSON(inputs.dispatch-on-assignee), github.event.assignee.login) }}
         run: |
           set -euo pipefail
           if [ "$DEDUP_SKIP" = "true" ]; then
             echo "Standing down: this comment was already handled by an active run."
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          elif [ "$ASSIGNMENT_TRIGGER" = "true" ]; then
-            echo "Proceeding: this issue was assigned to an allowlisted assignee, which is itself the request -- no @claude mention is expected or required."
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          elif [ "$MENTION_MATCH" = "false" ]; then
-            echo "Standing down: every @claude mention here sits inside a code span, a fenced block, or a blockquote, so it is being quoted rather than invoked."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"

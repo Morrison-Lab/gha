@@ -38,6 +38,12 @@ jobs:
     # skipped downstream, but only after invoking a workflow that was granted
     # elevated permissions and passed secrets.
     #
+    # This `contains()` is formatting-blind -- a GitHub expression cannot strip
+    # Markdown -- so a code-span or quoted mention still invokes the reusable
+    # workflow. claude.yml's `mention-filter` job then runs detect-bot-mention
+    # and withholds the expensive agent job (gha#554). Do not try to
+    # approximate CommonMark here.
+    #
     # If you added schedule/workflow_dispatch above, widen this too - neither
     # event has a comment/issue body or author_association to check. Both are
     # trusted by construction: workflow_dispatch requires the dispatching

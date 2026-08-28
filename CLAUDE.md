@@ -430,8 +430,9 @@ which is why the capabilities above moved to `@v2`.
   `scripts/detect-bot-mention.sh`, which decides whether a body carries an
   `@claude` mention that is actually addressed to the bot rather than quoted
   while writing about it.
-  `claude.yml` calls it once, early, for all four reactive events, and feeds
-  the result into its "Decide whether this run should proceed" step.
+  `claude.yml` calls it from a cheap `mention-filter` job, for all four
+  reactive events, and gates the expensive agent job on that job's
+  `proceed` output (gha#554).
   It shares `strip-non-invoking-markup.sh` with `detect-review-request`
   (gha#342).
   **Its bias is the opposite of that script's, and the two must not be
@@ -444,11 +445,14 @@ which is why the capabilities above moved to `@v2`.
   That is also why the matching stays plain-substring and case-insensitive,
   mirroring the `contains()` call it backs: a word-boundary rule would buy
   very little and risk exactly the false negative this bias rules out.
-  Note what it does **not** fix: `claude-bot.yml`'s job-level `if:` still
-  tests the raw body, because a GitHub expression cannot strip Markdown, so
-  the job still starts and the runner still spins up.
-  What is avoided is the billed agent run and the review re-dispatch, which
-  are the two costs gha#342 actually names.
+  The caller-side job `if:` and `mention-filter`'s own `if:` still test the
+  raw body, because a GitHub expression cannot strip Markdown, so a quoted
+  mention still starts the filter job (a billed runner minute).
+  What it no longer starts is the expensive `claude` job: no caller checkout,
+  no model invocation, no review re-dispatch.
+  An allowlisted `issues.assigned` event is exempt from the mention check
+  (gha#552) and still proceeds with no mention anywhere in the issue.
+
 - `.github/actions/report-push-failure/` -- wraps
   `scripts/classify-push-failure.sh`, which reads a failed `git push`'s output
   and names the failure kind (`workflows-permission`, `push-protection`,
@@ -1745,14 +1749,42 @@ cause is a skip, so the negative case is the bug and the positive case is what
 stops the fix from silencing real requests.
 Read its `true` rows as the guard rails rather than as filler.
 
+`.github/workflows/scripts/tests/run-mention-filter-tests.py` pins the gha#554
+job split that moved that decision out of the agent job.
+`_selftest.yml` cannot invoke `claude.yml` (that would be a live agent run),
+so the suite reads the workflow YAML and executes the `proceed` step's own
+script against a table: a real mention dispatches, a `match=false` quoted /
+code-span / fence mention does not start the agent job, and an allowlisted
+assignment still dispatches with no mention.
+It also asserts the wiring that would silently undo the split --
+`claude` needing `mention-filter`, the agent `if:` requiring `proceed ==
+'true'` rather than `!= 'false'` (`!= 'false'` fail-opens an empty
+output from a successful filter job, and is the second half of
+`always() && != 'false'`), `outputs.proceed`
+reading the proceed step rather than `match` (which would kill
+assignment-without-mention), the detect step's `if:` omitting
+`workflow_dispatch`/`schedule` (four empty bodies print `false`), the
+proceed step having no `if:` (a match-nonempty gate would skip it on
+dispatch/schedule and fail-close unattended runs), those two
+events still admitted at the job `if:` (gha#245), the trusted-author
+association gate living on `mention-filter` now that the agent job's only
+`if:` is `proceed`, `ubuntu-latest` rather than `inputs.runs-on`, no caller
+checkout, no concurrency group on the filter, and detect-bot-mention living
+only in the filter job.
+CI runs it as a step in the same `review-fail-check` job.
+The composite already exists at `@v2`; this suite pins the *workflow* job
+split by reading `claude.yml`, not by invoking it.
+`claude.yml@v2` itself picks the split up only when the major tag slides,
+the usual reusable-workflow lag, not a new-composite bootstrapping gap.
+
 `.github/workflows/scripts/tests/run-strip-non-invoking-markup-tests.sh`
 covers the stripper that matcher now pipes its bodies through, as a table of
 `(input, expected output)` pairs rather than of verdicts.
 CI runs it as a step in the same `review-fail-check` job in `_selftest.yml`.
-It is a separate suite because the stripper has a second consumer coming
-(`claude.yml`'s mention gate, gha#342) and because its failure modes run in
-both directions: under-stripping dispatches on quoted text, over-stripping
-swallows a real request.
+It is a separate suite because the stripper already has two consumers
+(`detect-review-request` and `detect-bot-mention` / `mention-filter`) and
+because its failure modes run in both directions: under-stripping
+dispatches on quoted text, over-stripping swallows a real request.
 So the table pins both, and the cases that matter most are the ones a
 verdict-level test cannot distinguish -- an unclosed backtick run left alone,
 a shorter run failing to close a longer fence, a dropped block *not* joining
@@ -2561,18 +2593,19 @@ single-push PR just to suppress a cosmetic, self-resolving non-issue on the
 rare double-push. The fix is behavioral: batch closely-related changes into
 one commit/push instead of two in quick succession.
 
-**Until `@v2` picks up gha#342's gate, you cannot even *quote* the mention
-safely, and that interacts badly with the paragraph above.**
-`claude-bot.yml` gates on `contains(body, '@claude')`, so a comment writing
-the mention inside backticks -- exactly what explaining any of this requires
--- spawns an agent run, which re-dispatches a review, which cancels the review
-already in flight.
-The natural response to a red `require-review` is a comment explaining why it
-is red, and that comment fires it again.
-So while writing about the bot on an issue or PR, defang the string the way
-gha#342's own body does.
-Once the gate ships and the tag advances, a quoted mention stands down on its
-own and the mitigation can be dropped.
+**gha#342's in-job gate is already at `@v2`; this PR's leftover is a
+runner, not a re-dispatch.**
+`claude-bot.yml` still gates on `contains(body, '@claude')`, so a comment
+writing the mention inside backticks -- exactly what explaining any of this
+requires -- still starts a job: the full agent job on current `@v2` pins,
+and only `mention-filter` after this PR's tag slides.
+The in-job stripper already withholds the billed agent run and the review
+re-dispatch, so quoting no longer cancels an in-flight `claude-review` the
+way the pre-#342 world did.
+Until `@v2` slides past this PR, quoting still spends that agent-job
+runner minute (and the issue/PR concurrency slot).
+After the slide, only `mention-filter` starts, and the defang mitigation
+can be dropped.
 
 **Cheap self-check before investigating a post-push `require-review`/`claude-review` failure:**
 compare the failing check's commit SHA against the PR's *current* head SHA

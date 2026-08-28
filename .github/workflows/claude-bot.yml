@@ -30,6 +30,12 @@ jobs:
     # run still gets skipped downstream, but only after invoking a workflow
     # that was granted elevated permissions and passed secrets.
     #
+    # This `contains()` is formatting-blind -- a GitHub expression cannot strip
+    # Markdown -- so a code-span or quoted mention still invokes the reusable
+    # workflow. claude.yml's `mention-filter` job then runs detect-bot-mention
+    # and withholds the expensive agent job (gha#554). Do not try to
+    # approximate CommonMark here.
+    #
     # cursor[bot] is allowlisted so Cursor Cloud Agent sessions can post
     # `@claude review` (their author_association is NONE).
     if: |
