@@ -559,6 +559,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/claude-manage-project.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">claude-manage-project.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/gemini.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">gemini.yml</span></a>
   </div>
@@ -753,6 +759,48 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'any'</code></td>
 <td>Enforcement mode: <code>any</code>, <code>on-push</code>, or <code>on-request</code>.</td>
 </tr>
+<tr class="odd">
+<td><code>workload-identity-provider</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Full GCP Workload Identity Provider resource name.</td>
+</tr>
+<tr class="even">
+<td><code>service-account</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>GCP Service Account email to impersonate.</td>
+</tr>
+<tr class="odd">
+<td><code>max-diff-lines</code></td>
+<td>string</td>
+<td><code>'2000'</code></td>
+<td>Maximum modified lines allowed in a PR diff before skipping review.</td>
+</tr>
+<tr class="even">
+<td><code>max-diff-files</code></td>
+<td>string</td>
+<td><code>'50'</code></td>
+<td>Maximum modified files allowed in a PR diff before skipping review.</td>
+</tr>
+<tr class="odd">
+<td><code>gcp-project</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>GCP project id. Required alongside <code>workload-identity-provider</code> for the OIDC credentials to be used: minting them authenticates to GCP, but the SDK only routes through Vertex AI when told to.</td>
+</tr>
+<tr class="even">
+<td><code>gcp-location</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Vertex AI location (e.g.&nbsp;<code>us-central1</code>). Used with <code>gcp-project</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>fail-on-error</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Whether a genuine error (metadata fetch, diff fetch, empty diff, execution failure) reddens the check. Defaults to <code>true</code>: those paths return before any PR comment is posted, so exiting 0 leaves a green check over a silent thread.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -831,8 +879,21 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">      # model: ''</span></span>
 <span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="co">      # prompt-addendum: |</span></span>
 <span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a><span class="co">      #   Repo-specific review guidance.</span></span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="co">      # Vertex AI via Workload Identity Federation. All four are needed:</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">      # the first two authenticate to GCP, the last two are what route the</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">      # SDK through Vertex. Without them GEMINI_API_KEY is still required.</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">      # workload-identity-provider: 'projects/123/locations/global/workloadIdentityPools/p/providers/gh'</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">      # service-account: 'review-bot@my-project.iam.gserviceaccount.com'  # phi-allow: documentation placeholder, not a real address</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">      # gcp-project: 'my-project'</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">      # gcp-location: 'us-central1'</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">      # Skip the review on oversized diffs rather than spending on them.</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">      # max-diff-lines: '2000'</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">      # max-diff-files: '50'</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">      # Set false only where a review is genuinely optional; the default</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">      # reddens the check on a real error rather than passing silently.</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">      # fail-on-error: true</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
