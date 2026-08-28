@@ -2110,11 +2110,24 @@ The secret test is the identifier `SUBMODULES_TOKEN` on word boundaries, not a
 substring, so `NOT_SUBMODULES_TOKEN` is a different secret rather than a
 blocked workflow.
 
-**A pin is a commit SHA or an image digest, not a commit SHA alone.**
-GitHub accepts `uses: docker://image@sha256:<digest>`, and a digest is as
-immutable as a commit, so a 40-hex-only test would report a securely pinned
-action as unpinned.
+**The reference is classified before its pin is validated.**
+A repository action or reusable workflow is pinned by a 40-character Git
+commit; a `docker://` image by an `@sha256:` digest.
+Accepting either form everywhere is the easy mistake and passes
+`actions/checkout@sha256:...` and `docker://alpine@<40hex>`, neither of which
+resolves to anything.
 A `docker://` ref pinned only by tag still fails.
+
+**The token audit walks job-level `with:` and `secrets:`, not only steps.**
+A reusable-workflow caller passes values down through those blocks, and the
+regex this replaced matched any line-leading `token:` and so covered them
+incidentally.
+A parsed walk that visits only `steps` would have been a coverage regression
+wearing a refactor's clothes --- which is the general risk when replacing a
+text scan with a structural one, since the text scan's reach was never written
+down anywhere.
+`secrets: inherit` is a string rather than a mapping and is skipped rather
+than refused.
 
 **The suite mutes each audit's own output.**
 An expected failure still prints `::error::`, and GitHub renders every one as
@@ -2122,13 +2135,14 @@ an annotation, so an unmuted suite decorates a passing job with a dozen errors
 it deliberately provoked.
 
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Thirteen mutations were confirmed to turn it red rather than assumed to: a
+Fifteen mutations were confirmed to turn it red rather than assumed to: a
 `*.yml`-only discovery (against both consumers), a dropped empty-directory
 guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
 step-level `uses:` walk, a token lookup matching any key containing `token`, a
 bare-prefix self-exemption, a substring secret match, a skipped malformed
 `steps`, a tolerated missing `jobs`, a skipped non-string step-level `uses:`,
-and a pin regex rejecting a `docker://` image digest.
+a pin regex rejecting a `docker://` image digest, a pin test accepting
+either form everywhere, and a token walk skipping job-level blocks.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

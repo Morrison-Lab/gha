@@ -280,6 +280,64 @@ def main() -> int:
             audit(token, non_checkout) == 1,
         )
 
+        # Job level: a reusable-workflow caller passes values through `with:`
+        # and `secrets:`, which no walk over `steps` reaches. The regex this
+        # audit replaced covered these incidentally, so missing them would be a
+        # coverage regression rather than a refactor.
+        for block in ("with", "secrets"):
+            job_level = root / f"token-job-{block}"
+            write(
+                job_level,
+                "a.yml",
+                "jobs:\n"
+                "  call:\n"
+                "    uses: other/repo/.github/workflows/x.yml@"
+                + ("b" * 40)
+                + "\n"
+                f"    {block}:\n"
+                f"      token: {EXPR} secrets.SUBMODULES_TOKEN }}}}\n",
+            )
+            check(
+                f"token: a job-level '{block}.token' is flagged",
+                audit(token, job_level) == 1,
+            )
+
+        inherit = root / "token-secrets-inherit"
+        write(
+            inherit,
+            "a.yml",
+            "jobs:\n"
+            "  call:\n"
+            "    uses: other/repo/.github/workflows/x.yml@" + ("b" * 40) + "\n"
+            "    secrets: inherit\n",
+        )
+        check(
+            "token: 'secrets: inherit' is a string and is not refused",
+            audit(token, inherit) == 0,
+        )
+
+        # The two pin forms are not interchangeable: neither crossed spelling
+        # resolves to anything, so neither may read as pinned.
+        crossed_forms = (
+            (
+                "a repository action pinned by an image digest",
+                "actions/checkout@sha256:" + "a" * 64,
+            ),
+            ("a docker:// action pinned by a git commit", "docker://alpine@" + "a" * 40),
+            (
+                "a reusable workflow pinned by an image digest",
+                "other/repo/.github/workflows/x.yml@sha256:" + "a" * 64,
+            ),
+        )
+        for n, (label, ref) in enumerate(crossed_forms):
+            crossed = root / f"pins-crossed-{n}"
+            write(
+                crossed,
+                "a.yml",
+                "jobs:\n  run:\n    steps:\n      - uses: " + ref + "\n",
+            )
+            check(f"pins: {label} fails", audit(pins, crossed) == 1)
+
         # ------------------------------------- refusals, not silent passes
         uses_not_string = root / "pins-uses-not-string"
         write(

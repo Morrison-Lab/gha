@@ -41,6 +41,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from workflow_discovery import (  # noqa: E402
     Discovery,
     Unparsable,
+    iter_job_inputs,
     iter_steps,
     load_workflow,
     require_workflows,
@@ -56,6 +57,13 @@ SECRET_REF = re.compile(rf"\b{SECRET}\b")
 
 def violations(path: pathlib.Path, doc) -> list[str]:
     found = []
+    # Job level first: a reusable-workflow caller passes values through `with:`
+    # and `secrets:`, which no walk over `steps` can see.
+    for job_id, block_name, key, value in iter_job_inputs(path, doc):
+        if key == "token" and isinstance(value, str) and SECRET_REF.search(value):
+            found.append(
+                f"{path}: job '{job_id}' passes {SECRET} as '{block_name}.token'"
+            )
     for job_id, index, step in iter_steps(path, doc):
         with_block = step.get("with")
         if with_block is None:

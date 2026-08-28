@@ -49,10 +49,20 @@ from workflow_discovery import (  # noqa: E402
     require_workflows,
 )
 
-# A Git commit for a repository action, or an image digest for a `docker://`
-# one --- GitHub accepts both spellings of `uses:`, and a digest is as immutable
-# as a commit, so rejecting it would report a securely pinned action as unpinned.
-SHA_PINNED = re.compile(r"@(?:[0-9a-f]{40}|sha256:[0-9a-f]{64})$")
+# The two forms are not interchangeable, so the reference is classified before
+# its pin is validated: a repository action or reusable workflow is pinned by a
+# 40-character Git commit, a `docker://` image by an `@sha256:` digest.
+# Accepting either form everywhere would pass `actions/checkout@sha256:...` and
+# `docker://alpine@<40hex>`, neither of which resolves to anything.
+DOCKER_PREFIX = "docker://"
+COMMIT_PINNED = re.compile(r"@[0-9a-f]{40}$")
+DIGEST_PINNED = re.compile(r"@sha256:[0-9a-f]{64}$")
+
+
+def is_pinned(uses: str) -> bool:
+    if uses.startswith(DOCKER_PREFIX):
+        return bool(DIGEST_PINNED.search(uses))
+    return bool(COMMIT_PINNED.search(uses))
 SELF_REPO = "Morrison-Lab/gha"
 
 
@@ -72,7 +82,7 @@ def is_exempt(uses: str) -> bool:
 def violations(path: pathlib.Path, doc) -> list[str]:
     found = []
     for job_id, uses in iter_job_uses(path, doc):
-        if not is_exempt(uses) and not SHA_PINNED.search(uses):
+        if not is_exempt(uses) and not is_pinned(uses):
             found.append(f"{path}: job '{job_id}' calls '{uses}'")
     for job_id, index, step in iter_steps(path, doc):
         uses = step.get("uses")
@@ -87,7 +97,7 @@ def violations(path: pathlib.Path, doc) -> list[str]:
                 f"{path}: job '{job_id}' step {index} has 'uses' as "
                 f"{type(uses).__name__}, not a string"
             )
-        if not is_exempt(uses) and not SHA_PINNED.search(uses):
+        if not is_exempt(uses) and not is_pinned(uses):
             found.append(f"{path}: job '{job_id}' step {index} uses '{uses}'")
     return found
 

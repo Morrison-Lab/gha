@@ -17,6 +17,12 @@
   past it**, and their two exemptions are anchored: `Morrison-Lab/gha-evil` is
   no longer exempt from SHA-pinning by prefix, and a secret merely containing
   `SUBMODULES_TOKEN` in its name no longer trips the checkout-token audit.
-- **A `docker://` action pinned by image digest is recognized as pinned.**
+- **A `docker://` action pinned by image digest is recognized as pinned**, and
+  the two pin forms are no longer interchangeable.
   The audit accepted only a 40-character Git commit, so the immutable digest
-  form GitHub also supports read as unpinned.
+  form GitHub also supports read as unpinned; it now classifies the reference
+  first, so neither `actions/checkout@sha256:...` nor `docker://alpine@<40hex>`
+  reads as pinned either.
+- **The checkout-token audit covers job-level `with:` and `secrets:` blocks**,
+  which a reusable-workflow caller passes values through and which no walk over
+  `steps` reaches.

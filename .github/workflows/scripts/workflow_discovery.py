@@ -145,6 +145,36 @@ def iter_steps(path: pathlib.Path, doc):
             yield str(job_id), index, step
 
 
+def iter_job_inputs(path: pathlib.Path, doc):
+    """Yield ``(job_id, block_name, key, value)`` for a job's passed values.
+
+    A reusable-workflow caller hands values down through job-level ``with:``
+    and ``secrets:``, neither of which appears in ``steps``.  The regex this
+    module replaced matched any line-leading ``token:`` and so covered them
+    incidentally; a walk that visits only steps does not, which would be a
+    coverage regression rather than a refactor.
+
+    ``secrets: inherit`` is a string rather than a mapping and is legitimate,
+    so it is skipped rather than refused.
+    """
+    for job_id, job in require_jobs(path, doc).items():
+        if not isinstance(job, dict):
+            raise Unparsable(
+                f"{path}: job '{job_id}' is {type(job).__name__}, not a mapping"
+            )
+        for block_name in ("with", "secrets"):
+            block = job.get(block_name)
+            if block is None or isinstance(block, str):
+                continue
+            if not isinstance(block, dict):
+                raise Unparsable(
+                    f"{path}: job '{job_id}' has '{block_name}' as "
+                    f"{type(block).__name__}, not a mapping"
+                )
+            for key, value in block.items():
+                yield str(job_id), block_name, str(key), value
+
+
 def iter_job_uses(path: pathlib.Path, doc):
     """Yield ``(job_id, uses)`` for every reusable-workflow call in a workflow."""
     for job_id, job in require_jobs(path, doc).items():
