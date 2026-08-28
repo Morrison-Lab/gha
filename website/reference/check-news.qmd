@@ -18,7 +18,11 @@ release time to collate `news.d/` fragments into `NEWS.md` under section heading
 
 ## Permissions
 
-Only `contents: read` (the default), so no `permissions:` block is needed.
+Read-only: `contents: read` plus `issues: read`
+(the live-label read behind the skip-label exemption).
+A caller with no explicit `permissions:` block needs nothing;
+a caller that pins the calling job's `permissions` must include
+`issues: read` alongside `contents: read`.
 
 ## Example
 
