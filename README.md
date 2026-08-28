@@ -103,7 +103,7 @@ that need to write must have the **caller** grant it on the calling job:
   `models: read`, `contents: read`.
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-equation-renders`, `check-extra`, `check-junk-files`,, `check-formatting`
+  `check-equation-renders`, `check-extra`, `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-phi`, `check-secrets`,
   `check-typos`,
