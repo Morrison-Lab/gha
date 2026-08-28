@@ -3019,9 +3019,10 @@ jobs:
           fi
           echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."
 
-  # Runs the two workflow-wide audits: no top-level checkout may take
-  # SUBMODULES_TOKEN (gha#442), and every third-party action must be SHA-pinned
-  # (gha#328). The rationale and the exact anchors for each live beside the
+  # Runs the two workflow-wide audits: no step may take SUBMODULES_TOKEN
+  # through a `token:` input (gha#442, and see that audit's own note on why it
+  # is not scoped to actions/checkout), and every third-party action must be
+  # pinned to a commit SHA or an image digest (gha#328). The rationale and the exact anchors for each live beside the
   # audit in its own script, so this comment does not restate them (gha#716).
   lint-checkout-tokens:
     runs-on: ubuntu-latest
@@ -3043,7 +3044,7 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-workflow-audit-tests.py
 
-      - name: Assert no workflow passes SUBMODULES_TOKEN to a top-level checkout's token input
+      - name: Assert no workflow passes SUBMODULES_TOKEN to a step's token input
         shell: bash
         run: python3 .github/workflows/scripts/audit_workflow_token_usage.py
 

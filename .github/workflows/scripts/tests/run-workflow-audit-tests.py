@@ -165,6 +165,34 @@ def main() -> int:
                     audit(pins, bad) == 1,
                 )
 
+        # A `docker://` action pinned by image digest is as immutable as a
+        # commit-pinned repository action, so reporting it unpinned would be a
+        # false positive on the safe spelling.
+        docker = root / "pins-docker"
+        write(
+            docker,
+            "a.yml",
+            "jobs:\n"
+            "  run:\n"
+            "    steps:\n"
+            "      - uses: docker://alpine@sha256:" + ("a" * 64) + "\n",
+        )
+        check(
+            "pins: a docker:// action pinned by image digest passes",
+            audit(pins, docker) == 0,
+        )
+
+        docker_tag = root / "pins-docker-tag"
+        write(
+            docker_tag,
+            "a.yml",
+            "jobs:\n  run:\n    steps:\n      - uses: docker://alpine:3.20\n",
+        )
+        check(
+            "pins: a docker:// action pinned only by tag fails",
+            audit(pins, docker_tag) == 1,
+        )
+
         job_uses = root / "pins-job-uses"
         write(
             job_uses,
@@ -231,7 +259,39 @@ def main() -> int:
             audit(token, other_secret) == 0,
         )
 
+        # The audit is deliberately not scoped to actions/checkout: any action
+        # handed this secret through `token:` is being trusted to authenticate
+        # against the caller's own repo, which is exactly what it cannot do.
+        # This case pins that breadth, so narrowing it later is a decision
+        # rather than a silent regression.
+        non_checkout = root / "token-non-checkout"
+        write(
+            non_checkout,
+            "a.yml",
+            "jobs:\n"
+            "  run:\n"
+            "    steps:\n"
+            "      - uses: example/tool@1111111111111111111111111111111111111111\n"
+            "        with:\n"
+            f"          token: {EXPR} secrets.SUBMODULES_TOKEN }}}}\n",
+        )
+        check(
+            "token: a non-checkout action is flagged too (audit is not scoped)",
+            audit(token, non_checkout) == 1,
+        )
+
         # ------------------------------------- refusals, not silent passes
+        uses_not_string = root / "pins-uses-not-string"
+        write(
+            uses_not_string,
+            "a.yml",
+            "jobs:\n  run:\n    steps:\n      - uses:\n          - a\n          - b\n",
+        )
+        check(
+            "pins: a step whose 'uses' is not a string is an error, not clean",
+            audit(pins, uses_not_string) == 2,
+        )
+
         # A structurally malformed workflow is one the audit walked NOTHING in,
         # which is not the same as one it found nothing in. Skipping these was
         # the parsed-walk version of reading grep's exit 2 as exit 1.

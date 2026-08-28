@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when a workflow passes SUBMODULES_TOKEN to a checkout's ``token:``.
+"""Fail when a workflow passes SUBMODULES_TOKEN to any step's ``token:`` input.
 
 That secret authenticates a cross-owner SUBMODULE fetch, via the
 checkout-submodules composite's ``submodules-token:`` input, so it must never
@@ -13,6 +13,16 @@ line-leading ``token:``, which distinguished ``token:`` from
 Walking the parsed ``with:`` mapping tells the two apart by key rather than by
 spelling, so neither indentation nor a reflowed value can confuse it, and
 heredoc text inside a ``run:`` block is not reachable at all (gha#716).
+
+**Deliberately NOT scoped to ``actions/checkout``.**  ``actions/checkout`` is
+the canonical case and not the only one: any action handed this secret through
+a ``token:`` input is being trusted to authenticate against the caller's own
+repository, which is precisely what it cannot do.  Scoping the audit to a
+single action name would also miss a fork, a wrapper composite, or a rename,
+and the two errors are not symmetric --- a false negative ships a broken
+checkout to a consumer, while a false positive is a one-line conversation on a
+PR.  The reported line names the step's action so a genuine exception is
+recognizable at a glance.
 
 Usage::
 
@@ -59,8 +69,11 @@ def violations(path: pathlib.Path, doc) -> list[str]:
         # secret and is a different key, so no prefix or suffix matching here.
         value = with_block.get("token")
         if isinstance(value, str) and SECRET_REF.search(value):
+            action = step.get("uses")
+            named = f" ({action})" if isinstance(action, str) else ""
             found.append(
-                f"{path}: job '{job_id}' step {index} passes {SECRET} to 'token:'"
+                f"{path}: job '{job_id}' step {index}{named} passes {SECRET} "
+                "to a 'token:' input"
             )
     return found
 
@@ -90,15 +103,16 @@ def main(argv: list[str] | None = None) -> int:
         for line in found:
             print(line)
         print(
-            "::error::A workflow above passes SUBMODULES_TOKEN to a top-level "
-            "actions/checkout 'token:' input (see gha#442) --- it authenticates "
-            "a cross-owner submodule fetch, not the caller's own repo. Use the "
-            "checkout-submodules composite's 'submodules-token:' input instead."
+            "::error::A step above passes SUBMODULES_TOKEN to a 'token:' input "
+            "(see gha#442) --- it authenticates a cross-owner submodule fetch, "
+            "not the caller's own repo, so it must not gate a checkout of the "
+            "caller's own repository. Use the checkout-submodules composite's "
+            "'submodules-token:' input instead."
         )
         return 1
 
     print(
-        "No workflow passes SUBMODULES_TOKEN to a checkout token: input "
+        "No workflow passes SUBMODULES_TOKEN to a 'token:' input "
         f"({len(files)} file(s) examined)."
     )
     return 0

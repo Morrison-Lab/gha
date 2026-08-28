@@ -3,8 +3,9 @@
 
 A floating ref (``@v4``, ``@main``) resolves to whatever that tag or branch
 points at when the job runs, so the code executed is chosen by the action's
-owner rather than by this repo (gha#328).  A 40-character commit SHA is the
-only ref that cannot be moved under us.
+owner rather than by this repo (gha#328).  What makes a ref safe is that it
+names content rather than a label: a 40-character Git commit SHA for a
+repository action, or an ``@sha256:`` image digest for a ``docker://`` one.
 
 Exempt:
 
@@ -17,11 +18,12 @@ replaces anchored on a line-leading ``uses:``, so it saw
     - name: Check out
       uses: actions/checkout@<sha>
 
-and did not see ``- uses: actions/checkout@<sha>`` --- a spelling this repo
-uses widely, which left five real references exempt.  Widening the regex was
-not the fix either: it then matched ``_selftest.yml``'s heredoc-written flawed
-fixture, which is text inside a ``run:`` block rather than a reference GitHub
-ever resolves.  A parsed walk sees both spellings by construction and cannot
+and did not see ``- uses: actions/checkout@<sha>``, which left three real
+references exempt --- all in ``altdoc-multiversion-docs.yml`` (measured
+2026-08-28 against `main` at 7719d04).  Widening the regex was not the fix
+either: it then also matched ``_selftest.yml``'s heredoc-written fixture
+workflows, which are text inside a ``run:`` block rather than references
+GitHub ever resolves.  A parsed walk sees both spellings by construction and cannot
 see heredoc content at all.
 
 Usage::
@@ -47,7 +49,10 @@ from workflow_discovery import (  # noqa: E402
     require_workflows,
 )
 
-SHA_PINNED = re.compile(r"@[0-9a-f]{40}$")
+# A Git commit for a repository action, or an image digest for a `docker://`
+# one --- GitHub accepts both spellings of `uses:`, and a digest is as immutable
+# as a commit, so rejecting it would report a securely pinned action as unpinned.
+SHA_PINNED = re.compile(r"@(?:[0-9a-f]{40}|sha256:[0-9a-f]{64})$")
 SELF_REPO = "Morrison-Lab/gha"
 
 
@@ -71,8 +76,17 @@ def violations(path: pathlib.Path, doc) -> list[str]:
             found.append(f"{path}: job '{job_id}' calls '{uses}'")
     for job_id, index, step in iter_steps(path, doc):
         uses = step.get("uses")
-        if not isinstance(uses, str):
+        if uses is None:
             continue
+        if not isinstance(uses, str):
+            # Refused rather than skipped, matching iter_job_uses: a step whose
+            # `uses` is a list or mapping is one this audit did not examine,
+            # and reporting it as pinned would be a claim about a reference
+            # nobody read.
+            raise Unparsable(
+                f"{path}: job '{job_id}' step {index} has 'uses' as "
+                f"{type(uses).__name__}, not a string"
+            )
         if not is_exempt(uses) and not SHA_PINNED.search(uses):
             found.append(f"{path}: job '{job_id}' step {index} uses '{uses}'")
     return found

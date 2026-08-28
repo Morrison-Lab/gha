@@ -2048,8 +2048,10 @@ three places for it to drift back to `*.yml` only.
 **Parsing replaced grepping because a line anchor cannot see either thing that
 matters here.**
 `^\s*uses:` matches the continuation form and not `- uses: ...`, and this repo
-writes both --- five action references were exempt from the pin audit on that
-basis alone.
+writes both --- three action references, all in `altdoc-multiversion-docs.yml`,
+were exempt from the pin audit on that basis alone (measured 2026-08-28 against
+`main` at 7719d04; two further `- uses:` lines match textually but sit inside
+`_selftest.yml` heredocs and are not references).
 Widening the anchor is not the fix: the one new hit it produces in this tree is
 `_selftest.yml`'s heredoc-written flawed fixture, which is text inside a `run:`
 block rather than a reference GitHub resolves.
@@ -2087,6 +2089,18 @@ in it --- the parsed-walk version of reading grep's exit 2 as exit 1.
 only detector, but an audit that reports clean over a file it never walked is
 the exact failure both of these exist to prevent.
 
+**The token audit is deliberately not scoped to `actions/checkout`.**
+That action is the canonical case rather than the only one: any action handed
+this secret through a `token:` input is being trusted to authenticate against
+the caller's own repository, which is precisely what it cannot do.
+Scoping to one action name would also miss a fork, a wrapper composite, or a
+rename, and the two errors are not symmetric --- a false negative ships a
+broken checkout to a consumer, a false positive is a one-line conversation on
+a PR.
+The reported line names the step's action so a genuine exception is
+recognizable at a glance, and a test pins the breadth so narrowing it later is
+a decision rather than a silent regression.
+
 **Two matches are anchored deliberately, and a bare `in` gets each wrong in
 opposite directions.**
 The self-exemption is `Morrison-Lab/gha` or `Morrison-Lab/gha/...`, not a bare
@@ -2096,18 +2110,25 @@ The secret test is the identifier `SUBMODULES_TOKEN` on word boundaries, not a
 substring, so `NOT_SUBMODULES_TOKEN` is a different secret rather than a
 blocked workflow.
 
+**A pin is a commit SHA or an image digest, not a commit SHA alone.**
+GitHub accepts `uses: docker://image@sha256:<digest>`, and a digest is as
+immutable as a commit, so a 40-hex-only test would report a securely pinned
+action as unpinned.
+A `docker://` ref pinned only by tag still fails.
+
 **The suite mutes each audit's own output.**
 An expected failure still prints `::error::`, and GitHub renders every one as
 an annotation, so an unmuted suite decorates a passing job with a dozen errors
 it deliberately provoked.
 
 CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
-Eleven mutations were confirmed to turn it red rather than assumed to: a
+Thirteen mutations were confirmed to turn it red rather than assumed to: a
 `*.yml`-only discovery (against both consumers), a dropped empty-directory
 guard, a swallowed parse error, a pin regex accepting any `@ref`, a skipped
 step-level `uses:` walk, a token lookup matching any key containing `token`, a
 bare-prefix self-exemption, a substring secret match, a skipped malformed
-`steps`, and a tolerated missing `jobs`.
+`steps`, a tolerated missing `jobs`, a skipped non-string step-level `uses:`,
+and a pin regex rejecting a `docker://` image digest.
 
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a

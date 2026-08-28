@@ -11,26 +11,17 @@ for the same reason that script rejects nested paths: ``.github/workflows/
 scripts/...`` is not a workflow, so an audit sweeping it in would report
 findings GitHub never loads.
 
-PyYAML is required by the callers that parse.  It ships preinstalled on the
-GitHub-hosted Ubuntu runner image, which is where ``_selftest.yml`` runs these;
-the import is guarded so a runner that ever drops it fails with an actionable
-message rather than a traceback.
+PyYAML is required only by ``load_workflow``, and is imported there rather
+than at module load so the discovery half stays importable without it.  It
+ships preinstalled on the GitHub-hosted Ubuntu runner image, which is where
+``_selftest.yml`` runs these; the import is guarded so a runner that ever drops
+it fails with an actionable message rather than a traceback.
 """
 
 from __future__ import annotations
 
 import pathlib
 import sys
-
-try:
-    import yaml
-except ModuleNotFoundError:  # pragma: no cover - exercised only on a bare runner
-    print(
-        "::error::PyYAML is required by the workflow audits but is not installed. "
-        "Install it (`pip install pyyaml`) or restore the runner image that ships it.",
-        file=sys.stderr,
-    )
-    raise SystemExit(2)
 
 
 def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
@@ -75,6 +66,19 @@ def load_workflow(path: pathlib.Path):
     the two alike is how a check passes over content it never saw --- the same
     conflation the shell version made by reading ``grep``'s exit 2 as exit 1.
     """
+    # Imported here rather than at module load, so importing this module for
+    # its discovery half -- which touches no YAML -- does not require PyYAML,
+    # and `--help` still works on a machine without it.
+    try:
+        import yaml
+    except ModuleNotFoundError:  # pragma: no cover - only on a bare runner
+        print(
+            "::error::PyYAML is required to parse workflows but is not "
+            "installed (install it with `python3 -m pip install pyyaml`).",
+            file=sys.stderr,
+        )
+        raise SystemExit(2) from None
+
     try:
         doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, yaml.YAMLError) as exc:
