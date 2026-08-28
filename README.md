@@ -238,6 +238,10 @@ that need to write must have the **caller** grant it on the calling job:
   narrows below the read-only default token still needs `actions: read`
   alongside `contents: read`.
 
+- `check-news` reads the PR's labels live for its skip-label exemption, so a
+  caller that narrows below the read-only default token still needs
+  `issues: read` alongside `contents: read`.
+
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant

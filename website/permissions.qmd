@@ -40,6 +40,9 @@ already include the right `permissions:` blocks; copy them as-is.
 - `check-equation-renders` downloads the build artifact.
   It is read-only, above, but a caller that narrows below the read-only
   default token still needs `actions: read` alongside `contents: read`.
+- `check-news` reads the PR's labels live for its skip-label exemption.
+  It is read-only, above, but a caller that narrows below the read-only
+  default token still needs `issues: read` alongside `contents: read`.
 - `cleanup-pr-previews` commits deletions to `gh-pages`, so grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` open a PR, so grant
