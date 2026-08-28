@@ -196,6 +196,40 @@ that need to write must have the **caller** grant it on the calling job:
     Public submodules clone anonymously; private ones additionally need a
     `SUBMODULES_TOKEN` secret.
 
+- `ai-code-review` (selects the first available AI reviewer and dispatches its
+  review workflow) → grant `contents: read`, `pull-requests: read`,
+  `issues: read`, `actions: write`, and pass the secrets of whichever agent
+  review workflows are installed (see
+  [`examples/ai-code-review.yml`](examples/ai-code-review.yml)).
+  `issues: read` is required since the delivery classifier's comment scan
+  landed ([gha#638](https://github.com/Morrison-Lab/gha/pull/638));
+  a caller missing it fails at parse time with no API-visible diagnostic
+  ([gha#685](https://github.com/Morrison-Lab/gha/issues/685) -- see
+  [Widening permissions is a breaking change](#widening-permissions-is-a-breaking-change) under Versioning below).
+
+- `gemini-code-review` (posts the Gemini review) → grant `contents: read`,
+  `pull-requests: write`, `issues: write`, `id-token: write`, and the
+  `GEMINI_API_KEY` secret.
+
+  - **Optional:** set `checkout-submodules: true` so the reviewer can read
+    submodule contents; private submodules additionally need a
+    `SUBMODULES_TOKEN` secret.
+
+- `antigravity-code-review` (posts the Antigravity review) → grant
+  `contents: read`, `pull-requests: write`, `issues: write`,
+  `id-token: write`, and the `GEMINI_API_KEY` secret.
+
+  - **Optional:** set `checkout-submodules: true` so the reviewer can read
+    submodule contents; private submodules additionally need a
+    `SUBMODULES_TOKEN` secret.
+
+- `small-model-agent` (posts the small-model agent's PR comment) → grant
+  `contents: read`, `pull-requests: write`.
+
+- `claude-manage-project` (files issues and updates the project board) →
+  grant `contents: read`, `issues: write`, `repository-projects: write`, and
+  add the `CLAUDE_CODE_OAUTH_TOKEN` secret (required).
+
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
   The `preview` build half is read-only, above.
@@ -646,6 +680,24 @@ their timeouts as a `workflow_call` input, which is the pattern to follow if
 a consumer ever needs to raise one.
 `r-cmd-check.yml` defaults to 90 minutes
 (an `R CMD check` matrix hang ceiling, not a budget).
+
+### Widening permissions is a breaking change
+
+A reusable workflow's job-level `permissions:` block is part of its caller
+contract: a nested job cannot request more than the caller grants, so adding
+a permission -- even a `read` -- fails every caller written against the old
+contract at **parse time** (`Invalid workflow file`), with no API-visible
+diagnostic (a `startup_failure` run exposes no jobs, logs, or annotations;
+the error text appears only on the run page in the UI).
+[gha#685](https://github.com/Morrison-Lab/gha/issues/685) measured this when
+[gha#638](https://github.com/Morrison-Lab/gha/pull/638) added `issues: read`
+to `ai-code-review.yml` and the `v2` slide delivered it: every consumer run
+concluded `startup_failure` until the caller-side grant landed.
+So treat a `permissions:` widening like any other breaking change: prefer a
+major-version bump; where a bump is disproportionate, sweep the registered
+consumers ([`REVDEPS.md`](REVDEPS.md)) and PR the caller-side grant **before**
+sliding the tag, and name the required caller edit in the change's changelog
+fragment.
 
 ## Reverse dependencies
 
