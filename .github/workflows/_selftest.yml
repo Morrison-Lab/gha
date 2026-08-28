@@ -3031,25 +3031,25 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      # Both audits below moved out of this file into scripts (gha#716) so
-      # their grep exit status can be read three ways rather than two, and so
-      # each is exercised offline against fixtures whose violation lives in a
-      # `.yaml` file --- the real tree carries none, so a discovery regression
-      # would otherwise leave every check green.
+      # Both audits below moved out of this file into parsed-YAML scripts
+      # (gha#716, gha#720). Grepping workflow text saw only one of the two
+      # ways a step spells `uses:`, and could not tell a real reference from
+      # one written inside a `run:` heredoc; a parsed walk does both by
+      # construction. The unit tests run first, and exercise each audit
+      # against a fixture whose violation lives in a `.yaml` file --- the real
+      # tree carries none, so a discovery regression would otherwise leave
+      # every check green.
       - name: Run workflow-discovery and workflow-audit unit tests
         shell: bash
-        run: |
-          set -euo pipefail
-          bash .github/workflows/scripts/tests/run-list-workflow-files-tests.sh
-          bash .github/workflows/scripts/tests/run-workflow-audit-tests.sh
+        run: python3 .github/workflows/scripts/tests/run-workflow-audit-tests.py
 
       - name: Assert no workflow passes SUBMODULES_TOKEN to a top-level checkout's token input
         shell: bash
-        run: bash .github/workflows/scripts/audit-workflow-token-usage.sh
+        run: python3 .github/workflows/scripts/audit_workflow_token_usage.py
 
       - name: Assert all third-party actions in workflows are SHA-pinned
         shell: bash
-        run: bash .github/workflows/scripts/audit-workflow-action-pins.sh
+        run: python3 .github/workflows/scripts/audit_workflow_action_pins.py
 
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,

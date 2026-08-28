@@ -50,6 +50,13 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+# Shared with the two workflow audits rather than re-globbed here: a third copy
+# of the discovery rule is a third place for it to drift back to `*.yml` only
+# (gha#716).
+from workflow_discovery import discover_workflows  # noqa: E402
+
 BEGIN = "<!--readonly-workflows:begin-->"
 END = "<!--readonly-workflows:end-->"
 
@@ -94,19 +101,6 @@ def is_reusable(doc) -> bool:
     # PyYAML parses a bare `on:` key as the boolean True, so check both spellings.
     triggers = doc.get(True, doc.get("on"))
     return isinstance(triggers, dict) and "workflow_call" in triggers
-
-
-def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
-    """Return the workflow files GitHub itself would discover.
-
-    Both extensions, not just ``*.yml``: GitHub loads ``.yml`` and ``.yaml``
-    workflow files alike, and this repo's own detect-pr-workflow-edits.sh
-    recognizes both -- so a ``.yaml`` reusable workflow a ``*.yml``-only glob
-    never opens is silently absent from the expected read-only set, and this
-    guard then reports the docs as agreeing without ever having seen it
-    (gha#716, the sibling of the gha#705 gap fixed in the job-guard suite).
-    """
-    return sorted([*workflows_dir.glob("*.yml"), *workflows_dir.glob("*.yaml")])
 
 
 def read_only_workflows(workflows_dir: pathlib.Path) -> set[str]:
