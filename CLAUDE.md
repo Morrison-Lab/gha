@@ -1648,6 +1648,36 @@ Note that `outcome` is read *before* `continue-on-error` applies, which is what
 lets the retry keep gating on `steps.claude-review.outcome == 'success'`
 unchanged.
 
+**Four fixtures pin the gha#551 background-agent kind, and the fourth is the
+one the first three cannot replace.**
+A no-verdict run whose transcript carries an EXECUTED background `Agent`/`Task`
+spawn -- a `tool_use` block whose input's `run_in_background` is absent or
+`true`, with no matching `permission_denials` entry -- classifies
+`failure_kind=background-agent` and does NOT write `stub_review`, so the
+gha#185 retry never fires for it.
+`stub-background-agents-executed.json` (explicit `true`) and
+`stub-background-agents-omitted-param.json` (parameter omitted; it defaults to
+true, and an omitted parameter is exactly what the gha#550 deny rule cannot
+match) pin the `!= false` test's two positive arms.
+`stub-sync-agents-only.json` is the over-matching negative: an all-synchronous
+fan-out that stubbed for an unrelated reason must stay a retryable `stub`.
+`stub-denied-bg-spawns-in-transcript.json` is the subtraction's own
+discriminator -- both spawns appear in the transcript AND in
+`permission_denials`, which is what a real denied call looks like post-#550,
+so none executed and the retry survives.
+That fourth fixture exists because a mutation sweep proved the first three
+cannot see a dropped subtraction: the gha#550 spawn-denial fixtures carry no
+transcript `tool_use` blocks at all, so `executed = uses` and
+`executed = uses - denied` agree on every fixture that predates it.
+One meta-lesson from the same sweep, recorded because it produced three
+vacuously-green mutation results in one sitting: a mutation applied by string
+replacement must be CONFIRMED to have changed the file (`git diff --quiet`
+before running the suite), and the restore step must restore COMMITTED work
+-- a `git checkout` after each mutation, run against a not-yet-committed
+implementation, silently reverts the implementation itself, and every later
+"mutation" then tests the detector's absence rather than the targeted edit.
+Commit first; mutate second.
+
 **Two fixtures pin the gha#550 spawn-denial exclusion, and the pair is the
 point rather than either one.**
 `spawn-denials-only-retryable.json` carries an 8-spawn fan-out whose denials

@@ -65,7 +65,7 @@ run_compose() {
 # Every kind check-review-execution.sh can emit must survive unchanged; only a
 # value it cannot emit normalizes. A kind silently rewritten to `unknown` would
 # print generic advice under a specific headline, which is worse than either.
-for kind in high-denial stub short-circuit hard-error no-output deferred bad-credential; do
+for kind in high-denial stub background-agent short-circuit hard-error no-output deferred bad-credential; do
   out="$(run_compose "$kind" 0)"
   check "kind passthrough: $kind" "kind=$kind" "$(sed -n 1p <<<"$out")"
 done
@@ -211,7 +211,15 @@ if LC_ALL=C grep -q '[^[:print:][:space:]]' <<<"$out"; then
   failures=$((failures + 1))
 fi
 
-# --- the bad-credential kind describes a run that never started -------------
+# --- the background-agent kind must say the non-retry was deliberate --------
+# The reader's next move is what the advice decides: a triager who reads this
+# as an ordinary stub re-triggers and pays for another doomed attempt, so the
+# claims asserted are the deliberate non-retry and where the durable fix
+# lives (the omitted-parameter gap the gha#550 deny rule cannot reach).
+out="$(run_compose background-agent 0 '' 5 4.19 1)"
+check_contains "background-agent names the mechanism" 'background' "$out"
+check_contains "background-agent says the non-retry was deliberate" 'deliberately did **not** retry' "$out"
+check_contains "background-agent names the omitted-parameter gap" 'what the deny rule cannot match' "$out"
 # Its three claims are each false of the other kinds and each actionable, so
 # they are asserted rather than left to the headline. A reader acts on "this is
 # a repo secret, not the diff", so that is the one to keep if trimmed.
@@ -235,7 +243,7 @@ check_not_contains "bad-credential does not claim the review finished" \
 # A kind whose headline duplicated another's would misdescribe the failure
 # while looking fine in isolation.
 seen=""
-for kind in high-denial stub short-circuit hard-error no-output deferred bad-credential unknown; do
+for kind in high-denial stub background-agent short-circuit hard-error no-output deferred bad-credential unknown; do
   headline="$(run_compose "$kind" 0 | sed -n '2s/^headline=//p')"
   checks=$((checks + 1))
   if [[ -z "$headline" ]]; then
