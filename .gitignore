@@ -14,3 +14,8 @@ gha-creds-*.json
 
 node_modules/
 ard-*.md
+
+# opencode-code-review runtime artifacts (gha#707); overwritten per review run,
+# never source files -- a local run must not re-commit them.
+review-error.log
+review-output.md
