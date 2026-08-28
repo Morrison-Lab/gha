@@ -68,9 +68,10 @@ not reference `@main` from consumers.
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names` |
+| `claude-manage-project.yml` | Triage a newly-opened issue: apply a priority label and add it to the project board (trusted authors only) | `prompt-addendum`, `trusted-bot-logins` |
 | `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file`, `extra-secret-names` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model`, `extra-secret-names` |
-| `antigravity-code-review.yml` | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`) | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model` |
+| `antigravity-code-review.yml` | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`) | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model`, `workload-identity-provider`, `service-account`, `gcp-project`, `gcp-location`, `max-diff-lines`, `max-diff-files`, `fail-on-error` |
 | `cursor-code-review.yml` | Queue a Cursor Bugbot PR review via the Enterprise Bugbot API (`POST /bugbot/review`); success means queued | `pr-number`, `dry-run` |
 | `opencode-code-review.yml` | Read-only OpenCode PR code review running the opencode CLI headless (default stub runs on `workflow_dispatch`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `opencode-model`, `opencode-version`, `opencode-attempts` |
 | `ai-code-review.yml` | Multi-agent PR review: picks one configured AI agent at random and dispatches its review workflow, falling through when one can't be dispatched or fails during execution | `agents`, `pr-number`, `claude-review-workflow-file`, `gemini-review-workflow-file`, `antigravity-review-workflow-file`, `cursor-review-workflow-file`, `opencode-review-workflow-file`, `watch-timeout` |
@@ -508,7 +509,7 @@ Pin
 `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, and `r-cmd-check.yml`
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, and `r-cmd-check.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -625,7 +626,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, and `r-cmd-check.yml` at `@v2` -- see the
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, and `r-cmd-check.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

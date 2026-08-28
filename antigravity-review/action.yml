@@ -38,9 +38,56 @@ inputs:
     required: false
     default: 'true'
 
+  workload-identity-provider:
+    description: 'Full GCP Workload Identity Provider resource name for keyless authentication'
+    required: false
+    default: ''
+  service-account:
+    description: 'GCP Service Account email to impersonate when using Workload Identity Federation'
+    required: false
+    default: ''
+  fail-on-error:
+    description: >-
+      Whether a genuine error (metadata fetch, diff fetch, empty diff, or an
+      execution failure) reddens the check. Defaults to `true`: these paths
+      return before any PR comment is posted, so exiting 0 would leave a
+      green check, a silent thread, and only a buried `::error::` line ---
+      the failure mode gha#360, gha#379 and gha#543 each exist to prevent.
+      Set `false` only where a review is genuinely optional (gha#672 review,
+      finding 2).
+    required: false
+    default: 'true'
+  gcp-project:
+    description: >-
+      GCP project id. Required alongside `workload-identity-provider`: minting
+      OIDC credentials authenticates to GCP, but the SDK only routes through
+      Vertex AI when told to, so without this the review still calls the Gemini
+      Developer API and still needs GEMINI_API_KEY (gha#672 review, finding 1).
+    required: false
+    default: ''
+  gcp-location:
+    description: 'Vertex AI location (e.g. us-central1). Used with gcp-project.'
+    required: false
+    default: ''
+  max-diff-lines:
+    description: 'Maximum modified lines allowed in a PR diff before skipping review'
+    required: false
+    default: '2000'
+  max-diff-files:
+    description: 'Maximum modified files allowed in a PR diff before skipping review'
+    required: false
+    default: '50'
+
 runs:
   using: 'composite'
   steps:
+    - name: Authenticate to Google Cloud (OIDC)
+      if: inputs.workload-identity-provider != '' && inputs.service-account != ''
+      uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f  # v2.1.7
+      with:
+        workload_identity_provider: ${{ inputs.workload-identity-provider }}
+        service_account: ${{ inputs.service-account }}
+
     - name: Set up Python
       uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7.0.0
       with:
@@ -65,6 +112,17 @@ runs:
         INPUT_TRIGGER_POLICY: ${{ inputs.trigger-policy }}
         INPUT_DRY_RUN: ${{ inputs.dry-run }}
         INPUT_POST_COMMENT: ${{ inputs.post-comment }}
+
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+        # gha#672 finding 1: the OIDC step above mints ADC credentials,
+        # but the SDK only uses them when routed through Vertex AI. These
+        # three are what actually switch it over; without them the auth
+        # step is a no-op and GEMINI_API_KEY is still required.
+        GOOGLE_GENAI_USE_VERTEXAI: ${{ inputs.gcp-project != '' && 'true' || '' }}
+        GOOGLE_CLOUD_PROJECT: ${{ inputs.gcp-project }}
+        GOOGLE_CLOUD_LOCATION: ${{ inputs.gcp-location }}
+        INPUT_MAX_DIFF_LINES: ${{ inputs.max-diff-lines }}
+        INPUT_MAX_DIFF_FILES: ${{ inputs.max-diff-files }}
       run: |
         ARGS=(
           "--mode" "${INPUT_MODE}"
@@ -80,6 +138,16 @@ runs:
         fi
         if [ "${INPUT_POST_COMMENT}" = "true" ]; then
           ARGS+=("--post-comment")
+        fi
+
+        if [ "${INPUT_FAIL_ON_ERROR}" = "true" ]; then
+          ARGS+=("--fail-on-error")
+        fi
+        if [ -n "${INPUT_MAX_DIFF_LINES}" ]; then
+          ARGS+=("--max-diff-lines" "${INPUT_MAX_DIFF_LINES}")
+        fi
+        if [ -n "${INPUT_MAX_DIFF_FILES}" ]; then
+          ARGS+=("--max-diff-files" "${INPUT_MAX_DIFF_FILES}")
         fi
 
         python "${{ github.action_path }}/run_antigravity.py" "${ARGS[@]}"

@@ -16,6 +16,7 @@ updates:
   - package-ecosystem: "github-actions"
     directories:
       - "/" # .github/workflows/
+      - "/antigravity-review"
       - "/check-bibliography-dois"
       - "/check-formatting"
       - "/check-links"
