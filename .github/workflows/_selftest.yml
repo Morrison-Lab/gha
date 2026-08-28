@@ -1328,7 +1328,18 @@ jobs:
   # here is attributable at a glance -- the same one-capability-per-job split
   # phi-tests, gemini-review-fail-check, and review-failure-report use.
   credential-shape:
-    runs-on: ubuntu-latest
+    # gha#690: a macOS leg alongside Linux, because the suite is pure bash
+    # with no installs and its one measured failure class (gha#688: BSD wc
+    # pads output with leading spaces, so a string comparison against it
+    # fails on macOS while GNU CI stays green) is exactly a
+    # platform-difference bug no ubuntu-only run can see. This is the repo's
+    # only macOS leg; macOS runners are free on public repos, and this job is
+    # among the cheapest to duplicate.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     permissions:
       contents: read
