@@ -205,21 +205,28 @@ that need to write must have the **caller** grant it on the calling job:
   landed ([gha#638](https://github.com/Morrison-Lab/gha/pull/638));
   a caller missing it fails at parse time with no API-visible diagnostic
   ([gha#685](https://github.com/Morrison-Lab/gha/issues/685) -- see
-  "Widening permissions is a breaking change" under Versioning below).
+  [Widening permissions is a breaking change](#widening-permissions-is-a-breaking-change) under Versioning below).
 
 - `gemini-code-review` (posts the Gemini review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, `id-token: write`, and the
   `GEMINI_API_KEY` secret.
+  - **Optional:** set `checkout-submodules: true` so the reviewer can read
+    submodule contents; private submodules additionally need a
+    `SUBMODULES_TOKEN` secret.
 
 - `antigravity-code-review` (posts the Antigravity review) → grant
   `contents: read`, `pull-requests: write`, `issues: write`,
   `id-token: write`, and the `GEMINI_API_KEY` secret.
+  - **Optional:** set `checkout-submodules: true` so the reviewer can read
+    submodule contents; private submodules additionally need a
+    `SUBMODULES_TOKEN` secret.
 
 - `small-model-agent` (posts the small-model agent's PR comment) → grant
   `contents: read`, `pull-requests: write`.
 
 - `claude-manage-project` (files issues and updates the project board) →
-  grant `contents: read`, `issues: write`, `repository-projects: write`.
+  grant `contents: read`, `issues: write`, `repository-projects: write`, and
+  add the `CLAUDE_CODE_OAUTH_TOKEN` secret (required).
 
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
@@ -671,7 +678,6 @@ their timeouts as a `workflow_call` input, which is the pattern to follow if
 a consumer ever needs to raise one.
 `r-cmd-check.yml` defaults to 90 minutes
 (an `R CMD check` matrix hang ceiling, not a budget).
-
 
 ### Widening permissions is a breaking change
 

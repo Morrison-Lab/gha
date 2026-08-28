@@ -91,7 +91,8 @@ already include the right `permissions:` blocks; copy them as-is.
 - `small-model-agent` posts the small-model agent's PR comment, so grant
   `contents: read`, `pull-requests: write`.
 - `claude-manage-project` files issues and updates the project board, so grant
-  `contents: read`, `issues: write`, `repository-projects: write`.
+  `contents: read`, `issues: write`, `repository-projects: write`, and add the
+  `CLAUDE_CODE_OAUTH_TOKEN` secret (required).
 - `altdoc-multiversion-docs` deploys to `gh-pages`, comments PR previews, and
   rewrites rendered links, so grant `contents: write`,
   `pull-requests: write`, and `issues: write`, and set Settings -> Pages ->
