@@ -51,6 +51,13 @@ declare -A expected=(
   # a retryable stub, or the new kind is a behaviour regression (the
   # over-matching caution in gha#551's own body).
   [stub-sync-agents-only.json]=fail-stub
+  # The subtraction's own discriminator: both background spawns appear in
+  # the transcript AND in permission_denials (what a real denied call looks
+  # like post-gha#550), so none executed and the retry must survive. The
+  # spawn-denials-only fixtures cannot catch a dropped subtraction, because
+  # they carry no transcript tool_use blocks at all -- confirmed by mutation
+  # (executed_bg_spawns=$bg_spawn_uses left every other fixture green).
+  [stub-denied-bg-spawns-in-transcript.json]=fail-stub
   [empty-review-text.json]=fail
   [is-error-result.json]=fail
   # gha#391: is_error:true alongside subtype:"success" is a self-contradictory
@@ -248,6 +255,7 @@ declare -A expected_cost=(
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
   [stub-sync-agents-only.json]=4.17
+  [stub-denied-bg-spawns-in-transcript.json]=4.16
   [stub-pr171-waiting-background-agents.json]=0.05
   [stub-pr171-remaining-review-agents.json]=0.08
   [stub-sparta590-scheduled-wakeup.json]=0.03
@@ -306,6 +314,8 @@ declare -A expected_kind=(
   [stub-background-agents-omitted-param.json]=background-agent
   # All spawns synchronous: the new kind must NOT claim it (gha#551).
   [stub-sync-agents-only.json]=stub
+  # All spawns denied: none executed, so the retry survives (gha#551).
+  [stub-denied-bg-spawns-in-transcript.json]=stub
   [permission-denials-array-only-high-count.json]=high-denial
   [permission-denials-mixed-tools.json]=high-denial
   # A denied `gh pr comment` leaves the count non-zero but unparseable/known
