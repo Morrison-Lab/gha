@@ -2036,6 +2036,139 @@ There is no live `uses:` of the restore composite against this checkout:
 restoring this repo's own `.github/workflows/` mid-selftest would clobber
 later steps.
 
+`.github/workflows/scripts/tests/run-workflow-audit-tests.py` covers the two
+workflow-wide audits `_selftest.yml` runs and the discovery module beneath
+them (gha#716, gha#720).
+Both audits used to be inline `run:` blocks in `_selftest.yml` grepping
+`.github/workflows/*.yml`; they are now `audit_workflow_token_usage.py` and
+`audit_workflow_action_pins.py`, sharing `workflow_discovery.py` with
+`run-permissions-docs-tests.py` and `run-workflow-job-guard-tests.py`.
+That is one copy of the discovery rule in the repo rather than four places for
+it to drift back to `*.yml` only --- which is the drift #712 and #716 each
+fixed separately, in two of those four.
+
+**Parsing replaced grepping because a line anchor cannot see either thing that
+matters here.**
+`^\s*uses:` matches the continuation form and not `- uses: ...`, and this repo
+writes both --- three action references, all in `altdoc-multiversion-docs.yml`,
+were exempt from the pin audit on that basis alone (measured 2026-08-28 against
+`main` at 7719d04; two further `- uses:` lines match textually but sit inside
+`_selftest.yml` heredocs and are not references).
+Widening the anchor is not the fix: two of the five lines it newly matches are
+`_selftest.yml`'s heredoc-written fixture workflows, which are text inside a
+`run:` block rather than references GitHub resolves.
+A walk over parsed `jobs.*.steps[].uses` and `jobs.*.uses` sees both spellings
+by construction and cannot reach heredoc content at all.
+The same argument applies to the token audit, which now tells `token:` from
+`submodules-token:` by key rather than by what precedes the colon.
+
+**Testing the discovery is not testing the audits, and this repo's own tree is
+why.**
+It carries 63 `.yml` workflows and zero `.yaml` ones, so a consumer reverted to
+a `*.yml`-only glob leaves every check green --- the audits pass because there
+is nothing for the wider glob to find, not because discovery works.
+Each audit therefore gets a fixture whose violation lives in a `.yaml` file.
+Those cases are the ones to keep if the suite is ever trimmed, alongside the
+negative ones: an unparsable workflow is an error rather than a clean file, an
+empty or missing directory fails closed rather than returning an empty list,
+`submodules-token:` is not flagged, and a `uses:` inside a `run:` block is not
+a reference.
+
+`run-permissions-docs-tests.py` gained two cases of its own (10 and 11).
+The first is end-to-end: a `.yaml` reusable workflow that discovery misses is
+absent from the expected read-only set, so a doc *correctly* listing it reads
+as "listed but the workflow does not exist".
+The second asserts `discover_workflows` directly, so reverting it cannot be
+"fixed" by widening the glob to everything.
+Every case that predates them names only `.yml` fixtures, which is why none of
+them could see the gap.
+
+**Both audits refuse a malformed workflow rather than walking past it.**
+An absent or wrongly-typed `jobs`, `steps`, `with`, or step entry means the
+audit examined nothing in that file, which is not the same as finding nothing
+in it --- the parsed-walk version of reading grep's exit 2 as exit 1.
+`actionlint` catches these too, so this is defence in depth rather than the
+only detector, but an audit that reports clean over a file it never walked is
+the exact failure both of these exist to prevent.
+
+**The token audit is deliberately not scoped to `actions/checkout`.**
+That action is the canonical case rather than the only one: any action handed
+this secret through a `token:` input is being trusted to authenticate against
+the caller's own repository, which is precisely what it cannot do.
+Scoping to one action name would also miss a fork, a wrapper composite, or a
+rename, and the two errors are not symmetric --- a false negative ships a
+broken checkout to a consumer, a false positive is a one-line conversation on
+a PR.
+The reported line names the step's action so a genuine exception is
+recognizable at a glance, and a test pins the breadth so narrowing it later is
+a decision rather than a silent regression.
+
+**Two matches are anchored deliberately, and a bare `in` gets each wrong in
+opposite directions.**
+The self-exemption is `Morrison-Lab/gha` or `Morrison-Lab/gha/...`, not a bare
+prefix, which would also exempt `Morrison-Lab/gha-evil` --- somebody else's
+repository, under an exemption that exists to say the code is ours.
+The secret test is the identifier `SUBMODULES_TOKEN` on word boundaries, not a
+substring, so `NOT_SUBMODULES_TOKEN` is a different secret rather than a
+blocked workflow.
+
+**The reference is classified before its pin is validated.**
+A repository action or reusable workflow is pinned by a 40-character Git
+commit; a `docker://` image by an `@sha256:` digest.
+Accepting either form everywhere is the easy mistake and passes
+`actions/checkout@sha256:...` and `docker://alpine@<40hex>`, neither of which
+resolves to anything.
+A `docker://` ref pinned only by tag still fails.
+
+**The token audit walks job-level `with:` and `secrets:`, not only steps.**
+A reusable-workflow caller passes values down through those blocks, and the
+regex this replaced matched any line-leading `token:` and so covered them
+incidentally.
+A parsed walk that visits only `steps` would have been a coverage regression
+wearing a refactor's clothes --- which is the general risk when replacing a
+text scan with a structural one, since the text scan's reach was never written
+down anywhere.
+Input keys are compared case-insensitively, because GitHub's runner resolves
+an action's inputs that way --- so a `Token:` that reads as a different key here
+is the same input there, and matching case-sensitively would leave a one-keystroke
+bypass of the whole audit.
+`secrets: inherit` is the one legitimate scalar in either block and is skipped;
+a scalar `with:`, or a `secrets:` naming anything else, is refused, because
+skipping every string would leave a block the audit never examined reported as
+clean.
+A `token:` whose value is a list or mapping is refused for the same reason,
+while a number or boolean --- which an input may legitimately be --- is not.
+
+**The suite mutes each audit's own output.**
+An expected failure still prints `::error::`, and GitHub renders every one as
+an annotation, so an unmuted suite decorates a passing job with a dozen errors
+it deliberately provoked.
+
+CI runs all of this in the `lint-checkout-tokens` job, unit tests first.
+Nineteen mutations were confirmed to turn a named case red rather than assumed
+to, enumerated so the count is checkable against the list rather than asserted
+over it:
+
+1. a `*.yml`-only discovery, read by the audit suite;
+2. the same, read by the permissions-docs suite;
+3. a dropped empty-directory guard;
+4. a swallowed parse error;
+5. a pin regex accepting any `@ref`;
+6. a skipped step-level `uses:` walk;
+7. a token lookup matching any key containing `token`;
+8. a bare-prefix self-exemption;
+9. a substring secret match;
+10. a skipped malformed `steps`;
+11. a tolerated missing `jobs`;
+12. a skipped non-string step-level `uses:`;
+13. a pin regex rejecting a `docker://` image digest;
+14. a pin test accepting either form everywhere;
+15. a token walk skipping job-level blocks;
+16. a refused `secrets: inherit`;
+17. a skip of every scalar block rather than of `secrets: inherit` alone;
+18. a tolerated container-valued `token:`;
+19. a case-sensitive input-key match.
+
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
 stub `curl`: a successful queue, `DRY_RUN=true` in the JSON body, HTTP 400

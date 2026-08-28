@@ -272,7 +272,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Audits this repo's own .github/workflows/*.yml using actionlint
+          # Audits this repo's own workflows using actionlint, which does its
+          # own discovery and covers .yml and .yaml alike (gha#716)
           # (gha#582, gha#591). Shellcheck is disabled here deliberately: no
           # repository-wide shellcheck pass exists, and enabling it inside
           # this audit would surface pre-existing shellcheck findings across
@@ -3018,16 +3019,11 @@ jobs:
           fi
           echo "claude.yml's SENSITIVE_PATHS mirror matches claude-code-action@${sha}."
 
-  # gha#442: SUBMODULES_TOKEN authenticates a cross-owner SUBMODULE fetch
-  # (via the checkout-submodules composite's `submodules-token:` input) and
-  # must never gate the caller's own repo checkout --- a consumer that sets
-  # it correctly for its own submodule is exactly the consumer whose main
-  # checkout then fails, since the token has no reason to be able to read the
-  # caller's repo. The anchor is `^\s*token:`, not a bare `token:` substring
-  # match, so this does not also flag `submodules-token:` (which legitimately
-  # carries the secret) --- a trimmed line starting with "submodules-token:"
-  # never matches a pattern requiring "token:" immediately after the leading
-  # whitespace.
+  # Runs the two workflow-wide audits: no step may take SUBMODULES_TOKEN
+  # through a `token:` input (gha#442, and see that audit's own note on why it
+  # is not scoped to actions/checkout), and every third-party action must be
+  # pinned to a commit SHA or an image digest (gha#328). The rationale and the exact anchors for each live beside the
+  # audit in its own script, so this comment does not restate them (gha#716).
   lint-checkout-tokens:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -3036,26 +3032,25 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Assert no workflow passes SUBMODULES_TOKEN to a top-level checkout's token input
+      # Both audits below moved out of this file into parsed-YAML scripts
+      # (gha#716, gha#720). Grepping workflow text saw only one of the two
+      # ways a step spells `uses:`, and could not tell a real reference from
+      # one written inside a `run:` heredoc; a parsed walk does both by
+      # construction. The unit tests run first, and exercise each audit
+      # against a fixture whose violation lives in a `.yaml` file --- the real
+      # tree carries none, so a discovery regression would otherwise leave
+      # every check green.
+      - name: Run workflow-discovery and workflow-audit unit tests
         shell: bash
-        run: |
-          set -euo pipefail
-          if grep -rnE '^\s*token:\s*\$\{\{[^}]*SUBMODULES_TOKEN' .github/workflows/*.yml; then
-            echo "::error::A workflow above passes SUBMODULES_TOKEN to a top-level actions/checkout 'token:' input (see gha#442) --- it authenticates a cross-owner submodule fetch, not the caller's own repo. Use the checkout-submodules composite's 'submodules-token:' input instead."
-            exit 1
-          fi
-          echo "No workflow passes SUBMODULES_TOKEN to a top-level checkout token: input."
+        run: python3 .github/workflows/scripts/tests/run-workflow-audit-tests.py
+
+      - name: Assert no workflow passes SUBMODULES_TOKEN to a step's token input
+        shell: bash
+        run: python3 .github/workflows/scripts/audit_workflow_token_usage.py
 
       - name: Assert all third-party actions in workflows are SHA-pinned
         shell: bash
-        run: |
-          set -euo pipefail
-          UNPINNED=$(grep -rnE '^\s*uses:' .github/workflows/*.yml | grep -v 'uses:\s*\./' | grep -v 'uses:\s*\.' | grep -v 'Morrison-Lab/gha' | grep -vE '@[0-9a-f]{40}' || true)
-          if [ -n "$UNPINNED" ]; then
-            echo "::error::Unpinned third-party actions found in workflows (see gha#328):\n$UNPINNED"
-            exit 1
-          fi
-          echo "All third-party actions in .github/workflows/*.yml are SHA-pinned."
+        run: python3 .github/workflows/scripts/audit_workflow_action_pins.py
 
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,

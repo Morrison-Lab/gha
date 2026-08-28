@@ -50,6 +50,13 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+# Shared with the two workflow audits rather than re-globbed here: a third copy
+# of the discovery rule is a third place for it to drift back to `*.yml` only
+# (gha#716).
+from workflow_discovery import discover_workflows  # noqa: E402
+
 BEGIN = "<!--readonly-workflows:begin-->"
 END = "<!--readonly-workflows:end-->"
 
@@ -99,7 +106,7 @@ def is_reusable(doc) -> bool:
 def read_only_workflows(workflows_dir: pathlib.Path) -> set[str]:
     read_only, unclassifiable = set(), []
 
-    for path in sorted(workflows_dir.glob("*.yml")):
+    for path in discover_workflows(workflows_dir):
         doc = load_yaml(path)
         if not isinstance(doc, dict) or not is_reusable(doc):
             continue
@@ -388,6 +395,41 @@ def run_self_test() -> int:
             False,
             "declares write permissions",
         )
+
+        # 10. gha#716: discovery itself. Every case above names only `.yml`
+        #     fixtures, so none of them can see whether the glob covers the
+        #     other extension GitHub loads. A `.yaml` reusable workflow that
+        #     discovery misses is absent from the expected set, so a doc
+        #     correctly listing it reads as "listed but the workflow does not
+        #     exist" -- reverting discover_workflows to a *.yml-only glob turns
+        #     this red (confirmed by mutation).
+        wf4 = root / "workflows-yaml-ext"
+        wf4.mkdir()
+        (wf4 / "alpha.yml").write_text(WORKFLOW_READONLY)
+        (wf4 / "epsilon.yaml").write_text(WORKFLOW_READONLY)
+        failures += expect(
+            "a .yaml reusable workflow is discovered",
+            run(wf4, [doc("yaml-ext.md", "`alpha`, `epsilon`")]),
+            True,
+        )
+
+        # 11. ... and discovery must not sweep in files GitHub would ignore, so
+        #     that revert cannot be "fixed" by globbing everything instead.
+        wf5 = root / "workflows-mixed"
+        wf5.mkdir()
+        (wf5 / "a.yml").write_text("name: a\n")
+        (wf5 / "b.yaml").write_text("name: b\n")
+        (wf5 / "c.txt").write_text("not a workflow\n")
+        found = [q.name for q in discover_workflows(wf5)]
+        if found != ["a.yml", "b.yaml"]:
+            print(
+                "::error::discovery covers both extensions: expected "
+                f"['a.yml', 'b.yaml'], got {found} (gha#716)",
+                file=sys.stderr,
+            )
+            failures += 1
+        else:
+            print("OK   discovery covers both extensions and nothing else")
 
     if failures:
         print(f"::error::{failures} self-test case(s) failed", file=sys.stderr)
