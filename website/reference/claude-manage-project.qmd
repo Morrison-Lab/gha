@@ -1,0 +1,71 @@
+---
+title: "claude-manage-project.yml"
+---
+
+Triage a newly-opened issue: apply a priority label, and add the issue to the
+repository's project board where the token allows.
+
+## Security: the trust gate is load-bearing
+
+This workflow feeds the issue's title and body into the prompt of an agent
+holding write scopes. On a public repository that content is written by
+whoever opened the issue, so the job is gated to authors whose
+`author_association` is `OWNER`, `MEMBER`, or `COLLABORATOR`, exactly as
+[`claude.yml`](claude.qmd) gates its mention-triggered runs.
+
+**The caller stub must carry the same gate.** A reusable workflow's `if:`
+cannot stop the caller's job from starting, so a caller without one spins up a
+runner for every issue anybody opens. Widen the set only through
+`trusted-bot-logins`, and mirror any widening on both sides.
+
+The issue's title and body reach the prompt through environment variables
+rather than `${{ }}` interpolation, and the prompt names them as data rather
+than instructions.
+
+## Projects v2 needs its own token
+
+`GITHUB_TOKEN` cannot read or write Projects v2, and the
+`repository-projects` scope covers only the sunset classic Projects. Without
+`PROJECTS_TOKEN`, labelling still works and the board step is a no-op --- which
+is the common case for modern consumers. Supply a PAT or GitHub App token
+carrying the `project` scope to enable the board step.
+
+Note that supplying it changes the identity of the **whole step**, not
+just the Projects call: `GH_TOKEN` is set once for the step, so the label
+edit and any comment run under the same token. Scope it accordingly.
+
+## Inputs
+
+| Input                | Type   | Default | Description                                                                                            |
+| -------------------- | ------ | ------- | ------------------------------------------------------------------------------------------------------ |
+| `prompt-addendum`    | string | `''`    | Repo-specific project management guidance appended to the prompt.                                        |
+| `trusted-bot-logins` | string | `'[]'`  | JSON array of bot logins allowed to trigger the workflow despite a non-collaborator `author_association`. |
+
+## Secrets
+
+| Secret                    | Required | Description                                                        |
+| ------------------------- | -------- | ------------------------------------------------------------------ |
+| `CLAUDE_CODE_OAUTH_TOKEN` | yes      | Claude Code OAuth token.                                             |
+| `ANTHROPIC_API_KEY`       | no       | Alternative to the OAuth token.                                      |
+| `PROJECTS_TOKEN`          | no       | PAT or App token with the `project` scope, for Projects v2 writes. **Step-global**: when set it backs every `gh` call in the step, not only the board add. |
+
+## Example
+
+```yaml
+name: Claude Manage Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  manage:
+    if: >-
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+    permissions:
+      contents: read
+      issues: write
+      repository-projects: write
+    uses: Morrison-Lab/gha/.github/workflows/claude-manage-project.yml@v2
+    secrets: inherit
+```

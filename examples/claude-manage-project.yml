@@ -1,0 +1,23 @@
+name: Claude Manage Project
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  manage:
+    # This gate MUST mirror the reusable workflow's own. A reusable workflow's
+    # `if:` cannot prevent the caller's job from starting, so without this a
+    # runner spins up for every issue any user opens. Widen it only through
+    # `trusted-bot-logins`, and mirror any widening on both sides.
+    if: >-
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association)
+    # Only what the reusable workflow declares. Effective permissions are the
+    # intersection of caller and callee, so extra grants here buy nothing and
+    # only widen the blast radius (gha#670 review, finding 4).
+    permissions:
+      contents: read
+      issues: write
+      repository-projects: write
+    uses: Morrison-Lab/gha/.github/workflows/claude-manage-project.yml@v2
+    secrets: inherit
