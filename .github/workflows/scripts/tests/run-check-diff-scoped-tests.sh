@@ -37,7 +37,8 @@ make_repo() {
   (
     cd "$d"
     git init -q -b main .
-    git config user.email t@example.invalid; git config user.name Tester
+    # A synthetic identity for a throwaway fixture repo, never a real address.
+    git config user.email t@example.invalid; git config user.name Tester  # phi-allow
     mkdir -p check-new-line-breaks check-phi
     printf 'import sys; sys.exit(%s)\n' "$nlb_rc" > check-new-line-breaks/check-new-line-breaks.py
     printf 'import sys; sys.exit(0)\n'            > check-phi/check-phi.py
