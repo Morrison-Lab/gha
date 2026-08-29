@@ -143,9 +143,92 @@ def test_corpus_internal_pairs_are_ignored(env):
     tmp_path, jar, bindir = env
     (tmp_path / "corpus" / "bob").mkdir()
     (tmp_path / "corpus" / "bob" / "a.R").write_text("h <- 3\n")
-    write_stub_java(bindir, csv=HEADER + "corpus/alice,corpus/bob,0.99,0.99\n")
+    write_stub_java(
+        bindir,
+        csv=HEADER
+        + "corpus/alice,corpus/bob,0.99,0.99\n"
+        + "new/submission,corpus/alice,0.1,0.1\n",
+    )
     result = run(tmp_path, jar, "--fail")
     assert result.returncode == 0, result.stdout
+
+
+def test_a_corpus_entry_sharing_a_name_is_not_mistaken_for_the_submission(env):
+    """Two students both submitting `analysis/` must stay distinguishable.
+
+    Matching on the submission's own basename would read this corpus-internal
+    pair as a finding against the PR.
+    """
+    tmp_path, jar, bindir = env
+    (tmp_path / "new" / "analysis").mkdir()
+    (tmp_path / "new" / "analysis" / "a.R").write_text("k <- 1\n")
+    (tmp_path / "corpus" / "analysis").mkdir()
+    (tmp_path / "corpus" / "analysis" / "a.R").write_text("k <- 2\n")
+    write_stub_java(
+        bindir,
+        csv=HEADER
+        + "corpus/analysis,corpus/alice,0.99,0.99\n"
+        + "new/analysis,corpus/alice,0.1,0.1\n",
+    )
+    result = run(tmp_path, jar, "--fail")
+    assert result.returncode == 0, result.stdout
+
+
+def test_no_relevant_pair_is_an_error_not_a_clean_result(env):
+    """JPlag compared things, but none of them was the submission under review.
+
+    That is a false negative wearing a clean result: the check reports nothing
+    found, having evaluated nothing that mattered.
+    """
+    tmp_path, jar, bindir = env
+    write_stub_java(bindir, csv=HEADER + "corpus/alice,corpus/bob,0.2,0.2\n")
+    result = run(tmp_path, jar)
+    assert result.returncode == 2
+    assert "nothing being reviewed was evaluated" in result.stderr
+
+
+def test_identical_root_names_are_refused(env):
+    """JPlag labels by root basename, so two roots named alike are ambiguous."""
+    tmp_path, jar, bindir = env
+    twin = tmp_path / "twin"
+    (twin / "new").mkdir(parents=True)
+    (twin / "new" / "s").mkdir()
+    write_stub_java(bindir, csv=HEADER + "new/s,new/s,0.1,0.1\n")
+    result = run(tmp_path, jar, corpus=twin / "new")
+    assert result.returncode == 2
+    assert "same directory name" in result.stderr
+
+
+def test_jplag_stderr_is_not_forwarded_to_the_log(env):
+    """JPlag quotes source; publishing it defeats the upload-report default."""
+    tmp_path, jar, bindir = env
+    secret = "super_secret_identifier_from_a_students_file"
+    write_stub_java(bindir, csv=None, exit_code=3, stderr=f"error near {secret}\n")
+    result = run(tmp_path, jar)
+    assert result.returncode == 2
+    combined = result.stdout + result.stderr
+    assert secret not in combined, "JPlag's stderr must not reach the job log"
+    assert "exited 3" in result.stderr
+    # It is preserved where the report-privacy gate already governs.
+    assert (tmp_path / "work" / "jplag-stderr.log").read_text().strip().endswith(secret)
+
+
+def test_submission_root_with_no_directories_is_an_error(env):
+    tmp_path, jar, bindir = env
+    flat = tmp_path / "flatnew"
+    flat.mkdir()
+    (flat / "a.R").write_text("x <- 1\n")
+    write_stub_java(bindir, csv=HEADER)
+    cmd = [
+        sys.executable, str(SCRIPT),
+        "--path", str(flat),
+        "--corpus-path", str(tmp_path / "corpus"),
+        "--jar", str(jar), "--jplag-sha256", sha256_of(STUB_JAR_BODY),
+        "--work-dir", str(tmp_path / "work"),
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    assert result.returncode == 2
+    assert "nothing to compare" in result.stderr
 
 
 # ---------------------------------------------------------------- refusals

@@ -174,9 +174,25 @@ def run_jplag(jar: pathlib.Path, args, workdir: pathlib.Path) -> str:
             "native pipe `|>` is a known cause (see the action's README)."
         )
 
+    # JPlag's stderr names files and quotes source, so forwarding it into the
+    # job log would publish exactly what `upload-report: false` exists to keep
+    # out of a run anyone can read. It is written into the work directory --
+    # which travels only under that same opt-in -- and the log gets the exit
+    # code plus a pointer.
+    log = workdir / "jplag-stderr.log"
+    try:
+        log.write_text(stderr, encoding="utf-8")
+    except OSError:
+        log = None
+
     if completed.returncode != 0:
-        sys.stderr.write(stderr[-4000:])
-        die(f"JPlag exited {completed.returncode}; no comparison was performed")
+        where = f" Its output was written to {log}." if log else ""
+        die(
+            f"JPlag exited {completed.returncode}; no comparison was "
+            f"performed.{where} It is withheld from this log because JPlag's "
+            "diagnostics quote source, and publishing it here would defeat "
+            "the upload-report default."
+        )
 
     csv_path = result_root / "results.csv"
     if not csv_path.is_file():
@@ -271,15 +287,43 @@ def main(argv: list[str] | None = None) -> int:
     jar = resolve_jar(args)
     pairs = parse_pairs(run_jplag(jar, args, work))
 
-    # Only pairs that actually involve the submission under review. JPlag also
-    # compares corpus entries with each other, and two prior submissions
-    # resembling one another is not this PR's problem.
-    own_names = {child.name for child in args.path.iterdir() if child.is_dir()}
+    # Only pairs that involve the submission under review: JPlag also compares
+    # corpus entries with each other, and two prior submissions resembling one
+    # another is not this PR's problem.
+    #
+    # Matched on JPlag's ROOT PREFIX rather than the submission's own name.
+    # JPlag labels each entry `<root-basename>/<submission>`, so a corpus
+    # entry that happens to share a directory name with one under review --
+    # two students both submitting `analysis/` -- would be indistinguishable
+    # by basename, and a corpus-internal pair would be mistaken for a finding.
+    own_root = args.path.resolve().name
+    corpus_root = args.corpus_path.resolve().name
+    if own_root == corpus_root:
+        die(
+            f"--path and --corpus-path have the same directory name "
+            f"({own_root!r}). JPlag labels submissions by that name, so the "
+            "two sides would be indistinguishable in its output. Rename or "
+            "relocate one of them."
+        )
 
     def involves_submission(a: str, b: str) -> bool:
-        return any(side.split("/")[-1] in own_names for side in (a, b))
+        return any(side.split("/")[0] == own_root for side in (a, b))
 
     relevant = [p for p in pairs if involves_submission(p[0], p[1])]
+
+    # A non-empty comparison that yielded no pair involving this submission
+    # means the labels did not match what was expected -- so nothing under
+    # review was actually evaluated. Reporting that as "no similarity found"
+    # is the exact false negative this whole script is built to avoid.
+    if not relevant:
+        labels = sorted({side for p in pairs for side in (p[0], p[1])})[:6]
+        die(
+            f"JPlag compared {len(pairs)} pair(s) but none involved a "
+            f"submission under {own_root!r}, so nothing being reviewed was "
+            f"evaluated. Labels seen: {', '.join(labels)}. Refusing to report "
+            "a clean result over a comparison that skipped the submission."
+        )
+
     flagged = sorted(
         (p for p in relevant if p[2] >= threshold), key=lambda p: -p[2]
     )
