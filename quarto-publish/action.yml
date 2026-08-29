@@ -128,6 +128,8 @@ runs:
     - name: Install R dependencies
       if: inputs.setup-r == 'true' && inputs.use-renv != 'true'
       uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      env:
+        GITHUB_PAT: ${{ github.token }}
       with:
         packages: ${{ inputs.r-packages }}
 
