@@ -1084,6 +1084,49 @@ The same reasoning applies to every diff-scoped check here -- `check-phi` and
 `check-new-line-breaks` take a `base-ref`, and `check-secrets` scans history --
 so none of them can see an uncommitted change either.
 
+**A second, independent way that check reports clean over content it never
+examined: `NLB_GLOBS` defaults to `*.md`, and nothing here overrides it.**
+The trap above is about *which commits* the check sees.
+This one is about *which files*, and it is wider than it looks.
+
+`check-new-line-breaks.py` reads
+`globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]`, the
+composite exposes that as a `globs` input, and no caller in this repo passes
+one --- not `_selftest.yml`'s `new-line-breaks` job, and not its
+`clause-breaks: 'false'` sibling.
+So the 53 `.qmd` pages under `website/` and every `description:` in a
+composite `action.yml` or a workflow are outside the check's population
+entirely, in CI and locally alike.
+
+That is worth stating because this repo's own review checklist (item 7,
+"Suggest semantic line breaks in prose") names "action descriptions"
+explicitly, so the written rule and the instrument that would enforce it
+disagree about scope, and only the prose says so.
+
+It also defeats the obvious negative control.
+Appending a deliberate two-sentence line to a `.qmd` and re-running the
+checker prints `No lines missing semantic breaks` --- which reads as "the
+control failed, so the checker is broken" rather than as "that file is not in
+the population":
+
+```bash
+# after committing a two-sentence line into a .qmd
+NLB_BASE_REF=origin/main python3 check-new-line-breaks/check-new-line-breaks.py
+# -> No lines missing semantic breaks.        (the .qmd was never scanned)
+
+NLB_GLOBS='*.md *.qmd' NLB_BASE_REF=origin/main \
+  python3 check-new-line-breaks/check-new-line-breaks.py
+# -> ::error file=...qmd,line=122::Line packs more than one sentence: ...
+```
+
+So set `NLB_GLOBS` explicitly to the extensions your diff actually touches
+before trusting a local run, and read a silent run as a question about the
+population rather than as a pass.
+Measured 2026-08-29 on gha#748, whose diff was entirely `.qmd` and `.yml`:
+the default-glob run reported clean over both files, and the widened run
+found a real two-sentence line in the `action.yml` description.
+Widening the checked set in CI is tracked separately in gha#750.
+
 The suite also covers the gha#336 clause check (a long line carrying a
 mid-line semicolon, as a proxy for SemBr rule 5), including that it is
 **on by default** -- and pins the two defaults that are declared in three
