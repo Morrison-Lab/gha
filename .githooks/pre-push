@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# OPT-IN pre-push hook. Nothing installs this: git only runs it once a
+# contributor points core.hooksPath at this directory, deliberately.
+#
+#     git config core.hooksPath .githooks     # enable
+#     git config --unset core.hooksPath       # disable
+#
+# It runs the repo's diff-scoped checks over committed content before a push,
+# because those checks read the commit graph rather than the working tree and
+# so report "no findings" over anything not yet committed -- a clean verdict
+# they did not earn (gha#740).
+#
+# The hook is a convenience, never the authority: CI runs these checks too,
+# and this only moves the failure earlier. So a machine missing an optional
+# tool gets a warning and a push, not a block -- a hook that blocks on the
+# contributor's toolchain rather than on their code gets disabled, and then
+# guards nothing.
+set -uo pipefail
+
+root="$(git rev-parse --show-toplevel)"
+guard="$root/.github/workflows/scripts/check-diff-scoped.sh"
+[ -f "$guard" ] || exit 0
+
+bash "$guard"
+rc=$?
+
+case "$rc" in
+  0) ;;
+  3) printf '\npre-push: some checks could not run (see above); pushing anyway.\n' >&2 ;;
+  *) printf '\npre-push: blocked by the checks above.\n' >&2
+     printf 'Fix them, or bypass this hook once with: git push --no-verify\n' >&2
+     exit "$rc" ;;
+esac
+exit 0

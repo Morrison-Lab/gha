@@ -560,6 +560,40 @@ jobs:
   # functions and the diff-scoping behavior directly (small throwaway git
   # repos), so a regression in either is caught even when this repo's own
   # tree wouldn't trip it.
+  diff-scoped-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      # The suite builds throwaway git repos and stubs each wrapped check, so
+      # it needs no network, no typos binary, and no fixture in this tree.
+      - name: Run check-diff-scoped unit tests
+        run: bash .github/workflows/scripts/tests/run-check-diff-scoped-tests.sh
+      # A live run against this checkout, which is clean here. Exit 3 means
+      # every runnable check passed and at least one could not run (the typos
+      # binary is not installed in this job) -- the status that exists so an
+      # incomplete run is never mistaken for a clean one. Asserting the exact
+      # status matters: a wrapper that returned 0 here would pass a bare
+      # success check while silently reporting the thing it exists to prevent.
+      - name: Run the guard against this checkout
+        run: |
+          set +e
+          bash .github/workflows/scripts/check-diff-scoped.sh "origin/${{ github.event.pull_request.base.ref || github.ref_name }}"
+          rc=$?
+          set -e
+          if [ "$rc" != 0 ] && [ "$rc" != 3 ]; then
+            echo "::error::check-diff-scoped returned $rc on a clean checkout (expected 0 or 3)."
+            exit 1
+          fi
+          echo "check-diff-scoped exited $rc on a clean checkout, as expected."
+
   new-line-breaks-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
