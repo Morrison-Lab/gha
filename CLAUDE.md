@@ -2306,6 +2306,80 @@ over it:
 18. a tolerated container-valued `token:`;
 19. a case-sensitive input-key match.
 
+`.github/workflows/scripts/audit_capability_versioning_docs.py` closes
+gha#730: every capability that ships past the frozen `@v1` snapshot must be
+named in each hand-restated versioning-list region -- README.md's
+`## Versioning` section *and* its nested `### Pinning third-party actions`
+subsection, `website/versioning.qmd`, `website/workflows.qmd`, and this
+file's own "About this repo" -- and that restatement has drifted on four
+separate occasions (gha#181, gha#374, gha#728 rounds 1 and 2) because every
+prior fix checked the lists against each other, or against whichever files
+happened to already be in that round's diff, rather than against a ground
+truth outside all of them.
+The population is derived from `.github/workflows/*.yml` file existence,
+never from any list: deriving it from a list only checks lists against each
+other, which is exactly the failure mode that let gha#728 through (every
+list agreed with every other list, and all of them were wrong).
+A capability's actual pinned tag is read from its own `examples/<name>.yml`
+self-reference, since that stub is what a consumer copy-pastes and a wrong
+tag there is self-defeating independent of anything this script checks --
+picking the right line among several in one stub (`claude-code-review.yml`
+and `report-failure.yml` each reference an unrelated `Morrison-Lab/gha/...`
+path before their own) is done by matching the path segment naming the
+capability, not by taking the first self-reference in the file.
+Each prose location is a hand-registered `(file, start heading, end
+heading)` region rather than a free-text scan of the whole file, because a
+README capability *table* entry and a README *versioning-list* entry are
+different sections of the same file that must not be conflated -- a
+whole-file presence check would have missed gha#728's own case, since
+`check-code-similarity` was present in the table while absent from the
+list.
+Both markers must be found or region extraction refuses outright, so a
+renamed heading surfaces as a loud failure rather than silently narrowing
+the blind spot to nothing.
+Only the missing direction is checked, never the reverse: a region also
+names some `@v1` capabilities on purpose, to say they were audited and
+confirmed unchanged, and a first draft that also flagged those as "stale"
+produced exactly the false-positive noise the issue's own abandoned
+prototype (21 false positives per file) was scrapped over.
+Presence within a region is an exact backtick-delimited token match, never
+a word-boundary regex -- `\bgemini\b` matches inside `gemini-code-review`
+too, since a word boundary sits on both sides of the substring there, and
+matching the literal `` `gemini.yml` `` or `` `gemini` `` token sidesteps
+that without a lookaround.
+Both spellings are checked at every site (bare `name` and `name.yml`)
+because that is exactly what gha#728's second round missed: the grep used
+to find round 1's gaps was keyed to the `.yml` spelling, and this file's own
+list names capabilities bare.
+`.github/workflows/scripts/tests/run-audit-capability-versioning-docs-tests.py`
+builds a fresh fixture tree per case from the module's own `REGIONS`
+registry (never a second hard-coded copy of it), and its cases are the
+usual mix of positive and negative: a capability listed everywhere passes,
+one missing from a single region produces exactly one finding naming that
+region, a `@v1` capability is never required to be listed (and being listed
+anyway still isn't flagged), the `gemini` / `gemini-code-review` substring
+trap is asserted directly against `is_listed`, `extract_pin` picks the
+right line out of several self-references and raises on an ambiguous or
+absent one, `discover_population` excludes a workflow file with no
+matching example and an example with no matching workflow file (the
+`assemble-news` shape) and refuses an empty overlap outright, and
+`extract_region` refuses when either heading marker is missing. Three
+mutations were confirmed to turn the suite red rather than assumed to:
+`is_listed` always returning `True`, `extract_pin` taking the first
+self-reference instead of matching by name, and `extract_region` falling
+back to end-of-file instead of refusing when the end marker is absent.
+CI runs the suite as the `versioning-docs` job in `_selftest.yml`, unit
+tests first, then a real invocation of the script against this repo's own
+tree -- the same "unit tests, then the live self-check" structure
+`lint-checkout-tokens` uses just above.
+This audit run against the live tree at PR time found four capabilities
+(`ai-code-review.yml`, `antigravity-code-review.yml`, `gemini.yml`,
+`gemini-code-review.yml`) missing from README's main `## Versioning`
+paragraph -- present in `website/workflows.qmd`'s equivalent, so the drift
+had already happened silently -- plus `small-model-agent.yml` missing from
+the `### Pinning third-party actions` subsection; both are fixed in the
+same PR.
+
 `.github/workflows/scripts/tests/run-trigger-bugbot-review-tests.sh`
 exercises `trigger-bugbot-review.sh` (see Layout above) offline against a
 stub `curl`: a successful queue, `DRY_RUN=true` in the JSON body, HTTP 400

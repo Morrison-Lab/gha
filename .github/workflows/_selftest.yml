@@ -3078,6 +3078,35 @@ jobs:
           python3 .github/workflows/scripts/tests/run-workflow-job-guard-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-workflow-job-guard-tests.py
 
+  # Every capability that ships past the frozen `@v1` snapshot must be
+  # named, as `<name>` or `<name>.yml`, in every documented versioning-list
+  # region -- README.md's `## Versioning` section and its nested
+  # `### Pinning third-party actions` subsection, website/versioning.qmd,
+  # website/workflows.qmd, and this repo's own CLAUDE.md. That restatement
+  # has drifted on four separate occasions (gha#181, gha#374, gha#728 rounds
+  # 1 and 2) because every prior fix only checked the lists against each
+  # other, or against whichever files happened to already be in the diff.
+  # This audit derives ground truth from `.github/workflows/*.yml` file
+  # existence and each capability's own `examples/*.yml` self-reference
+  # instead (gha#730). Kept as its own job, one capability per job, so a
+  # failure here is attributable at a glance.
+  versioning-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run audit_capability_versioning_docs.py unit tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-audit-capability-versioning-docs-tests.py
+
+      - name: Assert every non-@v1 capability is listed everywhere it must be
+        shell: bash
+        run: python3 .github/workflows/scripts/audit_capability_versioning_docs.py
+
   # check-code-similarity wraps JPlag against a caller-supplied corpus
   # (gha#296). The unit tests run first and use a stub `java`, so they cover
   # the branches a green run never reaches -- an empty corpus, a crashed
