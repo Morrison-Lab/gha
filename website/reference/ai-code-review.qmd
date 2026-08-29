@@ -45,7 +45,7 @@ so the fallback loop finishes its candidate progression cleanly.
 | `antigravity-review-workflow-file` | string | `'antigravity-code-review.yml'` | Caller-repo workflow file dispatched for an Antigravity review. |
 | `cursor-review-workflow-file` | string | `'cursor-code-review.yml'` | Caller-repo workflow file dispatched for a Cursor Bugbot review. |
 | `opencode-review-workflow-file` | string | `'opencode-code-review.yml'` | Caller-repo workflow file dispatched for an OpenCode review. |
-| `watch-timeout` | string | `'15m'` | Timeout bound for watching each dispatched agent's review run before falling through to the next candidate. Sized against the overall 60-minute job timeout. |
+| `watch-timeout` | string | `'30m'` | Timeout bound for watching each dispatched agent's review run before falling through to the next candidate. Sized against the overall 60-minute job timeout. |
 
 ## Secrets
 
@@ -118,7 +118,7 @@ jobs:
     #   antigravity-review-workflow-file: antigravity-code-review.yml
     #   cursor-review-workflow-file: cursor-code-review.yml
     #   opencode-review-workflow-file: opencode-code-review.yml
-    #   watch-timeout: 15m
+    #   watch-timeout: 30m
 ```
 
 See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples) directory

@@ -54,4 +54,4 @@ jobs:
       # antigravity-review-workflow-file: antigravity-code-review.yml
       # cursor-review-workflow-file: cursor-code-review.yml
       # opencode-review-workflow-file: opencode-code-review.yml
-      # watch-timeout: 15m                                       # timeout per candidate agent watch
+      # watch-timeout: 30m                                       # timeout per candidate agent watch
