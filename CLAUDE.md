@@ -1402,6 +1402,48 @@ dropping `_R_CHECK_FORCE_SUGGESTS_` from the full job, restoring rpt's
 skip-Quarto-on-every-ubuntu condition, and a verse-only skip that is
 not limited to `ubuntu-latest`.
 
+`.github/workflows/scripts/tests/run-version-check-workflow-tests.py`
+pins `version-check.yml`'s live-label exemption the same way, and for the same
+reason: that workflow needs a live `pull_request` event and a labelled PR, so
+`_selftest.yml` cannot exercise it end to end.
+CI runs it as a step in the `dev-version` job.
+
+**What it pins is the set of changes that are silent when reversed**, which is
+the whole hazard here.
+Reading the label from `github.event.pull_request.labels` returns the labels
+frozen into the triggering event's payload, so a label applied afterwards is
+invisible and an approved or re-run job reuses the same stale payload --- the
+exemption never fires, and a check that never exempts is indistinguishable
+from one whose exemption nobody asked for (gha#722).
+So the assertions are: the payload path stays gone, `pull-requests: read` is
+granted, the read is paginated, the read is a plain assignment **and** not
+inside an `if`/`while` condition (where `set -e` is inert by design), the step
+runs under `set -euo pipefail`, both sides are case-folded, no hardcoded label
+spelling competes with the configurable input, and the bump-branch bypass
+survives.
+Nine mutations are confirmed to turn a named case red.
+
+**`pull-requests: read`, not `issues: read`, and the distinction is measured
+rather than reasoned.**
+GitHub authorizes a label read on an issue object that is a pull request
+against the pull-requests permission: `issues: read` alone returned
+`403 Resource not accessible by integration` on `check-news`'s first consumer
+run (gha#724, fixed in gha#725, which grants both there defensively).
+`version-check` already granted `pull-requests: read`, so gha#726 added no
+scope at all --- the tracking issue's own prescription of `issues: read`
+predates that measurement.
+
+**The suite strips whole-line comments before scanning.**
+The passage explaining why the stale-payload path is wrong has to name that
+path, so a scan over the raw file flags the comment documenting the rule ---
+the self-implicating-example problem
+[`Morrison-Lab/ai-config`'s `examples-are-scanned.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/examples-are-scanned.md)
+describes.
+Teaching the checker about comment regions is the fix; rewording the prose so
+it cannot say what it means is not.
+Whole lines only, so a live read cannot be hidden from the scan by appending a
+`#` to its line.
+
 The same `coverage` job exercises the new composite inputs
 (`coverage-type`, `comment-donttest`, `comment-dontrun`, `min-coverage`,
 `upload-coverage`, `failure-artifact-name`) rather than only the happy
