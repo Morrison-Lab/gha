@@ -1342,6 +1342,11 @@ corpus, an empty corpus, a corpus of loose files rather than submission
 directories, a JPlag crash, a missing `results.csv`, an empty one, a missing
 column, an unparseable similarity, and a digest mismatch are each an error
 rather than a quiet pass.
+Two of them are less obvious and were found by review rather than by writing
+the script: two roots sharing a directory **name** are ambiguous, because
+JPlag labels every submission by that name, and a comparison that ran but
+produced no pair involving the submission under review evaluated nothing that
+mattered.
 A clean run prints how many pairs it examined, which is what makes a real pass
 distinguishable from a vacuous one.
 Nine mutations were confirmed to turn a named case red rather than assumed to,
