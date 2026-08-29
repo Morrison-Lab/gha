@@ -2363,8 +2363,8 @@ right line out of several self-references and raises on an ambiguous or
 absent one, `discover_population` excludes a workflow file with no
 matching example and an example with no matching workflow file (the
 `assemble-news` shape) and refuses an empty overlap outright, and
-`extract_region` refuses when either heading marker is missing. Three
-mutations were confirmed to turn the suite red rather than assumed to:
+`extract_region` refuses when either heading marker is missing.
+Three mutations were confirmed to turn the suite red rather than assumed to:
 `is_listed` always returning `True`, `extract_pin` taking the first
 self-reference instead of matching by name, and `extract_region` falling
 back to end-of-file instead of refusing when the end marker is absent.
