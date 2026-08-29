@@ -28,6 +28,16 @@ inputs:
       is outside the active map fails the step rather than being skipped.
     required: false
     default: ''
+  bullet-style:
+    description: >-
+      Optional override for the list-marker character ('-', '*', or '+')
+      every inserted fragment bullet is normalized to. When empty (the
+      default), the marker is auto-detected from news-file's own first
+      existing bullet, falling back to '-' when it has none yet. Normalizing
+      keeps a fragment's authorship style from flipping markdownlint's MD004
+      "consistent" requirement for the whole assembled file.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -38,6 +48,7 @@ runs:
         FRAGMENTS_DIR: ${{ inputs.fragments-dir }}
         NEWS_FILE: ${{ inputs.news-file }}
         ASSEMBLE_NEWS_HEADINGS: ${{ inputs.headings }}
+        ASSEMBLE_NEWS_BULLET_STYLE: ${{ inputs.bullet-style }}
       run: |
         bash "$GITHUB_ACTION_PATH/../../workflows/scripts/assemble-news.sh" \
           "$FRAGMENTS_DIR" "$NEWS_FILE"
