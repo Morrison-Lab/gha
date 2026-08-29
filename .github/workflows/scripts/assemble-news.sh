@@ -138,12 +138,24 @@ resolve_bullet_style() {
   fi
 
   if [ -f "$news_file" ]; then
-    local first_bullet_line
-    first_bullet_line="$(grep -m1 -E '^[[:space:]]*[-*+][[:space:]]' "$news_file" || true)"
-    if [ -n "$first_bullet_line" ]; then
-      target_bullet_marker="$(printf '%s\n' "$first_bullet_line" | sed -E 's/^[[:space:]]*(.).*/\1/')"
-      return
-    fi
+    local candidate marker stripped
+    while IFS= read -r candidate; do
+      marker="$(printf '%s\n' "$candidate" | sed -E 's/^[[:space:]]*(.).*/\1/')"
+      # A CommonMark thematic break can be a run of the SAME marker
+      # character separated only by whitespace ('- - -', '* * *'), which
+      # also matches "marker followed by a space" and would otherwise be
+      # mistaken for the file's first real bullet -- reproduced against
+      # this exact scenario in review (gha#727 PR review round 1). Strip
+      # every occurrence of that marker and whitespace from the candidate
+      # line; a real bullet has content left over, a thematic break does
+      # not, so a stripped-empty candidate is skipped in favor of the next
+      # match rather than accepted as the file's style.
+      stripped="$(printf '%s' "$candidate" | tr -d "[:space:]${marker}")"
+      if [ -n "$stripped" ]; then
+        target_bullet_marker="$marker"
+        return
+      fi
+    done < <(grep -E '^[[:space:]]*[-*+][[:space:]]' "$news_file")
   fi
 
   # No pre-existing bullet to take a style from (a fresh news_file, or one

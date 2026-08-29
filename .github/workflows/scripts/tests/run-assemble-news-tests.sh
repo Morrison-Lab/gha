@@ -317,4 +317,33 @@ marker_l="$(grep 'Fix L' NEWS.md | cut -c1)"
 
 echo "PASS: Test 14 - Fragments with differing original markers collate under one marker on a fresh NEWS.md"
 
+# Test 15: A CommonMark spaced thematic break ('- - -') ahead of the file's
+# real first bullet is not mistaken for that bullet -- it also matches
+# "marker followed by a space", but a stripped-empty candidate line (nothing
+# left once the marker and whitespace are removed) is a thematic break, not
+# content, and the scan must keep going to the real bullet below it (review
+# round 1 on gha#727's PR: this false-detected '-' from the break, when the
+# file's actual dominant marker is '*', reproduced the exact MD004-flip bug
+# this script exists to prevent).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature M.\n' > news.d/feature-m.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+- - -
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature M\.$' NEWS.md || {
+  echo "FAIL: A spaced thematic break was mistaken for the file's first bullet"
+  exit 1
+}
+
+echo "PASS: Test 15 - A spaced thematic break ahead of the real first bullet is skipped"
+
 echo "=== All assemble-news.sh tests passed! ==="
