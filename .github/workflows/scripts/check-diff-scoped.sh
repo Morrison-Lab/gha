@@ -52,9 +52,27 @@ about what one means, so each would fail differently and none would say so."
 git rev-parse --verify --quiet "${base_ref}^{commit}" >/dev/null \
   || die "check-diff-scoped: base ref '$base_ref' does not resolve to a commit."
 
+# Resolving is strictly weaker than sharing history, and the gap is the whole
+# failure this script exists to prevent. Given a base ref with no merge base,
+# check-new-line-breaks and check-typos return 0 without examining anything,
+# and check-phi silently scans the whole tree -- so all three read as OK. A
+# shallow clone is the ordinary way to reach that state, and this repo already
+# treats one as a refusal elsewhere: check-secrets refuses rather than
+# reporting a partial scan clean.
+git merge-base "$base_ref" HEAD >/dev/null 2>&1 || die \
+"check-diff-scoped: '$base_ref' shares no reachable history with HEAD.
+A shallow clone is the usual cause: git fetch --unshallow (or --deepen=N).
+Refusing rather than running: two of these checks return 0 when the diff
+cannot be computed, and the third silently scans the whole tree instead."
+
 # --porcelain covers staged and unstaged modifications plus untracked files,
 # and honours .gitignore -- so ignored build output does not block a run.
-dirty="$(git status --porcelain)"
+#
+# The flags are not redundant. A bare --porcelain obeys the caller's
+# status.showUntrackedFiles, which contributors set to 'no' on noisy trees --
+# and that setting alone makes an untracked file invisible here, defeating the
+# exact case this guard exists for with nothing in the output saying so.
+dirty="$(git status --porcelain --untracked-files=normal --ignore-submodules=none)"
 if [ -n "$dirty" ]; then
   count="$(printf '%s\n' "$dirty" | wc -l | tr -d '[:space:]')"
   if [ "${DIFF_SCOPED_ALLOW_DIRTY:-}" = "1" ]; then
@@ -71,15 +89,44 @@ if [ -n "$dirty" ]; then
 fi
 
 status=0
-unavailable=()
+# A plain counter and a string rather than an array: `${arr[@]}` on an empty
+# array under `set -u` is the classic pre-4.4 hazard, and a stock macOS
+# /bin/bash is 3.2 -- so the success path itself would abort there.
+unavailable_count=0
+unavailable_list=""
 
 # A check that could not RUN is not a check that passed, and it is not a
 # finding either. Conflating either way is the same silent-wrong-verdict this
-# wrapper exists to prevent, so tool availability is probed up front and
-# reported as its own outcome with its own exit status.
+# wrapper exists to prevent, so tool availability is probed up front.
+
+# check-typos resolves its binary ONLY from TYPOS_BIN_DIR, never from PATH, so
+# a probe that accepted a PATH install would pass here and then fail inside the
+# check -- reporting a finding where there is only a missing install, which
+# under the hook blocks the push. Point TYPOS_BIN_DIR at the PATH copy instead,
+# so an ordinary install works rather than being declared unavailable.
 typos_available() {
-  [ -n "${TYPOS_BIN_DIR:-}" ] && [ -x "${TYPOS_BIN_DIR}/typos" ] && return 0
-  command -v typos >/dev/null 2>&1
+  if [ -n "${TYPOS_BIN_DIR:-}" ] && [ -x "${TYPOS_BIN_DIR}/typos" ]; then
+    return 0
+  fi
+  local found
+  found="$(command -v typos 2>/dev/null)" || return 1
+  [ -n "$found" ] || return 1
+  TYPOS_BIN_DIR="$(cd "$(dirname "$found")" && pwd)"
+  export TYPOS_BIN_DIR
+}
+
+# The two Python checks need an interpreter. Without this they report FAILED
+# twice on a machine simply lacking python3 -- a toolchain block, which is
+# what the hook's own header says gets a hook disabled.
+python_available() { command -v python3 >/dev/null 2>&1; }
+
+note_unavailable() {
+  unavailable_count=$(( unavailable_count + 1 ))
+  if [ -z "$unavailable_list" ]; then
+    unavailable_list="$1"
+  else
+    unavailable_list="$unavailable_list; $1"
+  fi
 }
 
 run_check() {
@@ -87,16 +134,34 @@ run_check() {
   shift 3
   if [ ! -f "$script" ]; then
     printf 'check-diff-scoped: %-18s SKIP (%s not present)\n' "$label" "$script"
-    unavailable+=( "$label (script absent)" )
+    note_unavailable "$label (script absent)"
     return
   fi
   if [ -n "$probe" ] && ! "$probe"; then
     printf 'check-diff-scoped: %-18s UNAVAILABLE (required tool not installed)\n' "$label"
-    unavailable+=( "$label (tool not installed)" )
+    note_unavailable "$label (tool not installed)"
     return
   fi
   printf 'check-diff-scoped: %-18s running against %s\n' "$label" "$base_ref"
-  if env "$@" python3 "$script"; then
+
+  # Capture rather than stream, so the check's own admission that it examined
+  # nothing can be read back. The merge-base gate above should make this
+  # unreachable; it is kept because a check reporting 0 over an empty
+  # examination is precisely the outcome this script must never pass on, and
+  # one gate for it is one more than the wrapped checks have.
+  # `out=$(cmd)` is a simple assignment, so under `set -e` a failing cmd
+  # terminates the script THERE -- skipping the unavailable summary and the
+  # exit logic entirely, and exiting with the check's own status by accident.
+  # The `|| rc=$?` form makes it part of a list, which set -e does not act on.
+  local out rc=0
+  out="$(env "$@" python3 "$script" 2>&1)" || rc=$?
+  printf '%s\n' "$out"
+  if printf '%s' "$out" | grep -qE 'Skipping the |scanning the whole tree instead'; then
+    printf 'check-diff-scoped: %-18s EXAMINED NOTHING (see its own warning above)\n' "$label" >&2
+    note_unavailable "$label (could not diff)"
+    return
+  fi
+  if [ "$rc" -eq 0 ]; then
     printf 'check-diff-scoped: %-18s OK\n\n' "$label"
   else
     printf 'check-diff-scoped: %-18s FAILED\n\n' "$label" >&2
@@ -104,17 +169,21 @@ run_check() {
   fi
 }
 
-run_check new-line-breaks check-new-line-breaks/check-new-line-breaks.py ""               "NLB_BASE_REF=$base_ref"
-run_check phi             check-phi/check-phi.py                         ""               "PHI_BASE_REF=$base_ref"
+run_check new-line-breaks check-new-line-breaks/check-new-line-breaks.py python_available "NLB_BASE_REF=$base_ref"
+run_check phi             check-phi/check-phi.py                         python_available "PHI_BASE_REF=$base_ref"
 run_check typos           check-typos/check-typos.py                     typos_available  "TYPOS_BASE_REF=$base_ref"
 
-if [ ${#unavailable[@]} -gt 0 ]; then
+if [ "$unavailable_count" -gt 0 ]; then
   printf 'check-diff-scoped: %s check(s) did not run: %s\n' \
-    "${#unavailable[@]}" "$(IFS='; '; printf '%s' "${unavailable[*]}")" >&2
+    "$unavailable_count" "$unavailable_list" >&2
   printf 'Install typos with check-typos/install-typos.sh, or run the missing check in CI.\n' >&2
-  # Exit 3 only when nothing actually failed: a real finding outranks an
-  # incomplete run, since the finding is actionable now.
-  [ "$status" -eq 0 ] && exit 3
+  # Written as a full if rather than `[ ... ] && exit 3`: as the last command
+  # of this block, a failing && list would terminate the script through set -e
+  # instead of reaching the exit below. The value coincides today, which is
+  # what makes the short form fragile rather than wrong.
+  if [ "$status" -eq 0 ]; then
+    exit 3
+  fi
 fi
 
 exit "$status"

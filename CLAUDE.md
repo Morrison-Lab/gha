@@ -1314,9 +1314,11 @@ warning prose about it was not enough.**
 `check-new-line-breaks`, `check-phi` and `check-typos` all read the commit
 graph, so none of them sees a staged or untracked file -- and each then prints
 no findings over content it never examined.
-The paragraph above records that trap and its measured recurrence; the
-recurrence *after* that paragraph was written is what argued for a mechanical
-guard over a third restatement.
+The gha#544 paragraph earlier in this section -- "Running that check locally
+before a push proves nothing about files you have not committed yet" --
+records that trap and its measured recurrence.
+The recurrence *after* that paragraph was written is what argued for a
+mechanical guard over a third restatement.
 
 **A second silent path turned up while building it, which the issue did not
 anticipate: the three checks disagree about an empty base ref.**
@@ -1336,14 +1338,30 @@ finding) and 2 (refused).
 A real finding outranks an incomplete run, since the finding is actionable
 now.
 
-Six mutations were confirmed to turn a named case red rather than assumed to:
-dropping the dirty guard, missing untracked files
-(`--untracked-files=no`), dropping the base-ref resolution, letting an
-unavailable check read as clean, letting the incomplete run outrank a
-finding, and no longer honouring `.gitignore`.
-That last one is a keep-if-trimmed case in the opposite direction from the
-rest: refusing on ignored build output would make the wrapper unusable, and an
-unusable guard gets bypassed, which is worse than no guard.
+20 assertions across 12 cases.
+Eight mutations are confirmed to turn a named case red: dropping the dirty
+guard, narrowing the status scan to `--untracked-files=no`, dropping the
+merge-base gate, letting the tool-unavailable arm read as clean, letting the
+script-absent arm read as clean, letting an incomplete run outrank a finding,
+no longer honouring `.gitignore`, and dropping the no-base-ref block.
+Two deliberately survive, and both are information rather than gaps: removing
+the base-ref *resolvability* check changes no verdict, since `git merge-base`
+also rejects a nonexistent ref, so that check earns its place by naming the
+problem rather than by catching it -- which a message assertion pins instead.
+The `.gitignore` case is the one keep-if-trimmed assertion pointing the
+opposite way from the rest: refusing on ignored build output would make the
+wrapper unusable, and an unusable guard gets bypassed, which is worse than no
+guard.
+
+**An earlier revision of this paragraph claimed six mutations were confirmed
+when one of them was not**, and the gap is worth keeping rather than quietly
+correcting.
+The tool-unavailable arm and the script-absent arm both end in "this check did
+not run", so mutating the second felt like covering both; it does not, and the
+suite stayed fully green while the wrapper returned 0 over a check that never
+ran.
+That is this file's own mis-aimed-mutation lesson, committed against the
+paragraph that states it (gha#745 review).
 
 **The harness absolutizes `SCRIPT` deliberately.**
 Every case `cd`s into a throwaway fixture repo before invoking the script, so
@@ -1351,7 +1369,8 @@ a relative override resolves against the fixture instead and fails all 14
 cases at once -- which reads as a broken implementation rather than as a
 harness pointed at nothing.
 Measured while landing gha#740, where exactly that produced 12 failures
-against an implementation that was fine.
+against an implementation that was fine -- 12 rather than every assertion,
+because the cases that refuse before invoking the script still passed.
 
 `.githooks/pre-push` runs the wrapper before a push, and **nothing installs
 it**: git only honours it once a contributor opts in with

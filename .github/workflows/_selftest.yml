@@ -555,11 +555,6 @@ jobs:
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           clause-breaks: 'false'
-  # The new-line-breaks job above proves the action runs against this repo's
-  # own tree; this job unit-tests the sentence-splitter/block-detector
-  # functions and the diff-scoping behavior directly (small throwaway git
-  # repos), so a regression in either is caught even when this repo's own
-  # tree wouldn't trip it.
   diff-scoped-guard:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -582,7 +577,10 @@ jobs:
       # it needs no network, no typos binary, and no fixture in this tree.
       - name: Run check-diff-scoped unit tests
         run: bash .github/workflows/scripts/tests/run-check-diff-scoped-tests.sh
-      # A live run against this checkout, which is clean here. Exit 3 means
+      # A live run against this checkout, which is clean here. On a push to
+      # the default branch the base equals HEAD, so the diff is empty and the
+      # run passes vacuously -- the pull_request run is the one that
+      # exercises anything. Exit 3 means
       # every runnable check passed and at least one could not run (the typos
       # binary is not installed in this job) -- the status that exists so an
       # incomplete run is never mistaken for a clean one. Asserting the exact
@@ -594,12 +592,17 @@ jobs:
           bash .github/workflows/scripts/check-diff-scoped.sh "${{ github.event.pull_request.base.sha || format('origin/{0}', github.event.repository.default_branch) }}"
           rc=$?
           set -e
-          if [ "$rc" != 0 ] && [ "$rc" != 3 ]; then
-            echo "::error::check-diff-scoped returned $rc on a clean checkout (expected 0 or 3)."
+          if [ "$rc" != 3 ]; then
+            echo "::error::check-diff-scoped returned $rc; expected 3, since typos is not installed in this job."
             exit 1
           fi
-          echo "check-diff-scoped exited $rc on a clean checkout, as expected."
+          echo "check-diff-scoped exited 3 on a clean checkout, as expected."
 
+  # The new-line-breaks job above proves the action runs against this repo's
+  # own tree; this job unit-tests the sentence-splitter/block-detector
+  # functions and the diff-scoping behavior directly (small throwaway git
+  # repos), so a regression in either is caught even when this repo's own
+  # tree wouldn't trip it.
   new-line-breaks-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20

@@ -20,7 +20,8 @@ SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/check-diff-sc
 [ -f "$SCRIPT" ] || { echo "::error::suite: cannot find check-diff-scoped.sh at $SCRIPT"; exit 1; }
 # Absolutize it. Every case cd's into a throwaway fixture repo before invoking
 # the script, so a RELATIVE override resolves against that fixture instead and
-# fails all 14 cases at once -- which reads as "the implementation is broken"
+# fails every case that reaches the script -- which reads as "the
+# implementation is broken"
 # rather than as "the harness was pointed at nothing". The default is already
 # absolute; this only rescues an override passed the natural way.
 SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
@@ -74,6 +75,12 @@ mkdir -p "$d/check-typos"; printf 'import sys; sys.exit(0)\n' > "$d/check-typos/
 rc=$( cd "$d" && PATH=/usr/bin:/bin env -u TYPOS_BIN_DIR bash "$SCRIPT" origin/main >/tmp/dsout 2>&1; echo $?; )
 grep -q 'UNAVAILABLE' /tmp/dsout && ok "tool absent reports UNAVAILABLE, not SKIP" \
                                  || bad "probe path" "expected UNAVAILABLE, got: $(grep typos /tmp/dsout | head -1)"
+# Assert the STATUS too, not just the wording. Without this the tool arm's
+# bookkeeping can be deleted outright: the suite stays green and the wrapper
+# returns 0 over a check that never ran, which is the one outcome it exists to
+# prevent. Case 1 exercises only the script-absent arm, so it cannot see this.
+[ "$rc" = 3 ] && ok "tool absent is unavailable (3), never clean" \
+              || bad "probe exit" "expected 3, got $rc"
 rm -rf "$d"
 
 # 2. An untracked file must refuse. This is the gha#740 case verbatim.
@@ -112,12 +119,24 @@ rm -rf "$d"
 #    check and no error anywhere.
 d=$(make_repo 0); rc=$(run "$d" origin/does-not-exist)
 [ "$rc" = 2 ] && ok "unresolvable base ref => refuse (2)" || bad "bad ref" "expected 2, got $rc"
+# Pin which message, not just that it refuses. The merge-base gate below also
+# rejects a nonexistent ref (git merge-base exits 128), so the resolvability
+# check earns its place only by naming the actual problem -- and a mutation
+# removing it leaves the exit status unchanged.
+grep -q 'does not resolve to a commit' /tmp/dsout && ok "it names the ref as unresolvable" \
+                                                  || bad "bad ref reason" "refused with a different message"
 rm -rf "$d"
 
 # 7. No base ref and no origin/HEAD refuses rather than guessing 'main'.
 d=$(make_repo 0); ( cd "$d" && git symbolic-ref -d refs/remotes/origin/HEAD ) >/dev/null 2>&1
 rc=$( cd "$d" && env -u DIFF_SCOPED_BASE_REF bash "$SCRIPT" >/tmp/dsout 2>&1; echo $?; )
 [ "$rc" = 2 ] && ok "no base ref and no origin/HEAD => refuse (2)" || bad "no ref" "expected 2, got $rc"
+# Assert the REASON, not just the refusal. Deleting the no-base-ref block
+# entirely still yields exit 2, because the resolvability check then fails on
+# an empty ref -- so without this the case pins nothing about the branch it
+# names, and the remedy it prints is the whole value of that branch.
+grep -q 'origin/HEAD is not set' /tmp/dsout && ok "it names the remedy for a clone with no origin/HEAD" \
+                                            || bad "no-ref reason" "refused for a different reason"
 rm -rf "$d"
 
 # 8. A real finding outranks an incomplete run: 1, not 3. The finding is
@@ -137,6 +156,45 @@ rc=$(run "$d" origin/main)
 [ "$rc" = 3 ] && ok "a missing check script is unavailable, not a pass" \
              || bad "missing script" "expected 3, got $rc"
 grep -q 'phi' /tmp/dsout && ok "the missing check is named" || bad "missing naming" "phi not named"
+rm -rf "$d"
+
+# 10. status.showUntrackedFiles=no must not blind the dirty guard. A bare
+#     `git status --porcelain` obeys that setting, so one line of contributor
+#     config made an untracked file invisible and turned case 2 -- the gha#740
+#     case verbatim -- into a clean exit 3, with nothing saying so.
+d=$(make_repo 0)
+( cd "$d" && git config status.showUntrackedFiles no ) >/dev/null 2>&1
+printf 'x\n' > "$d/new.md"
+rc=$(run "$d" origin/main)
+[ "$rc" = 2 ] && ok "status.showUntrackedFiles=no does not blind the dirty guard" \
+              || bad "showUntrackedFiles" "expected 2, got $rc"
+rm -rf "$d"
+
+# 11. A base ref that RESOLVES but shares no history with HEAD must refuse.
+#     Resolving is strictly weaker than sharing history, and the gap is the
+#     whole failure this wrapper exists to prevent: given such a ref,
+#     check-new-line-breaks and check-typos return 0 without examining
+#     anything and check-phi scans the whole tree, so all three read as OK.
+#     A shallow clone is the ordinary route to this state.
+d=$(make_repo 0)
+orphan=$(
+  cd "$d" || exit
+  {
+    git checkout --orphan unrelated
+    git rm -rq --cached .
+    printf 'z\n' > O.md
+    git add O.md
+    git commit -qm orphan
+  } >/dev/null 2>&1
+  git rev-parse HEAD
+)
+( cd "$d" && git checkout -qf main ) >/dev/null 2>&1
+[ -n "$orphan" ] || bad "unrelated setup" "fixture produced no orphan commit"
+rc=$(run "$d" "$orphan")
+[ "$rc" = 2 ] && ok "a base ref sharing no history with HEAD => refuse (2)" \
+              || bad "unrelated history" "expected 2, got $rc"
+grep -q 'shares no reachable history' /tmp/dsout && ok "it names the shallow-clone remedy" \
+                                                 || bad "unrelated reason" "refused for a different reason"
 rm -rf "$d"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
