@@ -683,7 +683,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <ul class="collapse">
   <li><a href="#jplags-own-diagnostics-stay-out-of-the-log" id="toc-jplags-own-diagnostics-stay-out-of-the-log" class="nav-link" data-scroll-target="#jplags-own-diagnostics-stay-out-of-the-log">JPlag’s own diagnostics stay out of the log</a></li>
   </ul></li>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs">Outputs</a>
   <ul class="collapse">
   <li><a href="#languages" id="toc-languages" class="nav-link" data-scroll-target="#languages">Languages</a></li>
   <li><a href="#known-limitation-rs-native-pipe" id="toc-known-limitation-rs-native-pipe" class="nav-link" data-scroll-target="#known-limitation-rs-native-pipe">Known limitation: R’s native pipe</a></li>
@@ -800,17 +801,57 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>JPlag 6.x needs Java 25 or newer.</td>
 </tr>
 <tr class="odd">
+<td><code>jar</code></td>
+<td><code>''</code></td>
+<td>Path to an already-downloaded JPlag jar, skipping the download. Its digest is still verified.</td>
+</tr>
+<tr class="even">
 <td><code>upload-report</code></td>
 <td><code>false</code></td>
 <td>Upload JPlag’s report as an artifact.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>runs-on</code></td>
 <td><code>ubuntu-latest</code></td>
 <td>Runner label (reusable workflow only).</td>
 </tr>
+<tr class="even">
+<td><code>timeout-minutes</code></td>
+<td><code>30</code></td>
+<td>Job timeout (reusable workflow only).</td>
+</tr>
 </tbody>
 </table>
+</section>
+<section id="outputs" class="level2">
+<h2 class="anchored" data-anchor-id="outputs">Outputs</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>max-similarity</code></td>
+<td>Highest similarity involving a submission under review (0–1).</td>
+</tr>
+<tr class="even">
+<td><code>flagged-count</code></td>
+<td>Number of pairs at or above the threshold.</td>
+</tr>
+<tr class="odd">
+<td><code>report-dir</code></td>
+<td>Directory holding JPlag’s report for this run.</td>
+</tr>
+</tbody>
+</table>
+<p><code>report-dir</code> names a directory whose contents embed source excerpts from both sides, so a caller that publishes it takes on the same exposure <code>upload-report</code> defaults to avoiding.</p>
 <p><code>upload-report</code> is off by default because JPlag’s report embeds source excerpts from <strong>both</strong> sides of every comparison. Turning it on publishes corpus content to anyone who can read the workflow run.</p>
 <section id="languages" class="level3">
 <h3 class="anchored" data-anchor-id="languages">Languages</h3>
