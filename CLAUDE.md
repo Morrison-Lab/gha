@@ -1243,6 +1243,49 @@ markers, and a run mixing marker characters.
 Test 16's empty item must use `*` rather than `-`: the no-bullet-found
 fallback is itself `-`, so a `-` empty item makes the buggy and fixed answers
 coincide and the regression goes undetected.
+
+**Prose about this check trips `lint-markdown`, because the construct it
+describes is the construct MD038 forbids.**
+A bullet marker followed by a trailing space cannot be written inside a code
+span: `MD038/no-space-in-code` rejects it, so the sentence explaining the rule
+fails the linter the rule is about.
+It bit twice on gha#742 -- once in a changelog fragment, caught by CI, and
+again in this very section, caught locally.
+The fix is to render the example so it cannot match, naming the marker in a
+span and the space in prose, rather than rewording around the meaning or
+reaching for an inline lint exemption.
+This is the self-implicating-example problem
+[`Morrison-Lab/ai-config`'s `examples-are-scanned.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/examples-are-scanned.md)
+describes, in the one shape this repo's own docs keep meeting it.
+Run it over a Markdown file you just wrote, rather than waiting for the job --
+and pin the version to the one `lint-markdown/package.json` declares, rather
+than letting `npx` resolve whatever is current, since an unpinned run is a
+different tool from the one CI runs:
+
+```bash
+ver=$(node -p "require('./lint-markdown/package.json').dependencies['markdownlint-cli2']")
+npx "markdownlint-cli2@$ver" --config lint-markdown/.markdownlint.default.jsonc '*.md'
+```
+
+Deriving the version rather than writing it here keeps one declaration, per the
+gha#303 precedent.
+The difference is observable rather than theoretical: measured on gha#744, an
+unpinned invocation reported `0 issues in 0 files` where the pinned 0.23.0
+reported `0 error(s)` -- the same verdict through a different output contract,
+and a rule-behaviour difference would be exactly as quiet.
+
+**Pin which script a pre/post-fix measurement actually loaded, because the
+obvious baseline is wrong exactly when the fix is already committed.**
+`git show HEAD~1:<path>` reads the *previous commit*, not the pre-fix state,
+so the moment a second commit lands on the branch that baseline silently
+contains the fix.
+The measurement then reports the fixed behaviour under both labels, which
+looks like "the fix changes nothing" rather than like a loading error.
+Measured on gha#742: an MD004 comparison read identical numbers for both arms
+until a `grep -c` sanity assertion on the loaded script showed the baseline
+was the fixed one.
+Diff against `origin/<default-branch>` for a pre-fix baseline, and assert the
+distinguishing symbol is absent from it before trusting any number.
 Five mutations were confirmed to turn a named case red rather than assumed to
 -- relaxing the length gate to two, accepting a run mixing `-` and `*`,
 ignoring the marker argument to hardcode `-`, treating `+` as a break
@@ -1824,6 +1867,22 @@ before running the suite), and the restore step must restore COMMITTED work
 implementation, silently reverts the implementation itself, and every later
 "mutation" then tests the detector's absence rather than the targeted edit.
 Commit first; mutate second.
+
+**Applying a mutation is not aiming it, and per-case branches are where the
+two come apart.**
+The note above catches a mutation that never reached the file.
+A mutation can reach the file, change it, and still tell you nothing --
+because the line it changed is not the line the test exercises.
+That happens the moment an implementation grows per-case branches: mutating
+one arm of a `case` leaves every test whose input takes a different arm
+green, which reads exactly like "the suite does not pin this" when the suite
+pins it fine.
+Measured on gha#742, where two of five mutations "survived" for this reason
+alone -- one mutated the `-` arm while the test's candidate took the `*` arm,
+and one replaced a guard's `return 1` with an assignment that happened to
+stay correct for the input under test.
+So state which case each mutation is supposed to break BEFORE running it, and
+read a survivor as a question about the mutation first and the test second.
 
 **Two fixtures pin the gha#550 spawn-denial exclusion, and the pair is the
 point rather than either one.**
