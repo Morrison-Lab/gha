@@ -117,6 +117,17 @@ def check(workflow: pathlib.Path) -> int:
         re.search(r"^\s*labels=\$\(gh api", step, re.M) is not None,
         "the API read is a plain assignment, so set -e sees a failure",
     )
+    # ... and not inside an `if`/`while` condition, where `set -e` is inert by
+    # design: a compound-command context is exactly where a failing read stops
+    # aborting and starts reading as "no labels".
+    want(
+        re.search(r"^\s*(?:if|while|until)\s+.*\bgh api", step, re.M) is None,
+        "the API read is not inside a condition, where set -e would not fire",
+    )
+    want(
+        re.search(r"^\s*set -euo pipefail", step, re.M) is not None,
+        "the exempt step runs under set -euo pipefail",
+    )
     want(
         "|| true" not in step and "|| :" not in step,
         "the exempt step does not swallow a failed API read",
@@ -170,6 +181,18 @@ def run_self_test() -> int:
             'input_lc="$INPUT_LABEL"',
         ),
         "bump-branch bypass dropped": ('[ "$HEAD_REF" = "$BUMP_BRANCH" ]', "false"),
+        # The hardcoded-spelling assertion is a NEGATIVE one, so it needs a
+        # mutation that introduces the thing it forbids -- otherwise it passes
+        # today and would pass just as well if it checked nothing.
+        "competing hardcoded label added": (
+            'if [ "$label_lc" = "$input_lc" ]; then',
+            'if [ "$label_lc" = "$input_lc" ] || [ "$label_lc" = "no version increment" ]; then',
+        ),
+        "set -e dropped": ("          set -euo pipefail\n", ""),
+        "read moved into a condition": (
+            'labels=$(gh api --paginate \\',
+            'if labels=$(gh api --paginate \\',
+        ),
     }
 
     failures = 0

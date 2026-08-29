@@ -242,6 +242,14 @@ that need to write must have the **caller** grant it on the calling job:
   caller that narrows below the read-only default token still needs
   `issues: read` and `pull-requests: read` alongside `contents: read`.
 
+- `version-check` reads the PR's labels live for its `no version increment`
+  exemption, so a caller that narrows below the read-only default token still
+  needs `pull-requests: read` alongside `contents: read`.
+  Not `issues: read`: that scope alone returned 403 on the same call
+  ([gha#724](https://github.com/Morrison-Lab/gha/issues/724)), because GitHub
+  authorizes a label read on an issue object that is a pull request against
+  the pull-requests permission.
+
 - `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
   `contents: write`, `pull-requests: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant
