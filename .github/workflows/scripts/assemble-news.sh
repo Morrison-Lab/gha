@@ -22,11 +22,21 @@
 #
 # A fragment whose category is outside the active map is an error, not a silent
 # skip -- the change it documents would otherwise never reach the changelog.
+#
+# markdownlint's MD004 defaults to style: consistent -- the assembled file's
+# FIRST bullet marker sets the required style for the whole document. Since
+# fragments are spliced in at the top of news_file, a fragment authored with a
+# different marker than the file's dominant one would flip that requirement
+# out from under every other bullet already in the file. So every inserted
+# bullet is normalized to one marker: news_file's own first bullet, an
+# override via ASSEMBLE_NEWS_BULLET_STYLE (or a fourth positional argument,
+# one of - * +), or '-' when news_file has no bullet yet to take a style from.
 set -euo pipefail
 
 frags_dir="${1:-news.d}"
 news_file="${2:-NEWS.md}"
 headings_spec="${3:-${ASSEMBLE_NEWS_HEADINGS:-}}"
+bullet_style_input="${4:-${ASSEMBLE_NEWS_BULLET_STYLE:-}}"
 
 if [ ! -d "$frags_dir" ]; then
   echo "Fragments directory '$frags_dir' does not exist."
@@ -116,6 +126,55 @@ else
   set_default_headings
 fi
 
+resolve_bullet_style() {
+  if [ -n "$bullet_style_input" ]; then
+    case "$bullet_style_input" in
+      -|'*'|+) target_bullet_marker="$bullet_style_input"; return ;;
+      *)
+        echo "::error::Invalid bullet style '$bullet_style_input'; expected one of - * +." >&2
+        exit 1
+        ;;
+    esac
+  fi
+
+  if [ -f "$news_file" ]; then
+    local candidate marker stripped
+    while IFS= read -r candidate; do
+      marker="$(printf '%s\n' "$candidate" | sed -E 's/^[[:space:]]*(.).*/\1/')"
+      # A CommonMark thematic break can be a run of the SAME marker
+      # character separated only by whitespace ('- - -', '* * *'), which
+      # also matches "marker followed by a space" and would otherwise be
+      # mistaken for the file's first real bullet -- reproduced against
+      # this exact scenario in review (gha#727 PR review round 1). Strip
+      # every occurrence of that marker and whitespace from the candidate
+      # line; a real bullet has content left over, a thematic break does
+      # not, so a stripped-empty candidate is skipped in favor of the next
+      # match rather than accepted as the file's style.
+      stripped="$(printf '%s' "$candidate" | tr -d "[:space:]${marker}")"
+      if [ -n "$stripped" ]; then
+        target_bullet_marker="$marker"
+        return
+      fi
+    done < <(grep -E '^[[:space:]]*[-*+][[:space:]]' "$news_file")
+  fi
+
+  # No pre-existing bullet to take a style from (a fresh news_file, or one
+  # with only prose so far) -- default to '-' so several fragments authored
+  # with different markers still collate under one consistent style.
+  target_bullet_marker='-'
+}
+
+normalize_bullet_markers() {
+  # Rewrites only a leading list-marker character (optionally indented),
+  # never text elsewhere on the line -- an emphasis '*' or a thematic-break
+  # '---' does not match, since both require whitespace immediately after
+  # the single marker character.
+  sed -E "s/^([[:space:]]*)[-*+]([[:space:]])/\\1${1}\\2/"
+}
+
+target_bullet_marker=''
+resolve_bullet_style
+
 # Headings in first-listed-category order, de-duplicated.
 heading_order=()
 for cat in "${categories[@]}"; do
@@ -162,7 +221,7 @@ for cat in "${categories[@]}"; do
 
   heading="${heading_for["$cat"]}"
   for f in "${frags[@]}"; do
-    heading_blocks["$heading"]="${heading_blocks["$heading"]:-}$(cat "$f")"$'\n\n'
+    heading_blocks["$heading"]="${heading_blocks["$heading"]:-}$(normalize_bullet_markers "$target_bullet_marker" < "$f")"$'\n\n'
     consumed+=( "$f" )
   done
 done

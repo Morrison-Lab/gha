@@ -221,4 +221,129 @@ grep -q 'whole-line comment' NEWS.md && { echo "FAIL: a comment line became a he
 
 echo "PASS: Test 10 - '#' comments a whole line only; a heading may contain one"
 
+# Test 11: A fragment's bullet marker is normalized to NEWS.md's own dominant
+# style, so a dash-authored fragment cannot flip an asterisk-styled file's
+# markdownlint MD004 requirement (gha#727).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature H.\n' > news.d/feature-h.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+## Existing section
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature H\.$' NEWS.md || {
+  echo "FAIL: Fragment bullet marker was not normalized to the file's dominant asterisk style"
+  exit 1
+}
+grep -q '^- Add feature H\.$' NEWS.md && {
+  echo "FAIL: Fragment kept its original dash marker despite an asterisk-dominant NEWS.md"
+  exit 1
+}
+
+echo "PASS: Test 11 - Fragment bullet marker normalized to the consumer file's dominant style"
+
+# Test 12: ASSEMBLE_NEWS_BULLET_STYLE overrides the auto-detected style.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature I.\n' > news.d/feature-i.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+* Existing bullet.
+NEWS
+
+ASSEMBLE_NEWS_BULLET_STYLE='+' bash "$assemble_script" news.d NEWS.md
+
+grep -q '^+ Add feature I\.$' NEWS.md || {
+  echo "FAIL: ASSEMBLE_NEWS_BULLET_STYLE override was not applied"
+  exit 1
+}
+
+echo "PASS: Test 12 - ASSEMBLE_NEWS_BULLET_STYLE overrides the auto-detected style"
+
+# Test 13: An invalid bullet-style override is rejected, and nothing is
+# consumed.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature J.\n' > news.d/feature-j.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+NEWS
+
+if ASSEMBLE_NEWS_BULLET_STYLE='x' bash "$assemble_script" news.d NEWS.md 2>/dev/null; then
+  echo "FAIL: Expected script to reject an invalid bullet-style override"
+  exit 1
+fi
+[ -f news.d/feature-j.added.md ] || { echo "FAIL: Fragment consumed despite an invalid override"; exit 1; }
+
+echo "PASS: Test 13 - Invalid ASSEMBLE_NEWS_BULLET_STYLE override is rejected"
+
+# Test 14: With no pre-existing bullet in NEWS.md to take a style from,
+# fragments authored with different original markers still collate under one
+# consistent marker rather than each keeping its own.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature K.\n' > news.d/feature-k.added.md
+printf -- '+ Fix L.\n'         > news.d/fix-l.fixed.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+marker_k="$(grep 'Add feature K' NEWS.md | cut -c1)"
+marker_l="$(grep 'Fix L' NEWS.md | cut -c1)"
+[ "$marker_k" = "$marker_l" ] || {
+  echo "FAIL: Fragments with different original markers were not normalized to one style ('$marker_k' vs '$marker_l')"
+  exit 1
+}
+# Pin the actual fallback value too -- a marker deleted outright (substituted
+# with an empty target) would leave both fragments equally markerless and
+# pass the equality check above vacuously.
+[ "$marker_k" = "-" ] || {
+  echo "FAIL: Expected the documented '-' fallback marker, got '$marker_k'"
+  exit 1
+}
+
+echo "PASS: Test 14 - Fragments with differing original markers collate under one marker on a fresh NEWS.md"
+
+# Test 15: A CommonMark spaced thematic break ('- - -') ahead of the file's
+# real first bullet is not mistaken for that bullet -- it also matches
+# "marker followed by a space", but a stripped-empty candidate line (nothing
+# left once the marker and whitespace are removed) is a thematic break, not
+# content, and the scan must keep going to the real bullet below it (review
+# round 1 on gha#727's PR: this false-detected '-' from the break, when the
+# file's actual dominant marker is '*', reproduced the exact MD004-flip bug
+# this script exists to prevent).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature M.\n' > news.d/feature-m.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+- - -
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature M\.$' NEWS.md || {
+  echo "FAIL: A spaced thematic break was mistaken for the file's first bullet"
+  exit 1
+}
+
+echo "PASS: Test 15 - A spaced thematic break ahead of the real first bullet is skipped"
+
 echo "=== All assemble-news.sh tests passed! ==="

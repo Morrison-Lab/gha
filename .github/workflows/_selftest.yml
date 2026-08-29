@@ -136,6 +136,27 @@ jobs:
         run: |
           grep -q '^## Infrastructure$' fixture_NEWS.md
           rm -rf fixture_news.d fixture_NEWS.md
+      # Same rationale as the custom-headings step above, for the
+      # `bullet-style` input (gha#727 PR review round 1): the unit tests
+      # invoke assemble-news.sh directly, so a mismatched env var name in
+      # action.yml's own plumbing would go undetected without this.
+      - name: Prepare assemble-news bullet-style fixture
+        shell: bash
+        run: |
+          mkdir -p fixture_news.d
+          printf -- '- Test feature.\n' > fixture_news.d/test.added.md
+          printf '# pkg (dev)\n' > fixture_NEWS.md
+      - name: Exercise assemble-news composite action with a bullet-style override
+        uses: ./.github/actions/assemble-news
+        with:
+          fragments-dir: fixture_news.d
+          news-file: fixture_NEWS.md
+          bullet-style: '+'
+      - name: Verify bullet-style fixture output
+        shell: bash
+        run: |
+          grep -q '^+ Test feature\.$' fixture_NEWS.md
+          rm -rf fixture_news.d fixture_NEWS.md
   # Throwaway fixture, generated at runtime rather than committed (per
   # CLAUDE.md's "Generate selftest fixtures at runtime" rule): a deliberately
   # flawed workflow (unpinned third-party action, untrusted-input template

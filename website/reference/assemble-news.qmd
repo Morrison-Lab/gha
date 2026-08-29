@@ -17,6 +17,7 @@ eliminating merge conflicts between concurrent PRs.
 | `fragments-dir` | string | `'news.d'` | Directory containing fragment files (`<slug>.<category>.md`). |
 | `news-file` | string | `'NEWS.md'` | Target `NEWS.md` file path. |
 | `headings` | string | `''` | Category-to-heading map, as newline-separated `category = Heading` pairs. Empty keeps the built-in map. |
+| `bullet-style` | string | `''` | List-marker character (`-`, `*`, or `+`) every inserted fragment bullet is normalized to. Empty auto-detects from `news-file`'s own first bullet, falling back to `-` when it has none. |
 
 ## Example
 
@@ -87,6 +88,22 @@ same fragment twice whenever its suffix is also configured.
 A fragment whose category is outside the active map fails the step, naming the
 offending files, rather than being skipped -- the check runs before anything is
 consumed, so a mixed batch fails without deleting the valid fragments beside it.
+
+## Bullet-marker normalization
+
+markdownlint's MD004 rule defaults to `style: consistent`, which takes its
+required marker (`-`, `*`, or `+`) from the assembled file's *first* bullet.
+Fragments are spliced in at the top of `news-file`, so a fragment authored
+with a different marker than the file's dominant one would flip that
+requirement for every other bullet already in the file.
+
+To prevent that, every inserted bullet's top-of-line marker is normalized to
+one target, in this order: the `bullet-style` input when set; otherwise
+`news-file`'s own first existing bullet marker; otherwise `-`, when
+`news-file` has no bullet yet to take a style from (so fragments authored with
+different markers still collate under one consistent style even on a fresh
+file). Only the marker character is rewritten -- the rest of each line,
+including nested-list indentation, is left untouched.
 
 See `assemble-news.yml` in
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
