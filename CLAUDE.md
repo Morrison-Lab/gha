@@ -1223,6 +1223,41 @@ The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 half of, so a fix to either is owed to the other (porting gha#425's fix there
 is tracked in Morrison-Lab/ai-config#1212).
 
+`.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
+over `assemble-news.sh`, covering the heading map, category validation, and
+bullet-marker normalization.
+CI runs it as the `assemble-news` job in `_selftest.yml`.
+
+**Its bullet-style cases are where the subtle failures live, and they fail
+silently in one direction.**
+`resolve_bullet_style()` picks the marker markdownlint's MD004 will hold the
+whole assembled file to, so a wrong answer flips that requirement for every
+bullet already in the file rather than erroring.
+The candidate scan matches "a marker followed by a space", which is also what
+a spaced CommonMark thematic break looks like, so the suite's job is to pin
+the boundary between the two.
+Tests 15 and 18 pin the break cases (`- - -`, `* * *`), and 16, 17, 19, and 20
+pin the list cases that merely resemble one: an empty list item (a `-` and
+the space after it), a spaced run of `+` (never a break character), two
+markers, and a run mixing marker characters.
+Five mutations were confirmed to turn a named case red rather than assumed to
+-- relaxing the length gate to two, accepting a run mixing `-` and `*`,
+ignoring the marker argument to hardcode `-`, treating `+` as a break
+character, and dropping the length check that separates an empty item from a
+break.
+
+**A fixture that discriminates the code path can still demonstrate none of
+the harm, and Test 16's first draft did exactly that.**
+It placed a later `* Existing bullet.` beside the empty item, which made
+the file MD004-inconsistent *before* assembly -- so the error count was 1
+under both the pre-fix and post-fix answers, while the test's own comment
+claimed it showed an MD004 flip.
+The fixture now carries the empty item as its only bullet, measured at 0
+errors unassembled, 1 pre-fix, and 0 post-fix.
+Read that as the general shape: when a test's stated rationale is about a
+downstream tool's verdict, measure that verdict under both answers rather
+than asserting the resolution alone (gha#741 review).
+
 `check-secrets/tests/test-build-config.sh` is a shell suite over
 `build-gitleaks-config.sh`, the script that turns the `paths-ignore`,
 `allowlist-file`, and `config` inputs into the gitleaks TOML the scan runs

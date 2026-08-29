@@ -131,17 +131,19 @@ fi
 #
 # The distinguishing property is NOT "nothing is left once the marker and the
 # whitespace are stripped" (gha#741). A genuinely empty list item -- a line
-# that is just '- ', a marker and a space with no content -- strips to empty
+# holding a marker and the space after it, and no content -- strips to empty
 # under that test too, so it was misclassified as a break and skipped even
 # though its marker is a real one that should set the file's style.
 #
-# CommonMark requires three or more matching '-', '_' or '*' characters with
-# only whitespace between and around them. Only '-' and '*' can reach here,
-# since the caller's grep requires a leading '-', '*' or '+' and '+' is never
-# a thematic break -- so '+ + +' is a list, not a break. Fewer than three
-# markers is a list as well ('- ' and '- -' alike), and a run mixing marker
-# characters ('* - -') is a list item whose content happens to start with a
-# different marker.
+# A thematic break is three or more matching '-', '_' or '*' characters with
+# only spaces or tabs between and after them; see
+# https://spec.commonmark.org/0.31.2/#thematic-breaks.
+# The caller's grep admits '+' as well, and '+' is never a break character,
+# so the marker guard below rejects it -- '+ + +' is a list, not a break.
+# '_' never reaches here at all, since that grep does not match it.
+# Fewer than three markers is a list as well ('- ' and '- -' alike), and a
+# run mixing marker characters ('* - -') is a list item whose content happens
+# to start with a different marker.
 #
 # Leading indentation is deliberately not tested. A thematic break proper
 # admits at most three leading spaces, but a more deeply indented
@@ -149,10 +151,17 @@ fi
 # not set the whole file's bullet style either -- so skipping it stays right,
 # for a different reason.
 is_thematic_break() {
-  local candidate="$1" marker="$2" bare
-  case "$marker" in -|'*') ;; *) return 1 ;; esac
-  bare="$(printf '%s' "$candidate" | tr -d '[:space:]')"
-  [ -z "${bare//"$marker"/}" ] || return 1
+  local candidate="$1" marker="$2" bare rest
+  # Bracketed literals rather than a quoted "$marker" pattern: bash honours
+  # quoting inside a substitution pattern only from 4.3, and a stock macOS
+  # /bin/bash is 3.2. This form raises no such question, and drops a fork.
+  bare="${candidate//[[:space:]]/}"
+  case "$marker" in
+    -)   rest="${bare//-/}" ;;
+    '*') rest="${bare//[*]/}" ;;
+    *)   return 1 ;;
+  esac
+  [ -z "$rest" ] || return 1
   [ "${#bare}" -ge 3 ]
 }
 

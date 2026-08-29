@@ -349,25 +349,33 @@ echo "PASS: Test 15 - A spaced thematic break ahead of the real first bullet is 
 # a real bullet whose marker sets the file's style, not a thematic break.
 # Both strip to empty once the marker and whitespace are removed, which is
 # why the earlier heuristic conflated them (gha#741); CommonMark separates
-# them by the marker COUNT, a break needing three or more. markdownlint's
-# MD004 counts the empty item as the file's first bullet, so resolving to
-# '*' here -- the pre-fix answer -- would flip the style out from under it.
+# them by the marker COUNT, a break needing three or more.
+#
+# The fixture's ONLY bullet is that empty item, which is what makes the test
+# exhibit the harm rather than merely the code path. Measured with this
+# repo's own lint-markdown config: the file carries no MD004 error before
+# assembly, the pre-fix answer ('-', from the no-bullet-found fallback, since
+# the empty item was skipped) introduces one, and the post-fix answer ('*')
+# introduces none. An earlier draft placed a later '* Existing bullet.' in
+# the fixture, which made the file MD004-inconsistent before assembly and
+# left the error count at 1 either way -- discriminating the code path while
+# demonstrating none of the damage the test is named for.
 rm -rf news.d NEWS.md
 mkdir -p news.d
-printf -- '* Add feature N.\n' > news.d/feature-n.added.md
+printf -- '- Add feature N.\n' > news.d/feature-n.added.md
 
 {
   printf -- '# mypackage (development version)\n\n'
-  # Written with printf rather than inside the heredoc so the significant
-  # trailing space survives an editor or a linter that trims one.
-  printf -- '- \n\n'
-  printf -- '* Existing bullet.\n'
+  # Written as a printf argument rather than as a literal heredoc line, so
+  # the significant trailing space survives an editor or a linter that trims
+  # trailing whitespace.
+  printf -- '* \n'
 } > NEWS.md
 
 bash "$assemble_script" news.d NEWS.md
 
-grep -q '^- Add feature N\.$' NEWS.md || {
-  echo "FAIL: An empty list item was mistaken for a thematic break, so the file's style resolved to the later '*' instead of its own '-'"
+grep -q '^\* Add feature N\.$' NEWS.md || {
+  echo "FAIL: An empty list item was mistaken for a thematic break, so the file's style fell back to the default '-' instead of the item's own '*'"
   exit 1
 }
 
@@ -397,5 +405,86 @@ grep -q '^+ Add feature O\.$' NEWS.md || {
 }
 
 echo "PASS: Test 17 - A spaced run of '+' is a list, not a thematic break"
+
+# Tests 18-20 exist because the suite could not see three mutations of
+# is_thematic_break, each measured green before they were added:
+# relaxing the length gate to two, accepting a run mixing '-' and '*', and
+# ignoring the marker argument to hardcode '-'. Tests 15-17 use only '-' and
+# '+' candidates, so nothing exercised the '*' marker path at all.
+
+# Test 18: a '*' thematic break is recognized as one. Pins that the break
+# test reads the candidate's OWN marker rather than assuming '-': hardcoding
+# '-' leaves '***' with characters left over, so the break reads as a real
+# bullet and sets the style to '*' -- the MD004 flip gha#727 exists to stop.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature P.\n' > news.d/feature-p.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+* * *
+
+- Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^- Add feature P\.$' NEWS.md || {
+  echo "FAIL: A spaced '*' thematic break was mistaken for the file's first bullet"
+  exit 1
+}
+
+echo "PASS: Test 18 - A spaced '*' thematic break is skipped, not read as a bullet"
+
+# Test 19: two markers is a list, not a break. CommonMark requires three or
+# more, so '- -' is a list item whose content is another marker. Pins the
+# length gate: relaxing it to two makes this line a break and sends the
+# style to the later '*'.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature Q.\n' > news.d/feature-q.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+- -
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^- Add feature Q\.$' NEWS.md || {
+  echo "FAIL: A two-marker line was treated as a thematic break; CommonMark requires three or more"
+  exit 1
+}
+
+echo "PASS: Test 19 - Two markers is a list, not a thematic break"
+
+# Test 20: a run MIXING marker characters is a list. A break needs three or
+# more of the SAME character, so '* - -' is a list item that merely starts
+# with a different marker from the one its content uses. Pins the
+# same-marker test: accepting any of '-'/'*' makes this a break.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature R.\n' > news.d/feature-r.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+* - -
+
+- Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature R\.$' NEWS.md || {
+  echo "FAIL: A run mixing marker characters was treated as a thematic break; a break needs three or more of the SAME character"
+  exit 1
+}
+
+echo "PASS: Test 20 - A run mixing marker characters is a list, not a thematic break"
 
 echo "=== All assemble-news.sh tests passed! ==="
