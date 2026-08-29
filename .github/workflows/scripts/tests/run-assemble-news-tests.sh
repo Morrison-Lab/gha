@@ -319,12 +319,11 @@ echo "PASS: Test 14 - Fragments with differing original markers collate under on
 
 # Test 15: A CommonMark spaced thematic break ('- - -') ahead of the file's
 # real first bullet is not mistaken for that bullet -- it also matches
-# "marker followed by a space", but a stripped-empty candidate line (nothing
-# left once the marker and whitespace are removed) is a thematic break, not
-# content, and the scan must keep going to the real bullet below it (review
-# round 1 on gha#727's PR: this false-detected '-' from the break, when the
-# file's actual dominant marker is '*', reproduced the exact MD004-flip bug
-# this script exists to prevent).
+# "marker followed by a space", so the scan must recognize it as a break and
+# keep going to the real bullet below it (review round 1 on gha#727's PR:
+# this false-detected '-' from the break, when the file's actual dominant
+# marker is '*', reproduced the exact MD004-flip bug this script exists to
+# prevent).
 rm -rf news.d NEWS.md
 mkdir -p news.d
 printf -- '- Add feature M.\n' > news.d/feature-m.added.md
@@ -345,5 +344,58 @@ grep -q '^\* Add feature M\.$' NEWS.md || {
 }
 
 echo "PASS: Test 15 - A spaced thematic break ahead of the real first bullet is skipped"
+
+# Test 16: An empty list item ('- ' -- a marker, a space, and no content) is
+# a real bullet whose marker sets the file's style, not a thematic break.
+# Both strip to empty once the marker and whitespace are removed, which is
+# why the earlier heuristic conflated them (gha#741); CommonMark separates
+# them by the marker COUNT, a break needing three or more. markdownlint's
+# MD004 counts the empty item as the file's first bullet, so resolving to
+# '*' here -- the pre-fix answer -- would flip the style out from under it.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature N.\n' > news.d/feature-n.added.md
+
+{
+  printf -- '# mypackage (development version)\n\n'
+  # Written with printf rather than inside the heredoc so the significant
+  # trailing space survives an editor or a linter that trims one.
+  printf -- '- \n\n'
+  printf -- '* Existing bullet.\n'
+} > NEWS.md
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^- Add feature N\.$' NEWS.md || {
+  echo "FAIL: An empty list item was mistaken for a thematic break, so the file's style resolved to the later '*' instead of its own '-'"
+  exit 1
+}
+
+echo "PASS: Test 16 - An empty list item sets the file's bullet style rather than being skipped as a break"
+
+# Test 17: '+ + +' is a list, not a thematic break. CommonMark builds a
+# thematic break only from '-', '_' or '*', so a spaced run of '+' is a
+# nested list whose outermost marker is a real one -- and stripping to empty
+# cannot tell the two apart, which is the other half of gha#741.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature O.\n' > news.d/feature-o.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
++ + +
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^+ Add feature O\.$' NEWS.md || {
+  echo "FAIL: A spaced run of '+' was treated as a thematic break; '+' is never a thematic break marker in CommonMark"
+  exit 1
+}
+
+echo "PASS: Test 17 - A spaced run of '+' is a list, not a thematic break"
 
 echo "=== All assemble-news.sh tests passed! ==="

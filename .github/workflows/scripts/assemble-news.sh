@@ -126,6 +126,36 @@ else
   set_default_headings
 fi
 
+# Is a bullet-style candidate line a CommonMark thematic break rather than a
+# list item?
+#
+# The distinguishing property is NOT "nothing is left once the marker and the
+# whitespace are stripped" (gha#741). A genuinely empty list item -- a line
+# that is just '- ', a marker and a space with no content -- strips to empty
+# under that test too, so it was misclassified as a break and skipped even
+# though its marker is a real one that should set the file's style.
+#
+# CommonMark requires three or more matching '-', '_' or '*' characters with
+# only whitespace between and around them. Only '-' and '*' can reach here,
+# since the caller's grep requires a leading '-', '*' or '+' and '+' is never
+# a thematic break -- so '+ + +' is a list, not a break. Fewer than three
+# markers is a list as well ('- ' and '- -' alike), and a run mixing marker
+# characters ('* - -') is a list item whose content happens to start with a
+# different marker.
+#
+# Leading indentation is deliberately not tested. A thematic break proper
+# admits at most three leading spaces, but a more deeply indented
+# separator-shaped line is indented-code or nested-list content, which should
+# not set the whole file's bullet style either -- so skipping it stays right,
+# for a different reason.
+is_thematic_break() {
+  local candidate="$1" marker="$2" bare
+  case "$marker" in -|'*') ;; *) return 1 ;; esac
+  bare="$(printf '%s' "$candidate" | tr -d '[:space:]')"
+  [ -z "${bare//"$marker"/}" ] || return 1
+  [ "${#bare}" -ge 3 ]
+}
+
 resolve_bullet_style() {
   if [ -n "$bullet_style_input" ]; then
     case "$bullet_style_input" in
@@ -138,23 +168,21 @@ resolve_bullet_style() {
   fi
 
   if [ -f "$news_file" ]; then
-    local candidate marker stripped
+    local candidate marker
     while IFS= read -r candidate; do
       marker="$(printf '%s\n' "$candidate" | sed -E 's/^[[:space:]]*(.).*/\1/')"
       # A CommonMark thematic break can be a run of the SAME marker
       # character separated only by whitespace ('- - -', '* * *'), which
       # also matches "marker followed by a space" and would otherwise be
       # mistaken for the file's first real bullet -- reproduced against
-      # this exact scenario in review (gha#727 PR review round 1). Strip
-      # every occurrence of that marker and whitespace from the candidate
-      # line; a real bullet has content left over, a thematic break does
-      # not, so a stripped-empty candidate is skipped in favor of the next
-      # match rather than accepted as the file's style.
-      stripped="$(printf '%s' "$candidate" | tr -d "[:space:]${marker}")"
-      if [ -n "$stripped" ]; then
-        target_bullet_marker="$marker"
-        return
+      # this exact scenario in review (gha#727 PR review round 1). Skip
+      # such a candidate in favor of the next match rather than accepting
+      # it as the file's style.
+      if is_thematic_break "$candidate" "$marker"; then
+        continue
       fi
+      target_bullet_marker="$marker"
+      return
     done < <(grep -E '^[[:space:]]*[-*+][[:space:]]' "$news_file")
   fi
 
