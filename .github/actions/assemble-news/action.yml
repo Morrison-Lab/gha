@@ -31,11 +31,19 @@ inputs:
   bullet-style:
     description: >-
       Optional override for the list-marker character ('-', '*', or '+')
-      every inserted fragment bullet is normalized to. When empty (the
-      default), the marker is auto-detected from news-file's own first
-      existing bullet, falling back to '-' when it has none yet. Normalizing
-      keeps a fragment's authorship style from flipping markdownlint's MD004
-      "consistent" requirement for the whole assembled file.
+      every inserted fragment bullet is normalized to.
+      When empty (the default), the marker is auto-detected from
+      news-file's own first existing bullet,
+      falling back to '-' when it has none yet.
+      Detection considers only lines matching a marker followed by
+      whitespace, and among those it skips a spaced thematic break
+      ('- - -', '* * *') rather than reading it as that first bullet.
+      A run of fewer than three markers is a list item rather than a break,
+      so an empty list item still sets the style;
+      '+' is never treated as a break character.
+      Normalizing keeps a fragment's authorship style from flipping
+      markdownlint's MD004 "consistent" requirement for the whole
+      assembled file.
     required: false
     default: ''
 
