@@ -16,6 +16,11 @@ name: Version check (reusable)
 #   - the `no version increment` label -- preserved from the original
 #     workflow, for a genuine release-cut PR that DOES bump the version by
 #     hand (e.g. usethis::use_version() cutting an actual MAJOR.MINOR.PATCH).
+#     Read LIVE from the API rather than from the triggering event's payload,
+#     which freezes the labels as they were at that event: a label applied
+#     afterwards is invisible there, and approving or re-running a gated run
+#     reuses the same stale payload, so the only runnable run could never see
+#     it (gha#722, the sibling of gha#721).
 #   - the bump PR's own head branch (default matches bump-dev-version.yml's
 #     `pr-branch` default) -- its entire job is to change this line, so
 #     checking it against itself would always fail.
@@ -44,6 +49,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      # `pull-requests: read` was already granted here and is now load-bearing:
+      # it is what authorizes the live-label read below. GitHub authorizes a
+      # label read on an issue object that is a pull request against the
+      # pull-requests permission, not the issues one --- `issues: read` alone
+      # returned 403 "Resource not accessible by integration" on check-news's
+      # first consumer run (gha#724 / gha#725). `issues: read` is therefore
+      # NOT added here: it is neither sufficient nor necessary, since this
+      # workflow only ever runs against a pull request.
       pull-requests: read
       contents: read
     steps:
@@ -51,13 +64,48 @@ jobs:
         id: exempt
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
           HEAD_REF: ${{ github.head_ref }}
           BUMP_BRANCH: ${{ inputs.bump-branch }}
-          HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, inputs.no-version-increment-label) }}
+          INPUT_LABEL: ${{ inputs.no-version-increment-label }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
+          # The label is read LIVE rather than from
+          # github.event.pull_request.labels, which holds the labels frozen
+          # into the triggering event's payload. A label applied AFTER that
+          # event is invisible there, and approving or re-running a gated run
+          # reuses the same stale payload -- so on a run that needs approval,
+          # the only runnable run could never see the exemption (gha#722).
+          #
+          # The API read is deliberately fail-loud: captured in a plain
+          # assignment so `set -e` sees a failure. An empty label stream from
+          # a swallowed error reproduces exactly the never-exempt defect this
+          # step exists to fix, and it would do so silently.
+          #
+          # Only the configured input label is matched, and no hardcoded
+          # spelling alongside it. gha#721's sibling fix had to match a second
+          # literal because the action it wraps recognizes that spelling
+          # itself; nothing downstream of this step reads labels at all, so
+          # honouring a literal here would defeat a caller's override of the
+          # input.
+          HAS_LABEL=false
+          if [ -n "$PR_NUMBER" ] && [ -n "$INPUT_LABEL" ]; then
+            labels=$(gh api --paginate \
+              "repos/$REPO/issues/$PR_NUMBER/labels" --jq '.[].name')
+            input_lc=$(printf '%s' "$INPUT_LABEL" | tr '[:upper:]' '[:lower:]')
+            while IFS= read -r label; do
+              [ -z "$label" ] && continue
+              label_lc=$(printf '%s' "$label" | tr '[:upper:]' '[:lower:]')
+              if [ "$label_lc" = "$input_lc" ]; then
+                HAS_LABEL=true
+                break
+              fi
+            done <<< "$labels"
+          fi
           if [ "$HAS_LABEL" = "true" ]; then
-            echo "::notice::Skipping: '${{ inputs.no-version-increment-label }}' label present."
+            echo "::notice::Skipping: '$INPUT_LABEL' label present."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           elif [ "$HEAD_REF" = "$BUMP_BRANCH" ]; then
             echo "::notice::Skipping: this is the bump-dev-version automation's own PR."

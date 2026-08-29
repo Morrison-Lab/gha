@@ -33,6 +33,16 @@ Two bypasses, both skip the check entirely:
 
 Grant `pull-requests: read` and `contents: read`.
 
+`pull-requests: read` is load-bearing rather than incidental: it authorizes
+the live read of the PR's labels behind the `no version increment` exemption.
+GitHub authorizes a label read on an issue object that is a pull request
+against the pull-requests permission, not the issues one --- `issues: read`
+alone returned 403 on `check-news`'s first consumer run
+([gha#724](https://github.com/Morrison-Lab/gha/issues/724)), which is why this
+workflow does not grant it.
+A caller that pins the calling job's `permissions` must include
+`pull-requests: read` alongside `contents: read`.
+
 ## Example
 
 ```yaml
