@@ -1257,8 +1257,22 @@ reaching for an inline lint exemption.
 This is the self-implicating-example problem
 [`Morrison-Lab/ai-config`'s `examples-are-scanned.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/examples-are-scanned.md)
 describes, in the one shape this repo's own docs keep meeting it.
-Run `npx markdownlint-cli2 --config lint-markdown/.markdownlint.default.jsonc`
-over a Markdown file you just wrote, rather than waiting for the job.
+Run it over a Markdown file you just wrote, rather than waiting for the job --
+and pin the version to the one `lint-markdown/package.json` declares, rather
+than letting `npx` resolve whatever is current, since an unpinned run is a
+different tool from the one CI runs:
+
+```bash
+ver=$(node -p "require('./lint-markdown/package.json').dependencies['markdownlint-cli2']")
+npx "markdownlint-cli2@$ver" --config lint-markdown/.markdownlint.default.jsonc '*.md'
+```
+
+Deriving the version rather than writing it here keeps one declaration, per the
+gha#303 precedent.
+The difference is observable rather than theoretical: measured on gha#744, an
+unpinned invocation reported `0 issues in 0 files` where the pinned 0.23.0
+reported `0 error(s)` -- the same verdict through a different output contract,
+and a rule-behaviour difference would be exactly as quiet.
 
 **Pin which script a pre/post-fix measurement actually loaded, because the
 obvious baseline is wrong exactly when the fix is already committed.**
@@ -1854,7 +1868,8 @@ implementation, silently reverts the implementation itself, and every later
 "mutation" then tests the detector's absence rather than the targeted edit.
 Commit first; mutate second.
 
-**Applying is still not aiming, and a refactor is what separates the two.**
+**Applying a mutation is not aiming it, and per-case branches are where the
+two come apart.**
 The note above catches a mutation that never reached the file.
 A mutation can reach the file, change it, and still tell you nothing --
 because the line it changed is not the line the test exercises.
