@@ -7,3 +7,6 @@
   target: the new `bullet-style` input when set, otherwise `news-file`'s own
   first existing bullet, otherwise `-` when the file has no bullet yet to
   take a style from.
+  A CommonMark thematic break does not count as that first bullet (#727), and
+  an empty list item does (#741) -- both match "a marker followed by a
+  space", so the two are separated by the marker count a break requires.
