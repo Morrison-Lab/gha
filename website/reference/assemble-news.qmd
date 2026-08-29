@@ -17,7 +17,7 @@ eliminating merge conflicts between concurrent PRs.
 | `fragments-dir` | string | `'news.d'` | Directory containing fragment files (`<slug>.<category>.md`). |
 | `news-file` | string | `'NEWS.md'` | Target `NEWS.md` file path. |
 | `headings` | string | `''` | Category-to-heading map, as newline-separated `category = Heading` pairs. Empty keeps the built-in map. |
-| `bullet-style` | string | `''` | List-marker character (`-`, `*`, or `+`) every inserted fragment bullet is normalized to. Empty auto-detects from `news-file`'s own first bullet, falling back to `-` when it has none. |
+| `bullet-style` | string | `''` | List-marker character (`-`, `*`, or `+`) every inserted fragment bullet is normalized to. Empty auto-detects from `news-file`'s own first bullet, falling back to `-` when it has none; see [Bullet-marker normalization](#bullet-marker-normalization) for what counts as that first bullet. |
 
 ## Example
 
@@ -104,6 +104,35 @@ one target, in this order: the `bullet-style` input when set; otherwise
 different markers still collate under one consistent style even on a fresh
 file). Only the marker character is rewritten -- the rest of each line,
 including nested-list indentation, is left untouched.
+
+Detection considers only lines matching a marker followed by whitespace,
+and among those it skips a spaced
+[thematic break](https://spec.commonmark.org/0.31.2/#thematic-breaks)
+rather than reading it as the first bullet --
+so a `NEWS.md` opening with `- - -` above a `*`-styled list normalizes to `*`.
+A run of fewer than three markers is a list item rather than a break,
+so an empty list item still sets the style.
+`+` is never treated as a break character,
+so `+ + +` is a list at any length.
+
+Two details of that test are the detector's own rather than CommonMark's,
+and both are deliberate:
+
+- It tests only `-` and `*`.
+  The spec's third break character, `_`, is never reached,
+  because a `_` line is not a marker-followed-by-whitespace candidate
+  in the first place.
+- It ignores leading indentation,
+  where the spec caps a break at three spaces.
+  A more deeply indented separator is indented-code or nested-list content,
+  which should not set the whole file's style either.
+
+One consequence is worth knowing before hand-editing a `NEWS.md`:
+a marker alone on its line, with no trailing whitespace,
+is not a detection candidate at all,
+so it sets no style and the fall-back `-` applies.
+An empty list item therefore has to carry its trailing space to count
+([#746](https://github.com/Morrison-Lab/gha/issues/746)).
 
 See `assemble-news.yml` in
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
