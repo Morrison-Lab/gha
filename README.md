@@ -557,7 +557,8 @@ Pin
 `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, and `r-cmd-check.yml`
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`, and
+`check-code-similarity.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -674,7 +675,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, and `r-cmd-check.yml` at `@v2` -- see the
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`, and
+`check-code-similarity.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
@@ -689,7 +691,8 @@ run.
 A job that calls a reusable workflow cannot set `timeout-minutes` itself
 (GitHub rejects the key on a `uses:` job), so such a job inherits whatever
 timeout the called workflow's own job declares.
-`altdoc-multiversion-docs.yml` and `r-cmd-check.yml` additionally expose
+`altdoc-multiversion-docs.yml`, `r-cmd-check.yml`, and
+`check-code-similarity.yml` additionally expose
 their timeouts as a `workflow_call` input, which is the pattern to follow if
 a consumer ever needs to raise one.
 `r-cmd-check.yml` defaults to 90 minutes

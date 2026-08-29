@@ -86,11 +86,18 @@ on:
         description: Runner label.
         type: string
         default: ubuntu-latest
+      timeout-minutes:
+        description: >-
+          Job timeout. Exposed because this capability downloads an ~80 MB jar
+          on a cache miss and starts a JVM, so a slow runner or a large corpus
+          can legitimately need longer than the default.
+        type: number
+        default: 30
 
 jobs:
   check-code-similarity:
     runs-on: ${{ inputs.runs-on }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
     steps:

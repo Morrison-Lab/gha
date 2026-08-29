@@ -72,8 +72,22 @@ diagnostics quote source, so forwarding them would publish exactly what
 | `fail` | `false` | Fail the job on a finding rather than warning. |
 | `min-tokens` | `''` | JPlag's `-t`; lower is more sensitive. Empty uses the per-language default. |
 | `java-version` | `25` | JPlag 6.x needs Java 25 or newer. |
+| `jar` | `''` | Path to an already-downloaded JPlag jar, skipping the download. Its digest is still verified. |
 | `upload-report` | `false` | Upload JPlag's report as an artifact. |
 | `runs-on` | `ubuntu-latest` | Runner label (reusable workflow only). |
+| `timeout-minutes` | `30` | Job timeout (reusable workflow only). |
+
+## Outputs
+
+| Output | Description |
+| --- | --- |
+| `max-similarity` | Highest similarity involving a submission under review (0--1). |
+| `flagged-count` | Number of pairs at or above the threshold. |
+| `report-dir` | Directory holding JPlag's report for this run. |
+
+`report-dir` names a directory whose contents embed source excerpts from both
+sides, so a caller that publishes it takes on the same exposure
+`upload-report` defaults to avoiding.
 
 `upload-report` is off by default because JPlag's report embeds source
 excerpts from **both** sides of every comparison. Turning it on publishes

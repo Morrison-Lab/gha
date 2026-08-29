@@ -169,7 +169,10 @@ which is why the capabilities above moved to `@v2`.
   default tree-sitter parsers.
   The jar is pinned by version **and** SHA-256, since the tool reads every
   line of the caller's source; a mismatch refuses to run, and deletes the file
-  only when it came from our own cache rather than from the caller's `--jar`.
+  only when it came from our own cache rather than from the `jar` input.
+  That input exists so the distinction is reachable through the action rather
+  than only through the script --- review caught the prose describing a
+  caller-facing feature that, at the time, only a direct script call could use.
   `check-secrets/` (shell) is the deliberate counter-example to that pattern:
   it is the one check that scans **history** rather than a diff,
   because a secret committed and later removed stays fetchable through the

@@ -69,6 +69,14 @@ inputs:
       refuses to run.
     required: false
     default: '5f2c21e8b88ed77134effcb3a5a3ab13d188f6a3e16d401387f7479e92db9aa2'
+  jar:
+    description: >-
+      Path to an already-downloaded JPlag jar, skipping the download. Its
+      digest is still verified against `jplag-sha256`; a mismatch refuses to
+      run and does NOT delete the file, since a jar the caller pointed us at
+      is not ours to remove.
+    required: false
+    default: ''
   upload-report:
     description: >-
       Upload JPlag's result directory as a workflow artifact. The report
@@ -88,6 +96,12 @@ outputs:
   flagged-count:
     description: Number of pairs at or above the threshold.
     value: ${{ steps.similarity.outputs.flagged-count }}
+  report-dir:
+    description: >-
+      Directory holding JPlag's report for this run. It embeds source excerpts
+      from both sides, so a caller that publishes it takes on the same
+      exposure `upload-report` defaults to avoiding.
+    value: ${{ steps.similarity.outputs.report-dir }}
 
 runs:
   using: composite
@@ -102,7 +116,12 @@ runs:
     # on every run regardless of whether the jar came from the cache or the
     # network -- a cache hit is not a trust decision.
     - name: Cache the JPlag jar
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v4.3.0
+      # v5.0.5, verified by resolving the tag rather than recalled: v5 needs
+      # the Node 24 runtime and Actions Runner 2.327.1 or newer, and `runs-on`
+      # is a consumer-settable input, so an older self-hosted runner would
+      # break on it. Kept at v5 because the hosted runners this targets are
+      # well past that floor; a consumer on an older runner should pin v4.
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ${{ runner.temp }}/jplag-cache
         key: jplag-${{ inputs.jplag-version }}-${{ inputs.jplag-sha256 }}
@@ -128,6 +147,7 @@ runs:
         IN_FAIL: ${{ inputs.fail }}
         IN_JPLAG_VERSION: ${{ inputs.jplag-version }}
         IN_JPLAG_SHA256: ${{ inputs.jplag-sha256 }}
+        IN_JAR: ${{ inputs.jar }}
       run: |
         set -euo pipefail
         args=(
@@ -144,6 +164,7 @@ runs:
         # rely on when a later edit could reorder it.
         if [ -n "$IN_BASE_CODE" ]; then args+=(--base-code-path "$IN_BASE_CODE"); fi
         if [ -n "$IN_MIN_TOKENS" ]; then args+=(--min-tokens "$IN_MIN_TOKENS"); fi
+        if [ -n "$IN_JAR" ]; then args+=(--jar "$IN_JAR"); fi
         if [ "$IN_FAIL" = "true" ]; then args+=(--fail); fi
         python3 "$GITHUB_ACTION_PATH/check_code_similarity.py" "${args[@]}"
 

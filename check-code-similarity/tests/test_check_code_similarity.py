@@ -358,3 +358,47 @@ def test_parse_errors_are_surfaced_not_swallowed(env):
     result = run(tmp_path, jar)
     assert result.returncode == 0
     assert "2 parse error(s)" in result.stdout
+
+
+# ---------------------------------------------------------------- defaults
+# The gha#303 precedent: a default declared in more than one place gets a test
+# asserting the copies agree. Here `action.yml` re-declares the JPlag version
+# and digest that `check_code_similarity.py` also carries, and a drift between
+# them would hand a direct script caller a different pin from an Action caller
+# -- with nothing red to notice, since each is internally consistent.
+
+
+def _yaml_default(text: str, key: str) -> str:
+    """Read one input's `default:` without a YAML parser.
+
+    Deliberately a line scan: this suite installs only pytest, and adding a
+    PyYAML dependency to assert two strings match would cost more than it
+    proves.
+    """
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip() == f"{key}:":
+            for follow in lines[i + 1:i + 12]:
+                if follow.strip().startswith("default:"):
+                    return follow.split("default:", 1)[1].strip().strip("'\"")
+                # A sibling input started, so this one declared no default.
+                if follow and not follow.startswith(" " * 4):
+                    break
+    raise AssertionError(f"no default found for input {key!r}")
+
+
+def test_action_and_script_pin_the_same_jplag_build():
+    action = (ROOT / "action.yml").read_text(encoding="utf-8")
+    script = (ROOT / "check_code_similarity.py").read_text(encoding="utf-8")
+
+    version = _yaml_default(action, "jplag-version")
+    digest = _yaml_default(action, "jplag-sha256")
+
+    assert f'DEFAULT_JPLAG_VERSION = "{version}"' in script, (
+        f"action.yml pins JPlag {version}; the script's default disagrees"
+    )
+    assert f'DEFAULT_JPLAG_SHA256 = "{digest}"' in script, (
+        "action.yml and the script pin different JPlag digests"
+    )
+    # A digest that is not a digest would satisfy the equality above.
+    assert len(digest) == 64 and set(digest) <= set("0123456789abcdef"), digest
