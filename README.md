@@ -588,6 +588,10 @@ in [gha#388](https://github.com/Morrison-Lab/gha/issues/388)); pin both to
 pin to `@v2`.
 `check-ai-tells.yml` postdates the freeze too (added in
 [gha#382](https://github.com/Morrison-Lab/gha/issues/382)); pin to `@v2`.
+`gemini.yml`, `gemini-code-review.yml`, `antigravity-code-review.yml`, and
+`ai-code-review.yml` likewise only ever shipped at `@v2`, having been added
+well after the freeze -- see
+[gha#357](https://github.com/Morrison-Lab/gha/pull/357).
 `cursor-code-review.yml` postdates the freeze too (added in
 [gha#510](https://github.com/Morrison-Lab/gha/issues/510)); pin to `@v2`.
 `opencode-code-review.yml` postdates the freeze as well
@@ -674,6 +678,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `sync-upstream.yml`, `check-news.yml`, `altdoc-multiversion-docs.yml`,
 `report-failure.yml`, `gemini.yml`, `gemini-code-review.yml`,
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
+`small-model-agent.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`, and
 `check-code-similarity.yml` at `@v2` -- see the
