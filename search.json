@@ -595,7 +595,7 @@
     "href": "reference/assemble-news.html#inputs",
     "title": "assemble-news",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nfragments-dir\nstring\n'news.d'\nDirectory containing fragment files (&lt;slug&gt;.&lt;category&gt;.md).\n\n\nnews-file\nstring\n'NEWS.md'\nTarget NEWS.md file path.\n\n\nheadings\nstring\n''\nCategory-to-heading map, as newline-separated category = Heading pairs. Empty keeps the built-in map.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nfragments-dir\nstring\n'news.d'\nDirectory containing fragment files (&lt;slug&gt;.&lt;category&gt;.md).\n\n\nnews-file\nstring\n'NEWS.md'\nTarget NEWS.md file path.\n\n\nheadings\nstring\n''\nCategory-to-heading map, as newline-separated category = Heading pairs. Empty keeps the built-in map.\n\n\nbullet-style\nstring\n''\nList-marker character (-, *, or +) every inserted fragment bullet is normalized to. Empty auto-detects from news-file’s own first bullet, falling back to - when it has none.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -619,7 +619,19 @@
     "href": "reference/assemble-news.html#custom-headings",
     "title": "assemble-news",
     "section": "Custom headings",
-    "text": "Custom headings\nThe built-in map is breaking to Breaking changes; added and feature to New features; fixed and bug to Bug fixes; and changed, minor, deprecated, removed, and security to Minor improvements.\nA repo whose NEWS.md uses a different taxonomy supplies its own:\n      - name: Assemble news fragments\n        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2\n        with:\n          fragments-dir: news.d\n          headings: |\n            breaking = Breaking changes\n            added = New features\n            fixed = Bug fixes\n            infrastructure = Infrastructure\n            docs = Documentation\nWhen set, headings replaces the built-in map rather than extending it, defining both the complete set of recognized categories and the order the headings are written in. Several categories may share a heading, which then takes the position of its first-listed category.\nA # comments out a line only when it starts the line, so a heading may contain one (csharp = C# interop). A category may not contain a dot – it is a single segment of &lt;slug&gt;.&lt;category&gt;.md, and a dotted one would collate the same fragment twice whenever its suffix is also configured.\nA fragment whose category is outside the active map fails the step, naming the offending files, rather than being skipped – the check runs before anything is consumed, so a mixed batch fails without deleting the valid fragments beside it.\nSee assemble-news.yml in examples/ for the caller stub.",
+    "text": "Custom headings\nThe built-in map is breaking to Breaking changes; added and feature to New features; fixed and bug to Bug fixes; and changed, minor, deprecated, removed, and security to Minor improvements.\nA repo whose NEWS.md uses a different taxonomy supplies its own:\n      - name: Assemble news fragments\n        uses: Morrison-Lab/gha/.github/actions/assemble-news@v2\n        with:\n          fragments-dir: news.d\n          headings: |\n            breaking = Breaking changes\n            added = New features\n            fixed = Bug fixes\n            infrastructure = Infrastructure\n            docs = Documentation\nWhen set, headings replaces the built-in map rather than extending it, defining both the complete set of recognized categories and the order the headings are written in. Several categories may share a heading, which then takes the position of its first-listed category.\nA # comments out a line only when it starts the line, so a heading may contain one (csharp = C# interop). A category may not contain a dot – it is a single segment of &lt;slug&gt;.&lt;category&gt;.md, and a dotted one would collate the same fragment twice whenever its suffix is also configured.\nA fragment whose category is outside the active map fails the step, naming the offending files, rather than being skipped – the check runs before anything is consumed, so a mixed batch fails without deleting the valid fragments beside it.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "assemble-news"
+    ]
+  },
+  {
+    "objectID": "reference/assemble-news.html#bullet-marker-normalization",
+    "href": "reference/assemble-news.html#bullet-marker-normalization",
+    "title": "assemble-news",
+    "section": "Bullet-marker normalization",
+    "text": "Bullet-marker normalization\nmarkdownlint’s MD004 rule defaults to style: consistent, which takes its required marker (-, *, or +) from the assembled file’s first bullet. Fragments are spliced in at the top of news-file, so a fragment authored with a different marker than the file’s dominant one would flip that requirement for every other bullet already in the file.\nTo prevent that, every inserted bullet’s top-of-line marker is normalized to one target, in this order: the bullet-style input when set; otherwise news-file’s own first existing bullet marker; otherwise -, when news-file has no bullet yet to take a style from (so fragments authored with different markers still collate under one consistent style even on a fresh file). Only the marker character is rewritten – the rest of each line, including nested-list indentation, is left untouched.\nSee assemble-news.yml in examples/ for the caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
