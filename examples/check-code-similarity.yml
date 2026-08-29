@@ -1,0 +1,51 @@
+# Flag code in a PR that is highly similar to a corpus of prior submissions.
+#
+# The corpus is yours to assemble; this stub shows the simplest form, a second
+# checkout of a private repo holding previous submissions. A downloaded
+# artifact or a submodule works the same way -- the workflow only needs a
+# directory whose CHILD directories are submissions.
+#
+# Similarity is computed entirely on the runner. Nothing is uploaded.
+name: Code similarity
+
+on:
+  pull_request:
+
+jobs:
+  code-similarity:
+    # Two checkouts, so give the reusable workflow a directory it can read.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out this submission
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: submissions/this-pr
+
+      # A corpus in a separate PRIVATE repo needs a token that can read it.
+      # Omit `repository`/`token` entirely if your corpus is a submodule or a
+      # directory already present in this repo.
+      - name: Check out the corpus of prior submissions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: my-org/prior-submissions
+          token: ${{ secrets.CORPUS_READ_TOKEN }}
+          path: corpus
+
+      - name: Compare against the corpus
+        uses: Morrison-Lab/gha/check-code-similarity@v2
+        with:
+          path: submissions
+          corpus-path: corpus
+          language: rlang
+          # Start by watching the numbers. Turn `fail` on once a threshold has
+          # been calibrated against real submissions: shared skeleton code, a
+          # common idiom, and a small assignment all raise similarity
+          # legitimately.
+          threshold: '0.8'
+          fail: false
+          # An assignment skeleton every submission starts from would
+          # otherwise register as copying.
+          # base-code-path: corpus/_skeleton

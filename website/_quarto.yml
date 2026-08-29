@@ -37,6 +37,7 @@ website:
         contents:
           - reference/check-ai-tells.qmd
           - reference/check-bibliography-dois.qmd
+          - reference/check-code-similarity.qmd
           - reference/check-formatting.qmd
           - reference/check-junk-files.qmd
           - reference/check-non-standard-chars.qmd

@@ -1,0 +1,125 @@
+---
+title: check-code-similarity
+---
+
+Flag code in a pull request that is highly similar to a caller-supplied corpus
+of prior submissions, using [JPlag](https://github.com/jplag/JPlag).
+
+Similarity is computed **entirely on the runner**. Nothing is uploaded, which
+is why JPlag was chosen over MOSS: MOSS submits source to Stanford's servers.
+
+## The corpus is yours to assemble
+
+The check compares a directory of submissions against another directory of
+submissions. JPlag treats each **child directory** as one submission, so both
+paths point at a *root* whose children are the units being compared. A flat
+pile of files has nothing to compare and is rejected rather than reported
+clean.
+
+Where the corpus comes from is deliberately not this capability's business ---
+a committed directory, a submodule, a second checkout, or a downloaded
+artifact all work. That keeps the check free of any token, cloning, or
+scale policy.
+
+The reusable workflow checks out **one** repository, the caller's, so its
+`corpus-path` can only name something inside that checkout. For a corpus in a
+second repository or an artifact, call the composite action directly from a
+job that performs both checkouts --- see `examples/check-code-similarity.yml`.
+
+## A signal, not a verdict
+
+A finding **warns** by default rather than failing. Shared skeleton code, a
+common idiom, and a genuinely small assignment all raise similarity
+legitimately, so a high score is a prompt to look rather than a conclusion.
+Set `fail: true` once a threshold has been calibrated against real
+submissions, and use `base-code-path` to exclude a provided framework that
+would otherwise register as copying.
+
+## Everything that cannot run is an error
+
+A similarity check that fails to run prints no findings --- which is exactly
+what a check that ran and found nothing prints. So the two are never
+conflated. Each of these fails the step rather than reporting clean:
+
+- a missing corpus, an empty one, or a root holding loose files rather than
+  submission directories;
+- a digest mismatch on the pinned jar, a JPlag crash, or a missing, empty, or
+  malformed results file;
+- `path` and `corpus-path` sharing a directory **name**, since JPlag labels
+  every submission by that name and the two sides would be indistinguishable
+  in its output;
+- a comparison that ran but produced no pair involving the submission under
+  review, which means nothing being reviewed was actually evaluated.
+
+A clean run says how many pairs it examined.
+
+### JPlag's own diagnostics stay out of the log
+
+When JPlag fails, its stderr is written into the work directory rather than
+echoed into the job log, and the log gets the exit code and a pointer. JPlag's
+diagnostics quote source, so forwarding them would publish exactly what
+`upload-report: false` exists to withhold from anyone who can read the run.
+
+## Inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `path` | `.` | Root whose child directories are the submissions under review. |
+| `corpus-path` | *(required)* | Root whose child directories are the prior submissions. |
+| `base-code-path` | `''` | Framework code common to every submission, excluded from similarity. |
+| `language` | `rlang` | JPlag language (see below). |
+| `threshold` | `0.8` | Report a pair at or above this similarity, inclusive. |
+| `fail` | `false` | Fail the job on a finding rather than warning. |
+| `min-tokens` | `''` | JPlag's `-t`; lower is more sensitive. Empty uses the per-language default. |
+| `java-version` | `25` | JPlag 6.x needs Java 25 or newer. |
+| `jar` | `''` | Path to an already-downloaded JPlag jar, skipping the download. Its digest is still verified. |
+| `upload-report` | `false` | Upload JPlag's report as an artifact. |
+| `runs-on` | `ubuntu-latest` | Runner label (reusable workflow only). |
+| `timeout-minutes` | `30` | Job timeout (reusable workflow only). |
+
+## Outputs
+
+| Output | Description |
+| --- | --- |
+| `max-similarity` | Highest similarity involving a submission under review (0--1). |
+| `flagged-count` | Number of pairs at or above the threshold. |
+| `report-dir` | Directory holding JPlag's report for this run. |
+
+`report-dir` names a directory whose contents embed source excerpts from both
+sides, so a caller that publishes it takes on the same exposure
+`upload-report` defaults to avoiding.
+
+`upload-report` is off by default because JPlag's report embeds source
+excerpts from **both** sides of every comparison. Turning it on publishes
+corpus content to anyone who can read the workflow run.
+
+### Languages
+
+`c`, `cpp`, `csharp`, `emf`, `emf-model`, `go`, `java`, `javascript`,
+`kotlin`, `llvmir`, `multi`, `python3`, `rlang`, `rust`, `scala`, `scheme`,
+`scxml`, `swift`, `text`, `typescript`.
+
+`rlang` is R. `text` is a language-agnostic fallback that compares tokens
+without parsing, useful for a language JPlag has no grammar for.
+
+### Known limitation: R's native pipe
+
+JPlag's R grammar does not parse `|>`, emitting an ANTLR error for each line
+that uses it. The step surfaces a count of those errors rather than swallowing
+them, because dropped tokens make the reported similarity a **lower bound**.
+
+Measured on gha#296, detection degraded rather than failed: a copy with every
+identifier renamed still scored 1.0, an unrelated submission 0.0, and a copy
+whose pipe style had been rewritten from `|>` to `%>%` also 1.0.
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed ---
+unless your corpus lives in a private second repository, in which case the
+checkout of *that* repository needs a token which can read it.
+
+## Example
+
+```yaml
+{{< include ../../examples/check-code-similarity.yml >}}
+```

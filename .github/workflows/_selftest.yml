@@ -3078,6 +3078,101 @@ jobs:
           python3 .github/workflows/scripts/tests/run-workflow-job-guard-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-workflow-job-guard-tests.py
 
+  # check-code-similarity wraps JPlag against a caller-supplied corpus
+  # (gha#296). The unit tests run first and use a stub `java`, so they cover
+  # the branches a green run never reaches -- an empty corpus, a crashed
+  # JPlag, a missing results file. The `uses:` calls below then exercise the
+  # real jar, which is the only thing that proves the download, the digest
+  # check, the Java setup, and github.action_path resolution actually work.
+  #
+  # Both directions are asserted. A job that only ran the copy case would pass
+  # just as well if the action flagged everything, and one that only ran the
+  # clean case would pass if it flagged nothing.
+  code-similarity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run check-code-similarity offline unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest
+          python3 -m pytest check-code-similarity/tests/ -q
+
+      - name: Generate the submission and corpus fixtures
+        shell: bash
+        run: bash check-code-similarity/tests/make-fixture.sh _ci-similarity
+
+      # The copy is alice's file with every identifier renamed, so a diff
+      # would show nothing in common. It must be flagged.
+      - name: A renamed-identifier copy must be flagged
+        id: copied
+        continue-on-error: true
+        uses: ./check-code-similarity
+        with:
+          path: _ci-similarity/submission
+          corpus-path: _ci-similarity/corpus
+          language: rlang
+          fail: 'true'
+
+      - name: Assert the copy was flagged
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.copied.outcome }}
+          MAX: ${{ steps.copied.outputs.max-similarity }}
+          FLAGGED: ${{ steps.copied.outputs.flagged-count }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the copied submission to fail the check, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          if [ "$FLAGGED" != "1" ]; then
+            echo "::error::expected exactly 1 flagged pair, got '$FLAGGED'"
+            exit 1
+          fi
+          echo "Copy flagged as expected (max similarity $MAX)."
+
+      # The same submission against a corpus it did not copy from. This is the
+      # case that must NOT fail, and the one that catches an action which
+      # flags everything.
+      - name: An unrelated corpus must not be flagged
+        uses: ./check-code-similarity
+        with:
+          path: _ci-similarity/submission
+          corpus-path: _ci-similarity/clean-corpus
+          language: rlang
+          fail: 'true'
+
+      # An empty corpus must be an ERROR, not a clean result. This is the
+      # whole fail-closed premise of the capability, so it is asserted against
+      # the real action rather than only in the unit tests.
+      - name: An empty corpus must fail rather than report clean
+        id: empty
+        continue-on-error: true
+        uses: ./check-code-similarity
+        with:
+          path: _ci-similarity/submission
+          corpus-path: _ci-similarity/empty-corpus
+          language: rlang
+
+      - name: Assert the empty corpus failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.empty.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::an empty corpus must fail the check, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "Empty corpus refused, as expected."
+
   # Covers the open-failure-issue action used by report-failure.yml and
   # check-links.yml.
   # The unit tests pin the matching and splitting rules; the end-to-end step

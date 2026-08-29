@@ -1,0 +1,177 @@
+name: Check code similarity
+description: >-
+  Flag code in this repository that is highly similar to a caller-supplied
+  corpus of prior submissions, using JPlag. Everything is computed locally --
+  no source is uploaded anywhere.
+
+inputs:
+  path:
+    description: >-
+      Root directory whose CHILD directories are the submissions under review.
+      JPlag treats each child as one submission, so a flat pile of files here
+      compares against nothing and is rejected rather than reported clean.
+    required: false
+    default: '.'
+  corpus-path:
+    description: >-
+      Root directory whose child directories are the prior submissions to
+      compare against. The caller assembles this -- a checkout, a downloaded
+      artifact, or a submodule. An empty or missing corpus is an error, never
+      an empty comparison.
+    required: true
+  base-code-path:
+    description: >-
+      Optional directory holding framework code common to every submission
+      (an assignment skeleton). Excluded from similarity, so a provided
+      template does not register as copying.
+    required: false
+    default: ''
+  language:
+    description: >-
+      JPlag language. One of c, cpp, csharp, emf, emf-model, go, java,
+      javascript, kotlin, llvmir, multi, python3, rlang, rust, scala, scheme,
+      scxml, swift, text, typescript. Note `rlang` for R, and `text` as a
+      language-agnostic fallback.
+    required: false
+    default: rlang
+  threshold:
+    description: >-
+      Report a pair whose maximum similarity is at or above this value
+      (0 to 1, inclusive comparison).
+    required: false
+    default: '0.8'
+  fail:
+    description: >-
+      Fail the check when a pair is at or above the threshold. Defaults to
+      false: similarity is a review signal rather than a verdict, since a
+      shared skeleton, a common idiom, and a small assignment all raise it
+      legitimately.
+    required: false
+    default: 'false'
+  min-tokens:
+    description: >-
+      JPlag's -t: minimum matching token run. Lower is more sensitive and
+      yields more false positives. Empty uses JPlag's per-language default.
+    required: false
+    default: ''
+  java-version:
+    description: Java version to set up. JPlag 6.x needs 25 or newer.
+    required: false
+    default: '25'
+  jplag-version:
+    description: JPlag release to download.
+    required: false
+    default: '6.3.0'
+  jplag-sha256:
+    description: >-
+      Expected SHA-256 of the JPlag jar. Pinned by digest as well as version,
+      because this tool reads every line of the caller's source; a mismatch
+      refuses to run.
+    required: false
+    default: '5f2c21e8b88ed77134effcb3a5a3ab13d188f6a3e16d401387f7479e92db9aa2'
+  jar:
+    description: >-
+      Path to an already-downloaded JPlag jar, skipping the download. Its
+      digest is still verified against `jplag-sha256`; a mismatch refuses to
+      run and does NOT delete the file, since a jar the caller pointed us at
+      is not ours to remove.
+    required: false
+    default: ''
+  upload-report:
+    description: >-
+      Upload JPlag's result directory as a workflow artifact. The report
+      embeds source excerpts from both sides, so this is off by default --
+      turning it on publishes corpus content to anyone who can read the run.
+    required: false
+    default: 'false'
+  report-artifact-name:
+    description: Artifact name used when upload-report is true.
+    required: false
+    default: code-similarity-report
+
+outputs:
+  max-similarity:
+    description: Highest similarity involving a submission under review (0-1).
+    value: ${{ steps.similarity.outputs.max-similarity }}
+  flagged-count:
+    description: Number of pairs at or above the threshold.
+    value: ${{ steps.similarity.outputs.flagged-count }}
+  report-dir:
+    description: >-
+      Directory holding JPlag's report for this run. It embeds source excerpts
+      from both sides, so a caller that publishes it takes on the same
+      exposure `upload-report` defaults to avoiding.
+    value: ${{ steps.similarity.outputs.report-dir }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    # The jar is ~80 MB, so it is cached across runs. The digest is verified
+    # on every run regardless of whether the jar came from the cache or the
+    # network -- a cache hit is not a trust decision.
+    - name: Cache the JPlag jar
+      # v5.0.5, verified by resolving the tag rather than recalled: v5 needs
+      # the Node 24 runtime and Actions Runner 2.327.1 or newer, and `runs-on`
+      # is a consumer-settable input, so an older self-hosted runner would
+      # break on it. Kept at v5 because the hosted runners this targets are
+      # well past that floor; a consumer on an older runner should pin v4.
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ${{ runner.temp }}/jplag-cache
+        key: jplag-${{ inputs.jplag-version }}-${{ inputs.jplag-sha256 }}
+
+    # Every input reaches the shell through `env:`, never through `${{ }}`
+    # interpolated into the script body. These values come from the calling
+    # workflow, and an interpolated one is substituted by the runner BEFORE
+    # bash parses the line -- so a crafted `language` or `corpus-path` would
+    # be executed rather than passed. The runner sets an env var's value
+    # directly instead, which bash never re-parses.
+    - name: Check code similarity
+      id: similarity
+      shell: bash
+      env:
+        JPLAG_CACHE_DIR: ${{ runner.temp }}/jplag-cache
+        JPLAG_WORK_DIR: ${{ runner.temp }}/jplag-run
+        IN_PATH: ${{ inputs.path }}
+        IN_CORPUS: ${{ inputs.corpus-path }}
+        IN_BASE_CODE: ${{ inputs.base-code-path }}
+        IN_LANGUAGE: ${{ inputs.language }}
+        IN_THRESHOLD: ${{ inputs.threshold }}
+        IN_MIN_TOKENS: ${{ inputs.min-tokens }}
+        IN_FAIL: ${{ inputs.fail }}
+        IN_JPLAG_VERSION: ${{ inputs.jplag-version }}
+        IN_JPLAG_SHA256: ${{ inputs.jplag-sha256 }}
+        IN_JAR: ${{ inputs.jar }}
+      run: |
+        set -euo pipefail
+        args=(
+          --path "$IN_PATH"
+          --corpus-path "$IN_CORPUS"
+          --language "$IN_LANGUAGE"
+          --threshold "$IN_THRESHOLD"
+          --jplag-version "$IN_JPLAG_VERSION"
+          --jplag-sha256 "$IN_JPLAG_SHA256"
+        )
+        # `if` rather than `[ ... ] && args+=(...)`: the short-circuit form is
+        # safe here only because the FAILING half is the test on the left of
+        # `&&`, which is the one case `set -e` ignores. That is too subtle to
+        # rely on when a later edit could reorder it.
+        if [ -n "$IN_BASE_CODE" ]; then args+=(--base-code-path "$IN_BASE_CODE"); fi
+        if [ -n "$IN_MIN_TOKENS" ]; then args+=(--min-tokens "$IN_MIN_TOKENS"); fi
+        if [ -n "$IN_JAR" ]; then args+=(--jar "$IN_JAR"); fi
+        if [ "$IN_FAIL" = "true" ]; then args+=(--fail); fi
+        python3 "$GITHUB_ACTION_PATH/check_code_similarity.py" "${args[@]}"
+
+    - name: Upload the JPlag report
+      if: ${{ inputs.upload-report == 'true' && always() }}
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      with:
+        name: ${{ inputs.report-artifact-name }}
+        path: ${{ runner.temp }}/jplag-run/result
+        if-no-files-found: ignore

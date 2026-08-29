@@ -1,0 +1,118 @@
+name: Check Code Similarity (reusable)
+
+# Flag code in this repository that is highly similar to a caller-supplied
+# corpus of prior submissions (gha#296).
+#
+# The corpus is the caller's to assemble -- a second checkout, a downloaded
+# artifact, or a submodule -- and this workflow compares against whatever is
+# at `corpus-path`. That is deliberately the smallest useful shape: comparing
+# against sibling repos in an org would need a token that can read them, a
+# policy on how many is too many, and care about what reaches the log, none of
+# which is required to make the check useful today.
+#
+# Similarity is computed entirely on the runner. JPlag uploads nothing, which
+# is why it was chosen over MOSS -- MOSS submits source to Stanford's servers.
+#
+# THIS WRAPPER CHECKS OUT ONE REPOSITORY: the caller's. So `corpus-path` can
+# only name something inside that checkout -- a committed directory or a
+# submodule. A corpus that lives in a SECOND repository, or arrives as a
+# downloaded artifact, needs a job that performs both checkouts itself and
+# calls the composite action directly (`Morrison-Lab/gha/check-code-similarity`);
+# see `examples/check-code-similarity.yml`. The wrapper is the convenience
+# path for the in-repo case, not the general one.
+#
+# A finding warns rather than fails by default. Shared skeleton code, a common
+# idiom, and a genuinely small assignment all raise similarity legitimately,
+# so this is a review signal rather than a verdict. Set `fail: true` once a
+# threshold has been calibrated against real submissions.
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: >-
+          Root directory whose CHILD directories are the submissions under
+          review. JPlag treats each child as one submission.
+        type: string
+        default: '.'
+      corpus-path:
+        description: >-
+          Root directory whose child directories are the prior submissions to
+          compare against. An empty or missing corpus fails the job rather
+          than reporting a clean result.
+        type: string
+        required: true
+      base-code-path:
+        description: >-
+          Optional directory holding framework code common to every
+          submission, excluded from similarity so a provided assignment
+          skeleton does not register as copying.
+        type: string
+        default: ''
+      language:
+        description: >-
+          JPlag language: c, cpp, csharp, emf, emf-model, go, java,
+          javascript, kotlin, llvmir, multi, python3, rlang, rust, scala,
+          scheme, scxml, swift, text, typescript. `rlang` is R; `text` is a
+          language-agnostic fallback.
+        type: string
+        default: rlang
+      threshold:
+        description: Report a pair at or above this similarity (0 to 1).
+        type: string
+        default: '0.8'
+      fail:
+        description: Fail the job when a pair is at or above the threshold.
+        type: boolean
+        default: false
+      min-tokens:
+        description: >-
+          JPlag's -t: minimum matching token run. Lower is more sensitive and
+          yields more false positives. Empty uses the per-language default.
+        type: string
+        default: ''
+      java-version:
+        description: Java version to set up. JPlag 6.x needs 25 or newer.
+        type: string
+        default: '25'
+      upload-report:
+        description: >-
+          Upload JPlag's report as an artifact. Off by default: the report
+          embeds source excerpts from both sides, so enabling it publishes
+          corpus content to anyone who can read the run.
+        type: boolean
+        default: false
+      runs-on:
+        description: Runner label.
+        type: string
+        default: ubuntu-latest
+      timeout-minutes:
+        description: >-
+          Job timeout. Exposed because this capability downloads an ~80 MB jar
+          on a cache miss and starts a JVM, so a slow runner or a large corpus
+          can legitimately need longer than the default.
+        type: number
+        default: 30
+
+jobs:
+  check-code-similarity:
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check code similarity
+        uses: Morrison-Lab/gha/check-code-similarity@v2
+        with:
+          path: ${{ inputs.path }}
+          corpus-path: ${{ inputs.corpus-path }}
+          base-code-path: ${{ inputs.base-code-path }}
+          language: ${{ inputs.language }}
+          threshold: ${{ inputs.threshold }}
+          fail: ${{ inputs.fail }}
+          min-tokens: ${{ inputs.min-tokens }}
+          java-version: ${{ inputs.java-version }}
+          upload-report: ${{ inputs.upload-report }}
