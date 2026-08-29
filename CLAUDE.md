@@ -155,6 +155,21 @@ which is why the capabilities above moved to `@v2`.
   `Thumbs.db`, and `desktop.ini`, which vaccination does not cover -- so the
   remedy the failure recommends is never narrower than the check's own scope,
   and the gap is stated rather than left silent.
+  `check-code-similarity/` (Python wrapping the JPlag jar) is scoped
+  differently again from all of these: neither the diff, the index, nor the
+  history, but a **caller-supplied corpus**.
+  It compares one root of submissions against another, where JPlag treats each
+  child directory as one submission --- so the population is whatever the
+  caller assembled, and a root of loose files is refused rather than compared
+  against nothing.
+  Diff-scoping would be actively wrong here, since a copied file the current
+  PR never touched is exactly what the check exists to find.
+  JPlag was chosen over MOSS because it computes locally, where MOSS submits
+  source to Stanford's servers, and over Dolos because R is not among Dolos's
+  default tree-sitter parsers.
+  The jar is pinned by version **and** SHA-256, since the tool reads every
+  line of the caller's source; a mismatch refuses to run, and deletes the file
+  only when it came from our own cache rather than from the caller's `--jar`.
   `check-secrets/` (shell) is the deliberate counter-example to that pattern:
   it is the one check that scans **history** rather than a diff,
   because a secret committed and later removed stays fetchable through the
@@ -1311,6 +1326,45 @@ The fixture checkout is generated at runtime
 The misspelling is also used as fixture payload in the pytest sources, so
 a later whole-tree dogfood of this repo should `paths-ignore`
 `check-typos/tests/`.
+
+`check-code-similarity/tests/test_check_code_similarity.py` is a pytest suite
+driving `check_code_similarity.py` against a **stub `java`** that writes a
+canned JPlag results CSV --- no 80 MB jar and no JDK, the same remedy
+`check-secrets` records for its scan script.
+The stub parses `-r` out of its own argv, so the result-path plumbing is
+exercised rather than assumed.
+
+**The refusal cases are the ones to keep if the suite is ever trimmed, and
+they all fail in one direction.**
+A similarity check that could not run prints no findings, which is
+indistinguishable from a check that ran and found none --- so a missing
+corpus, an empty corpus, a corpus of loose files rather than submission
+directories, a JPlag crash, a missing `results.csv`, an empty one, a missing
+column, an unparseable similarity, and a digest mismatch are each an error
+rather than a quiet pass.
+A clean run prints how many pairs it examined, which is what makes a real pass
+distinguishable from a vacuous one.
+Nine mutations were confirmed to turn a named case red rather than assumed to,
+including one that is easy to get backwards: a digest mismatch must delete a
+jar from **our** cache and must not delete one the caller passed with `--jar`,
+which is a file the action does not own.
+
+CI runs it as the `code-similarity` job in `_selftest.yml`, unit tests first,
+then three real `uses: ./check-code-similarity` calls against a generated
+fixture --- a renamed-identifier copy that must be flagged, an unrelated
+corpus that must not be, and an empty-but-present corpus that must error.
+All three directions are asserted, because a job running only the first would
+pass just as well if the action flagged everything.
+The fixture is generated at runtime (`check-code-similarity/tests/make-fixture.sh`),
+per the committed-fixture rule above --- a committed R fixture would be swept
+into the `bib`, `phi`, and `typos` jobs' own scans.
+
+**JPlag's R grammar does not parse R's native pipe `|>`.**
+Measured on gha#296, detection degraded rather than failed: a copy with every
+identifier renamed still scored 1.0, an unrelated submission 0.0, and a copy
+whose pipe style had been rewritten from `|>` to `%>%` also 1.0.
+The parse errors are surfaced as a counted warning rather than swallowed,
+because dropped tokens make the reported similarity a lower bound.
 
 `check-extra/tests/test-check-extra.sh` is a shell+R suite over
 `check-extra.R`.
