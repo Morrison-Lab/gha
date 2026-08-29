@@ -356,6 +356,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/check-code-similarity.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-code-similarity</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-formatting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-formatting.yml</span></a>
   </div>
@@ -670,7 +676,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="per-workflow-grants">Per-workflow grants</h2>
 <ul>
 <li><!--readonly-workflows:begin-->
-<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-formatting</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-phi</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-files</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>r-cmd-check</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
+<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-code-similarity</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-formatting</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-phi</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-files</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>r-cmd-check</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
 <li><code>check-links</code> opens an issue on <code>main</code> failures, so grant <code>issues: write</code>, <code>pull-requests: read</code>, <code>contents: read</code>.</li>
 <li><code>summary</code> comments on issues and calls the models API, so grant <code>issues: write</code>, <code>models: read</code>, <code>contents: read</code>.</li>
 <li><code>update-snapshots</code> pushes the snapshot-update commit back to the branch, so grant <code>contents: write</code>.</li>

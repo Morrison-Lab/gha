@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>check-non-standard-chars.yml – Morrison-Lab/gha</title>
+<title>check-code-similarity – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/check-phi.html" rel="next">
-<link href="../reference/check-junk-files.html" rel="prev">
+<link href="../reference/check-formatting.html" rel="next">
+<link href="../reference/check-bibliography-dois.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-non-standard-chars.html">check-non-standard-chars.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-code-similarity.html">check-code-similarity</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -391,7 +391,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-code-similarity.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-code-similarity.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-code-similarity</span></a>
   </div>
 </li>
@@ -409,7 +409,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/check-non-standard-chars.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-non-standard-chars.yml</span></a>
   </div>
 </li>
@@ -677,19 +677,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#the-corpus-is-yours-to-assemble" id="toc-the-corpus-is-yours-to-assemble" class="nav-link active" data-scroll-target="#the-corpus-is-yours-to-assemble">The corpus is yours to assemble</a></li>
+  <li><a href="#a-signal-not-a-verdict" id="toc-a-signal-not-a-verdict" class="nav-link" data-scroll-target="#a-signal-not-a-verdict">A signal, not a verdict</a></li>
+  <li><a href="#everything-that-cannot-run-is-an-error" id="toc-everything-that-cannot-run-is-an-error" class="nav-link" data-scroll-target="#everything-that-cannot-run-is-an-error">Everything that cannot run is an error</a>
+  <ul class="collapse">
+  <li><a href="#jplags-own-diagnostics-stay-out-of-the-log" id="toc-jplags-own-diagnostics-stay-out-of-the-log" class="nav-link" data-scroll-target="#jplags-own-diagnostics-stay-out-of-the-log">JPlag’s own diagnostics stay out of the log</a></li>
+  </ul></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs">Outputs</a>
+  <ul class="collapse">
+  <li><a href="#languages" id="toc-languages" class="nav-link" data-scroll-target="#languages">Languages</a></li>
+  <li><a href="#known-limitation-rs-native-pipe" id="toc-known-limitation-rs-native-pipe" class="nav-link" data-scroll-target="#known-limitation-rs-native-pipe">Known limitation: R’s native pipe</a></li>
+  </ul></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-non-standard-chars.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-code-similarity.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-non-standard-chars.html">check-non-standard-chars.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-code-similarity.html">check-code-similarity</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">check-non-standard-chars.yml</h1>
+<h1 class="title">check-code-similarity</h1>
 </div>
 
 
@@ -706,55 +717,210 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Detect curly quotes, en/em dashes, and the multiplication sign in <code>.qmd</code>, <code>.R</code>, and <code>.md</code> files, which can break Quarto and R rendering. The check fails when it finds any, reporting each <code>file:line:col</code> so you can fix it.</p>
+<p>Flag code in a pull request that is highly similar to a caller-supplied corpus of prior submissions, using <a href="https://github.com/jplag/JPlag">JPlag</a>.</p>
+<p>Similarity is computed <strong>entirely on the runner</strong>. Nothing is uploaded, which is why JPlag was chosen over MOSS: MOSS submits source to Stanford’s servers.</p>
+<section id="the-corpus-is-yours-to-assemble" class="level2">
+<h2 class="anchored" data-anchor-id="the-corpus-is-yours-to-assemble">The corpus is yours to assemble</h2>
+<p>The check compares a directory of submissions against another directory of submissions. JPlag treats each <strong>child directory</strong> as one submission, so both paths point at a <em>root</em> whose children are the units being compared. A flat pile of files has nothing to compare and is rejected rather than reported clean.</p>
+<p>Where the corpus comes from is deliberately not this capability’s business — a committed directory, a submodule, a second checkout, or a downloaded artifact all work. That keeps the check free of any token, cloning, or scale policy.</p>
+<p>The reusable workflow checks out <strong>one</strong> repository, the caller’s, so its <code>corpus-path</code> can only name something inside that checkout. For a corpus in a second repository or an artifact, call the composite action directly from a job that performs both checkouts — see <code>examples/check-code-similarity.yml</code>.</p>
+</section>
+<section id="a-signal-not-a-verdict" class="level2">
+<h2 class="anchored" data-anchor-id="a-signal-not-a-verdict">A signal, not a verdict</h2>
+<p>A finding <strong>warns</strong> by default rather than failing. Shared skeleton code, a common idiom, and a genuinely small assignment all raise similarity legitimately, so a high score is a prompt to look rather than a conclusion. Set <code>fail: true</code> once a threshold has been calibrated against real submissions, and use <code>base-code-path</code> to exclude a provided framework that would otherwise register as copying.</p>
+</section>
+<section id="everything-that-cannot-run-is-an-error" class="level2">
+<h2 class="anchored" data-anchor-id="everything-that-cannot-run-is-an-error">Everything that cannot run is an error</h2>
+<p>A similarity check that fails to run prints no findings — which is exactly what a check that ran and found nothing prints. So the two are never conflated. Each of these fails the step rather than reporting clean:</p>
+<ul>
+<li>a missing corpus, an empty one, or a root holding loose files rather than submission directories;</li>
+<li>a digest mismatch on the pinned jar, a JPlag crash, or a missing, empty, or malformed results file;</li>
+<li><code>path</code> and <code>corpus-path</code> sharing a directory <strong>name</strong>, since JPlag labels every submission by that name and the two sides would be indistinguishable in its output;</li>
+<li>a comparison that ran but produced no pair involving the submission under review, which means nothing being reviewed was actually evaluated.</li>
+</ul>
+<p>A clean run says how many pairs it examined.</p>
+<section id="jplags-own-diagnostics-stay-out-of-the-log" class="level3">
+<h3 class="anchored" data-anchor-id="jplags-own-diagnostics-stay-out-of-the-log">JPlag’s own diagnostics stay out of the log</h3>
+<p>When JPlag fails, its stderr is written into the work directory rather than echoed into the job log, and the log gets the exit code and a pointer. JPlag’s diagnostics quote source, so forwarding them would publish exactly what <code>upload-report: false</code> exists to withhold from anyone who can read the run.</p>
+</section>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 15%">
-<col style="width: 5%">
-<col style="width: 17%">
-<col style="width: 61%">
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
 </colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
-<th>Type</th>
 <th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>python-version</code></td>
-<td>string</td>
-<td><code>'3.x'</code></td>
-<td>Python version to set up.</td>
+<td><code>path</code></td>
+<td><code>.</code></td>
+<td>Root whose child directories are the submissions under review.</td>
 </tr>
 <tr class="even">
-<td><code>extensions</code></td>
-<td>string</td>
-<td><code>'.qmd, .R, .md'</code></td>
-<td>Comma- or space-separated list of file extensions to check.</td>
+<td><code>corpus-path</code></td>
+<td><em>(required)</em></td>
+<td>Root whose child directories are the prior submissions.</td>
+</tr>
+<tr class="odd">
+<td><code>base-code-path</code></td>
+<td><code>''</code></td>
+<td>Framework code common to every submission, excluded from similarity.</td>
+</tr>
+<tr class="even">
+<td><code>language</code></td>
+<td><code>rlang</code></td>
+<td>JPlag language (see below).</td>
+</tr>
+<tr class="odd">
+<td><code>threshold</code></td>
+<td><code>0.8</code></td>
+<td>Report a pair at or above this similarity, inclusive.</td>
+</tr>
+<tr class="even">
+<td><code>fail</code></td>
+<td><code>false</code></td>
+<td>Fail the job on a finding rather than warning.</td>
+</tr>
+<tr class="odd">
+<td><code>min-tokens</code></td>
+<td><code>''</code></td>
+<td>JPlag’s <code>-t</code>; lower is more sensitive. Empty uses the per-language default.</td>
+</tr>
+<tr class="even">
+<td><code>java-version</code></td>
+<td><code>25</code></td>
+<td>JPlag 6.x needs Java 25 or newer.</td>
+</tr>
+<tr class="odd">
+<td><code>jar</code></td>
+<td><code>''</code></td>
+<td>Path to an already-downloaded JPlag jar, skipping the download. Its digest is still verified.</td>
+</tr>
+<tr class="even">
+<td><code>upload-report</code></td>
+<td><code>false</code></td>
+<td>Upload JPlag’s report as an artifact.</td>
+</tr>
+<tr class="odd">
+<td><code>runs-on</code></td>
+<td><code>ubuntu-latest</code></td>
+<td>Runner label (reusable workflow only).</td>
+</tr>
+<tr class="even">
+<td><code>timeout-minutes</code></td>
+<td><code>30</code></td>
+<td>Job timeout (reusable workflow only).</td>
 </tr>
 </tbody>
 </table>
 </section>
+<section id="outputs" class="level2">
+<h2 class="anchored" data-anchor-id="outputs">Outputs</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>max-similarity</code></td>
+<td>Highest similarity involving a submission under review (0–1).</td>
+</tr>
+<tr class="even">
+<td><code>flagged-count</code></td>
+<td>Number of pairs at or above the threshold.</td>
+</tr>
+<tr class="odd">
+<td><code>report-dir</code></td>
+<td>Directory holding JPlag’s report for this run.</td>
+</tr>
+</tbody>
+</table>
+<p><code>report-dir</code> names a directory whose contents embed source excerpts from both sides, so a caller that publishes it takes on the same exposure <code>upload-report</code> defaults to avoiding.</p>
+<p><code>upload-report</code> is off by default because JPlag’s report embeds source excerpts from <strong>both</strong> sides of every comparison. Turning it on publishes corpus content to anyone who can read the workflow run.</p>
+<section id="languages" class="level3">
+<h3 class="anchored" data-anchor-id="languages">Languages</h3>
+<p><code>c</code>, <code>cpp</code>, <code>csharp</code>, <code>emf</code>, <code>emf-model</code>, <code>go</code>, <code>java</code>, <code>javascript</code>, <code>kotlin</code>, <code>llvmir</code>, <code>multi</code>, <code>python3</code>, <code>rlang</code>, <code>rust</code>, <code>scala</code>, <code>scheme</code>, <code>scxml</code>, <code>swift</code>, <code>text</code>, <code>typescript</code>.</p>
+<p><code>rlang</code> is R. <code>text</code> is a language-agnostic fallback that compares tokens without parsing, useful for a language JPlag has no grammar for.</p>
+</section>
+<section id="known-limitation-rs-native-pipe" class="level3">
+<h3 class="anchored" data-anchor-id="known-limitation-rs-native-pipe">Known limitation: R’s native pipe</h3>
+<p>JPlag’s R grammar does not parse <code>|&gt;</code>, emitting an ANTLR error for each line that uses it. The step surfaces a count of those errors rather than swallowing them, because dropped tokens make the reported similarity a <strong>lower bound</strong>.</p>
+<p>Measured on gha#296, detection degraded rather than failed: a copy with every identifier renamed still scored 1.0, an unrelated submission 0.0, and a copy whose pipe style had been rewritten from <code>|&gt;</code> to <code>%&gt;%</code> also 1.0.</p>
+</section>
+</section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
+<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed — unless your corpus lives in a private second repository, in which case the checkout of <em>that</em> repository needs a token which can read it.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check non-standard characters</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span><span class="at"> </span><span class="kw">{</span><span class="at"> </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">]</span><span class="at"> </span><span class="kw">}</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-non-standard-chars.yml@v2</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-non-standard-chars.yml"><code>examples/check-non-standard-chars.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Flag code in a PR that is highly similar to a corpus of prior submissions.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The corpus is yours to assemble; this stub shows the simplest form, a second</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># checkout of a private repo holding previous submissions. A downloaded</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># artifact or a submodule works the same way -- the workflow only needs a</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># directory whose CHILD directories are submissions.</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Similarity is computed entirely on the runner. Nothing is uploaded.</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Code similarity</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">code-similarity</span><span class="kw">:</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="co">    # Two checkouts, so give the reusable workflow a directory it can read.</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">runs-on</span><span class="kw">:</span><span class="at"> ubuntu-latest</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">timeout-minutes</span><span class="kw">:</span><span class="at"> </span><span class="dv">30</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">steps</span><span class="kw">:</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Check out this submission</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1</span><span class="co"> # v7.0.1</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> submissions/this-pr</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">      # A corpus in a separate PRIVATE repo needs a token that can read it.</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">      # Omit `repository`/`token` entirely if your corpus is a submodule or a</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">      # directory already present in this repo.</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Check out the corpus of prior submissions</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1</span><span class="co"> # v7.0.1</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">repository</span><span class="kw">:</span><span class="at"> my-org/prior-submissions</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">token</span><span class="kw">:</span><span class="at"> ${{ secrets.CORPUS_READ_TOKEN }}</span></span>
+<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> corpus</span></span>
+<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> </span><span class="fu">name</span><span class="kw">:</span><span class="at"> Compare against the corpus</span></span>
+<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/check-code-similarity@v2</span></span>
+<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> submissions</span></span>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">corpus-path</span><span class="kw">:</span><span class="at"> corpus</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">language</span><span class="kw">:</span><span class="at"> rlang</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">          # Start by watching the numbers. Turn `fail` on once a threshold has</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">          # been calibrated against real submissions: shared skeleton code, a</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">          # common idiom, and a small assignment all raise similarity</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">          # legitimately.</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">threshold</span><span class="kw">:</span><span class="at"> </span><span class="st">'0.8'</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">fail</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">          # An assignment skeleton every submission starts from would</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">          # otherwise register as copying.</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">          # base-code-path: corpus/_skeleton</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>
@@ -1175,13 +1341,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/check-junk-files.html" class="pagination-link" aria-label="check-junk-files.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-junk-files.yml</span>
+      <a href="../reference/check-bibliography-dois.html" class="pagination-link" aria-label="check-bibliography-dois.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-bibliography-dois.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/check-phi.html" class="pagination-link" aria-label="check-phi.yml">
-        <span class="nav-page-text">check-phi.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/check-formatting.html" class="pagination-link" aria-label="check-formatting.yml">
+        <span class="nav-page-text">check-formatting.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1190,4 +1356,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-non-standard-chars.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-code-similarity.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
