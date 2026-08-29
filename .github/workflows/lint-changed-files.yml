@@ -83,6 +83,7 @@ jobs:
           # is the merge commit on a pull_request event -- matching the r-lib
           # example and the qwt/qbt whole-project workflows.
           ref: ${{ inputs.scope == 'changed-files' && github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Lint R files
         uses: Morrison-Lab/gha/lint-changed-files@v2
