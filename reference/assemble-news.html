@@ -712,12 +712,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
-<colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -749,7 +743,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>bullet-style</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>List-marker character (<code>-</code>, <code>*</code>, or <code>+</code>) every inserted fragment bullet is normalized to. Empty auto-detects from <code>news-file</code>’s own first bullet, falling back to <code>-</code> when it has none.</td>
+<td>List-marker character (<code>-</code>, <code>*</code>, or <code>+</code>) every inserted fragment bullet is normalized to. Empty auto-detects from <code>news-file</code>’s own first bullet, falling back to <code>-</code> when it has none; see <a href="#bullet-marker-normalization">Bullet-marker normalization</a> for what counts as that first bullet.</td>
 </tr>
 </tbody>
 </table>
@@ -809,6 +803,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="bullet-marker-normalization">Bullet-marker normalization</h2>
 <p>markdownlint’s MD004 rule defaults to <code>style: consistent</code>, which takes its required marker (<code>-</code>, <code>*</code>, or <code>+</code>) from the assembled file’s <em>first</em> bullet. Fragments are spliced in at the top of <code>news-file</code>, so a fragment authored with a different marker than the file’s dominant one would flip that requirement for every other bullet already in the file.</p>
 <p>To prevent that, every inserted bullet’s top-of-line marker is normalized to one target, in this order: the <code>bullet-style</code> input when set; otherwise <code>news-file</code>’s own first existing bullet marker; otherwise <code>-</code>, when <code>news-file</code> has no bullet yet to take a style from (so fragments authored with different markers still collate under one consistent style even on a fresh file). Only the marker character is rewritten – the rest of each line, including nested-list indentation, is left untouched.</p>
+<p>Detection considers only lines matching a marker followed by whitespace, and among those it skips a spaced <a href="https://spec.commonmark.org/0.31.2/#thematic-breaks">thematic break</a> rather than reading it as the first bullet – so a <code>NEWS.md</code> opening with <code>- - -</code> above a <code>*</code>-styled list normalizes to <code>*</code>. A run of fewer than three markers is a list item rather than a break, so an empty list item still sets the style. <code>+</code> is never treated as a break character, so <code>+ + +</code> is a list at any length.</p>
+<p>Two details of that test are the detector’s own rather than CommonMark’s, and both are deliberate:</p>
+<ul>
+<li>It tests only <code>-</code> and <code>*</code>. The spec’s third break character, <code>_</code>, is never reached, because a <code>_</code> line is not a marker-followed-by-whitespace candidate in the first place.</li>
+<li>It ignores leading indentation, where the spec caps a break at three spaces. A more deeply indented separator is indented-code or nested-list content, which should not set the whole file’s style either.</li>
+</ul>
+<p>One consequence is worth knowing before hand-editing a <code>NEWS.md</code>: a marker alone on its line, with no trailing whitespace, is not a detection candidate at all, so it sets no style and the fall-back <code>-</code> applies. An empty list item therefore has to carry its trailing space to count (<a href="https://github.com/Morrison-Lab/gha/issues/746">#746</a>).</p>
 <p>See <code>assemble-news.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the caller stub.</p>
 
 
