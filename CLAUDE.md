@@ -1353,9 +1353,11 @@ problem rather than by catching it -- which a message assertion pins instead.
 **The "examined nothing" heuristic is guarded twice, so no SINGLE mutation of
 it turns a case red, and reporting either gate as confirmed would be false.**
 Removing the status gate leaves the anchored pattern, which a violation line
-(printed as `::error`) cannot match; removing the anchor leaves the status
-gate, which a finding's non-zero exit already fails. Case 12 is killed by
-removing both together, which is the defect as it actually shipped.
+(printed as `::error`) cannot match.
+Removing the anchor leaves the status gate, which a finding's non-zero exit
+already fails.
+Case 12 is killed by removing both together, which is the defect as it
+actually shipped.
 Read a survivor here as "the other gate still holds", not as missing
 coverage -- and note that this is the opposite reading from the mis-aimed
 mutations recorded above, so the two are told apart by whether a second
