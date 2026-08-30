@@ -1358,6 +1358,100 @@ Read that as the general shape: when a test's stated rationale is about a
 downstream tool's verdict, measure that verdict under both answers rather
 than asserting the resolution alone (gha#741 review).
 
+`.github/workflows/scripts/tests/run-check-diff-scoped-tests.sh` covers
+`check-diff-scoped.sh`, the contributor-facing wrapper that runs this repo's
+diff-scoped checks over committed content (gha#740).
+CI runs it as the `diff-scoped-guard` job in `_selftest.yml`.
+
+**It exists because three checks here share one silent failure, and the
+warning prose about it was not enough.**
+`check-new-line-breaks`, `check-phi` and `check-typos` all read the commit
+graph, so none of them sees a staged or untracked file -- and each then prints
+no findings over content it never examined.
+The gha#544 paragraph earlier in this section -- "Running that check locally
+before a push proves nothing about files you have not committed yet" --
+records that trap and its measured recurrence.
+The recurrence *after* that paragraph was written is what argued for a
+mechanical guard over a third restatement.
+
+**A second silent path turned up while building it, which the issue did not
+anticipate: the three checks disagree about an empty base ref.**
+`check-new-line-breaks` and `check-typos` skip entirely, while `check-phi`
+scans the whole tree.
+So a misspelled ref does not error anywhere -- it produces a different wrong
+answer per check.
+The wrapper refuses rather than passing one through.
+
+**"Could not run" is a third outcome, and collapsing it either way is the same
+bug.**
+`check-typos` needs an installed binary, so calling its absence a failure
+cries wolf and calling it a pass is the exact lie the wrapper exists to
+prevent.
+It gets exit status 3, distinct from 0 (all runnable checks clean), 1 (a
+finding) and 2 (refused).
+A real finding outranks an incomplete run, since the finding is actionable
+now.
+
+23 assertions across 14 cases.
+Nine mutations are confirmed to turn a named case red: dropping the dirty
+guard, narrowing the status scan to `--untracked-files=no`, dropping the
+merge-base gate, letting the tool-unavailable arm read as clean, letting the
+script-absent arm read as clean, letting an incomplete run outrank a finding,
+no longer honouring `.gitignore`, dropping the no-base-ref block, and probing
+the typos check for its binary without its interpreter.
+One deliberately survives, and it is information rather than a gap: removing
+the base-ref *resolvability* check changes no verdict, since `git merge-base`
+also rejects a nonexistent ref, so that check earns its place by naming the
+problem rather than by catching it -- which a message assertion pins instead.
+
+**The "examined nothing" heuristic is guarded twice, so no SINGLE mutation of
+it turns a case red, and reporting either gate as confirmed would be false.**
+Removing the status gate leaves the anchored pattern, which a violation line
+(printed as `::error`) cannot match.
+Removing the anchor leaves the status gate, which a finding's non-zero exit
+already fails.
+Case 12 is killed by removing both together, which is the defect as it
+actually shipped.
+Read a survivor here as "the other gate still holds", not as missing
+coverage -- and note that this is the opposite reading from the mis-aimed
+mutations recorded above, so the two are told apart by whether a second
+mechanism covers the same outcome.
+
+The `.gitignore` case is the one keep-if-trimmed assertion pointing the
+opposite way from the rest: refusing on ignored build output would make the
+wrapper unusable, and an unusable guard gets bypassed, which is worse than no
+guard.
+
+**An earlier revision of this paragraph claimed six mutations were confirmed
+when one of them was not**, and the gap is worth keeping rather than quietly
+correcting.
+The tool-unavailable arm and the script-absent arm both end in "this check did
+not run", so mutating the second felt like covering both; it does not, and the
+suite stayed fully green while the wrapper returned 0 over a check that never
+ran.
+That is this file's own mis-aimed-mutation lesson, committed against the
+paragraph that states it (gha#745 review).
+
+**The harness absolutizes `SCRIPT` deliberately.**
+Every case `cd`s into a throwaway fixture repo before invoking the script, so
+a relative override resolves against the fixture instead and fails every case
+at once -- which reads as a broken implementation rather than as a harness
+pointed at nothing.
+Measured while landing gha#740 against an implementation that was fine.
+An earlier revision of this paragraph put a specific count on that
+measurement and explained it by saying the cases refusing before invoking the
+script still passed; no case does that, so the explanation was invented and
+the count was stale (gha#745 review).
+
+`.githooks/pre-push` runs the wrapper before a push, and **nothing installs
+it**: git only honours it once a contributor opts in with
+`git config core.hooksPath .githooks`.
+That is deliberate, since whether this repo wants committed hooks at all is a
+policy question rather than a technical one.
+The hook warns and pushes on exit 3 rather than blocking, because a hook that
+blocks on the contributor's toolchain rather than on their code gets disabled,
+and then guards nothing.
+
 `check-secrets/tests/test-build-config.sh` is a shell suite over
 `build-gitleaks-config.sh`, the script that turns the `paths-ignore`,
 `allowlist-file`, and `config` inputs into the gitleaks TOML the scan runs
