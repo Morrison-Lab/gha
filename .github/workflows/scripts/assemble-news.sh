@@ -150,6 +150,60 @@ fi
 # separator-shaped line is indented-code or nested-list content, which should
 # not set the whole file's bullet style either -- so skipping it stays right,
 # for a different reason.
+# Decides which lines open a list item, for the bullet-style scan and, via the
+# same predicate, for normalization -- one definition, so the two cannot drift.
+#
+# Two shapes qualify, with DIFFERENT preconditions. That difference is the
+# whole reason this is awk rather than a grep pattern: the second needs the
+# previous line, which a line-oriented matcher cannot see.
+#
+#   marker + whitespace ('- item')  -- always. A list with content may
+#     legitimately interrupt a paragraph, so no precondition applies.
+#
+#   a BARE marker ('-' alone)       -- only at the start of the file, after a
+#     blank line, or directly after another line that opens a list item.
+#     Elsewhere the same text is not a list item at all: after a plain
+#     paragraph line a lone '-' is a SETEXT HEADING UNDERLINE, and a lone '*'
+#     or '+' is lazy paragraph continuation. Verified against CommonMark via
+#     markdown-it: 'Intro\n-\n' parses to <h2> with zero list items, while
+#     'Intro\n\n-\n' and '- a\n-\n' both yield list items.
+#
+# Accepting the bare form at all is the gha#746 fix: requiring whitespace
+# after the marker made an empty list item count only when it carried a
+# TRAILING SPACE, so behaviour turned on an invisible character that any
+# whitespace-trimming editor removes.
+#
+# KNOWN GAP, erring toward the pre-gha#746 behaviour rather than toward
+# corruption: a bare marker after a list item's own LAZY CONTINUATION line
+# ('- a' / '  more' / '-') is a list item to CommonMark but is rejected here,
+# since tracking it needs real block-level parsing. The cost is that such an
+# item is not normalized; the alternative -- accepting any non-blank
+# predecessor -- rewrites setext headings into bullets, which destroys
+# content rather than merely missing it.
+#
+# No interval expression ({m,n}) appears below: mawk is Debian's and Ubuntu's
+# default awk and aborts the whole process on one, turning every verdict into
+# a silent failure (see CLAUDE.md's strip-non-invoking-markup note).
+opens_list_item_awk='
+  function is_blank(l) { return l ~ /^[[:space:]]*$/ }
+  function opens_item(l, in_list_context) {
+    if (l ~ /^[[:space:]]*[-*+][[:space:]]/) return 1
+    if (in_list_context && l ~ /^[[:space:]]*[-*+][[:space:]]*$/) return 1
+    return 0
+  }
+'
+
+list_bullet_candidates() {
+  awk "$opens_list_item_awk"'
+    BEGIN { ctx = 1 }
+    {
+      opens = opens_item($0, ctx)
+      if (opens) print
+      ctx = (is_blank($0) || opens)
+    }
+  ' "$1"
+}
+
 is_thematic_break() {
   local candidate="$1" marker="$2" bare rest
   # Bracketed literals rather than a quoted "$marker" pattern: bash honours
@@ -192,7 +246,7 @@ resolve_bullet_style() {
       fi
       target_bullet_marker="$marker"
       return
-    done < <(grep -E '^[[:space:]]*[-*+][[:space:]]' "$news_file")
+    done < <(list_bullet_candidates "$news_file")
   fi
 
   # No pre-existing bullet to take a style from (a fresh news_file, or one
@@ -202,11 +256,35 @@ resolve_bullet_style() {
 }
 
 normalize_bullet_markers() {
-  # Rewrites only a leading list-marker character (optionally indented),
-  # never text elsewhere on the line -- an emphasis '*' or a thematic-break
-  # '---' does not match, since both require whitespace immediately after
-  # the single marker character.
-  sed -E "s/^([[:space:]]*)[-*+]([[:space:]])/\\1${1}\\2/"
+  # Rewrites only the leading list-marker character (optionally indented),
+  # never text elsewhere on the line, using the SAME predicate as the
+  # candidate scan above -- one definition of "this line opens a list item",
+  # so detection and rewriting cannot drift apart.
+  #
+  # An UNSPACED run is left alone: '---' and '***' have a second marker
+  # character where the predicate requires whitespace or end-of-line, so a
+  # thematic break written that way does not match, and neither does an
+  # emphasis '*'.
+  #
+  # KNOWN GAP, pre-dating gha#746 and unchanged by it: a SPACED thematic
+  # break ('- - -', '* * *') does match, and is rewritten. resolve_bullet_style
+  # guards against that via is_thematic_break, but that guard is wired into
+  # detection only. A fragment containing a spaced break therefore has it
+  # altered. Left as-is rather than fixed here, since a changelog fragment
+  # carrying a thematic break is not a shape this capability has ever seen.
+  awk -v marker="$1" "$opens_list_item_awk"'
+    BEGIN { ctx = 1 }
+    {
+      line = $0
+      opens = opens_item(line, ctx)
+      # marker is a single [-*+], so it is never awk sub()'"'"'s special
+      # '"'"'&'"'"' or backslash, and the first such character on a qualifying
+      # line is the marker itself (the leading run is whitespace only).
+      if (opens) sub(/[-*+]/, marker, line)
+      ctx = (is_blank($0) || opens)
+      print line
+    }
+  '
 }
 
 target_bullet_marker=''
