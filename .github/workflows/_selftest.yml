@@ -3800,6 +3800,10 @@ jobs:
       contents: read
     env:
       FIXTURE: ${{ github.workspace }}/_ci-preview-fixture
+      # The detector reads its whole configuration from the environment, so the
+      # two paths every step needs are set once here rather than per step.
+      REPO_DIR: ${{ github.workspace }}/_ci-preview-fixture/work
+      RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -3819,67 +3823,56 @@ jobs:
             "$FIXTURE/work/_site" "$FIXTURE/origin.git" gh-pages
       - name: Re-render from scratch and assert the comparison reads it as unchanged
         shell: bash
-        env:
-          REPO_DIR: ${{ github.workspace }}/_ci-preview-fixture/work
-          RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
         run: |
           set -euo pipefail
           rm -rf "$FIXTURE/work/_site" "$FIXTURE/work/.quarto" "$FIXTURE/work/_freeze"
           quarto render "$FIXTURE/work"
-          GITHUB_OUTPUT="$RUNNER_TEMP/unchanged.txt" python3 preview/detect-changed-chapters.py
-          read_output() { python3 preview/tests/read-github-output.py "$RUNNER_TEMP/unchanged.txt" "$1"; }
-          python3 preview/tests/read-github-output.py "$RUNNER_TEMP/unchanged.txt"
-          [ "$(read_output detection-status)" = 'compared' ]
-          [ "$(read_output any-changed)" = 'false' ]
-          [ "$(read_output changed-chapters)" = '[]' ]
+          out="$RUNNER_TEMP/unchanged.txt"
+          GITHUB_OUTPUT="$out" python3 preview/detect-changed-chapters.py
+          python3 preview/tests/read-github-output.py "$out"
+          [ "$(python3 preview/tests/read-github-output.py "$out" detection-status)" = 'compared' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" any-changed)" = 'false' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" changed-chapters)" = '[]' ]
       - name: Edit one chapter and assert only that chapter is reported
         shell: bash
-        env:
-          REPO_DIR: ${{ github.workspace }}/_ci-preview-fixture/work
-          RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
         run: |
           set -euo pipefail
           echo 'A sentence added by the selftest.' >> "$FIXTURE/work/chapters/02.qmd"
           rm -rf "$FIXTURE/work/_site" "$FIXTURE/work/.quarto" "$FIXTURE/work/_freeze"
           quarto render "$FIXTURE/work"
-          GITHUB_OUTPUT="$RUNNER_TEMP/changed.txt" python3 preview/detect-changed-chapters.py
-          read_output() { python3 preview/tests/read-github-output.py "$RUNNER_TEMP/changed.txt" "$1"; }
-          python3 preview/tests/read-github-output.py "$RUNNER_TEMP/changed.txt"
-          [ "$(read_output detection-status)" = 'compared' ]
-          [ "$(read_output any-changed)" = 'true' ]
-          [ "$(read_output changed-chapters)" = '["chapters/02"]' ]
+          out="$RUNNER_TEMP/changed.txt"
+          GITHUB_OUTPUT="$out" python3 preview/detect-changed-chapters.py
+          python3 preview/tests/read-github-output.py "$out"
+          [ "$(python3 preview/tests/read-github-output.py "$out" detection-status)" = 'compared' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" any-changed)" = 'true' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" changed-chapters)" = '["chapters/02"]' ]
       - name: Add the banner and assert it links the changed chapter
         shell: bash
         env:
-          RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
           CHANGED_CHAPTERS: '["chapters/02"]'
           DETECTION_STATUS: compared
         run: |
           set -euo pipefail
           python3 preview/add-home-banner.py
-          index="$FIXTURE/work/_site/index.html"
+          index="$RENDERED_DIR/index.html"
           grep -q 'gha-preview-banner:start' "$index"
           grep -q '<a href="chapters/02.html">Chapter two</a>' "$index"
       - name: Assert a missing deployed branch is a stated skip, not an empty result
         shell: bash
         env:
-          REPO_DIR: ${{ github.workspace }}/_ci-preview-fixture/work
-          RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
           DEPLOYED_BRANCH: no-such-branch
         run: |
           set -euo pipefail
-          GITHUB_OUTPUT="$RUNNER_TEMP/skipped.txt" python3 preview/detect-changed-chapters.py
-          read_output() { python3 preview/tests/read-github-output.py "$RUNNER_TEMP/skipped.txt" "$1"; }
-          python3 preview/tests/read-github-output.py "$RUNNER_TEMP/skipped.txt"
-          [ "$(read_output detection-status)" = 'skipped' ]
+          out="$RUNNER_TEMP/skipped.txt"
+          GITHUB_OUTPUT="$out" python3 preview/detect-changed-chapters.py
+          python3 preview/tests/read-github-output.py "$out"
+          [ "$(python3 preview/tests/read-github-output.py "$out" detection-status)" = 'skipped' ]
           # A stated reason, not an empty result that reads as "nothing changed".
-          [ -n "$(read_output skip-reason)" ]
-          [ "$(read_output changed-chapters)" = '[]' ]
+          [ -n "$(python3 preview/tests/read-github-output.py "$out" skip-reason)" ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" changed-chapters)" = '[]' ]
       - name: Assert an unreachable remote fails rather than reading as unchanged
         shell: bash
         env:
-          REPO_DIR: ${{ github.workspace }}/_ci-preview-fixture/work
-          RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
           DEPLOYED_REMOTE: file:///nonexistent/gha-selftest.git
         run: |
           set -euo pipefail

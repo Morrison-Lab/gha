@@ -34,6 +34,8 @@ import re
 import sys
 from pathlib import Path
 
+from _workflow_annotations import annotate
+
 START_MARKER = "<!-- gha-preview-banner:start -->"
 END_MARKER = "<!-- gha-preview-banner:end -->"
 
@@ -61,9 +63,14 @@ def chapter_href(rendered_dir, chapter_id):
     direct = rendered_dir / f"{chapter_id}.html"
     if direct.is_file():
         return f"{chapter_id}.html"
-    matches = sorted(rendered_dir.glob(f"{chapter_id}.*"))
-    if matches:
-        return matches[0].relative_to(rendered_dir).as_posix()
+    # Scanned rather than globbed: a chapter id is a file name, so a `[` or `*`
+    # in it would otherwise be read as pattern syntax and match the wrong page.
+    parent = (rendered_dir / chapter_id).parent
+    stem = Path(chapter_id).name
+    if parent.is_dir():
+        matches = sorted(p for p in parent.iterdir() if p.is_file() and p.stem == stem)
+        if matches:
+            return matches[0].relative_to(rendered_dir).as_posix()
     return None
 
 
@@ -178,5 +185,5 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except BannerError as error:
-        print(f"::error::{error}", file=sys.stderr)
+        print(annotate("error", error), file=sys.stderr)
         sys.exit(1)

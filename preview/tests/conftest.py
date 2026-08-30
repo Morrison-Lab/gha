@@ -24,6 +24,11 @@ GIT_ENV = {
 
 
 def _load(name, filename):
+    # The scripts import a sibling module, which the composite gets for free
+    # (a script's own directory leads sys.path) and a file-path load does not.
+    preview_dir = str(REPO_ROOT / "preview")
+    if preview_dir not in sys.path:
+        sys.path.insert(0, preview_dir)
     path = REPO_ROOT / "preview" / filename
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)

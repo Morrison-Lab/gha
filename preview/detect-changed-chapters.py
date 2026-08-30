@@ -50,6 +50,8 @@ import sys
 import uuid
 from pathlib import Path
 
+from _workflow_annotations import annotate
+
 # Volatility the comparison must see through. Every failure mode of this script
 # degrades to "nothing changed", but this one degrades the other way: a page
 # that reads as changed on every render makes the whole feature noise.
@@ -75,7 +77,7 @@ class DetectionError(RuntimeError):
     """A condition that must stop the run rather than read as 'nothing changed'."""
 
 
-def run_git(args, repo_dir, capture=True):
+def run_git(args, repo_dir):
     """Run a git command, raising on any non-zero exit.
 
     Checked deliberately: the failure this guards against (a fetch that cannot
@@ -85,15 +87,15 @@ def run_git(args, repo_dir, capture=True):
     result = subprocess.run(
         ["git", *args],
         cwd=repo_dir,
-        capture_output=capture,
+        capture_output=True,
         check=False,
     )
     if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", "replace") if capture else ""
+        stderr = result.stderr.decode("utf-8", "replace")
         raise DetectionError(
             f"`git {' '.join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
         )
-    return result.stdout if capture else b""
+    return result.stdout
 
 
 def resolve_deployed_ref(repo_dir, remote, branch):
@@ -224,7 +226,7 @@ def detect(repo_dir, rendered_dir, glob, remote, branch, subdir, patterns):
             f"branch {branch!r} does not exist on remote {remote!r}; nothing has "
             "been deployed yet, so there is no published render to compare against"
         )
-        print(f"::notice::Skipping changed-chapter detection: {reason}")
+        print(annotate("notice", f"Skipping changed-chapter detection: {reason}"))
         return "skipped", reason, []
 
     available = published_paths(repo_dir, ref)
@@ -271,9 +273,12 @@ def detect(repo_dir, rendered_dir, glob, remote, branch, subdir, patterns):
         # a misconfigured `deployed-subdir` looks like -- so say so rather than
         # reporting a clean sweep of changes.
         print(
-            "::warning::every rendered file was absent from the deployed tree. "
-            "That is expected for a brand-new set of chapters, but it is also "
-            f"what a wrong `deployed-subdir` looks like (currently {subdir!r})."
+            annotate(
+                "warning",
+                "every rendered file was absent from the deployed tree. That is "
+                "expected for a brand-new set of chapters, but it is also what a "
+                f"wrong `deployed-subdir` looks like (currently {subdir!r}).",
+            )
         )
 
     return "compared", "", changed
@@ -318,5 +323,5 @@ if __name__ == "__main__":
     try:
         sys.exit(main())
     except DetectionError as error:
-        print(f"::error::{error}", file=sys.stderr)
+        print(annotate("error", error), file=sys.stderr)
         sys.exit(1)

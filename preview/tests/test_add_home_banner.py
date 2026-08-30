@@ -157,3 +157,21 @@ def test_an_unknown_detection_status_is_an_error(banner, monkeypatch, tmp_path):
 
     with pytest.raises(banner.BannerError, match="DETECTION_STATUS"):
         run_banner(banner, monkeypatch, site, status="unknown")
+
+
+def test_a_chapter_id_with_glob_metacharacters_links_its_own_file(banner, monkeypatch, tmp_path):
+    """The href lookup scans a directory rather than globbing.
+
+    A `[` in a file name is pattern syntax to `Path.glob`, so `ch[1].*` would
+    match the unrelated `ch1.xhtml` and the banner would link the wrong page.
+    The extension is deliberately not `.html`, so the direct-hit shortcut does
+    not answer this and the fallback is what gets exercised.
+    """
+    site = write(tmp_path, "site/index.html", HOME).parent
+    write(site, "chapters/ch1.xhtml", "<html><body><h1>Decoy</h1></body></html>")
+    write(site, "chapters/ch[1].xhtml", "<html><body><h1>Real page</h1></body></html>")
+
+    result = run_banner(banner, monkeypatch, site, changed=["chapters/ch[1]"])
+
+    assert "Real page" in result
+    assert "Decoy" not in result
