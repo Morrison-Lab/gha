@@ -645,4 +645,37 @@ grep -q '^+ Add feature W\.$' NEWS.md || {
 
 echo "PASS: Test 25 - A bare '+' marker sets the file's bullet style"
 
+# Test 26: list context survives a candidate that was SKIPPED as a thematic
+# break, so a bare marker directly after one still sets the style.
+#
+# This fixture exists because a mutation sweep found the scan's context
+# propagation uncovered. It is reachable only in this one shape: a bare
+# marker in list context is normally preceded by a list item that already
+# resolved the style, so the bare marker is never consulted. A skipped
+# thematic break is the exception -- it establishes list context for the
+# purposes of the next line without itself being accepted as the style.
+#
+# Test 22 does NOT cover this. That one exercises normalize_bullet_markers,
+# which tracks its own context; the first mutation aimed here mistakenly
+# targeted the scan and survived because of exactly that split.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature X.\n' > news.d/feature-x.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+* * *
+*
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature X\.$' NEWS.md || {
+  echo "FAIL: A bare marker following a skipped thematic break lost its list context, so the style fell back to the default '-'"
+  exit 1
+}
+
+echo "PASS: Test 26 - List context survives a skipped thematic break"
+
 echo "=== All assemble-news.sh tests passed! ==="
