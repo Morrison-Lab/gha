@@ -678,6 +678,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#outputs" id="toc-outputs" class="nav-link" data-scroll-target="#outputs">Outputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
@@ -797,8 +798,86 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>''</code></td>
 <td>Newline-separated fixed string patterns that fail the build if found in the render log (e.g.&nbsp;missing listing files).</td>
 </tr>
+<tr class="odd">
+<td><code>detect-changed-chapters</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Compare this run’s render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by <code>changed-chapters-banner</code>.</td>
+</tr>
+<tr class="even">
+<td><code>changed-chapters-banner</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Add a banner to the preview home page naming the chapters that differ from the published render.</td>
+</tr>
+<tr class="odd">
+<td><code>changed-chapters-glob</code></td>
+<td>string</td>
+<td><code>'chapters/*.html'</code></td>
+<td>Glob, relative to the rendered site root, selecting the files the comparison treats as chapters.</td>
+</tr>
+<tr class="even">
+<td><code>deployed-branch</code></td>
+<td>string</td>
+<td><code>'gh-pages'</code></td>
+<td>Branch holding the published render to compare against.</td>
+</tr>
+<tr class="odd">
+<td><code>deployed-subdir</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root.</td>
+</tr>
+<tr class="even">
+<td><code>changed-chapters-normalize-patterns</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes).</td>
+</tr>
+<tr class="odd">
+<td><code>banner-index</code></td>
+<td>string</td>
+<td><code>'index.html'</code></td>
+<td>Home page the banner is inserted into, relative to the rendered site root.</td>
+</tr>
 </tbody>
 </table>
+</section>
+<section id="outputs" class="level2">
+<h2 class="anchored" data-anchor-id="outputs">Outputs</h2>
+<p>Set only when <code>detect-changed-chapters</code> or <code>changed-chapters-banner</code> is on.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Output</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>changed-chapters</code></td>
+<td>JSON array of chapter ids that differ from the published render. A chapter id is the rendered file’s path relative to the site root, with its extension removed.</td>
+</tr>
+<tr class="even">
+<td><code>any-changed</code></td>
+<td><code>true</code> when at least one chapter differs, <code>false</code> otherwise.</td>
+</tr>
+<tr class="odd">
+<td><code>detection-status</code></td>
+<td><code>compared</code> when the published render was available, <code>skipped</code> when it was not.</td>
+</tr>
+<tr class="even">
+<td><code>skip-reason</code></td>
+<td>Why the comparison was skipped; empty when it ran.</td>
+</tr>
+</tbody>
+</table>
+<p>Read <code>detection-status</code> before acting on an empty <code>changed-chapters</code>. An empty list means “nothing changed” only under <code>compared</code>; under <code>skipped</code> it means the comparison never ran, because nothing has been deployed to <code>deployed-branch</code> yet. Collapsing the two is the failure this capability was rewritten to avoid.</p>
+<p>The comparison is against the <strong>deployed render</strong>, not the source diff, so a page whose content changed because shared code beneath it changed is reported, and a source edit that changes no rendered output is not.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
@@ -848,7 +927,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs                   # render to a dir other than _site</span></span>
 <span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log</span></span>
 <span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-banner: true      # and list them on the preview home page</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml"><code>examples/preview.yml</code></a> for the full caller stub.</p>
 
 
