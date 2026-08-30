@@ -231,12 +231,18 @@ def test_a_binary_file_is_compared_byte_for_byte(detector, monkeypatch, repo_fac
     assert json.loads(outputs["changed-chapters"]) == ["chapters/01"]
 
 
-def test_a_published_path_containing_a_space_is_matched(detector, monkeypatch, repo_factory):
-    """`git ls-tree` is read NUL-separated; a newline-split listing would quote
-    this path and read it as absent, reporting an unchanged page as new."""
+def test_a_quoted_published_path_is_matched(detector, monkeypatch, repo_factory):
+    """`git ls-tree` is read NUL-separated.
+
+    Without `-z`, git quotes and C-escapes any path outside plain ASCII, so the
+    listing would carry `"chapters/caf\\303\\251.html"` and this page would read
+    as absent -- reporting an unchanged chapter as new, on every run. The name is
+    written as an escape so this source file itself stays ASCII.
+    """
+    name = "chapters/caf\u00e9.html"
     same = PAGE.format(body="a")
-    work = repo_factory(published={"chapters/one two.html": same})
-    rendered = write(work, "_site/chapters/one two.html", same).parent.parent
+    work = repo_factory(published={name: same})
+    rendered = write(work, f"_site/{name}", same).parent.parent
 
     outputs = run_detect(detector, monkeypatch, work, rendered)
 
