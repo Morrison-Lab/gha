@@ -1138,6 +1138,41 @@ So do not read gha#748 as a citation you can check; the merged diff shows
 nothing, which is the correct outcome rather than a contradiction.
 Widening the checked set in CI is tracked separately in gha#750.
 
+**A third way, and the one the two above cannot warn you about: the local run
+and the CI run are the same script under a DIFFERENT configuration.**
+The two lessons above are about a check whose population is narrower than you
+assumed.
+This one is about a check whose population is narrower than *CI's*, which is a
+different question and has the opposite tell -- there is no default to
+misread, because the default is exactly what makes the local run wrong.
+
+`_selftest.yml`'s `phi` job passes
+`PHI_DETECTORS: ssn,mrn,dob,csv_phi_header,study_id,phone,email`.
+`check-phi`'s own default omits `phone` and `email`.
+So running `check-phi/check-phi.py` locally with no environment exercises five
+detectors where CI exercises seven, and its `No PHI-like content detected`
+is a true statement about a smaller question than the one CI asks.
+
+Measured on gha#763: a local diff-scoped run reported clean, and CI failed on
+four `phi:email` hits in the same diff -- a fixture's synthetic
+`GIT_AUTHOR_EMAIL`, which the two missing detectors exist to find.
+The remedy was one `phi-allow` comment per line, following the precedent in
+every other `tests/` script here, rather than adding `preview/tests/**` to the
+job's `PHI_PATHS_IGNORE`: these fixtures carry no PHI-shaped content by design,
+so the directory stays scanned.
+
+The general form is worth stating, because it reaches every capability here
+whose selftest job overrides an input: **read the job's `with:` block before
+trusting a local run of the script it calls.**
+`check-diff-scoped.sh` inherits this, since it invokes each check with the
+caller's environment and adds none of its own.
+
+```bash
+# Not the composite's defaults -- the ones the `phi` job actually passes.
+PHI_DETECTORS='ssn,mrn,dob,csv_phi_header,study_id,phone,email' \
+  PHI_BASE_REF=origin/main PHI_FAIL=true python3 check-phi/check-phi.py
+```
+
 The suite also covers the gha#336 clause check (a long line carrying a
 mid-line semicolon, as a proxy for SemBr rule 5), including that it is
 **on by default** -- and pins the two defaults that are declared in three
