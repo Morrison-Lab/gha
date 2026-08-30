@@ -133,7 +133,17 @@ check_contains "the backtick-carrying value survives intact" "$backticky" "$out"
 out="$(run_compose hard-error 0 '')"
 check_contains "zero denials says none" '**Denied tools:** none.' "$out"
 
-# 3. No denial data at all (the short-circuit path, where the guard exits
+# 3. Known denial count with names unavailable: report count and names unavailable (gha#764).
+out="$(run_compose stub 4 '')"
+check_contains "scalar denial count with empty names reports count and names unavailable" \
+  '**Denied tools:** 4 denied tool calls, names unavailable.' "$out"
+check_not_contains "scalar denial count does not report not recorded" \
+  'not recorded' "$out"
+out="$(run_compose stub 1 '')"
+check_contains "single denial with empty names is singular" \
+  '**Denied tools:** 1 denied tool call, names unavailable.' "$out"
+
+# 4. No denial data at all (the short-circuit path, where the guard exits
 #    before counting). Must NOT claim none -- that is a false statement about
 #    permissions on a run that never measured them.
 out="$(run_compose short-circuit '' '')"

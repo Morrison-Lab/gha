@@ -53,10 +53,34 @@ check "happy: review sidecar is verbatim" "$(cat "$review")" "$(cat "$dir/review
 # without packing the field it reads turns this red once the test is updated
 # to expect the new key -- and so deleting a key the posting job already
 # reads turns it red now.
-keys="$(jq -r 'keys[]' "$dir/payload.json" | sort | tr '\n' ',')"
+keys="$(jq -r 'keys[]' "$dir/payload.json" | tr -d '\r' | sort | tr '\n' ',')"
 check "happy: key set" \
   "attempts,caller_wf_path,cancelled,denials,event_name,failure_kind,head_sha,max_denials,pr_number,quota_exhausted,repo,report_cost,resolve_outcome,review_present,run_id,run_url,schema_version,self_mod,skip_notice_posted,total_cost_usd,track_progress,wf_path," \
   "$keys"
+check "happy: denied_tools sidecar ends in newline" "" "$(tail -c1 "$dir/denied_tools.txt")"
+
+# --- round-trip: reader's heredoc emit terminates correctly (gha#764) --------
+emit_heredoc() {
+  local sidecar="$1"
+  local delim="eof_test"
+  echo "denied_tools<<${delim}"
+  if [[ -f "$sidecar" ]]; then
+    cat "$sidecar"
+    [[ -n "$(tail -c1 "$sidecar")" ]] && echo
+  fi
+  echo "${delim}"
+}
+
+# (a) packed sidecar (has trailing newline from pack-review-payload.sh)
+heredoc_out="$(emit_heredoc "$dir/denied_tools.txt")"
+check "round-trip: packed sidecar delimiter on its own line" "1" "$(grep -c '^eof_test$' <<<"$heredoc_out")"
+
+# (b) legacy / external sidecar with NO trailing newline
+no_nl="$tmpdir/no_newline_denied.txt"
+printf '%s' 'Taskx4 (sample: Task: CLAUDE.md compliance review A)' > "$no_nl"
+heredoc_no_nl="$(emit_heredoc "$no_nl")"
+check "round-trip: un-newlined sidecar delimiter on its own line" "1" "$(grep -c '^eof_test$' <<<"$heredoc_no_nl")"
+check "round-trip: un-newlined sidecar value intact" "Taskx4 (sample: Task: CLAUDE.md compliance review A)" "$(sed -n '2p' <<<"$heredoc_no_nl")"
 
 # --- no review text: sidecar omitted, review_present false -----------------
 dir="$tmpdir/no-review"

@@ -1566,6 +1566,10 @@ jobs:
             echo "denied_tools<<${delim}"
             if [[ -f "$PAYLOAD_DIR/denied_tools.txt" ]]; then
               cat "$PAYLOAD_DIR/denied_tools.txt"
+              # A value not ending in a newline runs into the closing delimiter line and
+              # leaves the heredoc unterminated. $(tail -c1) strips a trailing newline,
+              # so it is empty exactly when the last byte IS one.
+              [[ -n "$(tail -c1 "$PAYLOAD_DIR/denied_tools.txt")" ]] && echo
             fi
             echo "${delim}"
           } >> "$GITHUB_OUTPUT"
