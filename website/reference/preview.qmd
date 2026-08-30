@@ -26,6 +26,34 @@ turn it off for a pure-markdown site.
 | `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`. |
 | `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
 | `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
+| `detect-changed-chapters` | boolean | `false` | Compare this run's render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by `changed-chapters-banner`. |
+| `changed-chapters-banner` | boolean | `false` | Add a banner to the preview home page naming the chapters that differ from the published render. |
+| `changed-chapters-glob` | string | `'chapters/*.html'` | Glob, relative to the rendered site root, selecting the files the comparison treats as chapters. |
+| `deployed-branch` | string | `'gh-pages'` | Branch holding the published render to compare against. |
+| `deployed-subdir` | string | `''` | Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root. |
+| `changed-chapters-normalize-patterns` | string | `''` | Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes). |
+| `banner-index` | string | `'index.html'` | Home page the banner is inserted into, relative to the rendered site root. |
+
+## Outputs
+
+Set only when `detect-changed-chapters` or `changed-chapters-banner` is on.
+
+| Output | Description |
+|---|---|
+| `changed-chapters` | JSON array of chapter ids that differ from the published render. A chapter id is the rendered file's path relative to the site root, with its extension removed. |
+| `any-changed` | `true` when at least one chapter differs, `false` otherwise. |
+| `detection-status` | `compared` when the published render was available, `skipped` when it was not. |
+| `skip-reason` | Why the comparison was skipped; empty when it ran. |
+
+Read `detection-status` before acting on an empty `changed-chapters`.
+An empty list means "nothing changed" only under `compared`;
+under `skipped` it means the comparison never ran,
+because nothing has been deployed to `deployed-branch` yet.
+Collapsing the two is the failure this capability was rewritten to avoid.
+
+The comparison is against the **deployed render**, not the source diff,
+so a page whose content changed because shared code beneath it changed
+is reported, and a source edit that changes no rendered output is not.
 
 ## Permissions
 
@@ -78,6 +106,14 @@ jobs:
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders
+    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render
+    #   changed-chapters-banner: true      # and list them on the preview home page
+    #   changed-chapters-glob: 'chapters/*.html'
+    #   deployed-branch: gh-pages
+    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix
+    #   banner-index: index.html
+    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render
+    #     build-[0-9a-f]+
 ```
 
 See [`examples/preview.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml)

@@ -3761,3 +3761,125 @@ jobs:
             exit 1
           fi
           echo "save-pr-diff successfully saved diff to $SAVED_PATH ($(wc -c < "$SAVED_PATH") bytes)."
+  changed-chapters-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run the changed-chapters unit tests
+        shell: bash
+        # PyYAML is for test_action_wiring.py, which parses the composite and
+        # the reusable workflow. setup-python's interpreter does not carry it
+        # the way the runner's system python3 does.
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3
+          python3 -m pytest preview/tests/ -q
+  # The one case the unit tests structurally cannot reach: does a REAL Quarto
+  # site re-render to something the comparison reads as unchanged? Every other
+  # failure mode of the detector degrades to "nothing changed"; this one
+  # degrades the other way, and a site whose every page reads as changed on
+  # every run makes the banner noise rather than signal. A synthetic fixture
+  # cannot answer it, because the question is about Quarto's own output.
+  #
+  # It also keeps the answer current: a Quarto release that starts writing a
+  # build stamp into every page turns this job red, which is exactly when the
+  # default normalize patterns need widening.
+  #
+  # The `preview` composite as a whole is not exercised here -- it installs R,
+  # renv and Chrome and renders the caller's own project, which is not
+  # something a selftest job can stand up. This covers the scripts it runs.
+  changed-chapters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      FIXTURE: ${{ github.workspace }}/_ci-preview-fixture
+      # The detector reads its whole configuration from the environment, so the
+      # two paths every step needs are set once here rather than per step.
+      REPO_DIR: ${{ github.workspace }}/_ci-preview-fixture/work
+      RENDERED_DIR: ${{ github.workspace }}/_ci-preview-fixture/work/_site
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Build a throwaway Quarto website fixture
+        shell: bash
+        run: preview/tests/make-fixture.sh "$FIXTURE"
+      - name: Render the fixture and publish it as the deployed render
+        shell: bash
+        run: |
+          set -euo pipefail
+          quarto render "$FIXTURE/work"
+          preview/tests/seed-deployed-branch.sh \
+            "$FIXTURE/work/_site" "$FIXTURE/origin.git" gh-pages
+      - name: Re-render from scratch and assert the comparison reads it as unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "$FIXTURE/work/_site" "$FIXTURE/work/.quarto" "$FIXTURE/work/_freeze"
+          quarto render "$FIXTURE/work"
+          out="$RUNNER_TEMP/unchanged.txt"
+          GITHUB_OUTPUT="$out" python3 preview/detect-changed-chapters.py
+          python3 preview/tests/read-github-output.py "$out"
+          [ "$(python3 preview/tests/read-github-output.py "$out" detection-status)" = 'compared' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" any-changed)" = 'false' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" changed-chapters)" = '[]' ]
+      - name: Edit one chapter and assert only that chapter is reported
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'A sentence added by the selftest.' >> "$FIXTURE/work/chapters/02.qmd"
+          rm -rf "$FIXTURE/work/_site" "$FIXTURE/work/.quarto" "$FIXTURE/work/_freeze"
+          quarto render "$FIXTURE/work"
+          out="$RUNNER_TEMP/changed.txt"
+          GITHUB_OUTPUT="$out" python3 preview/detect-changed-chapters.py
+          python3 preview/tests/read-github-output.py "$out"
+          [ "$(python3 preview/tests/read-github-output.py "$out" detection-status)" = 'compared' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" any-changed)" = 'true' ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" changed-chapters)" = '["chapters/02"]' ]
+      - name: Add the banner and assert it links the changed chapter
+        shell: bash
+        env:
+          CHANGED_CHAPTERS: '["chapters/02"]'
+          DETECTION_STATUS: compared
+        run: |
+          set -euo pipefail
+          python3 preview/add-home-banner.py
+          index="$RENDERED_DIR/index.html"
+          grep -q 'gha-preview-banner:start' "$index"
+          grep -q '<a href="chapters/02.html">Chapter two</a>' "$index"
+      - name: Assert a missing deployed branch is a stated skip, not an empty result
+        shell: bash
+        env:
+          DEPLOYED_BRANCH: no-such-branch
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/skipped.txt"
+          GITHUB_OUTPUT="$out" python3 preview/detect-changed-chapters.py
+          python3 preview/tests/read-github-output.py "$out"
+          [ "$(python3 preview/tests/read-github-output.py "$out" detection-status)" = 'skipped' ]
+          # A stated reason, not an empty result that reads as "nothing changed".
+          [ -n "$(python3 preview/tests/read-github-output.py "$out" skip-reason)" ]
+          [ "$(python3 preview/tests/read-github-output.py "$out" changed-chapters)" = '[]' ]
+      - name: Assert an unreachable remote fails rather than reading as unchanged
+        shell: bash
+        env:
+          DEPLOYED_REMOTE: file:///nonexistent/gha-selftest.git
+        run: |
+          set -euo pipefail
+          if python3 preview/detect-changed-chapters.py; then
+            echo "::error::an unreachable remote must fail, not report a clean comparison"
+            exit 1
+          fi
