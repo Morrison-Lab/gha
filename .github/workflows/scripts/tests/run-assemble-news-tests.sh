@@ -487,4 +487,77 @@ grep -q '^\* Add feature R\.$' NEWS.md || {
 
 echo "PASS: Test 20 - A run mixing marker characters is a list, not a thematic break"
 
+# Test 21: a BARE marker -- no trailing space -- is an empty list item and
+# sets the file's style. This is Test 16's sibling and the pair is the point:
+# 16 writes '* ' WITH the significant trailing space, so it passes both
+# before and after gha#746, and only this spelling discriminates the fix.
+#
+# CommonMark renders a lone marker as an empty list item (a bare '-' gives
+# <ul><li></li></ul>), but the candidate scan required whitespace after the
+# marker, so this line produced no candidate at all -- is_thematic_break was
+# never consulted and the style fell through to the '-' default. Measured
+# against main (f7c317a) before the fix: this fixture normalized the '*'
+# fragment to '-'; after, to '*'.
+#
+# Test 16's own comment notes that its trailing space must survive an editor
+# that trims trailing whitespace. That fragility is exactly what this test
+# removes: with both spellings pinned, a trim turns 16 into 21 rather than
+# silently reversing what 16 checks.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature S.\n' > news.d/feature-s.added.md
+
+# A heredoc is safe here BECAUSE there is no trailing space to preserve --
+# the absence of one is the whole point of this fixture.
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+*
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature S\.$' NEWS.md || {
+  echo "FAIL: A bare list marker produced no bullet-style candidate, so the style fell back to the default '-' instead of the item's own '*'"
+  exit 1
+}
+
+echo "PASS: Test 21 - A bare list marker (no trailing space) sets the file's bullet style"
+
+# Test 22: the normalization half of gha#746. A fragment carrying its own
+# empty list item must have THAT marker rewritten too, not just its
+# content-bearing siblings.
+#
+# normalize_bullet_markers had the same whitespace-required shape as the
+# candidate scan, so a bare marker inside a fragment survived untouched while
+# every sibling was rewritten -- leaving a '*' item in a '-'-styled file,
+# which is precisely the MD004 flip the normalization exists to prevent.
+#
+# This case is NOT reachable through Test 21: that one pins which style is
+# DETECTED, and this one pins which lines are REWRITTEN. Removing either
+# '|$' alternative alone leaves the other test green.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature T.\n*\n* And more.\n' > news.d/feature-t.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+- Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\*$' NEWS.md && {
+  echo "FAIL: A fragment's bare list marker escaped normalization, leaving a '*' item in a '-'-styled file -- the MD004 flip normalization exists to prevent"
+  exit 1
+}
+
+grep -q '^-$' NEWS.md || {
+  echo "FAIL: The fragment's empty list item is missing entirely; it should be present and normalized to '-'"
+  exit 1
+}
+
+echo "PASS: Test 22 - A fragment's bare list marker is normalized like any other bullet"
+
 echo "=== All assemble-news.sh tests passed! ==="

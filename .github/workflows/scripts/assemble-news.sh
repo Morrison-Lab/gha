@@ -178,6 +178,14 @@ resolve_bullet_style() {
 
   if [ -f "$news_file" ]; then
     local candidate marker
+    # The candidate scan below accepts a BARE marker on its own line, not
+    # only one followed by whitespace: CommonMark renders a lone '-' as an
+    # empty list item (<ul><li></li></ul>), so requiring whitespace made an
+    # empty item count only when it carried a TRAILING SPACE -- the detected
+    # style then flipped on an invisible character that any whitespace-
+    # trimming editor removes (gha#746). is_thematic_break still classifies
+    # it correctly: a bare marker gives a length-1 'bare', which fails the
+    # three-character minimum a break requires.
     while IFS= read -r candidate; do
       marker="$(printf '%s\n' "$candidate" | sed -E 's/^[[:space:]]*(.).*/\1/')"
       # A CommonMark thematic break can be a run of the SAME marker
@@ -192,7 +200,7 @@ resolve_bullet_style() {
       fi
       target_bullet_marker="$marker"
       return
-    done < <(grep -E '^[[:space:]]*[-*+][[:space:]]' "$news_file")
+    done < <(grep -E '^[[:space:]]*[-*+]([[:space:]]|$)' "$news_file")
   fi
 
   # No pre-existing bullet to take a style from (a fresh news_file, or one
@@ -204,9 +212,15 @@ resolve_bullet_style() {
 normalize_bullet_markers() {
   # Rewrites only a leading list-marker character (optionally indented),
   # never text elsewhere on the line -- an emphasis '*' or a thematic-break
-  # '---' does not match, since both require whitespace immediately after
-  # the single marker character.
-  sed -E "s/^([[:space:]]*)[-*+]([[:space:]])/\\1${1}\\2/"
+  # '---' does not match, since both need a SECOND marker character where
+  # this pattern requires whitespace or end-of-line.
+  #
+  # End-of-line is accepted for the same reason the candidate scan accepts
+  # it (gha#746): a bare marker is CommonMark's empty list item, so without
+  # it a fragment's empty item kept its own marker while every sibling was
+  # normalized -- which is precisely the MD004 flip this function exists to
+  # prevent, and it too turned on an invisible trailing space.
+  sed -E "s/^([[:space:]]*)[-*+]([[:space:]]|$)/\\1${1}\\2/"
 }
 
 target_bullet_marker=''
