@@ -6,7 +6,7 @@ prove the substrate's output is usable before the intricate consumers (HTML
 change highlighting, DOCX tracked changes) are built on it.
 
 Ported from `ucdavis/win`'s `.github/scripts/add-home-banner.py`
-(LICENSE: COPYRIGHT HOLDER: d-morrison), with three changes:
+(MIT, copyright 2025 d-morrison), with three changes:
 
   * Chapter titles are HTML-escaped. The original interpolated a heading
     straight into the banner, so a title containing `&` or `<` produced broken

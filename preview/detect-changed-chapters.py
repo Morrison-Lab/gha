@@ -7,7 +7,7 @@ currently published on `gh-pages`? -- by comparing this run's render against the
 deployed render, never against the source diff.
 
 Ported from `ucdavis/win`'s `.github/scripts/detect-changed-chapters.py`
-(LICENSE: COPYRIGHT HOLDER: d-morrison), and rewritten rather than copied:
+(MIT, copyright 2025 d-morrison), and rewritten rather than copied:
 
   * Every git call is checked. The original ran `git fetch` and `git ls-tree`
     with `check=False` and swallowed the comparison in a broad `except`, so a
