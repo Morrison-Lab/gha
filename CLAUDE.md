@@ -1422,6 +1422,53 @@ opposite way from the rest: refusing on ignored build output would make the
 wrapper unusable, and an unusable guard gets bypassed, which is worse than no
 guard.
 
+**A fix for a review finding is the likeliest place for the next one, and
+gha#745 produced two in a row.**
+Closing B1 -- the guard blessing a check that examined nothing -- meant adding
+a read of each check's own "Skipping" admission.
+That read scanned the check's whole output before testing its exit status, and
+these checks print up to 77 characters of the offending line, so a genuine
+violation whose text quoted the phrase was reclassified as "examined nothing"
+and downgraded from a blocking exit 1 to a non-blocking 3.
+The fix for the unearned-clean-verdict defect produced an unearned clean
+verdict.
+Closing that in turn introduced a `set -e` regression, since `out=$(cmd)` is a
+simple assignment and a failing check terminated the script there.
+
+Two things make this worth a rule rather than an anecdote.
+A fix is written under the belief that its region is now the best-understood
+part of the diff, which is exactly the belief that stops it being re-read
+adversarially.
+And it arrives late, when the reviewer has already approved everything around
+it, so it gets the least scrutiny of anything in the change.
+
+- **Do:** re-run the full mutation sweep after a fix, not only the case the
+  finding named.
+- **Do:** ask what NEW failure the fix's own mechanism can produce, in the
+  same terms as the finding it closes.
+- **Don't:** treat a fix as smaller than the code it replaces -- both of
+  these were a few lines.
+
+**The self-implicating-example hazard has a RUNTIME form, not just a
+lint-time one.**
+The two references above are about a checker scanning a file, where the
+remedy is to render the example so it cannot match.
+Here a *running* guard matched on `scanning the whole tree instead`, and on
+`Skipping the` plus the space after it -- strings this repo's own prose
+quotes, in that script's header and in this file.
+Writing this very paragraph tripped MD038 on that trailing space, which is
+the lint-time form biting inside the entry about the runtime form.
+So a PR editing the documentation could downgrade its own findings, and the
+mechanism is the corpus describing its own detector's vocabulary.
+The remedy is the same shape but applies to matching rather than to writing:
+anchor on the emitting form (`^::warning::`), and gate on a signal the prose
+cannot forge -- here the exit status.
+
+- **Do:** ask, of any heuristic keyed on a string, whether this corpus
+  documents that string.
+- **Don't:** rely on a free-text match when the text is something the repo
+  writes about.
+
 **An earlier revision of this paragraph claimed six mutations were confirmed
 when one of them was not**, and the gap is worth keeping rather than quietly
 correcting.
