@@ -1279,7 +1279,7 @@
     "href": "reference/summary.html",
     "title": "summary.yml",
     "section": "",
-    "text": "Post an AI summary comment on newly opened issues.\nIf inference is unavailable, the workflow emits a warning and leaves the issue unchanged instead of failing the issue-open run.",
+    "text": "Post an AI summary comment on newly opened issues.\nIf inference fails or returns an empty response, the workflow emits a warning and leaves the issue unchanged instead of failing the issue-open run.",
     "crumbs": [
       "Overview",
       "Reference",
