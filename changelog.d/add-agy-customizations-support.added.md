@@ -1,0 +1,1 @@
+- Configure `.agents/` workspace scaffolds for Antigravity customizations.
