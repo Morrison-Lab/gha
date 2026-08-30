@@ -1122,9 +1122,20 @@ NLB_GLOBS='*.md *.qmd' NLB_BASE_REF=origin/main \
 So set `NLB_GLOBS` explicitly to the extensions your diff actually touches
 before trusting a local run, and read a silent run as a question about the
 population rather than as a pass.
-Measured 2026-08-29 on gha#748, whose diff was entirely `.qmd` and `.yml`:
-the default-glob run reported clean over both files, and the widened run
-found a real two-sentence line in the `action.yml` description.
+
+The reproduction above runs against any checkout and needs no history: pick
+any `.qmd`, commit a two-sentence line into it, and compare the two
+invocations.
+That is the form to trust, because the case that prompted this paragraph is
+**not** reproducible, for a reason worth naming.
+gha#748's diff was entirely `.qmd` and `.yml`, and its `action.yml`
+description did carry a packed line -- but the pre-push adversarial review
+caught it, the fix was amended into the first push, and the merged commit is
+therefore clean under every glob.
+Following the process this file recommends is what erased the evidence for
+it.
+So do not read gha#748 as a citation you can check; the merged diff shows
+nothing, which is the correct outcome rather than a contradiction.
 Widening the checked set in CI is tracked separately in gha#750.
 
 The suite also covers the gha#336 clause check (a long line carrying a
