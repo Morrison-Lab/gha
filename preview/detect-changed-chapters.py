@@ -47,6 +47,7 @@ import os
 import re
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 # Volatility the comparison must see through. Every failure mode of this script
@@ -187,12 +188,25 @@ def rendered_chapters(rendered_dir, glob):
 
 
 def write_outputs(values):
+    """Append the step outputs in `$GITHUB_OUTPUT`'s delimiter form.
+
+    Never the bare `key=value` form. Two of these values are free text built
+    from things a caller controls -- git's own error wording, and file names,
+    which may legitimately contain a newline on POSIX -- so a bare line would
+    let one of them declare further outputs of its own.
+    """
     output_file = os.getenv("GITHUB_OUTPUT")
     if not output_file:
         return
+    delimiter = f"gha-eof-{uuid.uuid4().hex}"
     with open(output_file, "a", encoding="utf-8") as handle:
         for key, value in values.items():
-            handle.write(f"{key}={value}\n")
+            if delimiter in value:
+                raise DetectionError(
+                    f"output {key!r} contains the generated delimiter; refusing to "
+                    "write an output that could be misread"
+                )
+            handle.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
 
 
 def detect(repo_dir, rendered_dir, glob, remote, branch, subdir, patterns):

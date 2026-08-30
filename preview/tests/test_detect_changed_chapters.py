@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-from conftest import write
+from conftest import read_outputs, write
 
 
 PAGE = """<html><body><main><h1>Chapter one</h1><p>{body}</p></main></body></html>"""
@@ -38,11 +38,7 @@ def run_detect(detector, monkeypatch, work, rendered_dir, **env):
 
     detector.main()
 
-    parsed = {}
-    for line in output_file.read_text(encoding="utf-8").splitlines():
-        key, _, value = line.partition("=")
-        parsed[key] = value
-    return parsed
+    return read_outputs.parse(output_file.read_text(encoding="utf-8"))
 
 
 def test_missing_deployed_branch_is_a_stated_skip(detector, monkeypatch, repo_factory):
@@ -272,3 +268,25 @@ def test_outputs_are_absent_when_github_output_is_unset(detector, monkeypatch, r
         monkeypatch.delenv(key, raising=False)
 
     assert detector.main() == 0
+
+
+def test_a_newline_in_a_skip_reason_cannot_declare_another_output(
+    detector, monkeypatch, repo_factory
+):
+    """`skip-reason` is free text built from a caller-supplied branch name and
+    git's own wording, so a bare `key=value` line in `$GITHUB_OUTPUT` would let
+    it forge further outputs -- here, a comparison that never ran claiming a
+    change was found."""
+    work = repo_factory(published={"chapters/01.html": PAGE.format(body="a")})
+    rendered = write(work, "_site/chapters/01.html", PAGE.format(body="a")).parent.parent
+
+    outputs = run_detect(
+        detector,
+        monkeypatch,
+        work,
+        rendered,
+        DEPLOYED_BRANCH="ghost\nany-changed=true\ndetection-status=compared",
+    )
+
+    assert outputs["detection-status"] == "skipped"
+    assert outputs["any-changed"] == "false"

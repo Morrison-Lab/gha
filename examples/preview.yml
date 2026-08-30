@@ -41,3 +41,11 @@ jobs:
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders
+    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render
+    #   changed-chapters-banner: true      # and list them on the preview home page
+    #   changed-chapters-glob: 'chapters/*.html'
+    #   deployed-branch: gh-pages
+    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix
+    #   banner-index: index.html
+    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render
+    #     build-[0-9a-f]+

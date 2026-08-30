@@ -32,6 +32,9 @@ def _load(name, filename):
     return module
 
 
+read_outputs = _load("gha_read_github_output", "tests/read-github-output.py")
+
+
 @pytest.fixture(scope="session")
 def detector():
     return _load("gha_detect_changed_chapters", "detect-changed-chapters.py")
