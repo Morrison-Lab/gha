@@ -711,6 +711,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <blockquote class="blockquote">
 <p>[!WARNING] <strong>GitHub Models retirement notice</strong>: The default GitHub Models endpoint is in a scheduled retirement brownout (<a href="https://github.com/Morrison-Lab/gha/issues/617">gha#617</a>) and returns 410 errors. Pass a custom <code>endpoint</code>, <code>model</code>, and <code>API_KEY</code> secret, or prefer <a href="../reference/claude.html"><code>claude.yml</code></a> for richer issue triage and engagement.</p>
 </blockquote>
+<p>If inference fails or returns an empty response, the workflow emits a warning and leaves the issue unchanged instead of failing the issue-open run.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
