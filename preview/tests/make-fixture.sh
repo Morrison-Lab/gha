@@ -17,7 +17,7 @@ mkdir -p "$root"
 root=$(cd "$root" && pwd)
 
 export GIT_AUTHOR_NAME='gha selftest'
-export GIT_AUTHOR_EMAIL='selftest@example.invalid'
+export GIT_AUTHOR_EMAIL='selftest@example.invalid'  # phi-allow: synthetic fixture identity, never a real address
 export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME"
 export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
 

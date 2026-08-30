@@ -17,9 +17,9 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 GIT_ENV = {
     "GIT_AUTHOR_NAME": "gha selftest",
-    "GIT_AUTHOR_EMAIL": "selftest@example.invalid",
+    "GIT_AUTHOR_EMAIL": "selftest@example.invalid",  # phi-allow: synthetic fixture identity, never a real address
     "GIT_COMMITTER_NAME": "gha selftest",
-    "GIT_COMMITTER_EMAIL": "selftest@example.invalid",
+    "GIT_COMMITTER_EMAIL": "selftest@example.invalid",  # phi-allow: synthetic fixture identity, never a real address
 }
 
 
