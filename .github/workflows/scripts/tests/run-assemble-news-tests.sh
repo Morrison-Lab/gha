@@ -560,4 +560,89 @@ grep -q '^-$' NEWS.md || {
 
 echo "PASS: Test 22 - A fragment's bare list marker is normalized like any other bullet"
 
+# Test 23: a bare '-' directly under a paragraph line is a SETEXT HEADING
+# UNDERLINE, not an empty list item, and must not set the file's style.
+#
+# This is the counterweight to Tests 21 and 22. Widening the scan to accept a
+# bare marker (gha#746) admitted this construct too, because at the level of a
+# single line the two are identical -- only the PRECEDING line separates them.
+# Verified against CommonMark via markdown-it: 'Intro\n-\n' parses to <h2>
+# with zero list items, while 'Intro\n\n-\n' yields a list.
+#
+# The harm is the same MD004 flip the normalization exists to prevent, arrived
+# at from the opposite direction: the underline was read as a '-' bullet, so a
+# '*'-styled file was normalized to '-'. Caught in review of gha#746 before
+# release; the first draft of that fix had this defect.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '* Add feature U.\n' > news.d/feature-u.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+Some intro paragraph
+-
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^\* Add feature U\.$' NEWS.md || {
+  echo "FAIL: A setext heading underline was read as a bullet-style candidate; the style should have come from the '*' bullet below it"
+  exit 1
+}
+
+echo "PASS: Test 23 - A setext heading underline is not a bullet-style candidate"
+
+# Test 24: the normalization side of Test 23. A fragment carrying a setext
+# heading must keep it: rewriting the underline's '-' to the file's marker
+# turns an <h2> into a bullet, destroying content rather than merely
+# misreading it.
+#
+# Test 23 cannot catch this -- that one pins which style is DETECTED from
+# news_file, and this pins which fragment lines are REWRITTEN.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- 'Fragment heading\n-\n\n* Add feature V.\n' > news.d/feature-v.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+* Existing bullet.
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -qx -- '-' NEWS.md || {
+  echo "FAIL: A fragment's setext heading underline was rewritten to the file's bullet marker, turning a heading into a list item"
+  exit 1
+}
+
+echo "PASS: Test 24 - A fragment's setext heading underline is not normalized"
+
+# Test 25: a bare '+' after a blank line sets the style. '+' is the marker
+# whose handling differs mechanically -- CommonMark builds a thematic break
+# only from '-', '_' or '*', so is_thematic_break rejects '+' at its case
+# default and never reaches the length check that decides the other two.
+# Tests 21 and 22 both use '*', so neither exercises that path.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Add feature W.\n' > news.d/feature-w.added.md
+
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
++
+NEWS
+
+bash "$assemble_script" news.d NEWS.md
+
+grep -q '^+ Add feature W\.$' NEWS.md || {
+  echo "FAIL: A bare '+' did not set the file's bullet style"
+  exit 1
+}
+
+echo "PASS: Test 25 - A bare '+' marker sets the file's bullet style"
+
 echo "=== All assemble-news.sh tests passed! ==="
