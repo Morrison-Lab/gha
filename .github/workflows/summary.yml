@@ -45,7 +45,8 @@ jobs:
 
       - name: Run AI inference
         id: inference
-        uses: actions/ai-inference@2c43c91ae16266ca159d311430343c67a5ffa222 # v3
+        continue-on-error: true
+        uses: actions/ai-inference@a7805884c80886efc241e94a5351df715968a0ad # v2
         with:
           endpoint: ${{ inputs.endpoint || 'https://models.github.ai/inference' }}
           model: ${{ inputs.model || 'openai/gpt-4o-mini' }}
@@ -62,8 +63,14 @@ jobs:
             Body: ${{ github.event.issue.body }}
             ===END ISSUE ${{ steps.nonce.outputs.value }}===
 
+      - name: Report unavailable inference
+        if: >-
+          steps.inference.outcome == 'failure' ||
+          (steps.inference.outcome == 'success' && steps.inference.outputs.response == '')
+        run: echo "::warning::Issue summary inference is unavailable; leaving the issue unchanged."
+
       - name: Comment with AI summary
-        if: steps.inference.outputs.response != ''
+        if: steps.inference.outcome == 'success' && steps.inference.outputs.response != ''
         env:
           GH_TOKEN: ${{ github.token }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
