@@ -17,6 +17,7 @@
 set -uo pipefail
 
 SCRIPT="${SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/check-diff-scoped.sh}"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
 [ -f "$SCRIPT" ] || { echo "::error::suite: cannot find check-diff-scoped.sh at $SCRIPT"; exit 1; }
 # Absolutize it. Every case cd's into a throwaway fixture repo before invoking
 # the script, so a RELATIVE override resolves against that fixture instead and
@@ -55,6 +56,30 @@ make_repo() {
   printf '%s' "$d"
 }
 run() { ( cd "$1" && shift && bash "$SCRIPT" "$@" >/tmp/dsout 2>&1; echo $?; ); }
+
+# A fixture carrying a REAL new-line-breaks violation, using the repo's own
+# check scripts rather than stubs: cases 12 and 13 are about what the checks
+# actually PRINT, which a stub cannot reproduce.
+make_real_repo() {
+  local d extra="${1:-}"
+  d="$(mktemp -d)"
+  (
+    cd "$d"
+    git init -q -b main .
+    git config user.email t@example.invalid; git config user.name Tester  # phi-allow
+    mkdir -p check-new-line-breaks check-phi
+    cp "$REPO_ROOT/check-new-line-breaks/check-new-line-breaks.py" check-new-line-breaks/
+    cp "$REPO_ROOT/check-phi/check-phi.py" check-phi/
+    printf '# fixture\n' > README.md
+    git add -A; git commit -qm base
+    git remote add origin "$d"
+    git update-ref refs/remotes/origin/main HEAD
+    printf -- '- A first sentence here%s. A second sentence on the very same line, well past the gate.\n' "$extra" > V.md
+    git add -A; git commit -qm violation
+  ) >/dev/null 2>&1
+  printf '%s' "$d"
+}
+
 
 # 1. Clean tree, resolvable base ref, all stubs clean, typos absent.
 #    Exit 3 rather than 0: a check that could not run is not a check that
@@ -196,6 +221,50 @@ rc=$(run "$d" "$orphan")
 grep -q 'shares no reachable history' /tmp/dsout && ok "it names the shallow-clone remedy" \
                                                  || bad "unrelated reason" "refused for a different reason"
 rm -rf "$d"
+
+# 12. A real finding stays a finding even when the violating line quotes the
+#     phrase the "examined nothing" heuristic looks for. The scan ran over
+#     free text and before the status test, so a violation whose own printed
+#     preview contained "Skipping the " was downgraded from a blocking exit 1
+#     to a non-blocking exit 3 -- under the hook, a silent warn-and-push, and
+#     the exact unearned-clean-verdict class this wrapper exists to close.
+#     The control matters: without it this case cannot distinguish "the fix
+#     works" from "the fixture never produced a finding at all".
+d=$(make_real_repo "")
+rc_control=$(run "$d" origin/main)
+rm -rf "$d"
+d=$(make_real_repo " Skipping the thing")
+rc_phrase=$(run "$d" origin/main)
+rm -rf "$d"
+[ "$rc_control" = 1 ] && ok "a plain violation is a finding (1)" \
+                      || bad "finding control" "expected 1, got $rc_control"
+[ "$rc_phrase" = 1 ] && ok "a violation quoting the skip phrase is still a finding (1)" \
+                     || bad "phrase downgrade" "expected 1, got $rc_phrase -- a finding was downgraded"
+
+# 13. check-typos is a Python script, so a machine with the typos binary but
+#     no python3 must report it unavailable, not FAILED. Probing only for the
+#     binary let env exit 127 and be read as a finding, which under the hook
+#     blocks a push over the contributor's toolchain -- the outcome the
+#     hook's own contract rules out.
+d=$(make_repo 0)
+# The stripped-PATH directory lives OUTSIDE the fixture repo: created inside
+# it, it is untracked content and the dirty guard refuses before the probe is
+# ever reached -- the guard being right, and the case measuring nothing.
+nopy=$(mktemp -d)
+mkdir -p "$d/check-typos"
+printf 'import sys; sys.exit(0)\n' > "$d/check-typos/check-typos.py"
+( cd "$d" && git add -A && git commit -qm typos-stub ) >/dev/null 2>&1
+# Everything the wrapper itself shells out to, MINUS python3 -- otherwise
+# the fixture starves the script of a tool it needs and the 127 reads as
+# the behaviour under test rather than as a broken PATH.
+for x in git sed grep env bash mktemp awk dirname wc tr cat head; do
+  p=$(command -v "$x" 2>/dev/null) && ln -sf "$p" "$nopy/$x"
+done
+printf '#!/bin/sh\nexit 0\n' > "$nopy/typos"; chmod +x "$nopy/typos"
+rc=$( cd "$d" && PATH="$nopy" env -u TYPOS_BIN_DIR bash "$SCRIPT" origin/main >/tmp/dsout 2>&1; echo $?; )
+[ "$rc" = 3 ] && ok "typos without python3 is unavailable (3), not a blocking finding" \
+              || bad "typos python probe" "expected 3, got $rc"
+rm -rf "$d" "$nopy"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

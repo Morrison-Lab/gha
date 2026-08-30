@@ -1338,16 +1338,29 @@ finding) and 2 (refused).
 A real finding outranks an incomplete run, since the finding is actionable
 now.
 
-20 assertions across 12 cases.
-Eight mutations are confirmed to turn a named case red: dropping the dirty
+23 assertions across 14 cases.
+Nine mutations are confirmed to turn a named case red: dropping the dirty
 guard, narrowing the status scan to `--untracked-files=no`, dropping the
 merge-base gate, letting the tool-unavailable arm read as clean, letting the
 script-absent arm read as clean, letting an incomplete run outrank a finding,
-no longer honouring `.gitignore`, and dropping the no-base-ref block.
-Two deliberately survive, and both are information rather than gaps: removing
+no longer honouring `.gitignore`, dropping the no-base-ref block, and probing
+the typos check for its binary without its interpreter.
+One deliberately survives, and it is information rather than a gap: removing
 the base-ref *resolvability* check changes no verdict, since `git merge-base`
 also rejects a nonexistent ref, so that check earns its place by naming the
 problem rather than by catching it -- which a message assertion pins instead.
+
+**The "examined nothing" heuristic is guarded twice, so no SINGLE mutation of
+it turns a case red, and reporting either gate as confirmed would be false.**
+Removing the status gate leaves the anchored pattern, which a violation line
+(printed as `::error`) cannot match; removing the anchor leaves the status
+gate, which a finding's non-zero exit already fails. Case 12 is killed by
+removing both together, which is the defect as it actually shipped.
+Read a survivor here as "the other gate still holds", not as missing
+coverage -- and note that this is the opposite reading from the mis-aimed
+mutations recorded above, so the two are told apart by whether a second
+mechanism covers the same outcome.
+
 The `.gitignore` case is the one keep-if-trimmed assertion pointing the
 opposite way from the rest: refusing on ignored build output would make the
 wrapper unusable, and an unusable guard gets bypassed, which is worse than no
@@ -1365,12 +1378,14 @@ paragraph that states it (gha#745 review).
 
 **The harness absolutizes `SCRIPT` deliberately.**
 Every case `cd`s into a throwaway fixture repo before invoking the script, so
-a relative override resolves against the fixture instead and fails all 14
-cases at once -- which reads as a broken implementation rather than as a
-harness pointed at nothing.
-Measured while landing gha#740, where exactly that produced 12 failures
-against an implementation that was fine -- 12 rather than every assertion,
-because the cases that refuse before invoking the script still passed.
+a relative override resolves against the fixture instead and fails every case
+at once -- which reads as a broken implementation rather than as a harness
+pointed at nothing.
+Measured while landing gha#740 against an implementation that was fine.
+An earlier revision of this paragraph put a specific count on that
+measurement and explained it by saying the cases refusing before invoking the
+script still passed; no case does that, so the explanation was invented and
+the count was stale (gha#745 review).
 
 `.githooks/pre-push` runs the wrapper before a push, and **nothing installs
 it**: git only honours it once a contributor opts in with

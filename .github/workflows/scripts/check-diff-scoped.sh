@@ -99,12 +99,21 @@ unavailable_list=""
 # finding either. Conflating either way is the same silent-wrong-verdict this
 # wrapper exists to prevent, so tool availability is probed up front.
 
+# The two Python checks need an interpreter. Without this they report FAILED
+# twice on a machine simply lacking python3 -- a toolchain block, which is
+# what the hook's own header says gets a hook disabled.
+python_available() { command -v python3 >/dev/null 2>&1; }
+
 # check-typos resolves its binary ONLY from TYPOS_BIN_DIR, never from PATH, so
 # a probe that accepted a PATH install would pass here and then fail inside the
 # check -- reporting a finding where there is only a missing install, which
 # under the hook blocks the push. Point TYPOS_BIN_DIR at the PATH copy instead,
 # so an ordinary install works rather than being declared unavailable.
 typos_available() {
+  # check-typos.py is Python too, so the interpreter gates this check as much
+  # as the binary does. Probing only for `typos` let a python3-less machine
+  # report a FAILED check (exit 127 from env) instead of an unavailable one.
+  python_available || return 1
   if [ -n "${TYPOS_BIN_DIR:-}" ] && [ -x "${TYPOS_BIN_DIR}/typos" ]; then
     return 0
   fi
@@ -114,11 +123,6 @@ typos_available() {
   TYPOS_BIN_DIR="$(cd "$(dirname "$found")" && pwd)"
   export TYPOS_BIN_DIR
 }
-
-# The two Python checks need an interpreter. Without this they report FAILED
-# twice on a machine simply lacking python3 -- a toolchain block, which is
-# what the hook's own header says gets a hook disabled.
-python_available() { command -v python3 >/dev/null 2>&1; }
 
 note_unavailable() {
   unavailable_count=$(( unavailable_count + 1 ))
@@ -156,7 +160,20 @@ run_check() {
   local out rc=0
   out="$(env "$@" python3 "$script" 2>&1)" || rc=$?
   printf '%s\n' "$out"
-  if printf '%s' "$out" | grep -qE 'Skipping the |scanning the whole tree instead'; then
+  # Two gates, and both are load-bearing.
+  #
+  # Only when rc is 0: a non-zero status is a FINDING, which outranks any
+  # inference drawn from the text, and a finding is the thing that must never
+  # be downgraded.
+  #
+  # And anchored to the emitting form, never a free-text search: these checks
+  # print each violation with up to 77 characters of the offending line, so a
+  # substring scan reclassifies a real finding whenever the flagged line
+  # happens to quote the phrase -- which this repo's own prose does, in this
+  # script's header and in CLAUDE.md. A guard against an unearned clean
+  # verdict that produces one on the docs describing it is worse than none.
+  if [ "$rc" -eq 0 ] \
+    && printf '%s' "$out" | grep -qE '^::warning::(Skipping the |Could not diff against )'; then
     printf 'check-diff-scoped: %-18s EXAMINED NOTHING (see its own warning above)\n' "$label" >&2
     note_unavailable "$label (could not diff)"
     return
