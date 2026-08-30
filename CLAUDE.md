@@ -1444,8 +1444,10 @@ it, so it gets the least scrutiny of anything in the change.
 
 - **Do:** re-run the full mutation sweep after a fix, not only the case the
   finding named.
+
 - **Do:** ask what NEW failure the fix's own mechanism can produce, in the
   same terms as the finding it closes.
+
 - **Don't:** treat a fix as smaller than the code it replaces -- both of
   these were a few lines.
 
@@ -1466,6 +1468,7 @@ cannot forge -- here the exit status.
 
 - **Do:** ask, of any heuristic keyed on a string, whether this corpus
   documents that string.
+
 - **Don't:** rely on a free-text match when the text is something the repo
   writes about.
 
