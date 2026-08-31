@@ -26,7 +26,6 @@ check stays green:
 None of those produces an error. Each produces a quietly wrong preview.
 """
 
-import os
 import pathlib
 import sys
 
