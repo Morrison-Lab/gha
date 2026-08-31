@@ -7,6 +7,6 @@
   - [x] Write a test case that triggers a denied-tools violation and specifically checks for proper heredoc termination (e.g., a trailing newline).
 - [x] Task: Implement fix (Green Phase) [a69f84c]
   - [x] Modify the sidecar script to append an explicit trailing newline when writing to `$GITHUB_OUTPUT`.
-- [~] Task: Refactor and verify coverage
-  - [ ] Ensure all existing tests pass and code quality is maintained.
-- [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Refactor and verify coverage [c84d2ff]
+  - [x] Ensure all existing tests pass and code quality is maintained.
+- [~] Task: Phase Verification & Checkpoint (Refer to workflow.md)
