@@ -292,6 +292,13 @@ This family builds and ships Quarto sites, and it builds this very site.
 The build/deploy split is a **trust boundary**: untrusted fork code only ever
 runs in the read-only build half, while the privileged `gh-pages` push happens
 in the deploy half against base-repo code. Do not collapse them into one job.
+Repos with custom build sequences can keep a bespoke build workflow
+and still use `preview-deploy.yml` and `cleanup-pr-previews.yml`
+by uploading the three-file `pr-preview-site` artifact
+(`site/`, `meta/pr-number.txt`, `meta/action.txt`).
+See [Partial adoption and artifact contract][preview-contract].
+
+[preview-contract]: reference/preview-deploy.qmd#partial-adoption-and-artifact-contract
 
 Two wiring requirements:
 

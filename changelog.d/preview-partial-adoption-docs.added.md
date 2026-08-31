@@ -1,0 +1,1 @@
+- Document partial adoption path for PR preview family and the three-file `pr-preview-site` artifact contract (`site/`, `meta/pr-number.txt`, `meta/action.txt`) across documentation surfaces (gha#757).
