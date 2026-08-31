@@ -849,6 +849,34 @@ run_test "Without changes requested" \
 Without changes requested." \
 "true" "ready-for-merge"
 
+# Test 106: Conversational No comma before needs more work
+run_test "Conversational No comma before needs more work" \
+"### Verdict
+
+No, this PR needs more work." \
+"false" "needs-more-work"
+
+# Test 107: Conversational No comma before blocked
+run_test "Conversational No comma before blocked" \
+"### Verdict
+
+No, unfortunately this is blocked pending legal review." \
+"false" "blocked"
+
+# Test 108: Conversational No dash before needs more work
+run_test "Conversational No dash before needs more work" \
+"### Verdict
+
+No -- this needs more work." \
+"false" "needs-more-work"
+
+# Test 109: Conversational No colon before needs more work
+run_test "Conversational No colon before needs more work" \
+"### Verdict
+
+No: this needs more work." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
