@@ -1,29 +1,7 @@
-"""Pin the composite and reusable-workflow wiring for the changed-chapters steps.
+"""Pin the composite and reusable-workflow wiring for preview steps.
 
-The gha#763 review's second finding: the selftest job invokes
-`detect-changed-chapters.py` and `add-home-banner.py` directly, so the step
-wiring added to `preview/action.yml` -- the `if:` gates, the `env:` assembly,
-the step ordering, and the four composite outputs -- is never proven by CI.
-
-A live `uses: ./preview` call is the usual proof and is out of reach here: the
-composite installs R, renv and Chrome and renders the caller's own Quarto
-project, which a selftest job cannot stand up (CLAUDE.md says so for this
-composite specifically). So this pins the wiring statically instead, the way
-`run-r-cmd-check-workflow-tests.py` and `run-version-check-workflow-tests.py`
-already do for workflows a live run cannot reach.
-
-What it is for is the class of edit that breaks the feature while every other
-check stays green:
-
-  * renaming the detect step's `id`, which silently empties all four outputs;
-  * moving the banner step after `Stage site for upload`, so the uploaded
-    artifact carries an un-bannered home page;
-  * dropping an `env:` key, so the script falls back to a default;
-  * composing `RENDERED_DIR` from `inputs.path` alone, which is correct only
-    for the default `output-dir`;
-  * adding an output to the script, or to `action.yml`, without the other.
-
-None of those produces an error. Each produces a quietly wrong preview.
+Pins the composite and reusable-workflow wiring -- the `if:` gates, the `env:` assembly,
+the step ordering, and the composite outputs.
 """
 
 import pathlib
@@ -48,10 +26,27 @@ from workflow_discovery import is_workflows_restored  # noqa: E402
 
 DETECT_STEP = "Detect chapters changed since the published render"
 BANNER_STEP = "Add the changed-chapters banner to the preview home page"
+DOCX_INSTALL_STEP = "Install Python dependencies for DOCX tracked changes"
+DOCX_STEP = "Create DOCX tracked changes"
 RENDER_STEP = "Render Quarto site"
 STAGE_STEP = "Stage site for upload"
 
 DETECT_STEP_ID = "changed-chapters"
+DOCX_STEP_ID = "docx-tracked-changes"
+
+DETECT_OUTPUTS = {
+    "changed-chapters",
+    "any-changed",
+    "detection-status",
+    "skip-reason",
+}
+
+DOCX_OUTPUTS = {
+    "docx-status",
+    "docx-skip-reason",
+    "docx-tracked-changes-files",
+    "any-docx-changed",
+}
 
 NEW_INPUTS = (
     "detect-changed-chapters",
@@ -61,6 +56,8 @@ NEW_INPUTS = (
     "deployed-subdir",
     "changed-chapters-normalize-patterns",
     "banner-index",
+    "docx-tracked-changes",
+    "docx-tracked-changes-glob",
 )
 
 
@@ -70,12 +67,6 @@ def action():
 
 
 def workflow_call(document):
-    """The `workflow_call:` block, whichever key YAML gave it.
-
-    YAML 1.1 resolves a bare `on` to the boolean True, so a workflow's trigger
-    block lands under `True` rather than `"on"` unless the author quoted it.
-    Accepting both is what keeps this suite from depending on that quoting.
-    """
     triggers = document.get("on", document.get(True))
     assert triggers is not None, "workflow has no trigger block"
     return triggers["workflow_call"]
@@ -108,30 +99,32 @@ def index_of(steps, name):
     raise AssertionError(f"no step named {name!r}")
 
 
-def test_the_detect_step_keeps_the_id_every_output_references(steps, action):
-    """A renamed id empties all four outputs and nothing goes red."""
+def test_the_steps_keep_the_ids_every_output_references(steps, action):
     assert step_named(steps, DETECT_STEP)["id"] == DETECT_STEP_ID
-    for name, spec in action["outputs"].items():
-        assert f"steps.{DETECT_STEP_ID}.outputs." in spec["value"], name
+    assert step_named(steps, DOCX_STEP)["id"] == DOCX_STEP_ID
+    for name in DETECT_OUTPUTS:
+        assert f"steps.{DETECT_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
+    for name in DOCX_OUTPUTS:
+        assert f"steps.{DOCX_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
 
 
 def test_each_output_reads_its_own_name(action):
-    """`changed-chapters: steps.x.outputs.any-changed` would be silently wrong."""
-    for name, spec in action["outputs"].items():
-        assert f"steps.{DETECT_STEP_ID}.outputs.{name} " in spec["value"] + " ", name
+    for name in DETECT_OUTPUTS:
+        assert f"steps.{DETECT_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
+    for name in DOCX_OUTPUTS:
+        assert f"steps.{DOCX_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
 
 
-def test_the_composite_declares_exactly_what_the_script_writes(
-    action, detector, monkeypatch, repo_factory
+def test_the_composite_declares_exactly_what_the_scripts_write(
+    action, detector, docx_generator, monkeypatch, repo_factory
 ):
-    """The gha#303 precedent: two declarations of one contract must agree.
+    from test_create_docx_tracked_changes import make_docx
 
-    Derived by running a real detection rather than by reading the script's
-    source, so the test measures what the script does rather than what it says.
-    """
     page = "<html><body><main><h1>One</h1></main></body></html>"
-    work = repo_factory(published={"chapters/01.html": page})
+    docx_bytes = make_docx(["One"])
+    work = repo_factory(published={"chapters/01.html": page, "chapters/01.docx": docx_bytes})
     rendered = write(work, "_site/chapters/01.html", page).parent.parent
+    write(work, "_site/chapters/01.docx", docx_bytes)
     output_file = rendered.parent / "wiring-output.txt"
     output_file.write_text("", encoding="utf-8")
 
@@ -139,17 +132,24 @@ def test_the_composite_declares_exactly_what_the_script_writes(
         "REPO_DIR": str(work),
         "RENDERED_DIR": str(rendered),
         "CHAPTER_GLOB": "chapters/*.html",
+        "DOCX_GLOB": "chapters/*.docx",
         "GITHUB_OUTPUT": str(output_file),
     }.items():
         monkeypatch.setenv(key, value)
     for key in ("DEPLOYED_REMOTE", "DEPLOYED_BRANCH", "DEPLOYED_SUBDIR", "NORMALIZE_PATTERNS"):
         monkeypatch.delenv(key, raising=False)
+
     detector.main()
-
     from conftest import read_outputs
+    detector_written = set(read_outputs.parse(output_file.read_text(encoding="utf-8")))
+    assert detector_written == DETECT_OUTPUTS
 
-    written = set(read_outputs.parse(output_file.read_text(encoding="utf-8")))
-    assert written == set(action["outputs"])
+    output_file.write_text("", encoding="utf-8")
+    docx_generator.main()
+    docx_written = set(read_outputs.parse(output_file.read_text(encoding="utf-8")))
+    assert docx_written == DOCX_OUTPUTS
+
+    assert (detector_written | docx_written) == set(action["outputs"])
 
 
 @pytest.mark.parametrize(
@@ -175,25 +175,29 @@ def test_the_composite_declares_exactly_what_the_script_writes(
                 "SKIP_REASON",
             },
         ),
+        (
+            DOCX_STEP,
+            {
+                "RENDERED_DIR",
+                "DOCX_GLOB",
+                "DEPLOYED_BRANCH",
+                "DEPLOYED_SUBDIR",
+            },
+        ),
     ],
 )
 def test_every_env_key_the_scripts_read_is_supplied(steps, step_name, required):
-    """A dropped key is not an error; the script falls back to a default."""
     assert set(step_named(steps, step_name)["env"]) == required
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, DOCX_STEP])
 def test_rendered_dir_uses_both_the_path_and_the_output_dir(steps, step_name):
-    """Composing it from `inputs.path` alone is correct only for the default
-    `output-dir`, so the bug hides until a consumer sets one."""
     rendered_dir = step_named(steps, step_name)["env"]["RENDERED_DIR"]
     assert "inputs.path" in rendered_dir
     assert "inputs.output-dir" in rendered_dir
 
 
 def test_the_banner_implies_the_comparison(steps):
-    """`changed-chapters-banner` alone must still run the detection, or the
-    banner renders against empty outputs and reports no changes."""
     condition = " ".join(step_named(steps, DETECT_STEP)["if"].split())
     assert "inputs.detect-changed-chapters == 'true'" in condition
     assert "inputs.changed-chapters-banner == 'true'" in condition
@@ -206,27 +210,25 @@ def test_the_banner_step_is_gated_on_its_own_input_only(steps):
     assert "inputs.detect-changed-chapters" not in condition
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP])
-def test_both_steps_stand_down_on_the_closed_event(steps, step_name):
-    """Every other step in this composite skips the PR-closed (preview removal)
-    path; a step that did not would run with no checkout."""
+def test_the_docx_step_is_gated_on_its_own_input(steps):
+    condition = " ".join(step_named(steps, DOCX_STEP)["if"].split())
+    assert "inputs.docx-tracked-changes == 'true'" in condition
+
+
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, DOCX_INSTALL_STEP, DOCX_STEP])
+def test_steps_stand_down_on_the_closed_event(steps, step_name):
     assert "github.event.action != 'closed'" in step_named(steps, step_name)["if"]
 
 
-def test_the_banner_is_written_before_the_site_is_staged(steps):
-    """Staging copies the rendered tree into the upload directory, so a banner
-    written afterwards never reaches the artifact -- and the preview looks
-    exactly like a run where no chapter changed."""
+def test_step_execution_order_before_staging(steps):
     assert index_of(steps, RENDER_STEP) < index_of(steps, DETECT_STEP)
     assert index_of(steps, DETECT_STEP) < index_of(steps, BANNER_STEP)
-    assert index_of(steps, BANNER_STEP) < index_of(steps, STAGE_STEP)
+    assert index_of(steps, BANNER_STEP) < index_of(steps, DOCX_STEP)
+    assert index_of(steps, DOCX_STEP) < index_of(steps, STAGE_STEP)
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, DOCX_STEP])
 def test_no_value_reaches_the_run_body_through_interpolation(steps, step_name):
-    """`skip-reason` and `changed-chapters` are built from git's error text and
-    from file names, so interpolating either into a `run:` body is command
-    injection. They must arrive through `env:`."""
     assert "${{" not in step_named(steps, step_name)["run"]
 
 
@@ -239,8 +241,6 @@ def test_the_reusable_workflow_forwards_every_new_input(workflow, action):
 
 
 def test_the_reusable_workflow_surfaces_every_output(workflow, action):
-    """Two hops -- step to job, job to workflow -- and a break in either leaves
-    a consumer reading an empty string rather than seeing an error."""
     build_step = workflow["jobs"]["build"]["steps"][0]
     assert build_step["id"] == "build"
 
