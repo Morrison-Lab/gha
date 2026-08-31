@@ -244,11 +244,11 @@ def has_late_semicolon(text: str, min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH) 
 
     - A **comma** is overwhelmingly a list separator, an appositive, or an
       introductory phrase -- rule 6's MAY at most. Measured over
-      d-morrison/ai-config's tracked Markdown (22,820 prose lines, already
+      Morrison-Lab/ai-config's tracked Markdown (22,820 prose lines, already
       conformant), keying on any mid-line ``, ; : --`` flags 50.5% of those
       lines, against 6.1% for the semicolon alone, and 0.7% once the length
       gate below applies. These are a re-measurement taken against the shipped
-      code; d-morrison/gha#336 records the original pass, whose figures differ
+      code; Morrison-Lab/gha#336 records the original pass, whose figures differ
       because the corpus grew and because the stripping above was widened
       after it was written.
     - A **colon** usually introduces a list or an example, which rule 7
@@ -320,7 +320,7 @@ def prose_line_numbers(text: str) -> Set[int]:
     """1-indexed lines eligible for a sentence-count check.
 
     Excludes frontmatter, fenced code, tables, headings, and horizontal
-    rules, and HTML comments. (Ported from d-morrison/ai-config's
+    rules, and HTML comments. (Ported from Morrison-Lab/ai-config's
     semantic-line-breaks.py, which also excludes ai-config's own
     ``@shared/foo.md``-style include directives -- not carried over here,
     since that convention has no equivalent in this repo's own consumers.)
