@@ -506,6 +506,48 @@ run_test "No longer needs more work" \
 This PR no longer needs more work." \
 "true" "ready-for-merge"
 
+# Test 57: No longer approved
+run_test "No longer approved" \
+"### Verdict
+
+This PR is no longer approved after the regression." \
+"false" "rejected"
+
+# Test 58: No longer ready for merge
+run_test "No longer ready for merge" \
+"### Verdict
+
+This is no longer ready for merge given the new failing test." \
+"false" "needs-more-work"
+
+# Test 59: No longer clean
+run_test "No longer clean" \
+"### Verdict
+
+This PR is no longer clean; a regression was introduced." \
+"false" "needs-more-work"
+
+# Test 60: Not quite ready to merge
+run_test "Not quite ready to merge" \
+"### Verdict
+
+Not quite ready to merge -- one issue remains." \
+"false" "needs-more-work"
+
+# Test 61: Not fully approved
+run_test "Not fully approved" \
+"### Verdict
+
+Not fully approved; see the note on line 20." \
+"false" "rejected"
+
+# Test 62: Not really clean
+run_test "Not really clean" \
+"### Verdict
+
+Not really clean given the leftover debug code." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

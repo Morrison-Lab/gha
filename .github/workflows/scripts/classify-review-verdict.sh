@@ -106,12 +106,16 @@ def expand_contractions(s):
         s = re.sub(pattern, replacement, s, flags=re.IGNORECASE)
     return s
 
+neg_prefix = r'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b(?:\s+\w+){0,3}\s*'
+positive_targets = r'(ready\s+(?:for|to)\s+merge|approved|clean|lgtm|ready)'
+negative_targets = r'(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)'
+
 negated_positive_phrases = re.compile(
-    r'\b(not|never|un-?|non-?)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(ready\s+(?:for|to)\s+merge|approved|clean|lgtm)\b|\b(not|never)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(ready)\b',
+    rf'{neg_prefix}{positive_targets}\b',
     re.IGNORECASE
 )
 negated_negative_phrases = re.compile(
-    r'\b(no|zero|0|without|not|never|no\s+longer)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)\b',
+    rf'{neg_prefix}{negative_targets}\b',
     re.IGNORECASE
 )
 non_clean_kw = re.compile(
