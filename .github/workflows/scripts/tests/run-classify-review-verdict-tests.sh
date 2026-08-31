@@ -548,6 +548,41 @@ run_test "Not really clean" \
 Not really clean given the leftover debug code." \
 "false" "needs-more-work"
 
+# Test 63: Comma parenthetical after negator (not, in my honest opinion, ready for merge)
+run_test "Comma parenthetical after negator (not, in my honest opinion, ready for merge)" \
+"### Verdict
+
+This is not, in my honest opinion, ready for merge." \
+"false" "needs-more-work"
+
+# Test 64: Comma parenthetical with long hedge (not, after a very careful and thorough review, approved)
+run_test "Comma parenthetical with long hedge (not, after a very careful and thorough review, approved)" \
+"### Verdict
+
+This PR is not, after a very careful and thorough review, approved." \
+"false" "rejected"
+
+# Test 65: No longer with comma parenthetical (no longer, in any sense, clean)
+run_test "No longer with comma parenthetical (no longer, in any sense, clean)" \
+"### Verdict
+
+Given the regression, this is no longer, in any sense, clean." \
+"false" "needs-more-work"
+
+# Test 66: Negator followed by however (not, however, ready for merge)
+run_test "Negator followed by however (not, however, ready for merge)" \
+"### Verdict
+
+This is not, however, ready for merge." \
+"false" "needs-more-work"
+
+# Test 67: 4-word gap without punctuation (not currently under any circumstances ready for merge)
+run_test "4-word gap without punctuation (not currently under any circumstances ready for merge)" \
+"### Verdict
+
+This is not currently under any circumstances ready for merge." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
