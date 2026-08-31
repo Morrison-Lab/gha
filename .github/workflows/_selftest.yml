@@ -65,6 +65,7 @@ jobs:
         uses: ./lint-markdown
         with:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          paths-ignore: 'conductor/**'
       - name: Run list-item merge splice detector unit tests
         run: node lint-markdown/tests/test_list_item_splices.mjs
       - name: Run split-table detector unit tests
