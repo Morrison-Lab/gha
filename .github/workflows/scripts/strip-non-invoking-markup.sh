@@ -71,9 +71,12 @@ function run_len(s, ch,   n) {
 }
 
 # Whether `bare` is a CommonMark thematic break: three or more of a single one
-# of `- * _`, with only spaces or tabs between. Written as a character count
-# rather than a regex because the POSIX ERE that awk uses has no backreference,
-# so a same-character-repeated pattern (a `\1` in PCRE) silently never matches.
+# of `- * _`, with only spaces or tabs between (CommonMark 0.31.2).
+# Its sibling in assemble-news.sh implements the candidate-filtered subset
+# in bash (where '_' never reaches it because '_' is not a list marker, gha#747).
+# Written as a character count rather than a regex because the POSIX ERE that
+# awk uses has no backreference, so a same-character-repeated pattern (a `\1`
+# in PCRE) silently never matches.
 function is_thematic_break(bare,   ch, i, c, n) {
   ch = substr(bare, 1, 1)
   if (ch != "-" && ch != "*" && ch != "_") return 0
