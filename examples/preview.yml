@@ -35,9 +35,11 @@ jobs:
     #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false
     #   install-package: true              # `R CMD INSTALL <path>` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
+    #   tinytex: false                     # install TinyTeX unconditionally (default: label-gated)
     #   submodules: recursive
     #   render-profile: website
     #   output-dir: docs                   # render to a dir other than _site
+    #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders

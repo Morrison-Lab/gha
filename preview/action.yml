@@ -39,6 +39,11 @@ inputs:
   setup-chrome:
     description: Install Chrome (needed by Quarto for revealjs / screenshot rendering).
     default: 'true'
+  tinytex:
+    description: >-
+      Install TinyTeX and enable PDF rendering. When false (default), TinyTeX
+      is installed and PDF is rendered only when the PR is labeled `preview:pdf`.
+    default: 'false'
   submodules:
     description: Passed to actions/checkout `submodules` (e.g. 'recursive', 'true', or 'false').
     default: 'recursive'
@@ -48,6 +53,13 @@ inputs:
   output-dir:
     description: Directory the rendered site is written to, relative to `path`. Defaults to `_site`.
     default: '_site'
+  formats:
+    description: >-
+      Space-separated list of formats to render (e.g. 'html docx pdf revealjs').
+      When empty (default), renders HTML plus any formats requested via PR labels
+      (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to 'default' to run
+      a single bare `quarto render` letting `_quarto.yml` decide formats.
+    default: ''
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
     default: 'false'
@@ -141,8 +153,8 @@ runs:
       with:
         # Install TinyTeX in the same setup only when a PDF render is requested;
         # composite actions can't vary `with:` conditionally, so gate it on the
-        # label expression rather than running a second setup step.
-        tinytex: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
+        # label expression or tinytex input rather than running a second setup step.
+        tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
 
     - name: Set up R
       if: github.event.action != 'closed'
@@ -196,7 +208,9 @@ runs:
       run: R CMD INSTALL "$PROJECT_PATH"
 
     - name: Install TinyTeX packages required for PDF rendering
-      if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:pdf')
+      if: >-
+        github.event.action != 'closed' &&
+        (inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf'))
       shell: bash
       run: |
         set -euo pipefail
@@ -229,41 +243,71 @@ runs:
       # OS while lifting the binding constraint (gha#262).
       run: echo "QUARTO_DENO_V8_OPTIONS=--max-old-space-size=12288,--max-heap-size=12288" >> "$GITHUB_ENV"
 
-    - name: Render pdf
-      if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:pdf')
-      shell: bash
-      env:
-        PROJECT_PATH: ${{ inputs.path }}
-        RENDER_PROFILE: ${{ inputs.render-profile }}
-        OUTPUT_DIR: ${{ inputs.output-dir }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to pdf --output-dir "$OUTPUT_DIR" 2>&1 | tee -a _quarto_preview_render.log
-
-    - name: Render docx
-      if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:docx')
-      shell: bash
-      env:
-        PROJECT_PATH: ${{ inputs.path }}
-        RENDER_PROFILE: ${{ inputs.render-profile }}
-        OUTPUT_DIR: ${{ inputs.output-dir }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to docx --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a _quarto_preview_render.log
-
-    - name: Render revealjs
-      if: github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview:revealjs')
-      shell: bash
-      env:
-        PROJECT_PATH: ${{ inputs.path }}
-        RENDER_PROFILE: ${{ inputs.render-profile }}
-        OUTPUT_DIR: ${{ inputs.output-dir }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to revealjs --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a _quarto_preview_render.log
-
-    - name: Render html
+    - name: Render Quarto site
       if: github.event.action != 'closed'
       shell: bash
       env:
         PROJECT_PATH: ${{ inputs.path }}
         RENDER_PROFILE: ${{ inputs.render-profile }}
         OUTPUT_DIR: ${{ inputs.output-dir }}
-      run: quarto render "$PROJECT_PATH" --profile "$RENDER_PROFILE" --to html --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a _quarto_preview_render.log
+        FORMATS: ${{ inputs.formats }}
+        TINYTEX: ${{ inputs.tinytex }}
+        HAS_LABEL_PDF: ${{ contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
+        HAS_LABEL_DOCX: ${{ contains(github.event.pull_request.labels.*.name, 'preview:docx') }}
+        HAS_LABEL_REVEALJS: ${{ contains(github.event.pull_request.labels.*.name, 'preview:revealjs') }}
+      run: |
+        set -euo pipefail
+        PROFILE_ARG=()
+        if [ -n "${RENDER_PROFILE:-}" ]; then
+          PROFILE_ARG=(--profile "$RENDER_PROFILE")
+        fi
+
+        LOG_FILE="_quarto_preview_render.log"
+        rm -f "$LOG_FILE"
+
+        if [ -z "${FORMATS:-}" ]; then
+          # Default legacy behavior: derive formats from labels and tinytex input
+          FORMAT_LIST=()
+          if [ "$TINYTEX" = "true" ] || [ "$HAS_LABEL_PDF" = "true" ]; then
+            FORMAT_LIST+=("pdf")
+          fi
+          if [ "$HAS_LABEL_DOCX" = "true" ]; then
+            FORMAT_LIST+=("docx")
+          fi
+          if [ "$HAS_LABEL_REVEALJS" = "true" ]; then
+            FORMAT_LIST+=("revealjs")
+          fi
+          FORMAT_LIST+=("html")
+
+          first=true
+          for fmt in "${FORMAT_LIST[@]}"; do
+            if [ "$first" = true ]; then
+              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
+              first=false
+            else
+              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+            fi
+          done
+        elif [ "$FORMATS" = "default" ]; then
+          # Bare render: let _quarto.yml decide
+          quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
+        else
+          # User-specified format list (first format clean, subsequent --no-clean)
+          FORMAT_LIST=()
+          for word in $FORMATS; do
+            FORMAT_LIST+=("$word")
+          done
+
+          first=true
+          for fmt in "${FORMAT_LIST[@]}"; do
+            if [ "$first" = true ]; then
+              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --to "$fmt" --output-dir "$OUTPUT_DIR" 2>&1 | tee "$LOG_FILE"
+              first=false
+            else
+              quarto render "$PROJECT_PATH" "${PROFILE_ARG[@]}" --to "$fmt" --no-clean --output-dir "$OUTPUT_DIR" 2>&1 | tee -a "$LOG_FILE"
+            fi
+          done
+        fi
 
     - name: Verify render warnings and forbidden log patterns
       if: github.event.action != 'closed'

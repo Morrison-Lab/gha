@@ -51,6 +51,10 @@ on:
         description: Install Chrome (needed by Quarto for revealjs / screenshot rendering).
         type: boolean
         default: true
+      tinytex:
+        description: Install TinyTeX (and PDF render dependencies) before rendering.
+        type: boolean
+        default: false
       submodules:
         description: Passed to actions/checkout `submodules` ('recursive', 'true', or 'false').
         type: string
@@ -63,6 +67,10 @@ on:
         description: Directory the rendered site is written to, relative to `path`. Defaults to `_site`.
         type: string
         default: '_site'
+      formats:
+        description: Space-separated list of formats to render (e.g. 'html docx pdf revealjs'), or 'default' for bare render.
+        type: string
+        default: ''
       fail-on-render-warning:
         description: Fail the build if Quarto emits any render warnings (WARN in the render log).
         type: boolean
@@ -158,9 +166,11 @@ jobs:
           r-packages: ${{ inputs.r-packages }}
           install-package: ${{ inputs.install-package }}
           setup-chrome: ${{ inputs.setup-chrome }}
+          tinytex: ${{ inputs.tinytex }}
           submodules: ${{ inputs.submodules }}
           render-profile: ${{ inputs.render-profile }}
           output-dir: ${{ inputs.output-dir }}
+          formats: ${{ inputs.formats }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           detect-changed-chapters: ${{ inputs.detect-changed-chapters }}

@@ -44,7 +44,7 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 DETECT_STEP = "Detect chapters changed since the published render"
 BANNER_STEP = "Add the changed-chapters banner to the preview home page"
-RENDER_STEP = "Render html"
+RENDER_STEP = "Render Quarto site"
 STAGE_STEP = "Stage site for upload"
 
 DETECT_STEP_ID = "changed-chapters"
