@@ -507,6 +507,10 @@ to bypass the Quarto freeze cache (ensure caller workflows subscribe to
 both `labeled` and `unlabeled` event types to react to label changes, and
 configure `extra-preview-labels` with a JSON array string to extend the
 label allowlist for custom triggers).
+Repos with bespoke build pipelines or custom post-render steps can maintain
+a local build workflow and still use `preview-deploy.yml` and
+`cleanup-pr-previews.yml` by producing the three-file `pr-preview-site` artifact
+(`site/`, `meta/pr-number.txt`, and `meta/action.txt`).
 
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 

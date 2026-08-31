@@ -16,6 +16,26 @@ code never holds write permissions. The deploy stub's
 | `pages-base-url` | string | `''` | Custom Pages base URL (e.g. `'org.github.io'` or a custom domain) to override automatic URL guessing by `pr-preview-action`. |
 | `pages-base-path` | string | `''` | Custom Pages base path prefix to override automatic path guessing by `pr-preview-action`. |
 
+## Partial adoption and artifact contract
+
+Repositories with custom build sequences (e.g. bespoke multi-stage rendering,
+custom post-render highlighting, or multi-step assets) do not need to use
+`preview.yml` or `preview/action.yml` to benefit from the deploy and cleanup machinery.
+They can run a custom build workflow that uploads the standard three-file
+`pr-preview-site` artifact, and hand off directly to `preview-deploy.yml`
+and `cleanup-pr-previews.yml`.
+
+The artifact named `pr-preview-site` must contain:
+
+- `site/` --- Directory containing the rendered HTML/site files to publish to `gh-pages`.
+- `meta/pr-number.txt` --- Text file containing the pull request number (e.g. `123`).
+- `meta/action.txt` --- Text file containing either `deploy` (to deploy or update the preview)
+  or `remove` (when the PR is closed).
+
+`preview-deploy.yml` downloads this artifact from the triggering `workflow_run`
+event, reads `meta/pr-number.txt` and `meta/action.txt`, and publishes `site/`
+to `gh-pages` in the base repository context without running untrusted code.
+
 ## Permissions
 
 Grant `contents: write` (push to `gh-pages`), `pull-requests: write` (post the
