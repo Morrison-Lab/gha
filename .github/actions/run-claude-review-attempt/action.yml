@@ -750,6 +750,7 @@ runs:
           {
             "schema_version": "1.0",
             "reviewer": "claude",
+            "commit_sha": "${{ inputs.pr-state != '' && '<sha>' || '' }}",
             "verdict": "CLEAN",
             "findings": []
           }
@@ -758,7 +759,8 @@ runs:
           Use "CLEAN" when there are no blocking findings or unresolved issues (Ready for merge),
           or "NOT_CLEAN" if there are any blocking findings, bugs, or required changes (Needs more work).
           When NOT_CLEAN, list each actionable finding in the `findings` array:
-          `{"title": "Finding summary", "severity": "BLOCKING" | "NON_BLOCKING", "path": "file/path.ext", "start_line": 12, "end_line": 20, "description": "Details..."}`.
+          `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "Description..."}`.
+          Write it FLUSH LEFT at column zero, not indented (four or more leading spaces turn it into an indented code block, which is ignored).
           Do NOT put code fences around this HTML comment or add any trailing text after `-->`.
 
           **Don't flag cosmetic source-only formatting that renders

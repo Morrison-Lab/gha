@@ -54,11 +54,14 @@ STRUCTURED_REVIEW_GUIDANCE = (
     "{\n"
     '  "schema_version": "1.0",\n'
     '  "reviewer": "antigravity",\n'
+    '  "commit_sha": "<sha>",\n'
     '  "verdict": "CLEAN",\n'
     '  "findings": []\n'
     "}\n"
     "-->\n"
-    'Use "CLEAN" when there are no blocking findings, or "NOT_CLEAN" with the list of finding objects if there are blocking issues. '
+    'Use "CLEAN" when there are no blocking findings, or "NOT_CLEAN" if there are blocking issues. '
+    'When NOT_CLEAN, list each actionable finding in `findings`: `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "..."}`. '
+    "Write it FLUSH LEFT at column zero, not indented (four or more leading spaces turn it into an indented code block, which is ignored). "
     "Do NOT place code fences around this HTML comment or add text after `-->`."
 )
 
