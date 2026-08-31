@@ -106,16 +106,19 @@ def expand_contractions(s):
         s = re.sub(pattern, replacement, s, flags=re.IGNORECASE)
     return s
 
-neg_prefix = r'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b(?:\s*[-,\(:;—–"\'«»“”‘’\[\]{}]\s*[^.!?\n]+?\s*[-,\):;—–"\'«»“”‘’\[\]{}]\s*|(?:\s+(?!(?:and|but|yet|whereas)\b)\w+)*\s*)'
-positive_targets = r'(ready\s+(?:for|to)\s+merge|approved|clean|lgtm|ready)'
-negative_targets = r'(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)'
+pos_neg_prefix = r'\b(not|never|un-?|non-?|no\s+longer|without)\b(?:(?!\b(?:but|whereas)\b)[^.!?\n])*?'
+noun_neg_prefix = r'\b(no|zero|0|without)\b(?:(?!\b(?:but|whereas)\b)[^.!?\n])*?'
+pred_neg_prefix = r'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b(?:(?!\b(?:but|whereas)\b)[^.!?\n])*?'
+positive_targets = r'(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
+noun_negative_targets = r'(findings|blocking\s+findings|blocking\s+issues|actionable\s+findings|blockers?)'
+pred_negative_targets = r'(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|blocked|impasse|deadlock|rejected|unapproved)'
 
 negated_positive_phrases = re.compile(
-    rf'{neg_prefix}{positive_targets}\b',
+    rf'{pos_neg_prefix}{positive_targets}\b',
     re.IGNORECASE
 )
 negated_negative_phrases = re.compile(
-    rf'{neg_prefix}{negative_targets}\b',
+    rf'(?:{noun_neg_prefix}{noun_negative_targets}|{pred_neg_prefix}{pred_negative_targets})\b',
     re.IGNORECASE
 )
 non_clean_kw = re.compile(
@@ -156,7 +159,7 @@ for line in content_lines:
         line_matches.append((m.start(), "true", "ready-for-merge"))
 
     for m in non_clean_kw.finditer(norm_line):
-        if any(start <= m.start() and m.end() <= end for start, end in neg_neg_spans):
+        if any(start <= m.start() < end for start, end in neg_neg_spans):
             continue
         text_matched = m.group(1).lower()
         slug = 'needs-more-work'
@@ -171,9 +174,9 @@ for line in content_lines:
         line_matches.append((m.start(), "false", slug))
 
     for m in clean_kw.finditer(norm_line):
-        if any(start <= m.start() and m.end() <= end for start, end in neg_pos_spans):
+        if any(start <= m.start() < end for start, end in neg_pos_spans):
             continue
-        if any(start <= m.start() and m.end() <= end for start, end in neg_neg_spans):
+        if any(start <= m.start() < end for start, end in neg_neg_spans):
             continue
         text_matched = m.group(0).lower()
         if text_matched == 'passed':

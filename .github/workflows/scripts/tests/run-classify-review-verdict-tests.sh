@@ -674,6 +674,34 @@ run_test "Quote delimiter (not \"in any sense\" ready for merge.)" \
 This is not \"in any sense\" ready for merge." \
 "false" "needs-more-work"
 
+# Test 81: Unmatched single comma (not, in my honest opinion ready for merge.)
+run_test "Unmatched single comma (not, in my honest opinion ready for merge.)" \
+"### Verdict
+
+This is not, in my honest opinion ready for merge." \
+"false" "needs-more-work"
+
+# Test 82: Unmatched single dash (not - in my honest opinion ready for merge.)
+run_test "Unmatched single dash (not - in my honest opinion ready for merge.)" \
+"### Verdict
+
+This is not - in my honest opinion ready for merge." \
+"false" "needs-more-work"
+
+# Test 83: Unmatched single colon (not: in my honest opinion ready for merge.)
+run_test "Unmatched single colon (not: in my honest opinion ready for merge.)" \
+"### Verdict
+
+This is not: in my honest opinion ready for merge." \
+"false" "needs-more-work"
+
+# Test 84: Unmatched single semicolon (not; in my honest opinion ready for merge.)
+run_test "Unmatched single semicolon (not; in my honest opinion ready for merge.)" \
+"### Verdict
+
+This is not; in my honest opinion ready for merge." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
