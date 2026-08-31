@@ -47,6 +47,21 @@ NOISE_GUIDANCE = (
     "API contract breaks, and performance regressions."
 )
 
+STRUCTURED_REVIEW_GUIDANCE = (
+    "\n\nAlways end your review with a `### Verdict` section (stating **Ready for merge** or **Needs more work**), "
+    "followed immediately by an HTML comment containing machine-readable review JSON data formatted as:\n"
+    "<!-- review-data:\n"
+    "{\n"
+    '  "schema_version": "1.0",\n'
+    '  "reviewer": "antigravity",\n'
+    '  "verdict": "CLEAN",\n'
+    '  "findings": []\n'
+    "}\n"
+    "-->\n"
+    'Use "CLEAN" when there are no blocking findings, or "NOT_CLEAN" with the list of finding objects if there are blocking issues. '
+    "Do NOT place code fences around this HTML comment or add text after `-->`."
+)
+
 MODE_PROMPTS = {
     "code-review": (
         "You are an expert AI code reviewer. Perform a comprehensive, single-pass review of the provided pull request diff. "
@@ -56,6 +71,7 @@ MODE_PROMPTS = {
         "Provide actionable, constructive feedback with clear code examples where applicable."
         + LOCATION_GUIDANCE
         + NOISE_GUIDANCE
+        + STRUCTURED_REVIEW_GUIDANCE
     ),
     "security-audit": (
         "You are a principal security engineer conducting a comprehensive security audit on the pull request diff. "
@@ -65,6 +81,7 @@ MODE_PROMPTS = {
         "Classify findings by severity (Critical, High, Medium, Low) and provide defensive remediation guidance."
         + LOCATION_GUIDANCE
         + NOISE_GUIDANCE
+        + STRUCTURED_REVIEW_GUIDANCE
     ),
     "test-generation": (
         "You are an automated test engineering agent. Analyze the pull request diff and existing codebase structure. "
