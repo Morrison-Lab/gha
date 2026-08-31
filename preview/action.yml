@@ -61,12 +61,6 @@ inputs:
       a single bare `quarto render` letting `_quarto.yml` decide formats (note:
       unlike `quarto-publish` where empty string defaults to bare render).
     default: ''
-  extra-preview-labels:
-    description: >-
-      Whitespace- or comma-separated list of additional PR label names that
-      trigger a preview re-render on add or remove, beyond the built-in set
-      ('clear freezer', 'preview:pdf', 'preview:docx', 'preview:revealjs').
-    default: ''
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
     default: 'false'

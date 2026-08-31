@@ -1,0 +1,1 @@
+- Add `extra-preview-labels` input to `preview` reusable workflow, allowing callers to extend the preview label allowlist with a JSON array string of additional label names (gha#759).

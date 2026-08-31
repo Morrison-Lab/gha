@@ -504,8 +504,9 @@ package list, renv on/off, `R CMD INSTALL .` on/off, Chrome, submodules, render
 profile). Label-gated extras are preserved: add `preview:pdf`, `preview:docx`,
 or `preview:revealjs` to a PR to render those formats too, and `clear freezer`
 to bypass the Quarto freeze cache (ensure caller workflows subscribe to
-both `labeled` and `unlabeled` event types, or configure `extra-preview-labels`
-for custom label triggers).
+both `labeled` and `unlabeled` event types to react to label changes, and
+configure `extra-preview-labels` with a JSON array string to extend the
+label allowlist for custom triggers).
 
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 

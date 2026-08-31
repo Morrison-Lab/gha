@@ -73,11 +73,11 @@ on:
         default: ''
       extra-preview-labels:
         description: >-
-          Whitespace- or comma-separated list of additional PR label names that
-          trigger a preview re-render on add or remove, beyond the built-in set
-          ('clear freezer', 'preview:pdf', 'preview:docx', 'preview:revealjs').
+          JSON array string of additional PR label names that trigger a preview
+          re-render on add or remove (e.g. '["preview:tracked-changes"]'), beyond
+          the built-in set ('clear freezer', 'preview:pdf', 'preview:docx', 'preview:revealjs').
         type: string
-        default: ''
+        default: '[]'
       fail-on-render-warning:
         description: Fail the build if Quarto emits any render warnings (WARN in the render log).
         type: boolean
@@ -141,7 +141,7 @@ jobs:
     if: >-
       (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
       contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
-      (inputs.extra-preview-labels != '' && contains(inputs.extra-preview-labels, github.event.label.name))
+      (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Cancel an in-progress preview build when a newer commit on the same ref
@@ -181,7 +181,6 @@ jobs:
           render-profile: ${{ inputs.render-profile }}
           output-dir: ${{ inputs.output-dir }}
           formats: ${{ inputs.formats }}
-          extra-preview-labels: ${{ inputs.extra-preview-labels }}
           fail-on-render-warning: ${{ inputs.fail-on-render-warning }}
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           detect-changed-chapters: ${{ inputs.detect-changed-chapters }}

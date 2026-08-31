@@ -40,7 +40,7 @@ jobs:
     #   render-profile: website
     #   output-dir: docs                   # render to a dir other than _site
     #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render
-    #   extra-preview-labels: 'preview:tracked-changes' # additional labels that trigger preview rebuilds
+    #   extra-preview-labels: '["preview:tracked-changes"]' # JSON array string of additional labels that trigger preview rebuilds
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders
