@@ -796,7 +796,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>formats</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Space-separated list of formats to render (e.g.&nbsp;<code>'html docx pdf revealjs'</code>). When empty (default), renders HTML plus any formats requested via PR labels (<code>preview:docx</code>, <code>preview:pdf</code>, <code>preview:revealjs</code>). Set to <code>'default'</code> to run a single bare <code>quarto render</code> letting <code>_quarto.yml</code> decide formats.</td>
+<td>Space-separated list of formats to render (e.g.&nbsp;<code>'html docx pdf revealjs'</code>). When empty (default), renders HTML plus any formats requested via PR labels (<code>preview:docx</code>, <code>preview:pdf</code>, <code>preview:revealjs</code>). Set to <code>'default'</code> to run a single bare <code>quarto render</code> letting <code>_quarto.yml</code> decide formats (unlike <code>quarto-publish</code> where empty string defaults to bare render).</td>
 </tr>
 <tr class="odd">
 <td><code>fail-on-render-warning</code></td>
