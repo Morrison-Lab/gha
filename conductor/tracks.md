@@ -1,2 +1,2 @@
 ---
-- [~] **Track: claude-code-review sidecar failure comment bug (#764)** *Link: [./tracks/fix-sidecar-heredoc_20260830/index.md](./tracks/fix-sidecar-heredoc_20260830/index.md)*
+- [x] **Track: claude-code-review sidecar failure comment bug (#764)** *Link: [./tracks/fix-sidecar-heredoc_20260830/index.md](./tracks/fix-sidecar-heredoc_20260830/index.md)*
