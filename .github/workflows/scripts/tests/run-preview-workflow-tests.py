@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Assert load-bearing contracts of the preview reusable workflow and composite action.
 
 Usage:

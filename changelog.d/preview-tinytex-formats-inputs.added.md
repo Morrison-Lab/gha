@@ -1,2 +1,2 @@
-﻿- Add `tinytex` and `formats` inputs to `preview` composite action and reusable workflow (gha#758).
+- Add `tinytex` and `formats` inputs to `preview` composite action and reusable workflow (gha#758).
 - Support unconditional TinyTeX installation and multi-format preview renders, including bare `quarto render` under `formats: 'default'`.
