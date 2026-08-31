@@ -611,6 +611,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.self_test:
         return run_self_test(args.workflow, args.example)
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    from workflow_discovery import is_workflows_restored
+
+    if is_workflows_restored(args.workflow.parent):
+        print(
+            "::notice::Skipping r-cmd-check workflow tests: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return 0
+
     return run_checks(args.workflow, args.example)
 
 

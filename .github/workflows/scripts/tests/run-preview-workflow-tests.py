@@ -286,6 +286,16 @@ def main() -> int:
     if args.self_test:
         return run_self_test()
 
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    from workflow_discovery import is_workflows_restored
+
+    if is_workflows_restored(DEFAULT_WORKFLOW.parent):
+        print(
+            "::notice::Skipping preview workflow tests: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return 0
+
     errors = check_preview()
     if errors:
         for err in errors:

@@ -30,7 +30,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 import audit_workflow_action_pins as pins  # noqa: E402
 import audit_workflow_token_usage as token  # noqa: E402
-from workflow_discovery import discover_workflows  # noqa: E402
+from workflow_discovery import discover_workflows, is_workflows_restored  # noqa: E402
 
 # Assembled rather than typed, so this fixture text cannot itself be mistaken
 # for a real expression by anything scanning this repo.
@@ -479,6 +479,31 @@ def main() -> int:
                 f"{name}: a missing workflows directory fails closed",
                 audit(module, root / f"{name}-absent") == 2,
             )
+
+        # Restored workflows directory skips audits cleanly (gha#598, gha#765)
+        restored = root / "restored-tree"
+        write(
+            restored,
+            "bad.yml",
+            f"name: bad\njobs:\n  run:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: unpinned/action@v1\n        with:\n          token: {EXPR} secrets.SUBMODULES_TOKEN }}\n",
+        )
+        write(restored, ".restored-from-default-branch", "")
+        check(
+            "is_workflows_restored detects .restored-from-default-branch marker",
+            is_workflows_restored(restored),
+        )
+        check(
+            "discover_workflows ignores hidden files",
+            [p.name for p in discover_workflows(restored)] == ["bad.yml"],
+        )
+        check(
+            "pins: skips restored workflows directory with exit 0",
+            audit(pins, restored) == 0,
+        )
+        check(
+            "token: skips restored workflows directory with exit 0",
+            audit(token, restored) == 0,
+        )
 
     if failures:
         print(f"::error::{failures} of {cases} workflow-audit case(s) failed", file=sys.stderr)

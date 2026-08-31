@@ -1,0 +1,1 @@
+- Drop `.restored-from-default-branch` marker on `.github/workflows/` restore so workflow-parsing test suites and audits skip cleanly in review checkouts instead of asserting against default-branch files (gha#765).

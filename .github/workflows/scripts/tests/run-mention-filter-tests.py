@@ -33,6 +33,10 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from workflow_discovery import is_workflows_restored  # noqa: E402
+
 FAILURES: list[str] = []
 
 DEFAULT_WORKFLOW = ".github/workflows/claude.yml"
@@ -165,6 +169,13 @@ def main() -> int:
     if not path.is_file():
         print(f"::error::{path}: no such file", file=sys.stderr)
         return 2
+
+    if is_workflows_restored(path.parent):
+        print(
+            "::notice::Skipping mention-filter tests: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return 0
 
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     jobs = doc["jobs"]

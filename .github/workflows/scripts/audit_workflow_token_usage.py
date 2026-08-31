@@ -41,6 +41,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from workflow_discovery import (  # noqa: E402
     Discovery,
     Unparsable,
+    is_workflows_restored,
     iter_job_inputs,
     iter_steps,
     load_workflow,
@@ -118,6 +119,13 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflows-dir", default=".github/workflows", type=pathlib.Path)
     args = parser.parse_args(argv)
+
+    if is_workflows_restored(args.workflows_dir):
+        print(
+            "::notice::Skipping audit-workflow-token-usage: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return 0
 
     try:
         files = require_workflows(args.workflows_dir)

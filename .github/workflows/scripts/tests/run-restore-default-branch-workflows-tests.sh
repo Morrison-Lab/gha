@@ -56,12 +56,14 @@ git -C "$repo" commit -q -m "pr workflows"
 
 if grep -q 'name: trusted' "$repo/.github/workflows/review.yml" \
   && [ ! -f "$repo/.github/workflows/pr-only.yml" ] \
+  && [ -f "$repo/.github/workflows/.restored-from-default-branch" ] \
   && grep -q 'echo trusted' "$repo/.github/workflows/scripts/helper.sh"; then
-  pass "restore overwrites modified files and deletes PR-only workflows"
+  pass "restore overwrites modified files, drops PR-only workflows, and sets marker"
 else
-  fail "restore did not replace the PR workflow tree"
+  fail "restore did not replace the PR workflow tree or drop marker"
   echo "  review.yml=$(cat "$repo/.github/workflows/review.yml" 2>/dev/null || echo missing)"
   echo "  pr-only exists=$([ -f "$repo/.github/workflows/pr-only.yml" ] && echo yes || echo no)"
+  echo "  marker exists=$([ -f "$repo/.github/workflows/.restored-from-default-branch" ] && echo yes || echo no)"
 fi
 
 # --- missing DEFAULT_BRANCH fails closed
