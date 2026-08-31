@@ -36,14 +36,23 @@ if [[ -z "$(tr -d '[:space:]' < "$REVIEW_FILE")" ]]; then
   exit 0
 fi
 
-# Extract the verdict section: from the LAST verdict header/label to EOF.
-# When a review cites prior rounds inline (e.g. "Verdict: Needs more work (prior round)"),
+# Extract the verdict section: from the LAST genuine verdict header to EOF.
+# When a review cites prior rounds inline or includes trailing remarks,
 # the actual verdict of the current round is declared under the final verdict heading.
+# Genuine verdict headers have one of three shapes:
+#   1. Markdown header (e.g. `### Verdict`, `## **Verdict**`)
+#   2. Label with colon or bold (e.g. `**Verdict:**`, `Verdict:`)
+#   3. Standalone line containing only the verdict label (e.g. `Verdict`)
+# Trailing sentences merely beginning with the word "Verdict" are ignored.
 verdict_section_file="$(mktemp)"
 trap 'rm -f "$verdict_section_file"' EXIT
 
 awk '
-  tolower($0) ~ /^[[:space:]>*_#-]*verdict/ { last_verdict = NR }
+  tolower($0) ~ /^[[:space:]]*#{1,6}[[:space:]]+(\*\*)?verdict/ ||
+  tolower($0) ~ /^[[:space:]>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)/ ||
+  tolower($0) ~ /^[[:space:]>*_#-]*verdict[:[:space:]*_-]*$/ {
+    last_verdict = NR
+  }
   { lines[NR] = $0 }
   END {
     if (last_verdict > 0) {

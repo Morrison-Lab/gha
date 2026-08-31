@@ -1701,7 +1701,7 @@ jobs:
         env:
           REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
         run: |
-          .github/workflows/scripts/classify-review-verdict.sh "$REVIEW_TEXT_FILE"
+          bash .github/workflows/scripts/classify-review-verdict.sh "$REVIEW_TEXT_FILE"
 
       - name: Post cost comment
         if: >-

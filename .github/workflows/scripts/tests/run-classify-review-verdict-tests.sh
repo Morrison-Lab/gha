@@ -240,6 +240,28 @@ A new commit introduced a regression at line 88.
 **Needs more work** — regression on line 88." \
 "false" "needs-more-work"
 
+# Test 23: Trailing sentence starting with Verdict after real verdict section
+run_test "Trailing prose starting with Verdict after real verdict section" \
+"## Code review
+
+### Verdict
+
+**Ready for merge** — no blocking findings.
+
+Verdict stability across reruns was also checked and confirmed consistent." \
+"true" "ready-for-merge"
+
+# Test 24: Trailing commit SHA line after real verdict section
+run_test "Trailing Reviewed commit line after real verdict section" \
+"## Code review
+
+### Verdict
+
+**Ready for merge** — all checks pass.
+
+Reviewed commit: 1234567890abcdef" \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
