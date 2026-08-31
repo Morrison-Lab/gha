@@ -1,6 +1,6 @@
 # Implementation Plan: claude-code-review sidecar failure comment bug (#764)
 
-## Phase 1: Fix Heredoc Termination in Sidecar
+## Phase 1: Fix Heredoc Termination in Sidecar [checkpoint: a69f84c]
 
 - [x] Task: Write failing test (Red Phase) [bb938ad]
   - [x] Identify how the sidecar script is tested in this repository.
@@ -9,4 +9,4 @@
   - [x] Modify the sidecar script to append an explicit trailing newline when writing to `$GITHUB_OUTPUT`.
 - [x] Task: Refactor and verify coverage [c84d2ff]
   - [x] Ensure all existing tests pass and code quality is maintained.
-- [~] Task: Phase Verification & Checkpoint (Refer to workflow.md)
+- [x] Task: Phase Verification & Checkpoint (Refer to workflow.md)
