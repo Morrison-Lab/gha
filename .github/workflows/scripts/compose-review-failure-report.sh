@@ -264,7 +264,7 @@ elif [[ -n "$DENIED_TOOLS" ]]; then
     "$denied_fence" "$DENIED_TOOLS" "$denied_fence"
 elif [[ "$DENIALS" == "0" ]]; then
   printf '**Denied tools:** none. The reviewer was not blocked by tool permissions, so the cause lies elsewhere.\n\n'
-elif [[ -n "$denials_phrase" ]]; then
+elif [[ -n "$denials_phrase" && "$DENIALS" != "999999" ]]; then
   printf '**Denied tools:** %s, names unavailable.\n\n' "$denials_phrase"
 else
   printf '**Denied tools:** not recorded. This run produced no usable denial data, so nothing can be concluded either way about tool permissions.\n\n'

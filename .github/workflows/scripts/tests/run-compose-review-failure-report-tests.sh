@@ -156,6 +156,13 @@ check_not_contains "absent denial data does not claim none" '**Denied tools:** n
 out="$(run_compose high-denial 999999 'unknown -- the denial count itself could not be parsed' 5)"
 check_not_contains "sentinel is never printed as a count" '999999 denied tool calls' "$out"
 
+# If DENIED_TOOLS is empty with the 999999 sentinel (e.g. lost sidecar),
+# the report must fall through to 'not recorded' rather than claiming
+# an unknown quantity of denials occurred (gha#764).
+out="$(run_compose high-denial 999999 '' 5)"
+check_contains "sentinel with empty names falls through to not recorded" '**Denied tools:** not recorded.' "$out"
+check_not_contains "sentinel with empty names does not claim names unavailable" 'names unavailable' "$out"
+
 # --- the threshold is quoted only when it is known --------------------------
 # Restating the guard's default here would print a threshold nobody compared
 # against whenever STUB_RETRY_MAX_DENIALS was overridden and the value failed

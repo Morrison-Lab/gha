@@ -619,13 +619,17 @@ which is why the capabilities above moved to `@v2`.
   value to `unknown`, which is why `kind=` is echoed back rather than dropped:
   the caller reports the kind actually used, so a normalization is visible
   instead of silent.
-  **The denied-tool line is three-valued, not two.**
-  Names known, a real zero, and no denial data at all are different facts, and
-  only the middle one licenses the sentence a reader will act on.
+  **The denied-tool line is four-valued, not two.**
+  Names known, a real zero, a known count with unavailable names, and no denial
+  data at all are different facts, and each licenses a different statement.
   A short-circuited run exits before the guard ever counts denials, so the
   count arrives empty there -- rendering that as "none" would assert the
   reviewer was not blocked by permissions on a run where nothing about
   permissions is known, and would send a triager to the wrong place.
+  When a non-zero count is known but tool names are unavailable (such as a scalar
+  count without array or a lost sidecar), reporting "not recorded" would falsely
+  claim no denial data was produced; the true statement is that the count is
+  known with names unavailable (gha#764).
   This is the same distinction `check-review-execution.sh` draws with its own
   `denials_known` flag.
   **The threshold is passed through, never restated.**
@@ -2313,8 +2317,8 @@ fails on every wording change while catching nothing, so the table asserts two
 things only: the four-part output contract by fixed line offset (the same
 reasoning `run-classify-push-failure-tests.sh` gives for its own), and the
 claims a reader would act on -- which kind was chosen, and whether the
-denied-tool line says names, none, or not recorded.
-The denied-tools trio is the group to keep if the suite is ever trimmed, and
+denied-tool line says names, none, count with unavailable names, or not recorded.
+The four-case denied-tools group is the part to keep if the suite is ever trimmed, and
 its middle case is the trap: an empty denial count must not render as "none",
 since that asserts something about permissions on a run that never measured
 them.

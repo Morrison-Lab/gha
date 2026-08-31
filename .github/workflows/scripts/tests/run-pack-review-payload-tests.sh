@@ -53,6 +53,7 @@ check "happy: review sidecar is verbatim" "$(cat "$review")" "$(cat "$dir/review
 # without packing the field it reads turns this red once the test is updated
 # to expect the new key -- and so deleting a key the posting job already
 # reads turns it red now.
+# tr -d '\r' strips carriage returns for test portability on Windows environments.
 keys="$(jq -r 'keys[]' "$dir/payload.json" | tr -d '\r' | sort | tr '\n' ',')"
 check "happy: key set" \
   "attempts,caller_wf_path,cancelled,denials,event_name,failure_kind,head_sha,max_denials,pr_number,quota_exhausted,repo,report_cost,resolve_outcome,review_present,run_id,run_url,schema_version,self_mod,skip_notice_posted,total_cost_usd,track_progress,wf_path," \
