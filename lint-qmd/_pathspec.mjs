@@ -62,5 +62,6 @@ export function compileIgnores(patterns) {
 }
 
 export function isIgnored(path, ignores) {
-  return ignores.some((re) => re.test(path));
+  const norm = path.replace(/\\/g, '/');
+  return ignores.some((re) => re.test(norm));
 }

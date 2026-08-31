@@ -1397,6 +1397,45 @@ Read that as the general shape: when a test's stated rationale is about a
 downstream tool's verdict, measure that verdict under both answers rather
 than asserting the resolution alone (gha#741 review).
 
+`lint-markdown/check_list_item_splices.mjs` (tested by
+`node lint-markdown/tests/test_list_item_splices.mjs`) flags list-item merge
+splices: a list item spliced directly onto a previous item's continuation line
+with no intervening blank line (gha#324).
+CI runs it as part of the `lint-markdown` composite action and job in
+`_selftest.yml`.
+
+**Its commonest trigger is an ordinary wrapped bullet list.**
+The condition flags a list item whose immediately-preceding line is non-blank
+and is not itself a list item, heading, blockquote, table row, or thematic break.
+The continuation line of a previous wrapped bullet satisfies that non-blank
+preceding-line condition.
+So a wrapped bullet followed immediately by the next bullet --- without a blank
+line between them --- is flagged as a splice.
+The repo's house style requires multi-line wrapped list items to be separated
+from adjacent items by an intervening blank line.
+The check is diff-scoped via `LIST_ITEM_SPLICE_BASE_REF` on PRs (set to `all`
+for a full scan, or skipped with a warning when empty).
+Negative controls in `test_list_item_splices.mjs` verify that wrapped bullets
+separated by blank lines pass cleanly, and that fenced code blocks
+(` ``` `, `~~~`), table rows, headings, blockquotes, and thematic breaks are
+exempt from triggering splice errors.
+
+`lint-markdown/check_table_splits.mjs` (tested by
+`node lint-markdown/tests/test_table_splits.mjs`) flags split GFM tables
+(gha#558).
+A GFM table whose body rows are split across a blank line without repeating the
+delimiter row (`|---|---|`) or a table with a blank line between the header row
+and delimiter row loses its tabular rendering in GitHub Flavored Markdown.
+The check detects orphaned table rows and split table headers across tracked
+Markdown files, with negative controls asserting that standalone tables with
+delimiter rows, single pipes in prose/code spans, and fenced code blocks pass
+cleanly.
+
+`lint-markdown/tests/test_pathspec.mjs` tests `lint-markdown/_pathspec.mjs`
+(and its shared pattern mirrored across `lint-qmd` and `lint-yaml`), asserting
+correct ignore compilation, list splitting, and cross-platform path matching
+for both POSIX and Windows backslash paths.
+
 `.github/workflows/scripts/tests/run-check-diff-scoped-tests.sh` covers
 `check-diff-scoped.sh`, the contributor-facing wrapper that runs this repo's
 diff-scoped checks over committed content (gha#740).

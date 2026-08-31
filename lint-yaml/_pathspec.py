@@ -70,4 +70,5 @@ def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
 
 
 def is_ignored(path: str, ignores: List["re.Pattern[str]"]) -> bool:
-    return any(pat.match(path) for pat in ignores)
+    norm = path.replace("\\", "/")
+    return any(pat.match(norm) for pat in ignores)

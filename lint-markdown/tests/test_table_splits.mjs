@@ -114,6 +114,17 @@ More prose.
   res = run(lone);
   assert.strictEqual(res.failed, false, 'A lone pipe-prefixed line must not be flagged');
 
+  // 5b. Negative control: pipe inside inline code span in prose.
+  const inlinePipe = fixture('inline-pipe.md', `# Fixture
+
+Prose with inline code span containing pipe \`echo foo | grep bar\` here.
+
+More prose with \`a | b | c\` spans.
+`);
+
+  res = run(inlinePipe);
+  assert.strictEqual(res.failed, false, 'Inline code spans containing pipes must not be flagged');
+
   // 6. Negative control: four-space-indented pipe lines are an indented code
   //    block, not a table, so a blank line between them is not a split.
   const indented = fixture('indented.md', `# Fixture

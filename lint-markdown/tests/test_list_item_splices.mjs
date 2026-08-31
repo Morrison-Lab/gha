@@ -53,7 +53,7 @@ try {
   const cleanContent = `# Clean Fixture
 
 ## Features
-
+* Item directly after heading
 * Tight item 1
 * Tight item 2
 * Tight item 3
@@ -67,6 +67,14 @@ try {
 # Code block
 * Fake item in code block
 \`\`\`
+
+~~~bash
+# Tilde code block
+* Fake item in tilde code block
+~~~
+
+> Blockquote
+* Item directly after blockquote
 
 | Table |
 | --- |
