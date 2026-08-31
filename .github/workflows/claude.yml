@@ -124,6 +124,13 @@ on:
         description: Workflow file (in the caller repo) dispatched to review Claude's commits.
         type: string
         default: 'claude-code-review.yml'
+      dispatch-review-on-agent-push:
+        description: >-
+          Whether to automatically dispatch a code review when Claude pushes commits
+          to a PR or creates a PR for an issue trigger. Set to false to require an
+          explicit '@claude review' comment instead.
+        type: boolean
+        default: true
       mark-ready-for-review:
         description: >-
           When Claude finishes successfully with committed code, take its draft
@@ -1300,6 +1307,7 @@ jobs:
       - name: Dispatch code review after Claude pushed commits
         if: >-
           always() &&
+          inputs.dispatch-review-on-agent-push &&
           steps.gate.outputs.skip != 'true' &&
           (github.event.pull_request.number || github.event.issue.pull_request) &&
           steps.head_before.outputs.sha != '' &&
@@ -1476,6 +1484,7 @@ jobs:
           ISSUE_TITLE: ${{ github.event.issue.title }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           REVIEW_WF: ${{ inputs.review-workflow-file }}
+          DISPATCH_REVIEW_ON_AGENT_PUSH: ${{ inputs.dispatch-review-on-agent-push }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           COST_USD: ${{ steps.cost.outputs.cost }}
@@ -1506,31 +1515,34 @@ jobs:
           # group dedupes a redundant dispatch). --ref: see the comment on the
           # earlier dispatch steps above (#285). Omit --ref when the PR edits
           # top-level workflow YAML so GitHub executes the default-branch
-          # caller (gha#598).
-          PR_NUM="${PR_URL##*/}"
-          REVIEW_REF_ARGS=(--ref "$BRANCH")
-          # GET .../files is capped at 3000 files (GitHub REST "List pull
-          # requests files", read 2026-08-26). Keep in sync with
-          # list-pr-changed-files.sh.
-          changed=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq '.changed_files') || changed=""
-          listed=0
-          if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files?per_page=100" --paginate --jq '.[].filename'); then
-            echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
-            REVIEW_REF_ARGS=()
-          else
-            if [ -n "$files" ]; then
-              listed=$(printf '%s\n' "$files" | grep -c . || true)
-            fi
-            if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
+          # caller (gha#598). Gated on dispatch-review-on-agent-push so a
+          # consumer that runs review on explicit request only can opt out (gha#778).
+          if [ "$DISPATCH_REVIEW_ON_AGENT_PUSH" = "true" ]; then
+            PR_NUM="${PR_URL##*/}"
+            REVIEW_REF_ARGS=(--ref "$BRANCH")
+            # GET .../files is capped at 3000 files (GitHub REST "List pull
+            # requests files", read 2026-08-26). Keep in sync with
+            # list-pr-changed-files.sh.
+            changed=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq '.changed_files') || changed=""
+            listed=0
+            if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files?per_page=100" --paginate --jq '.[].filename'); then
               echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
               REVIEW_REF_ARGS=()
-            elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
-              echo "::notice::PR #$PR_NUM edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
-              REVIEW_REF_ARGS=()
+            else
+              if [ -n "$files" ]; then
+                listed=$(printf '%s\n' "$files" | grep -c . || true)
+              fi
+              if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
+                echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
+                REVIEW_REF_ARGS=()
+              elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+                echo "::notice::PR #$PR_NUM edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
+                REVIEW_REF_ARGS=()
+              fi
             fi
+            gh workflow run "$REVIEW_WF" "${REVIEW_REF_ARGS[@]}" -f pr_number="$PR_NUM" \
+              || echo "::warning::Could not dispatch $REVIEW_WF."
           fi
-          gh workflow run "$REVIEW_WF" "${REVIEW_REF_ARGS[@]}" -f pr_number="$PR_NUM" \
-            || echo "::warning::Could not dispatch $REVIEW_WF."
           # Claude finished successfully with committed code: take the draft PR
           # out of draft so a human knows it's ready to review. Gated on Claude's
           # outcome because this step runs on always() to preserve partial work —

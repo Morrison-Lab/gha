@@ -90,6 +90,7 @@ jobs:
     #   eager-pr: true              # open the draft PR up front (Copilot-style)
     #   mark-ready-for-review: false # keep Claude's PRs as drafts
     #   reviewer: d-morrison        # re-requested when Claude pushes to a PR
+    #   dispatch-review-on-agent-push: false # require explicit '@claude review' (default true)
     #   report-cost: false          # suppress the dollar-cost comment (default true)
     #   trusted-bot-logins: '["cursor[bot]"]'  # admit App bots the caller if: also allows
     #   dispatch-on-assignee: '["claude"]'     # assigning an issue dispatches a run, no mention needed
