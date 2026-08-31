@@ -40,7 +40,8 @@ turn it off for a pure-markdown site.
 
 ## Outputs
 
-Set only when `detect-changed-chapters`, `changed-chapters-banner`, or `highlight-changes` is on.
+Set only when `detect-changed-chapters`,
+`changed-chapters-banner`, or `highlight-changes` is on.
 
 | Output | Description |
 |---|---|
