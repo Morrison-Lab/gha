@@ -716,6 +716,27 @@ run_test "Delimited hedge containing whereas" \
 This PR is not, whereas prior PRs were, approved." \
 "false" "rejected"
 
+# Test 87: Not yet ready for merge
+run_test "Not yet ready for merge" \
+"### Verdict
+
+This is not yet ready for merge." \
+"false" "needs-more-work"
+
+# Test 88: Not yet approved
+run_test "Not yet approved" \
+"### Verdict
+
+This is not yet approved." \
+"false" "rejected"
+
+# Test 89: Not yet clean
+run_test "Not yet clean" \
+"### Verdict
+
+This is not yet clean." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
