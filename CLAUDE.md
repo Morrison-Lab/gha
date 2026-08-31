@@ -112,6 +112,8 @@ which is why the capabilities above moved to `@v2`.
 
 ### Layout
 
+- `conductor/` -- A pure-documentation top-level directory holding the Morrison-Lab "Conductor" orchestration tool scaffold (internal tooling for AI-agent workflow management). It contains no reusable workflows or composite actions; it is a repository of markdown templates (`workflow.md`, `plan.md`, `product.md`) used by agents operating in this repository to track complex implementation tracks. Note that `conductor/archive/*/plan.md` files hold historical tracking data for completed tracks, and their cited commit SHAs may reflect divergence from `main` due to out-of-band delivery.
+
 - Per-capability composite-action directories at the repo root, each with an
   `action.yml` and, for R/Python capabilities, a language-specific helper
   script -- e.g. `check-bibliography-dois/` (R), `check-extra/` (R), `check-non-standard-chars/`,

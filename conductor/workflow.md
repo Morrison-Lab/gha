@@ -5,8 +5,10 @@
 1. **The Plan is the Source of Truth:** All work must be tracked in `plan.md`
 2. **The Tech Stack is Deliberate:** Changes to the tech stack must be
     documented in `tech-stack.md` *before* implementation
+
 3. **Test-Driven Development:** Write unit tests before implementing
     functionality
+
 4. **High Code Coverage:** Aim for >80% code coverage for all modules
 5. **User Experience First:** Every decision should prioritize user experience
 6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands.
@@ -29,6 +31,7 @@ All tasks follow a strict lifecycle:
     - Create a new test file for the feature or bug fix.
     - Write one or more unit tests that clearly define the expected behavior
         and acceptance criteria for the task.
+
     - **CRITICAL:** Run the tests and confirm that they fail as expected.
     - This
         is the "Red" phase of TDD.
@@ -38,6 +41,7 @@ All tasks follow a strict lifecycle:
 
     - Write the minimum amount of application code necessary to make the
         failing tests pass.
+
     - Run the test suite again and confirm that all tests now pass.
     - This is
         the "Green" phase.
@@ -47,50 +51,55 @@ All tasks follow a strict lifecycle:
     - With the safety of passing tests, refactor the implementation code and
         the test code to improve clarity, remove duplication, and enhance
         performance without changing the external behavior.
+
     - Rerun tests to ensure they still pass after refactoring.
 
-6.
-7.
-8. **Verify Coverage:** Run coverage reports using the project's chosen tools.
-    For example, in a Python project, this might look like: `bash pytest
-    --cov=app --cov-report=html` Target: >80% coverage for new code.
-    The
-    specific tools and commands will vary by language and framework.
+6. **Verify Coverage:** Run coverage reports using the project's chosen tools.
+    For example, in a Python project, this might look like:
+    ```bash
+    pytest --cov=app --cov-report=html
+    ```
+    Target: >80% coverage for new code.
+    The specific tools and commands will vary by language and framework.
 
-9. **Document Deviations:** If implementation differs from tech stack:
+7. **Document Deviations:** If implementation differs from tech stack:
 
     - **STOP** implementation
     - Update `tech-stack.md` with new design
     - Add dated note explaining the change
     - Resume implementation
 
-10. **Commit Code Changes:**
+8. **Commit Code Changes:**
 
     - Stage all code changes related to the task.
     - Propose a clear, concise commit message e.g, `feat(ui): Create basic
         HTML structure for calculator`.
+
     - Perform the commit.
 
-11. **Attach Task Summary with Git Notes:**
+9. **Attach Task Summary with Git Notes:**
 
     - **Step 9.1: Get Commit Hash:** Obtain the hash of the *just-completed
         commit* (`git log -1 --format="%H"`).
+
     - **Step 9.2: Draft Note Content:** Create a detailed summary for the
         completed task.
         This should include the task name, a summary of changes,
         a list of all created/modified files, and the core "why" for the change.
+
     - **Step 9.3: Attach Note:** Use the `git notes` command to attach the
         summary to the commit.
-        `bash # The note content from the previous step
-        is passed via the -m flag.
-        git notes add -m "<note content>"
-        <commit_hash>`
+        ```bash
+        # The note content from the previous step is passed via the -m flag.
+        git notes add -m "<note content>" <commit_hash>
+        ```
 
-12. **Get and Record Task Commit SHA:**
+10. **Get and Record Task Commit SHA:**
 
     - **Step 10.1: Update Plan:** Read `plan.md`, find the line for the
         completed task, update its status from `[~]` to `[x]`, and append the
         first 7 characters of the *just-completed commit's* commit hash.
+
     - **Step 10.2: Write Plan:** Write the updated content back to `plan.md`.
 
 13. **Commit Plan Update:**
@@ -118,6 +127,7 @@ When an implemented task or phase requires corrections, amendments, or additions
 1. **In-Flight Refinements:** If minor gaps are found while a task is actively
     in-progress (`[~]`), make the adjustments directly in the active
     implementation stream and ensure passing tests before committing.
+
 2. **Code Review Corrections (`conductor-review`):** If issues are identified
     during or after a code review, instruct the agent to review your changes
     (e.g., *"run a review"* or triggering the action manually in compatible
@@ -125,6 +135,7 @@ When an implemented task or phase requires corrections, amendments, or additions
     The review agent will automatically append a `Review Fixes` phase
     to `plan.md` so that correction tasks are formally tracked and
     checkpointed.
+
 3. **Logical State Reversions (`conductor-revert`):** If a task implementation
     is fundamentally flawed or needs to be redone, instruct the agent to revert
     the changes (e.g., *"revert the last task"* or triggering the action
@@ -175,9 +186,11 @@ that also concludes a phase in `plan.md`.
 
     - Before execution, you **must** announce the exact shell command you will
         use to run the tests.
+
     - **Example Announcement:** "I will now run the automated test suite to
         verify the phase.
         **Command:** `CI=true npm test`"
+
     - Execute the announced command.
     - If tests fail, you **must** inform the user and begin debugging.
     - You may
@@ -191,39 +204,43 @@ that also concludes a phase in `plan.md`.
     - **CRITICAL:** To generate the plan, first analyze `product.md`,
         `product-guidelines.md`, and `plan.md` to determine the user-facing
         goals of the completed phase.
+
     - You **must** generate a step-by-step plan that walks the user through
         the verification process, including any necessary commands and specific,
         expected outcomes.
+
     - The plan you present to the user **must** follow this format:
 
-        **For a Frontend Change:** ``` The automated tests have passed.
-        For
-        manual verification, please follow these steps:
-
-        **Manual Verification Steps:** 1.
-        **Start the development server with
-        the command:** `npm run dev` 2.
-        **Open your browser to:**
-        `http://localhost:3000` 3.
-        **Confirm that you see:** The new user
-        profile page, with the user's name and email displayed correctly.
+        **For a Frontend Change:**
 
         ```text
+        The automated tests have passed.
+        For manual verification, please follow these steps:
 
-        **For a Backend Change:** ``` The automated tests have passed.
-        For
-        manual verification, please follow these steps:
+        **Manual Verification Steps:**
+        1. **Start the development server with the command:** `npm run dev`
+        2. **Open your browser to:** `http://localhost:3000`
+        3. **Confirm that you see:** The new user profile page, with the user's name and email displayed correctly.
+        ```
 
-        **Manual Verification Steps:** 1. **Ensure the server is running.** 2.
-        **Execute the following command in your terminal:** `curl -X POST
-        http://localhost:8080/api/v1/users -d '{"name": "test"}'` 3. **Confirm
-        that you receive:** A JSON response with a status of `201 Created`. ```
+        **For a Backend Change:**
+
+        ```text
+        The automated tests have passed.
+        For manual verification, please follow these steps:
+
+        **Manual Verification Steps:**
+        1. **Ensure the server is running.**
+        2. **Execute the following command in your terminal:** `curl -X POST http://localhost:8080/api/v1/users -d '{"name": "test"}'`
+        3. **Confirm that you receive:** A JSON response with a status of `201 Created`.
+        ```
 
 5. **Await Explicit User Feedback:**
 
     - After presenting the detailed plan, ask the user for confirmation:
         "**Does this meet your expectations? Please confirm with yes or provide
         feedback on what needs to be changed.**"
+
     - **PAUSE** and await the user's response. Do not proceed without an
         explicit yes or confirmation.
 
@@ -237,15 +254,18 @@ that also concludes a phase in `plan.md`.
     - **Step 7.1: Draft Note Content:** Create a detailed verification report
         including the automated test command, the manual verification steps, and
         the user's confirmation.
+
     - **Step 7.2: Attach Note:** Use the `git notes` command to attach the full report to the target commit identified in step 6.
 
 8. **Get and Record Phase Checkpoint SHA:**
 
     - **Step 8.1: Get Commit Hash:** Obtain the hash of the *just-created
         checkpoint commit* (`git log -1 --format="%H"`).
+
     - **Step 8.2: Update Plan:** Read `plan.md`, find the heading for the
         completed phase, and append the first 7 characters of the commit hash in
         the format `[checkpoint: <sha>]`.
+
     - **Step 8.3: Write Plan:** Write the updated content back to `plan.md`.
 
 9. **Commit Plan Update:**
@@ -266,11 +286,14 @@ Before marking any task complete, verify:
 - [ ] Code coverage meets requirements (>80%)
 - [ ] Code follows project's code style guidelines (as defined in
     `code_styleguides/`)
+
 - [ ] All public functions/methods are documented (e.g., docstrings, JSDoc,
     GoDoc)
+
 - [ ] Type safety is enforced (e.g., type hints, TypeScript types, Go types)
 - [ ] No linting or static analysis errors (using the project's configured
     tools)
+
 - [ ] Works correctly on mobile (if applicable)
 - [ ] Documentation updated if needed
 - [ ] No security vulnerabilities introduced
@@ -311,6 +334,7 @@ language, framework, and build tools.**
 - Every module must have corresponding tests.
 - Use appropriate test setup/teardown mechanisms (e.g., fixtures,
     beforeEach/afterEach).
+
 - Mock external dependencies.
 - Test both success and failure cases.
 
