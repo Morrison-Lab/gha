@@ -78,6 +78,10 @@ if not content_lines:
 if not content_lines:
     record("false", "no-verdict")
 
+def strip_emphasis(s):
+    # Strip markdown bold, italic, strikethrough, code ticks so inline styling around words is normalized
+    return re.sub(r'[*_~`]+', ' ', s)
+
 def expand_contractions(s):
     contractions = [
         (r"\bisn['’]?t\b", "is not"),
@@ -107,7 +111,7 @@ negated_positive_phrases = re.compile(
     re.IGNORECASE
 )
 negated_negative_phrases = re.compile(
-    r'\b(no|zero|0|without|not|never)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)\b',
+    r'\b(no|zero|0|without|not|never|no\s+longer)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)\b',
     re.IGNORECASE
 )
 non_clean_kw = re.compile(
@@ -130,7 +134,7 @@ for line in content_lines:
     if footer_regex.search(line):
         continue
 
-    norm_line = expand_contractions(line)
+    norm_line = expand_contractions(strip_emphasis(line))
     neg_pos_spans = []
     neg_neg_spans = []
     line_matches = []

@@ -464,6 +464,48 @@ run_test "Contraction isn't blocked" \
 This isn't blocked, ready for merge." \
 "true" "ready-for-merge"
 
+# Test 51: Bold emphasis wrapped around negation word (not ready for merge)
+run_test "Bold emphasis wrapped around negation word" \
+"### Verdict
+
+This is **not** ready for merge." \
+"false" "needs-more-work"
+
+# Test 52: Italic emphasis wrapped around negation word (not approved)
+run_test "Italic emphasis wrapped around negation word" \
+"### Verdict
+
+*not* approved" \
+"false" "rejected"
+
+# Test 53: Underscore emphasis wrapped around negation word (not clean)
+run_test "Underscore emphasis wrapped around negation word" \
+"### Verdict
+
+_not_ clean" \
+"false" "needs-more-work"
+
+# Test 54: Double underscore emphasis around never approved
+run_test "Double underscore emphasis around never approved" \
+"### Verdict
+
+__never__ approved" \
+"false" "rejected"
+
+# Test 55: No longer blocked
+run_test "No longer blocked" \
+"### Verdict
+
+No longer blocked." \
+"true" "ready-for-merge"
+
+# Test 56: No longer needs more work
+run_test "No longer needs more work" \
+"### Verdict
+
+This PR no longer needs more work." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
