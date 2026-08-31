@@ -56,9 +56,11 @@ All tasks follow a strict lifecycle:
 
 6. **Verify Coverage:** Run coverage reports using the project's chosen tools.
     For example, in a Python project, this might look like:
+
     ```bash
     pytest --cov=app --cov-report=html
     ```
+
     Target: >80% coverage for new code.
     The specific tools and commands will vary by language and framework.
 
@@ -89,6 +91,7 @@ All tasks follow a strict lifecycle:
 
     - **Step 9.3: Attach Note:** Use the `git notes` command to attach the
         summary to the commit.
+
         ```bash
         # The note content from the previous step is passed via the -m flag.
         git notes add -m "<note content>" <commit_hash>
@@ -102,7 +105,7 @@ All tasks follow a strict lifecycle:
 
     - **Step 10.2: Write Plan:** Write the updated content back to `plan.md`.
 
-13. **Commit Plan Update:**
+11. **Commit Plan Update:**
 
     - **Action:** Stage the modified `plan.md` file.
     - **Action:** Commit this change with a descriptive message (e.g.,
