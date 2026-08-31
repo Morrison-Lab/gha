@@ -97,6 +97,12 @@ on:
         description: Add a banner to the preview home page naming the chapters that differ from the published render.
         type: boolean
         default: false
+      highlight-changes:
+        description: >-
+          Highlight added and modified text in the rendered HTML chapters that
+          differ from the published render.
+        type: boolean
+        default: false
       changed-chapters-glob:
         description: Glob, relative to the rendered site root, selecting the files the comparison treats as chapters.
         type: string
@@ -185,6 +191,7 @@ jobs:
           forbid-log-patterns: ${{ inputs.forbid-log-patterns }}
           detect-changed-chapters: ${{ inputs.detect-changed-chapters }}
           changed-chapters-banner: ${{ inputs.changed-chapters-banner }}
+          highlight-changes: ${{ inputs.highlight-changes }}
           changed-chapters-glob: ${{ inputs.changed-chapters-glob }}
           deployed-branch: ${{ inputs.deployed-branch }}
           deployed-subdir: ${{ inputs.deployed-subdir }}

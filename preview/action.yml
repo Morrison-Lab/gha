@@ -73,12 +73,17 @@ inputs:
     description: >-
       Compare this run's render against the copy published on the deployed
       branch and expose which chapters differ as step outputs. Opt-in, so an
-      existing consumer is unaffected. Implied by `changed-chapters-banner`.
+      existing consumer is unaffected. Implied by `changed-chapters-banner` and `highlight-changes`.
     default: 'false'
   changed-chapters-banner:
     description: >-
       Add a banner to the preview home page naming the chapters that differ
       from the published render. Turns on the comparison above.
+    default: 'false'
+  highlight-changes:
+    description: >-
+      Highlight added and modified text in the rendered HTML chapters that
+      differ from the published render. Turns on changed-chapter detection.
     default: 'false'
   changed-chapters-glob:
     description: >-
@@ -351,7 +356,7 @@ runs:
       id: changed-chapters
       if: >-
         github.event.action != 'closed'
-        && (inputs.detect-changed-chapters == 'true' || inputs.changed-chapters-banner == 'true')
+        && (inputs.detect-changed-chapters == 'true' || inputs.changed-chapters-banner == 'true' || inputs.highlight-changes == 'true')
       shell: bash
       env:
         RENDERED_DIR: ${{ inputs.path }}/${{ inputs.output-dir }}
@@ -374,6 +379,20 @@ runs:
         DETECTION_STATUS: ${{ steps.changed-chapters.outputs.detection-status }}
         SKIP_REASON: ${{ steps.changed-chapters.outputs.skip-reason }}
       run: python3 "$GITHUB_ACTION_PATH/add-home-banner.py"
+
+    - name: Highlight rendered HTML changes in modified chapters
+      if: github.event.action != 'closed' && inputs.highlight-changes == 'true'
+      shell: bash
+      env:
+        RENDERED_DIR: ${{ inputs.path }}/${{ inputs.output-dir }}
+        CHANGED_CHAPTERS: ${{ steps.changed-chapters.outputs.changed-chapters }}
+        DETECTION_STATUS: ${{ steps.changed-chapters.outputs.detection-status }}
+        SKIP_REASON: ${{ steps.changed-chapters.outputs.skip-reason }}
+        CHAPTER_GLOB: ${{ inputs.changed-chapters-glob }}
+        DEPLOYED_BRANCH: ${{ inputs.deployed-branch }}
+        DEPLOYED_SUBDIR: ${{ inputs.deployed-subdir }}
+        NORMALIZE_PATTERNS: ${{ inputs.changed-chapters-normalize-patterns }}
+      run: python3 "$GITHUB_ACTION_PATH/highlight-html-changes.py"
 
     - name: List files
       if: github.event.action != 'closed'

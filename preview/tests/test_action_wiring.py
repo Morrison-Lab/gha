@@ -48,6 +48,7 @@ from workflow_discovery import is_workflows_restored  # noqa: E402
 
 DETECT_STEP = "Detect chapters changed since the published render"
 BANNER_STEP = "Add the changed-chapters banner to the preview home page"
+HIGHLIGHT_STEP = "Highlight rendered HTML changes in modified chapters"
 RENDER_STEP = "Render Quarto site"
 STAGE_STEP = "Stage site for upload"
 
@@ -56,6 +57,7 @@ DETECT_STEP_ID = "changed-chapters"
 NEW_INPUTS = (
     "detect-changed-chapters",
     "changed-chapters-banner",
+    "highlight-changes",
     "changed-chapters-glob",
     "deployed-branch",
     "deployed-subdir",
@@ -175,6 +177,19 @@ def test_the_composite_declares_exactly_what_the_script_writes(
                 "SKIP_REASON",
             },
         ),
+        (
+            HIGHLIGHT_STEP,
+            {
+                "RENDERED_DIR",
+                "CHANGED_CHAPTERS",
+                "DETECTION_STATUS",
+                "SKIP_REASON",
+                "CHAPTER_GLOB",
+                "DEPLOYED_BRANCH",
+                "DEPLOYED_SUBDIR",
+                "NORMALIZE_PATTERNS",
+            },
+        ),
     ],
 )
 def test_every_env_key_the_scripts_read_is_supplied(steps, step_name, required):
@@ -182,7 +197,7 @@ def test_every_env_key_the_scripts_read_is_supplied(steps, step_name, required):
     assert set(step_named(steps, step_name)["env"]) == required
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, HIGHLIGHT_STEP])
 def test_rendered_dir_uses_both_the_path_and_the_output_dir(steps, step_name):
     """Composing it from `inputs.path` alone is correct only for the default
     `output-dir`, so the bug hides until a consumer sets one."""
@@ -191,12 +206,12 @@ def test_rendered_dir_uses_both_the_path_and_the_output_dir(steps, step_name):
     assert "inputs.output-dir" in rendered_dir
 
 
-def test_the_banner_implies_the_comparison(steps):
-    """`changed-chapters-banner` alone must still run the detection, or the
-    banner renders against empty outputs and reports no changes."""
+def test_the_banner_and_highlight_imply_the_comparison(steps):
+    """`changed-chapters-banner` or `highlight-changes` alone must still run the detection."""
     condition = " ".join(step_named(steps, DETECT_STEP)["if"].split())
     assert "inputs.detect-changed-chapters == 'true'" in condition
     assert "inputs.changed-chapters-banner == 'true'" in condition
+    assert "inputs.highlight-changes == 'true'" in condition
     assert "||" in condition
 
 
@@ -206,23 +221,23 @@ def test_the_banner_step_is_gated_on_its_own_input_only(steps):
     assert "inputs.detect-changed-chapters" not in condition
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, HIGHLIGHT_STEP])
 def test_both_steps_stand_down_on_the_closed_event(steps, step_name):
     """Every other step in this composite skips the PR-closed (preview removal)
     path; a step that did not would run with no checkout."""
     assert "github.event.action != 'closed'" in step_named(steps, step_name)["if"]
 
 
-def test_the_banner_is_written_before_the_site_is_staged(steps):
-    """Staging copies the rendered tree into the upload directory, so a banner
-    written afterwards never reaches the artifact -- and the preview looks
-    exactly like a run where no chapter changed."""
+def test_the_banner_and_highlights_are_written_before_the_site_is_staged(steps):
+    """Staging copies the rendered tree into the upload directory, so modifications
+    written afterwards never reach the artifact."""
     assert index_of(steps, RENDER_STEP) < index_of(steps, DETECT_STEP)
     assert index_of(steps, DETECT_STEP) < index_of(steps, BANNER_STEP)
-    assert index_of(steps, BANNER_STEP) < index_of(steps, STAGE_STEP)
+    assert index_of(steps, BANNER_STEP) < index_of(steps, HIGHLIGHT_STEP)
+    assert index_of(steps, HIGHLIGHT_STEP) < index_of(steps, STAGE_STEP)
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, HIGHLIGHT_STEP])
 def test_no_value_reaches_the_run_body_through_interpolation(steps, step_name):
     """`skip-reason` and `changed-chapters` are built from git's error text and
     from file names, so interpolating either into a `run:` body is command

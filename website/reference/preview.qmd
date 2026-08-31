@@ -29,8 +29,9 @@ turn it off for a pure-markdown site.
 | `extra-preview-labels` | string | `'[]'` | JSON array string of additional PR label names that trigger a preview re-render on add or remove (e.g. `'["preview:tracked-changes"]'`), beyond the built-in set (`clear freezer`, `preview:pdf`, `preview:docx`, `preview:revealjs`). |
 | `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
 | `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
-| `detect-changed-chapters` | boolean | `false` | Compare this run's render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by `changed-chapters-banner`. |
+| `detect-changed-chapters` | boolean | `false` | Compare this run's render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by `changed-chapters-banner` and `highlight-changes`. |
 | `changed-chapters-banner` | boolean | `false` | Add a banner to the preview home page naming the chapters that differ from the published render. |
+| `highlight-changes` | boolean | `false` | Highlight added and modified text in the rendered HTML chapters that differ from the published render. |
 | `changed-chapters-glob` | string | `'chapters/*.html'` | Glob, relative to the rendered site root, selecting the files the comparison treats as chapters. |
 | `deployed-branch` | string | `'gh-pages'` | Branch holding the published render to compare against. |
 | `deployed-subdir` | string | `''` | Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root. |
@@ -39,7 +40,7 @@ turn it off for a pure-markdown site.
 
 ## Outputs
 
-Set only when `detect-changed-chapters` or `changed-chapters-banner` is on.
+Set only when `detect-changed-chapters`, `changed-chapters-banner`, or `highlight-changes` is on.
 
 | Output | Description |
 |---|---|
