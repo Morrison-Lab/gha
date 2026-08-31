@@ -88,6 +88,19 @@ jobs:
           python3 .github/workflows/scripts/tests/run-summary-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-summary-workflow-tests.py
 
+  preview-workflow-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run preview workflow contract tests
+        run: |
+          python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py --self-test
+          python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py
+
   lint-qmd:
 
     runs-on: ubuntu-latest

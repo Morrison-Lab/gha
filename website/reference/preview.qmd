@@ -21,9 +21,11 @@ turn it off for a pure-markdown site.
 | `r-packages` | string | `''` | R packages to install when `use-renv` is false (space-, comma-, or newline-separated). |
 | `install-package` | boolean | `true` | Run `R CMD INSTALL <path>` to install the caller repo as a local package before rendering. |
 | `setup-chrome` | boolean | `true` | Install Chrome (needed by Quarto for revealjs and screenshot rendering). |
+| `tinytex` | boolean | `false` | Install TinyTeX and enable PDF rendering. When false (default), TinyTeX is installed and PDF is rendered only when the PR is labeled `preview:pdf`. |
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
 | `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`. |
+| `formats` | string | `''` | Space-separated list of formats to render (e.g. `'html docx pdf revealjs'`). When empty (default), renders HTML plus any formats requested via PR labels (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to `'default'` to run a single bare `quarto render` letting `_quarto.yml` decide formats (unlike `quarto-publish` where empty string defaults to bare render). |
 | `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
 | `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
 | `detect-changed-chapters` | boolean | `false` | Compare this run's render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by `changed-chapters-banner`. |
@@ -100,9 +102,11 @@ jobs:
     #   r-packages: 'rmarkdown knitr'      # packages to install when use-renv: false
     #   install-package: true              # `R CMD INSTALL <path>` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
+    #   tinytex: false                     # install TinyTeX unconditionally (default: label-gated)
     #   submodules: recursive
     #   render-profile: website
     #   output-dir: docs                   # render to a dir other than _site
+    #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders
