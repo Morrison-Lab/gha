@@ -3587,6 +3587,7 @@ returns three different ones, both non-empty and both plausible.
 
 - **Do:** derive the dispatch set with `gh workflow run` before proposing any
   gate over it, and say which sites the gate covers.
+
 - **Don't:** count `uses: .../dispatch-review` occurrences, or steps named
   like a dispatch, as the population.
 
@@ -3608,8 +3609,10 @@ when:
 1. `PR_BRANCH` cannot be resolved;
 2. `PR_HEAD_REPO` differs from `REPO`, that is, the PR is from a fork
    (gha#289);
+
 3. `detect-pr-workflow-edits.sh` reports the PR edits top-level
    `.github/workflows/*.yml` (gha#598);
+
 4. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
    `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same omission.
 
