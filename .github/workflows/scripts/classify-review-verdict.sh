@@ -78,12 +78,36 @@ if not content_lines:
 if not content_lines:
     record("false", "no-verdict")
 
+def expand_contractions(s):
+    contractions = [
+        (r"\bisn['’]?t\b", "is not"),
+        (r"\bwasn['’]?t\b", "was not"),
+        (r"\baren['’]?t\b", "are not"),
+        (r"\bweren['’]?t\b", "were not"),
+        (r"\bdoesn['’]?t\b", "does not"),
+        (r"\bdon['’]?t\b", "do not"),
+        (r"\bdidn['’]?t\b", "did not"),
+        (r"\bcan['’]?t\b", "can not"),
+        (r"\bcannot\b", "can not"),
+        (r"\bcouldn['’]?t\b", "could not"),
+        (r"\bwon['’]?t\b", "will not"),
+        (r"\bwouldn['’]?t\b", "would not"),
+        (r"\bshouldn['’]?t\b", "should not"),
+        (r"\bhasn['’]?t\b", "has not"),
+        (r"\bhaven['’]?t\b", "have not"),
+        (r"\bhadn['’]?t\b", "had not"),
+        (r"\bain['’]?t\b", "is not"),
+    ]
+    for pattern, replacement in contractions:
+        s = re.sub(pattern, replacement, s, flags=re.IGNORECASE)
+    return s
+
 negated_positive_phrases = re.compile(
-    r'\b(not|never|un-?|non-?)\s*(ready\s+(?:for|to)\s+merge|approved|clean|lgtm)\b|\b(not\s+ready)\b',
+    r'\b(not|never|un-?|non-?)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(ready\s+(?:for|to)\s+merge|approved|clean|lgtm)\b|\b(not|never)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(ready)\b',
     re.IGNORECASE
 )
 negated_negative_phrases = re.compile(
-    r'\b(no|zero|0|without)\s+(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?)\b',
+    r'\b(no|zero|0|without|not|never)\s*(?:(?:to|be|been|being|get|seem|look|appear)\s+)?(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)\b',
     re.IGNORECASE
 )
 non_clean_kw = re.compile(
@@ -106,11 +130,12 @@ for line in content_lines:
     if footer_regex.search(line):
         continue
 
+    norm_line = expand_contractions(line)
     neg_pos_spans = []
     neg_neg_spans = []
     line_matches = []
 
-    for m in negated_positive_phrases.finditer(line):
+    for m in negated_positive_phrases.finditer(norm_line):
         neg_pos_spans.append((m.start(), m.end()))
         matched_text = m.group(0).lower()
         slug = 'needs-more-work'
@@ -118,11 +143,11 @@ for line in content_lines:
             slug = 'rejected'
         line_matches.append((m.start(), "false", slug))
 
-    for m in negated_negative_phrases.finditer(line):
+    for m in negated_negative_phrases.finditer(norm_line):
         neg_neg_spans.append((m.start(), m.end()))
         line_matches.append((m.start(), "true", "ready-for-merge"))
 
-    for m in non_clean_kw.finditer(line):
+    for m in non_clean_kw.finditer(norm_line):
         if any(start <= m.start() and m.end() <= end for start, end in neg_neg_spans):
             continue
         text_matched = m.group(1).lower()
@@ -137,7 +162,7 @@ for line in content_lines:
             slug = 'rejected'
         line_matches.append((m.start(), "false", slug))
 
-    for m in clean_kw.finditer(line):
+    for m in clean_kw.finditer(norm_line):
         if any(start <= m.start() and m.end() <= end for start, end in neg_pos_spans):
             continue
         if any(start <= m.start() and m.end() <= end for start, end in neg_neg_spans):
@@ -145,7 +170,7 @@ for line in content_lines:
         text_matched = m.group(0).lower()
         if text_matched == 'passed':
             # Ignore incidental test/CI/suite passed occurrences
-            prefix = line[:m.start()]
+            prefix = norm_line[:m.start()]
             if re.search(r'\b(?:test|tests|suite|check|checks|ci|run|step|pipeline|build|workflow)\s*$', prefix, re.IGNORECASE):
                 continue
         slug = 'ready-for-merge'

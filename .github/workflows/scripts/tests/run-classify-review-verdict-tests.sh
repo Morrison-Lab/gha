@@ -408,6 +408,62 @@ run_test "Not ready followed by ready for merge resolution" \
 Initially not ready, but with latest fixes, ready for merge." \
 "true" "ready-for-merge"
 
+# Test 43: Contraction isn't ready for merge
+run_test "Contraction isn't ready for merge" \
+"### Verdict
+
+This isn't ready for merge -- there's still a data race in the new goroutine." \
+"false" "needs-more-work"
+
+# Test 44: Contraction isn't clean
+run_test "Contraction isn't clean" \
+"### Verdict
+
+Honestly, this isn't clean -- there's a leftover debug print on line 9." \
+"false" "needs-more-work"
+
+# Test 45: Contraction wasn't approved
+run_test "Contraction wasn't approved" \
+"### Verdict
+
+This wasn't approved by the security team, pending further review." \
+"false" "rejected"
+
+# Test 46: Contraction can't be approved
+run_test "Contraction can't be approved" \
+"### Verdict
+
+This can't be approved yet given the failing test suite." \
+"false" "rejected"
+
+# Test 47: Contraction doesn't look ready
+run_test "Contraction doesn't look ready" \
+"### Verdict
+
+This doesn't look ready to merge." \
+"false" "needs-more-work"
+
+# Test 48: Negated blocking phrase with not blocked
+run_test "Negated blocking phrase with not blocked" \
+"### Verdict
+
+Ready for merge, not blocked." \
+"true" "ready-for-merge"
+
+# Test 49: Negated blocking phrase with never rejected
+run_test "Negated blocking phrase with never rejected" \
+"### Verdict
+
+This PR was never rejected." \
+"true" "ready-for-merge"
+
+# Test 50: Contraction isn't blocked
+run_test "Contraction isn't blocked" \
+"### Verdict
+
+This isn't blocked, ready for merge." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
