@@ -48,6 +48,7 @@ check "happy: pr_number" "12" "$(jq -r .pr_number "$dir/payload.json")"
 check "happy: schema_version" "1" "$(jq -r .schema_version "$dir/payload.json")"
 check "happy: denied_tools sidecar is verbatim" "$denied" "$(cat "$dir/denied_tools.txt")"
 check "happy: review sidecar is verbatim" "$(cat "$review")" "$(cat "$dir/review.txt")"
+check "happy: denied_tools ends with newline" "true" "$([ "$(tail -c 1 "$dir/denied_tools.txt" | wc -l)" -eq 1 ] && echo true || echo false)"
 
 # A missing key is a pack bug. Pin the set so adding a posting-job branch
 # without packing the field it reads turns this red once the test is updated
