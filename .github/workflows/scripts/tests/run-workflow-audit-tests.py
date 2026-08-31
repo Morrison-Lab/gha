@@ -30,7 +30,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 import audit_workflow_action_pins as pins  # noqa: E402
 import audit_workflow_token_usage as token  # noqa: E402
-from workflow_discovery import discover_workflows, is_workflows_restored  # noqa: E402
+from workflow_discovery import (  # noqa: E402
+    discover_workflows,
+    is_workflows_restored,
+    skip_if_restored,
+)
 
 # Assembled rather than typed, so this fixture text cannot itself be mistaken
 # for a real expression by anything scanning this repo.
@@ -488,9 +492,15 @@ def main() -> int:
             f"name: bad\njobs:\n  run:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: unpinned/action@v1\n        with:\n          token: {EXPR} secrets.SUBMODULES_TOKEN }}\n",
         )
         write(restored, ".restored-from-default-branch", "")
+        write(restored, ".hidden.yml", "name: hidden\n")
+        write(restored, ".hidden.yaml", "name: hidden\n")
         check(
             "is_workflows_restored detects .restored-from-default-branch marker",
             is_workflows_restored(restored),
+        )
+        check(
+            "skip_if_restored returns True on restored directory",
+            skip_if_restored(restored, "test-suite"),
         )
         check(
             "discover_workflows ignores hidden files",

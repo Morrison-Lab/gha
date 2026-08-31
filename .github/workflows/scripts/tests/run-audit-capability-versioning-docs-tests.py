@@ -272,6 +272,17 @@ def main() -> int:
         text = audit.extract_region(root, "no-start-marker.md", None, "## End")
         check("extract_region with start=None runs from the top of the file", "front matter" in text)
 
+    # -------------------------------------------------- skip_if_restored
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        wf_dir = root / ".github" / "workflows"
+        wf_dir.mkdir(parents=True)
+        write(wf_dir, ".restored-from-default-branch", "")
+        check(
+            "audit.main skips with exit 0 when workflows are restored",
+            audit.main(["--repo-root", str(root)]) == 0,
+        )
+
     print(f"\n{cases - failures}/{cases} checks passed.")
     return 1 if failures else 0
 

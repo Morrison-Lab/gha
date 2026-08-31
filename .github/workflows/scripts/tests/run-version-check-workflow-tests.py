@@ -228,13 +228,9 @@ def main() -> int:
         return run_self_test()
 
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-    from workflow_discovery import is_workflows_restored
+    from workflow_discovery import skip_if_restored
 
-    if is_workflows_restored(args.workflow.parent):
-        print(
-            "::notice::Skipping version-check workflow tests: .github/workflows/ "
-            "was restored from default branch (gha#598, gha#765)."
-        )
+    if skip_if_restored(args.workflow.parent, "version-check workflow tests"):
         return 0
 
     return check(args.workflow)

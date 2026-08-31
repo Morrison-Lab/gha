@@ -43,11 +43,11 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from workflow_discovery import (  # noqa: E402
     Discovery,
     Unparsable,
-    is_workflows_restored,
     iter_job_uses,
     iter_steps,
     load_workflow,
     require_workflows,
+    skip_if_restored,
 )
 
 # The two forms are not interchangeable, so the reference is classified before
@@ -108,11 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--workflows-dir", default=".github/workflows", type=pathlib.Path)
     args = parser.parse_args(argv)
 
-    if is_workflows_restored(args.workflows_dir):
-        print(
-            "::notice::Skipping audit-workflow-action-pins: .github/workflows/ "
-            "was restored from default branch (gha#598, gha#765)."
-        )
+    if skip_if_restored(args.workflows_dir, "audit-workflow-action-pins"):
         return 0
 
     try:

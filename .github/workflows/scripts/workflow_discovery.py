@@ -34,6 +34,17 @@ def is_workflows_restored(workflows_dir: pathlib.Path | None = None) -> bool:
     return (workflows_dir / ".restored-from-default-branch").is_file()
 
 
+def skip_if_restored(workflows_dir: pathlib.Path | None = None, label: str = "workflow check") -> bool:
+    """Print a notice and return True if .github/workflows was restored from default branch (gha#598, gha#765)."""
+    if is_workflows_restored(workflows_dir):
+        print(
+            f"::notice::Skipping {label}: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return True
+    return False
+
+
 def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
     """Return the workflow files GitHub itself would discover, sorted."""
     return sorted(

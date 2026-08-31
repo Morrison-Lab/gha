@@ -55,7 +55,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 # Shared with the two workflow audits rather than re-globbed here: a third copy
 # of the discovery rule is a third place for it to drift back to `*.yml` only
 # (gha#716).
-from workflow_discovery import discover_workflows, is_workflows_restored  # noqa: E402
+from workflow_discovery import discover_workflows, skip_if_restored  # noqa: E402
 
 BEGIN = "<!--readonly-workflows:begin-->"
 END = "<!--readonly-workflows:end-->"
@@ -457,11 +457,7 @@ def main() -> int:
     if not workflows_dir.is_dir():
         die(f"{workflows_dir}: no such directory")
 
-    if is_workflows_restored(workflows_dir):
-        print(
-            "::notice::Skipping permissions docs check: .github/workflows/ "
-            "was restored from default branch (gha#598, gha#765)."
-        )
+    if skip_if_restored(workflows_dir, "permissions docs check"):
         return 0
 
     return check(workflows_dir, docs)

@@ -35,7 +35,7 @@ import tempfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
-from workflow_discovery import is_workflows_restored  # noqa: E402
+from workflow_discovery import skip_if_restored  # noqa: E402
 
 FAILURES: list[str] = []
 
@@ -170,11 +170,7 @@ def main() -> int:
         print(f"::error::{path}: no such file", file=sys.stderr)
         return 2
 
-    if is_workflows_restored(path.parent):
-        print(
-            "::notice::Skipping mention-filter tests: .github/workflows/ "
-            "was restored from default branch (gha#598, gha#765)."
-        )
+    if skip_if_restored(path.parent, "mention-filter tests"):
         return 0
 
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
