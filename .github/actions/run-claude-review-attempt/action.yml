@@ -616,8 +616,8 @@ runs:
           for a human reading a live session, and in a posted review it
           is at best noise and at worst (in a harness that posts only the
           final message) replaces the review itself (gha#694). End with
-          the ### Verdict line and the structured `<!-- review-data: ... -->`
-          payload with nothing after it.
+          the ### Verdict line and the `<details><summary>Structured Review Data (JSON)</summary>...</details>`
+          block with nothing after it.
 
           PR comments such as "Driving this PR to clean — back off until I'm
           done", "paws off until I'm done", or similar claim/session-lock
@@ -743,8 +743,11 @@ runs:
           diff.
 
           **Machine-readable structured review output:**
-          Immediately following your `### Verdict` section, append an HTML comment
-          holding the structured review JSON payload formatted exactly as:
+          Immediately following your `### Verdict` section, append a folded details
+          block holding the structured review JSON payload formatted exactly as:
+
+          <details>
+          <summary>Structured Review Data (JSON)</summary>
 
           <!-- review-data:
           {
@@ -756,12 +759,24 @@ runs:
           }
           -->
 
+          ```json
+          {
+            "schema_version": "1.0",
+            "reviewer": "claude",
+            "commit_sha": "<sha>",
+            "verdict": "CLEAN",
+            "findings": []
+          }
+          ```
+
+          </details>
+
           Use "CLEAN" when there are no blocking findings or unresolved issues (Ready for merge),
           or "NOT_CLEAN" if there are any blocking findings, bugs, or required changes (Needs more work).
           When NOT_CLEAN, list each actionable finding in the `findings` array:
           `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "Description..."}`.
-          Write it FLUSH LEFT at column zero, not indented (four or more leading spaces turn it into an indented code block, which is ignored).
-          Do NOT put code fences around this HTML comment or add any trailing text after `-->`.
+          Write the tags, comment, and code fences FLUSH LEFT at column zero, not indented.
+          Do NOT add any text inside or after `<!-- review-data: ... -->` comment line markers.
 
           **Don't flag cosmetic source-only formatting that renders
           identically.** For prose (not code blocks) in Markdown/text files, the rendered output

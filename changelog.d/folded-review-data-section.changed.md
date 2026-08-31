@@ -1,0 +1,1 @@
+- Wrap machine-readable structured review data in a collapsible `<details><summary>Structured Review Data (JSON)</summary>...</details>` block across all AI review workflows, including a syntax-highlighted JSON code fence for human inspection.
