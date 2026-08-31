@@ -877,6 +877,41 @@ run_test "Conversational No colon before needs more work" \
 No: this needs more work." \
 "false" "needs-more-work"
 
+# Test 110: Conversational No comma before findings
+run_test "Conversational No comma before findings" \
+"### Verdict
+
+No, this PR has findings." \
+"false" "unrecognized"
+
+# Test 111: Conversational No comma before blocking issues
+run_test "Conversational No comma before blocking issues" \
+"### Verdict
+
+No, this PR still has blocking issues." \
+"false" "unrecognized"
+
+# Test 112: Conversational No comma before blockers
+run_test "Conversational No comma before blockers" \
+"### Verdict
+
+No, this PR has blockers." \
+"false" "unrecognized"
+
+# Test 113: Conversational No dash before findings
+run_test "Conversational No dash before findings" \
+"### Verdict
+
+No -- there are still findings that need addressing." \
+"false" "unrecognized"
+
+# Test 114: Conversational No comma before changes requested
+run_test "Conversational No comma before changes requested" \
+"### Verdict
+
+No, changes requested here." \
+"false" "changes-requested"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
