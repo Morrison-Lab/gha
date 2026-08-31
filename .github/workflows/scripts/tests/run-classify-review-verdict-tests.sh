@@ -611,6 +611,41 @@ run_test "7+ word gap without punctuation for clean (not under any possible defi
 This is not under any possible definition or metric clean." \
 "false" "needs-more-work"
 
+# Test 72: Parentheses delimiter (not (yet) ready for merge)
+run_test "Parentheses delimiter (not (yet) ready for merge)" \
+"### Verdict
+
+This is not (yet) ready for merge." \
+"false" "needs-more-work"
+
+# Test 73: Parentheses delimiter (not (yet) approved)
+run_test "Parentheses delimiter (not (yet) approved)" \
+"### Verdict
+
+This PR is not (yet) approved." \
+"false" "rejected"
+
+# Test 74: Em-dash delimiter (not -- at least for now -- ready for merge)
+run_test "Em-dash delimiter (not -- at least for now -- ready for merge)" \
+"### Verdict
+
+This is not -- at least for now -- ready for merge." \
+"false" "needs-more-work"
+
+# Test 75: Semicolon delimiter (not; strictly speaking; ready for merge)
+run_test "Semicolon delimiter (not; strictly speaking; ready for merge)" \
+"### Verdict
+
+This is not; strictly speaking; ready for merge." \
+"false" "needs-more-work"
+
+# Test 76: Independent clause separation with and
+run_test "Independent clause separation with and" \
+"### Verdict
+
+There is no reason to think the tests were skipped and the reviewer confirms everything is ready for merge." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
