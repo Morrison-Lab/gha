@@ -238,16 +238,17 @@ that also concludes a phase in `plan.md`.
 5. **Await Explicit User Feedback:**
 
     - After presenting the detailed plan, ask the user for confirmation:
-        "**Does this meet your expectations? Please confirm with yes or provide
-        feedback on what needs to be changed.**"
+        "**Does this meet your expectations?
+        Please confirm with yes or provide feedback on what needs to be changed.**"
 
-    - **PAUSE** and await the user's response. Do not proceed without an
-        explicit yes or confirmation.
+    - **PAUSE** and await the user's response.
+        Do not proceed without an explicit yes or confirmation.
 
 6. **Identify Target Commit for Report:**
 
     - Do NOT create a new empty commit for checkpointing.
-    - Identify the hash of the last functional commit made during this phase. This will be the target for the verification report.
+    - Identify the hash of the last functional commit made during this phase.
+        This will be the target for the verification report.
 
 7. **Attach Auditable Verification Report using Git Notes:**
 
