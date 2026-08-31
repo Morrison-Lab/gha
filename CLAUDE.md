@@ -1431,6 +1431,11 @@ Markdown files, with negative controls asserting that standalone tables with
 delimiter rows, single pipes in prose/code spans, and fenced code blocks pass
 cleanly.
 
+`lint-markdown/tests/test_pathspec.mjs` tests `lint-markdown/_pathspec.mjs`
+(and its shared pattern mirrored across `lint-qmd` and `lint-yaml`), asserting
+correct ignore compilation, list splitting, and cross-platform path matching
+for both POSIX and Windows backslash paths.
+
 `.github/workflows/scripts/tests/run-check-diff-scoped-tests.sh` covers
 `check-diff-scoped.sh`, the contributor-facing wrapper that runs this repo's
 diff-scoped checks over committed content (gha#740).

@@ -69,6 +69,8 @@ jobs:
         run: node lint-markdown/tests/test_list_item_splices.mjs
       - name: Run split-table detector unit tests
         run: node lint-markdown/tests/test_table_splits.mjs
+      - name: Run pathspec unit tests
+        run: node lint-markdown/tests/test_pathspec.mjs
       - name: Run check-node-version unit tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-check-node-version-tests.sh
