@@ -606,7 +606,7 @@ jobs:
           rc=$?
           set -e
           if [ "$rc" = 1 ]; then
-            echo "::error::check-diff-scoped found a real violation (exit 1). This is not a wrapper defect -- see the new-line-breaks / phi / typos jobs for the finding itself."
+            echo "::error::check-diff-scoped found a real violation (exit 1). This is not a wrapper defect -- see the check findings printed above."
             exit 1
           elif [ "$rc" != 3 ]; then
             echo "::error::check-diff-scoped returned $rc; expected 3, since typos is not installed in this job."
