@@ -17,7 +17,7 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2
     # with:
-    #   globs: '*.md'                          # pathspecs to check (recursive)
+    #   globs: '*.md *.qmd *.yml'                          # pathspecs to check (recursive)
     #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
     #   fail: false                            # warn-only instead of blocking (defaults to true)
     #   clause-breaks: false                   # sentences only; skip the

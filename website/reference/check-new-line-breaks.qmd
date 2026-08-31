@@ -46,7 +46,7 @@ Set `clause-breaks: false` to check sentences only.
 | Input            | Type    | Default | Description                                                                          |
 | ---------------- | ------- | ------- | ------------------------------------------------------------------------------------- |
 | `python-version` | string  | `'3.x'` | Python version to set up.                                                             |
-| `globs`          | string  | `'*.md'` | Space-separated git pathspecs of tracked files to check (recursive by default).      |
+| `globs`          | string  | `'*.md *.qmd *.yml'` | Space-separated git pathspecs of tracked files to check (recursive by default).      |
 | `paths-ignore`   | string  | `''`    | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `fail`           | boolean | `true`  | Fail the workflow when a violation is found; otherwise non-blocking.                    |
 | `clause-breaks`  | boolean | `true`  | Also flag a long line carrying a mid-line semicolon (a proxy for SemBr rule 5), on top of the rule 4 sentence check that always runs. Set `false` to check sentences only. |
@@ -78,7 +78,7 @@ jobs:
   check:
     uses: Morrison-Lab/gha/.github/workflows/check-new-line-breaks.yml@v2
     # with:
-    #   globs: '*.md'                          # pathspecs to check (recursive)
+    #   globs: '*.md *.qmd *.yml'                          # pathspecs to check (recursive)
     #   paths-ignore: 'CHANGELOG.md,vendor/*'  # skip known-noisy paths
     #   fail: false                            # warn-only instead of blocking (defaults to true)
     #   clause-breaks: false                   # sentences only; skip the

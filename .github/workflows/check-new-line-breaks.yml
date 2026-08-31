@@ -12,7 +12,7 @@ on:
           Space-separated git pathspecs of tracked files to check (recursive
           by default).
         type: string
-        default: '*.md'
+        default: '*.md *.qmd *.yml'
       paths-ignore:
         description: >-
           Comma/newline-separated glob patterns (relative paths) to skip.

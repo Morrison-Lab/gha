@@ -9,14 +9,7 @@
     functionality
 4. **High Code Coverage:** Aim for >80% code coverage for all modules
 5. **User Experience First:** Every decision should prioritize user experience
-6.
-7.
-8.
-9.
-10.
-11.
-12. **Non-Interactive & CI-Aware:** Prefer non-interactive commands.
-13. Use
+6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands. Use
     `CI=true` for watch-mode tools (tests, linters) to ensure single execution.
 
 ## Task Workflow
@@ -125,15 +118,14 @@ When an implemented task or phase requires corrections, amendments, or additions
 1. **In-Flight Refinements:** If minor gaps are found while a task is actively
     in-progress (`[~]`), make the adjustments directly in the active
     implementation stream and ensure passing tests before committing.
-2.
-3. **Code Review Corrections (`conductor-review`):** If issues are identified
+2. **Code Review Corrections (`conductor-review`):** If issues are identified
     during or after a code review, instruct the agent to review your changes
     (e.g., *"run a review"* or triggering the action manually in compatible
     clients).
     The review agent will automatically append a `Review Fixes` phase
     to `plan.md` so that correction tasks are formally tracked and
     checkpointed.
-4. **Logical State Reversions (`conductor-revert`):** If a task implementation
+3. **Logical State Reversions (`conductor-revert`):** If a task implementation
     is fundamentally flawed or needs to be redone, instruct the agent to revert
     the changes (e.g., *"revert the last task"* or triggering the action
     manually in compatible clients).
@@ -194,7 +186,7 @@ that also concludes a phase in `plan.md`.
         fail after your second proposed fix, you **must stop**, report the
         persistent failure, and ask the user for guidance.
 
-6. **Propose a Detailed, Actionable Manual Verification Plan:**
+4. **Propose a Detailed, Actionable Manual Verification Plan:**
 
     - **CRITICAL:** To generate the plan, first analyze `product.md`,
         `product-guidelines.md`, and `plan.md` to determine the user-facing
@@ -227,7 +219,7 @@ that also concludes a phase in `plan.md`.
         http://localhost:8080/api/v1/users -d '{"name": "test"}'` 3. **Confirm
         that you receive:** A JSON response with a status of `201 Created`. ```
 
-7. **Await Explicit User Feedback:**
+5. **Await Explicit User Feedback:**
 
     - After presenting the detailed plan, ask the user for confirmation:
         "**Does this meet your expectations? Please confirm with yes or provide
@@ -235,19 +227,19 @@ that also concludes a phase in `plan.md`.
     - **PAUSE** and await the user's response. Do not proceed without an
         explicit yes or confirmation.
 
-8. **Identify Target Commit for Report:**
+6. **Identify Target Commit for Report:**
 
     - Do NOT create a new empty commit for checkpointing.
     - Identify the hash of the last functional commit made during this phase. This will be the target for the verification report.
 
-9. **Attach Auditable Verification Report using Git Notes:**
+7. **Attach Auditable Verification Report using Git Notes:**
 
     - **Step 7.1: Draft Note Content:** Create a detailed verification report
         including the automated test command, the manual verification steps, and
         the user's confirmation.
     - **Step 7.2: Attach Note:** Use the `git notes` command to attach the full report to the target commit identified in step 6.
 
-10. **Get and Record Phase Checkpoint SHA:**
+8. **Get and Record Phase Checkpoint SHA:**
 
     - **Step 8.1: Get Commit Hash:** Obtain the hash of the *just-created
         checkpoint commit* (`git log -1 --format="%H"`).
@@ -256,13 +248,13 @@ that also concludes a phase in `plan.md`.
         the format `[checkpoint: <sha>]`.
     - **Step 8.3: Write Plan:** Write the updated content back to `plan.md`.
 
-11. **Commit Plan Update:**
+9. **Commit Plan Update:**
 
     - **Action:** Stage the modified `plan.md` file.
     - **Action:** Commit this change with a descriptive message following the
         format `conductor(plan): Mark phase '<PHASE NAME>' as complete`.
 
-12. **Announce Completion:** Inform the user that the phase is complete and the
+10. **Announce Completion:** Inform the user that the phase is complete and the
     checkpoint has been created, with the detailed verification report attached
     as a git note.
 
