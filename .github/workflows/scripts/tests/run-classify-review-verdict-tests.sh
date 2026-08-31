@@ -597,6 +597,20 @@ run_test "No longer with concessive word parenthetical (no longer, although once
 This PR is no longer, although once true, blocked." \
 "true" "ready-for-merge"
 
+# Test 70: 7+ word gap without punctuation (not by any reasonable measure or standard currently ready for merge)
+run_test "7+ word gap without punctuation (not by any reasonable measure or standard currently ready for merge)" \
+"### Verdict
+
+This is not by any reasonable measure or standard currently ready for merge." \
+"false" "needs-more-work"
+
+# Test 71: 7+ word gap without punctuation for clean (not under any possible definition or metric clean)
+run_test "7+ word gap without punctuation for clean (not under any possible definition or metric clean)" \
+"### Verdict
+
+This is not under any possible definition or metric clean." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
