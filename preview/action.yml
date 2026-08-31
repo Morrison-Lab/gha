@@ -104,6 +104,16 @@ inputs:
   banner-index:
     description: Home page the banner is inserted into, relative to the rendered site root.
     default: 'index.html'
+  docx-tracked-changes:
+    description: >-
+      Generate Word DOCX documents with tracked changes against the published
+      version on the deployed branch. Opt-in.
+    default: 'false'
+  docx-tracked-changes-glob:
+    description: >-
+      Glob, relative to the rendered site root, selecting the DOCX files to
+      generate tracked changes for.
+    default: 'chapters/*.docx'
 outputs:
   changed-chapters:
     description: >-
@@ -124,6 +134,20 @@ outputs:
   skip-reason:
     description: Why the comparison was skipped; empty when it ran.
     value: ${{ steps.changed-chapters.outputs.skip-reason }}
+  docx-status:
+    description: >-
+      `generated` when DOCX tracked changes were produced, `skipped` when the
+      comparison was skipped.
+    value: ${{ steps.docx-tracked-changes.outputs.docx-status }}
+  docx-skip-reason:
+    description: Why DOCX tracked changes generation was skipped; empty when it ran.
+    value: ${{ steps.docx-tracked-changes.outputs.docx-skip-reason }}
+  docx-tracked-changes-files:
+    description: JSON array of generated tracked changes DOCX file paths relative to the site root.
+    value: ${{ steps.docx-tracked-changes.outputs.docx-tracked-changes-files }}
+  any-docx-changed:
+    description: '`true` when at least one DOCX file differs from published render, `false` otherwise.'
+    value: ${{ steps.docx-tracked-changes.outputs.any-docx-changed }}
 runs:
   using: composite
   steps:
@@ -374,6 +398,22 @@ runs:
         DETECTION_STATUS: ${{ steps.changed-chapters.outputs.detection-status }}
         SKIP_REASON: ${{ steps.changed-chapters.outputs.skip-reason }}
       run: python3 "$GITHUB_ACTION_PATH/add-home-banner.py"
+
+    - name: Install Python dependencies for DOCX tracked changes
+      if: github.event.action != 'closed' && inputs.docx-tracked-changes == 'true'
+      shell: bash
+      run: python3 -m pip install --quiet python-docx
+
+    - name: Create DOCX tracked changes
+      id: docx-tracked-changes
+      if: github.event.action != 'closed' && inputs.docx-tracked-changes == 'true'
+      shell: bash
+      env:
+        RENDERED_DIR: ${{ inputs.path }}/${{ inputs.output-dir }}
+        DOCX_GLOB: ${{ inputs.docx-tracked-changes-glob }}
+        DEPLOYED_BRANCH: ${{ inputs.deployed-branch }}
+        DEPLOYED_SUBDIR: ${{ inputs.deployed-subdir }}
+      run: python3 "$GITHUB_ACTION_PATH/create-docx-tracked-changes.py"
 
     - name: List files
       if: github.event.action != 'closed'

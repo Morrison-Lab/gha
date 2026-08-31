@@ -50,6 +50,11 @@ def banner():
     return _load("gha_add_home_banner", "add-home-banner.py")
 
 
+@pytest.fixture(scope="session")
+def docx_generator():
+    return _load("gha_create_docx_tracked_changes", "create-docx-tracked-changes.py")
+
+
 def git(repo, *args):
     """Run git in an isolated environment, so a developer's own config cannot
     change what these tests measure."""

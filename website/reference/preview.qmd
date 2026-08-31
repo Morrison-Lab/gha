@@ -36,6 +36,8 @@ turn it off for a pure-markdown site.
 | `deployed-subdir` | string | `''` | Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root. |
 | `changed-chapters-normalize-patterns` | string | `''` | Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes). |
 | `banner-index` | string | `'index.html'` | Home page the banner is inserted into, relative to the rendered site root. |
+| `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. |
+| `docx-tracked-changes-glob` | string | `'chapters/*.docx'` | Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for. |
 
 ## Outputs
 
@@ -47,6 +49,10 @@ Set only when `detect-changed-chapters` or `changed-chapters-banner` is on.
 | `any-changed` | `true` when at least one chapter differs, `false` otherwise. |
 | `detection-status` | `compared` when the published render was available, `skipped` when it was not. |
 | `skip-reason` | Why the comparison was skipped; empty when it ran. |
+| `docx-status` | `generated` when DOCX tracked changes were produced, `skipped` when the comparison was skipped. |
+| `docx-skip-reason` | Why DOCX tracked changes generation was skipped; empty when it ran. |
+| `docx-tracked-changes-files` | JSON array of generated tracked changes DOCX file paths relative to the site root. |
+| `any-docx-changed` | `true` when at least one DOCX file differs from published render, `false` otherwise. |
 
 Read `detection-status` before acting on an empty `changed-chapters`.
 An empty list means "nothing changed" only under `compared`;
@@ -120,6 +126,8 @@ jobs:
     #   banner-index: index.html
     #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render
     #     build-[0-9a-f]+
+    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render
+    #   docx-tracked-changes-glob: 'chapters/*.docx'
 ```
 
 See [`examples/preview.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml)
