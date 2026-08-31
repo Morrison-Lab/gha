@@ -3583,7 +3583,10 @@ the step names.**
 `grep -n 'gh workflow run' .github/workflows/claude.yml
 .github/workflows/scripts/dispatch-review.sh` reaches all of them in one
 pass; a grep for `dispatch-review` returns three, and reading the step names
-returns three different ones, both non-empty and both plausible.
+returns that same three by a different route, since each composite call sits
+under a step named `Dispatch ...` while the inline site sits under
+`Finalize PR for issue trigger`.
+Both are non-empty and plausible, and both miss the fourth.
 
 - **Do:** derive the dispatch set with `gh workflow run` before proposing any
   gate over it, and say which sites the gate covers.
