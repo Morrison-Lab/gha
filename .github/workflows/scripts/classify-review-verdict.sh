@@ -106,9 +106,10 @@ def expand_contractions(s):
         s = re.sub(pattern, replacement, s, flags=re.IGNORECASE)
     return s
 
-pos_neg_prefix = r'\b(not|never|un-?|non-?|no\s+longer|without)\b(?:(?!\b(?:but|whereas)\b)[^.!?\n])*?'
-noun_neg_prefix = r'\b(no|zero|0|without)\b(?:(?!\b(?:but|whereas)\b)[^.!?\n])*?'
-pred_neg_prefix = r'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b(?:(?!\b(?:but|whereas)\b)[^.!?\n])*?'
+gap_pattern = r'(?:\s*[-,\(:;—–"\'«»“”‘’\[\]{}]\s*[^.!?\n]+?\s*[-,\):;—–"\'«»“”‘’\[\]{}]?\s*|(?:\s+(?!(?:and|but|yet|whereas)\b)\w+)*\s*)'
+pos_neg_prefix = rf'\b(not|never|un-?|non-?|no\s+longer|without)\b{gap_pattern}'
+noun_neg_prefix = rf'\b(no|zero|0|without)\b{gap_pattern}'
+pred_neg_prefix = rf'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b{gap_pattern}'
 positive_targets = r'(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
 noun_negative_targets = r'(findings|blocking\s+findings|blocking\s+issues|actionable\s+findings|blockers?)'
 pred_negative_targets = r'(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|blocked|impasse|deadlock|rejected|unapproved)'

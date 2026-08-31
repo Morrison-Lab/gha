@@ -702,6 +702,20 @@ run_test "Unmatched single semicolon (not; in my honest opinion ready for merge.
 This is not; in my honest opinion ready for merge." \
 "false" "needs-more-work"
 
+# Test 85: Delimited hedge containing but (not, but should be once the failing test is fixed, ready for merge)
+run_test "Delimited hedge containing but" \
+"### Verdict
+
+This PR is not, but should be once the failing test is fixed, ready for merge." \
+"false" "needs-more-work"
+
+# Test 86: Delimited hedge containing whereas (not, whereas prior PRs were, approved)
+run_test "Delimited hedge containing whereas" \
+"### Verdict
+
+This PR is not, whereas prior PRs were, approved." \
+"false" "rejected"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
