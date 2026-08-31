@@ -1089,18 +1089,18 @@ The same reasoning applies to every diff-scoped check here -- `check-phi` and
 so none of them can see an uncommitted change either.
 
 **A second, independent way that check reports clean over content it never
-examined: `NLB_GLOBS` defaults to `*.md`, and nothing here overrides it.**
+examined: `NLB_GLOBS` defaults to `*.md`, unless overridden.**
 The trap above is about *which commits* the check sees.
 This one is about *which files*, and it is wider than it looks.
 
 `check-new-line-breaks.py` reads
-`globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]`, the
-composite exposes that as a `globs` input, and no caller in this repo passes
-one --- not `_selftest.yml`'s `new-line-breaks` job, and not its
-`clause-breaks: 'false'` sibling.
-So the 53 `.qmd` pages under `website/` and every `description:` in a
-composite `action.yml` or a workflow are outside the check's population
-entirely, in CI and locally alike.
+`globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]`, and the
+composite exposes that as a `globs` input.
+In this repo, `_selftest.yml`'s `new-line-breaks` jobs pass `globs: '*.md *.qmd'`
+and `check-diff-scoped.sh` defaults `NLB_GLOBS` to `*.md *.qmd` (gha#750),
+so newly-added prose across the 53 `.qmd` pages under `website/` is scanned.
+Composite descriptions in `action.yml` and workflows remain outside the check's
+population.
 
 That is worth stating because this repo's own review checklist (item 7,
 "Suggest semantic line breaks in prose") names "action descriptions"
@@ -1124,8 +1124,8 @@ NLB_GLOBS='*.md *.qmd' NLB_BASE_REF=origin/main \
 ```
 
 So set `NLB_GLOBS` explicitly to the extensions your diff actually touches
-before trusting a local run, and read a silent run as a question about the
-population rather than as a pass.
+before trusting a direct local run of `check-new-line-breaks.py`, and read a
+silent run as a question about the population rather than as a pass.
 
 The reproduction above runs against any checkout and needs no history: pick
 any `.qmd`, commit a two-sentence line into it, and compare the two
@@ -1140,7 +1140,7 @@ Following the process this file recommends is what erased the evidence for
 it.
 So do not read gha#748 as a citation you can check; the merged diff shows
 nothing, which is the correct outcome rather than a contradiction.
-Widening the checked set in CI is tracked separately in gha#750.
+Widening the checked set to `.qmd` in CI and `check-diff-scoped.sh` landed in gha#750.
 
 **A third way, and the one the two above cannot warn you about: the local run
 and the CI run are the same script under a DIFFERENT configuration.**
@@ -1168,8 +1168,8 @@ so the directory stays scanned.
 The general form is worth stating, because it reaches every capability here
 whose selftest job overrides an input: **read the job's `with:` block before
 trusting a local run of the script it calls.**
-`check-diff-scoped.sh` inherits this, since it invokes each check with the
-caller's environment and adds none of its own.
+`check-diff-scoped.sh` inherits this for most checks (though it defaults
+`NLB_GLOBS` to `*.md *.qmd`), invoking each check with the caller's environment.
 
 ```bash
 # Not the composite's defaults -- the ones the `phi` job actually passes.
@@ -1431,7 +1431,7 @@ finding) and 2 (refused).
 A real finding outranks an incomplete run, since the finding is actionable
 now.
 
-23 assertions across 14 cases.
+24 assertions across 15 cases.
 Nine mutations are confirmed to turn a named case red: dropping the dirty
 guard, narrowing the status scan to `--untracked-files=no`, dropping the
 merge-base gate, letting the tool-unavailable arm read as clean, letting the

@@ -266,5 +266,33 @@ rc=$( cd "$d" && PATH="$nopy" env -u TYPOS_BIN_DIR bash "$SCRIPT" origin/main >/
               || bad "typos python probe" "expected 3, got $rc"
 rm -rf "$d" "$nopy"
 
+# 14. check-new-line-breaks checks .qmd files by default (gha#750).
+#     A violation in a newly-added .qmd file must exit 1 (finding), not exit 3 (clean).
+make_real_qmd_repo() {
+  local d
+  d="$(mktemp -d)"
+  (
+    cd "$d"
+    git init -q -b main .
+    git config user.email t@example.invalid; git config user.name Tester  # phi-allow
+    mkdir -p check-new-line-breaks check-phi
+    cp "$REPO_ROOT/check-new-line-breaks/check-new-line-breaks.py" check-new-line-breaks/
+    cp "$REPO_ROOT/check-phi/check-phi.py" check-phi/
+    printf '# fixture\n' > README.md
+    git add -A; git commit -qm base
+    git remote add origin "$d"
+    git update-ref refs/remotes/origin/main HEAD
+    printf -- '- A first sentence here in qmd. A second sentence on the very same line in qmd.\n' > index.qmd
+    git add -A; git commit -qm violation
+  ) >/dev/null 2>&1
+  printf '%s' "$d"
+}
+
+d=$(make_real_qmd_repo)
+rc=$(run "$d" origin/main)
+[ "$rc" = 1 ] && ok ".qmd violation is flagged as a finding (1) by default (gha#750)" \
+              || bad "qmd check" "expected 1, got $rc"
+rm -rf "$d"
+
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
