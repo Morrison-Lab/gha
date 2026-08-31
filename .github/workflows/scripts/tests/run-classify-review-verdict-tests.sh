@@ -821,6 +821,34 @@ run_test "Unrelated not clause followed by changes requested without punctuation
 This implementation is not thread safe changes requested." \
 "false" "changes-requested"
 
+# Test 102: No changes requested
+run_test "No changes requested" \
+"### Verdict
+
+No changes requested." \
+"true" "ready-for-merge"
+
+# Test 103: No changes required
+run_test "No changes required" \
+"### Verdict
+
+No changes required." \
+"true" "ready-for-merge"
+
+# Test 104: Zero changes requested
+run_test "Zero changes requested" \
+"### Verdict
+
+Zero changes requested." \
+"true" "ready-for-merge"
+
+# Test 105: Without changes requested
+run_test "Without changes requested" \
+"### Verdict
+
+Without changes requested." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

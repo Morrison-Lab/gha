@@ -113,7 +113,7 @@ pred_neg_gap_pattern = rf'(?:{aside_pattern}|(?:\s+(?:longer|currently|strictly|
 
 pos_neg_prefix = rf'\b(not|never|un-?|non-?|no\s+longer|without)\b{pos_gap_pattern}'
 noun_neg_prefix = rf'\b(no|zero|0|without)\b{noun_neg_gap_pattern}'
-pred_neg_prefix = rf'\b(no\s+longer|not|never|un-?|non-?)\b{pred_neg_gap_pattern}'
+pred_neg_prefix = rf'\b(no|zero|0|without|no\s+longer|not|never|un-?|non-?)\b{pred_neg_gap_pattern}'
 positive_targets = r'(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
 noun_negative_targets = r'(findings|blocking\s+findings|blocking\s+issues|actionable\s+findings|blockers?)'
 pred_negative_targets = r'(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|blocked|impasse|deadlock|rejected|unapproved)'
