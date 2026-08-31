@@ -750,7 +750,7 @@ runs:
           {
             "schema_version": "1.0",
             "reviewer": "claude",
-            "commit_sha": "${{ inputs.pr-state != '' && '<sha>' || '' }}",
+            "commit_sha": "<sha>",
             "verdict": "CLEAN",
             "findings": []
           }
