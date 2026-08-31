@@ -345,6 +345,69 @@ run_test "Compound sentence with blocked followed by ready for merge" \
 Although the previous review was blocked, this revision is now ready for merge." \
 "true" "ready-for-merge"
 
+# Test 34: Negated ready for merge (Not ready for merge)
+run_test "Not ready for merge" \
+"### Verdict
+
+Not ready for merge." \
+"false" "needs-more-work"
+
+# Test 35: Negated approved (This change is not approved)
+run_test "Not approved" \
+"### Verdict
+
+This change is not approved." \
+"false" "rejected"
+
+# Test 36: Negated clean (The tree is not clean)
+run_test "Not clean" \
+"### Verdict
+
+The tree is not clean." \
+"false" "needs-more-work"
+
+# Test 37: Negated ready to merge (Not ready to merge yet)
+run_test "Not ready to merge yet" \
+"### Verdict
+
+Not ready to merge yet -- see findings below." \
+"false" "needs-more-work"
+
+# Test 38: Incidental passed describing CI results after Needs more work
+run_test "Incidental passed describing CI results after Needs more work" \
+"### Verdict
+
+This needs more work on line 10. Unrelated: the CI suite passed." \
+"false" "needs-more-work"
+
+# Test 39: Never approved
+run_test "Never approved" \
+"### Verdict
+
+Never approved pending refactoring." \
+"false" "rejected"
+
+# Test 40: Negated clean followed by later approved
+run_test "Negated clean followed by later approved" \
+"### Verdict
+
+Although the working tree was initially not clean, this hotfix is approved." \
+"true" "approved"
+
+# Test 41: Bold Passed standalone verdict
+run_test "Bold Passed standalone verdict" \
+"### Verdict
+
+**Passed** — all criteria met." \
+"true" "ready-for-merge"
+
+# Test 42: Not ready followed by ready for merge resolution
+run_test "Not ready followed by ready for merge resolution" \
+"### Verdict
+
+Initially not ready, but with latest fixes, ready for merge." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

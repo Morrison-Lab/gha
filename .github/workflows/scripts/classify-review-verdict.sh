@@ -78,16 +78,20 @@ if not content_lines:
 if not content_lines:
     record("false", "no-verdict")
 
-negated_clean_phrases = re.compile(
+negated_positive_phrases = re.compile(
+    r'\b(not|never|un-?|non-?)\s*(ready\s+(?:for|to)\s+merge|approved|clean|lgtm)\b|\b(not\s+ready)\b',
+    re.IGNORECASE
+)
+negated_negative_phrases = re.compile(
     r'\b(no|zero|0|without)\s+(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?)\b',
     re.IGNORECASE
 )
 non_clean_kw = re.compile(
-    r'\b(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|not\s+ready|blocked|impasse|deadlock|rejected|unapproved)\b',
+    r'\b(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|blocked|impasse|deadlock|rejected|unapproved)\b',
     re.IGNORECASE
 )
 clean_kw = re.compile(
-    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|passed|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)',
+    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
     re.IGNORECASE
 )
 footer_regex = re.compile(
@@ -102,15 +106,24 @@ for line in content_lines:
     if footer_regex.search(line):
         continue
 
-    neg_spans = []
+    neg_pos_spans = []
+    neg_neg_spans = []
     line_matches = []
 
-    for m in negated_clean_phrases.finditer(line):
-        neg_spans.append((m.start(), m.end()))
+    for m in negated_positive_phrases.finditer(line):
+        neg_pos_spans.append((m.start(), m.end()))
+        matched_text = m.group(0).lower()
+        slug = 'needs-more-work'
+        if 'approved' in matched_text:
+            slug = 'rejected'
+        line_matches.append((m.start(), "false", slug))
+
+    for m in negated_negative_phrases.finditer(line):
+        neg_neg_spans.append((m.start(), m.end()))
         line_matches.append((m.start(), "true", "ready-for-merge"))
 
     for m in non_clean_kw.finditer(line):
-        if any(start <= m.start() and m.end() <= end for start, end in neg_spans):
+        if any(start <= m.start() and m.end() <= end for start, end in neg_neg_spans):
             continue
         text_matched = m.group(1).lower()
         slug = 'needs-more-work'
@@ -125,9 +138,16 @@ for line in content_lines:
         line_matches.append((m.start(), "false", slug))
 
     for m in clean_kw.finditer(line):
-        if any(start <= m.start() and m.end() <= end for start, end in neg_spans):
+        if any(start <= m.start() and m.end() <= end for start, end in neg_pos_spans):
+            continue
+        if any(start <= m.start() and m.end() <= end for start, end in neg_neg_spans):
             continue
         text_matched = m.group(0).lower()
+        if text_matched == 'passed':
+            # Ignore incidental test/CI/suite passed occurrences
+            prefix = line[:m.start()]
+            if re.search(r'\b(?:test|tests|suite|check|checks|ci|run|step|pipeline|build|workflow)\s*$', prefix, re.IGNORECASE):
+                continue
         slug = 'ready-for-merge'
         if re.search(r'\bapproved\b', text_matched):
             slug = 'approved'
