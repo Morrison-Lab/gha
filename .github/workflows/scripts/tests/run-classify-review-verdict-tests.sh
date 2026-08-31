@@ -262,6 +262,37 @@ run_test "Trailing Reviewed commit line after real verdict section" \
 Reviewed commit: 1234567890abcdef" \
 "true" "ready-for-merge"
 
+# Test 25: Summary sentence before Blocked status line
+run_test "Summary sentence before Blocked status line" \
+"## Code review
+
+### Verdict
+
+No actionable findings from my review.
+
+Blocked on human review pending a policy decision on scope." \
+"false" "blocked"
+
+# Test 26: Prose mentioning Needs more work before real bold Ready for merge status line
+run_test "Prose mentioning Needs more work before bold Ready for merge" \
+"## Code review
+
+### Verdict
+
+The security concern I raised in the previous round would normally mean Needs more work, but that was already fixed in the latest commit.
+
+**Ready for merge.**" \
+"true" "ready-for-merge"
+
+# Test 27: Compound sentence with No actionable findings and blocked
+run_test "Compound sentence with No actionable findings and blocked" \
+"## Code review
+
+### Verdict
+
+No actionable findings from code review, but this PR is currently blocked pending a human decision." \
+"false" "blocked"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

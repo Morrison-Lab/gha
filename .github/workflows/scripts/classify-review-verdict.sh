@@ -20,133 +20,121 @@ set -euo pipefail
 REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file>}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
-if [[ ! -f "$REVIEW_FILE" ]]; then
-  echo "clean=false" >> "$GITHUB_OUTPUT"
-  echo "verdict=missing-file" >> "$GITHUB_OUTPUT"
-  echo "clean=false"
-  echo "verdict=missing-file"
-  exit 0
-fi
+python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" << 'EOF'
+import os
+import re
+import sys
 
-if [[ -z "$(tr -d '[:space:]' < "$REVIEW_FILE")" ]]; then
-  echo "clean=false" >> "$GITHUB_OUTPUT"
-  echo "verdict=no-output" >> "$GITHUB_OUTPUT"
-  echo "clean=false"
-  echo "verdict=no-output"
-  exit 0
-fi
+review_file = sys.argv[1]
+output_file = sys.argv[2]
 
-# Extract the verdict section: from the LAST genuine verdict header to EOF.
-# When a review cites prior rounds inline or includes trailing remarks,
-# the actual verdict of the current round is declared under the final verdict heading.
-# Genuine verdict headers have one of three shapes:
-#   1. Markdown header (e.g. `### Verdict`, `## **Verdict**`)
-#   2. Label with colon or bold (e.g. `**Verdict:**`, `Verdict:`)
-#   3. Standalone line containing only the verdict label (e.g. `Verdict`)
-# Trailing sentences merely beginning with the word "Verdict" are ignored.
-verdict_section_file="$(mktemp)"
-trap 'rm -f "$verdict_section_file"' EXIT
+def record(clean, slug):
+    if output_file and output_file != "/dev/null" and os.path.exists(output_file):
+        with open(output_file, "a", encoding="utf-8") as f:
+            f.write(f"clean={clean}\nverdict={slug}\n")
+    print(f"clean={clean}\nverdict={slug}")
+    sys.exit(0)
 
-awk '
-  tolower($0) ~ /^[[:space:]]*#{1,6}[[:space:]]+(\*\*)?verdict/ ||
-  tolower($0) ~ /^[[:space:]>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)/ ||
-  tolower($0) ~ /^[[:space:]>*_#-]*verdict[:[:space:]*_-]*$/ {
-    last_verdict = NR
-  }
-  { lines[NR] = $0 }
-  END {
-    if (last_verdict > 0) {
-      for (i = last_verdict; i <= NR; i++) {
-        print lines[i]
-      }
-    }
-  }
-' "$REVIEW_FILE" > "$verdict_section_file"
+if not os.path.isfile(review_file):
+    record("false", "missing-file")
 
-if [[ -z "$(tr -d '[:space:]' < "$verdict_section_file")" ]]; then
-  echo "clean=false" >> "$GITHUB_OUTPUT"
-  echo "verdict=no-verdict" >> "$GITHUB_OUTPUT"
-  echo "clean=false"
-  echo "verdict=no-verdict"
-  exit 0
-fi
+try:
+    with open(review_file, "r", encoding="utf-8", errors="replace") as f:
+        text = f.read()
+except Exception:
+    record("false", "missing-file")
 
-# Look for the primary verdict declaration immediately following the Verdict header.
-# In Claude reviews following the standard format:
-#   ### Verdict
-#   **Ready for merge** — ...
-# or
-#   **Verdict:** Ready for merge
-# or
-#   Verdict: Needs more work
-#
-# Strip leading `### Verdict` header line itself to inspect the verdict declaration.
-declaration="$(grep -viE '^[[:space:]>*_#-]*verdict[:[:space:]*_-]*$' "$verdict_section_file" | grep -vE '^[[:space:]]*$' | head -n 1 || true)"
+if not text.strip():
+    record("false", "no-output")
 
-# Fall back to the whole verdict section if declaration extraction is empty.
-if [[ -z "$declaration" ]]; then
-  declaration="$(cat "$verdict_section_file")"
-fi
+lines = text.strip().splitlines()
+header_regex = re.compile(
+    r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict'
+    r'|^[ \t>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)'
+    r'|^[ \t>*_#-]*verdict[: \t*_-]*$',
+    re.IGNORECASE
+)
 
-# Classify based on declaration and verdict section.
-# First check if the declaration starts with or clearly states a non-clean verdict:
-if echo "$declaration" | grep -qiE '\b(needs\s+more\s+work|changes\s+requested|changes\s+required|not\s+ready|actionable\s+findings|blocked|impasse|deadlock|rejected|unapproved)\b'; then
-  # Verify it's not a negated mention like "no changes requested" or "zero actionable findings"
-  if ! echo "$declaration" | grep -qiE '\b(no|zero|0|without)\s+(needs\s+more\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blockers?)\b'; then
-    slug="needs-more-work"
-    if echo "$declaration" | grep -qiE '\bchanges\s+requested\b'; then
-      slug="changes-requested"
-    elif echo "$declaration" | grep -qiE '\bblocked\b'; then
-      slug="blocked"
-    elif echo "$declaration" | grep -qiE '\bimpasse|deadlock\b'; then
-      slug="impasse"
-    elif echo "$declaration" | grep -qiE '\brejected|unapproved\b'; then
-      slug="rejected"
-    fi
-    echo "clean=false" >> "$GITHUB_OUTPUT"
-    echo "verdict=$slug" >> "$GITHUB_OUTPUT"
-    echo "clean=false"
-    echo "verdict=$slug"
-    exit 0
-  fi
-fi
+last_idx = -1
+for i, line in enumerate(lines):
+    if header_regex.search(line):
+        last_idx = i
 
-# Check for affirmative clean status:
-if echo "$declaration" | grep -qiE '\b(ready\s+for\s+merge|clean|approved|passed|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b'; then
-  slug="ready-for-merge"
-  if echo "$declaration" | grep -qiE '\bapproved\b'; then
-    slug="approved"
-  elif echo "$declaration" | grep -qiE '\bclean\b'; then
-    slug="clean"
-  fi
-  echo "clean=true" >> "$GITHUB_OUTPUT"
-  echo "verdict=$slug" >> "$GITHUB_OUTPUT"
-  echo "clean=true"
-  echo "verdict=$slug"
-  exit 0
-fi
+if last_idx == -1:
+    record("false", "no-verdict")
 
-# If neither clear pattern matched the declaration line, scan the full verdict section:
-if grep -qiE '\b(needs\s+more\s+work|changes\s+requested|changes\s+required)\b' "$verdict_section_file" && \
-   ! grep -qiE '\b(no|zero|0|without)\s+(needs\s+more\s+work|changes\s+requested|changes\s+required)\b' "$verdict_section_file"; then
-  echo "clean=false" >> "$GITHUB_OUTPUT"
-  echo "verdict=needs-more-work" >> "$GITHUB_OUTPUT"
-  echo "clean=false"
-  echo "verdict=needs-more-work"
-  exit 0
-fi
+verdict_lines = lines[last_idx:]
+content_lines = []
+for line in verdict_lines:
+    if re.search(r'^[ \t>*_#-]*verdict[: \t*_-]*$', line, re.IGNORECASE) or \
+       re.search(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict[: \t*_-]*$', line, re.IGNORECASE):
+        continue
+    if line.strip():
+        content_lines.append(line.strip())
 
-if grep -qiE '\b(ready\s+for\s+merge|clean|approved)\b' "$verdict_section_file"; then
-  echo "clean=true" >> "$GITHUB_OUTPUT"
-  echo "verdict=ready-for-merge" >> "$GITHUB_OUTPUT"
-  echo "clean=true"
-  echo "verdict=ready-for-merge"
-  exit 0
-fi
+if not content_lines:
+    content_lines = [l.strip() for l in verdict_lines if l.strip()]
 
-# Unrecognized verdict format: fail-closed (clean=false).
-echo "clean=false" >> "$GITHUB_OUTPUT"
-echo "verdict=unrecognized" >> "$GITHUB_OUTPUT"
-echo "clean=false"
-echo "verdict=unrecognized"
-exit 0
+if not content_lines:
+    record("false", "no-verdict")
+
+bold_status_regex = re.compile(r'\*\*([^*]+)\*\*')
+
+non_clean_kw = re.compile(
+    r'\b(needs\s+more\s+work|changes\s+requested|changes\s+required|not\s+ready|blocked|impasse|deadlock|rejected|unapproved)\b',
+    re.IGNORECASE
+)
+clean_kw = re.compile(
+    r'\b(ready\s+for\s+merge|clean|approved|passed|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b',
+    re.IGNORECASE
+)
+negated_clean_phrases = re.compile(
+    r'\b(no|zero|0|without)\s+(needs\s+more\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|blockers?)\b',
+    re.IGNORECASE
+)
+
+# 1. Check for bold status tokens (last one wins)
+last_bold_verdict = None
+for line in content_lines:
+    for m in bold_status_regex.finditer(line):
+        bold_text = m.group(1).strip()
+        defanged = negated_clean_phrases.sub('_CLEAN_PHRASE_', bold_text)
+        if non_clean_kw.search(defanged):
+            slug = 'needs-more-work'
+            if re.search(r'\bchanges\s+requested\b', defanged, re.I): slug = 'changes-requested'
+            elif re.search(r'\bblocked\b', defanged, re.I): slug = 'blocked'
+            elif re.search(r'\bimpasse|deadlock\b', defanged, re.I): slug = 'impasse'
+            elif re.search(r'\brejected|unapproved\b', defanged, re.I): slug = 'rejected'
+            last_bold_verdict = ("false", slug)
+        elif clean_kw.search(bold_text) or '_CLEAN_PHRASE_' in defanged:
+            slug = 'ready-for-merge'
+            if re.search(r'\bapproved\b', bold_text, re.I): slug = 'approved'
+            elif re.search(r'\bclean\b', bold_text, re.I): slug = 'clean'
+            last_bold_verdict = ("true", slug)
+
+if last_bold_verdict is not None:
+    record(*last_bold_verdict)
+
+# 2. Check full lines in verdict section
+# First check for unnegated non-clean assertions
+for line in content_lines:
+    defanged = negated_clean_phrases.sub('_CLEAN_PHRASE_', line)
+    if non_clean_kw.search(defanged):
+        slug = 'needs-more-work'
+        if re.search(r'\bchanges\s+requested\b', defanged, re.I): slug = 'changes-requested'
+        elif re.search(r'\bblocked\b', defanged, re.I): slug = 'blocked'
+        elif re.search(r'\bimpasse|deadlock\b', defanged, re.I): slug = 'impasse'
+        elif re.search(r'\brejected|unapproved\b', defanged, re.I): slug = 'rejected'
+        record("false", slug)
+
+# Then check for clean assertions
+for line in content_lines:
+    defanged = negated_clean_phrases.sub('_CLEAN_PHRASE_', line)
+    if clean_kw.search(line) or '_CLEAN_PHRASE_' in defanged:
+        slug = 'ready-for-merge'
+        if re.search(r'\bapproved\b', line, re.I): slug = 'approved'
+        elif re.search(r'\bclean\b', line, re.I): slug = 'clean'
+        record("true", slug)
+
+record("false", "unrecognized")
+EOF
