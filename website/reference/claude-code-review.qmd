@@ -117,6 +117,21 @@ A gray skip here still means no review ran.
 Do not read it as an all-clear.
 A later re-run can recover if fetching the default branch was the problem.
 
+## The `require-clean-verdict` gate
+
+Where `require-review` verifies review **delivery** (the review ran and was
+posted), `require-clean-verdict` acts as an **opt-in server-side verdict gate**
+([gha#767](https://github.com/Morrison-Lab/gha/issues/767)).
+Put **`review / require-clean-verdict`** in branch protection's required checks
+to enforce that only PRs with an affirmatively clean AI review verdict
+("Ready for merge", "Clean", "Approved") can merge.
+
+| Result | What it attests |
+| ------ | --------------- |
+| Green | The review completed, was posted for the current PR head, and produced an affirmatively clean verdict ("Ready for merge"). |
+| Gray (skipped) | No review ran (draft, fork, bot author, quota exhausted, self-mod skip, cancellation, or stale head). Does not block merging. |
+| Red | The review failed or produced a non-clean verdict ("Needs more work", "Changes requested", "Blocked", or unaddressed findings). Blocks merging when configured as a required check. |
+
 ## Concurrency
 
 Do not declare a top-level `concurrency:` block in your caller workflow.

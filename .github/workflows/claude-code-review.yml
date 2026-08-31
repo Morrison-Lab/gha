@@ -1424,6 +1424,8 @@ jobs:
       actions: read
     outputs:
       stale: ${{ steps.target.outputs.stale }}
+      clean_verdict: ${{ steps.classify-verdict.outputs.clean }}
+      verdict: ${{ steps.classify-verdict.outputs.verdict }}
 
     steps:
       # Trusted identity for every write. The model job has unrestricted
@@ -1688,6 +1690,19 @@ jobs:
           COMMENT_URL="$(gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE")"
           echo "comment_url=$COMMENT_URL" >> "$GITHUB_OUTPUT"
 
+      - name: Classify review verdict
+        id: classify-verdict
+        if: >-
+          steps.target.outputs.stale != 'true' &&
+          steps.payload.outputs.resolve_outcome == 'success' &&
+          steps.payload.outputs.quota_exhausted != 'true' &&
+          steps.payload.outputs.cancelled != 'true' &&
+          steps.payload.outputs.review_present == 'true'
+        env:
+          REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
+        run: |
+          .github/workflows/scripts/classify-review-verdict.sh "$REVIEW_TEXT_FILE"
+
       - name: Post cost comment
         if: >-
           steps.target.outputs.stale != 'true' &&
@@ -1951,3 +1966,51 @@ jobs:
             exit 1
           fi
           echo "Claude review completed and was posted."
+
+  # Gate job: sibling of require-review. Requires that the review completed, was
+  # posted for the current PR head, and produced an affirmatively clean verdict
+  # ("Ready for merge" / "Clean" / "Approved"). Fails (red) if the verdict was
+  # "Needs more work" / "Changes requested" or if the review failed.
+  #
+  # Skipped (gray) on the exact same graceful-skip paths require-review uses:
+  #   - claude-review was skipped (draft, fork, bot author, dispatch-guard blocked)
+  #   - claude-review was cancelled
+  #   - quota_exhausted=true
+  #   - self_mod=true
+  #   - cancelled=true
+  #   - post-review reported stale
+  #
+  # Consumers can use this job's name (e.g. `review / require-clean-verdict`) in
+  # branch protection / ruleset required-checks to enforce server-side merge
+  # blocking against unaddressed findings (gha#767).
+  require-clean-verdict:
+    needs: [claude-review, post-review]
+    if: >-
+      always() &&
+      needs.claude-review.result != 'skipped' &&
+      needs.claude-review.result != 'cancelled' &&
+      !(needs.post-review.result == 'success' &&
+      fromJSON(needs.post-review.outputs.stale || 'false')) &&
+      !(needs.claude-review.result == 'success' &&
+      (fromJSON(needs.claude-review.outputs.quota_exhausted || 'false') ||
+      fromJSON(needs.claude-review.outputs.self_mod || 'false') ||
+      fromJSON(needs.claude-review.outputs.cancelled || 'false')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Assert clean review verdict
+        run: |
+          if [[ "${{ needs.claude-review.result }}" != "success" ]]; then
+            echo "::error::Claude review job did not succeed (result: ${{ needs.claude-review.result }})."
+            exit 1
+          fi
+          if [[ "${{ needs.post-review.result }}" != "success" ]]; then
+            echo "::error::Review posting job did not succeed (result: ${{ needs.post-review.result }})."
+            exit 1
+          fi
+          if [[ "${{ needs.post-review.outputs.clean_verdict }}" != "true" ]]; then
+            echo "::error::Claude review verdict is not clean (verdict: ${{ needs.post-review.outputs.verdict || 'unknown' }})."
+            exit 1
+          fi
+          echo "Claude review completed, was posted, and produced a clean verdict (${{ needs.post-review.outputs.verdict }})."

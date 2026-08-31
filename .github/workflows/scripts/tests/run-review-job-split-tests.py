@@ -346,6 +346,11 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         concurrency_of("require-review") is None,
         "require-review sits in neither concurrency group (gha#679)",
     )
+    if "require-clean-verdict" in jobs:
+        check(
+            concurrency_of("require-clean-verdict") is None,
+            "require-clean-verdict sits in neither concurrency group",
+        )
     gather_needs = (jobs.get("gather-context") or {}).get("needs")
     if isinstance(gather_needs, str):
         gather_needs = [gather_needs]
@@ -391,6 +396,19 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
         check(
             "post-review.outputs.stale" in rif,
             "require-review skips when post-review reports stale",
+        )
+    if "require-clean-verdict" in jobs:
+        rcv_if = " ".join(str(jobs["require-clean-verdict"].get("if") or "").split())
+        check(
+            "post-review.outputs.stale" in rcv_if,
+            "require-clean-verdict skips when post-review reports stale",
+        )
+        rcv_needs = jobs["require-clean-verdict"].get("needs") or []
+        if isinstance(rcv_needs, str):
+            rcv_needs = [rcv_needs]
+        check(
+            "claude-review" in rcv_needs and "post-review" in rcv_needs,
+            "require-clean-verdict needs claude-review and post-review",
         )
     reviewed_head = str((review.get("outputs") or {}).get("reviewed-head") or "")
     check(
@@ -851,6 +869,11 @@ jobs:
         run: |
           echo "Reviewed commit: $HEAD_SHA"
   require-review:
+    needs: [claude-review, post-review]
+    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
+    steps:
+      - run: echo ok
+  require-clean-verdict:
     needs: [claude-review, post-review]
     if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))
     steps:
@@ -1407,6 +1430,24 @@ runs:
             "  require-review:\n",
             "  require-review:\n" + review_conc,
             "require-review sits in neither concurrency group",
+        )
+        failures += mutate(
+            "require-clean-verdict in the canceling group fails",
+            "  require-clean-verdict:\n",
+            "  require-clean-verdict:\n" + review_conc,
+            "require-clean-verdict sits in neither concurrency group",
+        )
+        failures += mutate(
+            "require-clean-verdict ignoring a stale post fails",
+            "  require-clean-verdict:\n    needs: [claude-review, post-review]\n    if: always() && !(needs.post-review.result == 'success' && fromJSON(needs.post-review.outputs.stale || 'false'))",
+            "  require-clean-verdict:\n    needs: [claude-review, post-review]\n    if: always() && !(needs.post-review.result == 'success' && 'false')",
+            "require-clean-verdict skips when post-review reports stale",
+        )
+        failures += mutate(
+            "require-clean-verdict missing claude-review needs fails",
+            "  require-clean-verdict:\n    needs: [claude-review, post-review]",
+            "  require-clean-verdict:\n    needs: [post-review]",
+            "require-clean-verdict needs claude-review and post-review",
         )
         failures += mutate(
             "denied_tools interpolated into a run body fails",

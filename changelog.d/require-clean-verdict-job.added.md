@@ -1,0 +1,3 @@
+- Add opt-in `require-clean-verdict` gate job to `claude-code-review.yml` (gha#767).
+- Assert that review completed, was posted for the current PR head, and produced an affirmatively clean verdict ("Ready for merge") before passing.
+- Consumers can add `review / require-clean-verdict` to branch protection / repository rulesets to enforce server-side merge blocking against unaddressed review findings.

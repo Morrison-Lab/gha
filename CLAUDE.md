@@ -3184,6 +3184,32 @@ triggered exactly this on `require-review`; confirmed via `actions_get`
 `get_workflow_run` that the failing check's conclusion was `cancelled` on
 the non-head SHA, matching this pattern.)
 
+## `require-clean-verdict`: Opt-in server-side verdict gate (gha#767)
+
+`claude-code-review.yml` provides two sibling gate jobs:
+
+- `require-review`: Asserts review **delivery** (the review ran and posted).
+  It goes green on any completed, posted review (even one with findings) and fails
+  red only on review crashes/errors.
+- `require-clean-verdict`: Asserts an **affirmatively clean verdict**
+  ("Ready for merge", "Clean", "Approved").
+  It goes green when the review completed, was posted for the current PR head,
+  and produced a clean verdict without unaddressed blocking findings;
+  it goes red on "Needs more work", "Changes requested", "Blocked",
+  or review errors.
+
+Both gate jobs skip gray on the exact same graceful-skip paths:
+
+- `claude-review` was skipped (draft PR, fork, bot author, or dispatch guard blocked);
+- `claude-review` was cancelled by a newer run (`cancel-in-progress`);
+- Account API quota was exhausted mid-run (`quota_exhausted=true`);
+- Default-branch workflow restore failed (`self_mod=true`);
+- `post-review` reported the review stale because PR head moved (`stale=true`).
+
+Consumers requiring server-side merge blocking can add
+`review / require-clean-verdict` to branch protection / repository ruleset
+required checks.
+
 ## Green `require-review` is not fully clean - read the review comment body
 
 **Fully clean** (the bar for standing `mwc` merge and for ARDI/GII session
