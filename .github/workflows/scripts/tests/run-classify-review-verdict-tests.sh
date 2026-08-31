@@ -660,6 +660,20 @@ run_test "Long unpunctuated hedge (>8 words) without coordinators" \
 This is not under any conceivable circumstance or criteria ready for merge." \
 "false" "needs-more-work"
 
+# Test 79: Colon delimiter (not: by any measure, ready for merge.)
+run_test "Colon delimiter (not: by any measure, ready for merge.)" \
+"### Verdict
+
+This is not: by any measure, ready for merge." \
+"false" "needs-more-work"
+
+# Test 80: Quote delimiter (not \"in any sense\" ready for merge.)
+run_test "Quote delimiter (not \"in any sense\" ready for merge.)" \
+"### Verdict
+
+This is not \"in any sense\" ready for merge." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
