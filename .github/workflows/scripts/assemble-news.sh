@@ -138,12 +138,12 @@ fi
 # A thematic break is three or more matching '-', '_' or '*' characters with
 # only spaces or tabs between and after them; see
 # https://spec.commonmark.org/0.31.2/#thematic-breaks.
-# The caller's grep admits '+' as well, and '+' is never a break character,
-# so the marker guard below rejects it -- '+ + +' is a list, not a break.
-# '_' never reaches here at all, since that grep does not match it.
-# Fewer than three markers is a list as well ('- ' and '- -' alike), and a
-# run mixing marker characters ('* - -') is a list item whose content happens
-# to start with a different marker.
+# Its sibling in strip-non-invoking-markup.sh implements the same rule in awk.
+# The caller's list_bullet_candidates admits '+' as well, and '+' is never a
+# break character, so the marker guard below rejects it -- '+ + +' is a list,
+# not a break. Fewer than three markers is a list as well ('- ' and '- -' alike),
+# and a run mixing marker characters ('* - -') is a list item whose content
+# happens to start with a different marker.
 #
 # Leading indentation is deliberately not tested. A thematic break proper
 # admits at most three leading spaces, but a more deeply indented
@@ -213,6 +213,7 @@ is_thematic_break() {
   case "$marker" in
     -)   rest="${bare//-/}" ;;
     '*') rest="${bare//[*]/}" ;;
+    _)   rest="${bare//_/}" ;;
     *)   return 1 ;;
   esac
   [ -z "$rest" ] || return 1

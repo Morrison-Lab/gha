@@ -1329,10 +1329,10 @@ bullet already in the file rather than erroring.
 The candidate scan matches "a marker followed by a space", which is also what
 a spaced CommonMark thematic break looks like, so the suite's job is to pin
 the boundary between the two.
-Tests 15 and 18 pin the break cases (`- - -`, `* * *`), and 16, 17, 19, and 20
-pin the list cases that merely resemble one: an empty list item (a `*` and
-the space after it), a spaced run of `+` (never a break character), two
-markers, and a run mixing marker characters.
+Tests 15, 18, and 27 pin the break cases (`- - -`, `* * *`, `_ _ _`), and 16,
+17, 19, and 20 pin the list cases that merely resemble one: an empty list item
+(a `*` and the space after it), a spaced run of `+` (never a break character),
+two markers, and a run mixing marker characters.
 Test 16's empty item must use `*` rather than `-`: the no-bullet-found
 fallback is itself `-`, so a `-` empty item makes the buggy and fixed answers
 coincide and the regression goes undetected.
