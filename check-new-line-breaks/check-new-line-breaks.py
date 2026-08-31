@@ -25,7 +25,7 @@ Design notes:
 
 Configuration (all via environment variables, set by the composite action):
   NLB_BASE_REF      Git ref/SHA to diff against. Empty => skip the check.
-  NLB_GLOBS         Space-separated git pathspecs to check (default: '*.md').
+  NLB_GLOBS         Space-separated git pathspecs to check (default: '*.md *.qmd *.yml').
   NLB_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
   NLB_FAIL          "false" => non-blocking (annotations only); default "true" => blocking.
   NLB_CLAUSE_BREAKS "false" => skip the clause check; default "true" =>
@@ -651,7 +651,7 @@ def _env_int(name: str, default: int) -> int:
 
 def main() -> int:
     base_ref = os.environ.get("NLB_BASE_REF", "").strip()
-    globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]
+    globs = os.environ.get("NLB_GLOBS", "*.md *.qmd *.yml").split() or ["*.md", "*.qmd", "*.yml"]
     ignore = _compile_ignores(_split_list(os.environ.get("NLB_PATHS_IGNORE", "")))
     fail = _env_flag("NLB_FAIL", default=_DEFAULT_FAIL)
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)

@@ -27,7 +27,7 @@ inputs:
     description: >-
       Space-separated git pathspecs of tracked files to check. Git pathspecs
       match at any depth, so this is recursive by default.
-    default: '*.md'
+    default: '*.md *.qmd *.yml'
   paths-ignore:
     description: >-
       Comma/newline-separated glob patterns (relative paths) to skip.

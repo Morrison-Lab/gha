@@ -344,7 +344,7 @@ def _commit(tmp_path: Path, message: str) -> None:
     subprocess.run(["git", "commit", "-q", "-m", message], cwd=tmp_path, check=True)
 
 
-def _find(tmp_path: Path, base_ref: str = "", globs=("*.md",)):
+def _find(tmp_path: Path, base_ref: str = "", globs=("*.md", "*.qmd", "*.yml")):
     import os
     cwd = os.getcwd()
     os.chdir(tmp_path)
@@ -992,3 +992,19 @@ def test_leading_semicolon_with_and_without_a_space_agree():
     spaced = "`code` ; " + _PADDING
     tight = "`code`; " + _PADDING
     assert nlb.has_late_semicolon(spaced) == nlb.has_late_semicolon(tight)
+
+def test_scans_qmd_and_yml_by_default(tmp_path):
+    _init_repo(tmp_path)
+    (tmp_path / "doc.qmd").write_text("Two sentences. On one line.\n")
+    (tmp_path / "action.yml").write_text("description: >-\n  Two sentences. On one line.\n")
+    _commit(tmp_path, "base")
+    
+    # Modify both to introduce violations
+    (tmp_path / "doc.qmd").write_text("Two sentences. On one line.\nAdded two sentences. On one line.\n")
+    (tmp_path / "action.yml").write_text("description: >-\n  Two sentences. On one line.\n  Added two sentences. On one line.\n")
+    _commit(tmp_path, "add violations")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    paths = sorted([v.path for v in violations])
+    assert paths == ["action.yml", "doc.qmd"]
