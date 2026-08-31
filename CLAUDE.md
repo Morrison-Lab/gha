@@ -3550,6 +3550,84 @@ The [Test changes against a template repo](#test-changes-against-a-template-repo
 section used to hit that same OIDC content-validation abort;
 `github_token` forwarding is what skips it now (gha#580).
 
+## `claude.yml` has four review-dispatch sites, and one is not the composite
+
+Making a consumer's reviewer on-request only is a change to **this** repo, not
+to the consumer's caller.
+Removing a caller-side trigger stops the caller from starting a run; it does
+nothing about the runs `claude.yml` starts on its own once the agent job is
+already going.
+
+At `838011e`, `.github/workflows/claude.yml` dispatches
+`claude-code-review.yml` from four places:
+
+| line | step | condition |
+| --- | --- | --- |
+| 1223 | `Dispatch code review` | `steps.review_request.outputs.match == 'true'` |
+| 1291 | `Dispatch review for a late @claude review comment` | `steps.late_review_request.outputs.match == 'true'` |
+| 1308 | `Dispatch code review after Claude pushed commits` | head SHA changed |
+| 1532 | inside `Finalize PR for issue trigger` | none |
+
+The first three call the `.github/actions/dispatch-review` composite.
+The **fourth is an inline `gh workflow run "$REVIEW_WF" ... -f pr_number=`**
+in the middle of the step that opens or updates the PR for an
+issue-triggered run, so it is invisible to anyone enumerating
+`uses: .../dispatch-review`, and it carries its own copy of the gha#598
+`--ref` logic rather than the composite's.
+The last two dispatch under no review-request condition at all, so an input
+gating only the request-matched sites leaves a review running on every push
+the agent makes and on every issue-triggered PR.
+
+**Enumerate the dispatches from the primitive, never from the composite or
+the step names.**
+`grep -n 'gh workflow run' .github/workflows/claude.yml
+.github/workflows/scripts/dispatch-review.sh` reaches all of them in one
+pass; a grep for `dispatch-review` returns three, and reading the step names
+returns three different ones, both non-empty and both plausible.
+
+- **Do:** derive the dispatch set with `gh workflow run` before proposing any
+  gate over it, and say which sites the gate covers.
+- **Don't:** count `uses: .../dispatch-review` occurrences, or steps named
+  like a dispatch, as the population.
+
+(`Morrison-Lab/gha#778`, 2026-08-31, filed while making `UCD-SERG/shigella`'s
+reviewer on-request only in shigella#44 / shigella#46.
+That issue was written saying there are three sites and proposing an input
+gating one of them, so its stated outcome was not reachable by its own
+proposed fix.
+Both undercounts were caught by an adversarial review rather than by the
+author.)
+
+## `dispatch-review.sh` omits `--ref` in four cases; its header names three
+
+Any documentation of the dispatch command has to carry those cases, because
+one of them is a trust boundary rather than a convenience.
+At `838011e`, `.github/workflows/scripts/dispatch-review.sh` drops `--ref`
+when:
+
+1. `PR_BRANCH` cannot be resolved;
+2. `PR_HEAD_REPO` differs from `REPO`, that is, the PR is from a fork
+   (gha#289);
+3. `detect-pr-workflow-edits.sh` reports the PR edits top-level
+   `.github/workflows/*.yml` (gha#598);
+4. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
+   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same omission.
+
+The script's own header comment names only the first three, so case 4 is
+derivable from the code alone --- read the branches, not the comment.
+
+Case 3 is why the flat form is unsafe to document: with `--ref` pointing at
+the PR branch, GitHub executes the PR head's own unreviewed caller YAML under
+this repository's model credentials, which is exactly what gha#598 exists to
+prevent.
+So write the conditional form, or say which case the given form covers, per
+[`Morrison-Lab/ai-config`'s `shared/writing/fact-check-prose.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/fact-check-prose.md)
+("A command written into documentation is a condensation of the code that
+builds it").
+Having applied the carve-out in a dispatch you just ran is not the same as
+having written it down; both acts happened in one session on shigella#46, and
+only the first one got it right.
+
 ## A prompt instruction is a request; a permission rule is a constraint
 
 `run-claude-review-attempt`'s `--append-system-prompt` tells the reviewer to
