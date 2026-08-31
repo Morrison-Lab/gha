@@ -629,6 +629,18 @@ runs:
           author requested reviewers hold off" or stop without reviewing just
           because a claim comment is present.
 
+          External CI status (such as checking `gh pr checks`, GitHub Actions
+          workflow run results, or whether required checks have passed) is
+          OUT OF SCOPE for your review: CI is verified independently by
+          the merging session's own automation. Do NOT query `gh pr checks` or
+          block on CI state, and do NOT condition or qualify your verdict on CI
+          (for example, never write 'Ready for merge, pending CI confirmation'
+          or 'Approved subject to CI passing'). Evaluate the PR on the diff's
+          own merits, independent of CI status, and state an unconditional
+          verdict on the diff (such as 'Ready for merge', 'Needs more work',
+          or another clearly labeled status per the instructions below)
+          without gating it on CI.
+
           This run is a single, synchronous CI job with a fixed timeout and
           no one to resume it afterward. Do NOT spawn a background agent or
           sub-task to continue the review in a future turn or after this

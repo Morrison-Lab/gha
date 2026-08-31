@@ -1,0 +1,1 @@
+- Instruct Claude Code reviewer prompt that CI verification is out of scope and verdicts must be unconditional on diff grounds, preventing CI-qualified verdicts such as "pending CI confirmation" (gha#768).
