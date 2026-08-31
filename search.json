@@ -1587,6 +1587,18 @@
     ]
   },
   {
+    "objectID": "reference/claude-code-review.html#the-require-clean-verdict-gate",
+    "href": "reference/claude-code-review.html#the-require-clean-verdict-gate",
+    "title": "claude-code-review.yml",
+    "section": "The require-clean-verdict gate",
+    "text": "The require-clean-verdict gate\nWhere require-review verifies review delivery (the review ran and was posted), require-clean-verdict acts as an opt-in server-side verdict gate (gha#767). Put review / require-clean-verdict in branch protection’s required checks to enforce that only PRs with an affirmatively clean AI review verdict (“Ready for merge”, “Clean”, “Approved”) can merge.\n\n\n\n\n\n\n\nResult\nWhat it attests\n\n\n\n\nGreen\nThe review completed, was posted for the current PR head, and produced an affirmatively clean verdict (“Ready for merge”).\n\n\nGray (skipped)\nNo review ran (draft, fork, bot author, quota exhausted, self-mod skip, cancellation, or stale head). Does not block merging.\n\n\nRed\nThe review failed or produced a non-clean verdict (“Needs more work”, “Changes requested”, “Blocked”, or unaddressed findings). Blocks merging when configured as a required check.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "claude-code-review.yml"
+    ]
+  },
+  {
     "objectID": "reference/claude-code-review.html#concurrency",
     "href": "reference/claude-code-review.html#concurrency",
     "title": "claude-code-review.yml",

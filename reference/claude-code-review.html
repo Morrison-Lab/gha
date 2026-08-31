@@ -681,6 +681,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#the-require-review-gate" id="toc-the-require-review-gate" class="nav-link" data-scroll-target="#the-require-review-gate">The <code>require-review</code> gate</a></li>
+  <li><a href="#the-require-clean-verdict-gate" id="toc-the-require-clean-verdict-gate" class="nav-link" data-scroll-target="#the-require-clean-verdict-gate">The <code>require-clean-verdict</code> gate</a></li>
   <li><a href="#concurrency" id="toc-concurrency" class="nav-link" data-scroll-target="#concurrency">Concurrency</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
@@ -897,6 +898,36 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>PRs that edit workflow files are reviewed when that restore succeeds. The job replaces <code>.github/workflows/</code> with the default-branch tree after checkout and passes <code>github_token</code> so <code>claude-code-action</code> skips its OIDC workflow-content check. On a dispatched review it also omits <code>--ref</code>, so GitHub executes the default-branch caller rather than the PR head’s YAML. A files-list response shorter than the PR’s <code>changed_files</code> count is treated the same as a failed listing (GitHub caps that endpoint at 3000 files), so a large PR cannot hide a workflow edit behind the cap. Check-runs for that no-<code>--ref</code> dispatch land on the default branch (<a href="https://github.com/Morrison-Lab/gha/issues/285">#285</a>); the review comment still posts on the PR.</p>
 <p>A gray skip here still means no review ran. Do not read it as an all-clear. A later re-run can recover if fetching the default branch was the problem.</p>
+</section>
+<section id="the-require-clean-verdict-gate" class="level2">
+<h2 class="anchored" data-anchor-id="the-require-clean-verdict-gate">The <code>require-clean-verdict</code> gate</h2>
+<p>Where <code>require-review</code> verifies review <strong>delivery</strong> (the review ran and was posted), <code>require-clean-verdict</code> acts as an <strong>opt-in server-side verdict gate</strong> (<a href="https://github.com/Morrison-Lab/gha/issues/767">gha#767</a>). Put <strong><code>review / require-clean-verdict</code></strong> in branch protection’s required checks to enforce that only PRs with an affirmatively clean AI review verdict (“Ready for merge”, “Clean”, “Approved”) can merge.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 28%">
+<col style="width: 71%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Result</th>
+<th>What it attests</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Green</td>
+<td>The review completed, was posted for the current PR head, and produced an affirmatively clean verdict (“Ready for merge”).</td>
+</tr>
+<tr class="even">
+<td>Gray (skipped)</td>
+<td>No review ran (draft, fork, bot author, quota exhausted, self-mod skip, cancellation, or stale head). Does not block merging.</td>
+</tr>
+<tr class="odd">
+<td>Red</td>
+<td>The review failed or produced a non-clean verdict (“Needs more work”, “Changes requested”, “Blocked”, or unaddressed findings). Blocks merging when configured as a required check.</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="concurrency" class="level2">
 <h2 class="anchored" data-anchor-id="concurrency">Concurrency</h2>
