@@ -186,6 +186,17 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         return run_self_test(args.workflow)
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from workflow_discovery import is_workflows_restored
+
+    if is_workflows_restored(args.workflow.parent):
+        print(
+            "::notice::Skipping summary workflow tests: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return 0
+
     return check(args.workflow)
 
 
