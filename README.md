@@ -80,7 +80,7 @@ not reference `@main` from consumers.
 | `request-dependabot-review.yml` | Request review from configured reviewers when a PR's author matches a bot actor (Dependabot by default) | `reviewers`, `bot-actor` |
 | `quarto-publish.yml` | Render a Quarto site and deploy it to GitHub Pages | `path`, `setup-r`, `r-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `apt-packages`, `output-dir`, `render-profile`, `formats`, `freeze-cache`, `deno-v8-options`, `checkout-submodules`, `pre-render-artifact`, `pre-render-artifact-path`, `fail-on-render-warning`, `forbid-log-patterns`, `deploy` |
 | `report-failure.yml` | File an issue when a watched job fails, or comment on the issue already open for that failure | `title`, `body`, `labels` |
-| `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `submodules`, `render-profile`, `output-dir`, `formats`, `fail-on-render-warning`, `forbid-log-patterns`, `detect-changed-chapters`, `changed-chapters-banner`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `banner-index` |
+| `preview.yml` | Build half of the PR-preview family: render a Quarto site in the (possibly fork) PR context and upload it + PR metadata as an artifact (read-only) | `path`, `r-version`, `r-packages`, `apt-packages`, `use-renv`, `install-package`, `setup-chrome`, `tinytex`, `submodules`, `render-profile`, `output-dir`, `formats`, `extra-preview-labels`, `fail-on-render-warning`, `forbid-log-patterns`, `detect-changed-chapters`, `changed-chapters-banner`, `changed-chapters-glob`, `deployed-branch`, `deployed-subdir`, `changed-chapters-normalize-patterns`, `banner-index` |
 | `preview-deploy.yml` | Deploy half: on `workflow_run` completion of the build, publish the artifact to `gh-pages` and comment the preview link (base-repo context) | `pages-base-url`, `pages-base-path` |
 | `check-equation-renders.yml` | On the same `workflow_run` completion, crawl the build artifact with a headless browser and fail on equations MathJax can't render | `fail` |
 | `cleanup-pr-previews.yml` | Housekeeping: delete `gh-pages` preview directories for PRs that are no longer open, and (optionally) orphan-squash `gh-pages` to one commit so deleted snapshots stop bloating the repo | `preview-dir`, `compact-history` |
@@ -503,7 +503,9 @@ The build half is parameterized for non-rme consumers (R version, the apt
 package list, renv on/off, `R CMD INSTALL .` on/off, Chrome, submodules, render
 profile). Label-gated extras are preserved: add `preview:pdf`, `preview:docx`,
 or `preview:revealjs` to a PR to render those formats too, and `clear freezer`
-to bypass the Quarto freeze cache.
+to bypass the Quarto freeze cache (ensure caller workflows subscribe to
+both `labeled` and `unlabeled` event types, or configure `extra-preview-labels`
+for custom label triggers).
 
 ## Content sync (`bump-submodule`, `sync-shared-fragments`, `sync-upstream`)
 

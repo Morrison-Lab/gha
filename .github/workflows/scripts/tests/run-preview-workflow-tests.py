@@ -41,6 +41,7 @@ EXPECTED_INPUTS = (
     "render-profile",
     "output-dir",
     "formats",
+    "extra-preview-labels",
     "fail-on-render-warning",
     "forbid-log-patterns",
     "detect-changed-chapters",
@@ -156,6 +157,20 @@ def check_preview(
             "preview/action.yml Render step missing bare render handler for formats: 'default'"
         )
 
+    # 7. Check symmetric label handling in preview.yml
+    job_if = build_job.get("if", "")
+    if (
+        "github.event.action != 'labeled'" not in job_if
+        or "github.event.action != 'unlabeled'" not in job_if
+    ):
+        errors.append(
+            ".github/workflows/preview.yml build job 'if' condition is not symmetric for labeled/unlabeled"
+        )
+    if "extra-preview-labels" not in job_if:
+        errors.append(
+            ".github/workflows/preview.yml build job 'if' condition does not check extra-preview-labels"
+        )
+
     return errors
 
 
@@ -205,6 +220,13 @@ def run_self_test() -> int:
             ),
             DEFAULT_WORKFLOW,
             baseline_workflow,
+        ),
+        (
+            "asymmetric label condition in preview.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace("github.event.action != 'unlabeled'", "true"),
         ),
     ]
 

@@ -10,7 +10,7 @@ name: Quarto Preview Build
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize, labeled, closed]
+    types: [opened, reopened, synchronize, labeled, unlabeled, closed]
     # Trim/extend these globs to the source paths that affect your rendered site.
     paths:
       - 'man/**'
@@ -40,6 +40,7 @@ jobs:
     #   render-profile: website
     #   output-dir: docs                   # render to a dir other than _site
     #   formats: 'html docx pdf'           # space-separated list, or 'default' for bare render
+    #   extra-preview-labels: 'preview:tracked-changes' # additional labels that trigger preview rebuilds
     #   fail-on-render-warning: true       # fail if Quarto emits WARN in render log
     #   forbid-log-patterns: |             # fail on specific forbidden substrings in render log
     #     doesn't match any files or folders

@@ -1,0 +1,3 @@
+- Fix asymmetric label event handling in `preview` reusable workflow so removing an unrelated label does not trigger unnecessary builds (gha#759).
+- Add `extra-preview-labels` input to `preview` reusable workflow and composite action, allowing callers to extend the preview label allowlist.
+- Add `unlabeled` event type to `examples/preview.yml` and `.github/workflows/website-preview.yml`.
