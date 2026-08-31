@@ -71,6 +71,13 @@ on:
         description: Space-separated list of formats to render (e.g. 'html docx pdf revealjs'), or 'default' for bare render.
         type: string
         default: ''
+      extra-preview-labels:
+        description: >-
+          JSON array string of additional PR label names that trigger a preview
+          re-render on add or remove (e.g. '["preview:tracked-changes"]'), beyond
+          the built-in set ('clear freezer', 'preview:pdf', 'preview:docx', 'preview:revealjs').
+        type: string
+        default: '[]'
       fail-on-render-warning:
         description: Fail the build if Quarto emits any render warnings (WARN in the render log).
         type: boolean
@@ -129,9 +136,12 @@ on:
 
 jobs:
   build:
-    # Run for all events except labels other than the recognized preview labels,
-    # so an unrelated label add doesn't spin up a (useless) build.
-    if: github.event.action != 'labeled' || contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name)
+    # Run for all events except label add/remove events for labels other than the recognized preview labels,
+    # so an unrelated label add or remove doesn't spin up a (useless) build.
+    if: >-
+      (github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+      contains(fromJSON('["clear freezer", "preview:pdf", "preview:docx", "preview:revealjs"]'), github.event.label.name) ||
+      (inputs.extra-preview-labels != '' && inputs.extra-preview-labels != '[]' && contains(fromJSON(inputs.extra-preview-labels), github.event.label.name))
     runs-on: ubuntu-latest
     timeout-minutes: 45
     # Cancel an in-progress preview build when a newer commit on the same ref

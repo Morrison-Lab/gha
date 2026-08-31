@@ -28,7 +28,7 @@ DEFAULT_COMPOSITE = REPO_ROOT / "preview" / "action.yml"
 DEFAULT_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "preview.yml"
 DEFAULT_EXAMPLE = REPO_ROOT / "examples" / "preview.yml"
 
-EXPECTED_INPUTS = (
+EXPECTED_COMPOSITE_INPUTS = (
     "path",
     "r-version",
     "apt-packages",
@@ -52,6 +52,10 @@ EXPECTED_INPUTS = (
     "banner-index",
 )
 
+EXPECTED_WORKFLOW_INPUTS = EXPECTED_COMPOSITE_INPUTS + (
+    "extra-preview-labels",
+)
+
 
 def load_yaml(path: pathlib.Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
@@ -71,9 +75,13 @@ def check_preview(
 
     # 1. Check composite inputs
     comp_inputs = composite_doc.get("inputs", {})
-    for inp in EXPECTED_INPUTS:
+    for inp in EXPECTED_COMPOSITE_INPUTS:
         if inp not in comp_inputs:
             errors.append(f"preview/action.yml is missing input '{inp}'")
+    if "extra-preview-labels" in comp_inputs:
+        errors.append(
+            "preview/action.yml should not declare extra-preview-labels (workflow-level only)"
+        )
 
     # 2. Check workflow inputs
     wf_triggers = workflow_doc.get(True, workflow_doc.get("on", {}))
@@ -83,13 +91,13 @@ def check_preview(
         else {}
     )
     wf_inputs = wf_call.get("inputs", {})
-    for inp in EXPECTED_INPUTS:
+    for inp in EXPECTED_WORKFLOW_INPUTS:
         if inp not in wf_inputs:
             errors.append(
                 f".github/workflows/preview.yml is missing input '{inp}'"
             )
 
-    # 3. Check default agreement for tinytex and formats
+    # 3. Check default agreement for tinytex, formats, and extra-preview-labels
     if (
         str(comp_inputs.get("tinytex", {}).get("default", "")).lower()
         != "false"
@@ -106,6 +114,10 @@ def check_preview(
         errors.append(
             ".github/workflows/preview.yml formats default is not empty string"
         )
+    if wf_inputs.get("extra-preview-labels", {}).get("default", None) != "[]":
+        errors.append(
+            ".github/workflows/preview.yml extra-preview-labels default is not '[]'"
+        )
 
     # 4. Check forwarding in preview.yml step
     build_job = workflow_doc.get("jobs", {}).get("build", {})
@@ -119,7 +131,7 @@ def check_preview(
         errors.append(".github/workflows/preview.yml missing Build preview step")
     else:
         with_args = build_step.get("with", {})
-        for inp in EXPECTED_INPUTS:
+        for inp in EXPECTED_COMPOSITE_INPUTS:
             if inp not in with_args:
                 errors.append(
                     f".github/workflows/preview.yml does not forward input '{inp}' in with:"
@@ -154,6 +166,20 @@ def check_preview(
     if 'elif [ "$FORMATS" = "default" ]; then' not in composite_text:
         errors.append(
             "preview/action.yml Render step missing bare render handler for formats: 'default'"
+        )
+
+    # 7. Check symmetric label handling in preview.yml
+    job_if = build_job.get("if", "")
+    if (
+        "github.event.action != 'labeled'" not in job_if
+        or "github.event.action != 'unlabeled'" not in job_if
+    ):
+        errors.append(
+            ".github/workflows/preview.yml build job 'if' condition is not symmetric for labeled/unlabeled"
+        )
+    if "contains(fromJSON(inputs.extra-preview-labels), github.event.label.name)" not in job_if:
+        errors.append(
+            ".github/workflows/preview.yml build job 'if' condition does not parse extra-preview-labels with fromJSON"
         )
 
     return errors
@@ -203,6 +229,27 @@ def run_self_test() -> int:
             baseline_composite.replace(
                 'elif [ "$FORMATS" = "default" ]; then', "elif false; then"
             ),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "asymmetric label condition in preview.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace("github.event.action != 'unlabeled'", "true"),
+        ),
+        (
+            "drop fromJSON parsing for extra-preview-labels in preview.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite,
+            DEFAULT_WORKFLOW,
+            baseline_workflow.replace("fromJSON(inputs.extra-preview-labels)", "inputs.extra-preview-labels"),
+        ),
+        (
+            "declare extra-preview-labels on action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("fail-on-render-warning:", "extra-preview-labels:\n    default: ''\n  fail-on-render-warning:"),
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),

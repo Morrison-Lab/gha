@@ -1,0 +1,2 @@
+- Fix asymmetric label event handling in `preview` reusable workflow so removing an unrelated label does not trigger unnecessary builds (gha#759).
+- Add `unlabeled` event type to `examples/preview.yml` and `.github/workflows/website-preview.yml`.
