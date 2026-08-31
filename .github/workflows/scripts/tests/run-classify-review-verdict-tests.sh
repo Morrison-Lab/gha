@@ -772,6 +772,41 @@ run_test "Adversative nevertheless separating negated clause from blocked status
 This is not fully reviewed nevertheless blocked pending legal sign-off." \
 "false" "blocked"
 
+# Test 95: Concessive however inside negated positive phrase
+run_test "Concessive however inside negated positive phrase" \
+"### Verdict
+
+This is not fully addressed however ready for merge." \
+"false" "needs-more-work"
+
+# Test 96: Concessive though inside negated positive phrase
+run_test "Concessive though inside negated positive phrase" \
+"### Verdict
+
+This is not fully addressed though ready for merge." \
+"false" "needs-more-work"
+
+# Test 97: Concessive still inside negated positive phrase
+run_test "Concessive still inside negated positive phrase" \
+"### Verdict
+
+This is not fully addressed still ready for merge." \
+"false" "needs-more-work"
+
+# Test 98: Concessive nonetheless inside negated positive phrase
+run_test "Concessive nonetheless inside negated positive phrase" \
+"### Verdict
+
+This is not fully addressed nonetheless ready for merge." \
+"false" "needs-more-work"
+
+# Test 99: Concessive nevertheless inside negated positive phrase
+run_test "Concessive nevertheless inside negated positive phrase" \
+"### Verdict
+
+This is not fully addressed nevertheless ready for merge." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
