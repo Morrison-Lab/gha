@@ -128,20 +128,22 @@ def check_preview(
     # 5. Check TinyTeX OR conditions in composite action
     setup_tinytex_marker = (
         "tinytex: ${{ inputs.tinytex == 'true' || "
-        "contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}"
+        "contains(github.event.pull_request.labels.*.name, 'preview:pdf') || "
+        "contains(inputs.formats, 'pdf') }}"
     )
     if setup_tinytex_marker not in composite_text:
         errors.append(
-            "preview/action.yml Quarto setup step does not have OR condition for tinytex"
+            "preview/action.yml Quarto setup step does not have complete OR condition for tinytex"
         )
 
     pkg_tinytex_marker = (
-        "inputs.tinytex == 'true' || "
-        "contains(github.event.pull_request.labels.*.name, 'preview:pdf')"
+        "inputs.tinytex == 'true' ||\n"
+        "         contains(github.event.pull_request.labels.*.name, 'preview:pdf') ||\n"
+        "         contains(inputs.formats, 'pdf')"
     )
     if pkg_tinytex_marker not in composite_text:
         errors.append(
-            "preview/action.yml TinyTeX packages step missing OR condition for tinytex"
+            "preview/action.yml TinyTeX packages step missing complete OR condition for tinytex"
         )
 
     # 6. Check render site logic handles formats input

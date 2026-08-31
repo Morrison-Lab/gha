@@ -58,7 +58,8 @@ inputs:
       Space-separated list of formats to render (e.g. 'html docx pdf revealjs').
       When empty (default), renders HTML plus any formats requested via PR labels
       (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to 'default' to run
-      a single bare `quarto render` letting `_quarto.yml` decide formats.
+      a single bare `quarto render` letting `_quarto.yml` decide formats (note:
+      unlike `quarto-publish` where empty string defaults to bare render).
     default: ''
   fail-on-render-warning:
     description: Fail the build if Quarto emits any render warnings (WARN in the render log).
@@ -153,8 +154,8 @@ runs:
       with:
         # Install TinyTeX in the same setup only when a PDF render is requested;
         # composite actions can't vary `with:` conditionally, so gate it on the
-        # label expression or tinytex input rather than running a second setup step.
-        tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') }}
+        # label expression, tinytex input, or formats containing 'pdf'.
+        tinytex: ${{ inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf') || contains(inputs.formats, 'pdf') }}
 
     - name: Set up R
       if: github.event.action != 'closed'
@@ -210,7 +211,9 @@ runs:
     - name: Install TinyTeX packages required for PDF rendering
       if: >-
         github.event.action != 'closed' &&
-        (inputs.tinytex == 'true' || contains(github.event.pull_request.labels.*.name, 'preview:pdf'))
+        (inputs.tinytex == 'true' ||
+         contains(github.event.pull_request.labels.*.name, 'preview:pdf') ||
+         contains(inputs.formats, 'pdf'))
       shell: bash
       run: |
         set -euo pipefail
@@ -297,6 +300,11 @@ runs:
           for word in $FORMATS; do
             FORMAT_LIST+=("$word")
           done
+
+          if [ ${#FORMAT_LIST[@]} -eq 0 ]; then
+            echo "::error::formats input was specified but contained no valid format words."
+            exit 1
+          fi
 
           first=true
           for fmt in "${FORMAT_LIST[@]}"; do

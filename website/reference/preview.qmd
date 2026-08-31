@@ -25,7 +25,7 @@ turn it off for a pure-markdown site.
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |
 | `output-dir` | string | `'_site'` | Directory the rendered site is written to, relative to `path`. |
-| `formats` | string | `''` | Space-separated list of formats to render (e.g. `'html docx pdf revealjs'`). When empty (default), renders HTML plus any formats requested via PR labels (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to `'default'` to run a single bare `quarto render` letting `_quarto.yml` decide formats. |
+| `formats` | string | `''` | Space-separated list of formats to render (e.g. `'html docx pdf revealjs'`). When empty (default), renders HTML plus any formats requested via PR labels (`preview:docx`, `preview:pdf`, `preview:revealjs`). Set to `'default'` to run a single bare `quarto render` letting `_quarto.yml` decide formats (unlike `quarto-publish` where empty string defaults to bare render). |
 | `fail-on-render-warning` | boolean | `false` | Fail the build if Quarto emits any render warnings (`WARN` in the render log). |
 | `forbid-log-patterns` | string | `''` | Newline-separated fixed string patterns that fail the build if found in the render log (e.g. missing listing files). |
 | `detect-changed-chapters` | boolean | `false` | Compare this run's render against the copy published on the deployed branch and expose which chapters differ as outputs. Implied by `changed-chapters-banner`. |
