@@ -28,6 +28,7 @@ None of those produces an error. Each produces a quietly wrong preview.
 
 import os
 import pathlib
+import sys
 
 import pytest
 
@@ -42,6 +43,9 @@ except ImportError as exc:  # pragma: no cover - depends on the runner image
 from conftest import write
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+sys.path.insert(0, str(REPO_ROOT / ".github" / "workflows" / "scripts"))
+from workflow_discovery import is_workflows_restored  # noqa: E402
 
 DETECT_STEP = "Detect chapters changed since the published render"
 BANNER_STEP = "Add the changed-chapters banner to the preview home page"
@@ -80,10 +84,10 @@ def workflow_call(document):
 
 @pytest.fixture(scope="module")
 def workflow():
-    marker = REPO_ROOT / ".github" / "workflows" / ".restored-from-default-branch"
-    if marker.is_file() or os.environ.get("GHA_WORKFLOWS_RESTORED") == "1":
+    workflows_dir = REPO_ROOT / ".github" / "workflows"
+    if is_workflows_restored(workflows_dir):
         pytest.skip(".github/workflows/ was restored from default branch (gha#598, gha#765)")
-    path = REPO_ROOT / ".github" / "workflows" / "preview.yml"
+    path = workflows_dir / "preview.yml"
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
