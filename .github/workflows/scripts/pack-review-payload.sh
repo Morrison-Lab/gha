@@ -44,7 +44,7 @@ fi
 if [[ -n "${DENIED_TOOLS:-}" ]]; then
   # The posting job reads this through env:, never through ${{ }} in a run
   # body, for the same reason resolve-final does: the value is agent-authored.
-  printf '%s' "$DENIED_TOOLS" > "$PAYLOAD_DIR/denied_tools.txt"
+  printf '%s\n' "$DENIED_TOOLS" > "$PAYLOAD_DIR/denied_tools.txt"
 fi
 
 # Every field the posting job branches on is a key here, including the ones

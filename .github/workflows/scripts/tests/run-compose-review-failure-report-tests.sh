@@ -133,7 +133,17 @@ check_contains "the backtick-carrying value survives intact" "$backticky" "$out"
 out="$(run_compose hard-error 0 '')"
 check_contains "zero denials says none" '**Denied tools:** none.' "$out"
 
-# 3. No denial data at all (the short-circuit path, where the guard exits
+# 3. Known denial count with names unavailable: report count and names unavailable (gha#764).
+out="$(run_compose stub 4 '')"
+check_contains "scalar denial count with empty names reports count and names unavailable" \
+  '**Denied tools:** 4 denied tool calls, names unavailable.' "$out"
+check_not_contains "scalar denial count does not report not recorded" \
+  'not recorded' "$out"
+out="$(run_compose stub 1 '')"
+check_contains "single denial with empty names is singular" \
+  '**Denied tools:** 1 denied tool call, names unavailable.' "$out"
+
+# 4. No denial data at all (the short-circuit path, where the guard exits
 #    before counting). Must NOT claim none -- that is a false statement about
 #    permissions on a run that never measured them.
 out="$(run_compose short-circuit '' '')"
@@ -145,6 +155,13 @@ check_not_contains "absent denial data does not claim none" '**Denied tools:** n
 # case, so the sentinel must never be printed as a count.
 out="$(run_compose high-denial 999999 'unknown -- the denial count itself could not be parsed' 5)"
 check_not_contains "sentinel is never printed as a count" '999999 denied tool calls' "$out"
+
+# If DENIED_TOOLS is empty with the 999999 sentinel (e.g. lost sidecar),
+# the report must fall through to 'not recorded' rather than claiming
+# an unknown quantity of denials occurred (gha#764).
+out="$(run_compose high-denial 999999 '' 5)"
+check_contains "sentinel with empty names falls through to not recorded" '**Denied tools:** not recorded.' "$out"
+check_not_contains "sentinel with empty names does not claim names unavailable" 'names unavailable' "$out"
 
 # --- the threshold is quoted only when it is known --------------------------
 # Restating the guard's default here would print a threshold nobody compared

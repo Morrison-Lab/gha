@@ -234,15 +234,16 @@ esac
 # zero denials -- so saying nothing here would leave a reader to assume the
 # names were merely unavailable, which is the opposite conclusion.
 #
-# Three cases, not two, for the same reason check-review-execution.sh tracks
-# `denials_known` separately from the sentinel: "zero denials" and "no denial
-# data" are different facts, and only one of them licenses the sentence that a
-# reader will act on. A short-circuited run exits before the guard ever counts
-# denials, so DENIALS arrives EMPTY there -- rendering that as "none" would
-# assert the reviewer was not blocked by permissions, on a run where nothing is
-# known about permissions at all, and would send a triager looking in the wrong
-# place. The unknown-count sentinel does not reach this branch: the guard sets a
-# non-empty DENIED_TOOLS wording for it.
+# Four cases, not two, for the same reason check-review-execution.sh tracks
+# `denials_known` separately from the sentinel: "zero denials", "count known
+# but names unavailable", and "no denial data" are different facts, and each
+# licenses a different statement. A short-circuited run exits before the guard
+# ever counts denials, so DENIALS arrives EMPTY there -- rendering that as "none"
+# would assert the reviewer was not blocked by permissions, on a run where nothing
+# is known about permissions at all. When DENIALS is known non-zero but DENIED_TOOLS
+# is empty (e.g. scalar count without array or lost sidecar), stating "not recorded"
+# would falsely claim no denial data was produced; the true statement is that the
+# count was recorded but tool names are unavailable (gha#764).
 #
 # Fenced rather than wrapped in a fixed one-backtick span. DENIED_TOOLS is
 # agent-authored command text, so a literal backtick in it is entirely
@@ -254,7 +255,7 @@ esac
 # Skipped entirely for `bad-credential`: no review process started, so no tool
 # call was ever attempted. "not recorded" would invite a triager to wonder
 # about permissions on a run that never reached them, which is the same
-# wrong-place-to-look problem the three-case split above exists to avoid.
+# wrong-place-to-look problem the case split above exists to avoid.
 if [[ "$kind" == "bad-credential" ]]; then
   :
 elif [[ -n "$DENIED_TOOLS" ]]; then
@@ -263,6 +264,8 @@ elif [[ -n "$DENIED_TOOLS" ]]; then
     "$denied_fence" "$DENIED_TOOLS" "$denied_fence"
 elif [[ "$DENIALS" == "0" ]]; then
   printf '**Denied tools:** none. The reviewer was not blocked by tool permissions, so the cause lies elsewhere.\n\n'
+elif [[ -n "$denials_phrase" && "$DENIALS" != "999999" ]]; then
+  printf '**Denied tools:** %s, names unavailable.\n\n' "$denials_phrase"
 else
   printf '**Denied tools:** not recorded. This run produced no usable denial data, so nothing can be concluded either way about tool permissions.\n\n'
 fi
