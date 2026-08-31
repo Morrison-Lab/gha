@@ -74,7 +74,7 @@ STRUCTURED_REVIEW_GUIDANCE = (
     'Use "CLEAN" when there are no blocking findings, or "NOT_CLEAN" if there are blocking issues. '
     'When NOT_CLEAN, list each actionable finding in `findings`: `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "..."}`. '
     "Write the tags, comment, and code fences FLUSH LEFT at column zero, not indented. "
-    "Do NOT add text inside or after `<!-- review-data: ... -->` comment line markers."
+    "Keep the `<!-- review-data:` and `-->` marker lines alone with no extra text on those exact lines, and keep the JSON in the hidden comment and visible code fence identical."
 )
 
 MODE_PROMPTS = {
