@@ -36,9 +36,23 @@ if [[ -z "$(tr -d '[:space:]' < "$REVIEW_FILE")" ]]; then
   exit 0
 fi
 
-# Extract the verdict section: from the first verdict header/label to EOF.
+# Extract the verdict section: from the LAST verdict header/label to EOF.
+# When a review cites prior rounds inline (e.g. "Verdict: Needs more work (prior round)"),
+# the actual verdict of the current round is declared under the final verdict heading.
 verdict_section_file="$(mktemp)"
-awk 'BEGIN{found=0} tolower($0) ~ /^[[:space:]>*_#-]*verdict/ {found=1} found'   "$REVIEW_FILE" > "$verdict_section_file"
+trap 'rm -f "$verdict_section_file"' EXIT
+
+awk '
+  tolower($0) ~ /^[[:space:]>*_#-]*verdict/ { last_verdict = NR }
+  { lines[NR] = $0 }
+  END {
+    if (last_verdict > 0) {
+      for (i = last_verdict; i <= NR; i++) {
+        print lines[i]
+      }
+    }
+  }
+' "$REVIEW_FILE" > "$verdict_section_file"
 
 if [[ -z "$(tr -d '[:space:]' < "$verdict_section_file")" ]]; then
   echo "clean=false" >> "$GITHUB_OUTPUT"
@@ -48,7 +62,7 @@ if [[ -z "$(tr -d '[:space:]' < "$verdict_section_file")" ]]; then
   exit 0
 fi
 
-# Look for the primary verdict line immediately under/following the Verdict header.
+# Look for the primary verdict declaration immediately following the Verdict header.
 # In Claude reviews following the standard format:
 #   ### Verdict
 #   **Ready for merge** — ...
@@ -57,8 +71,8 @@ fi
 # or
 #   Verdict: Needs more work
 #
-# We strip the leading `### Verdict` header line itself to inspect the verdict declaration.
-declaration="$(grep -viE '^[[:space:]>*_#-]*verdict[:[:space:]]*$' "$verdict_section_file" | grep -vE '^[[:space:]]*$' | head -n 1 || true)"
+# Strip leading `### Verdict` header line itself to inspect the verdict declaration.
+declaration="$(grep -viE '^[[:space:]>*_#-]*verdict[:[:space:]*_-]*$' "$verdict_section_file" | grep -vE '^[[:space:]]*$' | head -n 1 || true)"
 
 # Fall back to the whole verdict section if declaration extraction is empty.
 if [[ -z "$declaration" ]]; then
@@ -104,7 +118,8 @@ if echo "$declaration" | grep -qiE '\b(ready\s+for\s+merge|clean|approved|passed
 fi
 
 # If neither clear pattern matched the declaration line, scan the full verdict section:
-if grep -qiE '\b(needs\s+more\s+work|changes\s+requested|changes\s+required)\b' "$verdict_section_file" &&    ! grep -qiE '\b(no|zero|0|without)\s+(needs\s+more\s+work|changes\s+requested|changes\s+required)\b' "$verdict_section_file"; then
+if grep -qiE '\b(needs\s+more\s+work|changes\s+requested|changes\s+required)\b' "$verdict_section_file" && \
+   ! grep -qiE '\b(no|zero|0|without)\s+(needs\s+more\s+work|changes\s+requested|changes\s+required)\b' "$verdict_section_file"; then
   echo "clean=false" >> "$GITHUB_OUTPUT"
   echo "verdict=needs-more-work" >> "$GITHUB_OUTPUT"
   echo "clean=false"

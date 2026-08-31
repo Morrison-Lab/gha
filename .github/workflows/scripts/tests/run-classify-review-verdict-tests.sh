@@ -217,6 +217,29 @@ run_test "Fixture: quota exhausted midrun with verdict" \
 **Ready for merge** — no blocking findings." \
 "true" "ready-for-merge"
 
+# Test 21: Quoting prior round Needs more work before current Ready for merge verdict
+run_test "Quoting prior round Needs more work before Ready for merge" \
+"## Code review
+The most recent review already covered this diff.
+**Verdict:** Needs more work — citing a missing null check on line 42.
+That issue has since been fixed in the latest commit.
+
+### Verdict
+
+**Ready for merge** — no blocking findings remain." \
+"true" "ready-for-merge"
+
+# Test 22: Quoting prior round Ready for merge before current Needs more work verdict
+run_test "Quoting prior round Ready for merge before Needs more work" \
+"## Code review
+**Verdict:** Ready for merge (prior round).
+A new commit introduced a regression at line 88.
+
+### Verdict
+
+**Needs more work** — regression on line 88." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
