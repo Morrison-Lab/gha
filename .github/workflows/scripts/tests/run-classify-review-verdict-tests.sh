@@ -646,6 +646,20 @@ run_test "Independent clause separation with and" \
 There is no reason to think the tests were skipped and the reviewer confirms everything is ready for merge." \
 "true" "ready-for-merge"
 
+# Test 77: Long natural parenthetical hedge (>60 chars) (not, on balance and after further reflection on the concerns raised earlier in this review, ready for merge)
+run_test "Long natural parenthetical hedge (>60 chars)" \
+"### Verdict
+
+This is not, on balance and after further reflection on the concerns raised earlier in this review, ready for merge." \
+"false" "needs-more-work"
+
+# Test 78: Long unpunctuated hedge (>8 words) without coordinators (not under any conceivable circumstance or criteria ready for merge)
+run_test "Long unpunctuated hedge (>8 words) without coordinators" \
+"### Verdict
+
+This is not under any conceivable circumstance or criteria ready for merge." \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
