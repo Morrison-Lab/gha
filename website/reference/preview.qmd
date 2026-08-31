@@ -127,8 +127,10 @@ for the full caller stub.
 
 ## Partial adoption for bespoke builds
 
-If your site requires custom post-render processing or a build sequence that
-`preview.yml` does not model, you can maintain a custom build workflow and still
-use `preview-deploy.yml` and `cleanup-pr-previews.yml`.
-See [Partial adoption and artifact contract](preview-deploy.qmd#partial-adoption-and-artifact-contract)
+If your site requires custom post-render processing or a build sequence
+that `preview.yml` does not model, you can maintain a custom build workflow
+and still use `preview-deploy.yml` and `cleanup-pr-previews.yml`.
+See [Partial adoption and artifact contract][preview-contract]
 for details on the three-file `pr-preview-site` artifact handoff.
+
+[preview-contract]: preview-deploy.qmd#partial-adoption-and-artifact-contract
