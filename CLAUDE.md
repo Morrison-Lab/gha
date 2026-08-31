@@ -3111,7 +3111,7 @@ which calls `lms::default_linters()` from a package defined in that repo's own
 `lms/` subdirectory) -- the manual's own docs page 403'd, but its `.qmd`
 source and the referenced `.lintr.R` file both fetched cleanly.)
 
-## A canceled review skips require-review gracefully (gha#585)
+## A canceled review skips require-review and require-clean-verdict gracefully (gha#585, gha#767)
 
 `claude-code-review.yml`'s model path is concurrency-grouped per PR
 (`claude-review-<PR>`, `cancel-in-progress: true`) on `preempt-previous`
@@ -3127,10 +3127,10 @@ together -- or claude.yml's agent run finishes and re-dispatches a review a
 minute or two later, landing on top of the next push's auto-review -- the two
 reviews race and one cancels the other.
 
-The `require-review` gate job treats a cancelled run as a graceful skip
-rather than an outright failure (gha#585), allowing surviving and subsequent
-reviews to proceed cleanly without leaving a false-negative red check on
-superseded runs.
+The `require-review` and `require-clean-verdict` gate jobs treat a cancelled run
+as a graceful skip rather than an outright failure (gha#585, gha#767), allowing
+surviving and subsequent reviews to proceed cleanly without leaving a
+false-negative red check on superseded runs.
 To avoid causing unnecessary cancellations: don't post
 `@claude review` immediately after pushing a commit on a PR using this
 workflow; let the automatic review run alone, or wait for any in-flight
@@ -3167,7 +3167,7 @@ runner minute (and the issue/PR concurrency slot).
 After the slide, only `mention-filter` starts, and the defang mitigation
 can be dropped.
 
-**Cheap self-check before investigating a post-push `require-review`/`claude-review` failure:**
+**Cheap self-check before investigating a post-push `require-review`/`require-clean-verdict`/`claude-review` failure:**
 compare the failing check's commit SHA against the PR's *current* head SHA
 (`pull_request_read` method `get`, its `head.sha` field). If they don't
 match, the event is almost certainly this exact race on a now-superseded
@@ -3178,11 +3178,38 @@ spending a tool call fetching the workflow run to confirm `cancelled` vs
 jobs (`check-links`, `phi-tests`, `bib`, `coverage`, `review-fail-check`,
 etc.) have no `concurrency:` block, so a `failure` there on a non-head SHA
 is a real result the reader hasn't re-checked yet, not this race; don't
-apply the shortcut outside `claude-review`/`require-review`/`preview`.
+apply the shortcut outside `claude-review`/`require-review`/`require-clean-verdict`/`preview`.
 (`Lacaedemon/sparta` PR #780, 2026-07-12: two pushes 3 minutes apart
 triggered exactly this on `require-review`; confirmed via `actions_get`
 `get_workflow_run` that the failing check's conclusion was `cancelled` on
 the non-head SHA, matching this pattern.)
+
+## `require-clean-verdict`: Opt-in server-side verdict gate (gha#767)
+
+`claude-code-review.yml` provides two sibling gate jobs:
+
+- `require-review`: Asserts review **delivery** (the review ran and posted).
+  It goes green on any completed, posted review (even one with findings) and fails
+  red only on review crashes/errors.
+
+- `require-clean-verdict`: Asserts an **affirmatively clean verdict**
+  ("Ready for merge", "Clean", "Approved").
+  It goes green when the review completed, was posted for the current PR head,
+  and produced a clean verdict without unaddressed blocking findings;
+  it goes red on "Needs more work", "Changes requested", "Blocked",
+  or review errors.
+
+Both gate jobs skip gray on the exact same graceful-skip paths:
+
+- `claude-review` was skipped (draft PR, fork, bot author, or dispatch guard blocked);
+- `claude-review` was cancelled by a newer run (`cancel-in-progress`);
+- Account API quota was exhausted mid-run (`quota_exhausted=true`);
+- Default-branch workflow restore failed (`self_mod=true`);
+- `post-review` reported the review stale because PR head moved (`stale=true`).
+
+Consumers requiring server-side merge blocking can add
+`review / require-clean-verdict` to branch protection / repository ruleset
+required checks.
 
 ## Green `require-review` is not fully clean - read the review comment body
 
