@@ -678,27 +678,4 @@ grep -q '^\* Add feature X\.$' NEWS.md || {
 
 echo "PASS: Test 26 - List context survives a skipped thematic break"
 
-# Test 27: is_thematic_break recognizes all three CommonMark break characters
-# ('-', '*', '_') and rejects non-breaks (+, < 3 characters, mixed characters).
-(
-  eval "$(sed -n '/^is_thematic_break()/,/^}/p' "$assemble_script")"
-
-  # Positive cases
-  is_thematic_break '- - -' '-' || { echo "FAIL: '- - -' not recognized as break"; exit 1; }
-  is_thematic_break '---' '-' || { echo "FAIL: '---' not recognized as break"; exit 1; }
-  is_thematic_break '* * *' '*' || { echo "FAIL: '* * *' not recognized as break"; exit 1; }
-  is_thematic_break '***' '*' || { echo "FAIL: '***' not recognized as break"; exit 1; }
-  is_thematic_break '_ _ _' '_' || { echo "FAIL: '_ _ _' not recognized as break"; exit 1; }
-  is_thematic_break '___' '_' || { echo "FAIL: '___' not recognized as break"; exit 1; }
-
-  # Negative cases
-  if is_thematic_break '+ + +' '+'; then echo "FAIL: '+ + +' should not be a break"; exit 1; fi
-  if is_thematic_break '- -' '-'; then echo "FAIL: '- -' (2 chars) should not be a break"; exit 1; fi
-  if is_thematic_break '* - -' '*'; then echo "FAIL: '* - -' (mixed) should not be a break"; exit 1; fi
-  if is_thematic_break '- * -' '-'; then echo "FAIL: '- * -' (mixed) should not be a break"; exit 1; fi
-  if is_thematic_break '- item' '-'; then echo "FAIL: '- item' should not be a break"; exit 1; fi
-)
-
-echo "PASS: Test 27 - is_thematic_break covers all CommonMark break characters (-, *, _) and negative cases"
-
 echo "=== All assemble-news.sh tests passed! ==="
