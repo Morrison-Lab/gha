@@ -611,6 +611,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.self_test:
         return run_self_test(args.workflow, args.example)
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    from workflow_discovery import skip_if_restored
+
+    if skip_if_restored(args.workflow.parent, "r-cmd-check workflow tests"):
+        return 0
+
     return run_checks(args.workflow, args.example)
 
 

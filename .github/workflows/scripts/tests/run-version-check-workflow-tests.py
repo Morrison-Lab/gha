@@ -226,6 +226,13 @@ def main() -> int:
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    from workflow_discovery import skip_if_restored
+
+    if skip_if_restored(args.workflow.parent, "version-check workflow tests"):
+        return 0
+
     return check(args.workflow)
 
 

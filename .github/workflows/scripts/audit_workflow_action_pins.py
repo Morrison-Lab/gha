@@ -47,6 +47,7 @@ from workflow_discovery import (  # noqa: E402
     iter_steps,
     load_workflow,
     require_workflows,
+    skip_if_restored,
 )
 
 # The two forms are not interchangeable, so the reference is classified before
@@ -106,6 +107,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflows-dir", default=".github/workflows", type=pathlib.Path)
     args = parser.parse_args(argv)
+
+    if skip_if_restored(args.workflows_dir, "audit-workflow-action-pins"):
+        return 0
 
     try:
         files = require_workflows(args.workflows_dir)

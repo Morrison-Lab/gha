@@ -20,8 +20,29 @@ it fails with an actionable message rather than a traceback.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import sys
+
+
+def is_workflows_restored(workflows_dir: pathlib.Path | None = None) -> bool:
+    """Return True if .github/workflows was restored from default branch (gha#598)."""
+    if os.environ.get("GHA_WORKFLOWS_RESTORED") == "1":
+        return True
+    if workflows_dir is None:
+        workflows_dir = pathlib.Path(".github/workflows")
+    return (workflows_dir / ".restored-from-default-branch").is_file()
+
+
+def skip_if_restored(workflows_dir: pathlib.Path | None = None, label: str = "workflow check") -> bool:
+    """Print a notice and return True if .github/workflows was restored from default branch (gha#598, gha#765)."""
+    if is_workflows_restored(workflows_dir):
+        print(
+            f"::notice::Skipping {label}: .github/workflows/ "
+            "was restored from default branch (gha#598, gha#765)."
+        )
+        return True
+    return False
 
 
 def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
@@ -29,7 +50,7 @@ def discover_workflows(workflows_dir: pathlib.Path) -> list[pathlib.Path]:
     return sorted(
         p
         for p in workflows_dir.iterdir()
-        if p.is_file() and p.suffix in (".yml", ".yaml")
+        if p.is_file() and p.suffix in (".yml", ".yaml") and not p.name.startswith(".")
     )
 
 

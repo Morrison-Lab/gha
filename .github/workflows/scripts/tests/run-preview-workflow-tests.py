@@ -286,6 +286,12 @@ def main() -> int:
     if args.self_test:
         return run_self_test()
 
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    from workflow_discovery import skip_if_restored
+
+    if skip_if_restored(DEFAULT_WORKFLOW.parent, "preview workflow tests"):
+        return 0
+
     errors = check_preview()
     if errors:
         for err in errors:

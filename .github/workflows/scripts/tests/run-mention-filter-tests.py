@@ -33,6 +33,10 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from workflow_discovery import skip_if_restored  # noqa: E402
+
 FAILURES: list[str] = []
 
 DEFAULT_WORKFLOW = ".github/workflows/claude.yml"
@@ -165,6 +169,9 @@ def main() -> int:
     if not path.is_file():
         print(f"::error::{path}: no such file", file=sys.stderr)
         return 2
+
+    if skip_if_restored(path.parent, "mention-filter tests"):
+        return 0
 
     doc = yaml.safe_load(path.read_text(encoding="utf-8"))
     jobs = doc["jobs"]

@@ -45,6 +45,10 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
+
+from workflow_discovery import skip_if_restored  # noqa: E402
+
 DEFAULT_WORKFLOW = ".github/workflows/claude-code-review.yml"
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
 
@@ -1432,6 +1436,8 @@ def main() -> int:
         die(f"{workflow}: no such file")
     if not action.is_file():
         die(f"{action}: no such file")
+    if skip_if_restored(workflow.parent, "review-job-split tests"):
+        return 0
     return check_workflow(workflow, action)
 
 

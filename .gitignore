@@ -19,3 +19,6 @@ ard-*.md
 # never source files -- a local run must not re-commit them.
 review-error.log
 review-output.md
+
+# restore-default-branch-workflows runtime marker (gha#598, gha#765)
+.github/workflows/.restored-from-default-branch

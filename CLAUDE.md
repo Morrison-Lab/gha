@@ -265,6 +265,9 @@ which is why the capabilities above moved to `@v2`.
   The script probes `git cat-file -e "$ref:.github/workflows"` *before*
   deleting, so a missing tree on the trusted ref fails rather than
   wiping the working copy.
+  On restore, it drops `.github/workflows/.restored-from-default-branch` so
+  workflow-parsing test suites and audits skip with a notice rather than
+  asserting against default-branch files (gha#765).
 
 - `.github/actions/run-review-guard/` -- a thin composite-action wrapper around
   `check-review-execution.sh` (below), invoked from `claude-code-review.yml`'s
@@ -3502,6 +3505,9 @@ where the skip is thrown (anthropics/claude-code-action, read 2026-08-26).
 `prepare.ts` reads that env var only for the write-permission path.
 The prompt tells the reviewer that on-disk workflow files are the
 default-branch copies and to take workflow diffs from the saved PR diff.
+The restore drops `.github/workflows/.restored-from-default-branch` so
+workflow-parsing test suites and audits detect the restore and skip rather
+than measuring the default-branch copy (gha#765).
 
 **Dispatched reviews omit `--ref` when the PR edits workflow YAML**, so
 GitHub executes the default-branch *caller* rather than the PR head's copy.

@@ -47,5 +47,6 @@ fi
 rm -rf .github/workflows
 mkdir -p .github
 git checkout "$ref" -- .github/workflows
+touch .github/workflows/.restored-from-default-branch
 
 echo "Restored .github/workflows/ from $ref"

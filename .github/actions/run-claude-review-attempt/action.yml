@@ -566,7 +566,7 @@ runs:
           working directory. You do NOT need to (and must not) run
           `gh pr checkout` or `git checkout` — the working tree already
           contains the exact files and commits under review.
-          ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598): the entire `.github/workflows/` tree on disk (YAML and `scripts/`) is the default-branch copy, not the PR. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head files under `.github/workflows/` back into this tree.' || '' }}
+          ${{ inputs.workflow-fallback == 'true' && 'EXCEPTION (gha#598, gha#765): the entire `.github/workflows/` tree on disk (YAML and `scripts/`) is the default-branch copy, not the PR. Take those diffs from the saved PR diff file and from `gh pr diff`. Do not git checkout PR-head files under `.github/workflows/` back into this tree. Tests and audits that parse workflow YAML directly will detect the restore and skip rather than measure the default-branch copy.' || '' }}
 
           WebFetch, WebSearch, and curl are available. Use WebFetch and
           curl to verify a computed value or figure against rendered

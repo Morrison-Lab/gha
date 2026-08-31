@@ -76,6 +76,9 @@ import pathlib
 import re
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from workflow_discovery import skip_if_restored  # noqa: E402
+
 SELF_USES_RE = re.compile(
     r"uses:\s*Morrison-Lab/gha/(?:\.github/(?:workflows|actions)/)?(\S+?)@(v\d+)\b"
 )
@@ -225,6 +228,10 @@ def main(argv: list[str] | None = None) -> int:
         help="Repository root (default: derived from this script's own path).",
     )
     args = parser.parse_args(argv)
+
+    workflows_dir = args.repo_root / ".github" / "workflows"
+    if skip_if_restored(workflows_dir, "audit-capability-versioning-docs"):
+        return 0
 
     try:
         findings, capability_count, region_count = run_audit(args.repo_root)

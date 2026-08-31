@@ -46,7 +46,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 # Shared with the two workflow audits and the permissions-docs suite rather
 # than re-globbed here: a fourth copy of the discovery rule is a fourth place
 # for it to drift back to `*.yml` only (gha#705, gha#716).
-from workflow_discovery import discover_workflows  # noqa: E402
+from workflow_discovery import discover_workflows, skip_if_restored  # noqa: E402
 
 DEFAULT_WORKFLOWS_DIR = ".github/workflows"
 
@@ -360,6 +360,9 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.self_test:
         run_self_test()
+        return
+
+    if skip_if_restored(args.workflows_dir, "workflow job guard check"):
         return
 
     files_to_check = args.files
