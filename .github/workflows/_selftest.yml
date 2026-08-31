@@ -557,6 +557,7 @@ jobs:
       - name: Check new markdown lines for missing semantic breaks
         uses: ./check-new-line-breaks
         with:
+          globs: '*.md *.qmd'
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
       # The clause check (#336) is on by default, so the step above already
       # covers it. This one covers the opt-out, and covers that `action.yml`
@@ -566,6 +567,7 @@ jobs:
       - name: Check again with the clause check opted out
         uses: ./check-new-line-breaks
         with:
+          globs: '*.md *.qmd'
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           clause-breaks: 'false'
   diff-scoped-guard:
