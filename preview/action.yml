@@ -402,7 +402,7 @@ runs:
     - name: Install Python dependencies for DOCX tracked changes
       if: github.event.action != 'closed' && inputs.docx-tracked-changes == 'true'
       shell: bash
-      run: python3 -m pip install --quiet python-docx
+      run: python3 -m pip install --quiet python-docx==1.2.0
 
     - name: Create DOCX tracked changes
       id: docx-tracked-changes

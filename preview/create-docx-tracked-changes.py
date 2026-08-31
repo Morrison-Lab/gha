@@ -73,7 +73,7 @@ def run_git(args, repo_dir):
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", "replace")
         raise DocxTrackedChangesError(
-            f"`git ' '{' '.join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
+            f"`git {chr(32).join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
         )
     return result.stdout
 
@@ -111,12 +111,32 @@ def read_published(repo_dir, ref, path):
     return run_git(["cat-file", "blob", f"{ref}:{path}"], repo_dir)
 
 
+def wrap_run_in_ins(run_element, rev_id, author, date):
+    """Wrap a Word run element in a w:ins insertion revision tag."""
+    parent = run_element.getparent()
+    if parent is None:
+        return
+    ins = OxmlElement("w:ins")
+    ins.set(qn("w:id"), str(rev_id))
+    ins.set(qn("w:author"), author)
+    ins.set(qn("w:date"), date)
+    parent.insert(parent.index(run_element), ins)
+    parent.remove(run_element)
+    ins.append(run_element)
+
+
 def create_docx_with_tracked_changes(
-    old_docx_source, new_docx_path, output_path, author="PR Preview", date="2026-01-01T00:00:00Z"
+    old_docx_source,
+    new_docx_path,
+    output_path,
+    author="PR Preview",
+    # Fixed timestamp (2026-01-01T00:00:00Z) ensures deterministic, reproducible XML
+    # so re-rendering unchanged documents does not produce artificial build diffs.
+    date="2026-01-01T00:00:00Z",
 ):
     """Create a DOCX file with tracked changes showing differences against old_docx_source.
 
-    old_docx_source may be bytes, a file-like stream (io.BytesIO), a Path, or None (new file).
+    old_docx_source may be bytes, a file path, or None (brand new file).
     """
     if docx is None or Document is None or OxmlElement is None or qn is None:
         raise DocxTrackedChangesError(
@@ -146,9 +166,6 @@ def create_docx_with_tracked_changes(
     elif isinstance(old_docx_source, bytes):
         old_doc = Document(io.BytesIO(old_docx_source))
         old_paragraphs = [p.text for p in old_doc.paragraphs]
-    elif isinstance(old_docx_source, (io.BytesIO, io.BufferedReader)):
-        old_doc = Document(old_docx_source)
-        old_paragraphs = [p.text for p in old_doc.paragraphs]
     else:
         old_doc = Document(old_docx_source)
         old_paragraphs = [p.text for p in old_doc.paragraphs]
@@ -166,34 +183,13 @@ def create_docx_with_tracked_changes(
             for idx in range(j1, j2):
                 if idx < len(output_doc.paragraphs):
                     para = output_doc.paragraphs[idx]
-                    runs = list(para.runs)
-                    if runs:
-                        for run in runs:
-                            rev_id += 1
-                            ins = OxmlElement("w:ins")
-                            ins.set(qn("w:id"), str(rev_id))
-                            ins.set(qn("w:author"), author)
-                            ins.set(qn("w:date"), date)
-
-                            run_element = run._element
-                            parent = run_element.getparent()
-                            parent.insert(parent.index(run_element), ins)
-                            parent.remove(run_element)
-                            ins.append(run_element)
-                    elif para.text:
-                        run = para.add_run(para.text)
-                        para.text = ""
+                    # Find all w:r elements in the paragraph, including those nested in hyperlinks
+                    r_elements = para._element.findall(".//" + qn("w:r"))
+                    for r_element in r_elements:
                         rev_id += 1
-                        ins = OxmlElement("w:ins")
-                        ins.set(qn("w:id"), str(rev_id))
-                        ins.set(qn("w:author"), author)
-                        ins.set(qn("w:date"), date)
-
-                        run_element = run._element
-                        parent = run_element.getparent()
-                        parent.insert(parent.index(run_element), ins)
-                        parent.remove(run_element)
-                        ins.append(run_element)
+                        wrap_run_in_ins(r_element, rev_id, author, date)
+        elif tag == "delete":
+            has_changes = True
 
     output_doc.save(output_path)
     return has_changes

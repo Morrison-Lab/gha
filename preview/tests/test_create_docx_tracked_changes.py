@@ -215,3 +215,53 @@ def test_custom_deployed_subdir_and_glob(docx_generator, monkeypatch, repo_facto
     assert outputs["any-docx-changed"] == "true"
     assert json.loads(outputs["docx-tracked-changes-files"]) == ["docs/handout-tracked-changes.docx"]
     assert (work / "_site" / "docs" / "handout-tracked-changes.docx").is_file()
+
+def test_deleted_paragraph_reports_any_docx_changed_true(docx_generator, monkeypatch, repo_factory):
+    old_docx = make_docx(["Chapter 1", "Paragraph to remove.", "Conclusion"])
+    new_docx = make_docx(["Chapter 1", "Conclusion"])
+    work = repo_factory(published={"chapters/01.docx": old_docx})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    assert json.loads(outputs["docx-tracked-changes-files"]) == ["chapters/01-tracked-changes.docx"]
+    assert (work / "_site" / "chapters" / "01-tracked-changes.docx").is_file()
+
+
+def test_paragraph_with_hyperlink_runs_wrapped_properly(docx_generator, monkeypatch, repo_factory):
+    from docx.oxml import OxmlElement
+
+    old_docx = make_docx(["Intro", "Old link para"])
+
+    # Create new docx with a hyperlink XML element (runs == [] on paragraph level)
+    doc = Document()
+    doc.add_paragraph("Intro")
+    p = doc.add_paragraph()
+    hl = OxmlElement("w:hyperlink")
+    r = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "https://example.com"
+    r.append(t)
+    hl.append(r)
+    p._element.append(hl)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    new_docx_bytes = buf.getvalue()
+
+    work = repo_factory(published={"chapters/01.docx": old_docx})
+    rendered = write(work, "_site/chapters/01.docx", new_docx_bytes).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    out_doc = Document(output_path)
+    ins_elements = out_doc._body._element.findall(".//" + qn("w:ins"))
+    assert len(ins_elements) > 0
+
