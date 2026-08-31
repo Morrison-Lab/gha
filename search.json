@@ -207,6 +207,18 @@
     ]
   },
   {
+    "objectID": "reference/preview.html#partial-adoption-for-bespoke-builds",
+    "href": "reference/preview.html#partial-adoption-for-bespoke-builds",
+    "title": "preview.yml",
+    "section": "Partial adoption for bespoke builds",
+    "text": "Partial adoption for bespoke builds\nIf your site requires custom post-render processing or a build sequence that preview.yml does not model, you can maintain a custom build workflow and still use preview-deploy.yml and cleanup-pr-previews.yml. See Partial adoption and artifact contract for details on the three-file pr-preview-site artifact handoff.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "preview.yml"
+    ]
+  },
+  {
     "objectID": "reference/check-news.html",
     "href": "reference/check-news.html",
     "title": "check-news.yml",
@@ -2967,6 +2979,18 @@
     ]
   },
   {
+    "objectID": "reference/preview-deploy.html#partial-adoption-and-artifact-contract",
+    "href": "reference/preview-deploy.html#partial-adoption-and-artifact-contract",
+    "title": "preview-deploy.yml",
+    "section": "Partial adoption and artifact contract",
+    "text": "Partial adoption and artifact contract\nRepositories with custom build sequences (e.g. bespoke multi-stage rendering, custom post-render highlighting, or multi-step assets) do not need to use preview.yml or preview/action.yml to benefit from the deploy and cleanup machinery. They can run a custom build workflow that uploads the standard three-file pr-preview-site artifact, and hand off directly to preview-deploy.yml and cleanup-pr-previews.yml.\nThe artifact named pr-preview-site must contain:\n\nsite/ — Directory containing the rendered HTML/site files to publish to gh-pages.\nmeta/pr-number.txt — Text file containing the pull request number (e.g. 123).\nmeta/action.txt — Text file containing either deploy (to deploy or update the preview) or remove (when the PR is closed).\n\npreview-deploy.yml downloads this artifact from the triggering workflow_run event, reads meta/pr-number.txt and meta/action.txt, and publishes site/ to gh-pages in the base repository context without running untrusted code.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "preview-deploy.yml"
+    ]
+  },
+  {
     "objectID": "reference/preview-deploy.html#permissions",
     "href": "reference/preview-deploy.html#permissions",
     "title": "preview-deploy.yml",
@@ -3194,7 +3218,7 @@
     "href": "workflows.html#quarto-sites",
     "title": "Workflows",
     "section": "Quarto sites",
-    "text": "Quarto sites\nThis family builds and ships Quarto sites, and it builds this very site.\n\nquarto-publish.yml renders a Quarto project and deploys it to the gh-pages branch on main. One-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root).\nThe preview family publishes a rendered site for each open PR to a pr-preview/pr-&lt;n&gt;/ directory on gh-pages. It is four cooperating workflows:\n\npreview.yml (build) renders the site and uploads it plus PR metadata as an artifact. It runs read-only in the possibly-forked PR context, so it cannot write to the base repo.\npreview-deploy.yml (deploy) triggers on the build’s workflow_run completion, downloads the artifact, and publishes it to gh-pages in the base-repo context, then comments the preview link.\ncheck-equation-renders.yml also triggers on the build’s workflow_run completion, downloads the same artifact, and crawls it with a headless browser to catch equations MathJax can’t typeset – invisible in the Quarto/pandoc build log, since MathJax only runs client-side.\ncleanup-pr-previews.yml (housekeeping) runs on a schedule and removes preview directories for PRs that have closed.\n\n\nThe build/deploy split is a trust boundary: untrusted fork code only ever runs in the read-only build half, while the privileged gh-pages push happens in the deploy half against base-repo code. Do not collapse them into one job.\nTwo wiring requirements:\n\nBoth the deploy stub’s and the equation-check stub’s on: workflow_run: workflows: value must match the build stub’s name:. That string is how workflow_run finds the build.\nworkflow_run and schedule triggers only fire for the copy of the file on the default branch, so previews and cleanup do not take effect until the stubs merge to main.\n\nThis repo dogfoods all five. The caller stubs live in .github/workflows/: website-publish.yml, website-preview.yml, website-preview-deploy.yml, website-check-equation-renders.yml, and website-preview-cleanup.yml. They render this pure-markdown site with the R machinery turned off (no renv, no R CMD INSTALL, no Chrome).",
+    "text": "Quarto sites\nThis family builds and ships Quarto sites, and it builds this very site.\n\nquarto-publish.yml renders a Quarto project and deploys it to the gh-pages branch on main. One-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root).\nThe preview family publishes a rendered site for each open PR to a pr-preview/pr-&lt;n&gt;/ directory on gh-pages. It is four cooperating workflows:\n\npreview.yml (build) renders the site and uploads it plus PR metadata as an artifact. It runs read-only in the possibly-forked PR context, so it cannot write to the base repo.\npreview-deploy.yml (deploy) triggers on the build’s workflow_run completion, downloads the artifact, and publishes it to gh-pages in the base-repo context, then comments the preview link.\ncheck-equation-renders.yml also triggers on the build’s workflow_run completion, downloads the same artifact, and crawls it with a headless browser to catch equations MathJax can’t typeset – invisible in the Quarto/pandoc build log, since MathJax only runs client-side.\ncleanup-pr-previews.yml (housekeeping) runs on a schedule and removes preview directories for PRs that have closed.\n\n\nThe build/deploy split is a trust boundary: untrusted fork code only ever runs in the read-only build half, while the privileged gh-pages push happens in the deploy half against base-repo code. Do not collapse them into one job. Repos with custom build sequences can keep a bespoke build workflow and still use preview-deploy.yml and cleanup-pr-previews.yml by uploading the three-file pr-preview-site artifact (site/, meta/pr-number.txt, meta/action.txt). See Partial adoption and artifact contract.\nTwo wiring requirements:\n\nBoth the deploy stub’s and the equation-check stub’s on: workflow_run: workflows: value must match the build stub’s name:. That string is how workflow_run finds the build.\nworkflow_run and schedule triggers only fire for the copy of the file on the default branch, so previews and cleanup do not take effect until the stubs merge to main.\n\nThis repo dogfoods all five. The caller stubs live in .github/workflows/: website-publish.yml, website-preview.yml, website-preview-deploy.yml, website-check-equation-renders.yml, and website-preview-cleanup.yml. They render this pure-markdown site with the R machinery turned off (no renv, no R CMD INSTALL, no Chrome).",
     "crumbs": [
       "Overview",
       "Workflows"

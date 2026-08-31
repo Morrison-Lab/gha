@@ -986,7 +986,7 @@ ul.task-list li input[type="checkbox"] {
 <li><code>cleanup-pr-previews.yml</code> (housekeeping) runs on a schedule and removes preview directories for PRs that have closed.</li>
 </ol></li>
 </ul>
-<p>The build/deploy split is a <strong>trust boundary</strong>: untrusted fork code only ever runs in the read-only build half, while the privileged <code>gh-pages</code> push happens in the deploy half against base-repo code. Do not collapse them into one job.</p>
+<p>The build/deploy split is a <strong>trust boundary</strong>: untrusted fork code only ever runs in the read-only build half, while the privileged <code>gh-pages</code> push happens in the deploy half against base-repo code. Do not collapse them into one job. Repos with custom build sequences can keep a bespoke build workflow and still use <code>preview-deploy.yml</code> and <code>cleanup-pr-previews.yml</code> by uploading the three-file <code>pr-preview-site</code> artifact (<code>site/</code>, <code>meta/pr-number.txt</code>, <code>meta/action.txt</code>). See <a href="./reference/preview-deploy.html#partial-adoption-and-artifact-contract">Partial adoption and artifact contract</a>.</p>
 <p>Two wiring requirements:</p>
 <ul>
 <li>Both the deploy stub’s and the equation-check stub’s <code>on: workflow_run: workflows:</code> value <strong>must match the build stub’s <code>name:</code></strong>. That string is how <code>workflow_run</code> finds the build.</li>

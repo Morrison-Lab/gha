@@ -678,6 +678,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#partial-adoption-and-artifact-contract" id="toc-partial-adoption-and-artifact-contract" class="nav-link" data-scroll-target="#partial-adoption-and-artifact-contract">Partial adoption and artifact contract</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
@@ -739,6 +740,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+</section>
+<section id="partial-adoption-and-artifact-contract" class="level2">
+<h2 class="anchored" data-anchor-id="partial-adoption-and-artifact-contract">Partial adoption and artifact contract</h2>
+<p>Repositories with custom build sequences (e.g.&nbsp;bespoke multi-stage rendering, custom post-render highlighting, or multi-step assets) do not need to use <code>preview.yml</code> or <code>preview/action.yml</code> to benefit from the deploy and cleanup machinery. They can run a custom build workflow that uploads the standard three-file <code>pr-preview-site</code> artifact, and hand off directly to <code>preview-deploy.yml</code> and <code>cleanup-pr-previews.yml</code>.</p>
+<p>The artifact named <code>pr-preview-site</code> must contain:</p>
+<ul>
+<li><code>site/</code> — Directory containing the rendered HTML/site files to publish to <code>gh-pages</code>.</li>
+<li><code>meta/pr-number.txt</code> — Text file containing the pull request number (e.g.&nbsp;<code>123</code>).</li>
+<li><code>meta/action.txt</code> — Text file containing either <code>deploy</code> (to deploy or update the preview) or <code>remove</code> (when the PR is closed).</li>
+</ul>
+<p><code>preview-deploy.yml</code> downloads this artifact from the triggering <code>workflow_run</code> event, reads <code>meta/pr-number.txt</code> and <code>meta/action.txt</code>, and publishes <code>site/</code> to <code>gh-pages</code> in the base repository context without running untrusted code.</p>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
