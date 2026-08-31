@@ -20,3 +20,4 @@ The `check-new-line-breaks` tool currently ignores `.qmd` and `.yml` files becau
 
 ## Out of Scope
 - Modifying the core parsing logic or rules of the line break check itself.
+- Fixing existing violations in `.yml` and `.qmd` files (removed from scope due to large volume; the tool ignores pre-existing violations on PRs anyway).

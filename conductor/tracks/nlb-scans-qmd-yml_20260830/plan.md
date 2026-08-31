@@ -8,11 +8,11 @@
   - [x] Verify the tool's core tests still pass.
 
 ## Phase 2: Fix Repository Violations
-- [~] Task: Discover Violations
-  - [ ] Execute `check-new-line-breaks` across the repository to identify non-compliant `.yml` and `.qmd` files.
-- [ ] Task: Fix Violations
-  - [ ] Reformat violating files to conform strictly to semantic line breaks.
-  - [ ] Run the check again and ensure a completely clean pass across the repository.
+- [x] Task: Discover Violations (932 violations found)
+  - [x] Execute `check-new-line-breaks` across the repository to identify non-compliant `.yml` and `.qmd` files.
+- [x] Task: Fix Violations (Skipped)
+  - [x] Reformat violating files to conform strictly to semantic line breaks. (Removed from scope by user decision)
+  - [x] Run the check again and ensure a completely clean pass across the repository. (Removed from scope)
 
 ## Phase 3: Phase Verification & Checkpoint
 - [ ] Task: Phase Verification & Checkpoint (Refer to workflow.md)
