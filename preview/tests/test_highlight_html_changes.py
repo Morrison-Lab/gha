@@ -305,7 +305,7 @@ def test_invalid_normalize_pattern_raises_error(highlighter, monkeypatch, repo_f
     work = repo_factory(published={"chapters/01.html": "<main><p>Hi</p></main>"})
     rendered = write(work, "_site/chapters/01.html", "<main><p>Hi</p></main>").parent.parent
 
-    with pytest.raises(highlighter.HighlightError, match="matches empty string"):
+    with pytest.raises(highlighter.HighlightError, match="matches the empty string"):
         run_highlighter(
             highlighter,
             monkeypatch,
@@ -314,3 +314,65 @@ def test_invalid_normalize_pattern_raises_error(highlighter, monkeypatch, repo_f
             CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
             NORMALIZE_PATTERNS=".*",
         )
+
+
+def test_single_word_edit_in_very_long_paragraph_is_highlighted(highlighter, monkeypatch, repo_factory):
+    # Paragraph with ~800 words where single word edit produces ratio > 0.999
+    base_words = ["word"] * 800
+    old_para = "<p>" + " ".join(base_words) + "</p>"
+    new_words = list(base_words)
+    new_words[400] = "changed"
+    new_para = "<p>" + " ".join(new_words) + "</p>"
+
+    old_page = f"<main>{old_para}</main>"
+    new_page = f"<main>{new_para}</main>"
+
+    work = repo_factory(published={"chapters/01.html": old_page})
+    rendered = write(work, "_site/chapters/01.html", new_page).parent.parent
+
+    run_highlighter(
+        highlighter,
+        monkeypatch,
+        REPO_DIR=str(work),
+        RENDERED_DIR=str(rendered),
+        CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
+        DETECTION_STATUS="compared",
+    )
+
+    result = (rendered / "chapters/01.html").read_text(encoding="utf-8")
+    assert "preview-text-changed" in result
+    assert "changed" in result
+
+
+def test_element_replacement_scoped_to_main_does_not_corrupt_nav(highlighter, monkeypatch, repo_factory):
+    old_page = (
+        "<nav><p>Common text</p></nav>\n"
+        "<main><p>Common text</p></main>"
+    )
+    new_page = (
+        "<nav><p>Common text</p></nav>\n"
+        "<main><p>Common text modified</p></main>"
+    )
+
+    work = repo_factory(published={"chapters/01.html": old_page})
+    rendered = write(work, "_site/chapters/01.html", new_page).parent.parent
+
+    run_highlighter(
+        highlighter,
+        monkeypatch,
+        REPO_DIR=str(work),
+        RENDERED_DIR=str(rendered),
+        CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
+        DETECTION_STATUS="compared",
+    )
+
+    result = (rendered / "chapters/01.html").read_text(encoding="utf-8")
+    # Nav paragraph must be unchanged without any highlight marks
+    assert "<nav><p>Common text</p></nav>" in result
+    # Main paragraph must carry the highlight
+    assert "<p>Common text<mark" in result and "preview-text-added" in result
+
+
+def test_missing_main_or_body_anchor_raises_error(highlighter):
+    with pytest.raises(highlighter.HighlightError, match="has no <main> or <body>"):
+        highlighter.apply_page_banner("<div>No anchor here</div>", "<!-- banner -->", "doc.html")

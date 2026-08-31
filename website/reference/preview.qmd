@@ -116,6 +116,7 @@ jobs:
     #     doesn't match any files or folders
     #   detect-changed-chapters: true      # expose which chapters differ from the deployed render
     #   changed-chapters-banner: true      # and list them on the preview home page
+    #   highlight-changes: true            # and highlight modified/added text in rendered chapters
     #   changed-chapters-glob: 'chapters/*.html'
     #   deployed-branch: gh-pages
     #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix

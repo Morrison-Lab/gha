@@ -15,6 +15,8 @@ Ported from `ucdavis/win`'s `.github/scripts/highlight-html-changes.py`
   * Preserves HTML tags and hierarchy without tag corruption.
   * Reads published files directly via git object lookup without materializing
     unneeded trees to disk.
+  * Replaces elements strictly within main content scope, avoiding spurious edits
+    in navigation, sidebars, or headers.
 
 Configuration (all via environment, set by `preview/action.yml`):
 
@@ -38,18 +40,22 @@ import html
 import json
 import os
 import re
-import subprocess
 import sys
 from pathlib import Path
 
-from _workflow_annotations import annotate
-
-DEFAULT_NORMALIZE_PATTERNS = (
-    # htmlwidgets/plotly mint a fresh random element id on every render.
-    r"htmlwidget[-_][0-9a-f]{6,}",
-    # Machine-written ISO-8601 datetimes (build stamps), which always carry a time component.
-    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?",
+from _preview_substrate import (
+    DEFAULT_NORMALIZE_PATTERNS,
+    PLACEHOLDER,
+    TEXT_SUFFIXES,
+    compile_patterns,
+    normalize,
+    published_paths,
+    read_published,
+    resolve_deployed_ref,
+    run_git,
+    GitError,
 )
+from _workflow_annotations import annotate
 
 PAGE_BANNER_START = "<!-- gha-preview-page-banner:start -->"
 PAGE_BANNER_END = "<!-- gha-preview-page-banner:end -->"
@@ -70,83 +76,15 @@ ELEMENT_RE = re.compile(
 )
 
 TAG_RE = re.compile(r"<[^>]+>")
-PLACEHOLDER = "GHA-VOLATILE"
 
 
-class HighlightError(RuntimeError):
-    """A condition that must stop the run."""
-
-
-def run_git(args, repo_dir):
-    """Run a git command, raising on any non-zero exit."""
-    result = subprocess.run(
-        ["git", *args],
-        cwd=repo_dir,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", "replace")
-        raise HighlightError(
-            f"`git {' '.join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
-        )
-    return result.stdout
-
-
-def resolve_deployed_ref(repo_dir, remote, branch):
-    """Fetch deployed branch and return local ref for it, or None if absent."""
-    listing = run_git(
-        ["ls-remote", "--heads", remote, f"refs/heads/{branch}"], repo_dir
-    ).decode("utf-8", "replace")
-    if not listing.strip():
-        return None
-
-    local_ref = f"refs/gha-preview-base/{branch}"
-    run_git(
-        [
-            "fetch",
-            "--no-tags",
-            "--depth=1",
-            remote,
-            f"+refs/heads/{branch}:{local_ref}",
-        ],
-        repo_dir,
-    )
-    return local_ref
-
-
-def published_paths(repo_dir, ref):
-    """Every blob path in the deployed tree."""
-    listing = run_git(["ls-tree", "-r", "--name-only", "-z", ref], repo_dir)
-    return {p for p in listing.decode("utf-8", "replace").split("\0") if p}
-
-
-def read_published(repo_dir, ref, path):
-    """Read published blob bytes from git."""
-    return run_git(["cat-file", "blob", f"{ref}:{path}"], repo_dir)
-
-
-def compile_patterns(extra_patterns):
-    """Compile normalization patterns, rejecting empty matches."""
-    compiled = []
-    for raw in [*DEFAULT_NORMALIZE_PATTERNS, *extra_patterns]:
-        try:
-            pattern = re.compile(raw)
-        except re.error as exc:
-            raise HighlightError(f"invalid normalize pattern {raw!r}: {exc}") from exc
-        if pattern.search(""):
-            raise HighlightError(
-                f"normalize pattern {raw!r} matches empty string, which would "
-                "blank every document"
-            )
-        compiled.append(pattern)
-    return compiled
+# Aliased to GitError from substrate
+HighlightError = GitError
 
 
 def normalize_text(text, patterns):
     """Normalize text/HTML for comparison."""
-    for pattern in patterns:
-        text = pattern.sub(PLACEHOLDER, text)
+    text = normalize(text, patterns)
     # Remove HTML comments
     text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
     # Normalize whitespace
@@ -154,33 +92,27 @@ def normalize_text(text, patterns):
     return text.strip()
 
 
+def locate_main_content(html_str):
+    """Locate main content match span and inner content within full HTML.
+
+    Returns (inner_content, start_inner_index, end_inner_index) or (html_str, 0, len(html_str)).
+    """
+    for pattern in (
+        r"(<main[^>]*>)(.*?)(</main>)",
+        r"(<div[^>]*id=[\x22\x27]quarto-document-content[\x22\x27][^>]*>)(.*?)(</div>)",
+        r"(<div[^>]*class=[\x22\x27][^\x22\x27]*content[^\x22\x27]*[\x22\x27][^>]*>)(.*?)(</div>)",
+        r"(<body[^>]*>)(.*?)(</body>)",
+    ):
+        match = re.search(pattern, html_str, re.DOTALL | re.IGNORECASE)
+        if match:
+            return match.group(2), match.start(2), match.end(2)
+    return html_str, 0, len(html_str)
+
+
 def extract_main_content(html_str):
     """Extract main content section from HTML, ignoring navigation and metadata."""
-    main_match = re.search(r"<main[^>]*>(.*?)</main>", html_str, re.DOTALL | re.IGNORECASE)
-    if main_match:
-        return main_match.group(1)
-
-    content_div = re.search(
-        r'<div[^>]*id=["\']quarto-document-content["\'][^>]*>(.*?)</div>',
-        html_str,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if content_div:
-        return content_div.group(1)
-
-    fallback_div = re.search(
-        r'<div[^>]*class=["\'][^"\']*content[^"\']*["\'][^>]*>(.*?)</div>',
-        html_str,
-        re.DOTALL | re.IGNORECASE,
-    )
-    if fallback_div:
-        return fallback_div.group(1)
-
-    body_match = re.search(r"<body[^>]*>(.*?)</body>", html_str, re.DOTALL | re.IGNORECASE)
-    if body_match:
-        return body_match.group(1)
-
-    return html_str
+    inner, _, _ = locate_main_content(html_str)
+    return inner
 
 
 def extract_text_from_element(element_html):
@@ -281,7 +213,7 @@ def highlight_changed_elements(old_html, new_html, patterns):
     Returns (highlighted_html, changes_count, similarity_ratio).
     """
     old_content = extract_main_content(old_html)
-    new_content = extract_main_content(new_html)
+    new_content, start_idx, end_idx = locate_main_content(new_html)
 
     norm_old = normalize_text(old_content, patterns)
     norm_new = normalize_text(new_content, patterns)
@@ -301,11 +233,10 @@ def highlight_changed_elements(old_html, new_html, patterns):
             old_elem_list.append((text, normalize_text(text, patterns), elem))
 
     used_old_indices = set()
-    highlighted_new_html = new_html
+    highlighted_main_content = new_content
     changes_made = 0
 
     SIMILARITY_THRESHOLD_MIN = 0.5
-    SIMILARITY_THRESHOLD_MAX = 0.999
 
     for new_elem in new_elements:
         new_text = extract_text_from_element(new_elem)
@@ -335,10 +266,7 @@ def highlight_changed_elements(old_html, new_html, patterns):
             # Unchanged element
             continue
 
-        if (
-            best_match_idx is not None
-            and SIMILARITY_THRESHOLD_MIN <= best_ratio < SIMILARITY_THRESHOLD_MAX
-        ):
+        if best_match_idx is not None and best_ratio >= SIMILARITY_THRESHOLD_MIN:
             used_old_indices.add(best_match_idx)
             old_text, _, old_elem = old_elem_list[best_match_idx]
 
@@ -352,7 +280,7 @@ def highlight_changed_elements(old_html, new_html, patterns):
                 highlighted_inner = highlight_html_diff(old_inner_content, inner_content)
                 if highlighted_inner != inner_content:
                     highlighted_elem = f"{open_tag}{highlighted_inner}{close_tag}"
-                    highlighted_new_html = highlighted_new_html.replace(
+                    highlighted_main_content = highlighted_main_content.replace(
                         new_elem, highlighted_elem, 1
                     )
                     changes_made += 1
@@ -364,10 +292,17 @@ def highlight_changed_elements(old_html, new_html, patterns):
                 highlighted_elem = (
                     f'{open_tag}<mark class="preview-element-added" style="background-color: #cff4fc; color: inherit; padding: 1px 2px; border-radius: 2px;">{inner_content}</mark>{close_tag}'
                 )
-                highlighted_new_html = highlighted_new_html.replace(
+                highlighted_main_content = highlighted_main_content.replace(
                     new_elem, highlighted_elem, 1
                 )
                 changes_made += 1
+
+    if changes_made > 0:
+        highlighted_new_html = (
+            new_html[:start_idx] + highlighted_main_content + new_html[end_idx:]
+        )
+    else:
+        highlighted_new_html = new_html
 
     return highlighted_new_html, changes_made, similarity
 
@@ -404,7 +339,7 @@ def render_new_page_banner():
     )
 
 
-def apply_page_banner(html_content, banner):
+def apply_page_banner(html_content, banner, target_path=None):
     """Insert or replace the page banner in HTML content."""
     if EXISTING_PAGE_BANNER_RE.search(html_content):
         return EXISTING_PAGE_BANNER_RE.sub(lambda _: banner.rstrip("\n"), html_content, count=1)
@@ -414,7 +349,10 @@ def apply_page_banner(html_content, banner):
         if match:
             return html_content[: match.end()] + "\n" + banner + html_content[match.end() :]
 
-    return banner + html_content
+    path_label = target_path or "page"
+    raise HighlightError(
+        f"{path_label} has no <main> or <body> element to insert the banner after"
+    )
 
 
 def chapter_file(rendered_dir, chapter_id):
@@ -476,7 +414,7 @@ def process_chapters(
             # Page is new in PR
             print(f"  new page:  {relative.as_posix()}")
             banner = render_new_page_banner()
-            updated_html = apply_page_banner(new_html, banner)
+            updated_html = apply_page_banner(new_html, banner, target_path)
             target_path.write_text(updated_html, encoding="utf-8")
             updated_count += 1
             continue
@@ -494,7 +432,7 @@ def process_chapters(
 
         if changes_made > 0:
             banner = render_modified_page_banner(similarity)
-            final_html = apply_page_banner(highlighted_html, banner)
+            final_html = apply_page_banner(highlighted_html, banner, target_path)
             target_path.write_text(final_html, encoding="utf-8")
             updated_count += 1
             print(
