@@ -149,8 +149,7 @@ that also concludes a phase in `plan.md`.
 1. **Announce Protocol Start:** Inform the user that the phase is complete and
     the verification and checkpointing protocol has begun.
 
-2.
-3. **Ensure Test Coverage for Phase Changes:**
+2. **Ensure Test Coverage for Phase Changes:**
 
     - **Step 2.1: Determine Phase Scope:** To identify the files changed in
         this phase, you must first find the starting point.
@@ -159,15 +158,19 @@ that also concludes a phase in `plan.md`.
         If no
         previous checkpoint exists, the scope is all changes since the first
         commit.
+
     - **Step 2.2: List Changed Files:** Execute `git diff --name-only
         <previous_checkpoint_sha> HEAD` to get a precise list of all files
         modified during this phase.
+
     - **Step 2.3: Verify and Create Tests:** For each file in the list:
         - **CRITICAL:** First, check its extension.
         - Exclude non-code files
             (e.g., `.json`, `.md`, `.yaml`).
+
         - For each remaining code file, verify a corresponding test file
             exists.
+
         - If a test file is missing, you **must** create one.
         - Before writing
             the test, **first, analyze other test files in the repository to
@@ -176,8 +179,7 @@ that also concludes a phase in `plan.md`.
             tests **must** validate the functionality described in this phase's
             tasks (`plan.md`).
 
-4.
-5. **Execute Automated Tests with Proactive Debugging:**
+3. **Execute Automated Tests with Proactive Debugging:**
 
     - Before execution, you **must** announce the exact shell command you will
         use to run the tests.

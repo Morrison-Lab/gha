@@ -61,7 +61,8 @@ Style Guide.
 - All executable files should have a `main()` function that contains the main
     logic, called from a `if __name__ == '__main__':` block.
 
-**BE CONSISTENT.** When editing code, match the existing style.
+**BE CONSISTENT.**
+When editing code, match the existing style.
 
 *Source:
 [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)*
