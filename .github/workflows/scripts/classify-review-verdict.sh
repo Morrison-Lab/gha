@@ -106,7 +106,7 @@ def expand_contractions(s):
         s = re.sub(pattern, replacement, s, flags=re.IGNORECASE)
     return s
 
-neg_prefix = r'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b(?:\s*,\s*(?:(?!\b(?:but|although|though|while)\b)[^,\n])+\s*,\s*|(?:\s+\w+){0,6}\s*)'
+neg_prefix = r'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b(?:\s*,\s*[^,\n]+\s*,\s*|(?:\s+\w+){0,6}\s*)'
 positive_targets = r'(ready\s+(?:for|to)\s+merge|approved|clean|lgtm|ready)'
 negative_targets = r'(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?|blocked|impasse|deadlock|rejected|unapproved)'
 

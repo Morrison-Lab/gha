@@ -583,6 +583,20 @@ run_test "4-word gap without punctuation (not currently under any circumstances 
 This is not currently under any circumstances ready for merge." \
 "false" "needs-more-work"
 
+# Test 68: Parenthetical with concessive word (not, although it looks fine on the surface, ready for merge)
+run_test "Parenthetical with concessive word (not, although it looks fine on the surface, ready for merge)" \
+"### Verdict
+
+This is not, although it looks fine on the surface, ready for merge." \
+"false" "needs-more-work"
+
+# Test 69: No longer with concessive word parenthetical (no longer, although once true, blocked)
+run_test "No longer with concessive word parenthetical (no longer, although once true, blocked)" \
+"### Verdict
+
+This PR is no longer, although once true, blocked." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
