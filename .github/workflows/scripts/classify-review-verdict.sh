@@ -106,7 +106,7 @@ def expand_contractions(s):
         s = re.sub(pattern, replacement, s, flags=re.IGNORECASE)
     return s
 
-gap_pattern = r'(?:\s*[-,\(:;—–"\'«»“”‘’\[\]{}]\s*[^.!?\n]+?\s*[-,\):;—–"\'«»“”‘’\[\]{}]?\s*|(?:\s+(?!(?:and|but|whereas)\b)\w+)*\s*)'
+gap_pattern = r'(?:\s*[-,\(:;—–"\'«»“”‘’\[\]{}]\s*[^.!?\n]+?\s*[-,\):;—–"\'«»“”‘’\[\]{}]?\s*|(?:\s+yet)?(?:\s+(?!(?:and|but|yet|whereas|however|though|still|nonetheless|nevertheless)\b)\w+)*\s*)'
 pos_neg_prefix = rf'\b(not|never|un-?|non-?|no\s+longer|without)\b{gap_pattern}'
 noun_neg_prefix = rf'\b(no|zero|0|without)\b{gap_pattern}'
 pred_neg_prefix = rf'\b(no|zero|0|without|not|never|un-?|non-?|no\s+longer)\b{gap_pattern}'

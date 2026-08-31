@@ -737,6 +737,41 @@ run_test "Not yet clean" \
 This is not yet clean." \
 "false" "needs-more-work"
 
+# Test 90: Adversative however separating negated clause from blocked status
+run_test "Adversative however separating negated clause from blocked status" \
+"### Verdict
+
+This is not fully reviewed however blocked pending legal sign-off." \
+"false" "blocked"
+
+# Test 91: Adversative though separating negated clause from blocked status
+run_test "Adversative though separating negated clause from blocked status" \
+"### Verdict
+
+This is not fully reviewed though blocked pending legal sign-off." \
+"false" "blocked"
+
+# Test 92: Adversative still separating negated clause from blocked status
+run_test "Adversative still separating negated clause from blocked status" \
+"### Verdict
+
+This is not fully reviewed still blocked pending legal sign-off." \
+"false" "blocked"
+
+# Test 93: Adversative nonetheless separating negated clause from blocked status
+run_test "Adversative nonetheless separating negated clause from blocked status" \
+"### Verdict
+
+This is not fully reviewed nonetheless blocked pending legal sign-off." \
+"false" "blocked"
+
+# Test 94: Adversative nevertheless separating negated clause from blocked status
+run_test "Adversative nevertheless separating negated clause from blocked status" \
+"### Verdict
+
+This is not fully reviewed nevertheless blocked pending legal sign-off." \
+"false" "blocked"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
