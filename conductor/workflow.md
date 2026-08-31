@@ -90,6 +90,18 @@ All tasks follow a strict lifecycle:
     -   **Action:** Commit this change with a descriptive message (e.g.,
         `conductor(plan): Mark task 'Create user model' as complete`).
 
+### Track Delivery & Pull Requests
+
+When all tasks in a track are complete, or when explicitly requested by the user, you must formally deliver the work:
+
+1.  **Branch Check:** Ensure the work is on a dedicated feature branch.
+2.  **Push:** Push the local branch to the remote repository (`git push -u origin HEAD`).
+3.  **Create PR:** Open a Pull Request referencing the tracked issue(s).
+4.  **Drive to Clean:** Adhere strictly to the project's `AGENTS.md` guidelines for PR delivery:
+    - Run local adversarial self-review to a clean verdict before pushing (if applicable).
+    - Request AI review (`@claude review` or standard workflow).
+    - Drive CI and review findings to a clean result (using `ardi`/`ums`).
+
 ### Task Correction & Plan Amendment Workflows
 
 When an implemented task or phase requires corrections, amendments, or additions, follow these standard workflows to maintain plan integrity and avoid untracked code drift:
