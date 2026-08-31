@@ -3191,6 +3191,7 @@ the non-head SHA, matching this pattern.)
 - `require-review`: Asserts review **delivery** (the review ran and posted).
   It goes green on any completed, posted review (even one with findings) and fails
   red only on review crashes/errors.
+
 - `require-clean-verdict`: Asserts an **affirmatively clean verdict**
   ("Ready for merge", "Clean", "Approved").
   It goes green when the review completed, was posted for the current PR head,
