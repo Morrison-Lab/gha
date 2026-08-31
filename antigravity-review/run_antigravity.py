@@ -49,7 +49,9 @@ NOISE_GUIDANCE = (
 
 STRUCTURED_REVIEW_GUIDANCE = (
     "\n\nAlways end your review with a `### Verdict` section (stating **Ready for merge** or **Needs more work**), "
-    "followed immediately by an HTML comment containing machine-readable review JSON data formatted as:\n"
+    "followed immediately by a folded details block containing machine-readable review JSON data formatted as:\n"
+    "<details>\n"
+    "<summary>Structured Review Data (JSON)</summary>\n\n"
     "<!-- review-data:\n"
     "{\n"
     '  "schema_version": "1.0",\n'
@@ -58,11 +60,21 @@ STRUCTURED_REVIEW_GUIDANCE = (
     '  "verdict": "CLEAN",\n'
     '  "findings": []\n'
     "}\n"
-    "-->\n"
+    "-->\n\n"
+    "```json\n"
+    "{\n"
+    '  "schema_version": "1.0",\n'
+    '  "reviewer": "antigravity",\n'
+    '  "commit_sha": "<sha>",\n'
+    '  "verdict": "CLEAN",\n'
+    '  "findings": []\n'
+    "}\n"
+    "```\n\n"
+    "</details>\n"
     'Use "CLEAN" when there are no blocking findings, or "NOT_CLEAN" if there are blocking issues. '
     'When NOT_CLEAN, list each actionable finding in `findings`: `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "..."}`. '
-    "Write it FLUSH LEFT at column zero, not indented (four or more leading spaces turn it into an indented code block, which is ignored). "
-    "Do NOT place code fences around this HTML comment or add text after `-->`."
+    "Write the tags, comment, and code fences FLUSH LEFT at column zero, not indented. "
+    "Keep the `<!-- review-data:` and `-->` marker lines alone with no extra text on those exact lines, and keep the JSON in the hidden comment and visible code fence identical."
 )
 
 MODE_PROMPTS = {
