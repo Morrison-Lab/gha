@@ -78,63 +78,71 @@ if not content_lines:
 if not content_lines:
     record("false", "no-verdict")
 
-bold_status_regex = re.compile(r'\*\*([^*]+)\*\*')
-
+negated_clean_phrases = re.compile(
+    r'\b(no|zero|0|without)\s+(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|findings|blockers?)\b',
+    re.IGNORECASE
+)
 non_clean_kw = re.compile(
-    r'\b(needs\s+more\s+work|changes\s+requested|changes\s+required|not\s+ready|blocked|impasse|deadlock|rejected|unapproved)\b',
+    r'\b(needs\s+more\s+work|needs\s+work|changes\s+requested|changes\s+required|not\s+ready|blocked|impasse|deadlock|rejected|unapproved)\b',
     re.IGNORECASE
 )
 clean_kw = re.compile(
-    r'\b(ready\s+for\s+merge|clean|approved|passed|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b',
+    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|passed|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)',
     re.IGNORECASE
 )
-negated_clean_phrases = re.compile(
-    r'\b(no|zero|0|without)\s+(needs\s+more\s+work|changes\s+requested|changes\s+required|actionable\s+findings|blocking\s+findings|blocking\s+issues|blockers?)\b',
+footer_regex = re.compile(
+    r'^[ \t>*_#-]*(\*\*)?(stopping\s+point|reviewed\s+commit|posted\s+by)\b',
     re.IGNORECASE
 )
 
-# 1. Check for bold status tokens (last one wins)
-last_bold_verdict = None
-for line in content_lines:
-    for m in bold_status_regex.finditer(line):
-        bold_text = m.group(1).strip()
-        defanged = negated_clean_phrases.sub('_CLEAN_PHRASE_', bold_text)
-        if non_clean_kw.search(defanged):
-            slug = 'needs-more-work'
-            if re.search(r'\bchanges\s+requested\b', defanged, re.I): slug = 'changes-requested'
-            elif re.search(r'\bblocked\b', defanged, re.I): slug = 'blocked'
-            elif re.search(r'\bimpasse|deadlock\b', defanged, re.I): slug = 'impasse'
-            elif re.search(r'\brejected|unapproved\b', defanged, re.I): slug = 'rejected'
-            last_bold_verdict = ("false", slug)
-        elif clean_kw.search(bold_text) or '_CLEAN_PHRASE_' in defanged:
-            slug = 'ready-for-merge'
-            if re.search(r'\bapproved\b', bold_text, re.I): slug = 'approved'
-            elif re.search(r'\bclean\b', bold_text, re.I): slug = 'clean'
-            last_bold_verdict = ("true", slug)
+# Single ordered scan in document order: last verdict statement wins
+last_verdict = None
 
-if last_bold_verdict is not None:
-    record(*last_bold_verdict)
-
-# 2. Check full lines in verdict section
-# First check for unnegated non-clean assertions
 for line in content_lines:
-    defanged = negated_clean_phrases.sub('_CLEAN_PHRASE_', line)
-    if non_clean_kw.search(defanged):
+    if footer_regex.search(line):
+        continue
+
+    neg_spans = []
+    line_matches = []
+
+    for m in negated_clean_phrases.finditer(line):
+        neg_spans.append((m.start(), m.end()))
+        line_matches.append((m.start(), "true", "ready-for-merge"))
+
+    for m in non_clean_kw.finditer(line):
+        if any(start <= m.start() and m.end() <= end for start, end in neg_spans):
+            continue
+        text_matched = m.group(1).lower()
         slug = 'needs-more-work'
-        if re.search(r'\bchanges\s+requested\b', defanged, re.I): slug = 'changes-requested'
-        elif re.search(r'\bblocked\b', defanged, re.I): slug = 'blocked'
-        elif re.search(r'\bimpasse|deadlock\b', defanged, re.I): slug = 'impasse'
-        elif re.search(r'\brejected|unapproved\b', defanged, re.I): slug = 'rejected'
-        record("false", slug)
+        if re.search(r'\bchanges\s+(?:requested|required)\b', text_matched):
+            slug = 'changes-requested'
+        elif re.search(r'\bblocked\b', text_matched):
+            slug = 'blocked'
+        elif re.search(r'\b(impasse|deadlock)\b', text_matched):
+            slug = 'impasse'
+        elif re.search(r'\b(rejected|unapproved)\b', text_matched):
+            slug = 'rejected'
+        line_matches.append((m.start(), "false", slug))
 
-# Then check for clean assertions
-for line in content_lines:
-    defanged = negated_clean_phrases.sub('_CLEAN_PHRASE_', line)
-    if clean_kw.search(line) or '_CLEAN_PHRASE_' in defanged:
+    for m in clean_kw.finditer(line):
+        if any(start <= m.start() and m.end() <= end for start, end in neg_spans):
+            continue
+        text_matched = m.group(0).lower()
         slug = 'ready-for-merge'
-        if re.search(r'\bapproved\b', line, re.I): slug = 'approved'
-        elif re.search(r'\bclean\b', line, re.I): slug = 'clean'
-        record("true", slug)
+        if re.search(r'\bapproved\b', text_matched):
+            slug = 'approved'
+        elif re.search(r'\bclean\b', text_matched):
+            slug = 'clean'
+        line_matches.append((m.start(), "true", slug))
+
+    if line_matches:
+        line_matches.sort(key=lambda x: x[0])
+        _, clean_val, slug_val = line_matches[-1]
+        last_verdict = (clean_val, slug_val)
+
+if last_verdict is not None:
+    record(*last_verdict)
 
 record("false", "unrecognized")
 EOF
+

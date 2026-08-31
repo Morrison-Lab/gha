@@ -293,6 +293,58 @@ run_test "Compound sentence with No actionable findings and blocked" \
 No actionable findings from code review, but this PR is currently blocked pending a human decision." \
 "false" "blocked"
 
+# Test 28: Bold Ready for merge followed by unbolded Needs more work correction
+run_test "Bold Ready for merge followed by unbolded Needs more work correction" \
+"### Verdict
+
+**Ready for merge** — as of my last look.
+
+Wait, I just noticed the tests are still failing, so this actually needs more work." \
+"false" "needs-more-work"
+
+# Test 29: Unbolded historical Needs more work followed by unbolded Ready for merge
+run_test "Unbolded historical Needs more work followed by unbolded Ready for merge" \
+"### Verdict
+
+The prior round said this needs more work, citing line 42. That's since been fixed.
+
+Ready for merge — all clear now." \
+"true" "ready-for-merge"
+
+# Test 30: Bold Needs more work followed by unbolded approved
+run_test "Bold Needs more work followed by unbolded approved" \
+"### Verdict
+
+**Needs more work** — citing missing tests.
+
+Actually, tests were added in the latest commit, so this is approved." \
+"true" "approved"
+
+# Test 31: Unbolded Changes requested followed by unbolded clean
+run_test "Unbolded Changes requested followed by unbolded clean" \
+"### Verdict
+
+Changes requested on line 12.
+
+Update: line 12 fixed. Clean." \
+"true" "clean"
+
+# Test 32: Unbolded Ready for merge followed by unbolded changes requested
+run_test "Unbolded Ready for merge followed by unbolded changes requested" \
+"### Verdict
+
+Ready for merge.
+
+Wait, changes requested." \
+"false" "changes-requested"
+
+# Test 33: Compound sentence with blocked followed by ready for merge
+run_test "Compound sentence with blocked followed by ready for merge" \
+"### Verdict
+
+Although the previous review was blocked, this revision is now ready for merge." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
