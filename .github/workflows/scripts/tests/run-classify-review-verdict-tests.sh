@@ -807,6 +807,20 @@ run_test "Concessive nevertheless inside negated positive phrase" \
 This is not fully addressed nevertheless ready for merge." \
 "false" "needs-more-work"
 
+# Test 100: Unrelated not clause followed by needs more work without punctuation
+run_test "Unrelated not clause followed by needs more work without punctuation" \
+"### Verdict
+
+The migration script is not idempotent needs more work." \
+"false" "needs-more-work"
+
+# Test 101: Unrelated not clause followed by changes requested without punctuation
+run_test "Unrelated not clause followed by changes requested without punctuation" \
+"### Verdict
+
+This implementation is not thread safe changes requested." \
+"false" "changes-requested"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
