@@ -1,2 +1,2 @@
 ---
-- [ ] **Track: check-new-line-breaks never scans .qmd or .yml (#750)** *Link: [./tracks/nlb-scans-qmd-yml_20260830/index.md](./tracks/nlb-scans-qmd-yml_20260830/index.md)*
+- [~] **Track: check-new-line-breaks never scans .qmd or .yml (#750)** *Link: [./tracks/nlb-scans-qmd-yml_20260830/index.md](./tracks/nlb-scans-qmd-yml_20260830/index.md)*
