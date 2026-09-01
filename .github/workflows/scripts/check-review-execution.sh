@@ -231,9 +231,9 @@ echo "denials=$denials" >> "$GITHUB_OUTPUT"
 # as evidence the reviewer was STARVED of tools it needed -- its own comment
 # says gha#198's pattern "has repeatedly NOT recovered", which is why crossing
 # the threshold withholds the retry. A denial produced by a rule this repo
-# added ON PURPOSE is not evidence for that. `Agent(run_in_background:true)`
-# and its `Task` alias are denied deliberately (gha#532), so a run that fans
-# out and is correctly stopped generates denials by design.
+# added ON PURPOSE is not evidence for that. `Agent` and its `Task` alias
+# are denied deliberately (gha#532, gha#756), so a run that attempts to spawn
+# subagents and is correctly stopped generates denials by design.
 #
 # That interaction is not hypothetical at the sizes actually observed: the
 # incidents motivating the deny rules were a 4-spawn (ai-config#1744) and an
@@ -262,7 +262,6 @@ if [[ "$denials_known" == "true" ]]; then
     [ .permission_denials[]?
       | select(((.tool_name? // "") | tostring) == "Agent"
                or ((.tool_name? // "") | tostring) == "Task")
-      | select((.tool_input?.run_in_background?) == true)
     ] | length
   ' <<< "$result" 2>/dev/null || echo 0)"
   [[ "$intended_denials" =~ ^[0-9]+$ ]] || intended_denials=0

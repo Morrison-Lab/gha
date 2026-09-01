@@ -3743,26 +3743,25 @@ Per
 > Deny and ask rules can match a top-level input parameter on any tool with
 > `Tool(param:value)`.
 
-So `Agent(run_in_background:true)` is a well-formed deny rule, and it is
-narrower than denying `Agent` outright -- which gha#392's follow-up rejected
-precisely because it would also break the `code-review` plugin's legitimate
-*synchronous* fan-out.
+In gha#532, `Agent(run_in_background:true)` was initially deployed as a parameter-scoped
+deny rule.
+However, in gha#756, empirical runs showed that when the model omits `run_in_background`
+in the tool call arguments, it defaults to true (backgrounding) while bypassing the
+parameter-scoped rule, leading to $3-$6 wasted headless CI runs with no verdict.
+Therefore, `Agent` and `Task` are denied outright in `--disallowedTools`.
+In a headless non-interactive review run, the model must complete the entire review inline
+in its primary context.
 
 Five things constrain any change here.
 
-**It is a DENY on `true`, not an allow on `false`.**
-The same section rules the allow shape out: "allow rules continue to use each
-tool's own specifier syntax."
-gha#532's body guesses at `Agent(run_in_background:false)` as an allow rule;
-that does not work.
+**It is a DENY on `Agent,Task` outright.**
+allow rules continue to use each tool's own specifier syntax;
+an allow on `Agent(run_in_background:false)` does not work.
+Denying `Agent,Task` outright mechanistically blocks both explicit-true and omitted-parameter spawns.
 
-**It closes one of two routes, and the prompt still covers the other.**
-"A parameter the model omits is never matched", and `Agent`'s
-`run_in_background` defaults to true -- so a call that omits the parameter
-still backgrounds and this rule does not see it.
-The prompt instruction is therefore not redundant, and must not be deleted on
-the strength of the rule.
-Read the two as covering different halves.
+**The prompt instruction reinforces the constraint.**
+The prompt instruction explicitly tells the model that subagents are disallowed and to
+complete the review inline, preventing stalled delegations.
 
 **A parameter rule cannot reach a tool's primary content field.**
 The same section lists them (`command` for Bash, `file_path` for Read, `url`
@@ -3771,17 +3770,9 @@ startup, because `Bash(command:rm *)` would be bypassable by a compound
 command.
 Use the tool's own specifier for those.
 
-**The CLI flag parses this form, and that was measured rather than assumed.**
-The documentation describes `Tool(param:value)` as a permission-rule syntax and
-never says that `--disallowedTools` accepts it, so a rule that silently failed
-to parse would make the mitigation a no-op that looks shipped.
-On Claude Code 2.1.238, `Agent(run_in_background:true)` and
-`Task(run_in_background:true)` were accepted with no warning.
-The negative control is what makes that silence informative: the same CLI
-answered `Bash(command:rm *)` -- a rule the docs say is ignored -- with
-`Permission deny rule "Bash(command:rm *)" targets command as a raw string and
-will not match`.
-This establishes that the rules parse, not that they match at call time.
+**The CLI flag parses tool names directly.**
+On Claude Code CLI, `Agent` and `Task` in `--disallowedTools` are accepted and match
+all invocation attempts.
 
 **The denials these rules produce are excluded from the stub-retry gate, and
 that exclusion is part of the fix rather than a refinement of it.**

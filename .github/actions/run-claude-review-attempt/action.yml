@@ -323,39 +323,25 @@ runs:
         #
         # That carve-out for the fan-out was too broad, and gha#392 is the
         # bill for it. `Agent`'s `run_in_background` parameter defaults to
-        # TRUE, so the "legitimate same-run fan-out" this comment blesses
-        # is itself a background spawn -- the model then ends its turn
-        # waiting for completion notifications that only a later turn can
-        # deliver, which is the same shape as the three tools denied above,
-        # reached without calling any of them. Denying `Agent` would close
-        # it and would also break the plugin's intended parallelism, so the
-        # prompt below requires `run_in_background: false` instead. Read
-        # the two together: these three tools are denied outright because
-        # they have no synchronous form, while `Agent` is allowed in its
-        # synchronous form only.
+        # TRUE, so the "legitimate same-run fan-out" was itself a background
+        # spawn -- the model then ends its turn waiting for completion
+        # notifications that only a later turn can deliver, which is the same
+        # shape as the three tools denied above, reached without calling any
+        # of them.
         #
         # Measured on Morrison-Lab/ai-config#986, run 30671528617: eight
         # `Agent` calls, `is_error: false`, `stop_reason: end_turn`,
         # $9.76, and a final message reading "Waiting for the remaining
         # background agents to complete." in place of a verdict.
         #
-        # gha#532: that prompt mitigation RECURRED, on ai-config#1744 run
-        # 32347489886 -- four background agents spawned and the turn ended
-        # waiting on them, with the synchronous-only instruction verbatim in
-        # the prompt at the time. A prompt is a request, not a constraint, so
-        # `Agent(run_in_background:true)` and its `Task` alias are DENIED
-        # below, using Claude Code's parameter-scoped rule form. That is
-        # narrower than denying `Agent` outright, which gha#392's follow-up
-        # rejected because it would also break the plugin's legitimate
-        # synchronous fan-out.
-        #
-        # **This closes one of two routes, not both.** A parameter the model
-        # omits is never matched, and `run_in_background` DEFAULTS to true, so
-        # a call that simply omits it still backgrounds and this rule does not
-        # see it. The prompt instruction below therefore stays: it covers the
-        # omission route, the deny covers the explicit-`true` one, and neither
-        # is redundant. Do not remove the prompt text on the strength of this
-        # rule.
+        # gha#532 and gha#756: parameter-scoped denial (`Agent(run_in_background:true)`)
+        # was previously tried, but because `run_in_background` defaults to
+        # true when omitted by the model, omitted-parameter spawns bypassed
+        # the rule and still backgrounded, resulting in $3-$6 wasted runs with
+        # no verdict produced. Therefore, `Agent` and `Task` are DENIED
+        # outright below. In a headless, non-interactive CI review run, the
+        # reviewer must perform all review work directly inline in its
+        # primary context.
         #
         # `Task` is listed beside `Agent` defensively rather than on evidence
         # both names are live: the CLI version is not pinned here, and a deny
@@ -528,7 +514,7 @@ runs:
           --allowedTools
           "Bash,Edit(//tmp/**),WebFetch,WebSearch"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent(run_in_background:true),Task(run_in_background:true)"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent,Task"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and
@@ -650,15 +636,11 @@ runs:
           ever run this job again to pick that up, and doing so has
           produced reviews that silently never finish (gha#218).
 
-          The code-review plugin's own same-run parallel sub-agent fan-out
-          is still fine, but every one of those calls MUST be synchronous:
-          pass `run_in_background: false` on each Agent/Task call. That
-          parameter defaults to TRUE, so an ordinary fan-out spawns
-          BACKGROUND agents whose completion notifications can only arrive
-          in a later turn, and this run has no later turn. Ending your turn
-          to wait for them throws away everything they found and posts no
-          verdict (gha#392). Collect every sub-agent's result inside this
-          run, before you write your review.
+          Do NOT attempt to spawn subagents or delegate parts of the
+          review using Agent or Task; those tools are intentionally
+          disallowed. In this headless CI run, completion notifications for
+          background processes never arrive and any delegation throws away
+          progress without posting a verdict (gha#392, gha#756).
 
           Complete the entire review yourself, inline, within this
           run, and end your final message with the ### Verdict line before

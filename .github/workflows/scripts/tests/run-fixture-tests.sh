@@ -190,7 +190,7 @@ declare -A must_log=(
   # Grouping, count-descending ordering, and one argument sample PER TOOL --
   # the six Task denials must appear in their own sample rather than being
   # crowded out by alphabetically-earlier arguments from other tools.
-  [permission-denials-mixed-tools.json]='Denied tools: Taskx6 Bashx3 WebFetchx2 (sample: Task: review one file; Bash: gh api repos/Morrison-Lab/gha/pulls/1; WebFetch: https://example.invalid/spec)'
+  [permission-denials-mixed-tools.json]='Denied tools: Taskx6 Bashx4 WebFetchx2 (sample: Task: review one file; Bash: gh api repos/Morrison-Lab/gha/pulls/1; WebFetch: https://example.invalid/spec)'
   # The array-length fallback path (no scalar count) still names the tools.
   [permission-denials-array-only-high-count.json]='Denied tools: Bashx8 (sample: Bash: gh api repos/x/y)'
   # NOT gated on the over-threshold branch: a low-count run is retried and can
