@@ -54,25 +54,32 @@ STRUCTURED_REVIEW_GUIDANCE = (
     "<summary>Structured Review Data (JSON)</summary>\n\n"
     "<!-- review-data:\n"
     "{\n"
-    '  "schema_version": "1.0",\n'
+    '  "schema_version": "1.1",\n'
     '  "reviewer": "antigravity",\n'
     '  "commit_sha": "<sha>",\n'
     '  "verdict": "CLEAN",\n'
-    '  "findings": []\n'
+    '  "findings": [],\n'
+    '  "detailed_assessment": "No detailed findings after tracing changed paths and failure modes.",\n'
+    '  "holistic_assessment": "No whole-change concerns after checking requirements, integration, regression risk, scope, and validation."\n'
     "}\n"
     "-->\n\n"
     "```json\n"
     "{\n"
-    '  "schema_version": "1.0",\n'
+    '  "schema_version": "1.1",\n'
     '  "reviewer": "antigravity",\n'
     '  "commit_sha": "<sha>",\n'
     '  "verdict": "CLEAN",\n'
-    '  "findings": []\n'
+    '  "findings": [],\n'
+    '  "detailed_assessment": "No detailed findings after tracing changed paths and failure modes.",\n'
+    '  "holistic_assessment": "No whole-change concerns after checking requirements, integration, regression risk, scope, and validation."\n'
     "}\n"
     "```\n\n"
     "</details>\n"
     'Use "CLEAN" when there are no blocking findings, or "NOT_CLEAN" if there are blocking issues. '
     'When NOT_CLEAN, list each actionable finding in `findings`: `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "..."}`. '
+    'Every schema `1.1` payload requires distinct `detailed_assessment` and `holistic_assessment` fields with at least six distinct words each. '
+    'The detailed assessment names a changed path, failure mode, or concrete defect. '
+    'The holistic assessment names a requirement, integration, regression, scope, or validation concern. '
     "Write the tags, comment, and code fences FLUSH LEFT at column zero, not indented. "
     "Keep the `<!-- review-data:` and `-->` marker lines alone with no extra text on those exact lines, and keep the JSON in the hidden comment and visible code fence identical."
 )
