@@ -15,7 +15,7 @@
     "href": "permissions.html#per-workflow-grants",
     "title": "Permissions",
     "section": "Per-workflow grants",
-    "text": "Per-workflow grants\n\n\ncheck-ai-tells, check-bibliography-dois, check-code-similarity, check-equation-renders, check-extra, check-formatting, check-junk-files, check-new-line-breaks, check-news, check-non-standard-chars, check-phi, check-secrets, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, r-cmd-check, spellcheck, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncheck-news reads the PR’s labels live for its skip-label exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs issues: read and pull-requests: read alongside contents: read.\nversion-check reads the PR’s labels live for its no version increment exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs pull-requests: read alongside contents: read. Not issues: read: that scope alone returned 403 on the same call (gha#724), since GitHub authorizes a label read on an issue object that is a pull request against the pull-requests permission.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nai-code-review selects the first available AI reviewer and dispatches its review workflow, so grant contents: read, pull-requests: read, issues: read, actions: write, and pass the secrets of whichever agent review workflows are installed (see examples/ai-code-review.yml). issues: read is required since the delivery classifier’s comment scan landed (gha#638); a caller missing it fails at parse time with no API-visible diagnostic (gha#685).\ngemini pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the GEMINI_API_KEY secret.\ngemini-code-review posts the Gemini review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nantigravity-code-review posts the Antigravity review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nsmall-model-agent posts the small-model agent’s PR comment, so grant contents: read, pull-requests: write.\nclaude-manage-project files issues and updates the project board, so grant contents: read, issues: write, repository-projects: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret (required).\naltdoc-multiversion-docs deploys to gh-pages, comments PR previews, and rewrites rendered links, so grant contents: write, pull-requests: write, and issues: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
+    "text": "Per-workflow grants\n\n\ncheck-ai-tells, check-bibliography-dois, check-code-similarity, check-equation-renders, check-extra, check-formatting, check-junk-files, check-new-line-breaks, check-news, check-non-standard-chars, check-one-function-per-file, check-phi, check-secrets, check-typos, cursor-code-review, lint-changed-files, lint-changed-lines, lint-markdown, lint-qmd, lint-workflows, lint-yaml, preview, r-cmd-check, spellcheck, test-coverage, version-check need only contents: read (the default), so no permissions: block is needed. This list is checked against the workflows’ own permissions: blocks by .github/workflows/scripts/tests/run-permissions-docs-tests.py; keep the markers around it.\ncheck-links opens an issue on main failures, so grant issues: write, pull-requests: read, contents: read.\nsummary comments on issues and calls the models API, so grant issues: write, models: read, contents: read.\nupdate-snapshots pushes the snapshot-update commit back to the branch, so grant contents: write.\nquarto-publish deploys to the gh-pages branch, so grant contents: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once. Grant contents: write even with deploy: false: the deploy job is part of the workflow, so the caller must grant its permissions even when it is skipped.\npreview-deploy (deploy half) pushes gh-pages and comments, so grant contents: write, pull-requests: write, actions: read. The preview build half is read-only, above.\ncheck-equation-renders downloads the build artifact. It is read-only, above, but a caller that narrows below the read-only default token still needs actions: read alongside contents: read.\ncheck-news reads the PR’s labels live for its skip-label exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs issues: read and pull-requests: read alongside contents: read.\nversion-check reads the PR’s labels live for its no version increment exemption. It is read-only, above, but a caller that narrows below the read-only default token still needs pull-requests: read alongside contents: read. Not issues: read: that scope alone returned 403 on the same call (gha#724), since GitHub authorizes a label read on an issue object that is a pull request against the pull-requests permission.\ncleanup-pr-previews commits deletions to gh-pages, so grant contents: write, pull-requests: read.\nbump-submodule, sync-shared-fragments, sync-upstream open a PR, so grant contents: write, pull-requests: write, and enable Settings -&gt; Actions -&gt; General -&gt; “Allow GitHub Actions to create and approve pull requests”.\nreport-failure files or updates the issue tracking a failing workflow, so grant issues: write on the reporting job – and nothing else. It performs no checkout, so it needs no contents grant; the job it watches keeps its own permissions.\nclaude pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret.\nclaude-code-review (read-only review) grants contents: read, pull-requests: write, issues: write, actions: read, and either the CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret. The model job’s GITHUB_TOKEN has no write scopes (contents / pull-requests / issues / actions: read); write is confined to jobs that never run the model (gather-context and post-review) (gha#580). actions: read is required on the caller: a permissions: block sets unspecified scopes to none, and post-review needs it to download the packed artifact (the model job also uses it for the github_ci MCP server).\ncursor-code-review queues a Cursor Bugbot review. It is read-only, above, but does need the CURSOR_API_KEY secret (Enterprise, admin:* scope).\nopencode-code-review is a read-only review that posts its own comment, so grant contents: read, pull-requests: write, issues: write, and set the OPENCODE_API_KEY secret (OpenCode Zen).\nai-code-review selects the first available AI reviewer and dispatches its review workflow, so grant contents: read, pull-requests: read, issues: read, actions: write, and pass the secrets of whichever agent review workflows are installed (see examples/ai-code-review.yml). issues: read is required since the delivery classifier’s comment scan landed (gha#638); a caller missing it fails at parse time with no API-visible diagnostic (gha#685).\ngemini pushes branches, opens PRs, and dispatches the review workflow, so grant contents: write, pull-requests: write, issues: write, id-token: write, actions: write, and add the GEMINI_API_KEY secret.\ngemini-code-review posts the Gemini review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nantigravity-code-review posts the Antigravity review, so grant contents: read, pull-requests: write, issues: write, id-token: write, and the GEMINI_API_KEY secret.\nsmall-model-agent posts the small-model agent’s PR comment, so grant contents: read, pull-requests: write.\nclaude-manage-project files issues and updates the project board, so grant contents: read, issues: write, repository-projects: write, and add the CLAUDE_CODE_OAUTH_TOKEN secret (required).\naltdoc-multiversion-docs deploys to gh-pages, comments PR previews, and rewrites rendered links, so grant contents: write, pull-requests: write, and issues: write, and set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root) once.\nrequest-dependabot-review requests a reviewer on the PR, so grant pull-requests: write.\nbump-dev-version opens (or auto-merges) a PR, so grant contents: write, pull-requests: write, enable the same “Allow GitHub Actions to create and approve pull requests” setting as above, and (for its default auto-merge: true) “Allow auto-merge” too. Its version-check counterpart is read-only, above.",
     "crumbs": [
       "Overview",
       "Permissions"
@@ -48,7 +48,7 @@
     "href": "versioning.html",
     "title": "Versioning",
     "section": "",
-    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, and check-code-similarity.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
+    "text": "Releases are tagged vX.Y.Z, and the vX major tag moves to the latest compatible release, following the r-lib/actions convention. @v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so it has picked up no fixes since - not even non-breaking ones. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, quarto-publish.yml, check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, update-snapshots.yml, and check-news.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, request-dependabot-review.yml, sync-upstream.yml, altdoc-multiversion-docs.yml, report-failure.yml, gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, ai-code-review.yml, bump-dev-version.yml, version-check.yml, small-model-agent.yml, check-ai-tells.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). See Workflows for the full breakdown, including which capabilities still pin @v1 and why. Breaking changes bump the major tag (v2, and so on) with migration steps.",
     "crumbs": [
       "Overview",
       "Versioning"
@@ -1347,183 +1347,315 @@
     ]
   },
   {
-    "objectID": "reference/spellcheck.html",
-    "href": "reference/spellcheck.html",
-    "title": "spellcheck.yml",
+    "objectID": "reference/check-bibliography-dois.html",
+    "href": "reference/check-bibliography-dois.html",
+    "title": "check-bibliography-dois.yml",
     "section": "",
-    "text": "Spellcheck an R package’s prose with the {spelling} package. The package’s own inst/WORDLIST is the accepted vocabulary, so a repo migrating from a bespoke check-spelling.yaml keeps its wordlist unchanged – that file is {spelling}’s own format.",
+    "text": "Validate that book and article BibTeX entries have DOIs that resolve and match CrossRef metadata.",
     "crumbs": [
       "Overview",
       "Reference",
-      "spellcheck.yml"
+      "check-bibliography-dois.yml"
     ]
   },
   {
-    "objectID": "reference/spellcheck.html#what-it-reads",
-    "href": "reference/spellcheck.html#what-it-reads",
-    "title": "spellcheck.yml",
-    "section": "What it reads",
-    "text": "What it reads\nspell_check_package() decides the population, and it is narrower than “the repo’s prose” in one direction and wider in another. Read off spell_check_package()’s source at {spelling} 2.3.2 and confirmed against a fixture (2026-08-21):\n\nDESCRIPTION’s Title and Description fields, and no other field.\nEvery man/*.Rd help page.\nVignette sources under vignettes/, matched as .md/.Rmd/.qmd, plus .Rnw/.Snw. These are parsed as text, never rendered, which is why install-quarto defaults to 'false' even for a .qmd vignette.\nRoot-level Markdown whose name matches readme, news, changes, or index, case-insensitively. So a package’s own README.md and NEWS.md are checked.\n\nEverything else is out of reach of spellcheck.yml: a Quarto site’s other pages, CONTRIBUTING.md, code comments, YAML, and any repository that is not an R package at all. check-typos.yml covers those with crate-ci/typos.\nThe package’s own name and its authors’ names are added to the accepted vocabulary automatically, so neither needs a WORDLIST entry.\nAdd a newly-accepted word with spelling::update_wordlist() in the package, and commit the result.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "spellcheck.yml"
-    ]
-  },
-  {
-    "objectID": "reference/spellcheck.html#inputs",
-    "href": "reference/spellcheck.html#inputs",
-    "title": "spellcheck.yml",
+    "objectID": "reference/check-bibliography-dois.html#inputs",
+    "href": "reference/check-bibliography-dois.html#inputs",
+    "title": "check-bibliography-dois.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the package root, relative to the repository.\n\n\nexclude\nstring\n''\nComma-separated files or folders to skip. Accepts globs.\n\n\nfail\nstring\n'true'\nWhether to fail the job on misspelled words ('true', 'false').\n\n\nadditional-options\nstring\n'--vanilla'\nOptions passed to Rscript. Pass '' to let R read its profiles.\n\n\ninstall-quarto\nstring\n'false'\nWhether dependency setup installs Quarto.\n\n\nruns-on\nstring\nubuntu-latest\nRunner label for the job.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nno-metadata-check\nboolean\nfalse\nSkip the CrossRef metadata comparison.\n\n\nexclude-keys\nstring\n''\nSpace- or comma-separated BibTeX keys to skip.",
     "crumbs": [
       "Overview",
       "Reference",
-      "spellcheck.yml"
+      "check-bibliography-dois.yml"
     ]
   },
   {
-    "objectID": "reference/spellcheck.html#permissions",
-    "href": "reference/spellcheck.html#permissions",
-    "title": "spellcheck.yml",
+    "objectID": "reference/check-bibliography-dois.html#permissions",
+    "href": "reference/check-bibliography-dois.html#permissions",
+    "title": "check-bibliography-dois.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "spellcheck.yml"
+      "check-bibliography-dois.yml"
     ]
   },
   {
-    "objectID": "reference/spellcheck.html#example",
-    "href": "reference/spellcheck.html#example",
-    "title": "spellcheck.yml",
+    "objectID": "reference/check-bibliography-dois.html#example",
+    "href": "reference/check-bibliography-dois.html#example",
+    "title": "check-bibliography-dois.yml",
     "section": "Example",
-    "text": "Example\nname: Spellcheck\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  spellcheck:\n    uses: Morrison-Lab/gha/.github/workflows/spellcheck.yml@v2\n    # with:\n    #   path: '.'\n    #   exclude: 'vignettes/*.Rmd'\n    #   fail: 'true'\n    #   additional-options: ''\n    #   install-quarto: 'auto'\nSee the examples/ directory for the full caller stub (spellcheck.yml).",
+    "text": "Example\n# Copy to .github/workflows/check-bibliography-dois.yml in your repo.\nname: Check Bibliography DOIs\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\n    # with:\n    #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip\n    #   install-quarto: false\n    #   no-metadata-check: false\nSee examples/check-bibliography-dois.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "spellcheck.yml"
+      "check-bibliography-dois.yml"
     ]
   },
   {
-    "objectID": "reference/spellcheck.html#why-it-sets-up-r-instead-of-running-in-a-container",
-    "href": "reference/spellcheck.html#why-it-sets-up-r-instead-of-running-in-a-container",
-    "title": "spellcheck.yml",
-    "section": "Why it sets up R instead of running in a container",
-    "text": "Why it sets up R instead of running in a container\nThe bespoke workflows this replaces run inside a rocker image. This one calls r-lib/actions/setup-r, matching every other R capability here, so a consumer already paying for setup-r in its other jobs reuses that toolchain cache.\nIt also installs {spelling} through setup-r-dependencies rather than compiling {spelling} and its {hunspell} C++ dependency on every run. Going through setup-r-dependencies takes the public RSPM binaries instead and caches them across runs.\nOnly {spelling} is installed, not the consumer package’s own dependencies: spell_check_package() reads a package’s files without loading it, so resolving its dependency tree would be pure cost. RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE' is set during dependency setup so {spelling} installs to the site library even in renv projects; additional-options: '--vanilla' default then finds it without requiring .Rprofile activation (#620). For the same reason install-quarto defaults to 'false' – {spelling} reads vignette sources and never renders them.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "spellcheck.yml"
-    ]
-  },
-  {
-    "objectID": "reference/spellcheck.html#handling-of-exclusions-and-finding-counts",
-    "href": "reference/spellcheck.html#handling-of-exclusions-and-finding-counts",
-    "title": "spellcheck.yml",
-    "section": "Handling of exclusions and finding counts",
-    "text": "Handling of exclusions and finding counts\nspellcheck directly invokes spelling::spell_check_package(), providing:\n\nSafe file exclusion: Excluded files matching glob patterns are temporarily staged out of the package root during analysis and restored unconditionally on exit (resolving gha#556).\nConsistent exit codes: When misspellings are found, the step exits with code 1 under fail: 'true' or 0 under fail: 'false' (with GitHub Actions warning annotations for each finding), avoiding modulo-256 process exit code truncation (gha#556, gha#560).",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "spellcheck.yml"
-    ]
-  },
-  {
-    "objectID": "reference/lint-markdown.html",
-    "href": "reference/lint-markdown.html",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/lint-workflows.html",
+    "href": "reference/lint-workflows.html",
+    "title": "lint-workflows.yml",
     "section": "",
-    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus companion checks that flag fenced code blocks longer than a configurable line threshold, list-item merge splices, and blank lines that split a GFM table.",
+    "text": "Audit the caller’s GitHub Actions workflows and composite actions with actionlint (syntax/semantics – unknown keys, bad runs-on labels, invalid expression syntax, shellcheck over run: blocks) and zizmor (security – template-injection sinks, credential persistence, overly broad permissions, unpinned actions). The two tools check different things and both are worth running.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-markdown.yml"
+      "lint-workflows.yml"
     ]
   },
   {
-    "objectID": "reference/lint-markdown.html#inputs",
-    "href": "reference/lint-markdown.html#inputs",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/lint-workflows.html#inputs",
+    "href": "reference/lint-workflows.html#inputs",
+    "title": "lint-workflows.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for markdownlint and companion checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.\n\n\nbase-ref\nstring\n''\nGit ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives). Pass ‘all’ to scan all lines.\n\n\nfail-on-item-splices\nboolean\ntrue\nFail the workflow when a list-item merge splice is detected.\n\n\nfail-on-table-splits\nboolean\ntrue\nFail the workflow when a blank line splits a GFM table, orphaning the rows below it so they render as literal text. Scans the whole tree rather than diff-scoping, since a split table has no legitimate form.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nRoot path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting .gitignore.\n\n\nactionlint-version\nstring\n'v1.7.12'\nactionlint release tag to install.\n\n\nactionlint-checksum\nstring\n(pinned SHA-256 for the default version’s linux_amd64 tarball)\nExpected SHA-256 of the pinned actionlint-version’s linux_amd64 release tarball, verified before extracting it. Update alongside actionlint-version.\n\n\nzizmor-version\nstring\n'1.28.0'\nzizmor PyPI package version to install.\n\n\npython-version\nstring\n'3.x'\nPython version to set up (for installing zizmor via pip).\n\n\npedantic\nboolean\nfalse\nRun zizmor with --pedantic (also emit code-smell findings, not just security issues).\n\n\nfail\nboolean\ntrue\nFail the workflow when either tool reports a finding.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-markdown.yml"
+      "lint-workflows.yml"
     ]
   },
   {
-    "objectID": "reference/lint-markdown.html#permissions",
-    "href": "reference/lint-markdown.html#permissions",
-    "title": "lint-markdown.yml",
+    "objectID": "reference/lint-workflows.html#outputs",
+    "href": "reference/lint-workflows.html#outputs",
+    "title": "lint-workflows.yml",
+    "section": "Outputs",
+    "text": "Outputs\n\n\n\n\n\n\n\nOutput\nDescription\n\n\n\n\nactionlint-found\n'true' if actionlint reported any finding.\n\n\nzizmor-found\n'true' if zizmor reported any finding.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-workflows.html#permissions",
+    "href": "reference/lint-workflows.html#permissions",
+    "title": "lint-workflows.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-markdown.yml"
+      "lint-workflows.yml"
     ]
   },
   {
-    "objectID": "reference/lint-markdown.html#example",
-    "href": "reference/lint-markdown.html#example",
-    "title": "lint-markdown.yml",
-    "section": "Example",
-    "text": "Example\n\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus companion checks that flag long fenced code blocks,\n# list-item merge splices, and blank lines that split a table.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   globs: '*.md'                       # git pathspecs to lint (recursive)\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\n    #   max-code-block-lines: '150'         # fenced code block line-count threshold\n    #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks\n    #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs\n    #   fail-on-item-splices: true          # fail when a list-item merge splice is detected\n    #   fail-on-table-splits: true          # fail when a blank line splits a GFM table\nSee the examples/ directory for the full caller stub (lint-markdown.yml).",
+    "objectID": "reference/lint-workflows.html#landing-on-a-repo-with-pre-existing-findings",
+    "href": "reference/lint-workflows.html#landing-on-a-repo-with-pre-existing-findings",
+    "title": "lint-workflows.yml",
+    "section": "Landing on a repo with pre-existing findings",
+    "text": "Landing on a repo with pre-existing findings\nA repo that has never run either tool before will likely see a real backlog of findings on the first run – neither tool is diff-scoped, so both audit every workflow and action file in path, not just what a given PR touches. Rather than block adoption on fixing everything at once, set fail: false to land the capability as a warn-only baseline, then work through the backlog and flip fail back to true (the default) once it’s clean. The actionlint-found/zizmor-found outputs let a caller track progress (e.g. by asserting they eventually both come back 'false') without hand-parsing either tool’s own output.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-markdown.yml"
+      "lint-workflows.yml"
     ]
   },
   {
-    "objectID": "reference/check-links.html",
-    "href": "reference/check-links.html",
-    "title": "check-links.yml",
+    "objectID": "reference/lint-workflows.html#example",
+    "href": "reference/lint-workflows.html#example",
+    "title": "lint-workflows.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-workflows.yml in your repo.\n# Audits GitHub Actions workflows and composite actions with actionlint\n# (syntax/semantics) and zizmor (security). Only contents:read is needed\n# (the default), so no permissions block is required.\nname: Lint Workflows\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-workflows.yml@v2\n    # with:\n    #   path: '.'                       # root path to audit\n    #   pedantic: true                  # also emit zizmor code-smell findings\n    #   fail: false                     # warn instead of failing on findings --\n    #                                   # useful while working through a\n    #                                   # pre-existing backlog\nSee the examples/ directory for the full caller stub (lint-workflows.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-workflows.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html",
+    "href": "reference/test-coverage.html",
+    "title": "test-coverage.yml",
     "section": "",
-    "text": "Run a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when links break on main.",
+    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.\nSet examples-coverage: true for an optional second job that measures coverage from examples and vignettes. \\dontrun{} does not run under R CMD check by default (only with --run-dontrun, which --as-cran does not imply). \\donttest{} is skipped unless --as-cran or --run-donttest. That job does not upload to Codecov, produce a JUnit report, or apply min-coverage. On failure it uploads its covr install tree as examples-coverage-test-failures. The percent appears in the job log and the step summary. Enabling it adds a second check named &lt;caller job&gt; / Examples and vignettes coverage. A min-coverage input can fail the tests job when coverage falls below a chosen percent. It defaults to no threshold and does not apply to the examples job, which measures a different execution path.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-links.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/check-links.html#inputs",
-    "href": "reference/check-links.html#inputs",
-    "title": "check-links.yml",
+    "objectID": "reference/test-coverage.html#inputs",
+    "href": "reference/test-coverage.html#inputs",
+    "title": "test-coverage.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nlychee-config\nstring\n''\nPath in the caller repo to a lychee config; falls back to the bundled default.\n\n\nlychee-args\nstring\n''\nArguments and globs passed to lychee; a sensible default glob set is used when empty.\n\n\nfail-if-empty\nboolean\nfalse\nFail the run when no links are found.\n\n\ncreate-issue-on-main\nboolean\ntrue\nFile an issue when links break on the main branch.\n\n\nskip-label\nstring\n'links checked by hand'\nPR label that skips the link check.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.\n\n\nupload-test-results\nboolean\ntrue\nAlso generate a JUnit test-results report (testthat::JunitReporter) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload.\n\n\nexamples-coverage\nboolean\nfalse\nRun a second job that measures coverage from examples and vignettes (covr type = c(\"examples\", \"vignettes\"), commentDonttest/commentDontrun both FALSE). Off by default.\n\n\nmin-coverage\nstring\n''\nMinimum percent coverage required to pass the tests job (covr::percent_coverage()). Empty defaults to no threshold. Does not apply to the examples/vignettes job.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-links.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/check-links.html#permissions",
-    "href": "reference/check-links.html#permissions",
-    "title": "check-links.yml",
+    "objectID": "reference/test-coverage.html#secrets",
+    "href": "reference/test-coverage.html#secrets",
+    "title": "test-coverage.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/test-coverage.html#permissions",
+    "href": "reference/test-coverage.html#permissions",
+    "title": "test-coverage.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant issues: write, pull-requests: read, and contents: read (it opens an issue on main failures).",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-links.yml"
+      "test-coverage.yml"
     ]
   },
   {
-    "objectID": "reference/check-links.html#example",
-    "href": "reference/check-links.html#example",
-    "title": "check-links.yml",
+    "objectID": "reference/test-coverage.html#example",
+    "href": "reference/test-coverage.html#example",
+    "title": "test-coverage.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-links.yml in your repo.\n# NOTE: the calling job grants issues:write so the workflow can open an issue\n# when links break on main. Required because repos default to a read-only token.\nname: Check Links\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n    types: [opened, synchronize, reopened, labeled, unlabeled]\n  schedule:\n    # Run weekly on Mondays at 9:00 UTC to catch link rot\n    - cron: \"0 9 * * 1\"\n  workflow_dispatch:\n\njobs:\n  check:\n    permissions:\n      contents: read\n      issues: write\n      pull-requests: read\n    uses: Morrison-Lab/gha/.github/workflows/check-links.yml@v2\n    # with:\n    #   lychee-config: lychee.toml       # use a repo-local config instead of the bundled default\n    #   fail-if-empty: true              # fail when no links are found (default: false)\n    #   create-issue-on-main: true\n    #   skip-label: 'links checked by hand'\nSee examples/check-links.yml for the full caller stub.",
+    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: Morrison-Lab/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                    # package root, if not the repo root\n    #   install-quarto: false        # set true if vignettes need Quarto to build\n    #   extra-packages: ''           # extra R packages for the coverage run\n    #   fail-ci-if-error: 'auto'     # 'true'/'false' to force; 'auto' applies the r-lib heuristic\n    #   upload-test-results: true    # JUnit report to Codecov Test Analytics (default true)\n    #   examples-coverage: false     # second job: examples + vignettes, including \\donttest/\\dontrun\n    #   min-coverage: ''             # fail the tests job when coverage falls below this percent; empty disables\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "check-links.yml"
+      "test-coverage.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-yaml.html",
+    "href": "reference/lint-yaml.html",
+    "title": "lint-yaml.yml",
+    "section": "",
+    "text": "Lint tracked YAML files with yamllint using a bundled default config (overridable), plus a companion check that flags run: script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo’s own R/Python capabilities already do.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-yaml.html#inputs",
+    "href": "reference/lint-yaml.html#inputs",
+    "title": "lint-yaml.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a yamllint config file. Falls back to the bundled default when empty or the file does not exist.\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when yamllint reports an error (not a warning).\n\n\nmax-script-lines\nstring\n'150'\nFlag a run: block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-scripts\nboolean\nfalse\nFail when a run: block exceeds max-script-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-yaml.html#permissions",
+    "href": "reference/lint-yaml.html#permissions",
+    "title": "lint-yaml.yml",
+    "section": "Permissions",
+    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
+  },
+  {
+    "objectID": "reference/lint-yaml.html#example",
+    "href": "reference/lint-yaml.html#example",
+    "title": "lint-yaml.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/lint-yaml.yml in your repo.\n# Lints tracked YAML files with yamllint (bundled default config), plus a\n# companion check that flags long `run:` script blocks in workflow/action\n# YAML as decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint YAML\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-yaml.yml@v2\n    # with:\n    #   config-file: '.yamllint.yml'   # override the bundled default config\n    #   paths-ignore: 'renv/**'        # skip known-vendored paths\n    #   fail: false                    # warn instead of failing on yamllint errors\nSee the examples/ directory for the full caller stub (lint-yaml.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "lint-yaml.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html",
+    "href": "reference/gemini-code-review.html",
+    "title": "gemini-code-review.yml",
+    "section": "",
+    "text": "Read-only Gemini PR code review. The default caller stub is dispatch-triggered: gemini.yml re-dispatches this workflow on an @gemini review mention, so keep the stub named gemini-code-review.yml (or set gemini.yml’s review-workflow-file input to match) so the dispatch resolves. Add a pull_request trigger in the caller if you also want automatic reviews on PR updates.\nThe stub deliberately has no issue_comment path. gemini.yml already owns the @gemini review mention, so a second comment-triggered dispatch job would review the same PR twice on the one phrasing both matchers accept — the double-dispatch UCD-SERG/serodynamics#277 ran into.\nRequires a GEMINI_API_KEY secret.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#inputs",
+    "href": "reference/gemini-code-review.html#inputs",
+    "title": "gemini-code-review.yml",
+    "section": "Inputs",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the review prompt.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\ngemini-model\nstring\n'gemini-2.5-flash'\nModel passed to run-gemini-cli.\n\n\nextra-secret-names\nstring\n''\nSpace-, comma-, or newline-separated caller secret names to export into the reviewer environment (e.g. 'EPI202_TOKEN EPI204_TOKEN'). Requires secrets: inherit on the caller uses:. Secret names must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow environment variables. Empty to skip.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#secrets",
+    "href": "reference/gemini-code-review.html#secrets",
+    "title": "gemini-code-review.yml",
+    "section": "Secrets",
+    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini API key. Without it the run reaches Gemini CLI and fails there.\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#permissions",
+    "href": "reference/gemini-code-review.html#permissions",
+    "title": "gemini-code-review.yml",
+    "section": "Permissions",
+    "text": "Permissions\nGrant contents: read, pull-requests: write, issues: write, and id-token: write.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#what-it-refuses-to-review",
+    "href": "reference/gemini-code-review.html#what-it-refuses-to-review",
+    "title": "gemini-code-review.yml",
+    "section": "What it refuses to review",
+    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad pr-number) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.\nOnly one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#concurrency",
+    "href": "reference/gemini-code-review.html#concurrency",
+    "title": "gemini-code-review.yml",
+    "section": "Concurrency",
+    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. gemini-code-review.yml manages per-PR concurrency internally on its review job (group: gemini-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
+    ]
+  },
+  {
+    "objectID": "reference/gemini-code-review.html#example",
+    "href": "reference/gemini-code-review.html#example",
+    "title": "gemini-code-review.yml",
+    "section": "Example",
+    "text": "Example\n# Copy to .github/workflows/gemini-code-review.yml in your repo.\nname: Gemini Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  review:\n    permissions:\n      contents: read\n      pull-requests: write\n      issues: write\n      id-token: write\n    uses: Morrison-Lab/gha/.github/workflows/gemini-code-review.yml@v2\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   checkout-submodules: true\n    #   gemini-model: gemini-2.5-flash\n    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)\n    #   prompt-addendum: |\n    #     Repo-specific review guidance.\nSee the examples/ directory for the full caller stub (gemini-code-review.yml).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "gemini-code-review.yml"
     ]
   },
   {
@@ -1623,315 +1755,231 @@
     ]
   },
   {
-    "objectID": "reference/gemini-code-review.html",
-    "href": "reference/gemini-code-review.html",
-    "title": "gemini-code-review.yml",
+    "objectID": "reference/check-links.html",
+    "href": "reference/check-links.html",
+    "title": "check-links.yml",
     "section": "",
-    "text": "Read-only Gemini PR code review. The default caller stub is dispatch-triggered: gemini.yml re-dispatches this workflow on an @gemini review mention, so keep the stub named gemini-code-review.yml (or set gemini.yml’s review-workflow-file input to match) so the dispatch resolves. Add a pull_request trigger in the caller if you also want automatic reviews on PR updates.\nThe stub deliberately has no issue_comment path. gemini.yml already owns the @gemini review mention, so a second comment-triggered dispatch job would review the same PR twice on the one phrasing both matchers accept — the double-dispatch UCD-SERG/serodynamics#277 ran into.\nRequires a GEMINI_API_KEY secret.",
+    "text": "Run a lychee link check with a bundled config, a PR skip-label, and an auto-filed issue when links break on main.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini-code-review.yml"
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "reference/gemini-code-review.html#inputs",
-    "href": "reference/gemini-code-review.html#inputs",
-    "title": "gemini-code-review.yml",
+    "objectID": "reference/check-links.html#inputs",
+    "href": "reference/check-links.html#inputs",
+    "title": "check-links.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npr-number\nstring\n''\nPull request number to review. Required on workflow_dispatch; taken from the event on pull_request.\n\n\nprompt-addendum\nstring\n''\nExtra prompt instructions appended to the review prompt.\n\n\ncheckout-submodules\nboolean\nfalse\nCheck out git submodules.\n\n\ngemini-model\nstring\n'gemini-2.5-flash'\nModel passed to run-gemini-cli.\n\n\nextra-secret-names\nstring\n''\nSpace-, comma-, or newline-separated caller secret names to export into the reviewer environment (e.g. 'EPI202_TOKEN EPI204_TOKEN'). Requires secrets: inherit on the caller uses:. Secret names must match [A-Z_][A-Z0-9_]* and cannot shadow protected workflow environment variables. Empty to skip.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nlychee-config\nstring\n''\nPath in the caller repo to a lychee config; falls back to the bundled default.\n\n\nlychee-args\nstring\n''\nArguments and globs passed to lychee; a sensible default glob set is used when empty.\n\n\nfail-if-empty\nboolean\nfalse\nFail the run when no links are found.\n\n\ncreate-issue-on-main\nboolean\ntrue\nFile an issue when links break on the main branch.\n\n\nskip-label\nstring\n'links checked by hand'\nPR label that skips the link check.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini-code-review.yml"
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "reference/gemini-code-review.html#secrets",
-    "href": "reference/gemini-code-review.html#secrets",
-    "title": "gemini-code-review.yml",
-    "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nGEMINI_API_KEY\nno\nGemini API key. Without it the run reaches Gemini CLI and fails there.\n\n\nSUBMODULES_TOKEN\nno\nToken used to check out private submodules.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "gemini-code-review.yml"
-    ]
-  },
-  {
-    "objectID": "reference/gemini-code-review.html#permissions",
-    "href": "reference/gemini-code-review.html#permissions",
-    "title": "gemini-code-review.yml",
+    "objectID": "reference/check-links.html#permissions",
+    "href": "reference/check-links.html#permissions",
+    "title": "check-links.yml",
     "section": "Permissions",
-    "text": "Permissions\nGrant contents: read, pull-requests: write, issues: write, and id-token: write.",
+    "text": "Permissions\nGrant issues: write, pull-requests: read, and contents: read (it opens an issue on main failures).",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini-code-review.yml"
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "reference/gemini-code-review.html#what-it-refuses-to-review",
-    "href": "reference/gemini-code-review.html#what-it-refuses-to-review",
-    "title": "gemini-code-review.yml",
-    "section": "What it refuses to review",
-    "text": "What it refuses to review\nThe automatic pull_request path skips draft PRs, PRs from forks, and PRs opened by a bot, using the event payload.\nA workflow_dispatch run carries none of that payload, only pr-number, so it re-checks the same two conditions over the API and skips a fork or Dependabot PR. A lookup that fails outright (rate limit, a bad pr-number) also skips, and fails the run rather than reviewing a PR whose provenance it could not establish.\nOnly one review runs per PR at a time: a newer run cancels an older one, so a verdict on a superseded commit cannot land after the current one.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "gemini-code-review.yml"
-    ]
-  },
-  {
-    "objectID": "reference/gemini-code-review.html#concurrency",
-    "href": "reference/gemini-code-review.html#concurrency",
-    "title": "gemini-code-review.yml",
-    "section": "Concurrency",
-    "text": "Concurrency\nDo not declare a top-level concurrency: block in your caller workflow. gemini-code-review.yml manages per-PR concurrency internally on its review job (group: gemini-review-&lt;PR&gt;). Adding a top-level concurrency: block in the caller with a PR-scoped group name causes GitHub Actions to detect a deadlock between the top-level workflow and the nested job, cancelling the run immediately (gha#437).",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "gemini-code-review.yml"
-    ]
-  },
-  {
-    "objectID": "reference/gemini-code-review.html#example",
-    "href": "reference/gemini-code-review.html#example",
-    "title": "gemini-code-review.yml",
+    "objectID": "reference/check-links.html#example",
+    "href": "reference/check-links.html#example",
+    "title": "check-links.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/gemini-code-review.yml in your repo.\nname: Gemini Code Review\n\non:\n  # Optional: automatic review on PR activity.\n  # pull_request:\n  #   types: [opened, synchronize, ready_for_review, reopened]\n  workflow_dispatch:\n    inputs:\n      pr_number:\n        description: 'Pull request number to review'\n        required: true\n        type: string\n\njobs:\n  review:\n    permissions:\n      contents: read\n      pull-requests: write\n      issues: write\n      id-token: write\n    uses: Morrison-Lab/gha/.github/workflows/gemini-code-review.yml@v2\n    secrets:\n      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}\n    with:\n      pr-number: ${{ inputs.pr_number }}\n    # with:\n    #   checkout-submodules: true\n    #   gemini-model: gemini-2.5-flash\n    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)\n    #   prompt-addendum: |\n    #     Repo-specific review guidance.\nSee the examples/ directory for the full caller stub (gemini-code-review.yml).",
+    "text": "Example\n# Copy to .github/workflows/check-links.yml in your repo.\n# NOTE: the calling job grants issues:write so the workflow can open an issue\n# when links break on main. Required because repos default to a read-only token.\nname: Check Links\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n    types: [opened, synchronize, reopened, labeled, unlabeled]\n  schedule:\n    # Run weekly on Mondays at 9:00 UTC to catch link rot\n    - cron: \"0 9 * * 1\"\n  workflow_dispatch:\n\njobs:\n  check:\n    permissions:\n      contents: read\n      issues: write\n      pull-requests: read\n    uses: Morrison-Lab/gha/.github/workflows/check-links.yml@v2\n    # with:\n    #   lychee-config: lychee.toml       # use a repo-local config instead of the bundled default\n    #   fail-if-empty: true              # fail when no links are found (default: false)\n    #   create-issue-on-main: true\n    #   skip-label: 'links checked by hand'\nSee examples/check-links.yml for the full caller stub.",
     "crumbs": [
       "Overview",
       "Reference",
-      "gemini-code-review.yml"
+      "check-links.yml"
     ]
   },
   {
-    "objectID": "reference/lint-yaml.html",
-    "href": "reference/lint-yaml.html",
-    "title": "lint-yaml.yml",
+    "objectID": "reference/lint-markdown.html",
+    "href": "reference/lint-markdown.html",
+    "title": "lint-markdown.yml",
     "section": "",
-    "text": "Lint tracked YAML files with yamllint using a bundled default config (overridable), plus a companion check that flags run: script blocks in workflow/action YAML longer than a configurable line threshold, so they get decomposed into a separate script file the way this repo’s own R/Python capabilities already do.",
+    "text": "Lint tracked Markdown files with markdownlint-cli2 using a bundled default config (overridable), plus companion checks that flag fenced code blocks longer than a configurable line threshold, list-item merge splices, and blank lines that split a GFM table.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-yaml.yml"
+      "lint-markdown.yml"
     ]
   },
   {
-    "objectID": "reference/lint-yaml.html#inputs",
-    "href": "reference/lint-yaml.html#inputs",
-    "title": "lint-yaml.yml",
+    "objectID": "reference/lint-markdown.html#inputs",
+    "href": "reference/lint-markdown.html#inputs",
+    "title": "lint-markdown.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npython-version\nstring\n'3.x'\nPython version to set up.\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a yamllint config file. Falls back to the bundled default when empty or the file does not exist.\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for both checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when yamllint reports an error (not a warning).\n\n\nmax-script-lines\nstring\n'150'\nFlag a run: block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-scripts\nboolean\nfalse\nFail when a run: block exceeds max-script-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.",
+    "text": "Inputs\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\nconfig-file\nstring\n''\nPath (in the caller repo) to a markdownlint config file (.jsonc/.json/.yaml/.cjs). Falls back to the bundled default when empty or the file does not exist.\n\n\nglobs\nstring\n'*.md'\nSpace-separated git pathspecs of tracked files to lint (recursive by default).\n\n\npaths-ignore\nstring\n''\nComma/newline-separated glob patterns (relative paths) to skip, for markdownlint and companion checks. Supports *, ?, and recursive **.\n\n\nfail\nboolean\ntrue\nFail the workflow when markdownlint reports an error.\n\n\nmax-code-block-lines\nstring\n'150'\nFlag a fenced code block longer than this many lines. Matches the lab manual’s &lt;150-line function-length heuristic.\n\n\nfail-on-long-code-blocks\nboolean\nfalse\nFail when a code block exceeds max-code-block-lines. Defaults to warn-only, since the lab manual documents its line-count heuristic as a provisional trigger to reassess decomposition, not a hard constraint.\n\n\nbase-ref\nstring\n''\nGit ref/SHA to diff against. If set, only newly added lines in the diff are checked for list-item merge splices. Defaults to empty (skips check to avoid whole-tree false-positives). Pass ‘all’ to scan all lines.\n\n\nfail-on-item-splices\nboolean\ntrue\nFail the workflow when a list-item merge splice is detected.\n\n\nfail-on-table-splits\nboolean\ntrue\nFail the workflow when a blank line splits a GFM table, orphaning the rows below it so they render as literal text. Scans the whole tree rather than diff-scoping, since a split table has no legitimate form.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-yaml.yml"
+      "lint-markdown.yml"
     ]
   },
   {
-    "objectID": "reference/lint-yaml.html#permissions",
-    "href": "reference/lint-yaml.html#permissions",
-    "title": "lint-yaml.yml",
+    "objectID": "reference/lint-markdown.html#permissions",
+    "href": "reference/lint-markdown.html#permissions",
+    "title": "lint-markdown.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-yaml.yml"
+      "lint-markdown.yml"
     ]
   },
   {
-    "objectID": "reference/lint-yaml.html#example",
-    "href": "reference/lint-yaml.html#example",
-    "title": "lint-yaml.yml",
+    "objectID": "reference/lint-markdown.html#example",
+    "href": "reference/lint-markdown.html#example",
+    "title": "lint-markdown.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-yaml.yml in your repo.\n# Lints tracked YAML files with yamllint (bundled default config), plus a\n# companion check that flags long `run:` script blocks in workflow/action\n# YAML as decomposition candidates.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint YAML\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-yaml.yml@v2\n    # with:\n    #   config-file: '.yamllint.yml'   # override the bundled default config\n    #   paths-ignore: 'renv/**'        # skip known-vendored paths\n    #   fail: false                    # warn instead of failing on yamllint errors\nSee the examples/ directory for the full caller stub (lint-yaml.yml).",
+    "text": "Example\n\n# Copy to .github/workflows/lint-markdown.yml in your repo.\n# Lints tracked Markdown files with markdownlint-cli2 (bundled default\n# config), plus companion checks that flag long fenced code blocks,\n# list-item merge splices, and blank lines that split a table.\n# Only contents:read is needed (the default), so no permissions block is required.\nname: Lint Markdown\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-markdown.yml@v2\n    # with:\n    #   config-file: '.markdownlint.jsonc'  # override the bundled default config\n    #   globs: '*.md'                       # git pathspecs to lint (recursive)\n    #   paths-ignore: 'CHANGELOG.md'        # skip known-vendored/generated paths\n    #   fail: false                         # warn instead of failing on markdownlint errors\n    #   max-code-block-lines: '150'         # fenced code block line-count threshold\n    #   fail-on-long-code-blocks: true      # fail (not just warn) on long code blocks\n    #   base-ref: ${{ github.event.pull_request.base.sha }} # diff-scope list-item splice check on PRs\n    #   fail-on-item-splices: true          # fail when a list-item merge splice is detected\n    #   fail-on-table-splits: true          # fail when a blank line splits a GFM table\nSee the examples/ directory for the full caller stub (lint-markdown.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-yaml.yml"
+      "lint-markdown.yml"
     ]
   },
   {
-    "objectID": "reference/test-coverage.html",
-    "href": "reference/test-coverage.html",
-    "title": "test-coverage.yml",
+    "objectID": "reference/spellcheck.html",
+    "href": "reference/spellcheck.html",
+    "title": "spellcheck.yml",
     "section": "",
-    "text": "Measure R-package test coverage with {covr} and upload the Cobertura report to Codecov. Adapts the r-lib/actions test-coverage.yaml example into the repo’s composite-plus-wrapper shape.\nSet examples-coverage: true for an optional second job that measures coverage from examples and vignettes. \\dontrun{} does not run under R CMD check by default (only with --run-dontrun, which --as-cran does not imply). \\donttest{} is skipped unless --as-cran or --run-donttest. That job does not upload to Codecov, produce a JUnit report, or apply min-coverage. On failure it uploads its covr install tree as examples-coverage-test-failures. The percent appears in the job log and the step summary. Enabling it adds a second check named &lt;caller job&gt; / Examples and vignettes coverage. A min-coverage input can fail the tests job when coverage falls below a chosen percent. It defaults to no threshold and does not apply to the examples job, which measures a different execution path.",
+    "text": "Spellcheck an R package’s prose with the {spelling} package. The package’s own inst/WORDLIST is the accepted vocabulary, so a repo migrating from a bespoke check-spelling.yaml keeps its wordlist unchanged – that file is {spelling}’s own format.",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "spellcheck.yml"
     ]
   },
   {
-    "objectID": "reference/test-coverage.html#inputs",
-    "href": "reference/test-coverage.html#inputs",
-    "title": "test-coverage.yml",
+    "objectID": "reference/spellcheck.html#what-it-reads",
+    "href": "reference/spellcheck.html#what-it-reads",
+    "title": "spellcheck.yml",
+    "section": "What it reads",
+    "text": "What it reads\nspell_check_package() decides the population, and it is narrower than “the repo’s prose” in one direction and wider in another. Read off spell_check_package()’s source at {spelling} 2.3.2 and confirmed against a fixture (2026-08-21):\n\nDESCRIPTION’s Title and Description fields, and no other field.\nEvery man/*.Rd help page.\nVignette sources under vignettes/, matched as .md/.Rmd/.qmd, plus .Rnw/.Snw. These are parsed as text, never rendered, which is why install-quarto defaults to 'false' even for a .qmd vignette.\nRoot-level Markdown whose name matches readme, news, changes, or index, case-insensitively. So a package’s own README.md and NEWS.md are checked.\n\nEverything else is out of reach of spellcheck.yml: a Quarto site’s other pages, CONTRIBUTING.md, code comments, YAML, and any repository that is not an R package at all. check-typos.yml covers those with crate-ci/typos.\nThe package’s own name and its authors’ names are added to the accepted vocabulary automatically, so neither needs a WORDLIST entry.\nAdd a newly-accepted word with spelling::update_wordlist() in the package, and commit the result.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#inputs",
+    "href": "reference/spellcheck.html#inputs",
+    "title": "spellcheck.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the R package root (the directory holding DESCRIPTION).\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nextra-packages\nstring\n''\nExtra R packages for the coverage run (covr and xml2 are always installed).\n\n\nfail-ci-if-error\nstring\n'auto'\nWhether a Codecov upload error fails the job. 'auto' applies the r-lib heuristic (fail on non-PR events, and on pull requests only when a token is set); 'true' or 'false' force it.\n\n\nupload-test-results\nboolean\ntrue\nAlso generate a JUnit test-results report (testthat::JunitReporter) and upload it to Codecov Test Analytics (failed/flaky-test reporting), separate from the Cobertura line-coverage upload.\n\n\nexamples-coverage\nboolean\nfalse\nRun a second job that measures coverage from examples and vignettes (covr type = c(\"examples\", \"vignettes\"), commentDonttest/commentDontrun both FALSE). Off by default.\n\n\nmin-coverage\nstring\n''\nMinimum percent coverage required to pass the tests job (covr::percent_coverage()). Empty defaults to no threshold. Does not apply to the examples/vignettes job.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nPath to the package root, relative to the repository.\n\n\nexclude\nstring\n''\nComma-separated files or folders to skip. Accepts globs.\n\n\nfail\nstring\n'true'\nWhether to fail the job on misspelled words ('true', 'false').\n\n\nadditional-options\nstring\n'--vanilla'\nOptions passed to Rscript. Pass '' to let R read its profiles.\n\n\ninstall-quarto\nstring\n'false'\nWhether dependency setup installs Quarto.\n\n\nruns-on\nstring\nubuntu-latest\nRunner label for the job.",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "spellcheck.yml"
     ]
   },
   {
-    "objectID": "reference/test-coverage.html#secrets",
-    "href": "reference/test-coverage.html#secrets",
-    "title": "test-coverage.yml",
-    "section": "Secrets",
-    "text": "Secrets\n\n\n\n\n\n\n\n\nSecret\nRequired\nDescription\n\n\n\n\nCODECOV_TOKEN\nNo\nCodecov upload token. Optional for public repos, but recommended – tokenless uploads are rate-limited and unreliable from pull requests.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "test-coverage.yml"
-    ]
-  },
-  {
-    "objectID": "reference/test-coverage.html#permissions",
-    "href": "reference/test-coverage.html#permissions",
-    "title": "test-coverage.yml",
+    "objectID": "reference/spellcheck.html#permissions",
+    "href": "reference/spellcheck.html#permissions",
+    "title": "spellcheck.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "spellcheck.yml"
     ]
   },
   {
-    "objectID": "reference/test-coverage.html#example",
-    "href": "reference/test-coverage.html#example",
-    "title": "test-coverage.yml",
+    "objectID": "reference/spellcheck.html#example",
+    "href": "reference/spellcheck.html#example",
+    "title": "spellcheck.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/test-coverage.yml in your repo.\nname: Test coverage\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  test-coverage:\n    uses: Morrison-Lab/gha/.github/workflows/test-coverage.yml@v2\n    secrets:\n      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}\n    # with:\n    #   path: '.'                    # package root, if not the repo root\n    #   install-quarto: false        # set true if vignettes need Quarto to build\n    #   extra-packages: ''           # extra R packages for the coverage run\n    #   fail-ci-if-error: 'auto'     # 'true'/'false' to force; 'auto' applies the r-lib heuristic\n    #   upload-test-results: true    # JUnit report to Codecov Test Analytics (default true)\n    #   examples-coverage: false     # second job: examples + vignettes, including \\donttest/\\dontrun\n    #   min-coverage: ''             # fail the tests job when coverage falls below this percent; empty disables\nSee the examples/ directory for the full caller stub (test-coverage.yml).",
+    "text": "Example\nname: Spellcheck\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  spellcheck:\n    uses: Morrison-Lab/gha/.github/workflows/spellcheck.yml@v2\n    # with:\n    #   path: '.'\n    #   exclude: 'vignettes/*.Rmd'\n    #   fail: 'true'\n    #   additional-options: ''\n    #   install-quarto: 'auto'\nSee the examples/ directory for the full caller stub (spellcheck.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "test-coverage.yml"
+      "spellcheck.yml"
     ]
   },
   {
-    "objectID": "reference/lint-workflows.html",
-    "href": "reference/lint-workflows.html",
-    "title": "lint-workflows.yml",
+    "objectID": "reference/spellcheck.html#why-it-sets-up-r-instead-of-running-in-a-container",
+    "href": "reference/spellcheck.html#why-it-sets-up-r-instead-of-running-in-a-container",
+    "title": "spellcheck.yml",
+    "section": "Why it sets up R instead of running in a container",
+    "text": "Why it sets up R instead of running in a container\nThe bespoke workflows this replaces run inside a rocker image. This one calls r-lib/actions/setup-r, matching every other R capability here, so a consumer already paying for setup-r in its other jobs reuses that toolchain cache.\nIt also installs {spelling} through setup-r-dependencies rather than compiling {spelling} and its {hunspell} C++ dependency on every run. Going through setup-r-dependencies takes the public RSPM binaries instead and caches them across runs.\nOnly {spelling} is installed, not the consumer package’s own dependencies: spell_check_package() reads a package’s files without loading it, so resolving its dependency tree would be pure cost. RENV_CONFIG_AUTOLOADER_ENABLED: 'FALSE' is set during dependency setup so {spelling} installs to the site library even in renv projects; additional-options: '--vanilla' default then finds it without requiring .Rprofile activation (#620). For the same reason install-quarto defaults to 'false' – {spelling} reads vignette sources and never renders them.",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/spellcheck.html#handling-of-exclusions-and-finding-counts",
+    "href": "reference/spellcheck.html#handling-of-exclusions-and-finding-counts",
+    "title": "spellcheck.yml",
+    "section": "Handling of exclusions and finding counts",
+    "text": "Handling of exclusions and finding counts\nspellcheck directly invokes spelling::spell_check_package(), providing:\n\nSafe file exclusion: Excluded files matching glob patterns are temporarily staged out of the package root during analysis and restored unconditionally on exit (resolving gha#556).\nConsistent exit codes: When misspellings are found, the step exits with code 1 under fail: 'true' or 0 under fail: 'false' (with GitHub Actions warning annotations for each finding), avoiding modulo-256 process exit code truncation (gha#556, gha#560).",
+    "crumbs": [
+      "Overview",
+      "Reference",
+      "spellcheck.yml"
+    ]
+  },
+  {
+    "objectID": "reference/check-one-function-per-file.html",
+    "href": "reference/check-one-function-per-file.html",
+    "title": "check-one-function-per-file.yml",
     "section": "",
-    "text": "Audit the caller’s GitHub Actions workflows and composite actions with actionlint (syntax/semantics – unknown keys, bad runs-on labels, invalid expression syntax, shellcheck over run: blocks) and zizmor (security – template-injection sinks, credential persistence, overly broad permissions, unpinned actions). The two tools check different things and both are worth running.",
+    "text": "Enforce the one-function-definition-per-file rule across repository code files (.R, .py, .sh, .js, .ts, .jl). The check scans code files to verify that each file defines at most one top-level function, keeping code modular, searchable, and cleanly diffable.\nFiles that genuinely require multiple function definitions can opt out by adding a comment directive near the top of the file:",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-workflows.yml"
+      "check-one-function-per-file.yml"
     ]
   },
   {
-    "objectID": "reference/lint-workflows.html#inputs",
-    "href": "reference/lint-workflows.html#inputs",
-    "title": "lint-workflows.yml",
+    "objectID": "reference/check-one-function-per-file.html#inputs",
+    "href": "reference/check-one-function-per-file.html#inputs",
+    "title": "check-one-function-per-file.yml",
     "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nRoot path (relative to the caller repo) to audit. zizmor collects both workflows and composite actions under it, respecting .gitignore.\n\n\nactionlint-version\nstring\n'v1.7.12'\nactionlint release tag to install.\n\n\nactionlint-checksum\nstring\n(pinned SHA-256 for the default version’s linux_amd64 tarball)\nExpected SHA-256 of the pinned actionlint-version’s linux_amd64 release tarball, verified before extracting it. Update alongside actionlint-version.\n\n\nzizmor-version\nstring\n'1.28.0'\nzizmor PyPI package version to install.\n\n\npython-version\nstring\n'3.x'\nPython version to set up (for installing zizmor via pip).\n\n\npedantic\nboolean\nfalse\nRun zizmor with --pedantic (also emit code-smell findings, not just security issues).\n\n\nfail\nboolean\ntrue\nFail the workflow when either tool reports a finding.",
+    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\npath\nstring\n'.'\nTarget directory or file path to scan.\n\n\npaths-ignore\nstring\n'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'\nComma- or newline-separated paths or glob patterns to ignore.\n\n\nextensions\nstring\n'.R, .r, .py, .sh, .bash, .js, .ts, .mjs, .cjs, .jl'\nComma- or space-separated list of file extensions to check.\n\n\nopt-out-comment\nstring\n''\nOptional custom comment string to treat as an opt-out directive.\n\n\nbase-ref\nstring\n''\nGit ref to diff against for diff-scoped checking (e.g. origin/main). On pull requests and pushes, defaults to the PR base ref or previous commit automatically for diff-scoping.\n\n\nfail\nboolean\ntrue\nWhether to fail the workflow if multiple function definitions are detected.\n\n\npython-version\nstring\n'3.x'\nPython version to set up.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-workflows.yml"
+      "check-one-function-per-file.yml"
     ]
   },
   {
-    "objectID": "reference/lint-workflows.html#outputs",
-    "href": "reference/lint-workflows.html#outputs",
-    "title": "lint-workflows.yml",
-    "section": "Outputs",
-    "text": "Outputs\n\n\n\n\n\n\n\nOutput\nDescription\n\n\n\n\nactionlint-found\n'true' if actionlint reported any finding.\n\n\nzizmor-found\n'true' if zizmor reported any finding.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "lint-workflows.yml"
-    ]
-  },
-  {
-    "objectID": "reference/lint-workflows.html#permissions",
-    "href": "reference/lint-workflows.html#permissions",
-    "title": "lint-workflows.yml",
+    "objectID": "reference/check-one-function-per-file.html#permissions",
+    "href": "reference/check-one-function-per-file.html#permissions",
+    "title": "check-one-function-per-file.yml",
     "section": "Permissions",
     "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-workflows.yml"
+      "check-one-function-per-file.yml"
     ]
   },
   {
-    "objectID": "reference/lint-workflows.html#landing-on-a-repo-with-pre-existing-findings",
-    "href": "reference/lint-workflows.html#landing-on-a-repo-with-pre-existing-findings",
-    "title": "lint-workflows.yml",
-    "section": "Landing on a repo with pre-existing findings",
-    "text": "Landing on a repo with pre-existing findings\nA repo that has never run either tool before will likely see a real backlog of findings on the first run – neither tool is diff-scoped, so both audit every workflow and action file in path, not just what a given PR touches. Rather than block adoption on fixing everything at once, set fail: false to land the capability as a warn-only baseline, then work through the backlog and flip fail back to true (the default) once it’s clean. The actionlint-found/zizmor-found outputs let a caller track progress (e.g. by asserting they eventually both come back 'false') without hand-parsing either tool’s own output.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "lint-workflows.yml"
-    ]
-  },
-  {
-    "objectID": "reference/lint-workflows.html#example",
-    "href": "reference/lint-workflows.html#example",
-    "title": "lint-workflows.yml",
+    "objectID": "reference/check-one-function-per-file.html#example",
+    "href": "reference/check-one-function-per-file.html#example",
+    "title": "check-one-function-per-file.yml",
     "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/lint-workflows.yml in your repo.\n# Audits GitHub Actions workflows and composite actions with actionlint\n# (syntax/semantics) and zizmor (security). Only contents:read is needed\n# (the default), so no permissions block is required.\nname: Lint Workflows\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  lint:\n    uses: Morrison-Lab/gha/.github/workflows/lint-workflows.yml@v2\n    # with:\n    #   path: '.'                       # root path to audit\n    #   pedantic: true                  # also emit zizmor code-smell findings\n    #   fail: false                     # warn instead of failing on findings --\n    #                                   # useful while working through a\n    #                                   # pre-existing backlog\nSee the examples/ directory for the full caller stub (lint-workflows.yml).",
+    "text": "Example\nname: Check one function per file\non:\n  push: { branches: [main] }\n  pull_request:\n  workflow_dispatch:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-one-function-per-file.yml@v2\nSee the examples/ directory for caller stubs (e.g. examples/check-one-function-per-file.yml).",
     "crumbs": [
       "Overview",
       "Reference",
-      "lint-workflows.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-bibliography-dois.html",
-    "href": "reference/check-bibliography-dois.html",
-    "title": "check-bibliography-dois.yml",
-    "section": "",
-    "text": "Validate that book and article BibTeX entries have DOIs that resolve and match CrossRef metadata.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-bibliography-dois.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-bibliography-dois.html#inputs",
-    "href": "reference/check-bibliography-dois.html#inputs",
-    "title": "check-bibliography-dois.yml",
-    "section": "Inputs",
-    "text": "Inputs\n\n\n\n\n\n\n\n\n\nInput\nType\nDefault\nDescription\n\n\n\n\ninstall-quarto\nboolean\nfalse\nInstall Quarto when setting up R dependencies.\n\n\nno-metadata-check\nboolean\nfalse\nSkip the CrossRef metadata comparison.\n\n\nexclude-keys\nstring\n''\nSpace- or comma-separated BibTeX keys to skip.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-bibliography-dois.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-bibliography-dois.html#permissions",
-    "href": "reference/check-bibliography-dois.html#permissions",
-    "title": "check-bibliography-dois.yml",
-    "section": "Permissions",
-    "text": "Permissions\nOnly contents: read (the default), so no permissions: block is needed.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-bibliography-dois.yml"
-    ]
-  },
-  {
-    "objectID": "reference/check-bibliography-dois.html#example",
-    "href": "reference/check-bibliography-dois.html#example",
-    "title": "check-bibliography-dois.yml",
-    "section": "Example",
-    "text": "Example\n# Copy to .github/workflows/check-bibliography-dois.yml in your repo.\nname: Check Bibliography DOIs\n\non:\n  push:\n    branches:\n      - main\n  pull_request:\n  workflow_dispatch:\n\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-bibliography-dois.yml@v2\n    # with:\n    #   exclude-keys: vapnik1998   # BibTeX keys without DOIs to skip\n    #   install-quarto: false\n    #   no-metadata-check: false\nSee examples/check-bibliography-dois.yml for the full caller stub.",
-    "crumbs": [
-      "Overview",
-      "Reference",
-      "check-bibliography-dois.yml"
+      "check-one-function-per-file.yml"
     ]
   },
   {
@@ -2647,7 +2695,7 @@
     "href": "reference/altdoc-multiversion-docs.html",
     "title": "altdoc-multiversion-docs.yml",
     "section": "",
-    "text": "Render an altdoc-based R package’s Quarto docs site and deploy multiple versions side by side on gh-pages: PRs to /pr-preview/pr-&lt;number&gt;/, pushes to the default branch to /dev/, published releases to /latest-tag/ and /vX.Y.Z/, and a root / redirect landing page into the default docs version. Ported from d-morrison/rpt’s bespoke docs.yaml into a reusable workflow (see UCD-SERG/serocalculator#504).\nOne-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root). Requires an altdoc/quarto_website.yml navbar with a “Versions” menu entry for the version-dropdown step to rewrite (see the Example section).\nUnlike the preview / preview-deploy family, this keeps a single job for build, deploy, and PR-preview cleanup, rather than splitting into a fork-safe read-only build half and a base-repo-context deploy half. Hardening that trust boundary is a possible follow-up, not part of this port.",
+    "text": "Render an altdoc-based R package’s Quarto docs site and deploy multiple versions side by side on gh-pages: PRs to /pr-preview/pr-&lt;number&gt;/, pushes to the default branch to /dev/, published releases to /latest-tag/ and /vX.Y.Z/, and a root / redirect landing page into the default docs version. Ported from Morrison-Lab/rpt’s bespoke docs.yaml into a reusable workflow (see UCD-SERG/serocalculator#504).\nOne-time setup: set Settings -&gt; Pages -&gt; Source to “Deploy from a branch”, branch gh-pages / (root). Requires an altdoc/quarto_website.yml navbar with a “Versions” menu entry for the version-dropdown step to rewrite (see the Example section).\nUnlike the preview / preview-deploy family, this keeps a single job for build, deploy, and PR-preview cleanup, rather than splitting into a fork-safe read-only build half and a base-repo-context deploy half. Hardening that trust boundary is a possible follow-up, not part of this port.",
     "crumbs": [
       "Overview",
       "Reference",
@@ -3186,7 +3234,7 @@
     "href": "workflows.html#versioning",
     "title": "Workflows",
     "section": "Versioning",
-    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, and check-code-similarity.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
+    "text": "Versioning\n@v1 was frozen at the pre-2.0.0 snapshot when the breaking quarto-publish change cut @v2, so any capability pinned there has picked up no fixes since - including non-breaking ones, like cleanup-pr-previews’s compact-history input, which does not exist at @v1 at all. Pin preview.yml, preview-deploy.yml, cleanup-pr-previews.yml, and quarto-publish.yml to @v2; test-coverage.yml, check-equation-renders.yml, lint-yaml.yml, lint-markdown.yml, lint-qmd.yml, lint-changed-lines.yml, lint-changed-files.yml, check-new-line-breaks.yml, check-secrets.yml, check-junk-files.yml, lint-workflows.yml, spellcheck.yml, check-typos.yml, check-extra.yml, check-formatting.yml, claude-manage-project.yml, r-cmd-check.yml, check-code-similarity.yml, and check-one-function-per-file.yml only ever shipped at @v2 (too new to exist at the frozen @v1 tag). quarto-publish.yml additionally has a genuine behavioral fork: @v1 stays frozen on the older GitHub Actions Pages-artifact deploy, while @v2 deploys to the gh-pages branch instead - required if the same repo also uses the PR-preview family, since Pages can only have one Source. check-bibliography-dois.yml, check-phi.yml, check-links.yml, check-non-standard-chars.yml, claude.yml, claude-code-review.yml, and update-snapshots.yml also pin @v2: each picked up a real fix since the freeze (a dependency-pin bump, a new input, or a security fix) that a consumer still on @v1 would miss (audited in gha#182). request-dependabot-review.yml only ever shipped at @v2 too (it postdates the freeze - see gha#252), as does sync-upstream.yml (added after the freeze - see gha#254), altdoc-multiversion-docs.yml (added after the freeze), and report-failure.yml (added after the freeze - see gha#325). gemini.yml, gemini-code-review.yml, antigravity-code-review.yml, cursor-code-review.yml, opencode-code-review.yml, and ai-code-review.yml likewise only ever shipped at @v2, having been added well after the freeze - see gha#357, gha#510, and gha#586. bump-dev-version.yml and version-check.yml postdate the freeze too (added in gha#388); pin both to @v2. small-model-agent.yml postdates the freeze too (added in gha#436); pin to @v2. check-ai-tells.yml postdates the freeze too (added in gha#382); pin to @v2. summary.yml, bump-submodule.yml, and sync-shared-fragments.yml were audited in the same pass and found unchanged since the freeze, so @v1 remains current for them. check-news.yml was initially grouped with them, but later gained the configurable no-changelog-label input at gha#143 - pin it to @v2 too. The stubs in examples/ carry the tag and permissions: block documented on each workflow’s own reference page; copy the specific stub you need as-is.",
     "crumbs": [
       "Overview",
       "Workflows"
