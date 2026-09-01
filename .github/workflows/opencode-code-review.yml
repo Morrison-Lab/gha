@@ -287,21 +287,25 @@ jobs:
 
           <!-- review-data:
           {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "reviewer": "opencode",
             "commit_sha": "<sha>",
             "verdict": "CLEAN",
-            "findings": []
+            "findings": [],
+            "detailed_assessment": "No detailed findings after tracing changed paths and failure modes.",
+            "holistic_assessment": "No whole-change concerns after checking requirements, integration, regression risk, scope, and validation."
           }
           -->
 
           \`\`\`json
           {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "reviewer": "opencode",
             "commit_sha": "<sha>",
             "verdict": "CLEAN",
-            "findings": []
+            "findings": [],
+            "detailed_assessment": "No detailed findings after tracing changed paths and failure modes.",
+            "holistic_assessment": "No whole-change concerns after checking requirements, integration, regression risk, scope, and validation."
           }
           \`\`\`
 
@@ -311,6 +315,9 @@ jobs:
             or "NOT_CLEAN" if there are blocking findings (REQUEST_CHANGES).
             When NOT_CLEAN, list each actionable finding in the findings array:
             \`{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "Description..."}\`.
+            Every schema \`1.1\` payload requires distinct \`detailed_assessment\` and \`holistic_assessment\` fields with at least six distinct words each.
+            The detailed assessment names a changed path, failure mode, or concrete defect.
+            The holistic assessment names a requirement, integration, regression, scope, or validation concern.
             Write the tags, comment, and code fences FLUSH LEFT at column zero, not indented.
             Keep the \`<!-- review-data:\` and \`-->\` marker lines alone with no extra text on those exact lines, and keep the JSON in the hidden comment and visible code fence identical.
           - Post findings even when you find none, so the run leaves a visible
