@@ -48,13 +48,17 @@ from pathlib import Path
 try:
     import docx
     from docx import Document
+    from docx.opc.part import Part
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.parts.image import ImagePart
 except ImportError:
     docx = None
     Document = None
+    Part = None
     OxmlElement = None
     qn = None
+    ImagePart = None
 
 from _workflow_annotations import annotate
 
@@ -69,14 +73,24 @@ def run_git(args, repo_dir):
         ["git", *args],
         cwd=repo_dir,
         capture_output=True,
-        check=False,
+        text=False,
     )
     if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", "replace")
+        stderr = result.stderr.decode("utf-8", "replace").strip()
         raise DocxTrackedChangesError(
-            f"`git {chr(32).join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
+            f"git {' '.join(args)} failed in {repo_dir}: {stderr}"
         )
     return result.stdout
+
+
+def fetch_deployed_branch(repo_dir, remote, branch):
+    """Fetch the deployed branch into a local ref, returning the ref name."""
+    local_ref = f"refs/remotes/{remote}/{branch}"
+    run_git(
+        ["fetch", remote, f"+refs/heads/{branch}:{local_ref}"],
+        repo_dir,
+    )
+    return local_ref
 
 
 def resolve_deployed_ref(repo_dir, remote, branch):
@@ -138,18 +152,39 @@ def copy_relationships_for_element(element, source_part, target_part):
                 old_rid = el.attrib[attr_name]
                 if hasattr(source_part, "rels") and old_rid in source_part.rels:
                     old_rel = source_part.rels[old_rid]
+                    new_rid = None
                     if old_rel.is_external:
                         new_rid = target_part.relate_to(
                             old_rel.target_ref,
                             old_rel.reltype,
                             is_external=True,
                         )
-                    else:
-                        new_rid = target_part.relate_to(
-                            old_rel.target_part,
-                            old_rel.reltype,
-                        )
-                    el.set(attr_name, new_rid)
+                    elif (
+                        (ImagePart is not None and isinstance(getattr(old_rel, "target_part", None), ImagePart))
+                        or "image" in getattr(old_rel, "reltype", "")
+                    ) and hasattr(target_part, "package") and hasattr(target_part.package, "get_or_add_image_part"):
+                        try:
+                            image_part = target_part.package.get_or_add_image_part(
+                                io.BytesIO(old_rel.target_part.blob)
+                            )
+                            new_rid = target_part.relate_to(image_part, old_rel.reltype)
+                        except Exception:
+                            new_rid = None
+                    elif hasattr(old_rel, "target_part") and hasattr(target_part, "package") and Part is not None:
+                        try:
+                            old_target = old_rel.target_part
+                            if hasattr(target_part.package, "parts") and any(p.partname == old_target.partname for p in target_part.package.parts):
+                                ext = getattr(old_target.partname, "ext", "") or ""
+                                template = f"/word/media/part%d.{ext}" if ext else "/word/media/part%d"
+                                new_partname = target_part.package.next_partname(template)
+                                new_part = Part(new_partname, old_target.content_type, old_target.blob, target_part.package)
+                                new_rid = target_part.relate_to(new_part, old_rel.reltype)
+                            else:
+                                new_rid = target_part.relate_to(old_target, old_rel.reltype)
+                        except Exception:
+                            new_rid = None
+                    if new_rid:
+                        el.set(attr_name, new_rid)
 
 
 def wrap_run_in_del(run_element, rev_id, author, date):

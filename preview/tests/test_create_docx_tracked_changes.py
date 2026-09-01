@@ -365,3 +365,50 @@ def test_deleted_paragraph_with_hyperlink_preserves_resolvable_relationship(docx
     assert out_doc.part.rels[new_rid].target_ref == "https://example.com/target"
 
 
+def test_deleted_paragraph_with_image_preserves_unique_media_partnames(docx_generator, monkeypatch, repo_factory):
+    import base64
+    import zipfile
+
+    png_bytes1 = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    png_bytes2 = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/AwMDEwMDEwAAAFwcB/0mH0xUAAAAASUVORK5CYII=")
+
+    # Create old docx with an image in paragraph 2 (to be deleted)
+    old_doc = Document()
+    old_doc.add_paragraph("Intro")
+    p1 = old_doc.add_paragraph("Figure 1: Old Image")
+    p1.add_run().add_picture(io.BytesIO(png_bytes1))
+    old_doc.add_paragraph("Outro")
+
+    buf = io.BytesIO()
+    old_doc.save(buf)
+    old_docx_bytes = buf.getvalue()
+
+    # New docx removes the old figure and adds a new figure elsewhere
+    new_doc = Document()
+    new_doc.add_paragraph("Intro")
+    new_doc.add_paragraph("Outro")
+    p2 = new_doc.add_paragraph("Figure 2: New Image")
+    p2.add_run().add_picture(io.BytesIO(png_bytes2))
+
+    buf2 = io.BytesIO()
+    new_doc.save(buf2)
+    new_docx_bytes = buf2.getvalue()
+
+    work = repo_factory(published={"chapters/01.docx": old_docx_bytes})
+    rendered = write(work, "_site/chapters/01.docx", new_docx_bytes).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    # Verify no duplicate zip entries and two unique media files in package
+    with zipfile.ZipFile(output_path, "r") as z:
+        media_names = [n for n in z.namelist() if n.startswith("word/media/")]
+        assert len(media_names) == len(set(media_names))
+        assert len(media_names) == 2
+
+
+
