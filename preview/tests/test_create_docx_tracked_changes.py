@@ -227,7 +227,60 @@ def test_deleted_paragraph_reports_any_docx_changed_true(docx_generator, monkeyp
     assert outputs["docx-status"] == "generated"
     assert outputs["any-docx-changed"] == "true"
     assert json.loads(outputs["docx-tracked-changes-files"]) == ["chapters/01-tracked-changes.docx"]
-    assert (work / "_site" / "chapters" / "01-tracked-changes.docx").is_file()
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    doc = Document(output_path)
+    assert doc.settings.element.find(qn("w:trackRevisions")) is not None
+    del_elements = doc._body._element.findall(".//" + qn("w:del"))
+    assert len(del_elements) > 0
+    for d in del_elements:
+        assert d.attrib[qn("w:author")] == "PR Preview"
+        assert d.attrib[qn("w:date")] == "2026-01-01T00:00:00Z"
+    del_texts = [el.text for el in doc._body._element.findall(".//" + qn("w:delText"))]
+    assert "Paragraph to remove." in del_texts
+
+
+def test_replaced_paragraph_carries_both_ins_and_del(docx_generator, monkeypatch, repo_factory):
+    old_docx = make_docx(["Chapter 1", "Old content.", "Conclusion"])
+    new_docx = make_docx(["Chapter 1", "Replaced content.", "Conclusion"])
+    work = repo_factory(published={"chapters/01.docx": old_docx})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    doc = Document(output_path)
+    ins_elements = doc._body._element.findall(".//" + qn("w:ins"))
+    del_elements = doc._body._element.findall(".//" + qn("w:del"))
+    assert len(ins_elements) > 0
+    assert len(del_elements) > 0
+    del_texts = [el.text for el in doc._body._element.findall(".//" + qn("w:delText"))]
+    assert "Old content." in del_texts
+
+
+def test_trailing_paragraph_deletion(docx_generator, monkeypatch, repo_factory):
+    old_docx = make_docx(["Chapter 1", "Ending paragraph to remove."])
+    new_docx = make_docx(["Chapter 1"])
+    work = repo_factory(published={"chapters/01.docx": old_docx})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    doc = Document(output_path)
+    del_elements = doc._body._element.findall(".//" + qn("w:del"))
+    assert len(del_elements) > 0
+    del_texts = [el.text for el in doc._body._element.findall(".//" + qn("w:delText"))]
+    assert "Ending paragraph to remove." in del_texts
 
 
 def test_paragraph_with_hyperlink_runs_wrapped_properly(docx_generator, monkeypatch, repo_factory):

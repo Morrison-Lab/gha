@@ -34,6 +34,7 @@ Outputs:
   any-docx-changed            `true` or `false`
 """
 
+import copy
 import difflib
 import io
 import json
@@ -125,6 +126,26 @@ def wrap_run_in_ins(run_element, rev_id, author, date):
     ins.append(run_element)
 
 
+def wrap_run_in_del(run_element, rev_id, author, date):
+    """Wrap a Word run element in a w:del deletion revision tag, replacing w:t with w:delText."""
+    parent = run_element.getparent()
+    if parent is None:
+        return
+    for t_element in run_element.findall(qn("w:t")):
+        del_text = OxmlElement("w:delText")
+        del_text.set(qn("xml:space"), "preserve")
+        del_text.text = t_element.text
+        run_element.replace(t_element, del_text)
+
+    del_elem = OxmlElement("w:del")
+    del_elem.set(qn("w:id"), str(rev_id))
+    del_elem.set(qn("w:author"), author)
+    del_elem.set(qn("w:date"), date)
+    parent.insert(parent.index(run_element), del_elem)
+    parent.remove(run_element)
+    del_elem.append(run_element)
+
+
 def create_docx_with_tracked_changes(
     old_docx_source,
     new_docx_path,
@@ -162,6 +183,7 @@ def create_docx_with_tracked_changes(
 
     # Load old and new documents
     if old_docx_source is None:
+        old_doc = None
         old_paragraphs = []
     elif isinstance(old_docx_source, bytes):
         old_doc = Document(io.BytesIO(old_docx_source))
@@ -176,20 +198,46 @@ def create_docx_with_tracked_changes(
     matcher = difflib.SequenceMatcher(None, old_paragraphs, new_paragraphs)
     has_changes = False
     rev_id = 0
+    original_output_paragraphs = list(output_doc.paragraphs)
 
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag in ("replace", "insert"):
+        if tag in ("delete", "replace"):
+            has_changes = True
+            if old_doc is not None:
+                for old_idx in range(i1, i2):
+                    if old_idx < len(old_doc.paragraphs):
+                        old_p = old_doc.paragraphs[old_idx]
+                        cloned_p = copy.deepcopy(old_p._element)
+                        r_elements = cloned_p.findall(".//" + qn("w:r"))
+                        if not r_elements and old_p.text:
+                            r = OxmlElement("w:r")
+                            del_t = OxmlElement("w:delText")
+                            del_t.set(qn("xml:space"), "preserve")
+                            del_t.text = old_p.text
+                            r.append(del_t)
+                            cloned_p.append(r)
+                            r_elements = [r]
+                        for r in r_elements:
+                            rev_id += 1
+                            wrap_run_in_del(r, rev_id, author, date)
+                        if j1 < len(original_output_paragraphs):
+                            original_output_paragraphs[j1]._element.addprevious(cloned_p)
+                        else:
+                            sect_pr = output_doc._body._element.find(qn("w:sectPr"))
+                            if sect_pr is not None:
+                                sect_pr.addprevious(cloned_p)
+                            else:
+                                output_doc._body._element.append(cloned_p)
+        if tag in ("insert", "replace"):
             has_changes = True
             for idx in range(j1, j2):
-                if idx < len(output_doc.paragraphs):
-                    para = output_doc.paragraphs[idx]
+                if idx < len(original_output_paragraphs):
+                    para = original_output_paragraphs[idx]
                     # Find all w:r elements in the paragraph, including those nested in hyperlinks
                     r_elements = para._element.findall(".//" + qn("w:r"))
                     for r_element in r_elements:
                         rev_id += 1
                         wrap_run_in_ins(r_element, rev_id, author, date)
-        elif tag == "delete":
-            has_changes = True
 
     output_doc.save(output_path)
     return has_changes
