@@ -41,12 +41,17 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added/modified files against the base.
+          fetch-depth: 0
 
       - name: Check one function per file
         uses: Morrison-Lab/gha/check-one-function-per-file@v2
         with:
           path: ${{ inputs.path }}
-          base-ref: ${{ inputs.base-ref }}
+          # On PRs, scan only files added/modified relative to the base; otherwise (push)
+          # the action scans the whole tracked tree unless an explicit base-ref input is given.
+          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}
           paths-ignore: ${{ inputs.paths-ignore }}
           extensions: ${{ inputs.extensions }}
           opt-out-comment: ${{ inputs.opt-out-comment }}
