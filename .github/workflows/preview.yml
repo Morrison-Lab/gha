@@ -126,6 +126,14 @@ on:
         description: Home page the banner is inserted into, relative to the rendered site root.
         type: string
         default: 'index.html'
+      docx-tracked-changes:
+        description: Generate Word DOCX documents with tracked changes against the published version on the deployed branch.
+        type: boolean
+        default: false
+      docx-tracked-changes-glob:
+        description: Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for.
+        type: string
+        default: 'chapters/*.docx'
     outputs:
       changed-chapters:
         description: JSON array of chapter ids that differ from the published render.
@@ -139,6 +147,18 @@ on:
       skip-reason:
         description: Why the comparison was skipped; empty when it ran.
         value: ${{ jobs.build.outputs.skip-reason }}
+      docx-status:
+        description: '`generated` or `skipped`; an empty docx-tracked-changes-files means nothing changed only under `generated`.'
+        value: ${{ jobs.build.outputs.docx-status }}
+      docx-skip-reason:
+        description: Why DOCX tracked changes generation was skipped; empty when it ran.
+        value: ${{ jobs.build.outputs.docx-skip-reason }}
+      docx-tracked-changes-files:
+        description: JSON array of generated tracked changes DOCX file paths relative to the site root.
+        value: ${{ jobs.build.outputs.docx-tracked-changes-files }}
+      any-docx-changed:
+        description: '`true` when at least one DOCX file differs from published render, `false` otherwise.'
+        value: ${{ jobs.build.outputs.any-docx-changed }}
 
 jobs:
   build:
@@ -167,6 +187,10 @@ jobs:
       any-changed: ${{ steps.build.outputs.any-changed }}
       detection-status: ${{ steps.build.outputs.detection-status }}
       skip-reason: ${{ steps.build.outputs.skip-reason }}
+      docx-status: ${{ steps.build.outputs.docx-status }}
+      docx-skip-reason: ${{ steps.build.outputs.docx-skip-reason }}
+      docx-tracked-changes-files: ${{ steps.build.outputs.docx-tracked-changes-files }}
+      any-docx-changed: ${{ steps.build.outputs.any-docx-changed }}
     steps:
       - name: Build preview
         id: build
@@ -197,3 +221,5 @@ jobs:
           deployed-subdir: ${{ inputs.deployed-subdir }}
           changed-chapters-normalize-patterns: ${{ inputs.changed-chapters-normalize-patterns }}
           banner-index: ${{ inputs.banner-index }}
+          docx-tracked-changes: ${{ inputs.docx-tracked-changes }}
+          docx-tracked-changes-glob: ${{ inputs.docx-tracked-changes-glob }}

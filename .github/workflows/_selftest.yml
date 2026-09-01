@@ -3816,7 +3816,7 @@ jobs:
         # the way the runner's system python3 does.
         run: |
           set -euo pipefail
-          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3 python-docx==1.2.0
           python3 -m pytest preview/tests/ -q
   # The one case the unit tests structurally cannot reach: does a REAL Quarto
   # site re-render to something the comparison reads as unchanged? Every other

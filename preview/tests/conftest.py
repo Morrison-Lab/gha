@@ -55,6 +55,11 @@ def highlighter():
     return _load("gha_highlight_html_changes", "highlight-html-changes.py")
 
 
+@pytest.fixture(scope="session")
+def docx_generator():
+    return _load("gha_create_docx_tracked_changes", "create-docx-tracked-changes.py")
+
+
 def git(repo, *args):
     """Run git in an isolated environment, so a developer's own config cannot
     change what these tests measure."""

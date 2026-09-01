@@ -53,3 +53,5 @@ jobs:
     #   banner-index: index.html
     #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render
     #     build-[0-9a-f]+
+    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render
+    #   docx-tracked-changes-glob: 'chapters/*.docx'
