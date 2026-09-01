@@ -5,7 +5,7 @@ Scans code files (R, Python, Shell, JavaScript, TypeScript, Julia) to ensure
 that each file defines at most one top-level function, helping keep code modular,
 searchable, and cleanly diffable.
 
-Files can opt out by including an opt-out comment near the top of the file:
+Files can opt out by including an opt-out comment directive:
   # check-one-function-per-file: allow-multiple
   # check-one-function-per-file: opt-out
   # allow-multiple-functions
@@ -90,24 +90,38 @@ def is_ignored(path: Path, root: Path, ignore_patterns: List[str]) -> bool:
             continue
         if pat_clean in parts:
             return True
-        if fnmatch.fnmatch(rel_str, pat_clean) or fnmatch.fnmatch(rel_str, f"*{pat_clean}*"):
+        if (
+            fnmatch.fnmatch(rel_str, pat_clean)
+            or fnmatch.fnmatch(rel_str, f"{pat_clean}/*")
+            or fnmatch.fnmatch(rel_str, f"*/{pat_clean}/*")
+            or fnmatch.fnmatch(rel_str, f"*/{pat_clean}")
+        ):
             return True
     return False
 
 
 def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
-    """Check if the file header/content contains an opt-out comment directive."""
-    lines = content.splitlines()[:50]
-    header_text = "\n".join(lines)
-
-    if custom_marker and custom_marker.strip() and custom_marker.strip() in header_text:
+    """Check if the file content contains an opt-out comment directive."""
+    if custom_marker and custom_marker.strip() and custom_marker.strip() in content:
         return True
 
     for pat in OPT_OUT_PATTERNS:
-        if pat.search(header_text):
+        if pat.search(content):
             return True
 
     return False
+
+
+def strip_strings_and_comments(line: str, comment_char: str = "#") -> str:
+    """Strip quoted strings first, then comments, to prevent corrupting braces/quotes."""
+    clean = re.sub(r'"(?:\\.|[^"\\])*"', '""', line)
+    clean = re.sub(r"'(?:\\.|[^'\\])*'", "''", clean)
+    clean = re.sub(r"`(?:\\.|[^`\\])*`", "``", clean)
+    if comment_char == "//":
+        clean = clean.split("//", 1)[0]
+    else:
+        clean = clean.split(comment_char, 1)[0]
+    return clean
 
 
 def extract_python_functions(content: str) -> List[Tuple[str, int]]:
@@ -130,22 +144,21 @@ def extract_r_functions(content: str) -> List[Tuple[str, int]]:
     lines = content.splitlines()
     brace_depth = 0
 
+    # Matches: func_name <- function( or `func_name` = function( or func_name <- \(x) (R 4.1+ shorthand)
     func_pattern = re.compile(
-        r"^\s*(?:(?:`([^`]+)`)|([a-zA-Z0-9_.]+))\s*(?:<-|=|<<-)\s*function\s*\(",
+        r"^\s*(?:(?:`([^`]+)`)|([a-zA-Z0-9_.]+))\s*(?:<-|=|<<-)\s*(?:function|\\)\s*\(",
     )
 
     for lineno, line in enumerate(lines, start=1):
-        code_part = line.split("#", 1)[0]
+        clean_code = strip_strings_and_comments(line, comment_char="#")
 
         if brace_depth == 0:
-            m = func_pattern.match(code_part)
+            m = func_pattern.match(clean_code)
             if m:
                 name = m.group(1) or m.group(2)
                 functions.append((name, lineno))
 
-        clean_line = re.sub(r'"(?:\\.|[^"\\])*"', '""', code_part)
-        clean_line = re.sub(r"'(?:\\.|[^'\\])*'", "''", clean_line)
-        brace_depth += clean_line.count("{") - clean_line.count("}")
+        brace_depth += clean_code.count("{") - clean_code.count("}")
         if brace_depth < 0:
             brace_depth = 0
 
@@ -162,11 +175,11 @@ def extract_shell_functions(content: str) -> List[Tuple[str, int]]:
     func_pat2 = re.compile(r"^\s*([a-zA-Z0-9_:-]+)\s*\(\s*\)\s*(?:\{)?")
 
     for lineno, line in enumerate(lines, start=1):
-        code_part = line.split("#", 1)[0]
+        clean_code = strip_strings_and_comments(line, comment_char="#")
 
         if brace_depth == 0:
-            m1 = func_pat1.match(code_part)
-            m2 = func_pat2.match(code_part)
+            m1 = func_pat1.match(clean_code)
+            m2 = func_pat2.match(clean_code)
             if m1:
                 functions.append((m1.group(1), lineno))
             elif m2:
@@ -174,9 +187,7 @@ def extract_shell_functions(content: str) -> List[Tuple[str, int]]:
                 if name not in ("if", "then", "else", "elif", "fi", "case", "esac", "for", "while", "until", "do", "done"):
                     functions.append((name, lineno))
 
-        clean_line = re.sub(r'"(?:\\.|[^"\\])*"', '""', code_part)
-        clean_line = re.sub(r"'(?:\\.|[^'\\])*'", "''", clean_line)
-        brace_depth += clean_line.count("{") - clean_line.count("}")
+        brace_depth += clean_code.count("{") - clean_code.count("}")
         if brace_depth < 0:
             brace_depth = 0
 
@@ -191,24 +202,21 @@ def extract_js_ts_functions(content: str) -> List[Tuple[str, int]]:
 
     func_pat1 = re.compile(r"^\s*(?:export\s+(?:default\s+)?)?function\s*\*?\s*([a-zA-Z0-9_$]+)\s*\(")
     func_pat2 = re.compile(
-        r"^\s*(?:export\s+)?(?:const|let|var)\s+([a-zA-Z0-9_$]+)\s*=\s*(?:async\s+)?(?:(?:\([^)]*\)|[a-zA-Z0-9_$]+)\s*=>|function\s*\*?\s*\()"
+        r"^\s*(?:export\s+)?(?:const|let|var)\s+([a-zA-Z0-9_$]+)(?:\s*:\s*[^=]+)?\s*=\s*(?:async\s+)?(?:<[^>]*>\s*)?(?:(?:\([^)]*\)|[a-zA-Z0-9_$]+)(?:\s*:\s*[^=]+)?\s*=>|function\s*\*?\s*\()"
     )
 
     for lineno, line in enumerate(lines, start=1):
-        code_part = line.split("//", 1)[0]
+        clean_code = strip_strings_and_comments(line, comment_char="//")
 
         if brace_depth == 0:
-            m1 = func_pat1.match(code_part)
-            m2 = func_pat2.match(code_part)
+            m1 = func_pat1.match(clean_code)
+            m2 = func_pat2.match(clean_code)
             if m1:
                 functions.append((m1.group(1), lineno))
             elif m2:
                 functions.append((m2.group(1), lineno))
 
-        clean_line = re.sub(r'"(?:\\.|[^"\\])*"', '""', code_part)
-        clean_line = re.sub(r"'(?:\\.|[^'\\])*'", "''", clean_line)
-        clean_line = re.sub(r"`(?:\\.|[^`\\])*`", "``", clean_line)
-        brace_depth += clean_line.count("{") - clean_line.count("}")
+        brace_depth += clean_code.count("{") - clean_code.count("}")
         if brace_depth < 0:
             brace_depth = 0
 
@@ -224,13 +232,13 @@ def extract_julia_functions(content: str) -> List[Tuple[str, int]]:
     func_pat2 = re.compile(r"^([a-zA-Z0-9_!]+)\([^)]*\)\s*=")
 
     for lineno, line in enumerate(lines, start=1):
-        code_part = line.split("#", 1)[0]
+        clean_code = strip_strings_and_comments(line, comment_char="#")
         if line.startswith("function ") or line.startswith("function\t"):
-            m = func_pat1.match(code_part)
+            m = func_pat1.match(clean_code)
             if m:
                 functions.append((m.group(1), lineno))
         elif not line.startswith(" ") and not line.startswith("\t"):
-            m = func_pat2.match(code_part)
+            m = func_pat2.match(clean_code)
             if m:
                 functions.append((m.group(1), lineno))
 
@@ -259,7 +267,7 @@ def check_repository(
     paths_ignore: List[str],
     custom_opt_out: Optional[str] = None,
 ) -> Dict[Path, List[Tuple[str, int]]]:
-    """Scan directory and return mapping of violating files to their function definitions."""
+    """Scan directory and return mapping of violating files to their distinct function definitions."""
     violations: Dict[Path, List[Tuple[str, int]]] = {}
 
     if target_path.is_file():
@@ -289,8 +297,16 @@ def check_repository(
             continue
 
         funcs = find_function_definitions(file_path, content)
-        if len(funcs) > 1:
-            violations[file_path] = funcs
+        # Deduplicate multiple methods / overloads by distinct function name
+        seen_names: Set[str] = set()
+        distinct_funcs: List[Tuple[str, int]] = []
+        for name, lineno in funcs:
+            if name not in seen_names:
+                seen_names.add(name)
+                distinct_funcs.append((name, lineno))
+
+        if len(distinct_funcs) > 1:
+            violations[file_path] = distinct_funcs
 
     return violations
 
@@ -323,6 +339,8 @@ def main() -> int:
         return 0
 
     print(f"\n❌ Found {len(violations)} file(s) with multiple function definitions:\n")
+    annotation_level = "error" if should_fail else "warning"
+
     for file_path, funcs in violations.items():
         try:
             rel = file_path.relative_to(Path.cwd())
@@ -337,7 +355,7 @@ def main() -> int:
             f"Expected at most one function per file. "
             f"To opt out, add '# check-one-function-per-file: allow-multiple' near the top."
         )
-        print(f"::error file={rel},line={first_line}::{msg}")
+        print(f"::{annotation_level} file={rel},line={first_line}::{msg}")
 
     print("\nTo opt out a specific file that genuinely requires multiple function definitions,")
     print("add one of the following comment lines near the top of the file:")

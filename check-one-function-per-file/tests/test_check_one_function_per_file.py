@@ -64,10 +64,21 @@ def test_r_single_and_multiple_functions(tmp_path):
     assert violations[multi_r][1][0] == "fn2"
 
 
-def test_r_nested_functions_not_counted(tmp_path):
+def test_r_shorthand_lambda_syntax(tmp_path):
+    # R 4.1+ \(x) shorthand syntax
+    shorthand_r = tmp_path / "shorthand.R"
+    shorthand_r.write_text("f1 <- \\(x) x + 1\nf2 <- \\(y) { y * 2 }\n", encoding="utf-8")
+
+    violations = check_mod.check_repository(tmp_path, {".R"}, [])
+    assert shorthand_r in violations
+    assert len(violations[shorthand_r]) == 2
+
+
+def test_r_nested_functions_and_hash_in_strings(tmp_path):
     nested_r = tmp_path / "nested.R"
     code = """
 outer_func <- function(data) {
+  msg <- "Figure 1: # of cases {"
   inner_helper <- function(val) {
     val * 2
   }
@@ -79,9 +90,15 @@ outer_func <- function(data) {
     assert len(violations) == 0
 
 
-def test_shell_functions(tmp_path):
+def test_shell_functions_and_expansions(tmp_path):
     single_sh = tmp_path / "single.sh"
-    single_sh.write_text("#!/bin/bash\nrun_task() {\n  echo 'hello'\n}\n", encoding="utf-8")
+    code = """#!/bin/bash
+run_task() {
+  len="${#MY_VAR}"
+  echo "Length: ${len}"
+}
+"""
+    single_sh.write_text(code, encoding="utf-8")
 
     multi_sh = tmp_path / "multi.sh"
     multi_sh.write_text("#!/bin/bash\nfunction task1 {\n  echo 1\n}\ntask2() {\n  echo 2\n}\n", encoding="utf-8")
@@ -92,12 +109,12 @@ def test_shell_functions(tmp_path):
     assert len(violations[multi_sh]) == 2
 
 
-def test_js_ts_functions(tmp_path):
+def test_js_ts_functions_and_generics(tmp_path):
     single_js = tmp_path / "single.js"
-    single_js.write_text("export function processItem(item) {\n  return item;\n}\n", encoding="utf-8")
+    single_js.write_text("export function processItem(item) {\n  const url = 'https://example.com//test';\n  return item;\n}\n", encoding="utf-8")
 
     multi_ts = tmp_path / "multi.ts"
-    multi_ts.write_text("export const f1 = (a: number) => a + 1;\nexport const f2 = function(b: number) { return b; };\n", encoding="utf-8")
+    multi_ts.write_text("export const f1 = <T>(a: T): T => a;\nexport const f2: Handler = function(b) { return b; };\n", encoding="utf-8")
 
     violations = check_mod.check_repository(tmp_path, {".js", ".ts"}, [])
     assert single_js not in violations
@@ -105,9 +122,9 @@ def test_js_ts_functions(tmp_path):
     assert len(violations[multi_ts]) == 2
 
 
-def test_julia_functions(tmp_path):
-    single_jl = tmp_path / "single.jl"
-    single_jl.write_text("function compute(x)\n  x^2\nend\n", encoding="utf-8")
+def test_julia_multiple_dispatch_deduplicated(tmp_path):
+    single_jl = tmp_path / "dispatch.jl"
+    single_jl.write_text("compute(x::Int) = x + 1\ncompute(x::String) = x * '!'\n", encoding="utf-8")
 
     multi_jl = tmp_path / "multi.jl"
     multi_jl.write_text("function f1(x)\n  x\nend\n\nf2(y) = y * 2\n", encoding="utf-8")
@@ -119,7 +136,6 @@ def test_julia_functions(tmp_path):
 
 
 def test_opt_out_comments(tmp_path):
-    # Test built-in opt-out comment styles
     opt_out_1 = tmp_path / "opt1.py"
     opt_out_1.write_text("# check-one-function-per-file: allow-multiple\ndef a(): pass\ndef b(): pass\n", encoding="utf-8")
 
@@ -144,14 +160,18 @@ def test_custom_opt_out_comment(tmp_path):
     assert len(violations_with_flag) == 0
 
 
-def test_paths_ignore(tmp_path):
+def test_paths_ignore_does_not_falsely_ignore_substrings(tmp_path):
     test_dir = tmp_path / "tests"
     test_dir.mkdir()
     test_file = test_dir / "test_something.py"
     test_file.write_text("def test_a(): pass\ndef test_b(): pass\n", encoding="utf-8")
 
-    violations = check_mod.check_repository(tmp_path, {".py"}, ["tests"])
-    assert len(violations) == 0
+    contests_file = tmp_path / "contests.py"
+    contests_file.write_text("def c1(): pass\ndef c2(): pass\n", encoding="utf-8")
+
+    violations = check_mod.check_repository(tmp_path, {".py"}, ["tests", "test"])
+    assert test_file not in violations
+    assert contests_file in violations
 
 
 def test_cli_execution_clean(tmp_path):
@@ -175,7 +195,6 @@ def test_cli_execution_violations(tmp_path):
     f.write_text("def f1(): pass\ndef f2(): pass\n", encoding="utf-8")
 
     script = Path(check_mod.__file__).resolve()
-    # Test fail: true (default)
     res_fail = subprocess.run(
         [sys.executable, str(script)],
         cwd=tmp_path,
@@ -187,7 +206,6 @@ def test_cli_execution_violations(tmp_path):
     assert "::error" in res_fail.stdout
     assert "bad.py" in res_fail.stdout
 
-    # Test fail: false (warning mode)
     res_warn = subprocess.run(
         [sys.executable, str(script)],
         cwd=tmp_path,
@@ -196,4 +214,5 @@ def test_cli_execution_violations(tmp_path):
         env={**os.environ, "INPUT_PATH": str(tmp_path), "INPUT_FAIL": "false"},
     )
     assert res_warn.returncode == 0
-    assert "::error" in res_warn.stdout
+    assert "::warning" in res_warn.stdout
+    assert "::error" not in res_warn.stdout

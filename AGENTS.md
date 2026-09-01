@@ -100,6 +100,7 @@ Common local unit tests include:
 
 ```sh
 python3 check-non-standard-chars/tests/test_check_non_standard_chars.py
+python3 -m pytest check-one-function-per-file/tests/ -q
 node lint-markdown/tests/test_list_item_splices.mjs
 node lint-markdown/tests/test_table_splits.mjs
 python3 -m pytest check-phi/tests/ -q
