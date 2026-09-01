@@ -779,7 +779,8 @@ runs:
           or "NOT_CLEAN" if there are any blocking findings, bugs, or required changes (Needs more work).
           When NOT_CLEAN, list each actionable finding in the `findings` array:
           `{"file": "path/to/file.ext", "line": 42, "category": "bug" | "security" | "style" | "doc" | "test", "message": "Description..."}`.
-          Every schema `1.1` payload requires distinct `"detailed_assessment"` and `"holistic_assessment"` fields with at least six distinct words each.
+          Every schema `1.1` payload requires distinct `detailed_assessment` and `holistic_assessment`
+          fields with at least six distinct words each.
           The detailed assessment names a changed path, failure mode, or concrete defect.
           The holistic assessment names a requirement, integration, regression, scope, or validation concern.
           Write the tags, comment, and code fences FLUSH LEFT at column zero, not indented.
