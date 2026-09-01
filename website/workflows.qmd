@@ -140,8 +140,8 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
 - `check-links.yml` runs a [lychee](https://github.com/lycheeverse/lychee) link
   check with a bundled config, a PR skip-label, and an auto-filed issue when
   `main` breaks.
-- `check-news.yml` enforces a `NEWS.md` changelog entry on each PR.
-- `lint-yaml.yml` runs [yamllint](https://yamllint.readthedocs.io/en/stable/) over tracked
+- `lint-yaml.yml` runs
+  [yamllint](https://yamllint.readthedocs.io/en/stable/) over tracked
   YAML with a bundled config, plus a check that flags long `run:` script blocks
   as decomposition candidates.
 - `lint-markdown.yml` runs
