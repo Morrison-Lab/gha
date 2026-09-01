@@ -316,32 +316,30 @@ runs:
         # spawned), and the run reports success with no review ever posted
         # (gha#218's root cause 2 matches this signature: a background Agent
         # call followed by ScheduleWakeup, never resumes). Denying them
-        # outright is safer than the prompt-only mitigation below on its
-        # own, and doesn't touch the `code-review` plugin's own legitimate
-        # `Task`/`Agent` fan-out to its 4 parallel sub-agents, which uses a
-        # different tool than these three.
+        # outright is safer than a prompt-only mitigation on its own.
         #
-        # That carve-out for the fan-out was too broad, and gha#392 is the
-        # bill for it. `Agent`'s `run_in_background` parameter defaults to
-        # TRUE, so the "legitimate same-run fan-out" was itself a background
-        # spawn -- the model then ends its turn waiting for completion
-        # notifications that only a later turn can deliver, which is the same
-        # shape as the three tools denied above, reached without calling any
-        # of them.
+        # `Agent` and `Task` are also denied outright for the same reason
+        # (gha#392, gha#532, gha#756). `Agent`'s `run_in_background` parameter
+        # defaults to TRUE, so any subagent spawn is a background spawn:
+        # the model ends its turn waiting for completion notifications that
+        # only a later turn can deliver, which a headless CI run never
+        # delivers.
         #
         # Measured on Morrison-Lab/ai-config#986, run 30671528617: eight
         # `Agent` calls, `is_error: false`, `stop_reason: end_turn`,
         # $9.76, and a final message reading "Waiting for the remaining
         # background agents to complete." in place of a verdict.
         #
-        # gha#532 and gha#756: parameter-scoped denial (`Agent(run_in_background:true)`)
-        # was previously tried, but because `run_in_background` defaults to
-        # true when omitted by the model, omitted-parameter spawns bypassed
-        # the rule and still backgrounded, resulting in $3-$6 wasted runs with
-        # no verdict produced. Therefore, `Agent` and `Task` are DENIED
-        # outright below. In a headless, non-interactive CI review run, the
-        # reviewer must perform all review work directly inline in its
-        # primary context.
+        # Parameter-scoped denial (`Agent(run_in_background:true)`) was
+        # previously tried in gha#532. However, when the model omits
+        # `run_in_background` in tool calls, it defaults to true while
+        # bypassing parameter-scoped matching (gha#756, measured on
+        # Morrison-Lab/ai-config#2808, runs 33526978807 [$3.20] and
+        # 33527218652 [$5.75] on 2026-09-01: all four spawns omitted the
+        # parameter and backgrounded without a verdict). Therefore, `Agent`
+        # and `Task` are DENIED outright below. In a headless, non-interactive
+        # CI review run, the reviewer must perform all review work directly
+        # inline in its primary context.
         #
         # `Task` is listed beside `Agent` defensively rather than on evidence
         # both names are live: the CLI version is not pinned here, and a deny

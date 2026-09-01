@@ -3721,13 +3721,14 @@ only the first one got it right.
 
 ## A prompt instruction is a request; a permission rule is a constraint
 
-`run-claude-review-attempt`'s `--append-system-prompt` tells the reviewer to
-pass `run_in_background: false` on every `Agent`/`Task` call, because a
-background spawn in a headless CI run ends the turn waiting for completion
-notifications that no later turn will deliver (gha#392).
-That instruction was live, verbatim, when the same failure recurred on
-`Morrison-Lab/ai-config#1744` (run 32347489886): four background agents
-spawned, turn ended, no verdict, $4.21 (gha#532).
+`run-claude-review-attempt` denies `Agent` and `Task` in `--disallowedTools` and
+its `--append-system-prompt` instructs the reviewer to complete the review
+directly inline, because a background spawn in a headless CI run ends the turn
+waiting for completion notifications that no later turn will deliver (gha#392).
+That prompt instruction was originally added after gha#392, but was live,
+verbatim, when the same failure recurred on `Morrison-Lab/ai-config#1744`
+(run 32347489886): four background agents spawned, turn ended, no verdict,
+$4.21 (gha#532).
 
 The general point is worth keeping separate from the incident.
 **A prompt tells the model what to do, and the model may not.**
@@ -3743,25 +3744,28 @@ Per
 > Deny and ask rules can match a top-level input parameter on any tool with
 > `Tool(param:value)`.
 
-In gha#532, `Agent(run_in_background:true)` was initially deployed as a parameter-scoped
+In gha#532, `Agent(run_in_background:true)` was deployed as a parameter-scoped
 deny rule.
-However, in gha#756, empirical runs showed that when the model omits `run_in_background`
-in the tool call arguments, it defaults to true (backgrounding) while bypassing the
-parameter-scoped rule, leading to $3-$6 wasted headless CI runs with no verdict.
+However, in gha#756, when the model omitted `run_in_background` in tool calls,
+it defaulted to true (backgrounding) while bypassing the parameter-scoped rule
+(measured on `Morrison-Lab/ai-config#2808`, runs 33526978807 [\$3.20] and
+33527218652 [\$5.75] on 2026-09-01: all 4 `Agent` spawns omitted
+`run_in_background` and stalled without a verdict).
 Therefore, `Agent` and `Task` are denied outright in `--disallowedTools`.
-In a headless non-interactive review run, the model must complete the entire review inline
-in its primary context.
+In a headless non-interactive review run, the model must complete the entire
+review inline in its primary context.
 
 Five things constrain any change here.
 
 **It is a DENY on `Agent,Task` outright.**
 allow rules continue to use each tool's own specifier syntax;
 an allow on `Agent(run_in_background:false)` does not work.
-Denying `Agent,Task` outright mechanistically blocks both explicit-true and omitted-parameter spawns.
+Denying `Agent,Task` outright mechanistically blocks both explicit-true and
+omitted-parameter spawns.
 
 **The prompt instruction reinforces the constraint.**
-The prompt instruction explicitly tells the model that subagents are disallowed and to
-complete the review inline, preventing stalled delegations.
+The prompt instruction explicitly tells the model that subagents are disallowed
+and to complete the review inline, preventing stalled delegations.
 
 **A parameter rule cannot reach a tool's primary content field.**
 The same section lists them (`command` for Bash, `file_path` for Read, `url`
@@ -3770,9 +3774,12 @@ startup, because `Bash(command:rm *)` would be bypassable by a compound
 command.
 Use the tool's own specifier for those.
 
-**The CLI flag parses tool names directly.**
-On Claude Code CLI, `Agent` and `Task` in `--disallowedTools` are accepted and match
-all invocation attempts.
+**The CLI flag parses `--disallowedTools` tool names directly.**
+On Claude Code 2.1.238, `Agent` and `Task` in `--disallowedTools` are accepted
+with no startup warnings and prevent subagent invocations.
+(The negative control on the same version answered `Bash(command:rm *)` with
+`Permission deny rule "Bash(command:rm *)" targets command as a raw string and
+will not match`.)
 
 **The denials these rules produce are excluded from the stub-retry gate, and
 that exclusion is part of the fix rather than a refinement of it.**
