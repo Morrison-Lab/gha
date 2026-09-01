@@ -714,7 +714,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>Enforce the one-function-definition-per-file rule across repository code files (<code>.R</code>, <code>.py</code>, <code>.sh</code>, <code>.js</code>, <code>.ts</code>, <code>.jl</code>). The check scans code files to verify that each file defines at most one top-level function, keeping code modular, searchable, and cleanly diffable.</p>
 <p>Files that genuinely require multiple function definitions can opt out by adding a comment directive near the top of the file:</p>
-<pre><code># check-one-function-per-file: allow-multiple</code></pre>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># check-one-function-per-file: allow-multiple</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
