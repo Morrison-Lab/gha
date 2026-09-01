@@ -15,9 +15,11 @@ from conftest import read_outputs, write
 
 try:
     from docx import Document
+    from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 except ImportError:
     Document = None
+    OxmlElement = None
     qn = None
 
 
@@ -317,4 +319,49 @@ def test_paragraph_with_hyperlink_runs_wrapped_properly(docx_generator, monkeypa
     out_doc = Document(output_path)
     ins_elements = out_doc._body._element.findall(".//" + qn("w:ins"))
     assert len(ins_elements) > 0
+
+
+def test_deleted_paragraph_with_hyperlink_preserves_resolvable_relationship(docx_generator, monkeypatch, repo_factory):
+    # Create old docx with a hyperlink relationship
+    old_doc = Document()
+    old_doc.add_paragraph("Intro")
+    p = old_doc.add_paragraph()
+    rid = old_doc.part.relate_to("https://example.com/target", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+    hl = OxmlElement("w:hyperlink")
+    hl.set(qn("r:id"), rid)
+    r = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "Example Link"
+    r.append(t)
+    hl.append(r)
+    p._element.append(hl)
+    old_doc.add_paragraph("Outro")
+
+    buf = io.BytesIO()
+    old_doc.save(buf)
+    old_docx_bytes = buf.getvalue()
+
+    # New doc removes the middle paragraph with hyperlink
+    new_docx = make_docx(["Intro", "Outro"])
+
+    work = repo_factory(published={"chapters/01.docx": old_docx_bytes})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    out_doc = Document(output_path)
+    del_elements = out_doc._body._element.findall(".//" + qn("w:del"))
+    assert len(del_elements) > 0
+    # Hyperlink should be preserved in output doc with a valid relationship
+    hl_elements = out_doc._body._element.findall(".//" + qn("w:hyperlink"))
+    assert len(hl_elements) == 1
+    new_rid = hl_elements[0].attrib[qn("r:id")]
+    assert new_rid in out_doc.part.rels
+    assert out_doc.part.rels[new_rid].target_ref == "https://example.com/target"
+
 

@@ -126,6 +126,32 @@ def wrap_run_in_ins(run_element, rev_id, author, date):
     ins.append(run_element)
 
 
+def copy_relationships_for_element(element, source_part, target_part):
+    """Copy referenced OPC relationships from source_part to target_part and update IDs."""
+    if source_part is None or target_part is None:
+        return
+    rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    attr_prefix = "{" + rel_ns + "}"
+    for el in [element] + list(element.iter()):
+        for attr_name in list(el.attrib.keys()):
+            if attr_name.startswith(attr_prefix):
+                old_rid = el.attrib[attr_name]
+                if hasattr(source_part, "rels") and old_rid in source_part.rels:
+                    old_rel = source_part.rels[old_rid]
+                    if old_rel.is_external:
+                        new_rid = target_part.relate_to(
+                            old_rel.target_ref,
+                            old_rel.reltype,
+                            is_external=True,
+                        )
+                    else:
+                        new_rid = target_part.relate_to(
+                            old_rel.target_part,
+                            old_rel.reltype,
+                        )
+                    el.set(attr_name, new_rid)
+
+
 def wrap_run_in_del(run_element, rev_id, author, date):
     """Wrap a Word run element in a w:del deletion revision tag, replacing w:t with w:delText."""
     parent = run_element.getparent()
@@ -208,15 +234,8 @@ def create_docx_with_tracked_changes(
                     if old_idx < len(old_doc.paragraphs):
                         old_p = old_doc.paragraphs[old_idx]
                         cloned_p = copy.deepcopy(old_p._element)
+                        copy_relationships_for_element(cloned_p, old_doc.part, output_doc.part)
                         r_elements = cloned_p.findall(".//" + qn("w:r"))
-                        if not r_elements and old_p.text:
-                            r = OxmlElement("w:r")
-                            del_t = OxmlElement("w:delText")
-                            del_t.set(qn("xml:space"), "preserve")
-                            del_t.text = old_p.text
-                            r.append(del_t)
-                            cloned_p.append(r)
-                            r_elements = [r]
                         for r in r_elements:
                             rev_id += 1
                             wrap_run_in_del(r, rev_id, author, date)
