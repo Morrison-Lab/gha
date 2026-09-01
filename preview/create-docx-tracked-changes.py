@@ -132,7 +132,7 @@ def copy_relationships_for_element(element, source_part, target_part):
         return
     rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
     attr_prefix = "{" + rel_ns + "}"
-    for el in [element] + list(element.iter()):
+    for el in element.iter():
         for attr_name in list(el.attrib.keys()):
             if attr_name.startswith(attr_prefix):
                 old_rid = el.attrib[attr_name]
