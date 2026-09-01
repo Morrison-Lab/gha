@@ -36,6 +36,30 @@ jobs:
         with:
           python-version: '3.x'
           extensions: '.qmd, .R, .md'
+
+  one-function-per-file:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run check-one-function-per-file unit tests
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3
+          python3 -m pytest check-one-function-per-file/tests/ -v
+
+      - name: Check one function per file
+        uses: ./check-one-function-per-file
+        with:
+          python-version: '3.x'
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
+          fail: 'true'
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
   # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the

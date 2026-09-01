@@ -24,8 +24,9 @@ to `@v2`;
 `small-model-agent.yml`, `check-ai-tells.yml`, `lint-workflows.yml`,
 `spellcheck.yml`,
 `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`,
-`claude-manage-project.yml`, `r-cmd-check.yml`, and
-`check-code-similarity.yml`
+`claude-manage-project.yml`, `r-cmd-check.yml`,
+`check-code-similarity.yml`, and
+`check-one-function-per-file.yml`
 only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which

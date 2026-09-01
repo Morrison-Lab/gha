@@ -1,0 +1,48 @@
+---
+title: "check-one-function-per-file.yml"
+---
+
+Enforce the one-function-definition-per-file rule across repository code files
+(`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`).
+The check scans code files to verify that each file defines at most one top-level
+function, keeping code modular, searchable, and cleanly diffable.
+
+Files that genuinely require multiple function definitions can opt out by adding
+a comment directive near the top of the file:
+
+```r
+# check-one-function-per-file: allow-multiple
+```
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | string | `'.'` | Target directory or file path to scan. |
+| `paths-ignore` | string | `'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'` | Comma- or newline-separated paths or glob patterns to ignore. |
+| `extensions` | string | `'.R, .r, .py, .sh, .bash, .js, .ts, .mjs, .cjs, .jl'` | Comma- or space-separated list of file extensions to check. |
+| `opt-out-comment` | string | `''` | Optional custom comment string to treat as an opt-out directive. |
+| `base-ref` | string | `''` | Git ref to diff against for diff-scoped checking (e.g. `origin/main`). On pull requests and pushes, defaults to the PR base ref or previous commit automatically for diff-scoping. |
+| `fail` | boolean | `true` | Whether to fail the workflow if multiple function definitions are detected. |
+| `python-version` | string | `'3.x'` | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check one function per file
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-one-function-per-file.yml@v2
+```
+
+See the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for caller stubs (e.g. `examples/check-one-function-per-file.yml`).

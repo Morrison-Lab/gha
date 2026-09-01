@@ -103,8 +103,9 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `r-cmd-check`, and
-`check-code-similarity` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `r-cmd-check`,
+`check-code-similarity`, and
+`check-one-function-per-file` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -189,6 +190,7 @@ which is why the capabilities above moved to `@v2`.
   `gitleaks/gitleaks-action`,
   which is proprietary and needs a paid licence for organization accounts.
   `check-links/` bundles `lychee.default.toml`;
+  `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
   `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
@@ -1702,6 +1704,12 @@ canned JPlag results CSV --- no 80 MB jar and no JDK, the same remedy
 `check-secrets` records for its scan script.
 The stub parses `-r` out of its own argv, so the result-path plumbing is
 exercised rather than assumed.
+
+`check-one-function-per-file/tests/test_check_one_function_per_file.py` is a pytest
+suite testing the top-level function parsers across Python (AST), R (brace/paren depth, backtick names, lambdas),
+Shell (parameter expansion protection), JavaScript/TypeScript (generics, block comment stripping with line preservation),
+and Julia (multiple dispatch deduplication), along with opt-out header directives and defaults-agreement.
+Run it with `python3 -m pytest check-one-function-per-file/tests/ -v`.
 
 **The refusal cases are the ones to keep if the suite is ever trimmed, and
 they all fail in one direction.**
@@ -3863,9 +3871,9 @@ Instead, point a template repo's `uses:` at the PR's branch or SHA and confirm
 the workflow succeeds there:
 
 - **`rpt`** ([`Morrison-Lab/rpt`](https://github.com/Morrison-Lab/rpt)) -- R package template
-- **`qwt`** ([`d-morrison/qwt`](https://github.com/d-morrison/qwt)) -- Quarto website template
-- **`qbt`** ([`d-morrison/qbt`](https://github.com/d-morrison/qbt)) -- Quarto book template
-- **`qmt`** ([`d-morrison/qmt`](https://github.com/d-morrison/qmt)) -- Quarto manuscript template
+- **`qwt`** ([`Morrison-Lab/qwt`](https://github.com/Morrison-Lab/qwt)) -- Quarto website template
+- **`qbt`** ([`Morrison-Lab/qbt`](https://github.com/Morrison-Lab/qbt)) -- Quarto book template
+- **`qmt`** ([`Morrison-Lab/qmt`](https://github.com/Morrison-Lab/qmt)) -- Quarto manuscript template
 
 Repointing the template's top-level `uses:` exercises a change to a reusable
 workflow's own YAML, but not a change to a **composite action**

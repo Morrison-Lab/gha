@@ -1,0 +1,14 @@
+# Copy to .github/workflows/check-one-function-per-file.yml in your repo.
+name: Check One Function Per File
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-one-function-per-file.yml@v2

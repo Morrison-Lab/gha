@@ -14,7 +14,7 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-code-similarity`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
-  `check-non-standard-chars`, `check-phi`, `check-secrets`,
+  `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`, `check-secrets`,
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`,
   `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
