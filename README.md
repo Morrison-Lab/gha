@@ -49,6 +49,7 @@ not reference `@main` from consumers.
 | `check-code-similarity.yml` | Flag code highly similar to a caller-supplied corpus of prior submissions, using JPlag. Computed entirely on the runner --- nothing is uploaded. Warns rather than fails by default, since shared skeleton code and common idioms raise similarity legitimately | `corpus-path`, `language`, `threshold`, `fail`, `base-code-path` |
 | `check-junk-files.yml` | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
+| `check-one-function-per-file.yml` | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`), with header opt-out comment support | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
@@ -109,7 +110,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-code-similarity`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
-  `check-non-standard-chars`, `check-phi`, `check-secrets`,
+  `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`, `check-secrets`,
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,

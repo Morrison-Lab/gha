@@ -1,0 +1,41 @@
+name: Check one function per file
+description: >-
+  Enforce the one-function-definition-per-file rule across repository code files
+  (R, Python, Shell, JavaScript/TypeScript, Julia), supporting configurable
+  file extensions, ignored paths, and header opt-out comments.
+inputs:
+  path:
+    description: Target directory or file path to scan.
+    default: '.'
+  paths-ignore:
+    description: Comma- or newline-separated list of paths or glob patterns to ignore.
+    default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'
+  extensions:
+    description: Comma- or space-separated list of file extensions to check.
+    default: '.R, .r, .py, .sh, .bash, .js, .ts, .mjs, .cjs, .jl'
+  opt-out-comment:
+    description: Optional custom comment string to treat as an opt-out directive.
+    default: ''
+  fail:
+    description: Whether to fail the workflow if multiple function definitions are detected in a file.
+    default: 'true'
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check one function definition per file
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        INPUT_EXTENSIONS: ${{ inputs.extensions }}
+        INPUT_OPT_OUT_COMMENT: ${{ inputs.opt-out-comment }}
+        INPUT_FAIL: ${{ inputs.fail }}
+      run: python3 "$GITHUB_ACTION_PATH/check-one-function-per-file.py"
