@@ -83,16 +83,6 @@ def run_git(args, repo_dir):
     return result.stdout
 
 
-def fetch_deployed_branch(repo_dir, remote, branch):
-    """Fetch the deployed branch into a local ref, returning the ref name."""
-    local_ref = f"refs/remotes/{remote}/{branch}"
-    run_git(
-        ["fetch", remote, f"+refs/heads/{branch}:{local_ref}"],
-        repo_dir,
-    )
-    return local_ref
-
-
 def resolve_deployed_ref(repo_dir, remote, branch):
     """Fetch the deployed branch and return a local ref for it, or None if absent."""
     listing = run_git(
@@ -168,7 +158,12 @@ def copy_relationships_for_element(element, source_part, target_part):
                                 io.BytesIO(old_rel.target_part.blob)
                             )
                             new_rid = target_part.relate_to(image_part, old_rel.reltype)
-                        except Exception:
+                        except Exception as exc:
+                            annotate(
+                                "warning",
+                                f"Failed to copy internal image relationship {old_rid} into output document: {exc}",
+                                title="DOCX Relationship Copy Warning",
+                            )
                             new_rid = None
                     elif hasattr(old_rel, "target_part") and hasattr(target_part, "package") and Part is not None:
                         try:
@@ -181,7 +176,12 @@ def copy_relationships_for_element(element, source_part, target_part):
                                 new_rid = target_part.relate_to(new_part, old_rel.reltype)
                             else:
                                 new_rid = target_part.relate_to(old_target, old_rel.reltype)
-                        except Exception:
+                        except Exception as exc:
+                            annotate(
+                                "warning",
+                                f"Failed to copy internal relationship {old_rid} into output document: {exc}",
+                                title="DOCX Relationship Copy Warning",
+                            )
                             new_rid = None
                     if new_rid:
                         el.set(attr_name, new_rid)
