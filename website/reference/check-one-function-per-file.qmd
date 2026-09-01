@@ -9,7 +9,8 @@ function, keeping code modular, searchable, and cleanly diffable.
 
 Files that genuinely require multiple function definitions can opt out by adding
 a comment directive near the top of the file:
-```
+
+```r
 # check-one-function-per-file: allow-multiple
 ```
 
