@@ -865,6 +865,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td><code>'index.html'</code></td>
 <td>Home page the banner is inserted into, relative to the rendered site root.</td>
 </tr>
+<tr class="even">
+<td><code>docx-tracked-changes</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Generate Word DOCX documents with tracked changes against the published version on the deployed branch.</td>
+</tr>
+<tr class="odd">
+<td><code>docx-tracked-changes-glob</code></td>
+<td>string</td>
+<td><code>'chapters/*.docx'</code></td>
+<td>Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for.</td>
+</tr>
 </tbody>
 </table>
 </section>
@@ -898,6 +910,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td><code>skip-reason</code></td>
 <td>Why the comparison was skipped; empty when it ran.</td>
+</tr>
+<tr class="odd">
+<td><code>docx-status</code></td>
+<td><code>generated</code> when DOCX tracked changes were produced, <code>skipped</code> when the comparison was skipped.</td>
+</tr>
+<tr class="even">
+<td><code>docx-skip-reason</code></td>
+<td>Why DOCX tracked changes generation was skipped; empty when it ran.</td>
+</tr>
+<tr class="odd">
+<td><code>docx-tracked-changes-files</code></td>
+<td>JSON array of generated tracked changes DOCX file paths relative to the site root.</td>
+</tr>
+<tr class="even">
+<td><code>any-docx-changed</code></td>
+<td><code>true</code> when at least one DOCX file differs from published render, <code>false</code> otherwise.</td>
 </tr>
 </tbody>
 </table>
@@ -958,12 +986,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
 <span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   detect-changed-chapters: true      # expose which chapters differ from the deployed render</span></span>
 <span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-banner: true      # and list them on the preview home page</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   highlight-changes: true            # and highlight modified/added text in rendered chapters</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-glob: 'chapters/*.html'</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-branch: gh-pages</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deployed-subdir: ''                # set when gh-pages nests the site under a prefix</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml"><code>examples/preview.yml</code></a> for the full caller stub.</p>
 </section>
 <section id="partial-adoption-for-bespoke-builds" class="level2">
