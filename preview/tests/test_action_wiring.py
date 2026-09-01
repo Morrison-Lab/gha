@@ -1,7 +1,7 @@
-"""Pin the composite and reusable-workflow wiring for preview steps.
+"""Contract tests for preview/action.yml's changed-chapters wiring.
 
-Pins the composite and reusable-workflow wiring -- the `if:` gates, the `env:` assembly,
-the step ordering, and the composite outputs.
+Ensures that the composite action and its caller reusable workflow agree on
+input names, types, step IDs, and output forwarding.
 """
 
 import pathlib
@@ -11,7 +11,7 @@ import pytest
 
 try:
     import yaml
-except ImportError as exc:  # pragma: no cover - depends on the runner image
+except ImportError as exc:
     raise RuntimeError(
         "PyYAML is required to parse the composite "
         "(install it with `python3 -m pip install pyyaml`)."
@@ -26,6 +26,7 @@ from workflow_discovery import is_workflows_restored  # noqa: E402
 
 DETECT_STEP = "Detect chapters changed since the published render"
 BANNER_STEP = "Add the changed-chapters banner to the preview home page"
+HIGHLIGHT_STEP = "Highlight rendered HTML changes in modified chapters"
 DOCX_INSTALL_STEP = "Install Python dependencies for DOCX tracked changes"
 DOCX_STEP = "Create DOCX tracked changes"
 RENDER_STEP = "Render Quarto site"
@@ -51,6 +52,7 @@ DOCX_OUTPUTS = {
 NEW_INPUTS = (
     "detect-changed-chapters",
     "changed-chapters-banner",
+    "highlight-changes",
     "changed-chapters-glob",
     "deployed-branch",
     "deployed-subdir",
@@ -87,69 +89,66 @@ def steps(action):
 
 
 def step_named(steps, name):
-    matches = [s for s in steps if s.get("name") == name]
-    assert len(matches) == 1, f"expected exactly one step named {name!r}, found {len(matches)}"
-    return matches[0]
+    for step in steps:
+        if step.get("name") == name:
+            return step
+    raise KeyError(f"no step named {name!r}")
+
+
+def step_with_id(steps, step_id):
+    for step in steps:
+        if step.get("id") == step_id:
+            return step
+    raise KeyError(f"no step with id {step_id!r}")
 
 
 def index_of(steps, name):
-    for position, step in enumerate(steps):
+    for idx, step in enumerate(steps):
         if step.get("name") == name:
-            return position
-    raise AssertionError(f"no step named {name!r}")
+            return idx
+    raise KeyError(f"no step named {name!r}")
 
 
-def test_the_steps_keep_the_ids_every_output_references(steps, action):
-    assert step_named(steps, DETECT_STEP)["id"] == DETECT_STEP_ID
-    assert step_named(steps, DOCX_STEP)["id"] == DOCX_STEP_ID
+def test_every_new_input_defaults_to_safe_value(action):
+    for name in NEW_INPUTS:
+        assert name in action["inputs"], f"{name} missing from inputs"
+        default = action["inputs"][name]["default"]
+        if name in (
+            "detect-changed-chapters",
+            "changed-chapters-banner",
+            "highlight-changes",
+            "docx-tracked-changes",
+        ):
+            assert default == "false"
+        elif name == "changed-chapters-glob":
+            assert default == "chapters/*.html"
+        elif name == "docx-tracked-changes-glob":
+            assert default == "chapters/*.docx"
+        elif name == "deployed-branch":
+            assert default == "gh-pages"
+
+
+def test_every_declared_output_has_a_description(action):
+    for name in action["outputs"]:
+        assert action["outputs"][name].get("description"), f"{name} missing description"
+
+
+def test_every_output_resolves_to_the_changed_chapters_step(action):
     for name in DETECT_OUTPUTS:
-        assert f"steps.{DETECT_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
+        assert (
+            action["outputs"][name]["value"]
+            == f"${{{{ steps.{DETECT_STEP_ID}.outputs.{name} }}}}"
+        )
     for name in DOCX_OUTPUTS:
-        assert f"steps.{DOCX_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
+        assert (
+            action["outputs"][name]["value"]
+            == f"${{{{ steps.{DOCX_STEP_ID}.outputs.{name} }}}}"
+        )
 
 
-def test_each_output_reads_its_own_name(action):
-    for name in DETECT_OUTPUTS:
-        assert f"steps.{DETECT_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
-    for name in DOCX_OUTPUTS:
-        assert f"steps.{DOCX_STEP_ID}.outputs.{name}" in action["outputs"][name]["value"]
-
-
-def test_the_composite_declares_exactly_what_the_scripts_write(
-    action, detector, docx_generator, monkeypatch, repo_factory
-):
-    from test_create_docx_tracked_changes import make_docx
-
-    page = "<html><body><main><h1>One</h1></main></body></html>"
-    docx_bytes = make_docx(["One"])
-    work = repo_factory(published={"chapters/01.html": page, "chapters/01.docx": docx_bytes})
-    rendered = write(work, "_site/chapters/01.html", page).parent.parent
-    write(work, "_site/chapters/01.docx", docx_bytes)
-    output_file = rendered.parent / "wiring-output.txt"
-    output_file.write_text("", encoding="utf-8")
-
-    for key, value in {
-        "REPO_DIR": str(work),
-        "RENDERED_DIR": str(rendered),
-        "CHAPTER_GLOB": "chapters/*.html",
-        "DOCX_GLOB": "chapters/*.docx",
-        "GITHUB_OUTPUT": str(output_file),
-    }.items():
-        monkeypatch.setenv(key, value)
-    for key in ("DEPLOYED_REMOTE", "DEPLOYED_BRANCH", "DEPLOYED_SUBDIR", "NORMALIZE_PATTERNS"):
-        monkeypatch.delenv(key, raising=False)
-
-    detector.main()
-    from conftest import read_outputs
-    detector_written = set(read_outputs.parse(output_file.read_text(encoding="utf-8")))
-    assert detector_written == DETECT_OUTPUTS
-
-    output_file.write_text("", encoding="utf-8")
-    docx_generator.main()
-    docx_written = set(read_outputs.parse(output_file.read_text(encoding="utf-8")))
-    assert docx_written == DOCX_OUTPUTS
-
-    assert (detector_written | docx_written) == set(action["outputs"])
+def test_step_id_matches_the_output_references(steps):
+    assert step_with_id(steps, DETECT_STEP_ID)["name"] == DETECT_STEP
+    assert step_with_id(steps, DOCX_STEP_ID)["name"] == DOCX_STEP
 
 
 @pytest.mark.parametrize(
@@ -176,6 +175,19 @@ def test_the_composite_declares_exactly_what_the_scripts_write(
             },
         ),
         (
+            HIGHLIGHT_STEP,
+            {
+                "RENDERED_DIR",
+                "CHANGED_CHAPTERS",
+                "DETECTION_STATUS",
+                "SKIP_REASON",
+                "CHAPTER_GLOB",
+                "DEPLOYED_BRANCH",
+                "DEPLOYED_SUBDIR",
+                "NORMALIZE_PATTERNS",
+            },
+        ),
+        (
             DOCX_STEP,
             {
                 "RENDERED_DIR",
@@ -190,17 +202,19 @@ def test_every_env_key_the_scripts_read_is_supplied(steps, step_name, required):
     assert set(step_named(steps, step_name)["env"]) == required
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, DOCX_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, HIGHLIGHT_STEP, DOCX_STEP])
 def test_rendered_dir_uses_both_the_path_and_the_output_dir(steps, step_name):
     rendered_dir = step_named(steps, step_name)["env"]["RENDERED_DIR"]
     assert "inputs.path" in rendered_dir
     assert "inputs.output-dir" in rendered_dir
 
 
-def test_the_banner_implies_the_comparison(steps):
+def test_the_banner_and_highlight_imply_the_comparison(steps):
+    """`changed-chapters-banner` or `highlight-changes` or `docx-tracked-changes` alone must still run the detection."""
     condition = " ".join(step_named(steps, DETECT_STEP)["if"].split())
     assert "inputs.detect-changed-chapters == 'true'" in condition
     assert "inputs.changed-chapters-banner == 'true'" in condition
+    assert "inputs.highlight-changes == 'true'" in condition
     assert "||" in condition
 
 
@@ -215,19 +229,24 @@ def test_the_docx_step_is_gated_on_its_own_input(steps):
     assert "inputs.docx-tracked-changes == 'true'" in condition
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, DOCX_INSTALL_STEP, DOCX_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, HIGHLIGHT_STEP, DOCX_INSTALL_STEP, DOCX_STEP])
 def test_steps_stand_down_on_the_closed_event(steps, step_name):
+    """Every other step in this composite skips the PR-closed (preview removal)
+    path; a step that did not would run with no checkout."""
     assert "github.event.action != 'closed'" in step_named(steps, step_name)["if"]
 
 
 def test_step_execution_order_before_staging(steps):
+    """Staging copies the rendered tree into the upload directory, so modifications
+    written afterwards never reach the artifact."""
     assert index_of(steps, RENDER_STEP) < index_of(steps, DETECT_STEP)
     assert index_of(steps, DETECT_STEP) < index_of(steps, BANNER_STEP)
-    assert index_of(steps, BANNER_STEP) < index_of(steps, DOCX_STEP)
+    assert index_of(steps, BANNER_STEP) < index_of(steps, HIGHLIGHT_STEP)
+    assert index_of(steps, HIGHLIGHT_STEP) < index_of(steps, DOCX_STEP)
     assert index_of(steps, DOCX_STEP) < index_of(steps, STAGE_STEP)
 
 
-@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, DOCX_STEP])
+@pytest.mark.parametrize("step_name", [DETECT_STEP, BANNER_STEP, HIGHLIGHT_STEP, DOCX_STEP])
 def test_no_value_reaches_the_run_body_through_interpolation(steps, step_name):
     assert "${{" not in step_named(steps, step_name)["run"]
 

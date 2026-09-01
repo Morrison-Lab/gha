@@ -52,116 +52,18 @@ from pathlib import Path
 
 from _workflow_annotations import annotate
 
-# Volatility the comparison must see through. Every failure mode of this script
-# degrades to "nothing changed", but this one degrades the other way: a page
-# that reads as changed on every render makes the whole feature noise.
-#
-# Deliberately narrow. A bare `YYYY-MM-DD` is NOT matched -- a date in prose is
-# real content, and normalizing it would hide a genuine edit.
-DEFAULT_NORMALIZE_PATTERNS = (
-    # htmlwidgets/plotly mint a fresh random element id on every render.
-    r"htmlwidget[-_][0-9a-f]{6,}",
-    # Machine-written ISO-8601 datetimes (build stamps), which always carry a
-    # time component.
-    r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2})?(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?",
+from _preview_substrate import (
+    DEFAULT_NORMALIZE_PATTERNS,
+    PLACEHOLDER,
+    TEXT_SUFFIXES,
+    compile_patterns,
+    normalize,
+    published_paths,
+    read_published,
+    resolve_deployed_ref,
+    run_git,
+    GitError as DetectionError,
 )
-
-# Suffixes whose contents are text, and so can be normalized before comparison.
-# Anything else is compared byte for byte.
-TEXT_SUFFIXES = frozenset({".html", ".htm", ".xml", ".json", ".txt", ".md", ".css", ".js"})
-
-PLACEHOLDER = "GHA-VOLATILE"
-
-
-class DetectionError(RuntimeError):
-    """A condition that must stop the run rather than read as 'nothing changed'."""
-
-
-def run_git(args, repo_dir):
-    """Run a git command, raising on any non-zero exit.
-
-    Checked deliberately: the failure this guards against (a fetch that cannot
-    reach the remote) is invisible downstream, because its result and a
-    genuinely unchanged PR are the same empty list.
-    """
-    result = subprocess.run(
-        ["git", *args],
-        cwd=repo_dir,
-        capture_output=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", "replace")
-        raise DetectionError(
-            f"`git {' '.join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
-        )
-    return result.stdout
-
-
-def resolve_deployed_ref(repo_dir, remote, branch):
-    """Fetch the deployed branch and return a local ref for it, or None if absent.
-
-    Returning None means the branch does not exist on the remote, which is a
-    legitimate state (a repository whose first preview has not deployed yet).
-    Every other failure -- auth, network, a broken remote -- raises.
-    """
-    listing = run_git(
-        ["ls-remote", "--heads", remote, f"refs/heads/{branch}"], repo_dir
-    ).decode("utf-8", "replace")
-    if not listing.strip():
-        return None
-
-    local_ref = f"refs/gha-preview-base/{branch}"
-    run_git(
-        [
-            "fetch",
-            "--no-tags",
-            "--depth=1",
-            remote,
-            f"+refs/heads/{branch}:{local_ref}",
-        ],
-        repo_dir,
-    )
-    return local_ref
-
-
-def published_paths(repo_dir, ref):
-    """Every blob path in the deployed tree."""
-    listing = run_git(["ls-tree", "-r", "--name-only", "-z", ref], repo_dir)
-    return {p for p in listing.decode("utf-8", "replace").split("\0") if p}
-
-
-def read_published(repo_dir, ref, path):
-    return run_git(["cat-file", "blob", f"{ref}:{path}"], repo_dir)
-
-
-def compile_patterns(extra_patterns):
-    """Compile the normalization patterns, rejecting ones that cannot be trusted.
-
-    A pattern that can match the empty string rewrites the whole document into
-    placeholders, so every page would read as unchanged -- the silent direction.
-    Reject it rather than discovering it as a feature that never fires.
-    """
-    compiled = []
-    for raw in [*DEFAULT_NORMALIZE_PATTERNS, *extra_patterns]:
-        try:
-            pattern = re.compile(raw)
-        except re.error as exc:
-            raise DetectionError(f"invalid normalize pattern {raw!r}: {exc}") from exc
-        if pattern.search(""):
-            raise DetectionError(
-                f"normalize pattern {raw!r} matches the empty string, which would "
-                "blank every document and report every chapter as unchanged"
-            )
-        compiled.append(pattern)
-    return compiled
-
-
-def normalize(text, patterns, counts):
-    for pattern in patterns:
-        text, hits = pattern.subn(PLACEHOLDER, text)
-        counts[pattern.pattern] = counts.get(pattern.pattern, 0) + hits
-    return text
 
 
 def contents_differ(rendered_bytes, published_bytes, suffix, patterns, counts):

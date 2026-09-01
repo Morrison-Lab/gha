@@ -3896,6 +3896,21 @@ jobs:
           index="$RENDERED_DIR/index.html"
           grep -q 'gha-preview-banner:start' "$index"
           grep -q '<a href="chapters/02.html">Chapter two</a>' "$index"
+      - name: Highlight HTML changes and assert inline diff marks and page banner
+        shell: bash
+        env:
+          CHANGED_CHAPTERS: '["chapters/02"]'
+          DETECTION_STATUS: compared
+        run: |
+          set -euo pipefail
+          python3 preview/highlight-html-changes.py
+          chap2="$RENDERED_DIR/chapters/02.html"
+          chap1="$RENDERED_DIR/chapters/01.html"
+          grep -q 'gha-preview-page-banner:start' "$chap2"
+          grep -q 'preview-text-added' "$chap2"
+          # Chapter 1 is unchanged, so it receives no banner and no highlights
+          ! grep -q 'gha-preview-page-banner' "$chap1"
+          ! grep -q 'preview-text-' "$chap1"
       - name: Assert a missing deployed branch is a stated skip, not an empty result
         shell: bash
         env:
