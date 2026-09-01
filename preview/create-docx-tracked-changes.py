@@ -159,10 +159,11 @@ def copy_relationships_for_element(element, source_part, target_part):
                             )
                             new_rid = target_part.relate_to(image_part, old_rel.reltype)
                         except Exception as exc:
-                            annotate(
-                                "warning",
-                                f"Failed to copy internal image relationship {old_rid} into output document: {exc}",
-                                title="DOCX Relationship Copy Warning",
+                            print(
+                                annotate(
+                                    "warning",
+                                    f"Failed to copy internal image relationship {old_rid} into output document: {exc}",
+                                )
                             )
                             new_rid = None
                     elif hasattr(old_rel, "target_part") and hasattr(target_part, "package") and Part is not None:
@@ -177,10 +178,11 @@ def copy_relationships_for_element(element, source_part, target_part):
                             else:
                                 new_rid = target_part.relate_to(old_target, old_rel.reltype)
                         except Exception as exc:
-                            annotate(
-                                "warning",
-                                f"Failed to copy internal relationship {old_rid} into output document: {exc}",
-                                title="DOCX Relationship Copy Warning",
+                            print(
+                                annotate(
+                                    "warning",
+                                    f"Failed to copy internal relationship {old_rid} into output document: {exc}",
+                                )
                             )
                             new_rid = None
                     if new_rid:

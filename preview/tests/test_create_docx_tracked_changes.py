@@ -411,4 +411,39 @@ def test_deleted_paragraph_with_image_preserves_unique_media_partnames(docx_gene
         assert len(media_names) == 2
 
 
+def test_relationship_copy_exception_annotates_warning_without_crashing(docx_generator, monkeypatch, capsys):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    # Create dummy element with relationship attribute
+    rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    p = OxmlElement("w:p")
+    r = OxmlElement("w:r")
+    blip = OxmlElement("a:blip")
+    blip.set(f"{{{rel_ns}}}embed", "rId9")
+    r.append(blip)
+    p.append(r)
+
+    class DummyRel:
+        is_external = False
+        reltype = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+        target_part = type("DummyPart", (), {"blob": b"corrupt"})()
+
+    class DummySourcePart:
+        rels = {"rId9": DummyRel()}
+
+    class DummyTargetPackage:
+        def get_or_add_image_part(self, stream):
+            raise ValueError("Corrupted image stream")
+
+    class DummyTargetPart:
+        package = DummyTargetPackage()
+
+    # Should not raise exception; should emit warning annotation
+    docx_generator.copy_relationships_for_element(p, DummySourcePart(), DummyTargetPart())
+
+    captured = capsys.readouterr()
+    assert "::warning::Failed to copy internal image relationship rId9 into output document: Corrupted image stream" in captured.out
+
+
 
