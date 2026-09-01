@@ -7,7 +7,7 @@ docs site and deploy multiple versions side by side on `gh-pages`: PRs to
 `/pr-preview/pr-<number>/`, pushes to the default branch to `/dev/`, published
 releases to `/latest-tag/` and `/vX.Y.Z/`, and a root `/` redirect landing page
 into the default docs version. Ported from
-[`d-morrison/rpt`](https://github.com/d-morrison/rpt)'s bespoke `docs.yaml`
+[`Morrison-Lab/rpt`](https://github.com/Morrison-Lab/rpt)'s bespoke `docs.yaml`
 into a reusable workflow (see [`UCD-SERG/serocalculator#504`](https://github.com/UCD-SERG/serocalculator/issues/504)).
 
 One-time setup: set Settings -> Pages -> Source to "Deploy from a branch",

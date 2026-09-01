@@ -2,7 +2,7 @@
 title: "lint-yaml.yml"
 ---
 
-Lint tracked YAML files with [`yamllint`](https://yamllint.readthedocs.io/)
+Lint tracked YAML files with [`yamllint`](https://yamllint.readthedocs.io/en/stable/)
 using a bundled default config (overridable), plus a companion check that flags
 `run:` script blocks in workflow/action YAML longer than a configurable line
 threshold, so they get decomposed into a separate script file the way this

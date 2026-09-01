@@ -216,6 +216,15 @@ def f2():
     assert len(violations) == 0
 
 
+def test_opt_out_after_long_docstring(tmp_path):
+    py_file = tmp_path / "long_doc.py"
+    doc_lines = "\n".join(f"Doc line {i}" for i in range(70))
+    code = f'''"""\n{doc_lines}\n"""\n# check-one-function-per-file: allow-multiple\n\ndef f1(): pass\ndef f2(): pass\n'''
+    py_file.write_text(code, encoding="utf-8")
+    violations = check_mod.check_repository(tmp_path, {".py"}, [])
+    assert len(violations) == 0
+
+
 def test_julia_multiple_dispatch_deduplicated(tmp_path):
     single_jl = tmp_path / "dispatch.jl"
     single_jl.write_text("compute(x::Int) = x + 1\ncompute(x::String) = x * '!'\n", encoding="utf-8")

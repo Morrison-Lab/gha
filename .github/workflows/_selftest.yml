@@ -58,7 +58,7 @@ jobs:
         uses: ./check-one-function-per-file
         with:
           python-version: '3.x'
-          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
           fail: 'true'
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal

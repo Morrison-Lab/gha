@@ -109,12 +109,12 @@ def is_ignored(path: Path, root: Path, ignore_patterns: List[str]) -> bool:
 
 def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
     """Check if the top comment lines contain an opt-out directive."""
-    lines = content.splitlines()[:60]
     in_docstring = False
     docstring_delim = None
     top_comment_lines = []
+    lines_scanned = 0
 
-    for line in lines:
+    for line in content.splitlines():
         stripped = line.strip()
         if not stripped:
             continue
@@ -141,6 +141,9 @@ def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
             or stripped.startswith(";")
         ):
             top_comment_lines.append(stripped)
+            lines_scanned += 1
+            if lines_scanned >= 50:
+                break
         else:
             # First line of real code reached outside docstrings/comments
             break
