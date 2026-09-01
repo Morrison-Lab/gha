@@ -154,6 +154,48 @@ export function processItem(item) {
     assert len(violations[multi_ts]) == 2
 
 
+def test_js_ts_block_comments_preserve_line_numbers(tmp_path):
+    js_file = tmp_path / "comments_and_lines.js"
+    code = """/**
+ * Example block comment
+ * line 3
+ * line 4
+ */
+function first() {
+  return 1;
+}
+
+function second() {
+  return 2;
+}
+"""
+    js_file.write_text(code, encoding="utf-8")
+    violations = check_mod.check_repository(tmp_path, {".js"}, [])
+    assert js_file in violations
+    assert len(violations[js_file]) == 2
+    assert violations[js_file][0] == ("first", 6)
+    assert violations[js_file][1] == ("second", 10)
+
+
+def test_opt_out_after_multiline_docstring(tmp_path):
+    py_file = tmp_path / "multiline_doc.py"
+    code = '''"""
+Module docstring line 1.
+Module docstring line 2.
+"""
+# check-one-function-per-file: allow-multiple
+
+def f1():
+    pass
+
+def f2():
+    pass
+'''
+    py_file.write_text(code, encoding="utf-8")
+    violations = check_mod.check_repository(tmp_path, {".py"}, [])
+    assert len(violations) == 0
+
+
 def test_julia_multiple_dispatch_deduplicated(tmp_path):
     single_jl = tmp_path / "dispatch.jl"
     single_jl.write_text("compute(x::Int) = x + 1\ncompute(x::String) = x * '!'\n", encoding="utf-8")

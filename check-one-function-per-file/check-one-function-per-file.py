@@ -108,8 +108,14 @@ def is_ignored(path: Path, root: Path, ignore_patterns: List[str]) -> bool:
 
 def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
     """Check if the top comment lines contain an opt-out directive."""
+    # If the file begins with a multi-line docstring at the top, strip it
+    text_to_scan = content
+    docstring_match = re.match(r'^\s*(?:"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')', content)
+    if docstring_match:
+        text_to_scan = content[docstring_match.end():]
+
     top_comment_lines = []
-    for line in content.splitlines()[:40]:
+    for line in text_to_scan.splitlines()[:40]:
         stripped = line.strip()
         if not stripped:
             continue
@@ -123,8 +129,8 @@ def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
             or stripped.startswith(";")
         ):
             top_comment_lines.append(stripped)
-        elif not stripped.startswith(('"""', "'''")):
-            # Non-comment, non-docstring code reached
+        else:
+            # First line of real code reached
             break
 
     header_text = "\n".join(top_comment_lines)
@@ -238,8 +244,8 @@ def extract_shell_functions(content: str) -> List[Tuple[str, int]]:
 
 def extract_js_ts_functions(content: str) -> List[Tuple[str, int]]:
     """Extract top-level function declarations from JavaScript / TypeScript code."""
-    # First strip multi-line block comments /* ... */
-    no_block_comments = re.sub(r"/\*[\s\S]*?\*/", "", content)
+    # First strip multi-line block comments /* ... */ while preserving newline count for accurate line numbers
+    no_block_comments = re.sub(r"/\*[\s\S]*?\*/", lambda m: "\n" * m.group(0).count("\n"), content)
 
     func_pat1 = re.compile(r"^\s*(?:export\s+(?:default\s+)?)?function\s*\*?\s*([a-zA-Z0-9_$]+)\s*\(")
     func_pat2 = re.compile(

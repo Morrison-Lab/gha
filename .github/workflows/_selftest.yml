@@ -56,7 +56,8 @@ jobs:
         uses: ./check-one-function-per-file
         with:
           python-version: '3.x'
-          fail: 'false'
+          base-ref: origin/main
+          fail: 'true'
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
   # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the
