@@ -45,6 +45,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
       - name: Run check-one-function-per-file unit tests
         shell: bash
@@ -56,7 +58,7 @@ jobs:
         uses: ./check-one-function-per-file
         with:
           python-version: '3.x'
-          base-ref: origin/main
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
           fail: 'true'
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal

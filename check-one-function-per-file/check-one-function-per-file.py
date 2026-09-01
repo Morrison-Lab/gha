@@ -16,6 +16,7 @@ Files can opt out by including an opt-out comment near the top of the file:
   # allow-multiple-functions
   // check-one-function-per-file: allow-multiple
 """
+# check-one-function-per-file: allow-multiple
 
 import ast
 import fnmatch
@@ -108,18 +109,29 @@ def is_ignored(path: Path, root: Path, ignore_patterns: List[str]) -> bool:
 
 def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
     """Check if the top comment lines contain an opt-out directive."""
-    # If the file begins with a multi-line docstring at the top, strip it
-    text_to_scan = content
-    docstring_match = re.match(r'^\s*(?:"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\')', content)
-    if docstring_match:
-        text_to_scan = content[docstring_match.end():]
-
+    lines = content.splitlines()[:60]
+    in_docstring = False
+    docstring_delim = None
     top_comment_lines = []
-    for line in text_to_scan.splitlines()[:40]:
+
+    for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
-        # Only accept opt-out directives in comments or leading header lines
+
+        if in_docstring:
+            if docstring_delim in stripped:
+                in_docstring = False
+            continue
+
+        if stripped.startswith(('"""', "'''")):
+            delim = '"""' if stripped.startswith('"""') else "'''"
+            after_open = stripped[3:]
+            if delim not in after_open:
+                in_docstring = True
+                docstring_delim = delim
+            continue
+
         if (
             stripped.startswith("#")
             or stripped.startswith("//")
@@ -130,7 +142,7 @@ def is_opted_out(content: str, custom_marker: Optional[str] = None) -> bool:
         ):
             top_comment_lines.append(stripped)
         else:
-            # First line of real code reached
+            # First line of real code reached outside docstrings/comments
             break
 
     header_text = "\n".join(top_comment_lines)

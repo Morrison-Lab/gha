@@ -196,6 +196,26 @@ def f2():
     assert len(violations) == 0
 
 
+def test_opt_out_with_shebang_and_multiline_docstring(tmp_path):
+    py_file = tmp_path / "shebang_doc.py"
+    code = '''#!/usr/bin/env python3
+"""
+Module docstring line 1.
+Module docstring line 2.
+"""
+# check-one-function-per-file: allow-multiple
+
+def f1():
+    pass
+
+def f2():
+    pass
+'''
+    py_file.write_text(code, encoding="utf-8")
+    violations = check_mod.check_repository(tmp_path, {".py"}, [])
+    assert len(violations) == 0
+
+
 def test_julia_multiple_dispatch_deduplicated(tmp_path):
     single_jl = tmp_path / "dispatch.jl"
     single_jl.write_text("compute(x::Int) = x + 1\ncompute(x::String) = x * '!'\n", encoding="utf-8")
