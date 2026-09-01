@@ -43,6 +43,6 @@ jobs:
     uses: Morrison-Lab/gha/.github/workflows/check-one-function-per-file.yml@v2
 ```
 
-See
-[`examples/check-one-function-per-file.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-one-function-per-file.yml)
-for the full caller stub.
+See the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for caller stubs (e.g. `examples/check-one-function-per-file.yml`).
