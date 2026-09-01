@@ -82,12 +82,12 @@ REQUIRED_DENIALS = {
     "Bash(gh secret:*)": "list secret metadata, or set and delete secrets",
     "Bash(*git-push.sh*)": "push through the action's own push wrapper",
     # Not forge mutations, but the same load-bearing-after-widening argument:
-    # these have no synchronous form in a one-shot CI run (gha#392, gha#532).
+    # these have no synchronous form or fail without verdicts in a one-shot CI run (gha#392, gha#532, gha#756).
     "ScheduleWakeup": "end the turn waiting for a wakeup that never fires",
     "SendMessage": "message an agent that does not exist in a headless run",
     "Monitor": "stream a background process past the end of the run",
-    "Agent(run_in_background:true)": "spawn a background agent and stall",
-    "Task(run_in_background:true)": "the same, under the Task alias",
+    "Agent": "spawn a background/subagent and stall (gha#756)",
+    "Task": "the same, under the Task alias",
 }
 
 FAILURES: list[str] = []

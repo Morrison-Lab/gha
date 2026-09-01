@@ -118,10 +118,11 @@ declare -A expected=(
   # (no retry) even when the true count is within the stub-retry threshold.
   [permission-denials-array-only-low-count.json]=fail-stub
   [permission-denials-array-only-high-count.json]=fail
-  # gha#540: a mixed-tool, high-count denial array -- the case the count alone
-  # cannot explain. Its outcome is the same `fail` as the fixture above; what
-  # it exists to pin is the LOG, via must_log below.
-  [permission-denials-mixed-tools.json]=fail
+  # gha#540 & gha#756: a mixed-tool denial array where unparameterized Task
+  # denials (6) are subtracted as intended denials, leaving 5 starvation
+  # denials (<= max_denials 5). Pins that unparameterized Task denials are
+  # excluded from the retry gate, yielding a retryable stub rather than high-denial.
+  [permission-denials-mixed-tools.json]=fail-stub
   # gha#540: a denial array carrying entries the summarizer cannot index -- a
   # string `tool_input`, and a bare string where an object belongs. The
   # OUTCOME is the point here: without `?`-suppressed lookups the jq filter
@@ -327,7 +328,7 @@ declare -A expected_kind=(
   # All spawns denied: none executed, so the retry survives (gha#551).
   [stub-denied-bg-spawns-in-transcript.json]=stub
   [permission-denials-array-only-high-count.json]=high-denial
-  [permission-denials-mixed-tools.json]=high-denial
+  [permission-denials-mixed-tools.json]=stub
   # A denied `gh pr comment` leaves the count non-zero but unparseable/known
   # -- these reach the no-verdict branch, and which side of the threshold
   # they land on is what decides the kind. Both carry the 999999 sentinel,
