@@ -34,6 +34,7 @@ Outputs:
   any-docx-changed            `true` or `false`
 """
 
+import copy
 import difflib
 import io
 import json
@@ -47,13 +48,17 @@ from pathlib import Path
 try:
     import docx
     from docx import Document
+    from docx.opc.part import Part
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.parts.image import ImagePart
 except ImportError:
     docx = None
     Document = None
+    Part = None
     OxmlElement = None
     qn = None
+    ImagePart = None
 
 from _workflow_annotations import annotate
 
@@ -68,12 +73,12 @@ def run_git(args, repo_dir):
         ["git", *args],
         cwd=repo_dir,
         capture_output=True,
-        check=False,
+        text=False,
     )
     if result.returncode != 0:
-        stderr = result.stderr.decode("utf-8", "replace")
+        stderr = result.stderr.decode("utf-8", "replace").strip()
         raise DocxTrackedChangesError(
-            f"`git {chr(32).join(args)}` failed with exit {result.returncode}: {stderr.strip()}"
+            f"git {' '.join(args)} failed in {repo_dir}: {stderr}"
         )
     return result.stdout
 
@@ -125,6 +130,85 @@ def wrap_run_in_ins(run_element, rev_id, author, date):
     ins.append(run_element)
 
 
+def copy_relationships_for_element(element, source_part, target_part):
+    """Copy referenced OPC relationships from source_part to target_part and update IDs."""
+    if source_part is None or target_part is None:
+        return
+    rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    attr_prefix = "{" + rel_ns + "}"
+    for el in element.iter():
+        for attr_name in list(el.attrib.keys()):
+            if attr_name.startswith(attr_prefix):
+                old_rid = el.attrib[attr_name]
+                if hasattr(source_part, "rels") and old_rid in source_part.rels:
+                    old_rel = source_part.rels[old_rid]
+                    new_rid = None
+                    if old_rel.is_external:
+                        new_rid = target_part.relate_to(
+                            old_rel.target_ref,
+                            old_rel.reltype,
+                            is_external=True,
+                        )
+                    elif (
+                        (ImagePart is not None and isinstance(getattr(old_rel, "target_part", None), ImagePart))
+                        or "image" in getattr(old_rel, "reltype", "")
+                    ) and hasattr(target_part, "package") and hasattr(target_part.package, "get_or_add_image_part"):
+                        try:
+                            image_part = target_part.package.get_or_add_image_part(
+                                io.BytesIO(old_rel.target_part.blob)
+                            )
+                            new_rid = target_part.relate_to(image_part, old_rel.reltype)
+                        except Exception as exc:
+                            print(
+                                annotate(
+                                    "warning",
+                                    f"Failed to copy internal image relationship {old_rid} into output document: {exc}",
+                                )
+                            )
+                            new_rid = None
+                    elif hasattr(old_rel, "target_part") and hasattr(target_part, "package") and Part is not None:
+                        try:
+                            old_target = old_rel.target_part
+                            if hasattr(target_part.package, "parts") and any(p.partname == old_target.partname for p in target_part.package.parts):
+                                ext = getattr(old_target.partname, "ext", "") or ""
+                                template = f"/word/media/part%d.{ext}" if ext else "/word/media/part%d"
+                                new_partname = target_part.package.next_partname(template)
+                                new_part = Part(new_partname, old_target.content_type, old_target.blob, target_part.package)
+                                new_rid = target_part.relate_to(new_part, old_rel.reltype)
+                            else:
+                                new_rid = target_part.relate_to(old_target, old_rel.reltype)
+                        except Exception as exc:
+                            print(
+                                annotate(
+                                    "warning",
+                                    f"Failed to copy internal relationship {old_rid} into output document: {exc}",
+                                )
+                            )
+                            new_rid = None
+                    if new_rid:
+                        el.set(attr_name, new_rid)
+
+
+def wrap_run_in_del(run_element, rev_id, author, date):
+    """Wrap a Word run element in a w:del deletion revision tag, replacing w:t with w:delText."""
+    parent = run_element.getparent()
+    if parent is None:
+        return
+    for t_element in run_element.findall(qn("w:t")):
+        del_text = OxmlElement("w:delText")
+        del_text.set(qn("xml:space"), "preserve")
+        del_text.text = t_element.text
+        run_element.replace(t_element, del_text)
+
+    del_elem = OxmlElement("w:del")
+    del_elem.set(qn("w:id"), str(rev_id))
+    del_elem.set(qn("w:author"), author)
+    del_elem.set(qn("w:date"), date)
+    parent.insert(parent.index(run_element), del_elem)
+    parent.remove(run_element)
+    del_elem.append(run_element)
+
+
 def create_docx_with_tracked_changes(
     old_docx_source,
     new_docx_path,
@@ -162,6 +246,7 @@ def create_docx_with_tracked_changes(
 
     # Load old and new documents
     if old_docx_source is None:
+        old_doc = None
         old_paragraphs = []
     elif isinstance(old_docx_source, bytes):
         old_doc = Document(io.BytesIO(old_docx_source))
@@ -176,20 +261,39 @@ def create_docx_with_tracked_changes(
     matcher = difflib.SequenceMatcher(None, old_paragraphs, new_paragraphs)
     has_changes = False
     rev_id = 0
+    original_output_paragraphs = list(output_doc.paragraphs)
 
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
-        if tag in ("replace", "insert"):
+        if tag in ("delete", "replace"):
+            has_changes = True
+            if old_doc is not None:
+                for old_idx in range(i1, i2):
+                    if old_idx < len(old_doc.paragraphs):
+                        old_p = old_doc.paragraphs[old_idx]
+                        cloned_p = copy.deepcopy(old_p._element)
+                        copy_relationships_for_element(cloned_p, old_doc.part, output_doc.part)
+                        r_elements = cloned_p.findall(".//" + qn("w:r"))
+                        for r in r_elements:
+                            rev_id += 1
+                            wrap_run_in_del(r, rev_id, author, date)
+                        if j1 < len(original_output_paragraphs):
+                            original_output_paragraphs[j1]._element.addprevious(cloned_p)
+                        else:
+                            sect_pr = output_doc._body._element.find(qn("w:sectPr"))
+                            if sect_pr is not None:
+                                sect_pr.addprevious(cloned_p)
+                            else:
+                                output_doc._body._element.append(cloned_p)
+        if tag in ("insert", "replace"):
             has_changes = True
             for idx in range(j1, j2):
-                if idx < len(output_doc.paragraphs):
-                    para = output_doc.paragraphs[idx]
+                if idx < len(original_output_paragraphs):
+                    para = original_output_paragraphs[idx]
                     # Find all w:r elements in the paragraph, including those nested in hyperlinks
                     r_elements = para._element.findall(".//" + qn("w:r"))
                     for r_element in r_elements:
                         rev_id += 1
                         wrap_run_in_ins(r_element, rev_id, author, date)
-        elif tag == "delete":
-            has_changes = True
 
     output_doc.save(output_path)
     return has_changes

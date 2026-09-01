@@ -15,9 +15,11 @@ from conftest import read_outputs, write
 
 try:
     from docx import Document
+    from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
 except ImportError:
     Document = None
+    OxmlElement = None
     qn = None
 
 
@@ -227,7 +229,60 @@ def test_deleted_paragraph_reports_any_docx_changed_true(docx_generator, monkeyp
     assert outputs["docx-status"] == "generated"
     assert outputs["any-docx-changed"] == "true"
     assert json.loads(outputs["docx-tracked-changes-files"]) == ["chapters/01-tracked-changes.docx"]
-    assert (work / "_site" / "chapters" / "01-tracked-changes.docx").is_file()
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    doc = Document(output_path)
+    assert doc.settings.element.find(qn("w:trackRevisions")) is not None
+    del_elements = doc._body._element.findall(".//" + qn("w:del"))
+    assert len(del_elements) > 0
+    for d in del_elements:
+        assert d.attrib[qn("w:author")] == "PR Preview"
+        assert d.attrib[qn("w:date")] == "2026-01-01T00:00:00Z"
+    del_texts = [el.text for el in doc._body._element.findall(".//" + qn("w:delText"))]
+    assert "Paragraph to remove." in del_texts
+
+
+def test_replaced_paragraph_carries_both_ins_and_del(docx_generator, monkeypatch, repo_factory):
+    old_docx = make_docx(["Chapter 1", "Old content.", "Conclusion"])
+    new_docx = make_docx(["Chapter 1", "Replaced content.", "Conclusion"])
+    work = repo_factory(published={"chapters/01.docx": old_docx})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    doc = Document(output_path)
+    ins_elements = doc._body._element.findall(".//" + qn("w:ins"))
+    del_elements = doc._body._element.findall(".//" + qn("w:del"))
+    assert len(ins_elements) > 0
+    assert len(del_elements) > 0
+    del_texts = [el.text for el in doc._body._element.findall(".//" + qn("w:delText"))]
+    assert "Old content." in del_texts
+
+
+def test_trailing_paragraph_deletion(docx_generator, monkeypatch, repo_factory):
+    old_docx = make_docx(["Chapter 1", "Ending paragraph to remove."])
+    new_docx = make_docx(["Chapter 1"])
+    work = repo_factory(published={"chapters/01.docx": old_docx})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    doc = Document(output_path)
+    del_elements = doc._body._element.findall(".//" + qn("w:del"))
+    assert len(del_elements) > 0
+    del_texts = [el.text for el in doc._body._element.findall(".//" + qn("w:delText"))]
+    assert "Ending paragraph to remove." in del_texts
 
 
 def test_paragraph_with_hyperlink_runs_wrapped_properly(docx_generator, monkeypatch, repo_factory):
@@ -264,4 +319,131 @@ def test_paragraph_with_hyperlink_runs_wrapped_properly(docx_generator, monkeypa
     out_doc = Document(output_path)
     ins_elements = out_doc._body._element.findall(".//" + qn("w:ins"))
     assert len(ins_elements) > 0
+
+
+def test_deleted_paragraph_with_hyperlink_preserves_resolvable_relationship(docx_generator, monkeypatch, repo_factory):
+    # Create old docx with a hyperlink relationship
+    old_doc = Document()
+    old_doc.add_paragraph("Intro")
+    p = old_doc.add_paragraph()
+    rid = old_doc.part.relate_to("https://example.com/target", "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink", is_external=True)
+    hl = OxmlElement("w:hyperlink")
+    hl.set(qn("r:id"), rid)
+    r = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "Example Link"
+    r.append(t)
+    hl.append(r)
+    p._element.append(hl)
+    old_doc.add_paragraph("Outro")
+
+    buf = io.BytesIO()
+    old_doc.save(buf)
+    old_docx_bytes = buf.getvalue()
+
+    # New doc removes the middle paragraph with hyperlink
+    new_docx = make_docx(["Intro", "Outro"])
+
+    work = repo_factory(published={"chapters/01.docx": old_docx_bytes})
+    rendered = write(work, "_site/chapters/01.docx", new_docx).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    out_doc = Document(output_path)
+    del_elements = out_doc._body._element.findall(".//" + qn("w:del"))
+    assert len(del_elements) > 0
+    # Hyperlink should be preserved in output doc with a valid relationship
+    hl_elements = out_doc._body._element.findall(".//" + qn("w:hyperlink"))
+    assert len(hl_elements) == 1
+    new_rid = hl_elements[0].attrib[qn("r:id")]
+    assert new_rid in out_doc.part.rels
+    assert out_doc.part.rels[new_rid].target_ref == "https://example.com/target"
+
+
+def test_deleted_paragraph_with_image_preserves_unique_media_partnames(docx_generator, monkeypatch, repo_factory):
+    import base64
+    import zipfile
+
+    png_bytes1 = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    png_bytes2 = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mNk+M/AwMDEwMDEwAAAFwcB/0mH0xUAAAAASUVORK5CYII=")
+
+    # Create old docx with an image in paragraph 2 (to be deleted)
+    old_doc = Document()
+    old_doc.add_paragraph("Intro")
+    p1 = old_doc.add_paragraph("Figure 1: Old Image")
+    p1.add_run().add_picture(io.BytesIO(png_bytes1))
+    old_doc.add_paragraph("Outro")
+
+    buf = io.BytesIO()
+    old_doc.save(buf)
+    old_docx_bytes = buf.getvalue()
+
+    # New docx removes the old figure and adds a new figure elsewhere
+    new_doc = Document()
+    new_doc.add_paragraph("Intro")
+    new_doc.add_paragraph("Outro")
+    p2 = new_doc.add_paragraph("Figure 2: New Image")
+    p2.add_run().add_picture(io.BytesIO(png_bytes2))
+
+    buf2 = io.BytesIO()
+    new_doc.save(buf2)
+    new_docx_bytes = buf2.getvalue()
+
+    work = repo_factory(published={"chapters/01.docx": old_docx_bytes})
+    rendered = write(work, "_site/chapters/01.docx", new_docx_bytes).parent.parent
+
+    outputs = run_generate(docx_generator, monkeypatch, work, rendered)
+
+    assert outputs["docx-status"] == "generated"
+    assert outputs["any-docx-changed"] == "true"
+    output_path = work / "_site" / "chapters" / "01-tracked-changes.docx"
+    assert output_path.is_file()
+
+    # Verify no duplicate zip entries and two unique media files in package
+    with zipfile.ZipFile(output_path, "r") as z:
+        media_names = [n for n in z.namelist() if n.startswith("word/media/")]
+        assert len(media_names) == len(set(media_names))
+        assert len(media_names) == 2
+
+
+def test_relationship_copy_exception_annotates_warning_without_crashing(docx_generator, monkeypatch, capsys):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    # Create dummy element with relationship attribute
+    rel_ns = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+    p = OxmlElement("w:p")
+    r = OxmlElement("w:r")
+    blip = OxmlElement("a:blip")
+    blip.set(f"{{{rel_ns}}}embed", "rId9")
+    r.append(blip)
+    p.append(r)
+
+    class DummyRel:
+        is_external = False
+        reltype = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+        target_part = type("DummyPart", (), {"blob": b"corrupt"})()
+
+    class DummySourcePart:
+        rels = {"rId9": DummyRel()}
+
+    class DummyTargetPackage:
+        def get_or_add_image_part(self, stream):
+            raise ValueError("Corrupted image stream")
+
+    class DummyTargetPart:
+        package = DummyTargetPackage()
+
+    # Should not raise exception; should emit warning annotation
+    docx_generator.copy_relationships_for_element(p, DummySourcePart(), DummyTargetPart())
+
+    captured = capsys.readouterr()
+    assert "::warning::Failed to copy internal image relationship rId9 into output document: Corrupted image stream" in captured.out
+
+
 
