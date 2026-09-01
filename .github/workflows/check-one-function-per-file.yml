@@ -19,6 +19,10 @@ on:
         description: Optional custom comment string to treat as an opt-out directive.
         type: string
         default: ''
+      base-ref:
+        description: Git ref to diff against for diff-scoped checking (e.g. origin/main). If empty, checks whole tree.
+        type: string
+        default: ''
       fail:
         description: Whether to fail the workflow if multiple function definitions are detected in a file.
         type: boolean
@@ -42,6 +46,7 @@ jobs:
         uses: Morrison-Lab/gha/check-one-function-per-file@v2
         with:
           path: ${{ inputs.path }}
+          base-ref: ${{ inputs.base-ref }}
           paths-ignore: ${{ inputs.paths-ignore }}
           extensions: ${{ inputs.extensions }}
           opt-out-comment: ${{ inputs.opt-out-comment }}

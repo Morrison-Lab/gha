@@ -48,7 +48,9 @@ jobs:
 
       - name: Run check-one-function-per-file unit tests
         shell: bash
-        run: python3 -m pytest check-one-function-per-file/tests/ -v
+        run: |
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3
+          python3 -m pytest check-one-function-per-file/tests/ -v
 
       - name: Check one function per file
         uses: ./check-one-function-per-file

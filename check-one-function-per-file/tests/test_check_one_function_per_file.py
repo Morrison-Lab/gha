@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 # Import module under test
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -64,6 +65,19 @@ def test_r_single_and_multiple_functions(tmp_path):
     assert violations[multi_r][1][0] == "fn2"
 
 
+def test_r_backtick_quoted_function_names(tmp_path):
+    # Operators and special S3 method names in backticks
+    op_r = tmp_path / "op.R"
+    op_r.write_text("`%+%` <- function(a, b) {\n  paste0(a, b)\n}\n", encoding="utf-8")
+
+    s3_r = tmp_path / "s3.R"
+    s3_r.write_text("`[.myclass` <- function(x, i) {\n  x[i]\n}\n", encoding="utf-8")
+
+    violations = check_mod.check_repository(tmp_path, {".R"}, [])
+    assert op_r not in violations
+    assert s3_r not in violations
+
+
 def test_r_shorthand_lambda_syntax(tmp_path):
     # R 4.1+ \(x) shorthand syntax
     shorthand_r = tmp_path / "shorthand.R"
@@ -74,44 +88,62 @@ def test_r_shorthand_lambda_syntax(tmp_path):
     assert len(violations[shorthand_r]) == 2
 
 
-def test_r_nested_functions_and_hash_in_strings(tmp_path):
-    nested_r = tmp_path / "nested.R"
+def test_r_named_function_arguments_inside_calls_not_flagged(tmp_path):
+    # e.g. purrr::map(.f = function(y) ...) should not be detected as top-level function definition
     code = """
-outer_func <- function(data) {
-  msg <- "Figure 1: # of cases {"
-  inner_helper <- function(val) {
-    val * 2
-  }
-  inner_helper(data)
+run_pipeline <- function(data) {
+  result <- purrr::map(
+    data,
+    .f = function(y) {
+      y * 2
+    }
+  )
+  result
 }
 """
-    nested_r.write_text(code, encoding="utf-8")
+    r_file = tmp_path / "pipeline.R"
+    r_file.write_text(code, encoding="utf-8")
     violations = check_mod.check_repository(tmp_path, {".R"}, [])
     assert len(violations) == 0
 
 
-def test_shell_functions_and_expansions(tmp_path):
+def test_shell_functions_and_array_expansions(tmp_path):
     single_sh = tmp_path / "single.sh"
     code = """#!/bin/bash
 run_task() {
   len="${#MY_VAR}"
-  echo "Length: ${len}"
+  arr_len=${#my_arr[@]}
+  echo "Length: ${len}, Arr: ${arr_len}"
+}
+
+second_task() {
+  echo "Second task"
 }
 """
     single_sh.write_text(code, encoding="utf-8")
 
-    multi_sh = tmp_path / "multi.sh"
-    multi_sh.write_text("#!/bin/bash\nfunction task1 {\n  echo 1\n}\ntask2() {\n  echo 2\n}\n", encoding="utf-8")
-
     violations = check_mod.check_repository(tmp_path, {".sh"}, [])
-    assert single_sh not in violations
-    assert multi_sh in violations
-    assert len(violations[multi_sh]) == 2
+    assert single_sh in violations
+    assert len(violations[single_sh]) == 2
+    assert violations[single_sh][0][0] == "run_task"
+    assert violations[single_sh][1][0] == "second_task"
 
 
-def test_js_ts_functions_and_generics(tmp_path):
+def test_js_ts_block_comments_and_generics(tmp_path):
     single_js = tmp_path / "single.js"
-    single_js.write_text("export function processItem(item) {\n  const url = 'https://example.com//test';\n  return item;\n}\n", encoding="utf-8")
+    code = """
+/**
+ * JSDoc comment with code block:
+ * function example() {
+ *   return 1;
+ * }
+ */
+export function processItem(item) {
+  const url = 'https://example.com//test';
+  return item;
+}
+"""
+    single_js.write_text(code, encoding="utf-8")
 
     multi_ts = tmp_path / "multi.ts"
     multi_ts.write_text("export const f1 = <T>(a: T): T => a;\nexport const f2: Handler = function(b) { return b; };\n", encoding="utf-8")
@@ -149,6 +181,24 @@ def test_opt_out_comments(tmp_path):
     assert len(violations) == 0
 
 
+def test_opt_out_comment_not_triggered_by_body_string(tmp_path):
+    # A string deep in the file body quoting opt-out directive should not self-exempt
+    f = tmp_path / "no_self_exempt.py"
+    code = '''"""Module docstring."""
+
+def f1():
+    pass
+
+def f2():
+    msg = "# check-one-function-per-file: allow-multiple"
+    return msg
+'''
+    f.write_text(code, encoding="utf-8")
+    violations = check_mod.check_repository(tmp_path, {".py"}, [])
+    assert f in violations
+    assert len(violations[f]) == 2
+
+
 def test_custom_opt_out_comment(tmp_path):
     custom_opt = tmp_path / "custom.py"
     custom_opt.write_text("# NO_ONE_FUNC_CHECK\ndef f1(): pass\ndef f2(): pass\n", encoding="utf-8")
@@ -172,6 +222,34 @@ def test_paths_ignore_does_not_falsely_ignore_substrings(tmp_path):
     violations = check_mod.check_repository(tmp_path, {".py"}, ["tests", "test"])
     assert test_file not in violations
     assert contests_file in violations
+
+
+def test_defaults_agreement_across_action_workflow_and_script():
+    """Assert action.yml, check-one-function-per-file.yml, and script defaults agree (gha#303 precedent)."""
+    repo_root = Path(__file__).resolve().parents[2]
+    action_yml_path = repo_root / "check-one-function-per-file" / "action.yml"
+    workflow_yml_path = repo_root / ".github" / "workflows" / "check-one-function-per-file.yml"
+
+    action_spec = yaml.safe_load(action_yml_path.read_text(encoding="utf-8"))
+    workflow_spec = yaml.safe_load(workflow_yml_path.read_text(encoding="utf-8"))
+
+    action_inputs = action_spec["inputs"]
+    on_block = workflow_spec.get("on") or workflow_spec.get(True)
+    workflow_inputs = on_block["workflow_call"]["inputs"]
+
+    # Check extensions
+    action_exts = check_mod.parse_extensions(action_inputs["extensions"]["default"])
+    workflow_exts = check_mod.parse_extensions(workflow_inputs["extensions"]["default"])
+    script_exts = check_mod.DEFAULT_EXTENSIONS
+    assert action_exts == script_exts, f"action.yml extensions default mismatch: {action_exts} vs {script_exts}"
+    assert workflow_exts == script_exts, f"workflow extensions default mismatch: {workflow_exts} vs {script_exts}"
+
+    # Check paths-ignore
+    action_ignores = check_mod.parse_paths_ignore(action_inputs["paths-ignore"]["default"])
+    workflow_ignores = check_mod.parse_paths_ignore(workflow_inputs["paths-ignore"]["default"])
+    script_ignores = check_mod.DEFAULT_PATHS_IGNORE
+    assert set(action_ignores) == set(script_ignores)
+    assert set(workflow_ignores) == set(script_ignores)
 
 
 def test_cli_execution_clean(tmp_path):

@@ -16,6 +16,9 @@ inputs:
   opt-out-comment:
     description: Optional custom comment string to treat as an opt-out directive.
     default: ''
+  base-ref:
+    description: Git ref to diff against for diff-scoped checking (e.g. origin/main). If empty, checks whole tree.
+    default: ''
   fail:
     description: Whether to fail the workflow if multiple function definitions are detected in a file.
     default: 'true'
@@ -34,6 +37,7 @@ runs:
       shell: bash
       env:
         INPUT_PATH: ${{ inputs.path }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
         INPUT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
         INPUT_EXTENSIONS: ${{ inputs.extensions }}
         INPUT_OPT_OUT_COMMENT: ${{ inputs.opt-out-comment }}

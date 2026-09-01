@@ -22,6 +22,7 @@ a comment directive near the top of the file:
 | `paths-ignore` | string | `'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'` | Comma- or newline-separated paths or glob patterns to ignore. |
 | `extensions` | string | `'.R, .r, .py, .sh, .bash, .js, .ts, .mjs, .cjs, .jl'` | Comma- or space-separated list of file extensions to check. |
 | `opt-out-comment` | string | `''` | Optional custom comment string to treat as an opt-out directive. |
+| `base-ref` | string | `''` | Git ref to diff against for diff-scoped checking (e.g. `origin/main`). |
 | `fail` | boolean | `true` | Whether to fail the workflow if multiple function definitions are detected. |
 | `python-version` | string | `'3.x'` | Python version to set up. |
 
