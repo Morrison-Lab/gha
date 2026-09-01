@@ -49,9 +49,9 @@ jobs:
         uses: Morrison-Lab/gha/check-one-function-per-file@v2
         with:
           path: ${{ inputs.path }}
-          # On PRs, scan only files added/modified relative to the base; otherwise (push)
-          # the action scans the whole tracked tree unless an explicit base-ref input is given.
-          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}
+          # On PRs, scan only files added/modified relative to the base; on pushes,
+          # diff against the commit before the push; otherwise checks whole tree.
+          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1')) }}
           paths-ignore: ${{ inputs.paths-ignore }}
           extensions: ${{ inputs.extensions }}
           opt-out-comment: ${{ inputs.opt-out-comment }}
