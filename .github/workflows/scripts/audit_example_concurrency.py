@@ -20,7 +20,10 @@ against the workflow each ``uses:`` actually names, so a job-level group added
 later is caught the moment it lands rather than when the next consumer copies
 the stub. A stub whose ``uses:`` names a workflow file this repo does not
 carry is an error, not a skip: an audit that walks past it would report a
-tree it never examined as clean.
+tree it never examined as clean. A ``uses:`` naming a DIFFERENT owner is
+skipped, though -- somebody else's reusable workflow is not ours to resolve,
+so a stub calling one is examined for our workflows and silently not for
+theirs.
 
 The audit is ONE LEVEL deep, while GitHub permits four: a callee job that
 itself calls another of our workflows is not compared. Nothing a stub calls

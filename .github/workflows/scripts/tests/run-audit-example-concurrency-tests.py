@@ -141,6 +141,13 @@ def main() -> int:
                                                      WORKFLOW.format(conc=JOB_GH)), 2, "names no group")
     expect("empty group string is an error", run(STUB.format(top="concurrency: '  '", callee="quarto-publish.yml"),
                                                  WORKFLOW.format(conc=JOB_GH)), 2, "names no group")
+    # The case above exercises the STRING form, where `block` is a str. The
+    # mapping form strips separately, and without this case that strip can be
+    # deleted with the suite green -- a whitespace-only mapping group would
+    # then compare as a real name and the stub would pass (gha#811 review,
+    # round 4).
+    expect("empty group in mapping form is an error", run(STUB.format(top="concurrency:\n  group: '   '", callee="quarto-publish.yml"),
+                                                           WORKFLOW.format(conc=JOB_GH)), 2, "names no group")
     # A non-scalar group is refused rather than stringified (Copilot on
     # gha#811 round 2): str([a, b]) is a name nothing can collide with, so the
     # stub would pass the very audit meant to refuse what it cannot evaluate.

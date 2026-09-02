@@ -145,12 +145,15 @@ workflow -- neither a top-level block nor one on the calling job, which
 deadlock identically.
 Any other group name is fine, and is how you serialize the caller's own
 runs -- with one exception for this capability.
-Its `build` job also declares a group whose `${{ }}` part falls back to
-`github.ref` outside a pull request, making the whole group
-`altdoc-multiversion-docs-<ref>`.
-A caller naming its own group `altdoc-multiversion-docs-${{ github.ref }}`
-therefore requests the identical group and collides, even though the two
-strings differ.
+Its `build` job declares a second group, whose `${{ }}` part is the pull
+request number on a `pull_request` event and `github.ref` otherwise.
+The whole group is therefore `altdoc-multiversion-docs-<pr-number>` or
+`altdoc-multiversion-docs-<ref>`, and a caller naming either spelling
+requests the identical group and collides, even though the two strings
+differ.
+Both halves matter here, since this stub triggers on `pull_request` as
+well as on push, so do not prefix your own group with
+`altdoc-multiversion-docs-` at all.
 `altdoc-multiversion-docs.yml` serializes gh-pages deploys internally on its
 `deploy` job (`group: gh-pages`).
 A caller-level block with the same group name deadlocks GitHub Actions

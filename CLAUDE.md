@@ -2845,9 +2845,9 @@ the stub failed silently and the site stopped updating
 (`ucdavis/hac.sap`, run 33604968678).
 The audit walks every stub under `examples/`, resolves each `uses:` to the
 workflow file it names, and fails on any caller-level group that the called
-workflow also declares, at either of ITS two placements (see below); a stub
-naming a workflow file this repo does not carry is an error rather than a
-skip.
+workflow also declares, at either of ITS two placements -- the callee's jobs
+and the callee's own top level; a stub naming a workflow file this repo does
+not carry is an error rather than a skip.
 **Caller-level means two placements, not one.**
 A top-level block covers the whole run and so covers the calling job, and
 a block on the calling job itself is the same collision written one level
@@ -2890,7 +2890,9 @@ subset that happens to survive `str()`.
 YAML's scalar resolution is lossy, so the audit cannot recover what the
 author wrote: measured against `yaml.safe_load`, `010` arrives as 8, `0x10`
 as 16, `1_000` as 1000, `+5` as 5, `1:30` as 90, `true` as `True` and `1.10`
-as 1.1 -- six of ten spellings tried.
+as 1.1.
+The suite tries nine spellings; all nine resolve to a non-string and are
+refused, and the seven listed here do not even survive `str()`.
 Comparing any of those against a callee group written the same way is a
 silent false negative, in the one function whose contract is to refuse what
 it cannot evaluate, and the remedy is one pair of quotes, which the message
