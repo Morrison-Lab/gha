@@ -2064,12 +2064,12 @@ and blockquote cases, and a tab-admitting awk counts two headings in the
 correct span, so the one fixture pins both halves);
 and `assert_pass` holds every posted review to at most one authored heading,
 so a future concatenation fails on whichever fixture produces it.
-Eight mutations turn a named case red: disabling the multi-heading branch,
+Nine mutations turn a named case red: disabling the multi-heading branch,
 narrowing the span end to the last heading block, dropping the
 fence-and-blockquote exclusion, closing a fence on any delimiter, closing
 on a run followed by text, widening the heading indent back to any
-whitespace, admitting a tab into the fence indentation, and lifting the
-six-hash limit.
+whitespace, admitting a tab into the fence indentation, lifting the
+six-hash limit, and dropping the awk's trailing word-boundary class.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
