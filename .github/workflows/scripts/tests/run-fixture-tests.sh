@@ -86,6 +86,7 @@ declare -A expected=(
   [is-error-success-denied-comment-null-denials.json]=fail
   [denied-comment-null-denials-not-trusted.json]=fail
   [quota-exhausted.json]=skip
+  [quota-exhausted-with-message.json]=skip
   # gha#520: the same exhaustion reached part-way through a review instead of at
   # the door -- real turns, real cost, api_error_status:429. The zero-cost /
   # turn-1 branch cannot see it, so before the fix this fell through to the hard
@@ -280,6 +281,7 @@ declare -A expected_cost=(
   [is-error-success-denied-comment-null-denials.json]=1.1
   [denied-comment-null-denials-not-trusted.json]=1.1
   [quota-exhausted.json]=0
+  [quota-exhausted-with-message.json]=0
   [quota-exhausted-midrun.json]=4.100043149999999
   [quota-exhausted-midrun-with-verdict.json]=4.31
   [verdict-label-format.json]=0.31
@@ -447,10 +449,15 @@ assert_fail_short_circuit() {
 # mid-run case must also carry the API's own message, single-line.
 declare -A expected_quota_reason=(
   [quota-exhausted.json]=rejected-at-door
+  [quota-exhausted-with-message.json]=rejected-at-door
   [quota-exhausted-midrun.json]=midrun-429
 )
 declare -A expected_quota_message=(
   [quota-exhausted.json]=""
+  # Multi-line in the fixture; the guard collapses it, and this is the only
+  # fixture whose door-path message is non-empty, so a broken extraction
+  # (wrong key, dropped gsub) has nowhere else to show.
+  [quota-exhausted-with-message.json]="Invalid Authorization header value from CLAUDE_CODE_OAUTH_TOKEN: it contains a line break at character 56 (see the run log)"
   [quota-exhausted-midrun.json]="You've hit your weekly limit · resets Aug 20, 8pm (UTC)"
 )
 
@@ -465,16 +472,17 @@ assert_skip() {
 }
 
 # The converse: a run that did not skip must not carry a reason. A stale
-# reason on a passing run (the with-verdict 429 fixture is the one that
-# could plausibly leak one) would make the posting job describe a skip
-# that did not happen.
-assert_quota_reason_presence() {
+# reason on a passing run would make the posting job describe a skip that
+# did not happen, and the with-verdict 429 fixture is the one that can leak
+# one (hoisting the 429 block above the verdict check does it). Only this
+# direction is asserted: the positive half is already pinned per fixture by
+# assert_skip, so restating it here could never fail on its own.
+assert_no_stale_quota_reason() {
   local output_file="$1"
   if grep -q '^quota_exhausted=true$' "$output_file"; then
-    grep -q '^quota_reason=' "$output_file"
-  else
-    ! grep -q '^quota_reason=' "$output_file"
+    return 0
   fi
+  ! grep -q '^quota_reason=' "$output_file"
 }
 
 failures=0
@@ -498,8 +506,8 @@ for fixture in "${!expected[@]}"; do
     *) echo "::error::unknown expected outcome '$want' for fixture $fixture"; exit 1 ;;
   esac
 
-  if [[ "$ok" == "true" ]] && ! assert_quota_reason_presence "$output_file"; then
-    echo "::error::$fixture: quota_reason must be present exactly when quota_exhausted=true (gha#804)"
+  if [[ "$ok" == "true" ]] && ! assert_no_stale_quota_reason "$output_file"; then
+    echo "::error::$fixture: quota_reason leaked onto a run that did not skip (gha#804)"
     ok=false
   fi
   if [[ "$ok" == "true" ]] && ! assert_cost "$fixture" "$output_file"; then
@@ -651,6 +659,36 @@ REDACTION_FIXTURE
   fi
   rm -f "$fixture" "$output_file" "$log_file"
 done
+
+# gha#804: the quota message takes the same path to a PR comment, and the
+# door-rejection branch is exactly where the SDK quotes credential context
+# (CLAUDE.md's gha#686 entry records a real one). Built at run time for the
+# same reason the cases above are: nothing credential-shaped is committed.
+# Both destinations are asserted -- the ::warning:: line in the log and the
+# quota_message output -- since the comment is composed from the second.
+fixture="$(mktemp)"; output_file="$(mktemp)"; log_file="$(mktemp)"
+cat > "$fixture" <<QUOTA_REDACTION_FIXTURE
+[
+  {"type": "system", "subtype": "init"},
+  {"type": "result", "subtype": "error_during_execution", "is_error": true,
+   "num_turns": 1, "duration_ms": 900, "total_cost_usd": 0,
+   "result": "Invalid Authorization header value: Bearer $_ant was rejected"}
+]
+QUOTA_REDACTION_FIXTURE
+set +e
+GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixture" >"$log_file" 2>&1
+set -e
+if grep -qF "$_ant" "$log_file" "$output_file"; then
+  echo "::error::redaction (quota message): the credential reached the log or the quota_message output unredacted"
+  failures=$((failures + 1))
+elif ! grep -qF 'quota_message=Invalid Authorization header value: Bearer *** was rejected' "$output_file"; then
+  echo "::error::redaction (quota message): expected the redacted message in quota_message; output said:"
+  cat "$output_file"
+  failures=$((failures + 1))
+else
+  echo "OK   <runtime redaction: quota message>"
+fi
+rm -f "$fixture" "$output_file" "$log_file"
 
 # The counterweight. Redaction that ate the diagnostic would pass every
 # assertion above while destroying the thing gha#540 added the names for, so

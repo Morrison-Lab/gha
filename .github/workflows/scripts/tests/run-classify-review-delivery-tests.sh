@@ -38,6 +38,14 @@ check() {
 check "quota skip notice naming this run" false claude-skipped \
   "> **Claude review skipped — API credential or quota unavailable.** No secret is configured. [View run]($RUN_URL)"
 
+# --- gha#804: the live quota notices come from build-quota-skip-notice.sh, so
+#     generate them rather than restating the wording here -- every reason must
+#     still carry the marker after the headline was split per cause.
+for reason in missing-secret rejected-at-door midrun-429 unknown; do
+  body="$(QUOTA_REASON="$reason" QUOTA_MESSAGE="resets 10:50pm (UTC)" RUN_URL="$RUN_URL" bash "$HERE/../build-quota-skip-notice.sh")"
+  check "generated quota notice ($reason) naming this run" false claude-skipped "$body"
+done
+
 # --- every compose-review-failure-report.sh headline family
 check "claude did-not-finish headline" false claude-failure \
   "> [!CAUTION]

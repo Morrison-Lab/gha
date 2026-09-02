@@ -35,7 +35,7 @@ PAYLOAD_DIR="$dir" \
   PR_NUMBER=12 REPO=Morrison-Lab/gha RUN_URL=https://example.invalid/run \
   RUN_ID=99 EVENT_NAME=pull_request CALLER_WF_PATH=.github/workflows/claude-review.yml \
   WF_PATH=.github/workflows/claude-review.yml SELF_MOD=false \
-  QUOTA_EXHAUSTED=false QUOTA_REASON= QUOTA_MESSAGE= CANCELLED=false RESOLVE_OUTCOME=success \
+  QUOTA_EXHAUSTED=false QUOTA_REASON='' QUOTA_MESSAGE='' CANCELLED=false RESOLVE_OUTCOME=success \
   HEAD_SHA=abc123 TOTAL_COST_USD=1.25 FAILURE_KIND= \
   DENIALS=0 DENIED_TOOLS="$denied" MAX_DENIALS=5 ATTEMPTS=1 \
   TRACK_PROGRESS=false REPORT_COST=true REVIEW_TEXT_FILE="$review" \

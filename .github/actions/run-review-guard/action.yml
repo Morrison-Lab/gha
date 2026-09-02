@@ -21,6 +21,24 @@ outputs:
       before Claude did any work (quota exhaustion, auth failure, or similar
       pre-processing rejection).
     value: ${{ steps.run.outputs.quota_exhausted }}
+  quota_reason:
+    description: >-
+      Which quota case set quota_exhausted (gha#804): `rejected-at-door`
+      (the zero-cost, turn-1 rejection above) or `midrun-429` (the API
+      returned 429 after real turns; gha#520). Written beside
+      quota_exhausted on exactly those two exits and on no other, so empty
+      means the run did not skip for quota. A composite's step outputs are
+      invisible to its caller unless re-declared here; the first draft of
+      gha#804 omitted this block and the feature was inert for both cases.
+    value: ${{ steps.run.outputs.quota_reason }}
+  quota_message:
+    description: >-
+      The API's own result message on a quota skip, collapsed to one line
+      and passed through the same credential redaction as denied_tools,
+      since it reaches a PR comment (gha#804). Empty when the result
+      carried none. Free text: a caller reads it through env:, never
+      through an expression in a run: body.
+    value: ${{ steps.run.outputs.quota_message }}
   review_text_file:
     description: Path to the extracted verdict-bearing review text, when the review completed cleanly.
     value: ${{ steps.run.outputs.review_text_file }}

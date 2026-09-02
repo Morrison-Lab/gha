@@ -76,6 +76,9 @@ check "rejected-at-door: quotes a captured message" true "$(contains "$got" '> A
 # --- unknown / empty reason: the pre-gha#804 wording, unchanged --------------
 got="$(build '' '')"
 check "empty reason: falls back to the disjunction" true "$(contains "$got" 'No `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret is configured, or account API quota is exhausted')"
+# The classifier keys on the marker; both this script and its tests spell the
+# joiner `---`, and run-classify-review-delivery-tests.sh pins that spelling.
+check "empty reason: ASCII joiner after the marker" true "$(contains "$got" 'Claude review skipped --- ')"
 got="$(build bogus-reason '')"
 check "unrecognized reason: falls back to the disjunction" true "$(contains "$got" 'or account API quota is exhausted')"
 
@@ -85,7 +88,7 @@ extracted="$(jq -n -r --arg body "$got" '((($body | capture("actions/runs/(?<r>[
 check "collapse regex captures the run id" "987654321" "$extracted"
 
 # --- RUN_URL is required -----------------------------------------------------
-if QUOTA_REASON=midrun-429 RUN_URL= bash "$build_script" >/dev/null 2>"$script_dir/.err.$$"; then
+if QUOTA_REASON=midrun-429 RUN_URL='' bash "$build_script" >/dev/null 2>"$script_dir/.err.$$"; then
   check "missing RUN_URL must fail" fail pass
 else
   check "missing RUN_URL must fail" fail fail

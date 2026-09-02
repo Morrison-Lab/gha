@@ -23,7 +23,9 @@
 #   QUOTA_MESSAGE  optional; the API's own message, quoted verbatim.
 #
 # The headline always begins "Claude review skipped" because
-# classify-review-delivery.sh keys on that phrase.
+# classify-review-delivery.sh keys on that phrase. It is joined to the
+# cause by an ASCII `---`, per the no-non-ASCII-punctuation rule for source
+# files; the classifier's own tests pin that both spellings match.
 set -euo pipefail
 
 if [[ -z "${RUN_URL:-}" ]]; then
@@ -43,16 +45,16 @@ message="$(printf '%s' "${QUOTA_MESSAGE:-}" | tr '\n\r' '  ')"
 printf '> [!WARNING]\n'
 case "$reason" in
   missing-secret)
-    printf '> **Claude review skipped — no API credential is configured.** Neither `CLAUDE_CODE_OAUTH_TOKEN` nor `ANTHROPIC_API_KEY` is set as a secret for this workflow, so no request was sent. Configure one, then re-trigger the review by pushing a new commit or re-running the workflow.\n'
+    printf '> **Claude review skipped --- no API credential is configured.** Neither `CLAUDE_CODE_OAUTH_TOKEN` nor `ANTHROPIC_API_KEY` is set as a secret for this workflow, so no request was sent. Configure one, then re-trigger the review by pushing a new commit or re-running the workflow.\n'
     ;;
   rejected-at-door)
-    printf '> **Claude review skipped — the API rejected the first request.** A credential is configured, but the API refused the request before any work was done (zero cost, one turn): either the account quota is exhausted or the credential was not accepted. Check the run log for the cause, then re-trigger the review once the quota resets or the credential is repaired.\n'
+    printf '> **Claude review skipped --- the API rejected the first request.** A credential is configured, but the API refused the request before any work was done (zero cost, one turn): either the account quota is exhausted or the credential was not accepted. Check the run log for the cause, then re-trigger the review once the quota resets or the credential is repaired.\n'
     ;;
   midrun-429)
-    printf '> **Claude review skipped — the API returned 429 part-way through the review.** The credential is configured and was accepted; the account hit a quota or rate limit mid-run ([gha#520](https://github.com/Morrison-Lab/gha/issues/520)). Wait for the reset, then re-trigger the review by pushing a new commit or re-running the workflow.\n'
+    printf '> **Claude review skipped --- the API returned 429 part-way through the review.** The credential is configured and was accepted; the account hit a quota or rate limit mid-run ([gha#520](https://github.com/Morrison-Lab/gha/issues/520)). Wait for the reset, then re-trigger the review by pushing a new commit or re-running the workflow.\n'
     ;;
   unknown)
-    printf '> **Claude review skipped — API credential or quota unavailable.** No `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset.\n'
+    printf '> **Claude review skipped --- API credential or quota unavailable.** No `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset.\n'
     ;;
 esac
 if [[ -n "$message" ]]; then

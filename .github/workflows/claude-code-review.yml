@@ -1245,6 +1245,7 @@ jobs:
           # `quota_message` is the API's own text (gha#804), so it takes the
           # same env: route as denied_tools; `quota_reason` is a fixed
           # vocabulary and rides along under the same rule.
+          PQ_QUOTA_REASON: ${{ steps.preflight-quota.outputs.quota_reason }}
           FC_QUOTA_REASON: ${{ steps.fail-check.outputs.quota_reason }}
           FC_QUOTA_MESSAGE: ${{ steps.fail-check.outputs.quota_message }}
           FCR_QUOTA_REASON: ${{ steps.fail-check-retry.outputs.quota_reason }}
@@ -1255,6 +1256,19 @@ jobs:
           # only permitted in `if:` keys, not inside `run:` blocks (actionlint
           # flags calling them in expressions). We check step outcomes and
           # job.status explicitly.
+          # quota_message is API-authored free text (gha#804). Its single-line
+          # shape is guaranteed by a gsub in a different file, so write it in
+          # the delimiter form denied_tools uses rather than key=value, which
+          # would let a future newline in it inject a second output.
+          emit_quota_message() {
+            local delim
+            delim="eof_$(openssl rand -hex 8)"
+            {
+              echo "quota_message<<${delim}"
+              printf '%s\n' "$1"
+              echo "${delim}"
+            } >> "$GITHUB_OUTPUT"
+          }
           if [[ "${{ steps.claude-review.outcome }}" == "cancelled" || "${{ steps.claude-review-retry.outcome }}" == "cancelled" || "${{ job.status }}" == "cancelled" ]]; then
             echo "cancelled=true" >> "$GITHUB_OUTPUT"
             echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
@@ -1264,7 +1278,7 @@ jobs:
           if [[ "${{ steps.preflight-quota.outputs.quota_exhausted }}" == "true" ]]; then
             {
               echo "quota_exhausted=true"
-              echo "quota_reason=missing-secret"
+              echo "quota_reason=$PQ_QUOTA_REASON"
               echo "total_cost_usd=$TOTAL_COST"
             } >> "$GITHUB_OUTPUT"
             echo "Pre-flight account status check detected missing/exhausted quota (gha#396)."
@@ -1292,9 +1306,9 @@ jobs:
               echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}"
               echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}"
               echo "quota_reason=$FC_QUOTA_REASON"
-              echo "quota_message=$FC_QUOTA_MESSAGE"
               echo "total_cost_usd=$TOTAL_COST"
             } >> "$GITHUB_OUTPUT"
+            emit_quota_message "$FC_QUOTA_MESSAGE"
             echo "Attempt 1 completed cleanly."
             exit 0
           fi
@@ -1303,9 +1317,9 @@ jobs:
               echo "review_text_file=${{ steps.fail-check-retry.outputs.review_text_file }}"
               echo "quota_exhausted=${{ steps.fail-check-retry.outputs.quota_exhausted }}"
               echo "quota_reason=$FCR_QUOTA_REASON"
-              echo "quota_message=$FCR_QUOTA_MESSAGE"
               echo "total_cost_usd=$TOTAL_COST"
             } >> "$GITHUB_OUTPUT"
+            emit_quota_message "$FCR_QUOTA_MESSAGE"
             echo "::notice::Attempt 1 produced a stub review or short-circuited; the retry recovered cleanly."
             exit 0
           fi
@@ -1567,7 +1581,6 @@ jobs:
             "self_mod=\(.self_mod)",
             "quota_exhausted=\(.quota_exhausted)",
             "quota_reason=\(.quota_reason)",
-            "quota_message=\(.quota_message)",
             "cancelled=\(.cancelled)",
             "resolve_outcome=\(.resolve_outcome)",
             "total_cost_usd=\(.total_cost_usd)",
@@ -1578,6 +1591,14 @@ jobs:
             "report_cost=\(.report_cost)",
             "review_present=\(.review_present)"
           ' "$PAYLOAD_DIR/payload.json" >> "$GITHUB_OUTPUT"
+          # quota_message is API-authored free text (gha#804): delimiter form,
+          # as for denied_tools below.
+          qm_delim="eof_$(openssl rand -hex 8)"
+          {
+            echo "quota_message<<${qm_delim}"
+            jq -r '.quota_message // ""' "$PAYLOAD_DIR/payload.json"
+            echo "${qm_delim}"
+          } >> "$GITHUB_OUTPUT"
           if [[ -f "$PAYLOAD_DIR/review.txt" ]]; then
             echo "review_text_file=$PAYLOAD_DIR/review.txt" >> "$GITHUB_OUTPUT"
           else

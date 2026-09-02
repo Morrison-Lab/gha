@@ -27,6 +27,11 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s).
+8. Every `steps.fail-check*.outputs.<name>` the workflow reads is declared
+   in run-review-guard/action.yml. A composite's step outputs are
+   invisible to its caller unless re-declared, and gha#804's first draft
+   read two outputs the guard never exposed: every offline suite stayed
+   green while the feature was inert on a live run.
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -51,6 +56,7 @@ from workflow_discovery import skip_if_restored  # noqa: E402
 
 DEFAULT_WORKFLOW = ".github/workflows/claude-code-review.yml"
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
+DEFAULT_GUARD = ".github/actions/run-review-guard/action.yml"
 
 # Permissions that would let the model mutate the forge or the checkout.
 # `id-token: write` is included: in the pinned action it is exchanged for a
@@ -127,7 +133,11 @@ def uses_of(job: dict) -> list[str]:
     return uses
 
 
-def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> int:
+def check_workflow(
+    workflow_path: pathlib.Path,
+    action_path: pathlib.Path,
+    guard_path: pathlib.Path = pathlib.Path(DEFAULT_GUARD),
+) -> int:
     doc = load_yaml(workflow_path)
     jobs = doc.get("jobs") or {}
     if "claude-review" not in jobs:
@@ -418,6 +428,24 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
     check(
         any("pack-review-payload" in u for u in review_uses),
         "claude-review packs a payload artifact for the posting job",
+    )
+    # gha#804: the guard is a composite, so an output its script writes
+    # reaches the workflow only if action.yml re-declares it. Read the set
+    # the workflow actually consumes from its text rather than from a list
+    # kept here, so a new read cannot be added without also being checked.
+    guard_doc = load_yaml(guard_path)
+    declared = set((guard_doc.get("outputs") or {}).keys())
+    consumed = set(
+        re.findall(
+            r"steps\.fail-check(?:-retry)?\.outputs\.([A-Za-z0-9_-]+)",
+            workflow_path.read_text(),
+        )
+    )
+    missing = sorted(consumed - declared)
+    check(
+        not missing,
+        "every run-review-guard output the workflow reads is declared on the "
+        f"guard action (missing: {missing})",
     )
     check(
         any("download-artifact" in u for u in post_uses),
@@ -733,7 +761,13 @@ def check_workflow(workflow_path: pathlib.Path, action_path: pathlib.Path) -> in
 def run_self_test() -> int:
     script = pathlib.Path(__file__).resolve()
 
-    def run(workflow: pathlib.Path, action: pathlib.Path) -> subprocess.CompletedProcess[str]:
+    guard_default: list[pathlib.Path] = []
+
+    def run(
+        workflow: pathlib.Path,
+        action: pathlib.Path,
+        guard: pathlib.Path | None = None,
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [
                 sys.executable,
@@ -742,6 +776,8 @@ def run_self_test() -> int:
                 str(workflow),
                 "--action",
                 str(action),
+                "--guard",
+                str(guard or guard_default[0]),
             ],
             capture_output=True,
             text=True,
@@ -829,6 +865,9 @@ jobs:
       actions: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+      - run: echo "$FC_QUOTA_REASON"
+        env:
+          FC_QUOTA_REASON: ${{{{ steps.fail-check.outputs.quota_reason }}}}
       - uses: Morrison-Lab/gha/.github/actions/pack-review-payload@v2
         if: "{pack_if}"
   post-review:
@@ -895,7 +934,40 @@ runs:
           "Bash,Edit(//tmp/**),WebFetch,WebSearch"
 """
         )
+        # gha#804: the template reads one guard output, and this guard
+        # declares it. The mutation below drops the declaration.
+        good_guard = root / "guard.yml"
+        good_guard.write_text(
+            """
+outputs:
+  quota_exhausted:
+    value: ${{ steps.run.outputs.quota_exhausted }}
+  quota_reason:
+    value: ${{ steps.run.outputs.quota_reason }}
+runs:
+  using: composite
+  steps: []
+"""
+        )
+        guard_default.append(good_guard)
         failures += expect("good split passes", run(good_wf, good_action), True)
+        bad_guard = root / "guard-undeclared.yml"
+        bad_guard.write_text(
+            """
+outputs:
+  quota_exhausted:
+    value: ${{ steps.run.outputs.quota_exhausted }}
+runs:
+  using: composite
+  steps: []
+"""
+        )
+        failures += expect(
+            "guard output read by the workflow but not declared fails",
+            run(good_wf, good_action, bad_guard),
+            False,
+            "declared on the guard action",
+        )
 
         bad_write = root / "bad-write.yml"
         bad_write.write_text(
@@ -1467,19 +1539,23 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflow", default=DEFAULT_WORKFLOW)
     parser.add_argument("--action", default=DEFAULT_ACTION)
+    parser.add_argument("--guard", default=DEFAULT_GUARD)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
     workflow = pathlib.Path(args.workflow)
     action = pathlib.Path(args.action)
+    guard = pathlib.Path(args.guard)
     if not workflow.is_file():
         die(f"{workflow}: no such file")
     if not action.is_file():
         die(f"{action}: no such file")
+    if not guard.is_file():
+        die(f"{guard}: no such file")
     if skip_if_restored(workflow.parent, "review-job-split tests"):
         return 0
-    return check_workflow(workflow, action)
+    return check_workflow(workflow, action, guard)
 
 
 if __name__ == "__main__":
