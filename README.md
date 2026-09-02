@@ -289,15 +289,35 @@ The `examples/claude-code-review.yml` stub defaults to this mention-triggered
 path only (no automatic `pull_request` trigger). Add `pull_request` in that
 stub if you want automatic review on each PR update.
 
-Do not declare a top-level `concurrency:` block in caller stubs for review
-workflows (`claude-code-review.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, `cursor-code-review.yml`,
-`opencode-code-review.yml`, `ai-code-review.yml`).
+Do not declare a `concurrency:` block reusing the callee's group in caller
+stubs for review workflows (`claude-code-review.yml`,
+`gemini-code-review.yml`, `antigravity-code-review.yml`,
+`cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`).
 The reusable workflows manage per-PR concurrency internally on their review
 jobs.
-A top-level `concurrency:` block in the caller with a PR-scoped group name
-deadlocks GitHub Actions against the nested job's group and cancels the run
+A caller block with a PR-scoped group name deadlocks GitHub Actions against
+the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+Both caller placements do it -- a top-level block, and one on the calling
+job itself.
+Follow this rule by hand for the review family: these groups are `${{ }}`
+expressions, and `audit_example_concurrency.py` compares group names as
+literal text, so it cannot check them
+([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
+The same rule covers the gh-pages family (`quarto-publish.yml`,
+`preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
+`group: gh-pages`:
+a caller-level `concurrency: { group: gh-pages }` deadlocks the same way,
+and there the job fails with no runner, no steps, and no log, so the site
+silently stops publishing
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+`audit_example_concurrency.py` fails `_selftest.yml` when any stub under
+`examples/` declares a group its called workflow already declares -- on
+either side's two placements, so the stub's top level or its calling job
+against the callee's jobs or the callee's own top level.
+Its comparison is literal, so what it can FLAG is the constant-named
+groups above; it still examines every stub.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:

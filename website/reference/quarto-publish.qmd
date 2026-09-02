@@ -46,6 +46,21 @@ workflow. The build job downscopes its own token to `contents: read`.
 
 ## Example
 
+Do not name a `concurrency:` group `gh-pages` anywhere in your caller
+workflow -- neither a top-level block nor one on the calling job, which
+deadlock identically.
+Any other group name is fine, and is how you serialize the caller's own
+runs.
+`quarto-publish.yml` serializes gh-pages deploys internally on its `deploy`
+job (`group: gh-pages`).
+A caller-level block with the same group name deadlocks GitHub Actions
+against the nested job: `deploy` fails with no runner, no steps, and no log,
+and the site silently stops publishing
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+The example stub used to name that group, from before the job-level one
+existed; it now names `quarto-publish-${{ github.ref }}` instead, keeping
+the serialization without the collision.
+
 ```yaml
 # Copy to .github/workflows/quarto-publish.yml in your repo.
 #
@@ -64,9 +79,11 @@ on:
   # For a render-only build check (deploy: false below), also add:
   # pull_request:
 
-# Serialize deploys so two pushes don't race on the gh-pages branch.
+# Serialize deploys so two pushes don't race on the gh-pages branch. Named
+# for this workflow rather than `gh-pages`, which the called workflow's own
+# deploy job already holds -- reusing that name deadlocks the two.
 concurrency:
-  group: gh-pages
+  group: quarto-publish-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:

@@ -19,6 +19,19 @@ Grant `contents: write` (commit the deletions to `gh-pages`) and
 
 ## Example
 
+Do not name a `concurrency:` group `gh-pages` anywhere in your caller
+workflow -- neither a top-level block nor one on the calling job, which
+deadlock identically.
+Any other group name is fine, and is how you serialize the caller's own
+runs.
+`cleanup-pr-previews.yml` serializes its gh-pages branch modifications
+with the deploy workflows on its `cleanup` job (`group: gh-pages`).
+A caller-level block with the same group name deadlocks GitHub Actions
+against the nested job: `cleanup` fails with no runner, no steps, and no log.
+This workflow publishes nothing, so the symptom is not a stale site: the
+deletions never land, and preview directories for closed PRs accumulate on
+gh-pages ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+
 ```yaml
 # Copy to .github/workflows/cleanup-pr-previews.yml in your repo.
 # Housekeeping half of the PR-preview family: periodically deletes gh-pages

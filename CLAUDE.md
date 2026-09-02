@@ -2878,6 +2878,104 @@ over it:
 18. a tolerated container-valued `token:`;
 19. a case-sensitive input-key match.
 
+`.github/workflows/scripts/audit_example_concurrency.py` closes gha#809:
+a caller-level `concurrency:` group that the called reusable workflow also
+declares deadlocks the run, and the failure is unusually hard to diagnose.
+**How it presents is not settled, and the two recorded instances disagree.**
+gha#437's presented as a cancelled run, which is how GitHub documents the
+condition -- it cancels with a message naming the group and both sides
+(`Canceling since a deadlock for concurrency group '...' was detected between
+'top level workflow' and '...'`, quoted verbatim in
+[rhysd/actionlint#538](https://github.com/rhysd/actionlint/issues/538),
+which asks actionlint to detect the condition statically).
+The `ucdavis/hac.sap` instance instead presented as a nested job with no
+runner, no steps, and no log.
+Whether that is a second failure mode, a difference between the caller's and
+the callee's view of the same cancellation, or a misreading of the run page
+has not been established here, so do not repeat either observable as the
+general case without checking the run in front of you.
+gha#437 recorded the mechanism for the review family; gha#654 then added
+`group: gh-pages` to `quarto-publish.yml`'s deploy job without touching
+`examples/quarto-publish.yml`, which still told consumers to declare the
+same group at the top level, so every publish run on a consumer that copied
+the stub failed silently and the site stopped updating
+(`ucdavis/hac.sap`, run 33604968678).
+The audit walks every stub under `examples/`, resolves each `uses:` to the
+workflow file it names, and fails on any caller-level group that the called
+workflow also declares, at either of ITS two placements -- the callee's jobs
+and the callee's own top level; a stub naming a workflow file this repo does
+not carry is an error rather than a skip.
+**Caller-level means two placements, not one.**
+A top-level block covers the whole run and so covers the calling job, and
+a block on the calling job itself is the same collision written one level
+down -- `concurrency:` is valid on a job that `uses:` a reusable workflow,
+gha#811's review reproduced the audit exiting 0 over such a block on the
+live tree -- that the two then deadlock is inferred from the mechanism (a
+group is a group, wherever the caller declares it) rather than observed, and
+actionlint#538's record covers a caller top level against a group the callee
+supplies, not a caller-authored job-level block.
+Only the CALLING job's own group counts: a matching group on some other
+job of the stub serializes those two jobs and never waits on the callee,
+so reporting it would be a false positive, and a test pins that.
+The summary line counts calls actually COMPARED rather than walked past,
+since most stubs carry no caller-level group at all and a count that
+included them would read the same after the comparison was gutted.
+**The CALLEE side has two placements too**, and checking only its jobs missed
+one: a reusable workflow's own top-level `concurrency:` applies to the calling
+job, so a caller group matching it deadlocks exactly as a job-level one does.
+`bump-dev-version.yml` is this repo's live example of a `workflow_call`
+workflow carrying one, and before gha#811's review the audit walked past it.
+**The audit is one level deep, while GitHub permits four.**
+A callee job that itself calls another of our workflows is not compared.
+Eleven workflows here do call another of ours, but none of those eleven
+declares `workflow_call:`, so none can be a callee and no nesting is
+reachable from a stub -- a limit rather than a live gap.
+The docstring states it too, so a reader of the script alone gets it.
+**And the comparison is literal string equality, so it sees constant group
+names only.**
+That covers the gh-pages family, whose groups are the constant `gh-pages`.
+It does NOT cover a group written as an expression: the review family's
+groups are `${{ }}`-valued, so no review stub can ever be flagged, and
+`altdoc-multiversion-docs.yml`'s `build` job holds a group whose `${{ }}`
+part evaluates to `github.ref` outside a pull request, so the group as a
+whole becomes `altdoc-multiversion-docs-refs/heads/main` -- identical to what
+a caller writing `altdoc-multiversion-docs-${{ github.ref }}` requests, while
+the two strings never match textually.
+gha#822 tracks normalizing expressions before comparing.
+EVERY non-string scalar group is refused rather than compared, not the
+subset that happens to survive `str()`.
+YAML's scalar resolution is lossy, so the audit cannot recover what the
+author wrote: measured against `yaml.safe_load`, `010` arrives as 8, `0x10`
+as 16, `1_000` as 1000, `+5` as 5, `1:30` as 90, `true` as `True` and `1.10`
+as 1.1.
+The suite tries nine spellings; all nine resolve to a non-string and are
+refused, and the seven listed here are the ones that come back from `str()`
+as a plausible name the author never wrote, which is what makes them
+dangerous rather than merely wrong.
+Comparing any of those against a callee group written the same way is a
+silent false negative, in the one function whose contract is to refuse what
+it cannot evaluate, and the remedy is one pair of quotes, which the message
+asks for.
+Its first live run found a second collision the issue had not listed,
+`examples/report-failure.yml`, which is why the check is derived from the
+tree rather than from the issue's list.
+`run-audit-example-concurrency-tests.py` builds throwaway stub-and-workflow
+pairs per case, since the repo's own tree must never carry the collision;
+the negative cases (no top-level block, a different group, a callee with no
+job-level group, and a group on a NON-calling job) are the ones to keep,
+because without them the audit would fail every stub the moment any
+workflow gained a concurrency block.
+One case exists purely to pin the `*.yaml` half of the population, which
+neither another case nor the live run can reach -- `examples/` holds only
+`*.yml`, so reverting the glob leaves everything else green, verbatim the
+class this file documents for `workflow_discovery` above.
+The non-mapping-job guard is declared TWICE (in `job_groups` and in
+`callee_calls`), so a single-site mutation survives the suite and only
+mutating both turns its case red; read that survivor as the other site still
+holding rather than as missing coverage.
+CI runs it as the `example-concurrency` job in `_selftest.yml`, unit tests
+first, then the live audit.
+
 `.github/workflows/scripts/audit_capability_versioning_docs.py` closes
 gha#730: every capability that ships past the frozen `@v1` snapshot must be
 named in each hand-restated versioning-list region -- README.md's

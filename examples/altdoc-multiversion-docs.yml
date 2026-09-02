@@ -1,4 +1,22 @@
 # Copy to .github/workflows/docs.yaml in your repo.
+# NOTE: Do NOT name a `concurrency:` group `gh-pages` anywhere in this
+# caller workflow -- neither a top-level block nor one on the calling job,
+# which deadlock identically
+# ([gha#811](https://github.com/Morrison-Lab/gha/pull/811)).
+# Any OTHER group name is fine,
+# and is how you serialize this workflow's own runs --
+# with one exception for this capability.
+# Its `build` job holds a second group that becomes
+# `altdoc-multiversion-docs-<pr-number>` on a pull request
+# and `altdoc-multiversion-docs-<ref>` on anything else,
+# so do not prefix your own group with `altdoc-multiversion-docs-` at all:
+# either spelling can resolve to the group the `build` job already holds.
+# The reusable workflow serializes gh-pages deploys internally
+# on its `deploy` job (`group: gh-pages`).
+# A caller-level block with the same group name deadlocks GitHub Actions
+# against the nested job:
+# the job fails with no runner, no steps, and no log, so the site silently
+# stops publishing ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 #
 # Renders an altdoc-based R package's Quarto docs and deploys multiple
 # versions side by side on gh-pages: PRs -> /pr-preview/pr-<number>/, pushes
