@@ -635,17 +635,37 @@ review_text_file="$(mktemp)"
 # run 33594599768: three `## Review` headings, three verdicts, two
 # Stopping-Point lines in one comment). The two shapes are told apart by the
 # HEADING form: a complete draft carries `### Verdict` (or any `#` heading
-# naming it), while the gha#710 follow-up tail only writes a `Verdict:` line
-# or the word in prose ("my verdict stands unchanged"). So when more than one
-# block carries a verdict HEADING, the span starts at the LAST such block: the
-# earlier drafts were superseded by their author, and the tail after the last
-# draft is still kept. One heading (the gha#710 shape, and the common case)
-# leaves the span rule exactly as it was.
+# naming it), while the gha#710 follow-up tail writes a line-start `Verdict:`
+# line (verdict-split-across-blocks.json, block 2), which $vidx matches and
+# this does not. So when more than one block carries a verdict HEADING, the
+# span starts at the LAST such block: the earlier drafts were superseded by
+# their author, and the tail after the last draft is still kept. One heading
+# (the gha#710 shape, and the common case) leaves the span rule exactly as it
+# was.
+#
+# A heading is AUTHORED only outside a fenced code block and outside a
+# blockquote. This corpus quotes the literal heading constantly -- CLAUDE.md,
+# this file, every fixture, and a review OF this file -- so a later block that
+# merely shows the heading shape in a fence, or blockquotes the previous
+# verdict for context, must not read as a fresh draft: with the bare regex it
+# did, and the span then started at the quotation and dropped the entire real
+# review (gha#808 review). That is the failure gha#710 exists to prevent, and
+# it is worse than the concatenation this fixes. The fence scan toggles on a
+# line opening with three backticks or tildes, which is how the repo's
+# other stripper (strip-non-invoking-markup.sh) reads a fence too.
 jq -r '
+  def authored_heading:
+    ( split("\n")
+      | reduce .[] as $l ({fence: false, out: []};
+          if ($l | test("^[ \\t]{0,3}(```|~~~)")) then .fence = (.fence | not)
+          elif .fence or ($l | test("^[ \\t]*>")) then .
+          else .out += [$l] end)
+      | .out | join("\n") )
+    | test("(?im)^[ \\t]*#{1,6}[ \\t]*verdict\\b");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
-  | [ $vidx[] | select($blocks[.] | test("(?im)^[\\s>]*#{1,6}[ \\t]*verdict\\b")) ] as $hidx
+  | [ $vidx[] | select($blocks[.] | authored_heading) ] as $hidx
   | if ($hidx | length) > 1
       then $blocks[($hidx | last):(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) > 1

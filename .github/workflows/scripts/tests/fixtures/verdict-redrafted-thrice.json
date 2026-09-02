@@ -48,6 +48,17 @@
     }
   },
   {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Instrument re-run after the third draft: still exit 0, the delta-pass tail is retained.\n\nVerdict: Ready for merge."
+        }
+      ]
+    }
+  },
+  {
     "type": "result",
     "subtype": "success",
     "is_error": false,

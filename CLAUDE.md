@@ -2011,16 +2011,33 @@ drafts and produced three complete reviews in a row, each with its own
 `### Verdict` heading and structured-review-data block, and the span rule
 concatenated all three (Morrison-Lab/ai-config#2966, run 33594599768).
 A complete draft carries a verdict *heading*; the gha#710 follow-up tail
-writes a `Verdict:` line or the word in prose ("my verdict stands
-unchanged"), never a heading.
-So when more than one block carries a heading, the span starts at the last
-such block and still runs to the last verdict-bearing block, which drops the
-superseded drafts and keeps the tail; one heading leaves gha#710's behaviour
-untouched.
-`verdict-redrafted-thrice.json` pins it with a must-contain on the third
-draft and a must-not-contain on the first, and `assert_pass` now holds every
-posted review to at most one verdict heading, so a future concatenation
-fails on whichever fixture produces it.
+writes a line-start `Verdict:` line, never a heading (a mid-sentence "my
+verdict stands unchanged" matches neither regex, since both anchor at line
+start).
+So when more than one block carries an authored heading, the span starts at
+the last such block and still runs to the last verdict-bearing block, which
+drops the superseded drafts and keeps the tail; one heading leaves gha#710's
+behaviour untouched.
+**Authored means outside a fence and outside a blockquote.**
+This corpus quotes the literal heading constantly, and a review of this very
+script does too, so a later block that only shows the heading shape in a
+code fence or blockquotes the previous verdict must not read as a new
+draft; with the bare regex it did, and the span then started at the
+quotation and dropped the entire real review, which is the failure gha#710
+exists to prevent (gha#808 review).
+Both the jq detector and the bash invariant skip fenced and blockquoted
+lines, and the awk that counts headings carries no interval expression, per
+this file's mawk rule.
+`verdict-redrafted-thrice.json` pins the rule with a must-contain on the
+third draft, a second must-contain on the tail after it, and a
+must-not-contain on the first draft;
+`verdict-then-quoted-heading.json` pins that a quoted heading is not a
+draft;
+and `assert_pass` holds every posted review to at most one authored heading,
+so a future concatenation fails on whichever fixture produces it.
+Three mutations turn a named case red: disabling the multi-heading branch,
+narrowing the span end to the last heading block, and dropping the
+fence-and-blockquote exclusion.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
