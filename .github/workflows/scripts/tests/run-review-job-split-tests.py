@@ -460,6 +460,35 @@ def check_workflow(
         "post-review needs claude-review",
     )
 
+    # gha#812: post-review checks nothing out, and "Classify review verdict"
+    # reached its helper as `bash .github/workflows/scripts/<x>.sh`, which
+    # cannot resolve -- there is no working tree, and inside a reusable
+    # workflow a relative path resolves against the CALLER's checkout even
+    # when there is one. Every consumer review died at exit 127 after posting
+    # its comment, while the script's own unit tests stayed green because they
+    # supply their own path from a job that does check the repo out.
+    # gha#813 fixed that one step with a composite action; this assertion is
+    # the guard against the shape recurring elsewhere, stated over every
+    # checkout-less job rather than over post-review alone, since the trap is
+    # the shape of the job and not the identity of it.
+    for name, job in jobs.items():
+        if any("actions/checkout" in u for u in uses_of(job)):
+            continue
+        for step in job.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            run = step.get("run")
+            if not isinstance(run, str):
+                continue
+            check(
+                ".github/workflows/scripts/" not in run,
+                f"job {name} checks nothing out, so its "
+                f"{step.get('name', '<unnamed>')!r} step does not reach a "
+                "script by repo-relative path (wrap it in a composite "
+                "action, as classify-review-verdict does, or install it "
+                "with install-gha-scripts)",
+            )
+
     on = doc.get(True, doc.get("on")) or {}
     check(
         "pull_request_target" not in on,
