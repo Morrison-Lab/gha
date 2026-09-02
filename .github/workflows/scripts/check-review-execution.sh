@@ -670,7 +670,10 @@ jq -r '
   def authored_heading:
     ( split("\n")
       | reduce .[] as $l ({fence: "", flen: 0, out: []};
-          ( [ $l | capture("^[ \\t]{0,3}(?<run>`{3,}|~{3,})(?<rest>.*)$") ] | first ) as $f
+          # Spaces only in the indentation allowance: a tab is four columns in
+          # CommonMark, so a tab-led fence line is indented code, not a fence
+          # (Copilot on gha#808).
+          ( [ $l | capture("^ {0,3}(?<run>`{3,}|~{3,})(?<rest>.*)$") ] | first ) as $f
           | if $f != null and .fence == ""
               then .fence = ($f.run[0:1]) | .flen = ($f.run | length)
             # A closer carries nothing but whitespace after its run; a run

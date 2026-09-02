@@ -9,7 +9,7 @@
       "content": [
         {
           "type": "text",
-          "text": "## Review\n\nThe epsilon-pass analysis of the diff: the guard change is sound and the fixture discriminates.\n\n### Verdict\n\n**Ready for merge.**\n"
+          "text": "## Review\n\nThe iota-pass first draft of the analysis.\n\n### Verdict\n\n**Ready for merge.**\n"
         }
       ]
     }
@@ -20,7 +20,7 @@
       "content": [
         {
           "type": "text",
-          "text": "For the record, the heading shape the extractor keys on looks like this:\n\n```\n### Verdict\n```\n\nand the previous round said:\n\n> ### Verdict\n> Needs more work.\n\n### Verdicts of prior rounds\n\nNeither of those is a new verdict; the one above stands."
+          "text": "## Review\n\nThe iota-pass second draft, whose tab-led backtick line is indented code and opens no fence:\n\n\t```\n\n### Verdict\n\n**Ready for merge.**\n"
         }
       ]
     }
@@ -31,7 +31,7 @@
     "is_error": false,
     "num_turns": 9,
     "duration_ms": 120000,
-    "total_cost_usd": 1.42,
+    "total_cost_usd": 1.46,
     "permission_denials_count": 0,
     "permission_denials": []
   }

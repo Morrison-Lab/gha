@@ -2033,13 +2033,15 @@ with nothing but whitespace after it (CommonMark, as
 `strip-non-invoking-markup.sh` does);
 a first draft closed on any fence line, so a backtick fence holding a tilde
 line leaked its heading, and a second closed on a run followed by text.
-Both accept at most three leading spaces before the `#`, so a line at four
-columns or a tab is never a heading, whether indented code or a lazy
-paragraph continuation;
+Both accept at most three leading spaces before the `#` or before a fence
+run (spaces only: a tab is four columns, so a tab-led backtick line is
+indented code rather than a fence), so a line at four columns or a tab is
+never a heading, whether indented code or a lazy paragraph continuation;
 round 3 of the same review reproduced the drop with indentation, and no
 state machine is needed for it.
 The awk that counts headings carries no interval expression, per this file's
-mawk rule.
+mawk rule, and spells the jq's word boundary as a trailing class, so a
+plural "Verdicts" heading counts in neither.
 An unclosed fence runs to the end of its block, so a redraft whose own code
 sample is never closed hides its own heading and falls back to the gha#710
 span rule; that is malformed input rendered as GitHub renders it, and
@@ -2052,14 +2054,17 @@ draft, `verdict-then-mismatched-fence.json` that a tilde line does not
 close a backtick fence, and `verdict-then-trailing-text-closer.json` that a
 run followed by text does not close one either, and
 `verdict-then-indented-heading.json` that an indented heading is not a
-draft;
+draft, `verdict-redraft-after-tab-fence.json` that a tab-led backtick line
+opens no fence, and `verdict-then-tab-inside-fence.json` that one inside a
+real fence closes none (that last pins the awk half, whose only failure
+direction is counting a fenced heading as a second one);
 and `assert_pass` holds every posted review to at most one authored heading,
 so a future concatenation fails on whichever fixture produces it.
-Six mutations turn a named case red: disabling the multi-heading branch,
+Seven mutations turn a named case red: disabling the multi-heading branch,
 narrowing the span end to the last heading block, dropping the
 fence-and-blockquote exclusion, closing a fence on any delimiter, closing
-on a run followed by text, and widening the heading indent back to any
-whitespace.
+on a run followed by text, widening the heading indent back to any
+whitespace, and admitting a tab into the fence indentation.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
