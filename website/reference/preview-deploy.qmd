@@ -49,8 +49,11 @@ preview-link comment), and `actions: read` (download the build artifact).
 
 ## Example
 
-Do not declare a top-level `concurrency:` block naming `gh-pages` in your
-caller workflow.
+Do not name a `concurrency:` group `gh-pages` anywhere in your caller
+workflow -- neither a top-level block nor one on the calling job, which
+deadlock identically.
+Any other group name is fine, and is how you serialize the caller's own
+runs.
 `preview-deploy.yml` serializes gh-pages deploys internally on its `deploy`
 job (`group: gh-pages`).
 A caller-level block with the same group name deadlocks GitHub Actions

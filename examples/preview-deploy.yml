@@ -1,6 +1,9 @@
 # Copy to .github/workflows/preview-deploy.yml in your repo.
-# NOTE: Do NOT declare a top-level `concurrency:` block naming `gh-pages` in
-# this caller workflow. The reusable workflow serializes gh-pages deploys
+# NOTE: Do NOT name a `concurrency:` group `gh-pages` anywhere in this
+# caller workflow -- neither a top-level block nor one on the calling job,
+# which deadlock identically (gha#811). Any OTHER group name is fine, and
+# is how you serialize this workflow's own runs.
+# The reusable workflow serializes gh-pages deploys
 # internally on its `deploy` job (`group: gh-pages`). A caller-level block
 # with the same group name deadlocks GitHub Actions against the nested job:
 # the job fails with no runner, no steps, and no log, so the site silently

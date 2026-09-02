@@ -41,6 +41,36 @@ jobs:
 TOP_GH = "concurrency:\n  group: gh-pages\n  cancel-in-progress: false"
 JOB_GH = "    concurrency:\n      group: gh-pages\n      cancel-in-progress: false"
 
+# A stub whose CALLING job carries the concurrency block, rather than the run.
+# GitHub accepts `concurrency:` on a job that `uses:` a reusable workflow, and
+# the deadlock is identical -- gha#811 review reproduced it against the live
+# tree, where the audit exited 0.
+JOB_STUB = """name: X
+on: push
+jobs:
+  publish:
+    concurrency:
+      group: {group}
+      cancel-in-progress: false
+    uses: Morrison-Lab/gha/.github/workflows/{callee}@v2
+"""
+
+# The group sits on a job that is NOT the caller. That serializes those two
+# jobs and never waits on the callee, so it must NOT be reported.
+OTHER_JOB_STUB = """name: X
+on: push
+jobs:
+  lint:
+    concurrency:
+      group: {group}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo lint
+  publish:
+    uses: Morrison-Lab/gha/.github/workflows/{callee}@v2
+"""
+
 
 def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.yml"):
     with tempfile.TemporaryDirectory() as tmp:
@@ -107,8 +137,27 @@ def main() -> int:
     expect("empty examples dir is an error", run(None, WORKFLOW.format(conc=JOB_GH)), 2, "no example stubs")
     expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "examples/quarto-publish.yml")
     expect("stub with no jobs mapping is an error", run("name: X\non: push\n", WORKFLOW.format(conc=JOB_GH)), 2, "no 'jobs' mapping")
-    expect("examined count is reported", run(STUB.format(top="", callee="quarto-publish.yml"),
-                                              WORKFLOW.format(conc=JOB_GH)), 0, "examined 1 stub(s) against 1")
+    # gha#811 review, finding 1: the collision written one level down.
+    expect("job-level caller group collides", run(JOB_STUB.format(group="gh-pages", callee="quarto-publish.yml"),
+                                                   WORKFLOW.format(conc=JOB_GH)), 1, "deadlock")
+    expect("job-level caller group names the calling job", run(JOB_STUB.format(group="gh-pages", callee="quarto-publish.yml"),
+                                                                WORKFLOW.format(conc=JOB_GH)), 1, "job 'publish' concurrency group")
+    expect("job-level caller group that differs passes", run(JOB_STUB.format(group="publish-lock", callee="quarto-publish.yml"),
+                                                              WORKFLOW.format(conc=JOB_GH)), 0)
+    # The negative that pins "only the CALLING job's own group": a matching
+    # group on a sibling job serializes those jobs and never waits on the
+    # callee, so reporting it would be a false positive. Widening the check to
+    # every job in the stub turns this red.
+    expect("group on a non-calling job passes", run(OTHER_JOB_STUB.format(group="gh-pages", callee="quarto-publish.yml"),
+                                                     WORKFLOW.format(conc=JOB_GH)), 0)
+    # gha#811 review, finding 3: the summary counts calls actually COMPARED, so
+    # a call with no caller-level group at all reports zero rather than one.
+    expect("a call with no caller group compares zero", run(STUB.format(top="", callee="quarto-publish.yml"),
+                                                             WORKFLOW.format(conc=JOB_GH)), 0, "compared 0 reusable-workflow")
+    expect("a call with a caller group compares one", run(STUB.format(top="concurrency:\n  group: publish-lock", callee="quarto-publish.yml"),
+                                                           WORKFLOW.format(conc=JOB_GH)), 0, "compared 1 reusable-workflow")
+    expect("stub count is reported", run(STUB.format(top="", callee="quarto-publish.yml"),
+                                          WORKFLOW.format(conc=JOB_GH)), 0, "examined 1 stub(s)")
 
     if failures:
         print(f"::error::{failures} audit-example-concurrency case(s) failed")

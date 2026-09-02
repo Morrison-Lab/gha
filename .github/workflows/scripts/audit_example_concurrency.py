@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Fail when an example stub's top-level concurrency group collides with a
-job-level group in the reusable workflow it calls (gha#809).
+"""Fail when an example stub's concurrency group collides with a job-level
+group in the reusable workflow it calls (gha#809).
 
 A caller-level ``concurrency:`` block and a nested job-level block naming the
 same group deadlock GitHub Actions: the nested job fails with no runner, no
-steps, and no log. gha#437 recorded that for the review family; gha#654 then
+steps, and no log. Caller-level means either placement -- a top-level block,
+or a block on the calling job itself, which is valid on a job that ``uses:`` a
+reusable workflow and deadlocks identically (gha#811 review). A group on some
+other job of the stub is not a collision: it serializes those two jobs and
+never waits on the callee. gha#437 recorded that for the review family; gha#654 then
 added ``group: gh-pages`` to ``quarto-publish.yml``'s deploy job without
 touching ``examples/quarto-publish.yml``, which still told consumers to
 declare the same group at the top level, and every publish run on a consumer
@@ -105,9 +109,16 @@ def job_groups(path: pathlib.Path, doc) -> dict[str, str]:
     return found
 
 
-def callee_files(path: pathlib.Path, doc) -> list[str]:
+def callee_calls(path: pathlib.Path, doc) -> list[tuple[str, str]]:
+    """(calling job name, callee workflow filename) per reusable-workflow call.
+
+    The job name is carried alongside the filename because a concurrency group
+    on the calling job deadlocks exactly as a top-level one does, and only that
+    job's own group does -- a group on some OTHER job in the same stub merely
+    serializes the two jobs (gha#811 review).
+    """
     jobs = require_jobs(path, doc)
-    files: list[str] = []
+    calls: list[tuple[str, str]] = []
     for name, job in jobs.items():
         if not isinstance(job, dict):
             die(f"{path}: job {name!r} is {type(job).__name__}, expected a mapping")
@@ -118,8 +129,8 @@ def callee_files(path: pathlib.Path, doc) -> list[str]:
             die(f"{path}: job {name!r} uses: is {type(uses).__name__}, expected a string")
         match = USES_RE.match(uses)
         if match:
-            files.append(match.group(1))
-    return files
+            calls.append((str(name), match.group(1)))
+    return calls
 
 
 def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
@@ -127,25 +138,45 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
     if not stubs:
         die(f"{examples_dir}: no example stubs found")
     findings: list[str] = []
-    examined = 0
+    compared = 0
     for stub in stubs:
         doc = load(stub)
         top = group_of(stub, "top-level", doc.get("concurrency"))
-        callees = callee_files(stub, doc)
-        for callee in callees:
+        stub_jobs = job_groups(stub, doc)
+        for job, callee in callee_calls(stub, doc):
             wf = workflows_dir / callee
             if not wf.is_file():
                 die(f"{stub}: uses {callee}, which is not in {workflows_dir}")
-            examined += 1
-            if top is None:
+            # Both placements deadlock, so both are checked. A top-level block
+            # covers the whole run and therefore covers the calling job; a
+            # block on the calling job itself is the same collision written
+            # one level down, and it is syntactically valid on a job that
+            # `uses:` a reusable workflow (gha#811 review).
+            caller: list[tuple[str, str]] = []
+            if top is not None:
+                caller.append(("top-level", top))
+            own = stub_jobs.get(job)
+            if own is not None:
+                caller.append((f"job {job!r}", own))
+            if not caller:
                 continue
-            for job, group in job_groups(wf, load(wf)).items():
-                if group == top:
-                    findings.append(
-                        f"{stub}: top-level concurrency group {top!r} is also declared "
-                        f"on job {job!r} of {callee}; the two deadlock (gha#809)"
-                    )
-    print(f"examined {len(stubs)} stub(s) against {examined} reusable-workflow call(s)")
+            # Counted here rather than at the top of the loop: a call with no
+            # caller-level group is walked past, not compared, and a summary
+            # that counted it would read the same after the comparison was
+            # gutted (gha#811 review).
+            compared += 1
+            for cjob, cgroup in job_groups(wf, load(wf)).items():
+                for where, group in caller:
+                    if cgroup == group:
+                        findings.append(
+                            f"{stub}: {where} concurrency group {group!r} is also "
+                            f"declared on job {cjob!r} of {callee}; the two "
+                            f"deadlock (gha#809)"
+                        )
+    print(
+        f"examined {len(stubs)} stub(s); compared {compared} reusable-workflow "
+        f"call(s) carrying a caller-level concurrency group"
+    )
     return findings
 
 

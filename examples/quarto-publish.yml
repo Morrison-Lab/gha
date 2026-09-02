@@ -1,6 +1,9 @@
 # Copy to .github/workflows/quarto-publish.yml in your repo.
-# NOTE: Do NOT declare a top-level `concurrency:` block naming `gh-pages` in
-# this caller workflow. The reusable workflow serializes gh-pages deploys
+# NOTE: Do NOT name a `concurrency:` group `gh-pages` anywhere in this
+# caller workflow -- neither a top-level block nor one on the calling job,
+# which deadlock identically (gha#811). Any OTHER group name is fine, and
+# is how you serialize this workflow's own runs.
+# The reusable workflow serializes gh-pages deploys
 # internally on its `deploy` job (`group: gh-pages`). A caller-level block
 # with the same group name deadlocks GitHub Actions against the nested job:
 # the job fails with no runner, no steps, and no log, so the site silently
@@ -20,6 +23,15 @@ on:
   workflow_dispatch:
   # For a render-only build check (deploy: false below), also add:
   # pull_request:
+
+# Serialize deploys so two pushes don't race on the gh-pages branch. Named
+# for this workflow rather than `gh-pages`, which the called workflow's own
+# deploy job already holds -- reusing that name deadlocks the two, per the
+# NOTE at the top. `cancel-in-progress: false` so a half-written deploy
+# finishes rather than being killed part-way.
+concurrency:
+  group: quarto-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:

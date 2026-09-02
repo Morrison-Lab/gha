@@ -2833,17 +2833,30 @@ same group at the top level, so every publish run on a consumer that copied
 the stub failed silently and the site stopped updating
 (`ucdavis/hac.sap`, run 33604968678).
 The audit walks every stub under `examples/`, resolves each `uses:` to the
-workflow file it names, and fails on any top-level group that a job in that
-workflow also declares; a stub naming a workflow file this repo does not
-carry is an error rather than a skip.
+workflow file it names, and fails on any caller-level group that a job in
+that workflow also declares; a stub naming a workflow file this repo does
+not carry is an error rather than a skip.
+**Caller-level means two placements, not one.**
+A top-level block covers the whole run and so covers the calling job, and
+a block on the calling job itself is the same collision written one level
+down -- `concurrency:` is valid on a job that `uses:` a reusable workflow,
+and gha#811's review reproduced the deadlock evading a top-level-only
+audit against the live tree.
+Only the CALLING job's own group counts: a matching group on some other
+job of the stub serializes those two jobs and never waits on the callee,
+so reporting it would be a false positive, and a test pins that.
+The summary line counts calls actually COMPARED rather than walked past,
+since most stubs carry no caller-level group at all and a count that
+included them would read the same after the comparison was gutted.
 Its first live run found a second collision the issue had not listed,
 `examples/report-failure.yml`, which is why the check is derived from the
 tree rather than from the issue's list.
 `run-audit-example-concurrency-tests.py` builds throwaway stub-and-workflow
 pairs per case, since the repo's own tree must never carry the collision;
 the negative cases (no top-level block, a different group, a callee with no
-job-level group) are the ones to keep, because without them the audit would
-fail every stub the moment any workflow gained a concurrency block.
+job-level group, and a group on a NON-calling job) are the ones to keep,
+because without them the audit would fail every stub the moment any
+workflow gained a concurrency block.
 CI runs it as the `example-concurrency` job in `_selftest.yml`, unit tests
 first, then the live audit.
 

@@ -307,8 +307,9 @@ and there the job fails with no runner, no steps, and no log, so the site
 silently stops publishing
 ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 `audit_example_concurrency.py` fails `_selftest.yml` when any stub under
-`examples/` declares a top-level group its called workflow already declares
-on a job.
+`examples/` declares a group its called workflow already declares on a job
+-- at the stub's top level, or on the calling job itself, which deadlock
+identically.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
