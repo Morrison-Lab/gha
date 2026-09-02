@@ -316,9 +316,8 @@ silently stops publishing
 `examples/` declares a group its called workflow already declares -- on
 either side's two placements, so the stub's top level or its calling job
 against the callee's jobs or the callee's own top level.
-It compares group names literally, so it covers constant names such as
-`gh-pages` and not expression-valued ones
-([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
+Its comparison is literal, so its population is the constant-named stubs
+above rather than every stub under `examples/`.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:

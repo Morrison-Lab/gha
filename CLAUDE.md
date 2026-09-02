@@ -2892,7 +2892,9 @@ author wrote: measured against `yaml.safe_load`, `010` arrives as 8, `0x10`
 as 16, `1_000` as 1000, `+5` as 5, `1:30` as 90, `true` as `True` and `1.10`
 as 1.1.
 The suite tries nine spellings; all nine resolve to a non-string and are
-refused, and the seven listed here do not even survive `str()`.
+refused, and the seven listed here are the ones that come back from `str()`
+as a plausible name the author never wrote, which is what makes them
+dangerous rather than merely wrong.
 Comparing any of those against a callee group written the same way is a
 silent false negative, in the one function whose contract is to refuse what
 it cannot evaluate, and the remedy is one pair of quotes, which the message
