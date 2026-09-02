@@ -1,0 +1,33 @@
+name: Classify review verdict
+description: >-
+  Classifies a Claude Code Review assistant verdict text as clean vs not
+  clean by running the bundled classify-review-verdict.sh. A composite
+  action rather than a checked-out script because the post-review job of
+  the reusable claude-code-review.yml runs in the consumer's checkout,
+  which does not contain this repository's script tree (gha#812).
+
+inputs:
+  review-text-file:
+    description: Path to the extracted review assistant text.
+    required: true
+
+outputs:
+  clean:
+    description: "\"true\" when the verdict states an affirmative clean conclusion."
+    value: ${{ steps.classify.outputs.clean }}
+  verdict:
+    description: The classified verdict slug.
+    value: ${{ steps.classify.outputs.verdict }}
+
+runs:
+  using: composite
+  steps:
+    - name: Classify
+      id: classify
+      shell: bash
+      env:
+        REVIEW_TEXT_FILE: ${{ inputs.review-text-file }}
+      run: >-
+        bash
+        "$GITHUB_ACTION_PATH/../../workflows/scripts/classify-review-verdict.sh"
+        "$REVIEW_TEXT_FILE"

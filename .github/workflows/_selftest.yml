@@ -991,6 +991,36 @@ jobs:
             exit 1
           fi
           echo "run-review-guard correctly surfaced total_cost_usd=$TOTAL_COST_USD"
+      # Exercises the classify-review-verdict composite action itself (not
+      # just the classify-review-verdict.sh script it wraps) via a real
+      # `uses:` step, proving its github.action_path-relative script
+      # resolution and its clean/verdict output passthrough end-to-end
+      # (gha#812) -- the same real-`uses:` reasoning as the run-review-guard
+      # e2e steps around it; the offline suite above never touches
+      # action.yml.
+      - name: Prepare classify-review-verdict e2e fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '## Review\n\nAll good.\n\n### Verdict\n**Ready for merge**\n' \
+            > /tmp/selftest-classify-review.txt
+      - name: Exercise classify-review-verdict composite action end-to-end
+        id: classify-e2e
+        uses: ./.github/actions/classify-review-verdict
+        with:
+          review-text-file: /tmp/selftest-classify-review.txt
+      - name: Assert classify-review-verdict surfaced clean=true
+        shell: bash
+        env:
+          CLEAN: ${{ steps.classify-e2e.outputs.clean }}
+          VERDICT: ${{ steps.classify-e2e.outputs.verdict }}
+        run: |
+          set -euo pipefail
+          if [[ "$CLEAN" != "true" ]]; then
+            echo "::error::classify-review-verdict did not surface clean=true for a Ready-for-merge fixture (got clean='$CLEAN' verdict='$VERDICT')"
+            exit 1
+          fi
+          echo "classify-review-verdict surfaced clean=$CLEAN verdict=$VERDICT"
       # A second real `uses:` call, against a stub fixture, proving the
       # composite action's stub_review output passthrough works end-to-end —
       # not just check-review-execution.sh's own output (already covered by
