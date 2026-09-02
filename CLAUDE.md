@@ -348,23 +348,30 @@ which is why the capabilities above moved to `@v2`.
   message runs through the same chain `denied_tools` does -- one jq
   `def redact:` prelude (`redact_jq`) shared by both, rather than a second
   copy of five patterns.
-  `run-fixture-tests.sh` builds a token-bearing door fixture at run time and
-  asserts both the log line and the `quota_message` output carry `***`.
-  The headline always begins `Claude review skipped`, because
+  `run-fixture-tests.sh` builds token-bearing door and mid-run fixtures at
+  run time and asserts both the log line and the `quota_message` output
+  carry `***` on each path; a `_selftest.yml` `uses: ./` call against the
+  door fixture is what proves the `value:` mappings themselves.
+  **The headline always begins `Claude review skipped`**, because
   `classify-review-delivery.sh` keys on that phrase; its test suite
   generates a body per reason from the real builder so the two cannot drift.
-  An unrecognized or empty reason renders the pre-gha#804 disjunction rather
-  than erroring, so a guard at an older tag still gets a notice.
-  And `quota_message` is API-authored free text, so it takes the same
-  `env:` route `denied_tools` does (gha#541), is written to `GITHUB_OUTPUT`
-  in the delimiter form rather than `key=value`, and is collapsed to one line
-  before rendering, so a newline in it cannot escape the blockquote.
+  **An unrecognized or empty reason renders the pre-gha#804 disjunction**
+  rather than erroring, so a guard at an older tag still gets a notice.
+  **And `quota_message` is API-authored free text**, so it takes the same
+  `env:` route `denied_tools` does (gha#541).
+  The guard writes it `key=value`, as it does `denied_tools`, which is safe
+  because the same file collapses it to one line two lines earlier; the two
+  downstream re-emissions (`resolve-final` and `Load review payload`) use the
+  delimiter form, because their single-line guarantee lives in another file.
+  The builder collapses it again before rendering, so a newline in it cannot
+  escape the blockquote.
   `run-build-quota-skip-notice-tests.sh` pins the per-reason wording, the
   negative claims (a mid-run 429 must not say no secret is configured), the
   verbatim message, and the collapse step's run-id capture;
   `run-fixture-tests.sh` asserts `quota_reason` and `quota_message` per skip
   fixture (including a multi-line door message, the only fixture that can
-  see a broken extraction) and that a passing run carries no stale reason.
+  see a broken door-path extraction) and that a passing run carries no stale
+  reason.
 
 - `.github/actions/extract-total-cost/` -- wraps
   `scripts/extract-total-cost.sh`, which extracts `total_cost_usd` from a

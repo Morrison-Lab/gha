@@ -123,25 +123,26 @@ subtype="$(jq -r '.subtype // ""' <<< "$result")"
 has_verdict() {
   grep -qiE '^[[:space:]>*_#-]*verdict\b' "$1"
 }
-# Credential redaction shared by every string this script forwards to a PR
-# comment: the denied-tools sample (gha#543) and, since gha#804, the quota
-# message. One jq definition rather than two copies of the chain, because
+# Credential redaction shared by the two free-text strings this script
+# forwards to a PR comment: the denied-tools sample (gha#543, consumed by
+# compose-review-failure-report.sh) and, since gha#804, the quota message
+# (consumed by build-quota-skip-notice.sh). One jq definition rather than two copies of the chain, because
 # gha#548 round 2 already found the two-copies form drifting once. Prepended
 # to each jq program as a string, so the patterns live in exactly one place.
 redact_jq='def redact:
   .
     # Userinfo credentials first, because they are the one shape
     # reachable through the `.tool_input?.url?` fallback in the
-    # denied-tools program below, rather than through a command string, and nothing
-    # downstream redacts -- the composer only fences and
-    # truncates. `[^/@[:space:]]+` cannot cross a path separator,
+    # denied-tools program below, rather than through a command string,
+    # and nothing downstream redacts -- neither consumer named above
+    # does more than fence and truncate. `[^/@[:space:]]+` cannot cross a path separator,
     # so an ordinary URL carrying an `@` later in its path (a
     # `...@v2` action ref, a raw.githubusercontent path) is left
     # alone; verified against both directions rather than assumed.
     | gsub("://[^/@[:space:]]+@"; "://***@")
     | gsub("gh[pousr]_[A-Za-z0-9_]{16,}"; "***")
     | gsub("github_pat_[A-Za-z0-9_]{16,}"; "***")
-    # The two patterns above were scoped for this string reaching
+    # The two patterns above were scoped for these strings reaching
     # a run LOG, where Actions masking is a backstop. gha#543
     # changed the destination: it is now also posted to a PR
     # comment, which is not masked at all. So the shapes this very

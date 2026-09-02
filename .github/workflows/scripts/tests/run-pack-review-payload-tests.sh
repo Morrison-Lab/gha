@@ -108,7 +108,7 @@ check "missing review file: review_present false" "false" "$(jq -r .review_prese
 
 # --- quota reason and message are packed verbatim (gha#804) ----------------
 dir="$tmpdir/quota"
-api_msg="You've hit your session limit · resets 10:50pm (UTC)"
+api_msg="You've hit your session limit - resets 10:50pm (UTC)"
 PAYLOAD_DIR="$dir" QUOTA_EXHAUSTED=true QUOTA_REASON=midrun-429 QUOTA_MESSAGE="$api_msg" bash "$PACK"
 check "quota: reason packed" "midrun-429" "$(jq -r .quota_reason "$dir/payload.json")"
 check "quota: message packed verbatim" "$api_msg" "$(jq -r .quota_message "$dir/payload.json")"

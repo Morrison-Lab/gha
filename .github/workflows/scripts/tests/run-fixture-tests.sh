@@ -455,8 +455,8 @@ declare -A expected_quota_reason=(
 declare -A expected_quota_message=(
   [quota-exhausted.json]=""
   # Multi-line in the fixture; the guard collapses it, and this is the only
-  # fixture whose door-path message is non-empty, so a broken extraction
-  # (wrong key, dropped gsub) has nowhere else to show.
+  # fixture whose door-path message is non-empty, so a broken door-path
+  # extraction (wrong key, dropped gsub) has nowhere else to show.
   [quota-exhausted-with-message.json]="Invalid Authorization header value from CLAUDE_CODE_OAUTH_TOKEN: it contains a line break at character 56 (see the run log)"
   [quota-exhausted-midrun.json]="You've hit your weekly limit · resets Aug 20, 8pm (UTC)"
 )
@@ -678,17 +678,41 @@ QUOTA_REDACTION_FIXTURE
 set +e
 GITHUB_OUTPUT="$output_file" bash "$check_script" "$fixture" >"$log_file" 2>&1
 set -e
-if grep -qF "$_ant" "$log_file" "$output_file"; then
+# Both quota paths publish the message, so both are pinned: the door case
+# above and the mid-run 429 below. Removing `| redact` from either extraction
+# alone left the suite green until the second case existed. The assertion
+# parses the output the way assert_skip does rather than anchoring on the
+# key=value wire form, so moving that write to the delimiter form later would
+# not fail it for a reason unrelated to redaction.
+fixture_mid="$(mktemp)"; output_mid="$(mktemp)"; log_mid="$(mktemp)"
+cat > "$fixture_mid" <<QUOTA_MIDRUN_REDACTION_FIXTURE
+[
+  {"type": "system", "subtype": "init"},
+  {"type": "assistant", "message": {"content": [{"type": "text",
+    "text": "Reading the diff before the limit hit."}]}},
+  {"type": "result", "subtype": "success", "is_error": true, "api_error_status": 429,
+   "num_turns": 7, "duration_ms": 90000, "total_cost_usd": 2.5,
+   "result": "Rate limited while sending Bearer $_ant; resets at 10pm (UTC)"}
+]
+QUOTA_MIDRUN_REDACTION_FIXTURE
+set +e
+GITHUB_OUTPUT="$output_mid" bash "$check_script" "$fixture_mid" >"$log_mid" 2>&1
+set -e
+redacted_door="$(sed -n 's/^quota_message=//p' "$output_file" | tail -1)"
+redacted_mid="$(sed -n 's/^quota_message=//p' "$output_mid" | tail -1)"
+if grep -qF "$_ant" "$log_file" "$output_file" "$log_mid" "$output_mid"; then
   echo "::error::redaction (quota message): the credential reached the log or the quota_message output unredacted"
   failures=$((failures + 1))
-elif ! grep -qF 'quota_message=Invalid Authorization header value: Bearer *** was rejected' "$output_file"; then
-  echo "::error::redaction (quota message): expected the redacted message in quota_message; output said:"
-  cat "$output_file"
+elif [[ "$redacted_door" != 'Invalid Authorization header value: Bearer *** was rejected' ]]; then
+  echo "::error::redaction (quota message, door): expected the redacted message; got '$redacted_door'"
+  failures=$((failures + 1))
+elif [[ "$redacted_mid" != 'Rate limited while sending Bearer ***; resets at 10pm (UTC)' ]]; then
+  echo "::error::redaction (quota message, mid-run 429): expected the redacted message; got '$redacted_mid'"
   failures=$((failures + 1))
 else
-  echo "OK   <runtime redaction: quota message>"
+  echo "OK   <runtime redaction: quota message (door and mid-run)>"
 fi
-rm -f "$fixture" "$output_file" "$log_file"
+rm -f "$fixture" "$output_file" "$log_file" "$fixture_mid" "$output_mid" "$log_mid"
 
 # The counterweight. Redaction that ate the diagnostic would pass every
 # assertion above while destroying the thing gha#540 added the names for, so

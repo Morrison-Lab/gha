@@ -56,7 +56,7 @@ check "rejected-at-door: says a credential is configured" true "$(contains "$got
 check "rejected-at-door: does not say no secret is configured" false "$(contains "$got" 'No `CLAUDE_CODE_OAUTH_TOKEN`')"
 
 # --- midrun-429: the case gha#804 was filed over ----------------------------
-api_msg="You've hit your session limit · resets 10:50pm (UTC)"
+api_msg="You've hit your session limit - resets 10:50pm (UTC)"
 got="$(build midrun-429 "$api_msg")"
 check "midrun-429: names the mid-run 429" true "$(contains "$got" 'returned 429 part-way through')"
 check "midrun-429: says the credential was accepted" true "$(contains "$got" 'was accepted')"
@@ -88,13 +88,14 @@ extracted="$(jq -n -r --arg body "$got" '((($body | capture("actions/runs/(?<r>[
 check "collapse regex captures the run id" "987654321" "$extracted"
 
 # --- RUN_URL is required -----------------------------------------------------
-if QUOTA_REASON=midrun-429 RUN_URL='' bash "$build_script" >/dev/null 2>"$script_dir/.err.$$"; then
+err_file="$(mktemp)"
+if QUOTA_REASON=midrun-429 RUN_URL='' bash "$build_script" >/dev/null 2>"$err_file"; then
   check "missing RUN_URL must fail" fail pass
 else
   check "missing RUN_URL must fail" fail fail
 fi
-check "missing RUN_URL names the input" "1" "$(grep -c 'RUN_URL is required' "$script_dir/.err.$$" || true)"
-rm -f "$script_dir/.err.$$"
+check "missing RUN_URL names the input" "1" "$(grep -c 'RUN_URL is required' "$err_file" || true)"
+rm -f "$err_file"
 
 if [[ "$failures" -ne 0 ]]; then
   echo "::error::$failures/$checks build-quota-skip-notice assertion(s) failed"

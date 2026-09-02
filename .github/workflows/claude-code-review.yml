@@ -1258,8 +1258,10 @@ jobs:
           # job.status explicitly.
           # quota_message is API-authored free text (gha#804). Its single-line
           # shape is guaranteed by a gsub in a different file, so write it in
-          # the delimiter form denied_tools uses rather than key=value, which
-          # would let a future newline in it inject a second output.
+          # the delimiter form rather than key=value, which would let a future
+          # newline in it inject a second output. denied_tools gets that form
+          # one job later, in Load review payload; in this step it is still
+          # written key=value (pre-existing, not changed here).
           emit_quota_message() {
             local delim
             delim="eof_$(openssl rand -hex 8)"
