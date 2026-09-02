@@ -357,33 +357,174 @@ if ! grep -q '^# ' "$news_file"; then
   exit 1
 fi
 
+# gha#810: a repeat assembly into a development block that already holds
+# category sections from the previous run must merge into them, not prepend a
+# second "## Bug fixes" beside the first -- markdownlint's MD024 (siblings)
+# rightly rejects that, and ucdavis/bcs#862's monthly run hit it. So the
+# headings are split two ways against the FIRST top-level section only (the
+# development block; an older release further down may carry the same heading
+# and must be left alone): a heading already present there gets its new
+# bullets spliced in directly under it, ahead of the bullets it already
+# holds, and only the headings absent from it are emitted as a fresh block
+# under the top-level heading, as before.
+# Drops trailing blank lines from stdin; the awk below supplies the one blank
+# that separates spliced text from what follows it. An awk rather than the
+# usual sed label loop, whose branch label reads as a typo to check-typos.
+strip_trailing_blank_lines() {
+  awk '{ lines[NR] = $0 } END { n = NR; while (n > 0 && lines[n] ~ /^[[:space:]]*$/) n--; for (i = 1; i <= n; i++) print lines[i] }'
+}
+
+# Fence tracking in both passes: a column-0 `# ` inside a fenced code block
+# (an R comment in an example) is not a heading, and reading it as the next
+# top-level heading ended the development block early and re-emitted a
+# duplicate section (gha#810 review round 2). A fence closes on the same
+# character, at least as long as the opener, with only whitespace after it.
+fence_awk='
+  function fence_step(line,    run, rest, ch, len) {
+    if (match(line, /^ ? ? ?(```+|~~~+)/)) {
+      run = substr(line, RSTART, RLENGTH); sub(/^ +/, "", run)
+      ch = substr(run, 1, 1); len = length(run); rest = substr(line, RSTART + RLENGTH)
+      if (fence == "") { fence = ch; flen = len; return 1 }
+      if (ch == fence && len >= flen && rest ~ /^[ \t]*$/) { fence = ""; flen = 0; return 1 }
+    }
+    return fence != ""
+  }
+'
+first_section_headings="$(awk "$fence_awk"'
+  { if (fence_step($0)) next }
+  /^# / { if (seen) exit; seen = 1; next }
+  seen && /^## / { sub(/^## /, ""); sub(/[ \t]+$/, ""); print }
+' "$news_file")"
+
+# Every temp path from here on is removed on exit, whichever path exits; the
+# trap is installed before the second and third mktemp so a failure there
+# cannot leak the directory.
+merge_dir="$(mktemp -d)"
+# Unset paths are omitted from the argv rather than passed as "", which
+# rm -f still reports and which would mask a failed mktemp (Copilot on
+# gha#814). The directory goes first and the file removal is explicitly
+# non-fatal: `rm -f --` with no operands exits 0, but a file removal that
+# fails for any other reason (a permission-denied path) would stop an
+# errexit trap before the directory, and leak it.
+trap 'rm -rf -- "$merge_dir"; rm -f -- ${block_file:+"$block_file"} ${tmp:+"$tmp"} 2>/dev/null || :' EXIT
+block_file="$(mktemp)"
+tmp="$(mktemp)"
+# The manifest is PAIRS OF LINES, heading then path, read pairwise below. A
+# delimited record would need a character no heading can contain, and the map
+# constrains headings only to a single line (gha#810 review round 1 measured a
+# tab-bearing heading losing its fragment through a tab-split manifest). The
+# file name is a counter, so two headings can never share one.
+manifest="$merge_dir/manifest"
+: > "$manifest"
+merged_n=0
 block=""
 for heading in "${heading_order[@]}"; do
-  if [ -n "${heading_blocks["$heading"]:-}" ]; then
+  [ -n "${heading_blocks["$heading"]:-}" ] || continue
+  if printf '%s\n' "$first_section_headings" | grep -qFx -- "$heading"; then
+    # Trailing blank lines dropped: the section's own blank line after the
+    # heading follows the splice, and keeping both would leave an MD012
+    # double blank at the seam (the other symptom bcs#862 reported).
+    merged_file="$merge_dir/$((merged_n++))"
+    printf '%s' "${heading_blocks["$heading"]}" | strip_trailing_blank_lines > "$merged_file"
+    printf '%s\n%s\n' "$heading" "$merged_file" >> "$manifest"
+  else
     block+="## $heading"$'\n\n'"${heading_blocks["$heading"]}"
   fi
 done
 
-block_file="$(mktemp)"
-printf '%s' "$block" > "$block_file"
-tmp="$(mktemp)"
+# Trailing blank lines dropped here too: the awk below supplies exactly one
+# blank between the block and whatever followed the top-level heading, so a
+# block ending in its own blank line produced an MD012 double blank at that
+# seam on every assembly (gha#810).
+printf '%s' "$block" | strip_trailing_blank_lines > "$block_file"
 
-awk -v block_file="$block_file" '
+awk -v block_file="$block_file" -v manifest="$manifest" "$fence_awk"'
+  BEGIN {
+    while ((getline h < manifest) > 0) {
+      # awk runs END after an exit in BEGIN, so a bare exit here would be
+      # overwritten by the exit-42 check; flag it and let END report it.
+      if ((getline f < manifest) <= 0) { manifest_bad = 1; exit 43 }
+      merge_file[h] = f
+    }
+    close(manifest)
+  }
+  /^# / && fence == "" {
+    if (seen) in_first = 0
+    else { seen = 1; in_first = 1 }
+  }
+  # Spliced text is separated from whatever the file had next by a single
+  # blank of its own: a blank the file already had is printed as that
+  # separator, and a content line gets a synthetic blank ahead of it. Extra
+  # blanks the file already carried past that point are left as found; the
+  # splice adds none. This is a state flag
+  # rather than a getline of the next record on purpose -- a record read with
+  # getline never reaches the rules below, so a section heading sitting
+  # directly under the top-level heading skipped the merge rule and lost its
+  # fragments while they were still deleted (found by the tight-layout smoke
+  # test during gha#810). No apostrophes in these comments: the program is
+  # single-quoted.
+  need_blank { if ($0 !~ /^[[:space:]]*$/) print ""; need_blank = 0 }
+  # A merged section stays ONE list: the blank the file had between the
+  # heading and its old bullets is held back, and dropped when the next line
+  # is a bullet (new and old bullets then sit in a tight list, as they would
+  # had they been written together) or printed when it is anything else, so
+  # a following heading keeps its blank.
+  # When the heading was tight (no blank at all) and the next line is not a
+  # bullet -- a fence, a paragraph, another heading -- the separator has to
+  # be synthesized, or the new bullets glue to it (gha#810 review round 4).
+  # The bullet test admits a bare marker (a lone "-" line is an empty list
+  # item under a heading, Test 21), as the file-wide predicate does, and
+  # refuses a spaced thematic break of one character ("- - -", "* * *"),
+  # which starts like a bullet and is not one (gha#814 review); "+" is never a
+  # break character. Unrolled rather than an interval expression, for mawk.
+  function seam_bullet(l) {
+    if (l ~ /^[ \t]*(-[ \t]*-[ \t]*-[- \t]*|\*[ \t]*\*[ \t]*\*[* \t]*)$/) return 0
+    return l ~ /^[ \t]*[-*+]([ \t]|$)/
+  }
+  hold_blank { hold_blank = 0; if ($0 ~ /^[[:space:]]*$/) { held = 1; next } else if (!seam_bullet($0)) print "" }
+  held { held = 0; if (!seam_bullet($0)) print "" }
+  # The fence short-circuit sits AFTER the three seam rules above, so a
+  # fence line arriving at a splice seam still drains the pending blank; in
+  # front of them it skipped the drain, glued a bullet to the fence, and left
+  # the flag set for an unrelated later line (gha#810 review round 3).
+  { if (fence_step($0)) { print; next } }
   { print }
   /^# / && !inserted {
-    print ""
-    while ((getline line < block_file) > 0) print line
+    if ((getline probe < block_file) > 0) {
+      print ""
+      print probe
+      while ((getline line < block_file) > 0) print line
+      need_blank = 1
+    }
     close(block_file)
     inserted = 1
+    next
+  }
+  in_first && /^## / {
+    h = $0; sub(/^## /, "", h); sub(/[ \t]+$/, "", h)
+    # Probe first, as the block branch does: an empty fragment must not
+    # leave a stray blank at the seam.
+    if (h in merge_file) {
+      if ((getline probe < merge_file[h]) > 0) {
+        print ""
+        print probe
+        while ((getline line < merge_file[h]) > 0) print line
+        hold_blank = 1
+      }
+      close(merge_file[h])
+      delete merge_file[h]
+    }
   }
   END {
+    if (manifest_bad) exit 43
     if (!inserted) exit 42
   }
 ' "$news_file" > "$tmp" || {
   status=$?
-  rm -f "$block_file" "$tmp"
   if [ $status -eq 42 ]; then
     echo "::error::Failed to insert fragments into $news_file -- no top-level '# ' heading was matched." >&2
+  elif [ $status -eq 43 ]; then
+    echo "::error::Internal error: merge manifest for $news_file has an odd number of lines." >&2
   else
     echo "::error::awk error ($status) while processing $news_file." >&2
   fi
@@ -391,7 +532,6 @@ awk -v block_file="$block_file" '
 }
 
 mv "$tmp" "$news_file"
-rm -f "$block_file"
 
 for f in "${consumed[@]}"; do
   rm -f "$f"

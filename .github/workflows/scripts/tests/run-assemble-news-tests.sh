@@ -678,4 +678,249 @@ grep -q '^\* Add feature X\.$' NEWS.md || {
 
 echo "PASS: Test 26 - List context survives a skipped thematic break"
 
+# Test 27: a REPEAT assembly merges into the development block's existing
+# sections instead of prepending a second set of headings (gha#810). The
+# consumer symptom was MD024 (duplicate sibling headings) plus an MD012
+# double blank at the seam, so both are asserted: each heading appears once
+# under the development H1, the new bullet sits in the existing section
+# ahead of the old one, and no two consecutive blank lines exist anywhere.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+cat <<'FRAG' > news.d/second-fix.fixed.md
+- Second-run fix.
+FRAG
+cat <<'FRAG' > news.d/second-feature.added.md
+- Second-run feature.
+FRAG
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+## Bug fixes
+
+- First-run fix.
+
+## Internal
+
+- First-run internal.
+
+# mypackage 1.0.0
+
+## Bug fixes
+
+- Release-era fix.
+NEWS
+release_before="$(awk '/^# /{n++} n==2' NEWS.md)"
+bash "$assemble_script" news.d NEWS.md >/dev/null
+# The older release block also carries "## Bug fixes"; it must be untouched.
+# This is the only assertion that sees the awk-side first-section guard and
+# the delete-after-merge together (review round 2): each alone is the
+# other's backstop, so dropping both is what it catches.
+release_after="$(awk '/^# /{n++} n==2' NEWS.md)"
+[ "$release_before" = "$release_after" ] || { echo "FAIL: Test 27 - the older release block was modified"; cat NEWS.md; exit 1; }
+dev_block="$(awk '/^# /{n++} n==1' NEWS.md)"
+[ "$(printf '%s\n' "$dev_block" | grep -c '^## Bug fixes$')" -eq 1 ] || { echo "FAIL: Test 27 - development block carries duplicate '## Bug fixes'"; cat NEWS.md; exit 1; }
+[ "$(printf '%s\n' "$dev_block" | grep -c '^## New features$')" -eq 1 ] || { echo "FAIL: Test 27 - '## New features' not added once"; cat NEWS.md; exit 1; }
+fix_order="$(printf '%s\n' "$dev_block" | grep -n 'run fix' | cut -d: -f2 | tr '\n' '|')"
+[ "$fix_order" = "- Second-run fix.|- First-run fix.|" ] || { echo "FAIL: Test 27 - new bullet not ahead of the old one in the existing section: $fix_order"; cat NEWS.md; exit 1; }
+# One tight list: the new bullet and the old one are adjacent lines.
+grep -A1 -F -- '- Second-run fix.' NEWS.md | tail -1 | grep -qF -- '- First-run fix.' || { echo "FAIL: Test 27 - merged bullets are not one tight list"; cat NEWS.md; exit 1; }
+[ "$(awk 'prev=="" && $0=="" {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 27 - double blank line after assembly"; cat NEWS.md; exit 1; }
+[ ! -f news.d/second-fix.fixed.md ] || { echo "FAIL: Test 27 - fragment not consumed"; exit 1; }
+echo "PASS: Test 27 - Repeat assembly merges into existing sections"
+
+# Test 28: a heading that exists only in an OLDER release block is not a
+# merge target; the development block gets a fresh section, and the release
+# block is byte-identical afterwards. Dropping the first-section bound in the
+# pre-scan turns this red.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+cat <<'FRAG' > news.d/new-fix.fixed.md
+- Dev-cycle fix.
+FRAG
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+## Internal
+
+- Dev-cycle internal.
+
+# mypackage 1.0.0
+
+## Bug fixes
+
+- Release-era fix.
+NEWS
+release_before="$(awk '/^# /{n++} n==2' NEWS.md)"
+bash "$assemble_script" news.d NEWS.md >/dev/null
+release_after="$(awk '/^# /{n++} n==2' NEWS.md)"
+[ "$release_before" = "$release_after" ] || { echo "FAIL: Test 28 - the older release block was modified"; cat NEWS.md; exit 1; }
+[ "$(awk '/^# /{n++} n==1' NEWS.md | grep -c '^## Bug fixes$')" -eq 1 ] || { echo "FAIL: Test 28 - development block did not gain '## Bug fixes'"; cat NEWS.md; exit 1; }
+awk '/^# /{n++} n==1' NEWS.md | grep -q 'Dev-cycle fix' || { echo "FAIL: Test 28 - bullet not in the development block"; cat NEWS.md; exit 1; }
+echo "PASS: Test 28 - Older release sections are not merge targets"
+
+# Test 29: a section heading directly under the top-level heading, with no
+# blank lines anywhere, still receives its bullets. The first draft of the
+# gha#810 merge read the record after the fresh block with getline, which
+# never reaches the merge rule, so this exact shape consumed the fragment and
+# dropped its bullet. The data-loss direction is the one pinned: the bullet
+# must be present, and it must be under the existing heading, not a second one.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+cat <<'FRAG' > news.d/tight-fix.fixed.md
+- Tight-layout fix.
+FRAG
+cat <<'FRAG' > news.d/tight-feature.added.md
+- Tight-layout feature.
+FRAG
+printf '# mypackage (development version)\n## Bug fixes\n- Old fix.\n# mypackage 1.0.0\n' > NEWS.md
+bash "$assemble_script" news.d NEWS.md >/dev/null
+grep -q 'Tight-layout fix' NEWS.md || { echo "FAIL: Test 29 - bullet lost on a tight layout"; cat NEWS.md; exit 1; }
+[ "$(grep -c '^## Bug fixes$' NEWS.md)" -eq 1 ] || { echo "FAIL: Test 29 - duplicate '## Bug fixes' on a tight layout"; cat NEWS.md; exit 1; }
+[ "$(awk 'prev=="" && $0=="" {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 29 - double blank line on a tight layout"; cat NEWS.md; exit 1; }
+echo "PASS: Test 29 - Tight layout keeps every bullet"
+
+# Test 30: a heading containing a TAB survives the merge (gha#810 review
+# round 1). The first draft carried the heading-to-file map as tab-separated
+# records, so a tab-bearing heading split wrongly, matched nothing, and its
+# fragment was deleted with the bullet reaching neither the section nor a
+# fresh block -- a silent loss the script's own header rules out. The manifest
+# is line pairs now; the assertion is that the bullet is present.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+cat <<'FRAG' > news.d/tab-fix.fixed.md
+- Tab-heading fix.
+FRAG
+printf '# mypackage (development version)\n\n## Bug\tfixes\n\n- Old fix.\n' > NEWS.md
+ASSEMBLE_NEWS_HEADINGS=$'fixed = Bug\tfixes' bash "$assemble_script" news.d NEWS.md >/dev/null
+grep -q 'Tab-heading fix' NEWS.md || { echo "FAIL: Test 30 - bullet lost for a tab-bearing heading"; cat NEWS.md; exit 1; }
+[ "$(grep -c $'^## Bug\tfixes$' NEWS.md)" -eq 1 ] || { echo "FAIL: Test 30 - tab-bearing heading duplicated"; cat NEWS.md; exit 1; }
+echo "PASS: Test 30 - A tab-bearing heading merges without loss"
+
+# Test 31: a fragment ending in a WHITESPACE-ONLY line still gets exactly one
+# blank at the seam. Both the trailing-blank stripper and the seam test read
+# "blank" as whitespace-only, the way markdownlint does; an equality test
+# against the empty string treated the spaces as content and doubled the
+# blank (MD012).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Trailing-space fix.\n   \n' > news.d/ws.fixed.md
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+## Bug fixes
+
+- Old fix.
+NEWS
+bash "$assemble_script" news.d NEWS.md >/dev/null
+[ "$(awk 'prev ~ /^[[:space:]]*$/ && $0 ~ /^[[:space:]]*$/ {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 31 - double blank after a whitespace-only fragment line"; cat -A NEWS.md 2>/dev/null || cat -e NEWS.md; exit 1; }
+grep -q 'Trailing-space fix' NEWS.md || { echo "FAIL: Test 31 - bullet missing"; exit 1; }
+echo "PASS: Test 31 - Whitespace-only line at the seam is one blank"
+
+# Test 32: an EMPTY fragment merging into an existing section leaves no stray
+# blank. The merge branch probes the bullets file before printing its
+# separator, as the fresh-block branch does.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+: > news.d/empty.fixed.md
+cat <<'NEWS' > NEWS.md
+# mypackage (development version)
+
+## Bug fixes
+
+- Old fix.
+NEWS
+bash "$assemble_script" news.d NEWS.md >/dev/null
+[ "$(awk 'prev=="" && $0=="" {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 32 - stray blank from an empty fragment"; cat NEWS.md; exit 1; }
+[ ! -f news.d/empty.fixed.md ] || { echo "FAIL: Test 32 - empty fragment not consumed"; exit 1; }
+echo "PASS: Test 32 - An empty fragment adds no stray blank"
+
+# Test 33: the OTHER seam. A whitespace-only line right after the top-level
+# heading is blank to markdownlint; the need_blank test that follows a fresh
+# block must read it as blank too, or a synthetic blank lands ahead of it
+# (MD012). Test 31 pins the stripper's seam; this pins the awk's, so the
+# fixture needs a FRESH block (the added fragment) -- a merge seam goes
+# through the held-blank logic instead and would not reach need_blank.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Seam feature.\n' > news.d/seam.added.md
+printf -- '- Seam fix.\n' > news.d/seam.fixed.md
+printf '# mypackage (development version)\n   \n## Bug fixes\n   \n- Old fix.\n' > NEWS.md
+bash "$assemble_script" news.d NEWS.md >/dev/null
+[ "$(awk 'prev ~ /^[[:space:]]*$/ && $0 ~ /^[[:space:]]*$/ {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 33 - double blank around a whitespace-only line"; cat -e NEWS.md; exit 1; }
+grep -q 'Seam fix' NEWS.md || { echo "FAIL: Test 33 - bullet missing"; exit 1; }
+grep -q 'Seam feature' NEWS.md || { echo "FAIL: Test 33 - fresh-block bullet missing"; exit 1; }
+echo "PASS: Test 33 - Whitespace-only line after the heading is one blank"
+
+# Test 34: a column-0 '# ' inside a fenced code block in the development
+# block (an R comment in an example) is not a top-level heading. Without
+# fence tracking it ended the block early, the existing section was no
+# longer a target, and a duplicate sibling came back (review round 2).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Fence-era fix.\n' > news.d/fence.fixed.md
+printf '# mypackage (development version)\n\n```r\n# a comment\nx <- 1\n```\n\n## Bug fixes\n\n- Old fix.\n' > NEWS.md
+bash "$assemble_script" news.d NEWS.md >/dev/null
+[ "$(grep -c '^## Bug fixes$' NEWS.md)" -eq 1 ] || { echo "FAIL: Test 34 - a fenced comment ended the development block early"; cat NEWS.md; exit 1; }
+grep -q 'Fence-era fix' NEWS.md || { echo "FAIL: Test 34 - bullet missing"; exit 1; }
+grep -q '^# a comment$' NEWS.md || { echo "FAIL: Test 34 - fenced content altered"; exit 1; }
+echo "PASS: Test 34 - A fenced comment is not a heading"
+
+# Test 35: a fenced code block sitting DIRECTLY at a splice seam, on both
+# paths -- right after the merge-target heading, and right after the
+# top-level heading where the fresh block lands. The fence short-circuit
+# must run after the seam rules; in front of them it glued the new bullet to
+# the fence and later doubled a blank (review round 3).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Seam-fence fix.\n' > news.d/sf.fixed.md
+printf -- '- Seam-fence feature.\n' > news.d/sf.added.md
+printf '# mypackage (development version)\n\n```r\ntop_example()\n```\n\n## Bug fixes\n\n```r\nold_example()\n```\n\n## Internal\n\n- Old internal.\n' > NEWS.md
+bash "$assemble_script" news.d NEWS.md >/dev/null
+[ "$(awk 'prev=="" && $0=="" {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 35 - double blank with a fence at a seam"; cat NEWS.md; exit 1; }
+grep -B1 -F '```r' NEWS.md | grep -qE '^- ' && { echo "FAIL: Test 35 - a bullet is glued to a fence"; cat NEWS.md; exit 1; }
+grep -q 'Seam-fence fix' NEWS.md || { echo "FAIL: Test 35 - merged bullet missing"; exit 1; }
+grep -q 'Seam-fence feature' NEWS.md || { echo "FAIL: Test 35 - fresh-block bullet missing"; exit 1; }
+[ "$(grep -c 'old_example()' NEWS.md)" -eq 1 ] && [ "$(grep -c 'top_example()' NEWS.md)" -eq 1 ] || { echo "FAIL: Test 35 - fenced content altered"; cat NEWS.md; exit 1; }
+[ "$(grep -c '^## Bug fixes$' NEWS.md)" -eq 1 ] || { echo "FAIL: Test 35 - duplicate heading"; cat NEWS.md; exit 1; }
+echo "PASS: Test 35 - A fence at a splice seam keeps its blank"
+
+# Test 36: a TIGHT merge-target heading -- no blank at all -- followed
+# directly by a fence, and another followed directly by a paragraph. The
+# held-blank logic had nothing to hold, so the new bullets glued to that
+# content (review round 4); a blank is synthesized before anything that is
+# not a bullet. Both shapes are asserted: no bullet adjacent to the fence or
+# the paragraph, and no double blank.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Tight-fence fix.\n' > news.d/tf.fixed.md
+printf -- '- Tight-para internal.\n' > news.d/tp.internal.md
+printf '# mypackage (development version)\n\n## Bug fixes\n```r\nold_example()\n```\n\n## Internal\nSome prose about internals.\n' > NEWS.md
+ASSEMBLE_NEWS_HEADINGS=$'fixed = Bug fixes\ninternal = Internal' bash "$assemble_script" news.d NEWS.md >/dev/null
+grep -A1 -F -- '- Tight-fence fix.' NEWS.md | tail -1 | grep -qE '^[[:space:]]*$' || { echo "FAIL: Test 36 - bullet glued to the fence after a tight heading"; cat NEWS.md; exit 1; }
+grep -A1 -F -- '- Tight-para internal.' NEWS.md | tail -1 | grep -qE '^[[:space:]]*$' || { echo "FAIL: Test 36 - bullet glued to the paragraph after a tight heading"; cat NEWS.md; exit 1; }
+[ "$(awk 'prev=="" && $0=="" {n++} {prev=$0} END{print n+0}' NEWS.md)" -eq 0 ] || { echo "FAIL: Test 36 - double blank"; cat NEWS.md; exit 1; }
+echo "PASS: Test 36 - A tight heading before non-bullet content gets one blank"
+
+# Test 36b: a BARE marker line ("-" alone, an empty list item) directly under
+# the tight heading is a bullet, so the merged list stays tight around it
+# (review round 5 observation); no blank is synthesized before it.
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Bare-marker fix.\n' > news.d/bm.fixed.md
+printf '# mypackage (development version)\n\n## Bug fixes\n-\n' > NEWS.md
+bash "$assemble_script" news.d NEWS.md >/dev/null
+grep -A1 -F -- '- Bare-marker fix.' NEWS.md | tail -1 | grep -qx -- '-' || { echo "FAIL: Test 36b - blank synthesized before a bare marker"; cat NEWS.md; exit 1; }
+echo "PASS: Test 36b - A bare marker under a tight heading stays in the list"
+
+# Test 36c: a spaced thematic break ("- - -") directly under the tight
+# heading starts like a bullet and is not one; a blank is synthesized
+# before it so the new bullet does not glue to the rule (review round 6).
+rm -rf news.d NEWS.md
+mkdir -p news.d
+printf -- '- Break-adjacent fix.\n' > news.d/br.fixed.md
+printf '# mypackage (development version)\n\n## Bug fixes\n- - -\n' > NEWS.md
+bash "$assemble_script" news.d NEWS.md >/dev/null
+grep -A1 -F -- '- Break-adjacent fix.' NEWS.md | tail -1 | grep -qE '^[[:space:]]*$' || { echo "FAIL: Test 36c - bullet glued to a spaced thematic break"; cat NEWS.md; exit 1; }
+echo "PASS: Test 36c - A spaced thematic break after a tight heading gets one blank"
+
 echo "=== All assemble-news.sh tests passed! ==="
