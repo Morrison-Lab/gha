@@ -660,6 +660,12 @@ review_text_file="$(mktemp)"
 # hide it from the reader, and the block then falls back to the gha#710 span
 # rule. That is malformed input rendered faithfully, not a case to special-
 # case, since ignoring unclosed fences would re-admit the quoted-heading drop.
+# The third literal construct, an INDENTED code block, needs no state at all:
+# a heading may be indented by at most three spaces (CommonMark), so a line
+# at four columns or a tab is never a heading, whether it is code or a lazy
+# paragraph continuation. The heading test says {0,3} rather than [ \t]* for
+# exactly that reason (gha#808 review round 3, which reproduced the drop with
+# indentation instead of a fence).
 jq -r '
   def authored_heading:
     ( split("\n")
@@ -676,7 +682,7 @@ jq -r '
             elif .fence != "" or ($l | test("^[ \\t]*>")) then .
             else .out += [$l] end)
       | .out | join("\n") )
-    | test("(?im)^[ \\t]*#{1,6}[ \\t]*verdict\\b");
+    | test("(?im)^ {0,3}#{1,6}[ \\t]*verdict\\b");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx

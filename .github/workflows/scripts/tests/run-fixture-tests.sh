@@ -115,6 +115,8 @@ declare -A expected=(
   # gha#808 review round 2: a same-character run followed by text is fence
   # content, not a closer.
   [verdict-then-trailing-text-closer.json]=pass
+  # gha#808 review round 3: a heading quoted as INDENTED code is not a draft.
+  [verdict-then-indented-heading.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -162,6 +164,7 @@ declare -A must_contain=(
   [verdict-then-quoted-heading.json]='epsilon-pass analysis'
   [verdict-then-mismatched-fence.json]='zeta-pass analysis'
   [verdict-then-trailing-text-closer.json]='eta-pass analysis'
+  [verdict-then-indented-heading.json]='theta-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -296,6 +299,7 @@ declare -A expected_cost=(
   [verdict-then-quoted-heading.json]=1.42
   [verdict-then-mismatched-fence.json]=1.43
   [verdict-then-trailing-text-closer.json]=1.44
+  [verdict-then-indented-heading.json]=1.45
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -483,7 +487,9 @@ assert_pass() {
     }
     fence != "" { next }
     /^[ \t]*>/ { next }
-    tolower($0) ~ /^[ \t]*#+[ \t]*verdict/ { n++ }
+    # At most three leading spaces: a four-column or tab indent is indented
+    # code or a lazy continuation, never a heading (gha#808 review round 3).
+    tolower($0) ~ /^ ? ? ?#+[ \t]*verdict/ { n++ }
     END { print n + 0 }' "$posted_file")"
   if [[ "$headings" -gt 1 ]]; then
     echo "::error::$fixture: posted review carries $headings verdict headings (gha#805)"
