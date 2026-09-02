@@ -73,9 +73,12 @@ def group_of(path: pathlib.Path, where: str, block) -> str | None:
     A list or mapping ``group`` is refused rather than stringified: ``str()``
     turns ``[a, b]`` into ``"[\'a\', \'b\']"``, a name no workflow can
     collide with, so the stub would pass an audit whose whole job is to refuse
-    what it cannot evaluate. A number or boolean IS accepted, since YAML parses
-    an unquoted ``group: 2026`` that way and GitHub reads the value as a
-    string.
+    what it cannot evaluate. An INTEGER is accepted, since YAML parses an
+    unquoted ``group: 2026`` that way and ``str()`` round-trips it exactly.
+    A boolean or float is refused instead: Python renders those differently
+    from GitHub (``True`` against ``true``, ``1.1`` against ``1.10``), so
+    accepting one would compare a name that cannot match its real
+    counterpart (gha#811 review).
     """
     if block is None:
         return None
@@ -85,7 +88,14 @@ def group_of(path: pathlib.Path, where: str, block) -> str | None:
         raw = block.get("group")
         if raw is None:
             group = ""
-        elif isinstance(raw, (str, int, float, bool)):
+        elif isinstance(raw, (bool, float)):
+            # Refused rather than accepted: Python renders these differently
+            # from GitHub, so the audit would compare a name that cannot match
+            # its real counterpart. `bool` is listed first because it
+            # subclasses `int`, so an `int` test would swallow it.
+            die(f"{path}: {where} concurrency group is {type(raw).__name__}, "
+                f"which does not round-trip; quote it")
+        elif isinstance(raw, (str, int)):
             group = str(raw).strip()
         else:
             die(f"{path}: {where} concurrency group is {type(raw).__name__}, expected a scalar")
@@ -165,12 +175,25 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
             # that counted it would read the same after the comparison was
             # gutted (gha#811 review).
             compared += 1
-            for cjob, cgroup in job_groups(wf, load(wf)).items():
+            callee_doc = load(wf)
+            # The callee side has two placements too. A reusable workflow's own
+            # top-level block applies to the calling job, so a caller group
+            # matching it deadlocks exactly as a job-level one does --
+            # `bump-dev-version.yml` is this repo's live example of a
+            # workflow_call workflow carrying one (gha#811 review).
+            callee_side = [
+                (f"job {cjob!r}", cgroup)
+                for cjob, cgroup in job_groups(wf, callee_doc).items()
+            ]
+            callee_top = group_of(wf, "top-level", callee_doc.get("concurrency"))
+            if callee_top is not None:
+                callee_side.append(("its top level", callee_top))
+            for cwhere, cgroup in callee_side:
                 for where, group in caller:
                     if cgroup == group:
                         findings.append(
                             f"{stub}: {where} concurrency group {group!r} is also "
-                            f"declared on job {cjob!r} of {callee}; the two "
+                            f"declared on {cwhere} of {callee}; the two "
                             f"deadlock (gha#809)"
                         )
     print(
@@ -190,7 +213,7 @@ def main() -> int:
         print(f"::error::{finding}")
     if findings:
         return 1
-    print("no example stub collides with its called workflow's job-level concurrency group")
+    print("no example stub collides with a concurrency group of the workflow it calls")
     return 0
 
 

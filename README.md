@@ -289,15 +289,18 @@ The `examples/claude-code-review.yml` stub defaults to this mention-triggered
 path only (no automatic `pull_request` trigger). Add `pull_request` in that
 stub if you want automatic review on each PR update.
 
-Do not declare a top-level `concurrency:` block in caller stubs for review
-workflows (`claude-code-review.yml`, `gemini-code-review.yml`,
-`antigravity-code-review.yml`, `cursor-code-review.yml`,
-`opencode-code-review.yml`, `ai-code-review.yml`).
+Do not declare a `concurrency:` block reusing the callee's group in caller
+stubs for review workflows (`claude-code-review.yml`,
+`gemini-code-review.yml`, `antigravity-code-review.yml`,
+`cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`).
 The reusable workflows manage per-PR concurrency internally on their review
 jobs.
-A top-level `concurrency:` block in the caller with a PR-scoped group name
-deadlocks GitHub Actions against the nested job's group and cancels the run
+A caller block with a PR-scoped group name deadlocks GitHub Actions against
+the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+Both caller placements do it -- a top-level block, and one on the calling
+job itself -- so `audit_example_concurrency.py` checks the review stubs for
+both, exactly as it does the gh-pages family below.
 The same rule covers the gh-pages family (`quarto-publish.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares

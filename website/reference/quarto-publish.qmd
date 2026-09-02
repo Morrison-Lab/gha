@@ -79,6 +79,13 @@ on:
   # For a render-only build check (deploy: false below), also add:
   # pull_request:
 
+# Serialize deploys so two pushes don't race on the gh-pages branch. Named
+# for this workflow rather than `gh-pages`, which the called workflow's own
+# deploy job already holds -- reusing that name deadlocks the two.
+concurrency:
+  group: quarto-publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     permissions:

@@ -58,7 +58,8 @@ runs.
 job (`group: gh-pages`).
 A caller-level block with the same group name deadlocks GitHub Actions
 against the nested job: `deploy` fails with no runner, no steps, and no log,
-and the site silently stops publishing
+and PR previews silently stop updating -- the published site itself is
+unaffected, since this workflow deploys only under `pr-preview/`
 ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 
 ```yaml

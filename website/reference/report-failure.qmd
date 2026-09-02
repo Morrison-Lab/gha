@@ -62,6 +62,16 @@ private or internal repo, at the moment the job exists to report a failure.
 
 ## Example
 
+Do not name a `concurrency:` group `gh-pages` anywhere in the caller this job
+lives in -- neither a top-level block nor one on the calling job, which
+deadlock identically.
+`quarto-publish.yml`, which the `publish` job below calls, serializes
+gh-pages deploys internally on its own `deploy` job (`group: gh-pages`), and
+a caller-level block reusing that name deadlocks GitHub Actions against it
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+Any other group name is fine, and is how the example below serializes its
+own runs.
+
 ```yaml
 # Copy the `report-failure` job into a workflow whose failures you want tracked.
 name: Quarto Publish
@@ -70,6 +80,13 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+
+# Serialize deploys so two pushes don't race on the gh-pages branch. Named
+# for this workflow rather than `gh-pages`, which the called workflow's own
+# deploy job already holds -- reusing that name deadlocks the two.
+concurrency:
+  group: quarto-publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:

@@ -72,7 +72,25 @@ jobs:
 """
 
 
-def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.yml"):
+# A callee whose concurrency sits at ITS top level rather than on a job. This
+# is the shape `.github/workflows/bump-dev-version.yml` really has, and a
+# reusable workflow's top-level group applies to the calling job, so it
+# deadlocks a matching caller group exactly as a job-level one does.
+CALLEE_TOP = """name: Y
+on: workflow_call
+concurrency:
+  group: {group}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo build
+"""
+
+
+def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.yml",
+        stub_name: str = "quarto-publish.yml"):
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         ex = root / "examples"
@@ -80,7 +98,7 @@ def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.ym
         ex.mkdir()
         wf.mkdir()
         if stub is not None:
-            (ex / "quarto-publish.yml").write_text(stub)
+            (ex / stub_name).write_text(stub)
         if workflow is not None:
             (wf / callee).write_text(workflow)
         return subprocess.run(
@@ -133,6 +151,12 @@ def main() -> int:
     # A number is a legitimate YAML spelling of a group name and is accepted.
     expect("numeric group is accepted", run(STUB.format(top="concurrency:\n  group: 2026", callee="quarto-publish.yml"),
                                              WORKFLOW.format(conc=JOB_GH)), 0)
+    # gha#811 review: bool and float do not round-trip through str(), so they
+    # are refused rather than compared against a name they can never match.
+    expect("boolean group is an error", run(STUB.format(top="concurrency:\n  group: true", callee="quarto-publish.yml"),
+                                             WORKFLOW.format(conc=JOB_GH)), 2, "does not round-trip")
+    expect("float group is an error", run(STUB.format(top="concurrency:\n  group: 1.10", callee="quarto-publish.yml"),
+                                           WORKFLOW.format(conc=JOB_GH)), 2, "does not round-trip")
     expect("missing callee is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), None), 2, "not in")
     expect("empty examples dir is an error", run(None, WORKFLOW.format(conc=JOB_GH)), 2, "no example stubs")
     expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "examples/quarto-publish.yml")
@@ -158,6 +182,33 @@ def main() -> int:
                                                            WORKFLOW.format(conc=JOB_GH)), 0, "compared 1 reusable-workflow")
     expect("stub count is reported", run(STUB.format(top="", callee="quarto-publish.yml"),
                                           WORKFLOW.format(conc=JOB_GH)), 0, "examined 1 stub(s)")
+
+    # gha#811 review: the CALLEE side has two placements too. Checking only its
+    # jobs missed a workflow_call workflow carrying its own top-level group.
+    expect("callee top-level group collides", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"),
+                                                   CALLEE_TOP.format(group="gh-pages")), 1, "its top level")
+    expect("callee top-level group that differs passes", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"),
+                                                              CALLEE_TOP.format(group="bump-dev-version")), 0)
+    # The population includes *.yaml, which no other case and no live run can
+    # pin -- this repo's examples/ holds only *.yml, so reverting the glob to
+    # *.yml alone leaves every other case and the live audit green. Verbatim
+    # the class CLAUDE.md documents for workflow_discovery.
+    expect("a .yaml stub is in the population", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"),
+                                                     WORKFLOW.format(conc=JOB_GH),
+                                                     stub_name="quarto-publish.yaml"), 1, "deadlock")
+    # Fail-closed guards. Each refuses rather than walking past, so a malformed
+    # stub cannot be reported as clean; without these cases each `die` can be
+    # replaced by `continue` with the suite still green.
+    expect("a non-mapping job is an error", run("name: X\non: push\njobs:\n  publish: 7\n",
+                                                 WORKFLOW.format(conc=JOB_GH)), 2, "expected a mapping")
+    expect("a non-string uses: is an error", run("name: X\non: push\njobs:\n  publish:\n    uses: [a]\n",
+                                                  WORKFLOW.format(conc=JOB_GH)), 2, "expected a string")
+    # The owner anchor is deliberate: a `uses:` naming somebody else's repo is
+    # not ours to audit, and is skipped rather than resolved against our
+    # workflows dir. Loosening USES_RE to any owner turns this red, because the
+    # callee file would then be looked up and found missing.
+    expect("another owner's uses: is skipped", run("name: X\non: push\n" + TOP_GH + "\njobs:\n  publish:\n    uses: someone-else/gha/.github/workflows/quarto-publish.yml@v2\n",
+                                                    WORKFLOW.format(conc=JOB_GH)), 0, "compared 0")
 
     if failures:
         print(f"::error::{failures} audit-example-concurrency case(s) failed")

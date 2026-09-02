@@ -27,9 +27,10 @@ runs.
 `cleanup-pr-previews.yml` serializes its gh-pages branch modifications
 with the deploy workflows on its `cleanup` job (`group: gh-pages`).
 A caller-level block with the same group name deadlocks GitHub Actions
-against the nested job: `cleanup` fails with no runner, no steps, and no log,
-and the site silently stops publishing
-([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+against the nested job: `cleanup` fails with no runner, no steps, and no log.
+This workflow publishes nothing, so the symptom is not a stale site: the
+deletions never land, and preview directories for closed PRs accumulate on
+gh-pages ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 
 ```yaml
 # Copy to .github/workflows/cleanup-pr-previews.yml in your repo.

@@ -2823,9 +2823,20 @@ over it:
 
 `.github/workflows/scripts/audit_example_concurrency.py` closes gha#809:
 a caller-level `concurrency:` group that the called reusable workflow also
-declares on a job deadlocks the run, and the failure is unusually hard to
-diagnose (the nested job fails with no runner, no steps, no log, and no
-annotation; only the web UI shows the reason).
+declares deadlocks the run, and the failure is unusually hard to diagnose.
+**How it presents is not settled, and the two recorded instances disagree.**
+gha#437's presented as a cancelled run, which is how GitHub documents the
+condition -- it cancels with a message naming the group and both sides
+(`Canceling since a deadlock for concurrency group ... was detected between
+'top level workflow' and ...`, reported in
+[community#30708](https://github.com/orgs/community/discussions/30708) and
+[community#43510](https://github.com/orgs/community/discussions/43510)).
+The `ucdavis/hac.sap` instance instead presented as a nested job with no
+runner, no steps, and no log.
+Whether that is a second failure mode, a difference between the caller's and
+the callee's view of the same cancellation, or a misreading of the run page
+has not been established here, so do not repeat either observable as the
+general case without checking the run in front of you.
 gha#437 recorded the mechanism for the review family; gha#654 then added
 `group: gh-pages` to `quarto-publish.yml`'s deploy job without touching
 `examples/quarto-publish.yml`, which still told consumers to declare the
@@ -2848,6 +2859,19 @@ so reporting it would be a false positive, and a test pins that.
 The summary line counts calls actually COMPARED rather than walked past,
 since most stubs carry no caller-level group at all and a count that
 included them would read the same after the comparison was gutted.
+**The CALLEE side has two placements too**, and checking only its jobs missed
+one: a reusable workflow's own top-level `concurrency:` applies to the calling
+job, so a caller group matching it deadlocks exactly as a job-level one does.
+`bump-dev-version.yml` is this repo's live example of a `workflow_call`
+workflow carrying one, and before gha#811's review the audit walked past it.
+A group that is a BOOLEAN or a FLOAT is refused rather than compared: Python
+renders those differently from GitHub (`True` against `true`, `1.1` against
+`1.10`), so accepting one would compare a name that can never match its real
+counterpart -- a silent false negative in the one function whose contract is
+to refuse what it cannot evaluate.
+An integer round-trips and is accepted.
+Note `bool` subclasses `int` in Python, so the boolean test must come first
+or an `int` check swallows it.
 Its first live run found a second collision the issue had not listed,
 `examples/report-failure.yml`, which is why the check is derived from the
 tree rather than from the issue's list.
@@ -2857,6 +2881,14 @@ the negative cases (no top-level block, a different group, a callee with no
 job-level group, and a group on a NON-calling job) are the ones to keep,
 because without them the audit would fail every stub the moment any
 workflow gained a concurrency block.
+One case exists purely to pin the `*.yaml` half of the population, which
+neither another case nor the live run can reach -- `examples/` holds only
+`*.yml`, so reverting the glob leaves everything else green, verbatim the
+class this file documents for `workflow_discovery` above.
+The non-mapping-job guard is declared TWICE (in `job_groups` and in
+`callee_calls`), so a single-site mutation survives the suite and only
+mutating both turns its case red; read that survivor as the other site still
+holding rather than as missing coverage.
 CI runs it as the `example-concurrency` job in `_selftest.yml`, unit tests
 first, then the live audit.
 
