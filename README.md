@@ -316,8 +316,8 @@ silently stops publishing
 `examples/` declares a group its called workflow already declares -- on
 either side's two placements, so the stub's top level or its calling job
 against the callee's jobs or the callee's own top level.
-Its comparison is literal, so its population is the constant-named stubs
-above rather than every stub under `examples/`.
+Its comparison is literal, so what it can FLAG is the constant-named
+groups above; it still examines every stub.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:

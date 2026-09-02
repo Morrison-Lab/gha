@@ -219,8 +219,10 @@ def main() -> int:
                                                   WORKFLOW.format(conc=JOB_GH)), 2, "expected a string")
     # The owner anchor is deliberate: a `uses:` naming somebody else's repo is
     # not ours to audit, and is skipped rather than resolved against our
-    # workflows dir. Loosening USES_RE to any owner turns this red, because the
-    # callee file would then be looked up and found missing.
+    # workflows dir. Loosening USES_RE to any owner turns this red with exit 1
+    # -- the fixture's callee IS present under that name, so the loosened
+    # regex resolves it and reports a real `gh-pages` collision (measured;
+    # an earlier version of this comment said exit 2 on a missing file).
     expect("another owner's uses: is skipped", run("name: X\non: push\n" + TOP_GH + "\njobs:\n  publish:\n    uses: someone-else/gha/.github/workflows/quarto-publish.yml@v2\n",
                                                     WORKFLOW.format(conc=JOB_GH)), 0, "compared 0")
 
