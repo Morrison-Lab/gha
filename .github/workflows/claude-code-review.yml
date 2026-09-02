@@ -1757,10 +1757,9 @@ jobs:
           steps.payload.outputs.quota_exhausted != 'true' &&
           steps.payload.outputs.cancelled != 'true' &&
           steps.payload.outputs.review_present == 'true'
-        env:
-          REVIEW_TEXT_FILE: ${{ steps.payload.outputs.review_text_file }}
-        run: |
-          bash .github/workflows/scripts/classify-review-verdict.sh "$REVIEW_TEXT_FILE"
+        uses: Morrison-Lab/gha/.github/actions/classify-review-verdict@v2
+        with:
+          review-text-file: ${{ steps.payload.outputs.review_text_file }}
 
       - name: Post cost comment
         if: >-
