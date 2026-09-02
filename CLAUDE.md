@@ -319,6 +319,60 @@ which is why the capabilities above moved to `@v2`.
   the reusable workflow's `@v2` call is the usual bootstrap gap until the
   tag slides.
 
+- `.github/actions/build-quota-skip-notice/` -- wraps
+  `scripts/build-quota-skip-notice.sh`, which renders the PR notice
+  `claude-code-review.yml` posts on a graceful quota skip (gha#804).
+  The guard already told three cases apart in the run log -- no secret
+  configured, the API rejecting the first request at zero cost (gha#396), and
+  a 429 part-way through a review that had spent real turns (gha#520) -- but
+  the notice stated one disjunction for all of them, so after a mid-run 429
+  it told a maintainer who had just repaired the secret that no secret was
+  configured.
+  `check-review-execution.sh` now emits `quota_reason` (`rejected-at-door`
+  or `midrun-429`) and a single-line `quota_message` beside
+  `quota_exhausted=true`, `run-review-guard` re-declares both as outputs,
+  the pre-flight step emits `missing-secret`, `resolve-final` passes all of
+  it through `env:`, `pack-review-payload` packs it, and the posting job
+  hands it to this composite.
+  Five things constrain any change to it.
+  **The `run-review-guard` output block is the hop no offline test crosses.**
+  A composite's step outputs are invisible to its caller unless re-declared
+  in `outputs:`, and the first draft omitted that block, so every value
+  arrived empty and the notice fell back to the old wording for both real
+  cases while every script test stayed green.
+  `run-review-job-split-tests.py` now asserts that every
+  `steps.fail-check*.outputs.<name>` the workflow reads is declared there.
+  **The message is redacted before it leaves the guard.**
+  A door rejection is exactly where the SDK quotes credential context (the
+  gha#686 entry above records one), and the comment is not masked, so the
+  message runs through the same chain `denied_tools` does -- one jq
+  `def redact:` prelude (`redact_jq`) shared by both, rather than a second
+  copy of five patterns.
+  `run-fixture-tests.sh` builds token-bearing door and mid-run fixtures at
+  run time and asserts both the log line and the `quota_message` output
+  carry `***` on each path; a `_selftest.yml` `uses: ./` call against the
+  door fixture is what proves the `value:` mappings themselves.
+  **The headline always begins `Claude review skipped`**, because
+  `classify-review-delivery.sh` keys on that phrase; its test suite
+  generates a body per reason from the real builder so the two cannot drift.
+  **An unrecognized or empty reason renders the pre-gha#804 disjunction**
+  rather than erroring, so a guard at an older tag still gets a notice.
+  **And `quota_message` is API-authored free text**, so it takes the same
+  `env:` route `denied_tools` does (gha#541).
+  The guard writes it `key=value`, as it does `denied_tools`, which is safe
+  because the same file collapses it to one line two lines earlier; the two
+  downstream re-emissions (`resolve-final` and `Load review payload`) use the
+  delimiter form, because their single-line guarantee lives in another file.
+  The builder collapses it again before rendering, so a newline in it cannot
+  escape the blockquote.
+  `run-build-quota-skip-notice-tests.sh` pins the per-reason wording, the
+  negative claims (a mid-run 429 must not say no secret is configured), the
+  verbatim message, and the collapse step's run-id capture;
+  `run-fixture-tests.sh` asserts `quota_reason` and `quota_message` per skip
+  fixture (including a multi-line door message, the only fixture that can
+  see a broken door-path extraction) and that a passing run carries no stale
+  reason.
+
 - `.github/actions/extract-total-cost/` -- wraps
   `scripts/extract-total-cost.sh`, which extracts `total_cost_usd` from a
   claude-code-action execution-output file's last `result` event. `claude.yml`

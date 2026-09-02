@@ -785,6 +785,9 @@ jobs:
       - name: Run build-self-review-skip-notice tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-build-self-review-skip-notice-tests.sh
+      - name: Run build-quota-skip-notice tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-build-quota-skip-notice-tests.sh
       - name: Run dispatch-review tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-dispatch-review-tests.sh
@@ -819,6 +822,13 @@ jobs:
         uses: ./.github/actions/build-self-review-skip-notice
         with:
           workflow-path: .github/workflows/claude-code-review.yml
+          run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
+      - name: Exercise build-quota-skip-notice composite action end-to-end
+        id: quota-notice-e2e
+        uses: ./.github/actions/build-quota-skip-notice
+        with:
+          quota-reason: midrun-429
+          quota-message: "You've hit your session limit - resets 10:50pm (UTC)"
           run-url: https://github.com/Morrison-Lab/gha/actions/runs/12345
       - name: Exercise build-self-review-skip-notice with an empty workflow-path
         id: skip-notice-incomplete-e2e
@@ -923,6 +933,28 @@ jobs:
             exit 1
           fi
           echo "build-self-review-skip-notice empty-path notice names an incomplete list"
+      # gha#804: the composite call above is the only proof that action.yml
+      # wires quota-reason/quota-message through to the script; the offline
+      # suite calls the script directly and cannot see that.
+      - name: Assert build-quota-skip-notice generated the mid-run 429 body
+        shell: bash
+        env:
+          BODY_FILE: ${{ steps.quota-notice-e2e.outputs.body-file }}
+        run: |
+          set -euo pipefail
+          if ! grep -q 'returned 429 part-way through' "$BODY_FILE"; then
+            echo "::error::build-quota-skip-notice did not render the midrun-429 wording"
+            exit 1
+          fi
+          if ! grep -qF 'API message: You'"'"'ve hit your session limit' "$BODY_FILE"; then
+            echo "::error::build-quota-skip-notice dropped the quota-message input"
+            exit 1
+          fi
+          if grep -q 'secret is configured' "$BODY_FILE"; then
+            echo "::error::midrun-429 notice still claims no secret is configured"
+            exit 1
+          fi
+          echo "build-quota-skip-notice rendered the midrun-429 notice with the API message"
       # Exercises the run-review-guard composite action itself (not just the
       # check-review-execution.sh script it wraps) via a real `uses:` step, so
       # its github.action_path-relative resolution of the script is actually
@@ -1032,6 +1064,37 @@ jobs:
       # the composite action's action_short_circuit output passthrough works
       # end-to-end (gha#368) — claude-code-review.yml's retry gates on this
       # composite output.
+      # gha#804: quota_reason / quota_message are two more `value:` mappings on
+      # this composite, and run-review-job-split-tests.py can only see that the
+      # KEYS exist -- a typo in the expression leaves the output empty with
+      # every offline suite green, which is the symptom gha#804 round 1 was
+      # filed over. This is the only step that proves the wiring.
+      - name: Exercise run-review-guard against a quota door-rejection fixture
+        id: guard-e2e-quota
+        uses: ./.github/actions/run-review-guard
+        with:
+          execution-file: .github/workflows/scripts/tests/fixtures/quota-exhausted-with-message.json
+      - name: Assert run-review-guard surfaced the gha#804 quota outputs
+        shell: bash
+        env:
+          QUOTA_EXHAUSTED: ${{ steps.guard-e2e-quota.outputs.quota_exhausted }}
+          QUOTA_REASON: ${{ steps.guard-e2e-quota.outputs.quota_reason }}
+          QUOTA_MESSAGE: ${{ steps.guard-e2e-quota.outputs.quota_message }}
+        run: |
+          set -euo pipefail
+          if [[ "$QUOTA_EXHAUSTED" != "true" ]]; then
+            echo "::error::expected quota_exhausted=true from the composite, got '$QUOTA_EXHAUSTED'"
+            exit 1
+          fi
+          if [[ "$QUOTA_REASON" != "rejected-at-door" ]]; then
+            echo "::error::expected quota_reason=rejected-at-door from the composite, got '$QUOTA_REASON'"
+            exit 1
+          fi
+          if [[ "$QUOTA_MESSAGE" != "Invalid Authorization header value from CLAUDE_CODE_OAUTH_TOKEN: it contains a line break at character 56 (see the run log)" ]]; then
+            echo "::error::expected the collapsed door message from the composite, got '$QUOTA_MESSAGE'"
+            exit 1
+          fi
+          echo "run-review-guard passed through quota_reason and quota_message correctly"
       - name: Exercise run-review-guard composite action end-to-end (short-circuit fixture)
         id: guard-e2e-short-circuit
         continue-on-error: true

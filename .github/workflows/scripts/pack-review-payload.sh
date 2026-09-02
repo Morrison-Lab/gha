@@ -63,6 +63,8 @@ jq -n \
   --arg self_mod "${SELF_MOD:-false}" \
   --arg skip_notice_posted "${SKIP_NOTICE_POSTED:-false}" \
   --arg quota_exhausted "${QUOTA_EXHAUSTED:-false}" \
+  --arg quota_reason "${QUOTA_REASON:-}" \
+  --arg quota_message "${QUOTA_MESSAGE:-}" \
   --arg cancelled "${CANCELLED:-false}" \
   --arg resolve_outcome "${RESOLVE_OUTCOME:-}" \
   --arg head_sha "${HEAD_SHA:-}" \
@@ -86,6 +88,8 @@ jq -n \
     self_mod: $self_mod,
     skip_notice_posted: $skip_notice_posted,
     quota_exhausted: $quota_exhausted,
+    quota_reason: $quota_reason,
+    quota_message: $quota_message,
     cancelled: $cancelled,
     resolve_outcome: $resolve_outcome,
     head_sha: $head_sha,
