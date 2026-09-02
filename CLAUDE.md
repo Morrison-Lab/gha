@@ -319,6 +319,34 @@ which is why the capabilities above moved to `@v2`.
   the reusable workflow's `@v2` call is the usual bootstrap gap until the
   tag slides.
 
+- `.github/actions/build-quota-skip-notice/` -- wraps
+  `scripts/build-quota-skip-notice.sh`, which renders the PR notice
+  `claude-code-review.yml` posts on a graceful quota skip (gha#804).
+  The guard already told three cases apart in the run log -- no secret
+  configured, the API rejecting the first request at zero cost (gha#396), and
+  a 429 part-way through a review that had spent real turns (gha#520) -- but
+  the notice stated one disjunction for all of them, so after a mid-run 429
+  it told a maintainer who had just repaired the secret that no secret was
+  configured.
+  `check-review-execution.sh` now emits `quota_reason` (`rejected-at-door`
+  or `midrun-429`) and a single-line `quota_message` beside
+  `quota_exhausted=true`, the pre-flight step emits `missing-secret`,
+  `resolve-final` passes both through `env:`, `pack-review-payload` packs
+  them, and the posting job hands them to this composite.
+  Three things constrain any change to it.
+  The headline always begins `Claude review skipped`, because
+  `classify-review-delivery.sh` keys on that phrase.
+  An unrecognized or empty reason renders the pre-gha#804 disjunction rather
+  than erroring, so a guard at an older tag still gets a notice.
+  And `quota_message` is the API's own text, so it takes the same `env:`
+  route `denied_tools` does (gha#541) and is collapsed to one line before
+  rendering, so a newline in it cannot escape the blockquote.
+  `run-build-quota-skip-notice-tests.sh` pins the per-reason wording, the
+  negative claims (a mid-run 429 must not say no secret is configured), the
+  verbatim message, and the collapse step's run-id capture;
+  `run-fixture-tests.sh` asserts `quota_reason` per skip fixture and that a
+  passing run carries none.
+
 - `.github/actions/extract-total-cost/` -- wraps
   `scripts/extract-total-cost.sh`, which extracts `total_cost_usd` from a
   claude-code-action execution-output file's last `result` event. `claude.yml`

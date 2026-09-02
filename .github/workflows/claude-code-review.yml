@@ -940,6 +940,7 @@ jobs:
           set -euo pipefail
           if [ "$HAS_OAUTH" != "true" ] && [ "$HAS_API_KEY" != "true" ]; then
             echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+            echo "quota_reason=missing-secret" >> "$GITHUB_OUTPUT"
             echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret available for review execution (gha#396)."
           fi
 
@@ -1241,6 +1242,13 @@ jobs:
           FCR_DENIALS: ${{ steps.fail-check-retry.outputs.denials }}
           FCR_DENIED_TOOLS: ${{ steps.fail-check-retry.outputs.denied_tools }}
           FCR_MAX_DENIALS: ${{ steps.fail-check-retry.outputs.max_denials }}
+          # `quota_message` is the API's own text (gha#804), so it takes the
+          # same env: route as denied_tools; `quota_reason` is a fixed
+          # vocabulary and rides along under the same rule.
+          FC_QUOTA_REASON: ${{ steps.fail-check.outputs.quota_reason }}
+          FC_QUOTA_MESSAGE: ${{ steps.fail-check.outputs.quota_message }}
+          FCR_QUOTA_REASON: ${{ steps.fail-check-retry.outputs.quota_reason }}
+          FCR_QUOTA_MESSAGE: ${{ steps.fail-check-retry.outputs.quota_message }}
         run: |
           set -euo pipefail
           # Note: GitHub Actions status-check functions like `cancelled()` are
@@ -1254,8 +1262,11 @@ jobs:
             exit 0
           fi
           if [[ "${{ steps.preflight-quota.outputs.quota_exhausted }}" == "true" ]]; then
-            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
-            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
+            {
+              echo "quota_exhausted=true"
+              echo "quota_reason=missing-secret"
+              echo "total_cost_usd=$TOTAL_COST"
+            } >> "$GITHUB_OUTPUT"
             echo "Pre-flight account status check detected missing/exhausted quota (gha#396)."
             exit 0
           fi
@@ -1277,16 +1288,24 @@ jobs:
             exit 1
           fi
           if [[ "${{ steps.fail-check.outcome }}" == "success" ]]; then
-            echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
-            echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
-            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
+            {
+              echo "review_text_file=${{ steps.fail-check.outputs.review_text_file }}"
+              echo "quota_exhausted=${{ steps.fail-check.outputs.quota_exhausted }}"
+              echo "quota_reason=$FC_QUOTA_REASON"
+              echo "quota_message=$FC_QUOTA_MESSAGE"
+              echo "total_cost_usd=$TOTAL_COST"
+            } >> "$GITHUB_OUTPUT"
             echo "Attempt 1 completed cleanly."
             exit 0
           fi
           if [[ "${{ steps.fail-check-retry.outcome }}" == "success" ]]; then
-            echo "review_text_file=${{ steps.fail-check-retry.outputs.review_text_file }}" >> "$GITHUB_OUTPUT"
-            echo "quota_exhausted=${{ steps.fail-check-retry.outputs.quota_exhausted }}" >> "$GITHUB_OUTPUT"
-            echo "total_cost_usd=$TOTAL_COST" >> "$GITHUB_OUTPUT"
+            {
+              echo "review_text_file=${{ steps.fail-check-retry.outputs.review_text_file }}"
+              echo "quota_exhausted=${{ steps.fail-check-retry.outputs.quota_exhausted }}"
+              echo "quota_reason=$FCR_QUOTA_REASON"
+              echo "quota_message=$FCR_QUOTA_MESSAGE"
+              echo "total_cost_usd=$TOTAL_COST"
+            } >> "$GITHUB_OUTPUT"
             echo "::notice::Attempt 1 produced a stub review or short-circuited; the retry recovered cleanly."
             exit 0
           fi
@@ -1385,6 +1404,8 @@ jobs:
           wf-path: ${{ steps.selfmod.outputs.wf_path }}
           self-mod: ${{ steps.selfmod.outputs.self_mod }}
           quota-exhausted: ${{ steps.resolve-final.outputs.quota_exhausted }}
+          quota-reason: ${{ steps.resolve-final.outputs.quota_reason }}
+          quota-message: ${{ steps.resolve-final.outputs.quota_message }}
           cancelled: ${{ steps.resolve-final.outputs.cancelled }}
           resolve-outcome: ${{ steps.resolve-final.outcome }}
           head-sha: ${{ steps.stash.outputs.head_before }}
@@ -1545,6 +1566,8 @@ jobs:
             "wf_path=\(.wf_path)",
             "self_mod=\(.self_mod)",
             "quota_exhausted=\(.quota_exhausted)",
+            "quota_reason=\(.quota_reason)",
+            "quota_message=\(.quota_message)",
             "cancelled=\(.cancelled)",
             "resolve_outcome=\(.resolve_outcome)",
             "total_cost_usd=\(.total_cost_usd)",
@@ -1606,16 +1629,29 @@ jobs:
             echo "::warning::Could not post the self-review-skip notice on #$PR_NUMBER; require-review is still gray, but the PR carries no explanation."
           fi
 
+      # gha#804: the notice names WHICH quota case fired. The body is built by
+      # a composite so its wording is unit-tested offline, and `quota_message`
+      # (the API's own text) reaches it through `with:` -> env:, never a run:
+      # body, the same route denied_tools takes.
+      - name: Build quota-exhausted notice body
+        id: build-quota-notice
+        if: steps.target.outputs.stale != 'true' && steps.payload.outputs.quota_exhausted == 'true'
+        uses: Morrison-Lab/gha/.github/actions/build-quota-skip-notice@v2
+        with:
+          quota-reason: ${{ steps.payload.outputs.quota_reason }}
+          quota-message: ${{ steps.payload.outputs.quota_message }}
+          run-url: ${{ steps.target.outputs.run_url }}
+
       - name: Post quota-exhausted comment
         if: steps.target.outputs.stale != 'true' && steps.payload.outputs.quota_exhausted == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ steps.target.outputs.repo }}
           PR_NUMBER: ${{ steps.target.outputs.pr_number }}
-          RUN_URL: ${{ steps.target.outputs.run_url }}
+          BODY_FILE: ${{ steps.build-quota-notice.outputs.body-file }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body "> [!WARNING]
-          > **Claude review skipped — API credential or quota unavailable.** No \`CLAUDE_CODE_OAUTH_TOKEN\` or \`ANTHROPIC_API_KEY\` secret is configured, or account API quota is exhausted. Re-trigger the review by pushing a new commit or re-running the workflow once configured/reset. [View run]($RUN_URL)"
+          set -euo pipefail
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE"
 
       # The mirror of the quota-exhausted notice above, for the case where the
       # review RAN and still produced nothing usable. Without it a no-verdict

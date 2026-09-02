@@ -1,0 +1,47 @@
+name: Build quota-skip notice body
+description: >-
+  Generates the markdown notice comment body claude-code-review.yml posts
+  when a review is skipped for a credential or quota condition, branching on
+  which condition fired -- no secret configured, the API rejecting the first
+  request, or a 429 part-way through the review -- and quoting the API's own
+  message when one was captured (gha#804). Wrapped in a composite action,
+  located via github.action_path, so it resolves correctly when invoked from
+  a caller repo.
+
+inputs:
+  quota-reason:
+    description: >-
+      missing-secret, rejected-at-door, or midrun-429. Any other value
+      (including empty) renders the pre-gha#804 wording.
+    required: false
+    default: ''
+  quota-message:
+    description: >-
+      The API's own message, when the guard captured one. Free text; passed
+      through env: into the script, never interpolated into a run: body.
+    required: false
+    default: ''
+  run-url:
+    description: Run URL (e.g. https://github.com/.../actions/runs/123)
+    required: true
+
+outputs:
+  body-file:
+    description: Absolute path to temporary file containing the notice markdown body
+    value: ${{ steps.run.outputs.body_file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Generate notice body file
+      id: run
+      shell: bash
+      env:
+        QUOTA_REASON: ${{ inputs.quota-reason }}
+        QUOTA_MESSAGE: ${{ inputs.quota-message }}
+        RUN_URL: ${{ inputs.run-url }}
+      run: |
+        set -euo pipefail
+        BODY_FILE="$(mktemp)"
+        bash "${{ github.action_path }}/../../workflows/scripts/build-quota-skip-notice.sh" > "$BODY_FILE"
+        echo "body_file=$BODY_FILE" >> "$GITHUB_OUTPUT"

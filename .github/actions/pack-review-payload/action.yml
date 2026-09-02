@@ -56,6 +56,18 @@ inputs:
     description: "'true' when the review was skipped for quota/auth."
     required: false
     default: 'false'
+  quota-reason:
+    description: >-
+      Which quota case fired: missing-secret, rejected-at-door, or
+      midrun-429 (gha#804). Empty when quota-exhausted is false.
+    required: false
+    default: ''
+  quota-message:
+    description: >-
+      The API's own message on a quota skip, when the guard captured one.
+      Free text; passed through env: into the pack script.
+    required: false
+    default: ''
   cancelled:
     description: "'true' when resolve-final recorded a cancelled run."
     required: false
@@ -144,6 +156,8 @@ runs:
         SELF_MOD: ${{ inputs.self-mod }}
         SKIP_NOTICE_POSTED: ${{ inputs.skip-notice-posted }}
         QUOTA_EXHAUSTED: ${{ inputs.quota-exhausted }}
+        QUOTA_REASON: ${{ inputs.quota-reason }}
+        QUOTA_MESSAGE: ${{ inputs.quota-message }}
         CANCELLED: ${{ inputs.cancelled }}
         RESOLVE_OUTCOME: ${{ inputs.resolve-outcome }}
         HEAD_SHA: ${{ inputs.head-sha }}

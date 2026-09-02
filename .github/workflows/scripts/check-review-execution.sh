@@ -14,6 +14,8 @@
 #   - fails if the result is an error that isn't a quota/auth pre-processing rejection;
 #   - writes quota_exhausted=true to $GITHUB_OUTPUT (if set) and exits 0 on a
 #     zero-cost, single-turn error result (quota exhaustion / auth failure),
+#     alongside quota_reason=rejected-at-door (and quota_message when the
+#     result carried one; gha#804),
 #     and likewise on an error result carrying api_error_status:429, which is
 #     the same exhaustion reached part-way through a review rather than at the
 #     door (gha#520) -- that one has real turns and real cost behind it, so the
@@ -134,8 +136,16 @@ if [[ "$subtype" == error_* ]]; then
   total_cost="$(jq -r '.total_cost_usd // 1' <<< "$result")"
   num_turns="$(jq -r '.num_turns // 0' <<< "$result")"
   if [[ "$total_cost" == "0" && "$num_turns" == "1" ]]; then
-    echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
-    echo "::warning::Claude review skipped -- CLAUDE_CODE_OAUTH_TOKEN quota or auth error (zero cost, turn 1). Re-trigger the review once the quota resets."
+    # gha#804: name WHICH quota case this is, so the PR notice can say a
+    # credential was configured and refused rather than "no secret is
+    # configured, or quota is exhausted". Single-line, as for the 429 branch.
+    door_message="$(jq -r '(.result // "") | tostring | gsub("[\n\r]"; " ")' <<< "$result")"
+    {
+      echo "quota_exhausted=true"
+      echo "quota_reason=rejected-at-door"
+      echo "quota_message=$door_message"
+    } >> "$GITHUB_OUTPUT"
+    echo "::warning::Claude review skipped -- CLAUDE_CODE_OAUTH_TOKEN quota or auth error (zero cost, turn 1). Re-trigger the review once the quota resets. API message: ${door_message:-<none>}"
     exit 0
   fi
 fi
@@ -653,7 +663,13 @@ if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
   if [[ "$api_error_status" == "429" ]]; then
     # Single-line, so the annotation can't be broken up by an embedded newline.
     api_error_message="$(jq -r '(.result // "") | tostring | gsub("[\n\r]"; " ")' <<< "$result")"
-    echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+    # gha#804: the reason and the message travel with the flag so the PR
+    # notice can quote the reset time instead of guessing at the cause.
+    {
+      echo "quota_exhausted=true"
+      echo "quota_reason=midrun-429"
+      echo "quota_message=$api_error_message"
+    } >> "$GITHUB_OUTPUT"
     echo "::warning::Claude review skipped -- the API returned 429 part-way through the review (quota or rate limit exhausted mid-run; gha#520). Re-trigger the review once the quota resets. API message: ${api_error_message:-<none>}"
     exit 0
   fi

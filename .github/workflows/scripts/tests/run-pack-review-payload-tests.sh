@@ -35,7 +35,7 @@ PAYLOAD_DIR="$dir" \
   PR_NUMBER=12 REPO=Morrison-Lab/gha RUN_URL=https://example.invalid/run \
   RUN_ID=99 EVENT_NAME=pull_request CALLER_WF_PATH=.github/workflows/claude-review.yml \
   WF_PATH=.github/workflows/claude-review.yml SELF_MOD=false \
-  QUOTA_EXHAUSTED=false CANCELLED=false RESOLVE_OUTCOME=success \
+  QUOTA_EXHAUSTED=false QUOTA_REASON= QUOTA_MESSAGE= CANCELLED=false RESOLVE_OUTCOME=success \
   HEAD_SHA=abc123 TOTAL_COST_USD=1.25 FAILURE_KIND= \
   DENIALS=0 DENIED_TOOLS="$denied" MAX_DENIALS=5 ATTEMPTS=1 \
   TRACK_PROGRESS=false REPORT_COST=true REVIEW_TEXT_FILE="$review" \
@@ -56,7 +56,7 @@ check "happy: review sidecar is verbatim" "$(cat "$review")" "$(cat "$dir/review
 # tr -d '\r' strips carriage returns for test portability on Windows environments.
 keys="$(jq -r 'keys[]' "$dir/payload.json" | tr -d '\r' | sort | tr '\n' ',')"
 check "happy: key set" \
-  "attempts,caller_wf_path,cancelled,denials,event_name,failure_kind,head_sha,max_denials,pr_number,quota_exhausted,repo,report_cost,resolve_outcome,review_present,run_id,run_url,schema_version,self_mod,skip_notice_posted,total_cost_usd,track_progress,wf_path," \
+  "attempts,caller_wf_path,cancelled,denials,event_name,failure_kind,head_sha,max_denials,pr_number,quota_exhausted,quota_message,quota_reason,repo,report_cost,resolve_outcome,review_present,run_id,run_url,schema_version,self_mod,skip_notice_posted,total_cost_usd,track_progress,wf_path," \
   "$keys"
 check "happy: denied_tools sidecar ends in newline" "" "$(tail -c1 "$dir/denied_tools.txt")"
 
@@ -105,6 +105,14 @@ dir="$tmpdir/missing-review"
 PAYLOAD_DIR="$dir" REVIEW_TEXT_FILE="$tmpdir/does-not-exist" bash "$PACK"
 check "missing review file: no sidecar" "false" "$([[ -f $dir/review.txt ]] && echo true || echo false)"
 check "missing review file: review_present false" "false" "$(jq -r .review_present "$dir/payload.json")"
+
+# --- quota reason and message are packed verbatim (gha#804) ----------------
+dir="$tmpdir/quota"
+api_msg="You've hit your session limit · resets 10:50pm (UTC)"
+PAYLOAD_DIR="$dir" QUOTA_EXHAUSTED=true QUOTA_REASON=midrun-429 QUOTA_MESSAGE="$api_msg" bash "$PACK"
+check "quota: reason packed" "midrun-429" "$(jq -r .quota_reason "$dir/payload.json")"
+check "quota: message packed verbatim" "$api_msg" "$(jq -r .quota_message "$dir/payload.json")"
+check "quota: reason is an empty key when unset" "" "$(jq -r .quota_reason "$tmpdir/no-review/payload.json")"
 
 # --- denied_tools with quotes and dollars survives jq --arg ----------------
 dir="$tmpdir/metachar"

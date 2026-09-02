@@ -440,9 +440,41 @@ assert_fail_short_circuit() {
   [[ "$exit_code" -ne 0 ]] && grep -q '^action_short_circuit=true$' "$output_file"
 }
 
+# gha#804: a graceful skip names WHICH quota case fired, so the PR notice
+# can say a configured credential was refused (or accepted, then 429'd)
+# rather than guessing that no secret exists. Asserted per fixture, since
+# the two skip shapes are exactly what the reason has to tell apart; the
+# mid-run case must also carry the API's own message, single-line.
+declare -A expected_quota_reason=(
+  [quota-exhausted.json]=rejected-at-door
+  [quota-exhausted-midrun.json]=midrun-429
+)
+declare -A expected_quota_message=(
+  [quota-exhausted.json]=""
+  [quota-exhausted-midrun.json]="You've hit your weekly limit · resets Aug 20, 8pm (UTC)"
+)
+
 assert_skip() {
-  local exit_code="$1" output_file="$2"
-  [[ "$exit_code" -eq 0 ]] && grep -q '^quota_exhausted=true$' "$output_file"
+  local fixture="$1" exit_code="$2" output_file="$3"
+  [[ "$exit_code" -eq 0 ]] && grep -q '^quota_exhausted=true$' "$output_file" || return 1
+  local got_reason got_message
+  got_reason="$(sed -n 's/^quota_reason=//p' "$output_file" | tail -1)"
+  got_message="$(sed -n 's/^quota_message=//p' "$output_file" | tail -1)"
+  [[ "$got_reason" == "${expected_quota_reason[$fixture]:-}" ]] || return 1
+  [[ "$got_message" == "${expected_quota_message[$fixture]:-}" ]]
+}
+
+# The converse: a run that did not skip must not carry a reason. A stale
+# reason on a passing run (the with-verdict 429 fixture is the one that
+# could plausibly leak one) would make the posting job describe a skip
+# that did not happen.
+assert_quota_reason_presence() {
+  local output_file="$1"
+  if grep -q '^quota_exhausted=true$' "$output_file"; then
+    grep -q '^quota_reason=' "$output_file"
+  else
+    ! grep -q '^quota_reason=' "$output_file"
+  fi
 }
 
 failures=0
@@ -462,10 +494,14 @@ for fixture in "${!expected[@]}"; do
     fail) assert_fail "$exit_code" "$output_file" && ok=true ;;
     fail-stub) assert_fail_stub "$exit_code" "$output_file" && ok=true ;;
     fail-short-circuit) assert_fail_short_circuit "$exit_code" "$output_file" && ok=true ;;
-    skip) assert_skip "$exit_code" "$output_file" && ok=true ;;
+    skip) assert_skip "$fixture" "$exit_code" "$output_file" && ok=true ;;
     *) echo "::error::unknown expected outcome '$want' for fixture $fixture"; exit 1 ;;
   esac
 
+  if [[ "$ok" == "true" ]] && ! assert_quota_reason_presence "$output_file"; then
+    echo "::error::$fixture: quota_reason must be present exactly when quota_exhausted=true (gha#804)"
+    ok=false
+  fi
   if [[ "$ok" == "true" ]] && ! assert_cost "$fixture" "$output_file"; then
     ok=false
     echo "::error::fixture $fixture: total_cost_usd mismatch (want ${expected_cost[$fixture]}, got $(sed -n 's/^total_cost_usd=//p' "$output_file"))"
