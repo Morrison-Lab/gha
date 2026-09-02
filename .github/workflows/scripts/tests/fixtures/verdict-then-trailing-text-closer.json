@@ -1,0 +1,38 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe eta-pass analysis of the diff: sound, and the fixture discriminates.\n\n### Verdict\n\n**Ready for merge.**\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "The shape, with a line that looks like a closer but is not:\n\n```\nfoo\n```not-a-closer\n### Verdict\n```\n\nThat is documentation, not a new verdict."
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "duration_ms": 120000,
+    "total_cost_usd": 1.44,
+    "permission_denials_count": 0,
+    "permission_denials": []
+  }
+]

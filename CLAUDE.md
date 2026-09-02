@@ -2027,10 +2027,11 @@ quotation and dropped the entire real review, which is the failure gha#710
 exists to prevent (gha#808 review).
 Both the jq detector and the bash invariant skip fenced and blockquoted
 lines, closing a fence only on the same character at least as long as the
-opener (CommonMark, as `strip-non-invoking-markup.sh` does; a first draft
-closed on any fence line, so a backtick fence holding a tilde line leaked
-its heading), and the awk that counts headings carries no interval
-expression, per this file's mawk rule.
+opener with nothing but whitespace after it (CommonMark, as
+`strip-non-invoking-markup.sh` does; a first draft closed on any fence line,
+so a backtick fence holding a tilde line leaked its heading, and a second
+closed on a run followed by text), and the awk that counts headings carries
+no interval expression, per this file's mawk rule.
 An unclosed fence runs to the end of its block, so a redraft whose own code
 sample is never closed hides its own heading and falls back to the gha#710
 span rule; that is malformed input rendered as GitHub renders it, and
@@ -2039,13 +2040,15 @@ ignoring unclosed fences would re-admit the quoted-heading drop.
 third draft, a second must-contain on the tail after it, and a
 must-not-contain on the first draft;
 `verdict-then-quoted-heading.json` pins that a quoted heading is not a
-draft, and `verdict-then-mismatched-fence.json` that a tilde line does not
-close a backtick fence;
+draft, `verdict-then-mismatched-fence.json` that a tilde line does not
+close a backtick fence, and `verdict-then-trailing-text-closer.json` that a
+run followed by text does not close one either;
 and `assert_pass` holds every posted review to at most one authored heading,
 so a future concatenation fails on whichever fixture produces it.
-Four mutations turn a named case red: disabling the multi-heading branch,
+Five mutations turn a named case red: disabling the multi-heading branch,
 narrowing the span end to the last heading block, dropping the
-fence-and-blockquote exclusion, and closing a fence on any delimiter.
+fence-and-blockquote exclusion, closing a fence on any delimiter, and
+closing on a run followed by text.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 

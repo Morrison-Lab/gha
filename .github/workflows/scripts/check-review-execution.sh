@@ -664,10 +664,14 @@ jq -r '
   def authored_heading:
     ( split("\n")
       | reduce .[] as $l ({fence: "", flen: 0, out: []};
-          ( [ $l | capture("^[ \\t]{0,3}(?<run>`{3,}|~{3,})") ] | first ) as $f
+          ( [ $l | capture("^[ \\t]{0,3}(?<run>`{3,}|~{3,})(?<rest>.*)$") ] | first ) as $f
           | if $f != null and .fence == ""
               then .fence = ($f.run[0:1]) | .flen = ($f.run | length)
+            # A closer carries nothing but whitespace after its run; a run
+            # followed by text is fence content (CommonMark; the info-string
+            # form is legal only on an opener). gha#808 review round 2.
             elif $f != null and ($f.run[0:1]) == .fence and ($f.run | length) >= .flen
+                 and ($f.rest | test("^[ \\t]*$"))
               then .fence = "" | .flen = 0
             elif .fence != "" or ($l | test("^[ \\t]*>")) then .
             else .out += [$l] end)

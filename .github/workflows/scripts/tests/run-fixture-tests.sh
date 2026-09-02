@@ -112,6 +112,9 @@ declare -A expected=(
   # gha#808 review round 1: a backtick fence containing a tilde line does not
   # close on the tilde; the heading after it is still fenced.
   [verdict-then-mismatched-fence.json]=pass
+  # gha#808 review round 2: a same-character run followed by text is fence
+  # content, not a closer.
+  [verdict-then-trailing-text-closer.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -158,6 +161,7 @@ declare -A must_contain=(
   [verdict-redrafted-thrice.json]='gamma-pass fixture table'
   [verdict-then-quoted-heading.json]='epsilon-pass analysis'
   [verdict-then-mismatched-fence.json]='zeta-pass analysis'
+  [verdict-then-trailing-text-closer.json]='eta-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -291,6 +295,7 @@ declare -A expected_cost=(
   [verdict-redrafted-thrice.json]=2.34
   [verdict-then-quoted-heading.json]=1.42
   [verdict-then-mismatched-fence.json]=1.43
+  [verdict-then-trailing-text-closer.json]=1.44
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -472,8 +477,9 @@ assert_pass() {
     match($0, /^[ \t]?[ \t]?[ \t]?(```+|~~~+)/) {
       run = substr($0, RSTART, RLENGTH); sub(/^[ \t]+/, "", run)
       ch = substr(run, 1, 1); len = length(run)
+      rest = substr($0, RSTART + RLENGTH)
       if (fence == "") { fence = ch; flen = len; next }
-      if (ch == fence && len >= flen) { fence = ""; flen = 0; next }
+      if (ch == fence && len >= flen && rest ~ /^[ \t]*$/) { fence = ""; flen = 0; next }
     }
     fence != "" { next }
     /^[ \t]*>/ { next }
