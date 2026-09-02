@@ -1020,7 +1020,42 @@ jobs:
             echo "::error::classify-review-verdict did not surface clean=true for a Ready-for-merge fixture (got clean='$CLEAN' verdict='$VERDICT')"
             exit 1
           fi
+          # The `verdict` output is asserted too, not just `clean`: a wiring
+          # bug that dropped `verdict` alone would leave `clean` right and go
+          # unnoticed, and `clean` is a boolean that a hardcoded `true` would
+          # also satisfy (Copilot on gha#813).
+          if [[ "$VERDICT" != "ready-for-merge" ]]; then
+            echo "::error::classify-review-verdict did not surface verdict=ready-for-merge (got verdict='$VERDICT')"
+            exit 1
+          fi
           echo "classify-review-verdict surfaced clean=$CLEAN verdict=$VERDICT"
+      # The discriminating half: a not-clean fixture. Without it both
+      # assertions above are satisfied by a composite that hardcodes its
+      # outputs, so this is what proves the passthrough carries the script's
+      # real answer rather than a constant (gha#813).
+      - name: Prepare classify-review-verdict not-clean e2e fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '## Review\n\nOne finding.\n\n### Verdict\n**Needs more work.**\n' \
+            > /tmp/selftest-classify-review-notclean.txt
+      - name: Exercise classify-review-verdict composite action (not-clean fixture)
+        id: classify-e2e-notclean
+        uses: ./.github/actions/classify-review-verdict
+        with:
+          review-text-file: /tmp/selftest-classify-review-notclean.txt
+      - name: Assert classify-review-verdict surfaced clean=false
+        shell: bash
+        env:
+          CLEAN: ${{ steps.classify-e2e-notclean.outputs.clean }}
+          VERDICT: ${{ steps.classify-e2e-notclean.outputs.verdict }}
+        run: |
+          set -euo pipefail
+          if [[ "$CLEAN" != "false" || "$VERDICT" != "needs-more-work" ]]; then
+            echo "::error::classify-review-verdict did not surface clean=false/verdict=needs-more-work for a Needs-more-work fixture (got clean='$CLEAN' verdict='$VERDICT')"
+            exit 1
+          fi
+          echo "classify-review-verdict surfaced clean=$CLEAN verdict=$VERDICT for the not-clean fixture"
       # A second real `uses:` call, against a stub fixture, proving the
       # composite action's stub_review output passthrough works end-to-end —
       # not just check-review-execution.sh's own output (already covered by

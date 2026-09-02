@@ -754,6 +754,26 @@ which is why the capabilities above moved to `@v2`.
   common `"dry_run":false` response and falls back to the locally requested
   value (gha#511); parse with a null check instead.
 
+- `.github/actions/classify-review-verdict/` -- wraps
+  `scripts/classify-review-verdict.sh`, which classifies an extracted review
+  text as clean or not and emits `clean` and `verdict` (gha#812).
+  It exists for the reason every other composite here does, and the reason is
+  worth stating because the bug it fixes was invisible in this repo: the
+  posting job of the reusable `claude-code-review.yml` runs in the CONSUMER's
+  checkout, which carries none of this repository's script tree, so the plain
+  `run: bash .github/workflows/scripts/...` form that #790 shipped exited 127
+  in every consumer repo.
+  The failure was maximally confusing there, since the reviewer had already
+  posted a clean verdict: `post-review` went red on the classify step and
+  `require-review` and `require-clean-verdict` cascaded from it, so a PR with
+  an approving review read as a failed review pipeline
+  (measured on ucdavis/bcs#876, run 33622719245).
+  `_selftest.yml` exercises it through two real `uses: ./` calls, one
+  Ready-for-merge and one Needs-more-work, asserting BOTH outputs on each:
+  `clean` alone is a boolean that a composite hardcoding its outputs would
+  also satisfy, so the second call is what proves the passthrough carries the
+  script's real answer (gha#813 review).
+
 - `.github/actions/check-credential-shape/` -- wraps
   `scripts/check-credential-shape.sh`, which decides whether a configured API
   credential secret is structurally usable as an HTTP `Authorization` header
