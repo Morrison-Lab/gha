@@ -20,7 +20,7 @@
       "content": [
         {
           "type": "text",
-          "text": "For the record, the heading shape the extractor keys on looks like this:\n\n```\n### Verdict\n```\n\nand the previous round said:\n\n> ### Verdict\n> Needs more work.\n\n### Verdicts of prior rounds\n\nNeither of those is a new verdict; the one above stands."
+          "text": "For the record, the heading shape the extractor keys on looks like this:\n\n```\n### Verdict\n```\n\nand the previous round said:\n\n> ### Verdict\n> Needs more work.\n\n### Verdicts of prior rounds\n\n####### Verdict\n\n###Verdict\n\nNeither of those is a new verdict; the one above stands."
         }
       ]
     }

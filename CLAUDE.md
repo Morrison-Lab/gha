@@ -2040,8 +2040,10 @@ never a heading, whether indented code or a lazy paragraph continuation;
 round 3 of the same review reproduced the drop with indentation, and no
 state machine is needed for it.
 The awk that counts headings carries no interval expression, per this file's
-mawk rule, and spells the jq's word boundary as a trailing class, so a
-plural "Verdicts" heading counts in neither.
+mawk rule, spells the jq's word boundary as a trailing class, so a plural
+"Verdicts" heading counts in neither, and mirrors the jq's one-to-six hash
+limit by run length and its space-after-hashes requirement, so
+`####### Verdict` and `###Verdict` count in neither.
 An unclosed fence runs to the end of its block, so a redraft whose own code
 sample is never closed hides its own heading and falls back to the gha#710
 span rule; that is malformed input rendered as GitHub renders it, and
@@ -2056,15 +2058,18 @@ run followed by text does not close one either, and
 `verdict-then-indented-heading.json` that an indented heading is not a
 draft, `verdict-redraft-after-tab-fence.json` that a tab-led backtick line
 opens no fence, and `verdict-then-tab-inside-fence.json` that one inside a
-real fence closes none (that last pins the awk half, whose only failure
-direction is counting a fenced heading as a second one);
+real fence closes none (there a tab-admitting extractor un-fences the quoted
+heading and drops the real review, the same silent-drop class as the fence
+and blockquote cases, and a tab-admitting awk counts two headings in the
+correct span, so the one fixture pins both halves);
 and `assert_pass` holds every posted review to at most one authored heading,
 so a future concatenation fails on whichever fixture produces it.
-Seven mutations turn a named case red: disabling the multi-heading branch,
+Eight mutations turn a named case red: disabling the multi-heading branch,
 narrowing the span end to the last heading block, dropping the
 fence-and-blockquote exclusion, closing a fence on any delimiter, closing
 on a run followed by text, widening the heading indent back to any
-whitespace, and admitting a tab into the fence indentation.
+whitespace, admitting a tab into the fence indentation, and lifting the
+six-hash limit.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 

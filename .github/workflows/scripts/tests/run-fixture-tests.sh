@@ -120,9 +120,11 @@ declare -A expected=(
   # Copilot on gha#808: a tab-led backtick line is indented code, not a
   # fence, so the real heading after it is authored and the last draft wins.
   [verdict-redraft-after-tab-fence.json]=pass
-  # Copilot on gha#808, the awk half: a tab-led backtick line INSIDE a real
-  # fence is content; a tab-admitting scanner reads it as the closer and then
-  # counts the fenced heading, so the posted span carries two.
+  # Copilot on gha#808: a tab-led backtick line INSIDE a real fence is
+  # content. A tab-admitting extractor reads it as the closer, counts the
+  # fenced heading as authored, and drops the real review (the must_contain
+  # needle); a tab-admitting awk counts two headings in the correct span.
+  # One fixture, both halves.
   [verdict-then-tab-inside-fence.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
@@ -504,8 +506,13 @@ assert_pass() {
     # At most three leading spaces: a four-column or tab indent is indented
     # code or a lazy continuation, never a heading (gha#808 review round 3).
     # The trailing class is the word boundary the jq spells verdict\b, so
-    # a "Verdicts" heading counts in neither (Copilot on gha#808).
-    tolower($0) ~ /^ ? ? ?#+[ \t]*verdict([^a-z0-9_]|$)/ { n++ }
+    # a "Verdicts" heading counts in neither; at least one space after the
+    # hashes, and at most six of them, measured by run length rather than an
+    # interval expression (Copilot on gha#808).
+    tolower($0) ~ /^ ? ? ?#+[ \t]+verdict([^a-z0-9_]|$)/ {
+      hashes = $0; sub(/^ */, "", hashes); sub(/[^#].*$/, "", hashes)
+      if (length(hashes) <= 6) n++
+    }
     END { print n + 0 }' "$posted_file")"
   if [[ "$headings" -gt 1 ]]; then
     echo "::error::$fixture: posted review carries $headings verdict headings (gha#805)"

@@ -685,7 +685,10 @@ jq -r '
             elif .fence != "" or ($l | test("^[ \\t]*>")) then .
             else .out += [$l] end)
       | .out | join("\n") )
-    | test("(?im)^ {0,3}#{1,6}[ \\t]*verdict\\b");
+    # One to six hashes, then at least one space or tab: seven hashes, or
+    # hashes run into the word, are paragraph text in CommonMark (Copilot on
+    # gha#808). The awk invariant in run-fixture-tests.sh mirrors both limits.
+    | test("(?im)^ {0,3}#{1,6}[ \\t]+verdict\\b");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
