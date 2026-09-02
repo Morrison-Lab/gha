@@ -87,6 +87,22 @@ def main() -> int:
     # other name fails too (gha#809 review). Hard-coding the string turns this red.
     expect("differently-named collision fails", run(STUB.format(top="concurrency:\n  group: docs-deploy", callee="quarto-publish.yml"),
                                                      WORKFLOW.format(conc="    concurrency:\n      group: docs-deploy")), 1, "'docs-deploy'")
+    # Copilot on gha#811: present-but-malformed refuses rather than reading as
+    # absent, so a broken stub cannot pass as clean.
+    expect("mapping without a group is an error", run(STUB.format(top="concurrency:\n  cancel-in-progress: false", callee="quarto-publish.yml"),
+                                                     WORKFLOW.format(conc=JOB_GH)), 2, "names no group")
+    expect("empty group string is an error", run(STUB.format(top="concurrency: '  '", callee="quarto-publish.yml"),
+                                                 WORKFLOW.format(conc=JOB_GH)), 2, "names no group")
+    # A non-scalar group is refused rather than stringified (Copilot on
+    # gha#811 round 2): str([a, b]) is a name nothing can collide with, so the
+    # stub would pass the very audit meant to refuse what it cannot evaluate.
+    expect("list group is an error", run(STUB.format(top="concurrency:\n  group: [a, b]", callee="quarto-publish.yml"),
+                                          WORKFLOW.format(conc=JOB_GH)), 2, "expected a scalar")
+    expect("mapping group is an error", run(STUB.format(top="concurrency:\n  group: {}", callee="quarto-publish.yml"),
+                                             WORKFLOW.format(conc=JOB_GH)), 2, "expected a scalar")
+    # A number is a legitimate YAML spelling of a group name and is accepted.
+    expect("numeric group is accepted", run(STUB.format(top="concurrency:\n  group: 2026", callee="quarto-publish.yml"),
+                                             WORKFLOW.format(conc=JOB_GH)), 0)
     expect("missing callee is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), None), 2, "not in")
     expect("empty examples dir is an error", run(None, WORKFLOW.format(conc=JOB_GH)), 2, "no example stubs")
     expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "examples/quarto-publish.yml")

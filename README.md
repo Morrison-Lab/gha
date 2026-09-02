@@ -299,8 +299,9 @@ A top-level `concurrency:` block in the caller with a PR-scoped group name
 deadlocks GitHub Actions against the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 The same rule covers the gh-pages family (`quarto-publish.yml`,
-`preview-deploy.yml`, `cleanup-pr-previews.yml`), whose deploy or cleanup
-job declares `group: gh-pages`:
+`preview-deploy.yml`, `cleanup-pr-previews.yml`,
+`altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
+`group: gh-pages`:
 a caller-level `concurrency: { group: gh-pages }` deadlocks the same way,
 and there the job fails with no runner, no steps, and no log, so the site
 silently stops publishing

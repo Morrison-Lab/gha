@@ -140,6 +140,15 @@ and `issues: write` (the PR-preview sticky comment and link rewrites).
 
 ## Example
 
+Do not declare a top-level `concurrency:` block naming `gh-pages` in your
+caller workflow.
+`altdoc-multiversion-docs.yml` serializes gh-pages deploys internally on its
+`deploy` job (`group: gh-pages`).
+A caller-level block with the same group name deadlocks GitHub Actions
+against the nested job: `deploy` fails with no runner, no steps, and no log,
+and the site silently stops publishing
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+
 ```yaml
 # Copy to .github/workflows/docs.yaml in your repo.
 name: Docs

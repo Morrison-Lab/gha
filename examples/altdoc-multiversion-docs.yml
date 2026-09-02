@@ -1,4 +1,10 @@
 # Copy to .github/workflows/docs.yaml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block naming `gh-pages` in
+# this caller workflow. The reusable workflow serializes gh-pages deploys
+# internally on its `deploy` job (`group: gh-pages`). A caller-level block
+# with the same group name deadlocks GitHub Actions against the nested job:
+# the job fails with no runner, no steps, and no log, so the site silently
+# stops publishing ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 #
 # Renders an altdoc-based R package's Quarto docs and deploys multiple
 # versions side by side on gh-pages: PRs -> /pr-preview/pr-<number>/, pushes

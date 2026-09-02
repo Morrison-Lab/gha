@@ -10,7 +10,8 @@ touching ``examples/quarto-publish.yml``, which still told consumers to
 declare the same group at the top level, and every publish run on a consumer
 that copied it failed silently.
 
-The population is every ``examples/*.yml`` stub, and the comparison is made
+The population is every ``examples/*.yml`` and ``examples/*.yaml`` stub, and
+the comparison is made
 against the workflow each ``uses:`` actually names, so a job-level group added
 later is caught the moment it lands rather than when the next consumer copies
 the stub. A stub whose ``uses:`` names a workflow file this repo does not
@@ -56,16 +57,39 @@ def load(path: pathlib.Path):
     return doc
 
 
-def group_of(block) -> str | None:
-    """The group name of a ``concurrency:`` value, or None when absent."""
+def group_of(path: pathlib.Path, where: str, block) -> str | None:
+    """The group name of a ``concurrency:`` value, or None when absent.
+
+    Present but malformed refuses (exit 2) rather than reading as absent: a
+    mapping with no ``group``, an empty group name, or a ``group`` that is not
+    a scalar is a broken stub that a consumer would copy, and an audit that
+    walked past it would report clean over a file it never evaluated (Copilot
+    on gha#811, two rounds).
+
+    A list or mapping ``group`` is refused rather than stringified: ``str()``
+    turns ``[a, b]`` into ``"[\'a\', \'b\']"``, a name no workflow can
+    collide with, so the stub would pass an audit whose whole job is to refuse
+    what it cannot evaluate. A number or boolean IS accepted, since YAML parses
+    an unquoted ``group: 2026`` that way and GitHub reads the value as a
+    string.
+    """
     if block is None:
         return None
     if isinstance(block, str):
-        return block.strip()
-    if isinstance(block, dict):
-        group = block.get("group")
-        return None if group is None else str(group).strip()
-    die(f"concurrency block is {type(block).__name__}, expected a string or mapping")
+        group = block.strip()
+    elif isinstance(block, dict):
+        raw = block.get("group")
+        if raw is None:
+            group = ""
+        elif isinstance(raw, (str, int, float, bool)):
+            group = str(raw).strip()
+        else:
+            die(f"{path}: {where} concurrency group is {type(raw).__name__}, expected a scalar")
+    else:
+        die(f"{path}: {where} concurrency is {type(block).__name__}, expected a string or mapping")
+    if not group:
+        die(f"{path}: {where} concurrency names no group")
+    return group
 
 
 def job_groups(path: pathlib.Path, doc) -> dict[str, str]:
@@ -75,7 +99,7 @@ def job_groups(path: pathlib.Path, doc) -> dict[str, str]:
     for name, job in jobs.items():
         if not isinstance(job, dict):
             die(f"{path}: job {name!r} is {type(job).__name__}, expected a mapping")
-        group = group_of(job.get("concurrency"))
+        group = group_of(path, f"job {name!r}", job.get("concurrency"))
         if group is not None:
             found[str(name)] = group
     return found
@@ -106,7 +130,7 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
     examined = 0
     for stub in stubs:
         doc = load(stub)
-        top = group_of(doc.get("concurrency"))
+        top = group_of(stub, "top-level", doc.get("concurrency"))
         callees = callee_files(stub, doc)
         for callee in callees:
             wf = workflows_dir / callee

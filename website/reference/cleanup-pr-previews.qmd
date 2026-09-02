@@ -21,8 +21,8 @@ Grant `contents: write` (commit the deletions to `gh-pages`) and
 
 Do not declare a top-level `concurrency:` block naming `gh-pages` in your
 caller workflow.
-`cleanup-pr-previews.yml` serializes gh-pages deploys internally on its `cleanup`
-job (`group: gh-pages`).
+`cleanup-pr-previews.yml` serializes its gh-pages branch modifications
+with the deploy workflows on its `cleanup` job (`group: gh-pages`).
 A caller-level block with the same group name deadlocks GitHub Actions
 against the nested job: `cleanup` fails with no runner, no steps, and no log,
 and the site silently stops publishing
