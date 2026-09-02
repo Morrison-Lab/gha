@@ -1385,6 +1385,43 @@ over `assemble-news.sh`, covering the heading map, category validation, and
 bullet-marker normalization.
 CI runs it as the `assemble-news` job in `_selftest.yml`.
 
+**A repeat assembly merges into the development block's existing sections
+(gha#810), and Test 29 pins the data-loss direction, not only the tidy
+one.**
+Before it, every assembly prepended a fresh set of category headings under
+the top-level heading, so the second monthly run left two `## Bug fixes`
+siblings under one H1 (ucdavis/bcs#862, failed by the consumer's MD024 gate)
+plus an MD012 double blank at the seam.
+The script now pre-scans the FIRST top-level section only, splices new
+bullets under a heading already present there ahead of its existing ones,
+and emits only the absent headings as a fresh block; an older release block
+carrying the same heading is not a target (Test 28 diffs it before and
+after).
+The seam is handled by a `need_blank` state flag in the awk rather than by
+reading the next record with `getline`: a record read that way never reaches
+the rules below it, so the first draft silently dropped the bullets of a
+heading sitting directly under the H1 while still deleting their fragments.
+Test 29 is that shape, and the assertion is that the bullet exists.
+The heading-to-bullets map crosses into the awk as pairs of lines rather
+than delimited records, because the map constrains a heading only to one
+line and a tab-separated manifest lost a tab-bearing heading's fragment the
+same silent way (Test 30, from the review); "blank" means whitespace-only at
+both seams, as markdownlint reads it (Test 31); an empty fragment adds no
+stray blank (Test 32); a merged section stays one tight list, the held-back
+blank being dropped before a bullet and printed before anything else (Test
+27's adjacency assertion); a whitespace-only line after the target heading
+is one blank (Test 33); a column-0 `#` followed by a space inside a fenced
+code block is not a heading in either pass (Test 34); a fence line arriving
+at a splice seam still drains the pending blank, since the fence
+short-circuit runs after the seam rules (Test 35); and a tight heading
+followed directly by a fence or paragraph gets a synthesized blank between
+the new bullets and that content (Test 36).
+Test 27 also diffs the older release block before and after, which is the
+only assertion that sees the awk-side `in_first` guard and the `delete`
+after a merge together.
+One `trap ... EXIT`, installed right after `mktemp -d`, removes every temp
+path on every exit.
+
 **Its bullet-style cases are where the subtle failures live, and they fail
 silently in one direction.**
 `resolve_bullet_style()` picks the marker markdownlint's MD004 will hold the

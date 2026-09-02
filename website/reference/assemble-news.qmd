@@ -89,6 +89,33 @@ A fragment whose category is outside the active map fails the step, naming the
 offending files, rather than being skipped -- the check runs before anything is
 consumed, so a mixed batch fails without deleting the valid fragments beside it.
 
+## Repeat assemblies
+
+Fragments go into the first top-level section of `news-file`.
+In an R package's `NEWS.md` that is the development-version block, but the
+script does not inspect the heading text: whatever section comes first is
+the target.
+When that block already holds a section with the same heading from an
+earlier assembly, the new bullets are spliced in under it, ahead of the
+bullets it already has and as one list with them, rather than under a
+second copy of the heading, which markdownlint's MD024 would reject as a
+duplicate sibling.
+Only headings the block does not have yet are added, as one fresh block in
+the map's display order directly under the top-level heading, above the
+sections the block already had.
+A heading that appears only in an older release block further down is not a
+target.
+The splice adds a single blank line between the new bullets and a following
+heading, paragraph, or fenced code block, and never a second one; blank
+lines the file already carried past that point are left as they were.
+Matching is exact after trimming trailing spaces and tabs, so a heading
+spelled differently (case, a doubled space, a CRLF line ending, whose `\r`
+is not trimmed) does not merge into the existing section and gets a fresh
+one instead, as every run did before.
+A line inside a fenced code block that starts with `#` and a space is not
+read as a heading, and a fenced block right after a splice point keeps its
+separating blank line.
+
 ## Bullet-marker normalization
 
 markdownlint's MD004 rule defaults to `style: consistent`, which takes its
