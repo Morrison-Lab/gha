@@ -102,6 +102,30 @@ declare -A expected=(
   # must_contain needle is block A's analysis, which the pre-#710 last-block
   # extraction dropped.
   [verdict-split-across-blocks.json]=pass
+  # gha#805: three complete drafts, each with a `### Verdict` heading. Only
+  # the last is posted; the gha#710 span rule alone concatenates all three.
+  [verdict-redrafted-thrice.json]=pass
+  # gha#808 review: a later block that only QUOTES a verdict heading (in a
+  # fence, and in a blockquote) is not a draft; the real review before it
+  # must be posted, not dropped.
+  [verdict-then-quoted-heading.json]=pass
+  # gha#808 review round 1: a backtick fence containing a tilde line does not
+  # close on the tilde; the heading after it is still fenced.
+  [verdict-then-mismatched-fence.json]=pass
+  # gha#808 review round 2: a same-character run followed by text is fence
+  # content, not a closer.
+  [verdict-then-trailing-text-closer.json]=pass
+  # gha#808 review round 3: a heading quoted as INDENTED code is not a draft.
+  [verdict-then-indented-heading.json]=pass
+  # Copilot on gha#808: a tab-led backtick line is indented code, not a
+  # fence, so the real heading after it is authored and the last draft wins.
+  [verdict-redraft-after-tab-fence.json]=pass
+  # Copilot on gha#808: a tab-led backtick line INSIDE a real fence is
+  # content. A tab-admitting extractor reads it as the closer, counts the
+  # fenced heading as authored, and drops the real review (the must_contain
+  # needle); a tab-admitting awk counts two headings in the correct span.
+  # One fixture, both halves.
+  [verdict-then-tab-inside-fence.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -142,6 +166,16 @@ declare -A must_contain=(
   # pre-#710 tail-only extraction (which drops it along with block A) and a
   # hypothetical first+last-only join (which keeps A but drops it).
   [verdict-split-across-blocks.json]='middle-pass rerun of the suite'
+  # Two needles in one: the third draft, and the tail AFTER it (a line-start
+  # Verdict: line, no heading), which must be kept -- narrowing the span end
+  # to the last heading block drops the tail.
+  [verdict-redrafted-thrice.json]='gamma-pass fixture table'
+  [verdict-then-quoted-heading.json]='epsilon-pass analysis'
+  [verdict-then-mismatched-fence.json]='zeta-pass analysis'
+  [verdict-then-trailing-text-closer.json]='eta-pass analysis'
+  [verdict-then-indented-heading.json]='theta-pass analysis'
+  [verdict-redraft-after-tab-fence.json]='iota-pass second draft'
+  [verdict-then-tab-inside-fence.json]='kappa-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -172,7 +206,17 @@ declare -A must_contain=(
   # posted verdict rather than an empty fallback from the error path.
   [quota-exhausted-midrun-with-verdict.json]='Ready for merge'
 )
+# gha#808 review: a second must-contain needle where one fixture pins two
+# claims. Checked exactly like must_contain.
+declare -A must_also_contain=(
+  [verdict-redrafted-thrice.json]='delta-pass tail is retained'
+)
+
 declare -A must_not_contain=(
+  # gha#805: the superseded first draft must not be posted. Its needle is
+  # what the pre-#805 span rule (first verdict block through last) keeps.
+  [verdict-redrafted-thrice.json]='alpha-pass fixture table'
+  [verdict-redraft-after-tab-fence.json]='iota-pass first draft'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -263,6 +307,13 @@ declare -A expected_cost=(
   [genuine-finished-review.json]=0.42
   [spawn-denials-only-retryable.json]=4.21
   [verdict-split-across-blocks.json]=1.11
+  [verdict-redrafted-thrice.json]=2.34
+  [verdict-then-quoted-heading.json]=1.42
+  [verdict-then-mismatched-fence.json]=1.43
+  [verdict-then-trailing-text-closer.json]=1.44
+  [verdict-then-indented-heading.json]=1.45
+  [verdict-redraft-after-tab-fence.json]=1.46
+  [verdict-then-tab-inside-fence.json]=1.47
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -421,7 +472,50 @@ assert_pass() {
   if [[ -n "${must_contain[$fixture]:-}" ]] && ! grep -qF "${must_contain[$fixture]}" "$posted_file"; then
     return 1
   fi
+  if [[ -n "${must_also_contain[$fixture]:-}" ]] && ! grep -qF "${must_also_contain[$fixture]}" "$posted_file"; then
+    return 1
+  fi
   if [[ -n "${must_not_contain[$fixture]:-}" ]] && grep -qF "${must_not_contain[$fixture]}" "$posted_file"; then
+    return 1
+  fi
+  # gha#805, as an invariant over every posted review rather than one
+  # fixture: a comment carries at most ONE authored verdict heading. A second
+  # means two complete drafts were concatenated, whichever fixture produced
+  # them. The gha#710 tail writes `Verdict:` without a heading, so it does
+  # not count; nor does a heading inside a fenced block or a blockquote,
+  # excluded here the same way the extractor excludes them (gha#808 review:
+  # the first draft of this counted them, so a correct single-draft review
+  # that quoted one example heading would have failed). No interval
+  # expression in the awk, per this repo's mawk rule. This is a shape check
+  # on our own extraction, not a verdict parse.
+  local headings
+  headings="$(awk '
+    # A fence closes only on the same character, at least as long as the
+    # opener (CommonMark), mirroring the jq. No interval expressions.
+    # Spaces only: a tab is four columns, so a tab-led fence line is
+    # indented code (Copilot on gha#808). No interval expressions.
+    match($0, /^ ? ? ?(```+|~~~+)/) {
+      run = substr($0, RSTART, RLENGTH); sub(/^ +/, "", run)
+      ch = substr(run, 1, 1); len = length(run)
+      rest = substr($0, RSTART + RLENGTH)
+      if (fence == "") { fence = ch; flen = len; next }
+      if (ch == fence && len >= flen && rest ~ /^[ \t]*$/) { fence = ""; flen = 0; next }
+    }
+    fence != "" { next }
+    /^[ \t]*>/ { next }
+    # At most three leading spaces: a four-column or tab indent is indented
+    # code or a lazy continuation, never a heading (gha#808 review round 3).
+    # The trailing class is the word boundary the jq spells verdict\b, so
+    # a "Verdicts" heading counts in neither; at least one space after the
+    # hashes, and at most six of them, measured by run length rather than an
+    # interval expression (Copilot on gha#808).
+    tolower($0) ~ /^ ? ? ?#+[ \t]+verdict([^a-z0-9_]|$)/ {
+      hashes = $0; sub(/^ */, "", hashes); sub(/[^#].*$/, "", hashes)
+      if (length(hashes) <= 6) n++
+    }
+    END { print n + 0 }' "$posted_file")"
+  if [[ "$headings" -gt 1 ]]; then
+    echo "::error::$fixture: posted review carries $headings verdict headings (gha#805)"
     return 1
   fi
   return 0

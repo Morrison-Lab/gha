@@ -2001,6 +2001,78 @@ pins that ordering, and it passes with or without the fix by design -- the
 fixture that actually fails when the fix is removed is
 `quota-exhausted-midrun.json`, confirmed by mutation rather than assumed.
 
+**A reviewer that redrafts its final message defeats the gha#710 span rule,
+and the heading form is what tells the two shapes apart.**
+gha#710 widened the posted text to the whole span from the first
+verdict-bearing block to the last, because a review split across blocks was
+being posted as its tail alone.
+gha#805 is that rule's own failure: a reviewer re-ran an instrument between
+drafts and produced three complete reviews in a row, each with its own
+`### Verdict` heading and structured-review-data block, and the span rule
+concatenated all three (Morrison-Lab/ai-config#2966, run 33594599768).
+A complete draft carries a verdict *heading*; the gha#710 follow-up tail
+writes a line-start `Verdict:` line, never a heading (a mid-sentence "my
+verdict stands unchanged" matches neither regex, since both anchor at line
+start).
+So when more than one block carries an authored heading, the span starts at
+the last such block and still runs to the last verdict-bearing block, which
+drops the superseded drafts and keeps the tail; one heading leaves gha#710's
+behaviour untouched.
+**Authored means outside a fence, outside a blockquote, and outside an
+indented code block.**
+This corpus quotes the literal heading constantly, and a review of this very
+script does too, so a later block that only shows the heading shape in a
+code fence or blockquotes the previous verdict must not read as a new
+draft; with the bare regex it did, and the span then started at the
+quotation and dropped the entire real review, which is the failure gha#710
+exists to prevent (gha#808 review).
+Both the jq detector and the bash invariant skip fenced and blockquoted
+lines.
+A fence closes only on the same character, at least as long as the opener,
+with nothing but whitespace after it (CommonMark, as
+`strip-non-invoking-markup.sh` does);
+a first draft closed on any fence line, so a backtick fence holding a tilde
+line leaked its heading, and a second closed on a run followed by text.
+Both accept at most three leading spaces before the `#` or before a fence
+run (spaces only: a tab is four columns, so a tab-led backtick line is
+indented code rather than a fence), so a line at four columns or a tab is
+never a heading, whether indented code or a lazy paragraph continuation;
+round 3 of the same review reproduced the drop with indentation, and no
+state machine is needed for it.
+The awk that counts headings carries no interval expression, per this file's
+mawk rule, spells the jq's word boundary as a trailing class, so a plural
+"Verdicts" heading counts in neither, and mirrors the jq's one-to-six hash
+limit by run length and its space-after-hashes requirement, so
+`####### Verdict` and `###Verdict` count in neither.
+An unclosed fence runs to the end of its block, so a redraft whose own code
+sample is never closed hides its own heading and falls back to the gha#710
+span rule; that is malformed input rendered as GitHub renders it, and
+ignoring unclosed fences would re-admit the quoted-heading drop.
+`verdict-redrafted-thrice.json` pins the rule with a must-contain on the
+third draft, a second must-contain on the tail after it, and a
+must-not-contain on the first draft;
+`verdict-then-quoted-heading.json` pins that a quoted heading is not a
+draft, `verdict-then-mismatched-fence.json` that a tilde line does not
+close a backtick fence, and `verdict-then-trailing-text-closer.json` that a
+run followed by text does not close one either, and
+`verdict-then-indented-heading.json` that an indented heading is not a
+draft, `verdict-redraft-after-tab-fence.json` that a tab-led backtick line
+opens no fence, and `verdict-then-tab-inside-fence.json` that one inside a
+real fence closes none (there a tab-admitting extractor un-fences the quoted
+heading and drops the real review, the same silent-drop class as the fence
+and blockquote cases, and a tab-admitting awk counts two headings in the
+correct span, so the one fixture pins both halves);
+and `assert_pass` holds every posted review to at most one authored heading,
+so a future concatenation fails on whichever fixture produces it.
+Nine mutations turn a named case red: disabling the multi-heading branch,
+narrowing the span end to the last heading block, dropping the
+fence-and-blockquote exclusion, closing a fence on any delimiter, closing
+on a run followed by text, widening the heading indent back to any
+whitespace, admitting a tab into the fence indentation, lifting the
+six-hash limit, and dropping the awk's trailing word-boundary class.
+That count is a shape check on our own extraction, not a verdict parse: it
+never reads which verdict was stated.
+
 **`permission_denials_count` can be absent from the real execution file even
 though `claude-code-action` prints it to the job log, because the log line is
 a display value the action computes, not a field it always writes to disk.**

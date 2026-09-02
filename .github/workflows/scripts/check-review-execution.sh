@@ -627,11 +627,75 @@ review_text_file="$(mktemp)"
 # the reader cannot see. A single-verdict transcript (the common case, and
 # the gha#173 wrap-up-after-verdict shape) selects exactly that one block,
 # unchanged.
+# gha#805: the gha#710 widening has a failure mode of its own. A reviewer that
+# REDRAFTS its final message -- re-running an instrument between drafts, each
+# draft a complete review with its own `### Verdict` heading and
+# structured-review-data block -- produced three verdict-bearing blocks, and
+# the span rule concatenated all three (measured on Morrison-Lab/ai-config#2966,
+# run 33594599768: three `## Review` headings, three verdicts, two
+# Stopping-Point lines in one comment). The two shapes are told apart by the
+# HEADING form: a complete draft carries `### Verdict` (or any `#` heading
+# naming it), while the gha#710 follow-up tail writes a line-start `Verdict:`
+# line (verdict-split-across-blocks.json, block 2), which $vidx matches and
+# this does not. So when more than one block carries a verdict HEADING, the
+# span starts at the LAST such block: the earlier drafts were superseded by
+# their author, and the tail after the last draft is still kept. One heading
+# (the gha#710 shape, and the common case) leaves the span rule exactly as it
+# was.
+#
+# A heading is AUTHORED only outside a fenced code block and outside a
+# blockquote. This corpus quotes the literal heading constantly -- CLAUDE.md,
+# this file, every fixture, and a review OF this file -- so a later block that
+# merely shows the heading shape in a fence, or blockquotes the previous
+# verdict for context, must not read as a fresh draft: with the bare regex it
+# did, and the span then started at the quotation and dropped the entire real
+# review (gha#808 review). That is the failure gha#710 exists to prevent, and
+# it is worse than the concatenation this fixes. A fence closes only on a run
+# of the SAME character at least as long as the opener (CommonMark, and what
+# strip-non-invoking-markup.sh implements); a first draft closed on any
+# fence line, so a backtick fence containing a tilde line "closed" early and
+# its heading counted (gha#808 review round 1). An unclosed fence runs to the
+# end of its block, again per CommonMark: a redraft whose own code sample is
+# never closed hides its own heading from this test, exactly as GitHub would
+# hide it from the reader, and the block then falls back to the gha#710 span
+# rule. That is malformed input rendered faithfully, not a case to special-
+# case, since ignoring unclosed fences would re-admit the quoted-heading drop.
+# The third literal construct, an INDENTED code block, needs no state at all:
+# a heading may be indented by at most three spaces (CommonMark), so a line
+# at four columns or a tab is never a heading, whether it is code or a lazy
+# paragraph continuation. The heading test says {0,3} rather than [ \t]* for
+# exactly that reason (gha#808 review round 3, which reproduced the drop with
+# indentation instead of a fence).
 jq -r '
+  def authored_heading:
+    ( split("\n")
+      | reduce .[] as $l ({fence: "", flen: 0, out: []};
+          # Spaces only in the indentation allowance: a tab is four columns in
+          # CommonMark, so a tab-led fence line is indented code, not a fence
+          # (Copilot on gha#808).
+          ( [ $l | capture("^ {0,3}(?<run>`{3,}|~{3,})(?<rest>.*)$") ] | first ) as $f
+          | if $f != null and .fence == ""
+              then .fence = ($f.run[0:1]) | .flen = ($f.run | length)
+            # A closer carries nothing but whitespace after its run; a run
+            # followed by text is fence content (CommonMark; the info-string
+            # form is legal only on an opener). gha#808 review round 2.
+            elif $f != null and ($f.run[0:1]) == .fence and ($f.run | length) >= .flen
+                 and ($f.rest | test("^[ \\t]*$"))
+              then .fence = "" | .flen = 0
+            elif .fence != "" or ($l | test("^[ \\t]*>")) then .
+            else .out += [$l] end)
+      | .out | join("\n") )
+    # One to six hashes, then at least one space or tab: seven hashes, or
+    # hashes run into the word, are paragraph text in CommonMark (Copilot on
+    # gha#808). The awk invariant in run-fixture-tests.sh mirrors both limits.
+    | test("(?im)^ {0,3}#{1,6}[ \\t]+verdict\\b");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
-  | if ($vidx | length) > 1
+  | [ $vidx[] | select($blocks[.] | authored_heading) ] as $hidx
+  | if ($hidx | length) > 1
+      then $blocks[($hidx | last):(($vidx | last) + 1)] | join("\n\n")
+    elif ($vidx | length) > 1
       then $blocks[($vidx | first):(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) == 1
       then $blocks[$vidx | first]

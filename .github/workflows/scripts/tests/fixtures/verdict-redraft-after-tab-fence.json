@@ -1,0 +1,38 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe iota-pass first draft of the analysis.\n\n### Verdict\n\n**Ready for merge.**\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe iota-pass second draft, whose tab-led backtick line is indented code and opens no fence:\n\n\t```\n\n### Verdict\n\n**Ready for merge.**\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "duration_ms": 120000,
+    "total_cost_usd": 1.46,
+    "permission_denials_count": 0,
+    "permission_denials": []
+  }
+]
