@@ -2821,6 +2821,32 @@ over it:
 18. a tolerated container-valued `token:`;
 19. a case-sensitive input-key match.
 
+`.github/workflows/scripts/audit_example_concurrency.py` closes gha#809:
+a caller-level `concurrency:` group that the called reusable workflow also
+declares on a job deadlocks the run, and the failure is unusually hard to
+diagnose (the nested job fails with no runner, no steps, no log, and no
+annotation; only the web UI shows the reason).
+gha#437 recorded the mechanism for the review family; gha#654 then added
+`group: gh-pages` to `quarto-publish.yml`'s deploy job without touching
+`examples/quarto-publish.yml`, which still told consumers to declare the
+same group at the top level, so every publish run on a consumer that copied
+the stub failed silently and the site stopped updating
+(`ucdavis/hac.sap`, run 33604968678).
+The audit walks every stub under `examples/`, resolves each `uses:` to the
+workflow file it names, and fails on any top-level group that a job in that
+workflow also declares; a stub naming a workflow file this repo does not
+carry is an error rather than a skip.
+Its first live run found a second collision the issue had not listed,
+`examples/report-failure.yml`, which is why the check is derived from the
+tree rather than from the issue's list.
+`run-audit-example-concurrency-tests.py` builds throwaway stub-and-workflow
+pairs per case, since the repo's own tree must never carry the collision;
+the negative cases (no top-level block, a different group, a callee with no
+job-level group) are the ones to keep, because without them the audit would
+fail every stub the moment any workflow gained a concurrency block.
+CI runs it as the `example-concurrency` job in `_selftest.yml`, unit tests
+first, then the live audit.
+
 `.github/workflows/scripts/audit_capability_versioning_docs.py` closes
 gha#730: every capability that ships past the frozen `@v1` snapshot must be
 named in each hand-restated versioning-list region -- README.md's

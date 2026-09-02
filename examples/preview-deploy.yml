@@ -1,4 +1,11 @@
 # Copy to .github/workflows/preview-deploy.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block naming `gh-pages` in
+# this caller workflow. The reusable workflow serializes gh-pages deploys
+# internally on its `deploy` job (`group: gh-pages`). A caller-level block
+# with the same group name deadlocks GitHub Actions against the nested job:
+# the job fails with no runner, no steps, and no log, so the site silently
+# stops publishing ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+#
 # Deploy half of the PR-preview family: triggered when the build workflow
 # finishes, downloads its artifact, and publishes the preview to gh-pages. This
 # runs in the BASE-repo context, so its token can write — keeping it separate

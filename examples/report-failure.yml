@@ -2,6 +2,14 @@
 # tracked as an issue -- it is a job to add to an existing caller stub, not a
 # workflow to install on its own.
 #
+# NOTE: Do NOT declare a top-level `concurrency:` block naming `gh-pages` in
+# this caller workflow. The `quarto-publish.yml` it calls serializes gh-pages
+# deploys internally on its `deploy` job (`group: gh-pages`). A caller-level
+# block with the same group name deadlocks GitHub Actions against the nested
+# job: the job fails with no runner, no steps, and no log, so the site
+# silently stops publishing
+# ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+#
 # It exists for workflows that run where no pull request carries their result:
 # a push to the default branch, a schedule, a release. There, a failed run
 # shows up only in the Actions tab, so a broken deploy can go unnoticed while
@@ -16,10 +24,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-
-concurrency:
-  group: gh-pages
-  cancel-in-progress: false
 
 jobs:
   publish:

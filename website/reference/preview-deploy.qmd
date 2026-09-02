@@ -49,6 +49,15 @@ preview-link comment), and `actions: read` (download the build artifact).
 
 ## Example
 
+Do not declare a top-level `concurrency:` block naming `gh-pages` in your
+caller workflow.
+`preview-deploy.yml` serializes gh-pages deploys internally on its `deploy`
+job (`group: gh-pages`).
+A caller-level block with the same group name deadlocks GitHub Actions
+against the nested job: `deploy` fails with no runner, no steps, and no log,
+and the site silently stops publishing
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+
 ```yaml
 # Copy to .github/workflows/preview-deploy.yml in your repo.
 # Deploy half of the PR-preview family: triggered when the build workflow

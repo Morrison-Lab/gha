@@ -46,6 +46,17 @@ workflow. The build job downscopes its own token to `contents: read`.
 
 ## Example
 
+Do not declare a top-level `concurrency:` block naming `gh-pages` in your
+caller workflow.
+`quarto-publish.yml` serializes gh-pages deploys internally on its `deploy`
+job (`group: gh-pages`).
+A caller-level block with the same group name deadlocks GitHub Actions
+against the nested job: `deploy` fails with no runner, no steps, and no log,
+and the site silently stops publishing
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+The example stub used to carry that block, from before the job-level group
+existed.
+
 ```yaml
 # Copy to .github/workflows/quarto-publish.yml in your repo.
 #
@@ -63,11 +74,6 @@ on:
   workflow_dispatch:
   # For a render-only build check (deploy: false below), also add:
   # pull_request:
-
-# Serialize deploys so two pushes don't race on the gh-pages branch.
-concurrency:
-  group: gh-pages
-  cancel-in-progress: false
 
 jobs:
   publish:

@@ -1,4 +1,11 @@
 # Copy to .github/workflows/cleanup-pr-previews.yml in your repo.
+# NOTE: Do NOT declare a top-level `concurrency:` block naming `gh-pages` in
+# this caller workflow. The reusable workflow serializes gh-pages deploys
+# internally on its `cleanup` job (`group: gh-pages`). A caller-level block
+# with the same group name deadlocks GitHub Actions against the nested job:
+# the job fails with no runner, no steps, and no log, so the site silently
+# stops publishing ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+#
 # Housekeeping half of the PR-preview family: periodically deletes gh-pages
 # preview directories for PRs that are no longer open. The calling job grants
 # contents:write so it can commit the deletions back to gh-pages.

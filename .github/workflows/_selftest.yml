@@ -3326,6 +3326,31 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/audit_capability_versioning_docs.py
 
+  # gha#809: a caller-level concurrency group that a called workflow also
+  # declares on a job deadlocks the run with no runner, no steps, and no log.
+  # gha#654 added `group: gh-pages` to quarto-publish.yml's deploy job while
+  # examples/quarto-publish.yml still told consumers to declare the same
+  # group at the top level, and every publish on a consumer that copied it
+  # failed silently. The audit compares each stub against the workflow its
+  # uses: actually names, so the next job-level group fails here rather than
+  # on a consumer.
+  example-concurrency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run audit_example_concurrency.py unit tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-audit-example-concurrency-tests.py
+
+      - name: Assert no example stub collides with its called workflow's job-level concurrency group
+        shell: bash
+        run: python3 .github/workflows/scripts/audit_example_concurrency.py
+
   # check-code-similarity wraps JPlag against a caller-supplied corpus
   # (gha#296). The unit tests run first and use a stub `java`, so they cover
   # the branches a green run never reaches -- an empty corpus, a crashed

@@ -298,6 +298,16 @@ jobs.
 A top-level `concurrency:` block in the caller with a PR-scoped group name
 deadlocks GitHub Actions against the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
+The same rule covers the gh-pages family (`quarto-publish.yml`,
+`preview-deploy.yml`, `cleanup-pr-previews.yml`), whose deploy or cleanup
+job declares `group: gh-pages`:
+a caller-level `concurrency: { group: gh-pages }` deadlocks the same way,
+and there the job fails with no runner, no steps, and no log, so the site
+silently stops publishing
+([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
+`audit_example_concurrency.py` fails `_selftest.yml` when any stub under
+`examples/` declares a top-level group its called workflow already declares
+on a job.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
