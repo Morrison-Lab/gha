@@ -2001,6 +2001,29 @@ pins that ordering, and it passes with or without the fix by design -- the
 fixture that actually fails when the fix is removed is
 `quota-exhausted-midrun.json`, confirmed by mutation rather than assumed.
 
+**A reviewer that redrafts its final message defeats the gha#710 span rule,
+and the heading form is what tells the two shapes apart.**
+gha#710 widened the posted text to the whole span from the first
+verdict-bearing block to the last, because a review split across blocks was
+being posted as its tail alone.
+gha#805 is that rule's own failure: a reviewer re-ran an instrument between
+drafts and produced three complete reviews in a row, each with its own
+`### Verdict` heading and structured-review-data block, and the span rule
+concatenated all three (Morrison-Lab/ai-config#2966, run 33594599768).
+A complete draft carries a verdict *heading*; the gha#710 follow-up tail
+writes a `Verdict:` line or the word in prose ("my verdict stands
+unchanged"), never a heading.
+So when more than one block carries a heading, the span starts at the last
+such block and still runs to the last verdict-bearing block, which drops the
+superseded drafts and keeps the tail; one heading leaves gha#710's behaviour
+untouched.
+`verdict-redrafted-thrice.json` pins it with a must-contain on the third
+draft and a must-not-contain on the first, and `assert_pass` now holds every
+posted review to at most one verdict heading, so a future concatenation
+fails on whichever fixture produces it.
+That count is a shape check on our own extraction, not a verdict parse: it
+never reads which verdict was stated.
+
 **`permission_denials_count` can be absent from the real execution file even
 though `claude-code-action` prints it to the job log, because the log line is
 a display value the action computes, not a field it always writes to disk.**

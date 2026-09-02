@@ -1,0 +1,60 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe change is sound. First draft names the alpha-pass fixture table.\n\n### Verdict\n\n**Ready for merge.**\n\n<!-- review-data:\n{\"schema\": \"1.1\", \"verdict\": \"ready\", \"draft\": 1}\n-->\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "Confirmed via the authoritative instrument: exit 1, five in-progress bullets, no failures. My content verdict stands unchanged."
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe change is sound. Second draft names the beta-pass fixture table.\n\n### Verdict\n\n**Ready for merge.**\n\n<!-- review-data:\n{\"schema\": \"1.1\", \"verdict\": \"ready\", \"draft\": 2}\n-->\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe change is sound. Third draft names the gamma-pass fixture table.\n\n### Verdict\n\n**Ready for merge.**\n\n<!-- review-data:\n{\"schema\": \"1.1\", \"verdict\": \"ready\", \"draft\": 3}\n-->\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "duration_ms": 120000,
+    "total_cost_usd": 2.34,
+    "permission_denials_count": 0,
+    "permission_denials": []
+  }
+]

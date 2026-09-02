@@ -102,6 +102,9 @@ declare -A expected=(
   # must_contain needle is block A's analysis, which the pre-#710 last-block
   # extraction dropped.
   [verdict-split-across-blocks.json]=pass
+  # gha#805: three complete drafts, each with a `### Verdict` heading. Only
+  # the last is posted; the gha#710 span rule alone concatenates all three.
+  [verdict-redrafted-thrice.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -142,6 +145,7 @@ declare -A must_contain=(
   # pre-#710 tail-only extraction (which drops it along with block A) and a
   # hypothetical first+last-only join (which keeps A but drops it).
   [verdict-split-across-blocks.json]='middle-pass rerun of the suite'
+  [verdict-redrafted-thrice.json]='gamma-pass fixture table'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -173,6 +177,9 @@ declare -A must_contain=(
   [quota-exhausted-midrun-with-verdict.json]='Ready for merge'
 )
 declare -A must_not_contain=(
+  # gha#805: the superseded first draft must not be posted. Its needle is
+  # what the pre-#805 span rule (first verdict block through last) keeps.
+  [verdict-redrafted-thrice.json]='alpha-pass fixture table'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -263,6 +270,7 @@ declare -A expected_cost=(
   [genuine-finished-review.json]=0.42
   [spawn-denials-only-retryable.json]=4.21
   [verdict-split-across-blocks.json]=1.11
+  [verdict-redrafted-thrice.json]=2.34
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -422,6 +430,18 @@ assert_pass() {
     return 1
   fi
   if [[ -n "${must_not_contain[$fixture]:-}" ]] && grep -qF "${must_not_contain[$fixture]}" "$posted_file"; then
+    return 1
+  fi
+  # gha#805, as an invariant over every posted review rather than one
+  # fixture: a comment carries at most ONE verdict heading. A second heading
+  # means two complete drafts were concatenated, whichever fixture produced
+  # them. The gha#710 tail writes `Verdict:` without a heading, so it does
+  # not count, and neither does a heading quoted inside a fenced block --
+  # this is a shape check on our own extraction, not a verdict parse.
+  local headings
+  headings="$(grep -ciE '^[[:space:]>*_-]*#{1,6}[[:space:]]*verdict' "$posted_file" || true)"
+  if [[ "$headings" -gt 1 ]]; then
+    echo "::error::$fixture: posted review carries $headings verdict headings (gha#805)"
     return 1
   fi
   return 0

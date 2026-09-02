@@ -627,11 +627,28 @@ review_text_file="$(mktemp)"
 # the reader cannot see. A single-verdict transcript (the common case, and
 # the gha#173 wrap-up-after-verdict shape) selects exactly that one block,
 # unchanged.
+# gha#805: the gha#710 widening has a failure mode of its own. A reviewer that
+# REDRAFTS its final message -- re-running an instrument between drafts, each
+# draft a complete review with its own `### Verdict` heading and
+# structured-review-data block -- produced three verdict-bearing blocks, and
+# the span rule concatenated all three (measured on Morrison-Lab/ai-config#2966,
+# run 33594599768: three `## Review` headings, three verdicts, two
+# Stopping-Point lines in one comment). The two shapes are told apart by the
+# HEADING form: a complete draft carries `### Verdict` (or any `#` heading
+# naming it), while the gha#710 follow-up tail only writes a `Verdict:` line
+# or the word in prose ("my verdict stands unchanged"). So when more than one
+# block carries a verdict HEADING, the span starts at the LAST such block: the
+# earlier drafts were superseded by their author, and the tail after the last
+# draft is still kept. One heading (the gha#710 shape, and the common case)
+# leaves the span rule exactly as it was.
 jq -r '
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
-  | if ($vidx | length) > 1
+  | [ $vidx[] | select($blocks[.] | test("(?im)^[\\s>]*#{1,6}[ \\t]*verdict\\b")) ] as $hidx
+  | if ($hidx | length) > 1
+      then $blocks[($hidx | last):(($vidx | last) + 1)] | join("\n\n")
+    elif ($vidx | length) > 1
       then $blocks[($vidx | first):(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) == 1
       then $blocks[$vidx | first]
