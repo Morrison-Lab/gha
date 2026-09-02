@@ -299,8 +299,13 @@ A caller block with a PR-scoped group name deadlocks GitHub Actions against
 the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 Both caller placements do it -- a top-level block, and one on the calling
-job itself -- so `audit_example_concurrency.py` checks the review stubs for
-both, exactly as it does the gh-pages family below.
+job itself.
+`audit_example_concurrency.py` does not catch this family, though: it
+compares group names as literal text, and these groups are `${{ }}`
+expressions that never match textually
+([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
+Follow the rule above by hand here; the audit covers the constant-named
+gh-pages family below.
 The same rule covers the gh-pages family (`quarto-publish.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
@@ -310,9 +315,12 @@ and there the job fails with no runner, no steps, and no log, so the site
 silently stops publishing
 ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 `audit_example_concurrency.py` fails `_selftest.yml` when any stub under
-`examples/` declares a group its called workflow already declares on a job
--- at the stub's top level, or on the calling job itself, which deadlock
-identically.
+`examples/` declares a group its called workflow already declares -- on
+either side's two placements, so the stub's top level or its calling job
+against the callee's jobs or the callee's own top level.
+It compares group names literally, so it covers constant names such as
+`gh-pages` and not expression-valued ones
+([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:

@@ -2827,10 +2827,10 @@ declares deadlocks the run, and the failure is unusually hard to diagnose.
 **How it presents is not settled, and the two recorded instances disagree.**
 gha#437's presented as a cancelled run, which is how GitHub documents the
 condition -- it cancels with a message naming the group and both sides
-(`Canceling since a deadlock for concurrency group ... was detected between
-'top level workflow' and ...`, reported in
-[community#30708](https://github.com/orgs/community/discussions/30708) and
-[community#43510](https://github.com/orgs/community/discussions/43510)).
+(`Canceling since a deadlock for concurrency group '...' was detected between
+'top level workflow' and '...'`, quoted verbatim in
+[rhysd/actionlint#538](https://github.com/rhysd/actionlint/issues/538),
+which asks actionlint to detect the condition statically).
 The `ucdavis/hac.sap` instance instead presented as a nested job with no
 runner, no steps, and no log.
 Whether that is a second failure mode, a difference between the caller's and
@@ -2844,9 +2844,10 @@ same group at the top level, so every publish run on a consumer that copied
 the stub failed silently and the site stopped updating
 (`ucdavis/hac.sap`, run 33604968678).
 The audit walks every stub under `examples/`, resolves each `uses:` to the
-workflow file it names, and fails on any caller-level group that a job in
-that workflow also declares; a stub naming a workflow file this repo does
-not carry is an error rather than a skip.
+workflow file it names, and fails on any caller-level group that the called
+workflow also declares, at either of ITS two placements (see below); a stub
+naming a workflow file this repo does not carry is an error rather than a
+skip.
 **Caller-level means two placements, not one.**
 A top-level block covers the whole run and so covers the calling job, and
 a block on the calling job itself is the same collision written one level
@@ -2864,6 +2865,20 @@ one: a reusable workflow's own top-level `concurrency:` applies to the calling
 job, so a caller group matching it deadlocks exactly as a job-level one does.
 `bump-dev-version.yml` is this repo's live example of a `workflow_call`
 workflow carrying one, and before gha#811's review the audit walked past it.
+**The audit is one level deep, while GitHub permits four.**
+A callee job that itself calls another of our workflows is not compared.
+Nothing in `.github/workflows/` calls another reusable workflow today, so
+that is latent rather than live, but it is a limit rather than an oversight
+and the docstring says so.
+**And the comparison is literal string equality, so it sees constant group
+names only.**
+That covers the gh-pages family, whose groups are the constant `gh-pages`.
+It does NOT cover a group written as an expression: the review family's
+groups are `${{ }}`-valued, so no review stub can ever be flagged, and
+`altdoc-multiversion-docs.yml`'s `build` job holds a group that evaluates to
+`github.ref` on a non-`pull_request` event while never matching a caller's
+`...-${{ github.ref }}` textually.
+gha#822 tracks normalizing expressions before comparing.
 A group that is a BOOLEAN or a FLOAT is refused rather than compared: Python
 renders those differently from GitHub (`True` against `true`, `1.1` against
 `1.10`), so accepting one would compare a name that can never match its real

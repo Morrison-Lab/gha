@@ -148,15 +148,24 @@ def main() -> int:
                                           WORKFLOW.format(conc=JOB_GH)), 2, "expected a scalar")
     expect("mapping group is an error", run(STUB.format(top="concurrency:\n  group: {}", callee="quarto-publish.yml"),
                                              WORKFLOW.format(conc=JOB_GH)), 2, "expected a scalar")
-    # A number is a legitimate YAML spelling of a group name and is accepted.
-    expect("numeric group is accepted", run(STUB.format(top="concurrency:\n  group: 2026", callee="quarto-publish.yml"),
-                                             WORKFLOW.format(conc=JOB_GH)), 0)
+    # Every non-string scalar is refused. YAML resolution is lossy, so the
+    # audit cannot recover the source spelling: 010 arrives as 8, 1:30 as 90.
+    # Measured against yaml.safe_load (gha#811 review, round 2).
+    for spelling in ["2026", "010", "0x10", "1_000", "+5", "1:30", "true", "1.10", "2026-01-01"]:
+        expect(f"unquoted group {spelling!r} is an error",
+               run(STUB.format(top=f"concurrency:\n  group: {spelling}", callee="quarto-publish.yml"),
+                   WORKFLOW.format(conc=JOB_GH)), 2, "quote it")
+    # ...and the quoted form of the same value is accepted and compared.
+    expect("a quoted numeric group is compared", run(STUB.format(top="concurrency:\n  group: '2026'", callee="quarto-publish.yml"),
+                                                      WORKFLOW.format(conc="    concurrency:\n      group: '2026'")), 1, "deadlock")
     # gha#811 review: bool and float do not round-trip through str(), so they
     # are refused rather than compared against a name they can never match.
-    expect("boolean group is an error", run(STUB.format(top="concurrency:\n  group: true", callee="quarto-publish.yml"),
-                                             WORKFLOW.format(conc=JOB_GH)), 2, "does not round-trip")
-    expect("float group is an error", run(STUB.format(top="concurrency:\n  group: 1.10", callee="quarto-publish.yml"),
-                                           WORKFLOW.format(conc=JOB_GH)), 2, "does not round-trip")
+    # The third fail-closed guard in the parsing path: a concurrency block that
+    # is neither a string nor a mapping. It had no case and survived mutation
+    # to `return None`, which would report a stub the audit never evaluated as
+    # clean (gha#811 review, round 2).
+    expect("a list concurrency block is an error", run(STUB.format(top="concurrency: [gh-pages]", callee="quarto-publish.yml"),
+                                                        WORKFLOW.format(conc=JOB_GH)), 2, "expected a string or mapping")
     expect("missing callee is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), None), 2, "not in")
     expect("empty examples dir is an error", run(None, WORKFLOW.format(conc=JOB_GH)), 2, "no example stubs")
     expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "examples/quarto-publish.yml")

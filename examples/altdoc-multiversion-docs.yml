@@ -1,8 +1,13 @@
 # Copy to .github/workflows/docs.yaml in your repo.
 # NOTE: Do NOT name a `concurrency:` group `gh-pages` anywhere in this
 # caller workflow -- neither a top-level block nor one on the calling job,
-# which deadlock identically (gha#811). Any OTHER group name is fine, and
-# is how you serialize this workflow's own runs.
+# which deadlock identically
+# ([gha#811](https://github.com/Morrison-Lab/gha/pull/811)). Any OTHER group name is fine, and
+# is how you serialize this workflow's own runs -- with one exception for
+# this capability: its `build` job also holds
+# `altdoc-multiversion-docs-<pr-number-or-ref>`, which evaluates to
+# `github.ref` outside a pull request, so do not name your group
+# `altdoc-multiversion-docs-${{ github.ref }}` either.
 # The reusable workflow serializes gh-pages deploys
 # internally on its `deploy` job (`group: gh-pages`). A caller-level block
 # with the same group name deadlocks GitHub Actions against the nested job:

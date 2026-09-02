@@ -11,7 +11,10 @@
   Note the rename narrows what is serialized, and is not equivalent to the
   old block: `gh-pages` at caller level serialized this workflow against
   *every other* gh-pages workflow in the repo, where the new group
-  serializes it only against itself, per ref.
+  serializes it only against workflows sharing that name, per ref.
+  The two stubs deliberately share it, since `report-failure.yml` documents
+  itself as a job to merge into an existing caller rather than a second
+  workflow to install alongside the first.
   The gh-pages branch is still protected, by the callee deploy jobs that
   continue to share the `gh-pages` group; what can now overlap is one
   workflow's render phase with another's deploy.

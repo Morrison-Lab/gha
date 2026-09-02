@@ -73,12 +73,13 @@ def group_of(path: pathlib.Path, where: str, block) -> str | None:
     A list or mapping ``group`` is refused rather than stringified: ``str()``
     turns ``[a, b]`` into ``"[\'a\', \'b\']"``, a name no workflow can
     collide with, so the stub would pass an audit whose whole job is to refuse
-    what it cannot evaluate. An INTEGER is accepted, since YAML parses an
-    unquoted ``group: 2026`` that way and ``str()`` round-trips it exactly.
-    A boolean or float is refused instead: Python renders those differently
-    from GitHub (``True`` against ``true``, ``1.1`` against ``1.10``), so
-    accepting one would compare a name that cannot match its real
-    counterpart (gha#811 review).
+    what it cannot evaluate. Every NON-STRING scalar is refused for the same
+    reason, rather than the subset that happens to survive ``str()``: YAML's
+    scalar resolution is lossy, so an unquoted ``group: 010`` reaches this
+    function as ``8`` and ``group: 1:30`` as ``90``, and comparing either
+    against a callee group written the same way is a silent false negative.
+    The remedy is one keystroke -- quote the value -- so the audit asks for
+    that instead of guessing (gha#811 review).
     """
     if block is None:
         return None
@@ -88,15 +89,22 @@ def group_of(path: pathlib.Path, where: str, block) -> str | None:
         raw = block.get("group")
         if raw is None:
             group = ""
-        elif isinstance(raw, (bool, float)):
-            # Refused rather than accepted: Python renders these differently
-            # from GitHub, so the audit would compare a name that cannot match
-            # its real counterpart. `bool` is listed first because it
-            # subclasses `int`, so an `int` test would swallow it.
-            die(f"{path}: {where} concurrency group is {type(raw).__name__}, "
-                f"which does not round-trip; quote it")
-        elif isinstance(raw, (str, int)):
-            group = str(raw).strip()
+        elif isinstance(raw, (bool, int, float, type(None))) or hasattr(raw, "isoformat"):
+            # Every NON-STRING scalar is refused, rather than the subset that
+            # happens to survive `str()`. YAML's scalar resolution is lossy, so
+            # the audit cannot recover what the author actually wrote: measured
+            # against `yaml.safe_load`, `010` arrives as 8, `0x10` as 16,
+            # `1_000` as 1000, `+5` as 5, `1:30` as 90, `true` as True and
+            # `1.10` as 1.1. Comparing any of those against a callee group
+            # spelled the same way in the source is a silent false negative, in
+            # the one function whose contract is to refuse what it cannot
+            # evaluate. Quoting the value removes the ambiguity entirely, which
+            # is what the message asks for (gha#811 review, round 2).
+            die(f"{path}: {where} concurrency group is {type(raw).__name__} "
+                f"rather than a string; YAML scalar resolution is lossy, so "
+                f"quote it")
+        elif isinstance(raw, str):
+            group = raw.strip()
         else:
             die(f"{path}: {where} concurrency group is {type(raw).__name__}, expected a scalar")
     else:

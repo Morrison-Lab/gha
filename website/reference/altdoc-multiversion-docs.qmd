@@ -144,7 +144,12 @@ Do not name a `concurrency:` group `gh-pages` anywhere in your caller
 workflow -- neither a top-level block nor one on the calling job, which
 deadlock identically.
 Any other group name is fine, and is how you serialize the caller's own
-runs.
+runs -- with one exception for this capability.
+Its `build` job also declares
+`altdoc-multiversion-docs-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}`,
+which evaluates to `github.ref` outside a pull request, so
+`altdoc-multiversion-docs-${{ github.ref }}` collides with it too even
+though the two strings differ.
 `altdoc-multiversion-docs.yml` serializes gh-pages deploys internally on its
 `deploy` job (`group: gh-pages`).
 A caller-level block with the same group name deadlocks GitHub Actions
