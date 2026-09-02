@@ -84,9 +84,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="../site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="../site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="../site_libs/bootstrap/bootstrap-f83c246346592b24d02aa84ae3974412.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="../site_libs/bootstrap/bootstrap-dark-60383baa369db6667c77bdca9eedff41.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="../site_libs/bootstrap/bootstrap-f83c246346592b24d02aa84ae3974412.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-89af0c2d685ccb09a4d7d65decb66752.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="../site_libs/bootstrap/bootstrap-dark-34dbf897b697f50edbbc4554a08e61a3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="../site_libs/bootstrap/bootstrap-89af0c2d685ccb09a4d7d65decb66752.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -686,6 +686,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   <li><a href="#custom-headings" id="toc-custom-headings" class="nav-link" data-scroll-target="#custom-headings">Custom headings</a></li>
+  <li><a href="#repeat-assemblies" id="toc-repeat-assemblies" class="nav-link" data-scroll-target="#repeat-assemblies">Repeat assemblies</a></li>
   <li><a href="#bullet-marker-normalization" id="toc-bullet-marker-normalization" class="nav-link" data-scroll-target="#bullet-marker-normalization">Bullet-marker normalization</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/assemble-news.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -804,6 +805,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>When set, <code>headings</code> <strong>replaces</strong> the built-in map rather than extending it, defining both the complete set of recognized categories and the order the headings are written in. Several categories may share a heading, which then takes the position of its first-listed category.</p>
 <p>A <code>#</code> comments out a line only when it starts the line, so a heading may contain one (<code>csharp = C# interop</code>). A category may not contain a dot – it is a single segment of <code>&lt;slug&gt;.&lt;category&gt;.md</code>, and a dotted one would collate the same fragment twice whenever its suffix is also configured.</p>
 <p>A fragment whose category is outside the active map fails the step, naming the offending files, rather than being skipped – the check runs before anything is consumed, so a mixed batch fails without deleting the valid fragments beside it.</p>
+</section>
+<section id="repeat-assemblies" class="level2">
+<h2 class="anchored" data-anchor-id="repeat-assemblies">Repeat assemblies</h2>
+<p>Fragments go into the first top-level section of <code>news-file</code>. In an R package’s <code>NEWS.md</code> that is the development-version block, but the script does not inspect the heading text: whatever section comes first is the target. When that block already holds a section with the same heading from an earlier assembly, the new bullets are spliced in under it, ahead of the bullets it already has and as one list with them, rather than under a second copy of the heading, which markdownlint’s MD024 would reject as a duplicate sibling. Only headings the block does not have yet are added, as one fresh block in the map’s display order directly under the top-level heading, above the sections the block already had. A heading that appears only in an older release block further down is not a target. The splice adds a single blank line between the new bullets and a following heading, paragraph, or fenced code block, and never a second one; blank lines the file already carried past that point are left as they were. Matching is exact after trimming trailing spaces and tabs, so a heading spelled differently (case, a doubled space, a CRLF line ending, whose <code>\r</code> is not trimmed) does not merge into the existing section and gets a fresh one instead, as every run did before. A line inside a fenced code block that starts with <code>#</code> and a space is not read as a heading, and a fenced block right after a splice point keeps its separating blank line.</p>
 </section>
 <section id="bullet-marker-normalization" class="level2">
 <h2 class="anchored" data-anchor-id="bullet-marker-normalization">Bullet-marker normalization</h2>
