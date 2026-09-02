@@ -300,12 +300,8 @@ the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 Both caller placements do it -- a top-level block, and one on the calling
 job itself.
-`audit_example_concurrency.py` does not catch this family, though: it
-compares group names as literal text, and these groups are `${{ }}`
-expressions that never match textually
-([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
-Follow the rule above by hand here; the audit covers the constant-named
-gh-pages family below.
+Follow this rule by hand for the review family: the audit described below
+cannot check it, for a reason given there.
 The same rule covers the gh-pages family (`quarto-publish.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
@@ -321,6 +317,8 @@ against the callee's jobs or the callee's own top level.
 It compares group names literally, so it covers constant names such as
 `gh-pages` and not expression-valued ones
 ([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
+That is why it cannot check the review family above, whose groups are all
+`${{ }}` expressions.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:

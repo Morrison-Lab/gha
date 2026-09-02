@@ -158,8 +158,6 @@ def main() -> int:
     # ...and the quoted form of the same value is accepted and compared.
     expect("a quoted numeric group is compared", run(STUB.format(top="concurrency:\n  group: '2026'", callee="quarto-publish.yml"),
                                                       WORKFLOW.format(conc="    concurrency:\n      group: '2026'")), 1, "deadlock")
-    # gha#811 review: bool and float do not round-trip through str(), so they
-    # are refused rather than compared against a name they can never match.
     # The third fail-closed guard in the parsing path: a concurrency block that
     # is neither a string nor a mapping. It had no case and survived mutation
     # to `return None`, which would report a stub the audit never evaluated as

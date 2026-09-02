@@ -22,6 +22,17 @@ the stub. A stub whose ``uses:`` names a workflow file this repo does not
 carry is an error, not a skip: an audit that walks past it would report a
 tree it never examined as clean.
 
+The audit is ONE LEVEL deep, while GitHub permits four: a callee job that
+itself calls another of our workflows is not compared. Nothing a stub calls
+declares ``workflow_call:`` and also calls another of ours today, so that is
+a limit rather than a live gap.
+
+Groups are compared as LITERAL TEXT, so only constant names are covered.
+An expression-valued group never matches textually, which is why no review
+stub can be flagged (their groups are ``${{ }}``-valued) and why
+``altdoc-multiversion-docs.yml``'s ``build`` group is missed. gha#822 tracks
+comparing by evaluated value instead.
+
 Usage::
 
     python3 audit_example_concurrency.py [--examples DIR] [--workflows DIR]
@@ -89,7 +100,7 @@ def group_of(path: pathlib.Path, where: str, block) -> str | None:
         raw = block.get("group")
         if raw is None:
             group = ""
-        elif isinstance(raw, (bool, int, float, type(None))) or hasattr(raw, "isoformat"):
+        elif isinstance(raw, (bool, int, float)) or hasattr(raw, "isoformat"):
             # Every NON-STRING scalar is refused, rather than the subset that
             # happens to survive `str()`. YAML's scalar resolution is lossy, so
             # the audit cannot recover what the author actually wrote: measured

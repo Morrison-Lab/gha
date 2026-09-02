@@ -2852,8 +2852,11 @@ skip.
 A top-level block covers the whole run and so covers the calling job, and
 a block on the calling job itself is the same collision written one level
 down -- `concurrency:` is valid on a job that `uses:` a reusable workflow,
-and gha#811's review reproduced the deadlock evading a top-level-only
-audit against the live tree.
+gha#811's review reproduced the audit exiting 0 over such a block on the
+live tree -- that the two then deadlock is inferred from the mechanism (a
+group is a group, wherever the caller declares it) rather than observed, and
+actionlint#538's record covers a caller top level against a group the callee
+supplies, not a caller-authored job-level block.
 Only the CALLING job's own group counts: a matching group on some other
 job of the stub serializes those two jobs and never waits on the callee,
 so reporting it would be a false positive, and a test pins that.
@@ -2867,26 +2870,31 @@ job, so a caller group matching it deadlocks exactly as a job-level one does.
 workflow carrying one, and before gha#811's review the audit walked past it.
 **The audit is one level deep, while GitHub permits four.**
 A callee job that itself calls another of our workflows is not compared.
-Nothing in `.github/workflows/` calls another reusable workflow today, so
-that is latent rather than live, but it is a limit rather than an oversight
-and the docstring says so.
+Eleven workflows here do call another of ours, but none of those eleven
+declares `workflow_call:`, so none can be a callee and no nesting is
+reachable from a stub -- a limit rather than a live gap.
+The docstring states it too, so a reader of the script alone gets it.
 **And the comparison is literal string equality, so it sees constant group
 names only.**
 That covers the gh-pages family, whose groups are the constant `gh-pages`.
 It does NOT cover a group written as an expression: the review family's
 groups are `${{ }}`-valued, so no review stub can ever be flagged, and
-`altdoc-multiversion-docs.yml`'s `build` job holds a group that evaluates to
-`github.ref` on a non-`pull_request` event while never matching a caller's
-`...-${{ github.ref }}` textually.
+`altdoc-multiversion-docs.yml`'s `build` job holds a group whose `${{ }}`
+part evaluates to `github.ref` outside a pull request, so the group as a
+whole becomes `altdoc-multiversion-docs-refs/heads/main` -- identical to what
+a caller writing `altdoc-multiversion-docs-${{ github.ref }}` requests, while
+the two strings never match textually.
 gha#822 tracks normalizing expressions before comparing.
-A group that is a BOOLEAN or a FLOAT is refused rather than compared: Python
-renders those differently from GitHub (`True` against `true`, `1.1` against
-`1.10`), so accepting one would compare a name that can never match its real
-counterpart -- a silent false negative in the one function whose contract is
-to refuse what it cannot evaluate.
-An integer round-trips and is accepted.
-Note `bool` subclasses `int` in Python, so the boolean test must come first
-or an `int` check swallows it.
+EVERY non-string scalar group is refused rather than compared, not the
+subset that happens to survive `str()`.
+YAML's scalar resolution is lossy, so the audit cannot recover what the
+author wrote: measured against `yaml.safe_load`, `010` arrives as 8, `0x10`
+as 16, `1_000` as 1000, `+5` as 5, `1:30` as 90, `true` as `True` and `1.10`
+as 1.1 -- six of ten spellings tried.
+Comparing any of those against a callee group written the same way is a
+silent false negative, in the one function whose contract is to refuse what
+it cannot evaluate, and the remedy is one pair of quotes, which the message
+asks for.
 Its first live run found a second collision the issue had not listed,
 `examples/report-failure.yml`, which is why the check is derived from the
 tree rather than from the issue's list.
