@@ -109,6 +109,9 @@ declare -A expected=(
   # fence, and in a blockquote) is not a draft; the real review before it
   # must be posted, not dropped.
   [verdict-then-quoted-heading.json]=pass
+  # gha#808 review round 1: a backtick fence containing a tilde line does not
+  # close on the tilde; the heading after it is still fenced.
+  [verdict-then-mismatched-fence.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -154,6 +157,7 @@ declare -A must_contain=(
   # to the last heading block drops the tail.
   [verdict-redrafted-thrice.json]='gamma-pass fixture table'
   [verdict-then-quoted-heading.json]='epsilon-pass analysis'
+  [verdict-then-mismatched-fence.json]='zeta-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -286,6 +290,7 @@ declare -A expected_cost=(
   [verdict-split-across-blocks.json]=1.11
   [verdict-redrafted-thrice.json]=2.34
   [verdict-then-quoted-heading.json]=1.42
+  [verdict-then-mismatched-fence.json]=1.43
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -462,8 +467,15 @@ assert_pass() {
   # on our own extraction, not a verdict parse.
   local headings
   headings="$(awk '
-    /^[ \t]?[ \t]?[ \t]?(```|~~~)/ { fence = !fence; next }
-    fence { next }
+    # A fence closes only on the same character, at least as long as the
+    # opener (CommonMark), mirroring the jq. No interval expressions.
+    match($0, /^[ \t]?[ \t]?[ \t]?(```+|~~~+)/) {
+      run = substr($0, RSTART, RLENGTH); sub(/^[ \t]+/, "", run)
+      ch = substr(run, 1, 1); len = length(run)
+      if (fence == "") { fence = ch; flen = len; next }
+      if (ch == fence && len >= flen) { fence = ""; flen = 0; next }
+    }
+    fence != "" { next }
     /^[ \t]*>/ { next }
     tolower($0) ~ /^[ \t]*#+[ \t]*verdict/ { n++ }
     END { print n + 0 }' "$posted_file")"

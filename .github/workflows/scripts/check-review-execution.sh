@@ -650,16 +650,27 @@ review_text_file="$(mktemp)"
 # verdict for context, must not read as a fresh draft: with the bare regex it
 # did, and the span then started at the quotation and dropped the entire real
 # review (gha#808 review). That is the failure gha#710 exists to prevent, and
-# it is worse than the concatenation this fixes. The fence scan toggles on a
-# line opening with three backticks or tildes, which is how the repo's
-# other stripper (strip-non-invoking-markup.sh) reads a fence too.
+# it is worse than the concatenation this fixes. A fence closes only on a run
+# of the SAME character at least as long as the opener (CommonMark, and what
+# strip-non-invoking-markup.sh implements); a first draft closed on any
+# fence line, so a backtick fence containing a tilde line "closed" early and
+# its heading counted (gha#808 review round 1). An unclosed fence runs to the
+# end of its block, again per CommonMark: a redraft whose own code sample is
+# never closed hides its own heading from this test, exactly as GitHub would
+# hide it from the reader, and the block then falls back to the gha#710 span
+# rule. That is malformed input rendered faithfully, not a case to special-
+# case, since ignoring unclosed fences would re-admit the quoted-heading drop.
 jq -r '
   def authored_heading:
     ( split("\n")
-      | reduce .[] as $l ({fence: false, out: []};
-          if ($l | test("^[ \\t]{0,3}(```|~~~)")) then .fence = (.fence | not)
-          elif .fence or ($l | test("^[ \\t]*>")) then .
-          else .out += [$l] end)
+      | reduce .[] as $l ({fence: "", flen: 0, out: []};
+          ( [ $l | capture("^[ \\t]{0,3}(?<run>`{3,}|~{3,})") ] | first ) as $f
+          | if $f != null and .fence == ""
+              then .fence = ($f.run[0:1]) | .flen = ($f.run | length)
+            elif $f != null and ($f.run[0:1]) == .fence and ($f.run | length) >= .flen
+              then .fence = "" | .flen = 0
+            elif .fence != "" or ($l | test("^[ \\t]*>")) then .
+            else .out += [$l] end)
       | .out | join("\n") )
     | test("(?im)^[ \\t]*#{1,6}[ \\t]*verdict\\b");
   . as $blocks
