@@ -344,14 +344,29 @@ def _commit(tmp_path: Path, message: str) -> None:
     subprocess.run(["git", "commit", "-q", "-m", message], cwd=tmp_path, check=True)
 
 
-def _find(tmp_path: Path, base_ref: str = "", globs=("*.md",)):
+def _find(tmp_path: Path, base_ref: str = "", globs=("*.md",), scope_mode: str = "auto"):
     import os
     cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
-        return nlb.find_violations(base_ref, list(globs), [])
+        return nlb.find_violations(
+            base_ref, list(globs), [],
+            nlb._DEFAULT_CLAUSE_BREAKS, nlb._DEFAULT_CLAUSE_MIN_LENGTH,
+            scope_mode,
+        )
     finally:
         os.chdir(cwd)
+
+
+def _checkout(tmp_path: Path, *args: str) -> None:
+    subprocess.run(["git", "checkout", "-q", *args], cwd=tmp_path, check=True)
+
+
+def _current_branch(tmp_path: Path) -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=tmp_path, check=True, capture_output=True, encoding="utf-8",
+    ).stdout.strip()
 
 
 def test_diff_scope_flags_newly_added_violation(tmp_path):
@@ -591,6 +606,121 @@ def test_empty_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
 
     violations, skipped = _find(tmp_path, base_ref="")
     assert skipped
+    assert violations == []
+
+
+# ── working-tree-aware scope (gha#825) ───────────────────────────────────────
+#
+# `_added_line_numbers` used to diff `<base>...HEAD` -- committed only -- then
+# read line *content* from the working tree, so a local run before committing
+# reported "No lines missing semantic breaks" about lines it never examined.
+# These pin the fix: "auto" scope widens to the working tree when it carries
+# a change to a matched file, a committed run is unaffected (the control),
+# a clean run of either scope reports how many lines it actually examined,
+# and the merge-base anchor a stale base once relied on is unchanged.
+
+def test_uncommitted_violation_is_flagged_in_auto_scope(tmp_path):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    # Add a violating line WITHOUT committing it.
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+    assert [v.reason for v in violations] == ["sentence"]
+
+
+def test_same_violation_committed_is_the_control(tmp_path):
+    # Same bytes as the case above, committed instead of left uncommitted --
+    # this is what already worked before gha#825, and must keep working.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
+    )
+    _commit(tmp_path, "commit the violation")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+    assert [v.reason for v in violations] == ["sentence"]
+
+
+def test_clean_dirty_tree_reports_examined_count(tmp_path, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    # Uncommitted, but clean: no violation, so the old code's silent "clean"
+    # message would look identical to having examined nothing at all.
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- A second, equally short bullet.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 1 added line(s) across 1 file(s) (scope: working tree)." in out
+
+
+def test_clean_committed_tree_reports_examined_count(tmp_path, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- A second, equally short bullet.\n"
+    )
+    _commit(tmp_path, "clean addition")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 1 added line(s) across 1 file(s) (scope: committed)." in out
+
+
+def test_committed_scope_ignores_uncommitted_content(tmp_path):
+    # Explicit override: even with a dirty tree, "committed" scope must not
+    # widen -- this is CI's own behavior, made available on purpose.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD", scope_mode="committed")
+    assert not skipped
+    assert violations == []
+
+
+def test_base_branch_advancing_is_not_flagged_via_merge_base(tmp_path):
+    # The merge-base anchor `<base>...HEAD` already had must be unchanged by
+    # the fix: a violation the base branch picks up *after* the feature
+    # branch diverged must still not be flagged, in either scope.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    trunk = _current_branch(tmp_path)
+
+    _checkout(tmp_path, "-b", "feature")
+    (tmp_path / "feature.md").write_text("- A clean addition here.\n")
+    _commit(tmp_path, "feature work")
+
+    _checkout(tmp_path, trunk)
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A base-branch violation. Two sentences.\n"
+    )
+    _commit(tmp_path, "base branch advances with its own violation")
+
+    _checkout(tmp_path, "feature")
+    violations, skipped = _find(tmp_path, base_ref=trunk)
+    assert not skipped
     assert violations == []
 
 

@@ -1135,42 +1135,72 @@ small throwaway git repos (`tmp_path` fixtures, generated at test time --
 nothing committed), the diff-scoping behavior itself: a newly-added
 multi-sentence line is flagged, a pre-existing one in an untouched line is
 not, and a diff that can't be computed skips rather than falling back to a
-whole-tree scan. Run it with
+whole-tree scan.
+gha#825's working-tree-aware scope has its own cases: an uncommitted
+violation is flagged under `auto` scope with the same-bytes committed case
+as its control, a clean tree of either kind still reports the examined
+line/file count, `NLB_SCOPE=committed` forces the old behavior even when the
+tree is dirty, and a base branch that advances after the current branch
+diverged is still not flagged, pinning that the merge-base anchor is
+unchanged.
+Run it with
 `python3 -m pytest check-new-line-breaks/tests/ -q`; CI runs it as the
 `new-line-breaks-tests` job in `_selftest.yml`, alongside a `new-line-breaks`
 job that exercises the real composite (`base-ref` diff mode) against this
 repo's own tree, the same "local composite, not yet the `@v1`-pinned
 reusable-workflow chain" precedent `phi` uses above.
 
-**Running that check locally before a push proves nothing about files you have
-not committed yet, and it reports them as clean rather than as unchecked.**
-`_added_line_numbers` (called from `find_violations`) diffs
-`"$base_ref"..."HEAD"`, so its population is the **commit graph** -- a staged
-file is invisible to it, and an untracked one doubly so.
-Nothing in the output distinguishes "checked, no violations" from "there was
-nothing to check", which is what makes it misread rather than merely miss:
+**Running that check locally before a push used to prove nothing about files
+you had not committed yet, and it reported them as clean rather than as
+unchecked -- fixed by gha#825 (`NLB_SCOPE`, default `auto`).**
+`_added_line_numbers` (called from `find_violations`) used to always diff
+`"$base_ref"..."HEAD"`, so its population was the **commit graph** -- a
+staged file was invisible to it, and an untracked one doubly so.
+Nothing in the output distinguished "checked, no violations" from "there was
+nothing to check", which made it misread rather than merely miss:
 
 ```bash
 git add -A
 NLB_BASE_REF=origin/main python3 check-new-line-breaks/check-new-line-breaks.py
-# -> No lines missing semantic breaks.        (it examined zero added lines)
+# before gha#825: No lines missing semantic breaks. (it examined zero added lines)
 ```
 
-So commit first.
-The ref itself needs no special care: `A...HEAD` is three-dot, which git
-resolves to the merge-base of `A` and `HEAD`, so `NLB_BASE_REF=origin/main`
-already means what the `new-line-breaks` job's own merge-base SHA means.
-Committing is the whole of the fix.
-Measured on gha#544: a local run over a staged changelog fragment reported
-clean, and CI flagged three lines in that same file on the very next push.
-This is the general verify-the-right-artifact trap in
+Now the check widens its own scope when it detects one is needed: with
+`NLB_SCOPE` left at its default of `auto`, a working tree or index carrying
+changes to a matched file is diffed against the merge base directly (folding
+staged and unstaged content into one diff), and a clean tree -- CI's own
+state, always -- keeps the old committed-only diff.
+Either way, every run now prints how many added lines and files it examined
+and under which scope, so a run over zero lines reads differently from a run
+that examined everything and found nothing:
+
+```bash
+NLB_BASE_REF=origin/main python3 check-new-line-breaks/check-new-line-breaks.py
+# -> Examined 3 added line(s) across 2 file(s) (scope: working tree).
+```
+
+A brand-new **untracked** file is a disclosed gap even under `auto`/
+`worktree` scope: plain `git diff` never shows untracked content, so stage it
+(`git add`) to be examined -- the same one-command fix committing used to be
+for everything.
+`NLB_SCOPE=committed` forces the old, CI-matching behavior explicitly, for a
+local run that wants to reproduce exactly what CI will see.
+The ref itself needs no special care in either scope: the merge base of
+`base_ref` and `HEAD` is resolved once, explicitly, via `git merge-base`, so
+`NLB_BASE_REF=origin/main` means what the `new-line-breaks` job's own
+merge-base SHA means, and a base branch that has advanced since the current
+branch diverged does not widen what gets checked.
+Measured on gha#544, before this fix: a local run over a staged changelog
+fragment reported clean, and CI flagged three lines in that same file on the
+very next push.
+That was the general verify-the-right-artifact trap in
 [`Morrison-Lab/ai-config`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/verify-the-right-artifact.md)
-wearing local clothes: the working tree is an adjacent artifact to the one the
-instrument actually reads, and checking it thoroughly is still checking the
-wrong thing.
-The same reasoning applies to every diff-scoped check here -- `check-phi` and
-`check-new-line-breaks` take a `base-ref`, and `check-secrets` scans history --
-so none of them can see an uncommitted change either.
+wearing local clothes: the working tree was an adjacent artifact to the one
+the instrument actually read, and checking it thoroughly was still checking
+the wrong thing.
+The same reasoning still applies to the other diff-scoped checks here --
+`check-phi` takes a `base-ref` with no working-tree awareness of its own, and
+`check-secrets` scans history -- so neither can see an uncommitted change.
 
 **A second, independent way that check reports clean over content it never
 examined: `NLB_GLOBS` defaults to `*.md`, unless overridden.**

@@ -9,6 +9,16 @@ Design notes:
   base SHA) are checked, so a corpus that has already accumulated long lines
   (commonly because markdownlint's MD013 is disabled for exactly this
   reason) never gets reflagged on every unrelated edit.
+- **Working-tree-aware scope.** When the working tree or index carries
+  changes to files the globs match, the diff is taken against the working
+  tree instead of ``HEAD``, so a line added but not yet committed is
+  examined too -- the check is meant to be run by hand before a commit, and
+  a clean verdict over zero examined lines used to be indistinguishable from
+  a genuine pass (see ``NLB_SCOPE`` below). Inside CI the tree is always
+  clean, so this has no effect there: scope stays committed-only. A brand
+  new *untracked* file is a known gap even in worktree scope, since plain
+  ``git diff`` never shows untracked content; stage it (``git add``) to be
+  examined.
 - **No base_ref to diff against, or the diff can't be computed** (e.g. an
   unset base-ref on a push run, or a shallow clone missing the base commit):
   the check is *skipped* with a warning. There is no whole-tree fallback,
@@ -22,6 +32,10 @@ Design notes:
   rule 5 (the SHOULD: break after an independent clause) applies too, and is
   opt-*out* via ``NLB_CLAUSE_BREAKS=false`` -- see ``has_late_semicolon``
   for why that slice is semicolons only, and why it is gated on line length.
+- **The search space is reported.** Every run prints how many added lines
+  and files it examined, and under which scope, so a run that examined zero
+  lines prints something visibly different from a run that examined
+  everything and found nothing.
 
 Configuration (all via environment variables, set by the composite action):
   NLB_BASE_REF      Git ref/SHA to diff against. Empty => skip the check.
@@ -34,6 +48,12 @@ Configuration (all via environment variables, set by the composite action):
                     Minimum *visible* line length before the clause check
                     applies, inclusive (default: 80); markup is stripped
                     first. Ignored when NLB_CLAUSE_BREAKS is false.
+  NLB_SCOPE         "auto" (default) => scope from the working tree when it
+                    carries changes to matched files, else from HEAD;
+                    "worktree" => always scope from the working tree;
+                    "committed" => always scope from HEAD only, even when
+                    the tree is dirty (CI's own behavior, made available as
+                    an explicit override for a local run).
 """
 
 import os
@@ -458,12 +478,49 @@ def _ignored(rel: str, ignores: List["re.Pattern[str]"]) -> bool:
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
+def _has_uncommitted_changes(pathspecs: List[str]) -> bool:
+    """True when the working tree or index carries a change (including an
+    untracked file) to a file the given pathspecs match.
+
+    ``git status --porcelain`` reports staged and unstaged modifications and
+    untracked files alike, which is what "auto" scope needs to decide
+    whether to widen the diff -- it does not need ``git diff`` itself to be
+    able to *show* the change, only to know one exists. A status call that
+    fails (e.g. not a git repo) is read as "nothing to widen for", the same
+    conservative default ``_run_git`` callers elsewhere use.
+    """
+    out = _run_git(["status", "--porcelain", "--", *pathspecs])
+    return bool(out) and out.strip() != ""
+
+
+def _merge_base(base_ref: str) -> Optional[str]:
+    """The merge base of ``base_ref`` and HEAD, computed explicitly.
+
+    ``git diff A...B`` already resolves to this internally, but both scopes
+    below need the same commit, so it is computed once here rather than
+    left to two different diff invocations to each resolve on their own --
+    which is also what keeps a stale ``base_ref`` from widening the diff:
+    the merge base, not ``base_ref`` itself, is what gets diffed against.
+    """
+    out = _run_git(["merge-base", base_ref, "HEAD"])
+    if out is None:
+        return None
+    return out.strip()
+
+
 def _added_line_numbers(
-    base_ref: str, pathspecs: List[str]
+    base_ref: str, pathspecs: List[str], scope: str = "committed"
 ) -> Optional[Tuple[dict, "Counter[str]"]]:
     """Return ({file: {new-file line numbers added}}, deleted-line multiset)
     vs the merge-base of base_ref and HEAD, or None if the diff could not be
     computed.
+
+    ``scope`` is ``"committed"`` (diff the merge base against ``HEAD`` --
+    CI's own behavior, and the default) or ``"worktree"`` (diff the merge
+    base against the working tree and index, so an added-but-uncommitted
+    line is examined too). Either way the merge base of ``base_ref`` and
+    ``HEAD`` is resolved once via ``_merge_base``, so both scopes share the
+    same anchor and a stale ``base_ref`` cannot widen the diff.
 
     The deleted-contents set feeds the moved-content exemption (gha#684): an
     added line whose exact text was also deleted somewhere in the same diff is
@@ -475,7 +532,20 @@ def _added_line_numbers(
     text exempt at most N additions of it, so one deletion cannot launder
     unlimited duplicates (gha#700 round 2).
     """
-    diff = _run_git(["diff", "--unified=0", "--no-color", f"{base_ref}...HEAD", "--", *pathspecs])
+    merge_base = _merge_base(base_ref)
+    if merge_base is None:
+        return None
+    if scope == "worktree":
+        # A single ref with no `--cached`/second ref compares that commit
+        # directly to the working tree, folding staged and unstaged changes
+        # into one diff -- exactly the population an uncommitted local run
+        # needs. A brand-new untracked file still will not appear here:
+        # plain `git diff` never shows untracked content (see the module
+        # docstring's disclosed limitation).
+        diff_args = ["diff", "--unified=0", "--no-color", merge_base, "--", *pathspecs]
+    else:
+        diff_args = ["diff", "--unified=0", "--no-color", f"{merge_base}..HEAD", "--", *pathspecs]
+    diff = _run_git(diff_args)
     if diff is None:
         return None
     result: dict = {}
@@ -540,6 +610,7 @@ def find_violations(
     ignores: List["re.Pattern[str]"],
     clause_breaks: bool = _DEFAULT_CLAUSE_BREAKS,
     clause_min_length: int = _DEFAULT_CLAUSE_MIN_LENGTH,
+    scope_mode: str = "auto",
 ) -> Tuple[List[Violation], bool]:
     """Return (violations, skipped). violations is empty and skipped is True
     whenever there's no diff to check against -- either base_ref was never
@@ -548,10 +619,21 @@ def find_violations(
     check-phi, there is no whole-tree fallback: this check's entire purpose
     is to avoid ever reflagging a corpus's pre-existing long lines, so a
     whole-tree scan here would defeat the point, not just be less precise.
+
+    ``scope_mode`` is ``"auto"`` (widen to the working tree when it carries
+    changes to a matched file, else committed-only), ``"worktree"``
+    (always widen), or ``"committed"`` (never widen, even when the tree is
+    dirty -- CI's own behavior, forced).
     """
     if not base_ref:
         return [], True
-    scoped = _added_line_numbers(base_ref, globs)
+    if scope_mode == "worktree":
+        scope_kind = "worktree"
+    elif scope_mode == "committed":
+        scope_kind = "committed"
+    else:
+        scope_kind = "worktree" if _has_uncommitted_changes(globs) else "committed"
+    scoped = _added_line_numbers(base_ref, globs, scope_kind)
     if scoped is None:
         return [], True
     scope, deleted_contents = scoped
@@ -559,6 +641,8 @@ def find_violations(
 
     violations: List[Violation] = []
     exempted_moves = 0
+    examined_lines = 0
+    examined_files = 0
     for rel_path in sorted(scope):
         if _ignored(rel_path, ignores):
             continue
@@ -572,6 +656,8 @@ def find_violations(
         lines = text.split("\n")
         prose = prose_line_numbers(text)
         target_lines = scope[rel_path] & prose
+        examined_files += 1
+        examined_lines += len(target_lines)
 
         for line_no in sorted(target_lines):
             if line_no < 1 or line_no > len(lines):
@@ -597,6 +683,11 @@ def find_violations(
                     exempted_moves += 1
                     continue
                 violations.append(Violation(rel_path, line_no, preview, reason))
+    scope_label = "committed" if scope_kind == "committed" else "working tree"
+    print(
+        f"Examined {examined_lines} added line(s) across {examined_files} "
+        f"file(s) (scope: {scope_label})."
+    )
     if exempted_moves:
         print(
             f"Note: {exempted_moves} added line(s) also appear among this "
@@ -649,6 +740,27 @@ def _env_int(name: str, default: int) -> int:
     return value
 
 
+_SCOPE_CHOICES = ("auto", "worktree", "committed")
+
+
+def _env_choice(name: str, default: str, choices: Tuple[str, ...]) -> str:
+    """Read a string env var restricted to ``choices`` (case-insensitive).
+
+    Falls back to ``default`` when unset, empty, or not a recognized choice,
+    warning in the last case the same way ``_env_flag``/``_env_int`` do.
+    """
+    raw = os.environ.get(name, "").strip().lower()
+    if not raw:
+        return default
+    if raw not in choices:
+        print(
+            f"::warning::{name}={raw!r} is not one of {choices}; "
+            f"using default ({default!r})."
+        )
+        return default
+    return raw
+
+
 def main() -> int:
     base_ref = os.environ.get("NLB_BASE_REF", "").strip()
     globs = os.environ.get("NLB_GLOBS", "*.md").split() or ["*.md"]
@@ -656,9 +768,10 @@ def main() -> int:
     fail = _env_flag("NLB_FAIL", default=_DEFAULT_FAIL)
     clause_breaks = _env_flag("NLB_CLAUSE_BREAKS", _DEFAULT_CLAUSE_BREAKS)
     clause_min_length = _env_int("NLB_CLAUSE_MIN_LENGTH", _DEFAULT_CLAUSE_MIN_LENGTH)
+    scope_mode = _env_choice("NLB_SCOPE", "auto", _SCOPE_CHOICES)
 
     violations, skipped = find_violations(
-        base_ref, globs, ignore, clause_breaks, clause_min_length
+        base_ref, globs, ignore, clause_breaks, clause_min_length, scope_mode
     )
 
     if skipped:
