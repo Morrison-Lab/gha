@@ -344,14 +344,49 @@ def _commit(tmp_path: Path, message: str) -> None:
     subprocess.run(["git", "commit", "-q", "-m", message], cwd=tmp_path, check=True)
 
 
-def _find(tmp_path: Path, base_ref: str = "", globs=("*.md",)):
+def _find(tmp_path: Path, base_ref: str = "", globs=("*.md",), scope_mode: str = "auto"):
     import os
     cwd = os.getcwd()
     os.chdir(tmp_path)
     try:
-        return nlb.find_violations(base_ref, list(globs), [])
+        return nlb.find_violations(
+            base_ref, list(globs), [],
+            nlb._DEFAULT_CLAUSE_BREAKS, nlb._DEFAULT_CLAUSE_MIN_LENGTH,
+            scope_mode,
+        )
     finally:
         os.chdir(cwd)
+
+
+def _checkout(tmp_path: Path, *args: str) -> None:
+    subprocess.run(["git", "checkout", "-q", *args], cwd=tmp_path, check=True)
+
+
+def _current_branch(tmp_path: Path) -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+        cwd=tmp_path, check=True, capture_output=True, encoding="utf-8",
+    ).stdout.strip()
+
+
+def _find_naive(tmp_path: Path, base_ref: str, globs=("*.md",)):
+    """Same as `_find`, but with `_merge_base` monkeypatched to return
+    `base_ref`'s own SHA -- simulating a regression that diffs directly
+    against `base_ref` instead of the true (possibly older) merge base.
+    Used as the control that proves a merge-base-anchoring test would
+    actually catch such a regression, rather than passing on a diff that
+    would have been empty either way.
+    """
+    sha = subprocess.run(
+        ["git", "rev-parse", base_ref], cwd=tmp_path, check=True,
+        capture_output=True, encoding="utf-8",
+    ).stdout.strip()
+    orig_merge_base = nlb._merge_base
+    nlb._merge_base = lambda ref: sha
+    try:
+        return _find(tmp_path, base_ref=base_ref, globs=globs)
+    finally:
+        nlb._merge_base = orig_merge_base
 
 
 def test_diff_scope_flags_newly_added_violation(tmp_path):
@@ -592,6 +627,260 @@ def test_empty_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
     violations, skipped = _find(tmp_path, base_ref="")
     assert skipped
     assert violations == []
+
+
+# -- working-tree-aware scope (gha#825) --------------------------------------
+#
+# `_added_line_numbers` used to diff `<base>...HEAD` -- committed only -- then
+# read line *content* from the working tree, so a local run before committing
+# reported "No lines missing semantic breaks" about lines it never examined.
+# These pin the fix: "auto" scope widens to the working tree when it carries
+# a change to a matched file, a committed run is unaffected (the control),
+# a clean run of either scope reports how many lines it actually examined,
+# and the merge-base anchor a stale base once relied on is unchanged.
+
+def test_uncommitted_violation_is_flagged_in_auto_scope(tmp_path):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    # Add a violating line WITHOUT committing it.
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+    assert [v.reason for v in violations] == ["sentence"]
+
+
+def test_same_violation_committed_is_the_control(tmp_path):
+    # Same bytes as the case above, committed instead of left uncommitted --
+    # this is what already worked before gha#825, and must keep working.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
+    )
+    _commit(tmp_path, "commit the violation")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+    assert [v.reason for v in violations] == ["sentence"]
+
+
+def test_clean_dirty_tree_reports_examined_count(tmp_path, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    # Uncommitted, but clean: no violation, so the old code's silent "clean"
+    # message would look identical to having examined nothing at all.
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- A second, equally short bullet.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 1 added line(s) across 1 file(s) (scope: working tree)." in out
+
+
+def test_clean_committed_tree_reports_examined_count(tmp_path, capsys):
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- A second, equally short bullet.\n"
+    )
+    _commit(tmp_path, "clean addition")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 1 added line(s) across 1 file(s) (scope: committed)." in out
+
+
+def test_committed_scope_ignores_uncommitted_content(tmp_path, capsys):
+    # Explicit override: even with a dirty tree, "committed" scope must not
+    # widen -- this is CI's own behavior, made available on purpose. The
+    # base is a prior commit that itself added one clean line, so the two
+    # scopes actually disagree here: "committed" sees only that clean line
+    # (1 examined, 0 violations), while "worktree"/"auto" would also pick up
+    # the uncommitted violation below. Using base_ref=HEAD with nothing
+    # committed would make every scope look identical and prove nothing.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short clean bullet.\n")
+    _commit(tmp_path, "clean, committed addition")
+    # Uncommitted on top: a real violation that "committed" scope must miss.
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short clean bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1", scope_mode="committed")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 1 added line(s) across 1 file(s) (scope: committed)." in out
+
+
+def test_committed_scope_missing_violation_is_caught_by_auto(tmp_path):
+    # The direct control for the test above: the same tree, same base,
+    # under "auto" (which resolves to "worktree" since the tree is dirty)
+    # DOES catch the uncommitted violation "committed" scope just missed.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short clean bullet.\n")
+    _commit(tmp_path, "clean, committed addition")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short clean bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+
+
+def test_staged_but_uncommitted_violation_is_flagged(tmp_path):
+    # `git add` without a commit: content lives in the index, not just the
+    # working tree. A plain `git diff <merge_base>` (no `--cached`) folds
+    # both staged and unstaged changes into one diff against the working
+    # tree, so this must be caught exactly like the fully-unstaged case.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
+    )
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+
+
+def test_untracked_file_does_not_widen_scope_and_warns(tmp_path, capsys):
+    # A brand-new untracked file must NOT flip "auto" to "worktree" on its
+    # own -- plain `git diff` cannot show it either way, so widening would
+    # promise an examination that never happens. It should instead be named
+    # in an explicit warning, and the tracked tree stays clean/committed.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "untracked.md").write_text("- A violation. Right here.\n")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 0 added line(s) across 0 file(s) (scope: committed)." in out
+    assert "untracked.md" in out
+    assert "not examined" in out
+
+
+def test_base_branch_advancing_is_not_flagged_via_merge_base(tmp_path):
+    # A naive `git diff trunk` from the feature branch can never see a line
+    # that trunk ADDS after divergence -- it shows up as a deletion from
+    # trunk's side, never an addition -- so a test where trunk merely adds a
+    # violation proves nothing about whether the merge-base anchor is really
+    # in use versus a regression that diffs against `trunk` directly. Here
+    # the violation instead starts in the SHARED base commit (present on
+    # both branches); trunk then rewrites it clean, while feature leaves it
+    # untouched. That makes the violating line look like a fresh ADDITION
+    # to any diff anchored at trunk's later commit -- so the merge-base
+    # anchor (the shared base, not trunk's rewrite) is what has to exclude
+    # it, and the naive-anchor control below proves it actually does.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text(f"# Notes\n\n- {_LONG_SEMICOLON}\n")
+    _commit(tmp_path, "base carries a pre-existing violation")
+    trunk = _current_branch(tmp_path)
+
+    _checkout(tmp_path, "-b", "feature")
+    (tmp_path / "feature.md").write_text("- A clean addition here.\n")
+    _commit(tmp_path, "feature work; violating line left untouched")
+
+    _checkout(tmp_path, trunk)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A clean rewrite instead.\n")
+    _commit(tmp_path, "trunk rewrites the violation away")
+
+    _checkout(tmp_path, "feature")
+    violations, skipped = _find(tmp_path, base_ref=trunk)
+    assert not skipped
+    assert violations == []
+
+    # The control: the identical diff, anchored at `trunk` directly instead
+    # of the resolved merge base, DOES surface the untouched violating
+    # line -- proving the assertion above is exercising real anchor logic
+    # rather than passing on a diff that would have been empty regardless.
+    naive_violations, naive_skipped = _find_naive(tmp_path, base_ref=trunk)
+    assert not naive_skipped
+    assert [(v.path, v.line) for v in naive_violations] == [("notes.md", 3)]
+
+
+def test_base_branch_advancing_is_not_flagged_via_merge_base_worktree_scope(
+    tmp_path, capsys
+):
+    # The dirty-tree companion to
+    # `test_base_branch_advancing_is_not_flagged_via_merge_base` directly
+    # above: same shared-base-carries-the-violation/trunk-rewrites-it-clean
+    # setup, but the feature branch's own addition is left UNCOMMITTED, so
+    # "auto" resolves to "worktree" scope instead of "committed". All branch
+    # switching happens on a CLEAN tree; the uncommitted edit is made last,
+    # since git refuses to switch branches out from under a dirty file.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text(f"# Notes\n\n- {_LONG_SEMICOLON}\n")
+    _commit(tmp_path, "base carries a pre-existing violation")
+    trunk = _current_branch(tmp_path)
+
+    _checkout(tmp_path, "-b", "feature2")
+    (tmp_path / "feature.md").write_text("- A clean addition here.\n")
+    _commit(tmp_path, "feature work; violating line left untouched")
+
+    _checkout(tmp_path, trunk)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A clean rewrite instead.\n")
+    _commit(tmp_path, "trunk rewrites the violation away")
+
+    _checkout(tmp_path, "feature2")
+    # Leave an UNCOMMITTED clean addition, so "auto" resolves to "worktree".
+    (tmp_path / "feature.md").write_text(
+        "- A clean addition here.\n- Another clean one.\n"
+    )
+    violations, skipped = _find(tmp_path, base_ref=trunk)
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    # Asserting the count/scope line rules out a silent fall-through to
+    # "committed" scope (which would also report no violations here, but
+    # for the wrong reason -- it would just be diffing an unrelated file).
+    assert "Examined 2 added line(s) across 1 file(s) (scope: working tree)." in out
+
+    # The control: the same diff, anchored at `trunk` directly, DOES
+    # surface the untouched violating line (see the committed-scope test's
+    # control above for why this proves the anchor is doing real work).
+    naive_violations, naive_skipped = _find_naive(tmp_path, base_ref=trunk)
+    assert not naive_skipped
+    assert ("notes.md", 3) in [(v.path, v.line) for v in naive_violations]
+
+
+def test_empty_diff_reports_zero_and_passes(tmp_path, capsys):
+    # No changes at all, committed or otherwise: the reported count must
+    # read zero rather than being silently indistinguishable from a pass
+    # over real content.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 0 added line(s) across 0 file(s) (scope: committed)." in out
 
 
 # ── clause breaks (SemBr rule 5) ─────────────────────────────────────────────
