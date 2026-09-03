@@ -609,7 +609,7 @@ def test_empty_base_ref_skips_rather_than_scanning_whole_tree(tmp_path):
     assert violations == []
 
 
-# ── working-tree-aware scope (gha#825) ───────────────────────────────────────
+# -- working-tree-aware scope (gha#825) --------------------------------------
 #
 # `_added_line_numbers` used to diff `<base>...HEAD` -- committed only -- then
 # read line *content* from the working tree, so a local run before committing
@@ -684,19 +684,131 @@ def test_clean_committed_tree_reports_examined_count(tmp_path, capsys):
     assert "Examined 1 added line(s) across 1 file(s) (scope: committed)." in out
 
 
-def test_committed_scope_ignores_uncommitted_content(tmp_path):
+def test_committed_scope_ignores_uncommitted_content(tmp_path, capsys):
     # Explicit override: even with a dirty tree, "committed" scope must not
-    # widen -- this is CI's own behavior, made available on purpose.
+    # widen -- this is CI's own behavior, made available on purpose. The
+    # base is a prior commit that itself added one clean line, so the two
+    # scopes actually disagree here: "committed" sees only that clean line
+    # (1 examined, 0 violations), while "worktree"/"auto" would also pick up
+    # the uncommitted violation below. Using base_ref=HEAD with nothing
+    # committed would make every scope look identical and prove nothing.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short clean bullet.\n")
+    _commit(tmp_path, "clean, committed addition")
+    # Uncommitted on top: a real violation that "committed" scope must miss.
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short clean bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1", scope_mode="committed")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 1 added line(s) across 1 file(s) (scope: committed)." in out
+
+
+def test_committed_scope_missing_violation_is_caught_by_auto(tmp_path):
+    # The direct control for the test above: the same tree, same base,
+    # under "auto" (which resolves to "worktree" since the tree is dirty)
+    # DOES catch the uncommitted violation "committed" scope just missed.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A short clean bullet.\n")
+    _commit(tmp_path, "clean, committed addition")
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A short clean bullet.\n- Two sentences. On one line.\n"
+    )
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD~1")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+
+
+def test_staged_but_uncommitted_violation_is_flagged(tmp_path):
+    # `git add` without a commit: content lives in the index, not just the
+    # working tree. A plain `git diff <merge_base>` (no `--cached`) folds
+    # both staged and unstaged changes into one diff against the working
+    # tree, so this must be caught exactly like the fully-unstaged case.
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
     _commit(tmp_path, "base")
     (tmp_path / "notes.md").write_text(
         "# Notes\n\n- A short bullet.\n- Two sentences. On one line.\n"
     )
+    subprocess.run(["git", "add", "-A"], cwd=tmp_path, check=True)
 
-    violations, skipped = _find(tmp_path, base_ref="HEAD", scope_mode="committed")
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert [(v.path, v.line) for v in violations] == [("notes.md", 4)]
+
+
+def test_untracked_file_does_not_widen_scope_and_warns(tmp_path, capsys):
+    # A brand-new untracked file must NOT flip "auto" to "worktree" on its
+    # own -- plain `git diff` cannot show it either way, so widening would
+    # promise an examination that never happens. It should instead be named
+    # in an explicit warning, and the tracked tree stays clean/committed.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    (tmp_path / "untracked.md").write_text("- A violation. Right here.\n")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
     assert not skipped
     assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 0 added line(s) across 0 file(s) (scope: committed)." in out
+    assert "untracked.md" in out
+    assert "not examined" in out
+
+
+def test_base_branch_advancing_is_not_flagged_via_merge_base_worktree_scope(tmp_path):
+    # The dirty-tree companion to the test above: an uncommitted (not just
+    # committed) addition on the diverged feature branch must also stay
+    # unaffected by the base branch's own later violation, exercising
+    # "worktree" scope (via "auto") rather than "committed". All branch
+    # switching happens on a CLEAN tree; the uncommitted edit is made last,
+    # since git refuses to switch branches out from under a dirty file.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+    trunk = _current_branch(tmp_path)
+
+    _checkout(tmp_path, "-b", "feature2")
+    (tmp_path / "feature.md").write_text("- A clean addition here.\n")
+    _commit(tmp_path, "feature work")
+
+    _checkout(tmp_path, trunk)
+    (tmp_path / "notes.md").write_text(
+        "# Notes\n\n- A base-branch violation. Two sentences.\n"
+    )
+    _commit(tmp_path, "base branch advances with its own violation")
+
+    _checkout(tmp_path, "feature2")
+    # Leave an UNCOMMITTED clean addition, so "auto" resolves to "worktree".
+    (tmp_path / "feature.md").write_text(
+        "- A clean addition here.\n- Another clean one.\n"
+    )
+    violations, skipped = _find(tmp_path, base_ref=trunk)
+    assert not skipped
+    assert violations == []
+
+
+def test_empty_diff_reports_zero_and_passes(tmp_path, capsys):
+    # No changes at all, committed or otherwise: the reported count must
+    # read zero rather than being silently indistinguishable from a pass
+    # over real content.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    _commit(tmp_path, "base")
+
+    violations, skipped = _find(tmp_path, base_ref="HEAD")
+    assert not skipped
+    assert violations == []
+    out = capsys.readouterr().out
+    assert "Examined 0 added line(s) across 0 file(s) (scope: committed)." in out
 
 
 def test_base_branch_advancing_is_not_flagged_via_merge_base(tmp_path):
