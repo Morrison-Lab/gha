@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Flag newly-added Markdown lines that pack more than one sentence/clause onto
 a single source line -- a diff-scoped check for semantic line breaks (one
