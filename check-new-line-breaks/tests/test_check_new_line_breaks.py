@@ -369,6 +369,26 @@ def _current_branch(tmp_path: Path) -> str:
     ).stdout.strip()
 
 
+def _find_naive(tmp_path: Path, base_ref: str, globs=("*.md",)):
+    """Same as `_find`, but with `_merge_base` monkeypatched to return
+    `base_ref`'s own SHA -- simulating a regression that diffs directly
+    against `base_ref` instead of the true (possibly older) merge base.
+    Used as the control that proves a merge-base-anchoring test would
+    actually catch such a regression, rather than passing on a diff that
+    would have been empty either way.
+    """
+    sha = subprocess.run(
+        ["git", "rev-parse", base_ref], cwd=tmp_path, check=True,
+        capture_output=True, encoding="utf-8",
+    ).stdout.strip()
+    orig_merge_base = nlb._merge_base
+    nlb._merge_base = lambda ref: sha
+    try:
+        return _find(tmp_path, base_ref=base_ref, globs=globs)
+    finally:
+        nlb._merge_base = orig_merge_base
+
+
 def test_diff_scope_flags_newly_added_violation(tmp_path):
     _init_repo(tmp_path)
     (tmp_path / "notes.md").write_text("# Notes\n\n- A short bullet.\n")
@@ -764,27 +784,67 @@ def test_untracked_file_does_not_widen_scope_and_warns(tmp_path, capsys):
     assert "not examined" in out
 
 
-def test_base_branch_advancing_is_not_flagged_via_merge_base_worktree_scope(tmp_path):
-    # The dirty-tree companion to the test above: an uncommitted (not just
-    # committed) addition on the diverged feature branch must also stay
-    # unaffected by the base branch's own later violation, exercising
-    # "worktree" scope (via "auto") rather than "committed". All branch
+def test_base_branch_advancing_is_not_flagged_via_merge_base(tmp_path):
+    # A naive `git diff trunk` from the feature branch can never see a line
+    # that trunk ADDS after divergence -- it shows up as a deletion from
+    # trunk's side, never an addition -- so a test where trunk merely adds a
+    # violation proves nothing about whether the merge-base anchor is really
+    # in use versus a regression that diffs against `trunk` directly. Here
+    # the violation instead starts in the SHARED base commit (present on
+    # both branches); trunk then rewrites it clean, while feature leaves it
+    # untouched. That makes the violating line look like a fresh ADDITION
+    # to any diff anchored at trunk's later commit -- so the merge-base
+    # anchor (the shared base, not trunk's rewrite) is what has to exclude
+    # it, and the naive-anchor control below proves it actually does.
+    _init_repo(tmp_path)
+    (tmp_path / "notes.md").write_text(f"# Notes\n\n- {_LONG_SEMICOLON}\n")
+    _commit(tmp_path, "base carries a pre-existing violation")
+    trunk = _current_branch(tmp_path)
+
+    _checkout(tmp_path, "-b", "feature")
+    (tmp_path / "feature.md").write_text("- A clean addition here.\n")
+    _commit(tmp_path, "feature work; violating line left untouched")
+
+    _checkout(tmp_path, trunk)
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A clean rewrite instead.\n")
+    _commit(tmp_path, "trunk rewrites the violation away")
+
+    _checkout(tmp_path, "feature")
+    violations, skipped = _find(tmp_path, base_ref=trunk)
+    assert not skipped
+    assert violations == []
+
+    # The control: the identical diff, anchored at `trunk` directly instead
+    # of the resolved merge base, DOES surface the untouched violating
+    # line -- proving the assertion above is exercising real anchor logic
+    # rather than passing on a diff that would have been empty regardless.
+    naive_violations, naive_skipped = _find_naive(tmp_path, base_ref=trunk)
+    assert not naive_skipped
+    assert [(v.path, v.line) for v in naive_violations] == [("notes.md", 3)]
+
+
+def test_base_branch_advancing_is_not_flagged_via_merge_base_worktree_scope(
+    tmp_path, capsys
+):
+    # The dirty-tree companion to
+    # `test_base_branch_advancing_is_not_flagged_via_merge_base` directly
+    # above: same shared-base-carries-the-violation/trunk-rewrites-it-clean
+    # setup, but the feature branch's own addition is left UNCOMMITTED, so
+    # "auto" resolves to "worktree" scope instead of "committed". All branch
     # switching happens on a CLEAN tree; the uncommitted edit is made last,
     # since git refuses to switch branches out from under a dirty file.
     _init_repo(tmp_path)
-    (tmp_path / "notes.md").write_text("# Notes\n")
-    _commit(tmp_path, "base")
+    (tmp_path / "notes.md").write_text(f"# Notes\n\n- {_LONG_SEMICOLON}\n")
+    _commit(tmp_path, "base carries a pre-existing violation")
     trunk = _current_branch(tmp_path)
 
     _checkout(tmp_path, "-b", "feature2")
     (tmp_path / "feature.md").write_text("- A clean addition here.\n")
-    _commit(tmp_path, "feature work")
+    _commit(tmp_path, "feature work; violating line left untouched")
 
     _checkout(tmp_path, trunk)
-    (tmp_path / "notes.md").write_text(
-        "# Notes\n\n- A base-branch violation. Two sentences.\n"
-    )
-    _commit(tmp_path, "base branch advances with its own violation")
+    (tmp_path / "notes.md").write_text("# Notes\n\n- A clean rewrite instead.\n")
+    _commit(tmp_path, "trunk rewrites the violation away")
 
     _checkout(tmp_path, "feature2")
     # Leave an UNCOMMITTED clean addition, so "auto" resolves to "worktree".
@@ -794,6 +854,18 @@ def test_base_branch_advancing_is_not_flagged_via_merge_base_worktree_scope(tmp_
     violations, skipped = _find(tmp_path, base_ref=trunk)
     assert not skipped
     assert violations == []
+    out = capsys.readouterr().out
+    # Asserting the count/scope line rules out a silent fall-through to
+    # "committed" scope (which would also report no violations here, but
+    # for the wrong reason -- it would just be diffing an unrelated file).
+    assert "Examined 2 added line(s) across 1 file(s) (scope: working tree)." in out
+
+    # The control: the same diff, anchored at `trunk` directly, DOES
+    # surface the untouched violating line (see the committed-scope test's
+    # control above for why this proves the anchor is doing real work).
+    naive_violations, naive_skipped = _find_naive(tmp_path, base_ref=trunk)
+    assert not naive_skipped
+    assert ("notes.md", 3) in [(v.path, v.line) for v in naive_violations]
 
 
 def test_empty_diff_reports_zero_and_passes(tmp_path, capsys):
@@ -809,31 +881,6 @@ def test_empty_diff_reports_zero_and_passes(tmp_path, capsys):
     assert violations == []
     out = capsys.readouterr().out
     assert "Examined 0 added line(s) across 0 file(s) (scope: committed)." in out
-
-
-def test_base_branch_advancing_is_not_flagged_via_merge_base(tmp_path):
-    # The merge-base anchor `<base>...HEAD` already had must be unchanged by
-    # the fix: a violation the base branch picks up *after* the feature
-    # branch diverged must still not be flagged, in either scope.
-    _init_repo(tmp_path)
-    (tmp_path / "notes.md").write_text("# Notes\n")
-    _commit(tmp_path, "base")
-    trunk = _current_branch(tmp_path)
-
-    _checkout(tmp_path, "-b", "feature")
-    (tmp_path / "feature.md").write_text("- A clean addition here.\n")
-    _commit(tmp_path, "feature work")
-
-    _checkout(tmp_path, trunk)
-    (tmp_path / "notes.md").write_text(
-        "# Notes\n\n- A base-branch violation. Two sentences.\n"
-    )
-    _commit(tmp_path, "base branch advances with its own violation")
-
-    _checkout(tmp_path, "feature")
-    violations, skipped = _find(tmp_path, base_ref=trunk)
-    assert not skipped
-    assert violations == []
 
 
 # ── clause breaks (SemBr rule 5) ─────────────────────────────────────────────
