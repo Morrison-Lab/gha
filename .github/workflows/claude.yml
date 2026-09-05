@@ -706,11 +706,11 @@ jobs:
 
       - name: Set up pandoc
         if: steps.gate.outputs.skip != 'true' && inputs.setup-r
-        uses: r-lib/actions/setup-pandoc@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
 
       - name: Set up R
         if: steps.gate.outputs.skip != 'true' && inputs.setup-r
-        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
           use-public-rspm: true
 
@@ -725,7 +725,7 @@ jobs:
       # renv flavor (Quarto books / projects pinned with renv) ...
       - name: Restore renv
         if: steps.gate.outputs.skip != 'true' && inputs.setup-r && inputs.use-renv
-        uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        uses: r-lib/actions/setup-renv@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         env:
           # Without GITHUB_PAT, renv can't reach the GitHub API to resolve
           # GitHub-sourced packages (e.g. ddsjoberg/gtsummary) and
@@ -746,7 +746,7 @@ jobs:
       # checklist.
       - name: Install R dependencies
         if: steps.gate.outputs.skip != 'true' && inputs.setup-r && !inputs.use-renv
-        uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+        uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         env:
           GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -826,7 +826,7 @@ jobs:
       - name: Run Claude Code
         id: claude
         if: steps.gate.outputs.skip != 'true'
-        uses: anthropics/claude-code-action@1f291e1cfe0f5fc21db2aef19af844591600ade7 # v1.0.206
+        uses: anthropics/claude-code-action@fa2b2666b747000bf42767d1f332065b375e3c8f # v1.0.214
         # GH_TOKEN authenticates the `gh` commands granted in claude-args
         # (gh pr view/diff/edit, gh issue view, gh api); without it `gh`
         # prompts and fails in CI.
