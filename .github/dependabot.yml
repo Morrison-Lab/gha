@@ -37,6 +37,24 @@ updates:
       github-actions:
         patterns:
           - "*"
+    ignore:
+      # actions/ai-inference v3 removed the `endpoint` input outright and
+      # switched to a Copilot-CLI-only provider that the runner must install
+      # and authenticate first. summary.yml passes `endpoint`, passes a
+      # non-Copilot `model`, and installs no CLI, so the v3 bump in #828
+      # broke it (gha#834). On a real run that failure would be silent --
+      # the step is continue-on-error and the only handling is a warning --
+      # so summary-tests was the sole detector, and it went red on main.
+      #
+      # This is a freeze, not a deferral. Upstream removed github-models
+      # support entirely in v3 (its PR #236; the v3 README says the action
+      # is Copilot-only), so v2 is the last major carrying the transport
+      # summary.yml uses and will see no further work on it. Migrating is
+      # an architecture change, tracked in gha#835, not a pin bump -- so
+      # stop proposing majors. Minors and patches on v2 still flow, on a
+      # branch upstream has stopped developing.
+      - dependency-name: "actions/ai-inference"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "ci"
       include: "scope"
