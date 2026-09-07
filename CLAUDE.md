@@ -3786,11 +3786,14 @@ sender never clears the gate above.
 - **Do:** update a genuinely-behind Dependabot branch
   (`update-branch`) when its head has never carried a real review, and
   re-check the new head for a clean verdict before merging.
+
 - **Do:** attribute the un-skip to the `sender` field on the triggering
   event, not to any change in the PR's own authorship.
+
 - **Don't:** treat this as a way to force review on an arbitrary bot PR
   whose branch is already current -- `update-branch` only helps when
   the branch is genuinely behind and an update is warranted anyway.
+
 - **Don't:** assume the PR's `author.login` changed; the merge commit's
   `author.login` reads `d-morrison` only because a human triggered the
   update, and Dependabot still owns the PR itself.
@@ -3824,12 +3827,15 @@ rather than a parse error -- nothing red anywhere.
 
 - **Do:** ask what a check's pass condition actually asserts, and whether
   the target defect can produce that same condition by accident.
+
 - **Do:** use a duplicate-key-rejecting YAML loader (or an equivalent
   stricter parse) whenever validity is being inferred from `safe_load`
   succeeding on hand-authored or uncommented YAML.
+
 - **Don't:** trust a verification script's "N broken files" count without
   checking whether its pass condition and the defect it is hunting can
   coincide.
+
 - **Don't:** assume `yaml.safe_load` rejects duplicate keys -- it does not;
   it silently keeps the last one.
 
