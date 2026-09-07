@@ -2,11 +2,14 @@
   `checks: read`.
   A called workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts --
-  so requesting it in #830 broke review dispatch in every consumer
-  that had not granted it, until the tag moved (#831).
+  so requesting it in #830 broke review dispatch in 16 of the 18
+  repositories pinning `@v2` (#831).
+  **Consumers recover only once `v2` is slid onto this merge**;
+  the tag was never rolled back, so merging alone changes nothing
+  for them.
   Callers are still asked to grant it,
-  which costs nothing and pre-positions them for the `v3` that will
-  request it;
+  which costs nothing and pre-positions them for the `v3` tracked in
+  #833;
   until then the reviewer's `GET .../commits/{ref}/check-runs` reads
   fail with HTTP 403 and a clean diff can be reported as blocked
   (ucdavis/bcs#964, #829).

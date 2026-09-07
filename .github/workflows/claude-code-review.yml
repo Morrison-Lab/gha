@@ -12,8 +12,7 @@ name: Claude Code Review (reusable)
 # The model and a writable forge token never share a job (gha#580).
 # `claude-review` runs the model with contents: read (plus pull-requests:
 # read, issues: read, and actions: read -- not checks: read; see that job's
-# own permissions block for why). It writes the review
-# to an artifact. `post-review` downloads that artifact and posts; it holds
+# own permissions block for why). It writes the review to an artifact. `post-review` downloads that artifact and posts; it holds
 # pull-requests: write / issues: write / actions: read and does not
 # invoke the model.
 # The deny list on the model job is then a guard rail against accidents,
@@ -549,16 +548,18 @@ jobs:
       #
       # Requesting it anyway is worse. A reusable workflow's job cannot
       # request a permission its caller lacks: the whole run ends in
-      # startup_failure before any job begins. #830 added it here and the
-      # v2 slide onto c07f7d45 killed review dispatch in every consumer
-      # that had not granted it -- 18 repositories, silently, until the
-      # tag moved back (gha#831).
+      # startup_failure before any job begins. #830 added it here, and the
+      # v2 slide onto c07f7d45 then killed review dispatch in every
+      # consumer that had not granted it. 18 repositories pin @v2; 16 of
+      # them lacked the grant and broke (gha#831 carries the derivation).
+      # The tag was never rolled back, so REMOVING IT HERE FIXES NOTHING
+      # UNTIL v2 IS SLID ONTO THE MERGE COMMIT.
       #
       # So adding a job permission here is a BREAKING change and belongs
       # in a major-tag bump, never a v2 slide. Callers are asked to grant
-      # checks: read now (see README) so that a v3 reinstating it costs
-      # them nothing; granting a permission the callee does not request
-      # is harmless.
+      # checks: read now (see README) so that the v3 tracked in gha#833
+      # costs them nothing; granting a permission the callee does not
+      # request is harmless.
 
     steps:
       # The caller's review-workflow path still matters: it is what GitHub

@@ -28,6 +28,33 @@ Guidance for Claude Code when working in this repository.
   read from the paginated check-runs endpoint rather than `gh pr checks`.
   "Merged work that consumers need" is the motivation, not the gate.
 
+- **Green is necessary and not sufficient: a reusable workflow's job
+  `permissions:` block is part of its CONSUMER-FACING CONTRACT.**
+  A called workflow's job cannot request a permission its caller lacks ---
+  the whole run ends in `startup_failure` before any job starts --- so
+  ADDING a scope to any `workflow_call` workflow's job is a breaking change
+  for every caller that has not granted it, and belongs in a major-tag
+  bump rather than a `v2` slide.
+  This is the one breaking change that CI cannot see, because the callee's
+  own checks all pass and this repo's dogfood caller is typically updated
+  in the same PR --- so the one repository anyone would check first is
+  immunized against the very regression being shipped.
+  Measured 2026-09-06: gha#830 added `checks: read`, every check was green,
+  the slide onto c07f7d45 was correct under the bar above, and 16 of the 18
+  repositories pinning `@v2` lost review dispatch until gha#832 (gha#831).
+
+  Before sliding, diff the callee's job `permissions:` blocks against the
+  currently-tagged commit, and treat any ADDED key as a stop:
+
+  ```bash
+  major=$(git ls-remote --tags origin 'v*.*.*' \
+    | sed 's#.*refs/tags/##; s/\^{}$//' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+  git diff "$major" origin/main -- .github/workflows/ | grep -E '^\+ +[a-z-]+: (read|write)'
+  ```
+
+  A removed or unchanged key is fine; only additions break callers.
+
 - **Re-read `main`'s tip immediately before dispatching, and again after.**
   `slide-major-tag.yml` tags `$GITHUB_SHA` --- whatever `main` points at when
   the run executes --- rather than a SHA you nominate.

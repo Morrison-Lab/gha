@@ -344,7 +344,8 @@ The two Claude workflows are a pair.
   a called workflow cannot request a permission its caller lacks,
   so adding one startup-fails every caller without it
   ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
-  It waits for a `v3`.
+  It waits for the `v3` tracked in
+  [gha#833](https://github.com/Morrison-Lab/gha/issues/833).
 
 An `@claude review` mention (or any commit Claude pushes) routes through
 `claude.yml`, which dispatches `claude-code-review.yml` via `workflow_dispatch`.

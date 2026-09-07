@@ -759,7 +759,7 @@ def check_workflow(
             check(
                 job_permissions(review_job).get("checks") == "read",
                 "examples/claude-code-review.yml grants checks: read "
-                "(the model job's check-run reads 403 without it)",
+                "(unused by @v2; granted ahead of the v3 -- gha#833)",
             )
         grant_list_re = (
             r"`claude-code-review`[\s\S]{0,80}?grant[s]? "
@@ -815,8 +815,12 @@ def check_workflow(
         wf_doc = root / "website" / "workflows.qmd"
         check(wf_doc.is_file(), "website/workflows.qmd exists")
         if wf_doc.is_file():
+            # Anchored on the CLOSING paren, not on a bare substring: the
+            # natural way to reverse this is to append `/ \`checks: read\``
+            # inside the same parenthetical, which an unanchored needle
+            # leaves green (caught by mutation on gha#832).
             check(
-                "`issues` / `actions: read`" in wf_doc.read_text(encoding="utf-8"),
+                "`issues` / `actions: read`)" in wf_doc.read_text(encoding="utf-8"),
                 "website/workflows.qmd model-scope list ends at actions: read "
                 "(the model job holds no checks: read -- gha#831)",
             )
@@ -1161,6 +1165,26 @@ runs:
             run(write_all, good_action),
             False,
             "claude-review does not grant pull-requests: write",
+        )
+
+        # The write-all case above is caught by a DIFFERENT assertion (the
+        # pull-requests: write one), so nothing in this suite demonstrated
+        # that the exact-set check fires on an ADDED scope -- which is the
+        # regression it exists for. gha#831's incident was exactly one added
+        # read scope, so the case has to be an addition, not a replacement.
+        added_scope = root / "added-scope.yml"
+        added_scope.write_text(
+            good_wf.read_text().replace(
+                "      actions: read\n",
+                "      actions: read\n      checks: read\n",
+                1,
+            )
+        )
+        failures += expect(
+            "an added scope on the model job fails",
+            run(added_scope, good_action),
+            False,
+            "claude-review requests exactly",
         )
 
         empty_token = root / "empty-token.yml"

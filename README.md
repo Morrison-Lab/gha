@@ -181,10 +181,13 @@ that need to write must have the **caller** grant it on the calling job:
   The reusable workflow does not request it at `@v2`, because a called
   workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts,
-  which is how the `v2` slide for that grant broke 18 consumers
-  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
+  which is how the `v2` slide for that grant broke 16 of the 18
+  repositories pinning `@v2`
+  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
+  carries the derivation).
   Granting it now costs nothing and pre-positions the caller
-  for the `v3` that will request it.
+  for the `v3` tracked in
+  [gha#833](https://github.com/Morrison-Lab/gha/issues/833).
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
