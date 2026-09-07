@@ -331,15 +331,25 @@ The two Claude workflows are a pair.
   summary on dispatched runs by default; add a `pull_request` trigger in the
   caller if you also want automatic reviews on PR updates.
   The model job's `GITHUB_TOKEN` has no write scopes
-  (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
   jobs that hold `pull-requests: write` / `issues: write`
   never invoke the model (gha#580).
   The caller still grants `actions: read`: `post-review` downloads the
   packed artifact, and a `permissions:` block sets unspecified scopes to
   none.
-  The caller also grants `checks: read`,
+  The caller is also asked to grant `checks: read`,
   which `GET .../commits/{ref}/check-runs` needs
   and `actions: read` does not cover (gha#829).
+  Grant it, and keep it granted.
+  As of 2026-09-06 the tagged `@v2` requires it,
+  and once `v2` is slid onto the change that stops requesting it
+  the grant is what makes the `v3` cost nothing.
+  The callee gives the scope up because a called workflow cannot
+  request a permission its caller lacks,
+  so requesting one startup-fails every caller without it
+  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
+  The scope returns to the callee in the `v3` tracked in
+  [gha#833](https://github.com/Morrison-Lab/gha/issues/833).
 
 An `@claude review` mention (or any commit Claude pushes) routes through
 `claude.yml`, which dispatches `claude-code-review.yml` via `workflow_dispatch`.

@@ -11,8 +11,9 @@ name: Claude Code Review (reusable)
 #
 # The model and a writable forge token never share a job (gha#580).
 # `claude-review` runs the model with contents: read (plus pull-requests:
-# read, issues: read, actions: read, and checks: read). It writes the review
-# to an artifact. `post-review` downloads that artifact and posts; it holds
+# read, issues: read, and actions: read -- not checks: read; see that job's
+# own permissions block for why). It writes the review to an artifact.
+# `post-review` downloads that artifact and posts; it holds
 # pull-requests: write / issues: write / actions: read and does not
 # invoke the model.
 # The deny list on the model job is then a guard rail against accidents,
@@ -540,14 +541,30 @@ jobs:
       # read CI/check-run status for the PR. Without actions: read it logs
       # "Skipping CI server installation" and reviews blind to CI state.
       actions: read
-      # actions: read covers workflow runs, not check runs: GET
-      # /repos/{owner}/{repo}/commits/{ref}/check-runs needs checks: read,
-      # and without it the reviewer (and check-pr-fully-clean.py, which it
-      # runs) got "Resource not accessible by integration (HTTP 403)" and
-      # called a clean diff blocked (ucdavis/bcs#964). Callers must grant
-      # the same permission; a nested job cannot request more than its
-      # caller allows.
-      checks: read
+      # NOT checks: read, deliberately, even though the reviewer needs it.
+      # actions: read covers workflow runs and not check runs, so GET
+      # /repos/{owner}/{repo}/commits/{ref}/check-runs 403s here and the
+      # reviewer (and check-pr-fully-clean.py, which it runs) can call a
+      # clean diff blocked (gha#829, ucdavis/bcs#964).
+      #
+      # Requesting it anyway is worse. A reusable workflow's job cannot
+      # request a permission its caller lacks: the whole run ends in
+      # startup_failure before any job begins. #830 added it here, and the
+      # v2 slide onto c07f7d45 then killed review dispatch in every
+      # consumer that had not granted it. As of 2026-09-06, 18 repositories
+      # pin THIS workflow at @v2 (not gha's tags generally) and 17 of them
+      # lacked the grant and broke. How many still lack it falls as
+      # consumers add it, so gha#833 tracks that count as the v3
+      # precondition; gha#831 closes with this fix, so its figure freezes.
+      # Last measured 2026-09-07 02:24 PDT: 14 of the 18 still lack it.
+      # The tag was never rolled back, so REMOVING IT HERE FIXES NOTHING
+      # UNTIL v2 IS SLID ONTO THE MERGE COMMIT.
+      #
+      # So adding a job permission here is a BREAKING change and belongs
+      # in a major-tag bump, never a v2 slide. Callers are asked to grant
+      # checks: read now (see README) so that the v3 tracked in gha#833
+      # costs them nothing; granting a permission the callee does not
+      # request is harmless.
 
     steps:
       # The caller's review-workflow path still matters: it is what GitHub
