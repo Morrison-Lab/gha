@@ -73,7 +73,8 @@ Guidance for Claude Code when working in this repository.
   fallback has gone stale before:
 
   ```bash
-  gh search code 'Morrison-Lab/gha/.github/workflows/<name>.yml@v2' \
+  # $major is derived below; do not hard-code v2 -- gha#833 cuts a v3.
+  gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
     --json repository,path --limit 100
   ```
 
@@ -170,8 +171,12 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** slide when the commit is green and consumers need it, then report both
-  SHAs.
+- **Do:** slide when the commit is green, the callees' `permissions:` blocks
+  gained no key and widened no value since the tagged commit, and consumers
+  need it --- then report both SHAs.
+
+- **Don't:** read a green readiness bar as the whole gate; it was green when
+  gha#830 shipped the outage.
 
 - **Don't:** read this as covering a release or version bump, another
   repository, or a slide over a commit whose checks you have not read.
@@ -2773,8 +2778,11 @@ and that sidecar files are omitted when the corresponding input is empty
 (a missing `review.txt` must not look like a present empty review).
 The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
 and asserts the facts a future edit could reverse silently:
-the model job grants no forge-write (including no `id-token: write`)
-and keeps `contents: read`,
+the model job requests EXACTLY `contents`/`pull-requests`/`issues`/`actions`
+at `read` and nothing more --- an exact SET rather than a per-key check, so
+any future addition fails offline instead of at a consumer's next PR, which
+is what gha#830 did not (gha#831, gha#832) ---
+so it grants no forge-write, no `id-token: write`, and no `checks: read`,
 the posting job holds `pull-requests: write` /
 `issues: write` / `actions: read` and does not invoke the model,
 `github_token` is forwarded so the App-token write exchange is skipped,

@@ -11,24 +11,38 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > path no longer resolves.
 >
 > **Prefer the UNSCOPED, per-workflow search.**
-> An owner-scoped list goes stale silently:
-> the list below omitted `Morrison-Lab` and `Lacaedemon` until 2026-09-06,
-> so a sweep run during the gha#831 outage would have found 1 of the 18
-> affected consumers and reported the rest safe.
+> An owner-scoped list goes stale silently.
+> Measured 2026-09-06 against the 18 repositories then pinning
+> `claude-code-review.yml`:
+> the pre-2026-09-06 owner list
+> (`d-morrison`, `ucdavis`, `UCD-SERG`, `UCLA-PHP`, `UCD-IDDRC`)
+> returned 10 of them,
+> silently missing the 6 under `Morrison-Lab` and `Lacaedemon`
+> plus 2 more.
 > Scope by the workflow you are about to change instead,
-> and take the owners as a fallback:
+> and take the owners only as a fallback.
+>
+> **Do not prefix the query with `uses:`.**
+> GitHub code search reads a leading `word:` as a search qualifier and drops
+> the term, so `gh search code 'uses: Morrison-Lab/gha/...'` returns 0 hits
+> under every owner list -- indistinguishable from having no consumers.
+> Measured 2026-09-06: 0 with the prefix, 30 without.
 >
 > ```bash
 > # Requires an authenticated gh (run `gh auth login`, or set GH_TOKEN).
 > # Primary: every caller of the workflow being changed, whatever the owner.
-> gh search code 'Morrison-Lab/gha/.github/workflows/<name>.yml@v2' \
+> # Derive the major tag rather than hard-coding it (see resolve-major-tag.sh).
+> major=$(git ls-remote --tags origin 'v*.*.*' \
+>   | sed 's#.*refs/tags/##; s/\^{}$//' \
+>   | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+> gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
 >   --json repository,path --limit 100
 >
 > # Fallback: broad, owner-scoped. Keep this list current as orgs are added.
 > OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
 >   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
-> gh search code 'uses: Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}"
-> gh search code 'uses: d-morrison/gha/.github/workflows' "${OWNERS[@]}"  # not yet migrated
+> gh search code 'Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}"
+> gh search code 'd-morrison/gha/.github/workflows' "${OWNERS[@]}"  # not yet migrated
 > ```
 
 ## How to register
