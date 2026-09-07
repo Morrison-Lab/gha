@@ -2,8 +2,8 @@
   `checks: read`.
   A called workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts --
-  so requesting it in #830 broke review dispatch in 16 of the 18
-  repositories pinning `@v2` (#831).
+  so requesting it in #830 broke review dispatch in 17 of the 18
+  repositories pinning `@v2`, 16 of them still broken (#831).
   **Consumers recover only once `v2` is slid onto this merge**;
   the tag was never rolled back, so merging alone changes nothing
   for them.

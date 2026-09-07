@@ -173,16 +173,20 @@ that need to write must have the **caller** grant it on the calling job:
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP
   server).
-  `checks: read` is recommended but not yet used:
+  `checks: read` is recommended, and grant it -- but note it buys
+  nothing today.
   `actions: read` covers workflow runs but not
   `GET .../commits/{ref}/check-runs`,
-  so the reviewer's check-status reads fail with HTTP 403
+  so at `@v2` the reviewer's check-status reads fail with HTTP 403
+  whether or not the caller grants it,
   and a clean diff can be reported as blocked (ucdavis/bcs#964).
+  The model job does not request the scope, so a caller's grant does
+  not reach it.
   The reusable workflow does not request it at `@v2`, because a called
   workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts,
-  which is how the `v2` slide for that grant broke 16 of the 18
-  repositories pinning `@v2`
+  which is how the `v2` slide for that grant broke 17 of the 18
+  repositories pinning `@v2`, 16 of them still broken
   ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
   carries the derivation).
   Granting it now costs nothing and pre-positions the caller

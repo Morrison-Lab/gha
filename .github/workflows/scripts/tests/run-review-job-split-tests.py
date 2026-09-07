@@ -177,9 +177,9 @@ def check_workflow(
     # startup_failure before any job starts -- so ANY addition here is a
     # breaking change for every consumer that has not granted it, and
     # belongs in a major-tag bump rather than a v2 slide. #830 added
-    # checks: read, and the v2 slide onto it killed review dispatch in 18
-    # consumer repositories (gha#831). Keyed on the whole set so the next
-    # addition fails here whatever it is called.
+    # checks: read, and the v2 slide onto it killed review dispatch in 17
+    # of the 18 repositories pinning @v2 (gha#831). Keyed on the whole set
+    # so the next addition fails here whatever it is called.
     check(
         set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
         "claude-review requests exactly contents/pull-requests/issues/actions "
