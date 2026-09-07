@@ -64,8 +64,10 @@ Guidance for Claude Code when working in this repository.
 
   Before sliding, diff the callees' job `permissions:` blocks against the
   currently-tagged commit.
-  Treat an ADDED key, or a WIDENED value (`read` to `write`, which adds no
-  key and startup-fails every read-only caller just the same), as a stop ---
+  Treat an ADDED key, or a WIDENED value --- `read` to `write`, or a whole
+  block collapsing to `permissions: write-all`, neither of which adds a key
+  and both of which startup-fail a narrower caller just the same --- as a
+  stop ---
   meaning go find the callers and PR their grants, not merely eyeball the
   hit.
   Find them per workflow and unscoped by owner, since
@@ -106,7 +108,8 @@ Guidance for Claude Code when working in this repository.
     # diff across a range that adds one -- 402d17a3~1..402d17a3, which
     # added check-code-similarity.yml (gha#728) -- with and without it.
     git diff --diff-filter=M "$tagsha" FETCH_HEAD -- "$wf" \
-      | grep -E '^\+ +[a-z-]+: (read|write)' && echo "  ^^ in $wf"
+      | grep -E '^\+ +([a-z-]+: (read|write)|permissions: (read|write)-all)' \
+      && echo "  ^^ in $wf"
   done
   ```
 

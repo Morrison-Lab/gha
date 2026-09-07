@@ -19,7 +19,8 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > returned 10 of them,
 > silently missing 8 --- the 7 under `Morrison-Lab` and
 > `Lacaedemon/sparta`.
-> The list below, with those two owners added, returns all 18.
+> With those two owners added it returns all 18 --- under the PINNED,
+> per-workflow query below, not under the broad fallback beside it.
 > Scope by the workflow you are about to change anyway,
 > and take the owners only as a fallback:
 > an owner list is a thing someone has to remember to update,
@@ -44,12 +45,15 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > # Fallback: broad, owner-scoped. Keep this list current as orgs are added.
 > OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
 >   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
-> # --limit: the default is 30, and a broad term across seven owners exceeds
-> # it silently -- the same failure this note is about.
+> # --limit matters more than it looks. The default is 30, and this broad
+> # term is far bigger than that: measured 2026-09-07, --limit 100 returned
+> # 100 hits across only 4 repositories, while --limit 1000 returned 304
+> # across 28. A truncated result is silent, so set the cap above the real
+> # count and re-raise it if the hit count equals the cap.
 > gh search code 'Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}" \
->   --json repository,path --limit 100
+>   --json repository,path --limit 1000
 > gh search code 'd-morrison/gha/.github/workflows' "${OWNERS[@]}" \
->   --json repository,path --limit 100  # not yet migrated
+>   --json repository,path --limit 1000  # not yet migrated
 > ```
 
 ## How to register
