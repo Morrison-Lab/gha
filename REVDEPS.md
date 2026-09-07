@@ -53,19 +53,25 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 >
 > ```bash
 > # Requires an authenticated gh (run `gh auth login`, or set GH_TOKEN).
-> # Run both of the per-workflow forms and union the results; see above.
+> # Run every command below in order: OWNERS is assigned first because both
+> # the per-workflow union and the broad sweep use it, and an unset array
+> # expands to zero words, which would silently rerun the unscoped query.
+> # Keep this list current as orgs are added.
+> OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
+>   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
+>
 > # Derive the major tag rather than hard-coding it (see resolve-major-tag.sh).
 > major=$(git ls-remote --tags origin 'v*.*.*' \
 >   | sed 's#.*refs/tags/##; s/\^{}$//' \
 >   | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+>
+> # Both per-workflow forms; union the results (see above).
 > gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
 >   --json repository,path --limit 100
+> gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
+>   "${OWNERS[@]}" --json repository,path --limit 100
 >
-> # ... and the same query again with "${OWNERS[@]}" appended.
->
-> # Broad sweep, owner-scoped. Keep this list current as orgs are added.
-> OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
->   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
+> # Broad sweep, owner-scoped.
 > # --limit matters more than it looks. The default is 30, and this broad
 > # term is far bigger than that: measured 2026-09-07, --limit 100 returned
 > # 100 hits across only 4 repositories, while --limit 1000 returned 304
