@@ -52,9 +52,12 @@ caller edit in the change's changelog fragment.
 Find them with the UNSCOPED, per-workflow code search that
 [`REVDEPS.md`](https://github.com/Morrison-Lab/gha/blob/main/REVDEPS.md)
 documents, not by reading its consumer table:
-that table is hand-maintained, and measured 2026-09-06 its owner-scoped
-fallback returned 10 of the 18 repositories then pinning
-`claude-code-review.yml`.
+that table is hand-maintained, and so is the owner list beside it.
+Measured 2026-09-07, the owner list as it stood before 2026-09-06 returned
+10 of the 18 repositories pinning `claude-code-review.yml@v2`, missing all
+8 under owners nobody had added yet.
+The list has since been corrected and now returns all 18 --- which is the
+point: it was wrong for as long as nobody looked.
 
 ## Advancing a major tag
 

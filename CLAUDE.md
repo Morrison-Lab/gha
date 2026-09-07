@@ -33,8 +33,8 @@ Guidance for Claude Code when working in this repository.
   `README.md`'s ["Widening permissions is a breaking
   change"](README.md#widening-permissions-is-a-breaking-change) section is
   the authority and states the rule, the parse-time failure mode, and the
-  remedy: prefer a major bump, and where one is disproportionate, sweep
-  [`REVDEPS.md`](REVDEPS.md) and PR the caller-side grant **before** sliding.
+  remedy: prefer a major bump, and where one is disproportionate, find the
+  callers and PR the caller-side grant **before** sliding.
   Follow that remedy; this bullet only adds the check that makes it fire,
   because the rule's failure mode is that nobody consults it.
 
@@ -73,7 +73,12 @@ Guidance for Claude Code when working in this repository.
   fallback has gone stale before:
 
   ```bash
-  # $major is derived below; do not hard-code v2 -- gha#833 cuts a v3.
+  # Derive the major rather than hard-coding v2: gha#833 cuts a v3.
+  # An empty $major here silently widens the search to every tag -- measured
+  # 2026-09-07, 34 hits against 29 for the pinned form -- so assign it first.
+  major=$(git ls-remote --tags origin 'v*.*.*' \
+    | sed 's#.*refs/tags/##; s/\^{}$//' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
   gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
     --json repository,path --limit 100
   ```
@@ -95,8 +100,11 @@ Guidance for Claude Code when working in this repository.
   for wf in $(grep -rl 'workflow_call:' .github/workflows \
       --include='*.yml' --include='*.yaml'); do
     # --diff-filter=M: a workflow ADDED since the tag has no callers yet,
-    # so every permission line in it is a false positive (measured on
-    # check-code-similarity.yml, new in gha#728).
+    # so every permission line in it would be a false positive. No workflow
+    # is added in the current v2..main range, so the filter drops nothing
+    # today; it is here for the ranges where one is. To see the shape,
+    # diff across a range that adds one -- 402d17a3~1..402d17a3, which
+    # added check-code-similarity.yml (gha#728) -- with and without it.
     git diff --diff-filter=M "$tagsha" FETCH_HEAD -- "$wf" \
       | grep -E '^\+ +[a-z-]+: (read|write)' && echo "  ^^ in $wf"
   done

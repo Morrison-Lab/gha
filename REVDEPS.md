@@ -12,15 +12,18 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 >
 > **Prefer the UNSCOPED, per-workflow search.**
 > An owner-scoped list goes stale silently.
-> Measured 2026-09-06 against the 18 repositories then pinning
-> `claude-code-review.yml`:
+> Measured 2026-09-07 against the 18 repositories pinning
+> `claude-code-review.yml@v2`:
 > the pre-2026-09-06 owner list
 > (`d-morrison`, `ucdavis`, `UCD-SERG`, `UCLA-PHP`, `UCD-IDDRC`)
 > returned 10 of them,
-> silently missing the 6 under `Morrison-Lab` and `Lacaedemon`
-> plus 2 more.
-> Scope by the workflow you are about to change instead,
-> and take the owners only as a fallback.
+> silently missing 8 --- the 7 under `Morrison-Lab` and
+> `Lacaedemon/sparta`.
+> The list below, with those two owners added, returns all 18.
+> Scope by the workflow you are about to change anyway,
+> and take the owners only as a fallback:
+> an owner list is a thing someone has to remember to update,
+> and a per-workflow search is not.
 >
 > **Do not prefix the query with `uses:`.**
 > GitHub code search reads a leading `word:` as a search qualifier and drops
@@ -41,8 +44,12 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > # Fallback: broad, owner-scoped. Keep this list current as orgs are added.
 > OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
 >   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
-> gh search code 'Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}"
-> gh search code 'd-morrison/gha/.github/workflows' "${OWNERS[@]}"  # not yet migrated
+> # --limit: the default is 30, and a broad term across seven owners exceeds
+> # it silently -- the same failure this note is about.
+> gh search code 'Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}" \
+>   --json repository,path --limit 100
+> gh search code 'd-morrison/gha/.github/workflows' "${OWNERS[@]}" \
+>   --json repository,path --limit 100  # not yet migrated
 > ```
 
 ## How to register
