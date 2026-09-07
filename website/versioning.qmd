@@ -58,9 +58,9 @@ Measured 2026-09-07, the owner list this change replaces returned 10 of the
 owners nobody had added.
 Its names last changed 2026-06-18, so it had been wrong for as long as
 nobody looked.
-Run the unscoped search too and union the results:
-measured the same day, it missed a real public consumer the owner-scoped
-form found, so neither is complete on its own.
+Run the unscoped search too and union the results, and treat any count as a
+floor: code search is an index that lags a recent push, so a caller edited
+minutes ago can be missing from either form with nothing saying so.
 
 ## Advancing a major tag
 

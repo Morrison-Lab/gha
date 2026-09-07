@@ -25,15 +25,18 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > With those two owners added it returns all 18 --- under the PINNED,
 > per-workflow query below, not under the broad fallback beside it.
 >
-> **But the unscoped form is not complete either.**
-> Measured 2026-09-07, repeated and stable across three runs: the unscoped
-> per-workflow query returned 28 hits across 17 repositories and omitted
-> `d-morrison/rme`, a public, non-archived consumer whose caller does pin
-> this workflow at `@v2`.
-> The owner-scoped form returned 29 across 18 and included it.
-> GitHub code search does not report that it dropped anything, and the
-> truncation check below cannot see it: 28 never equals the cap.
-> So take the union of the two, and treat 18 as a floor rather than a count.
+> **Code search is an INDEX, and it lags.**
+> A caller edited minutes ago may not be in it yet, and the result does not
+> say so.
+> Measured 2026-09-07: at 02:24 PDT the unscoped per-workflow query returned
+> 28 hits across 17 repositories, omitting `d-morrison/rme`, whose caller had
+> been pushed at 01:55 PDT (rme#1143); by 02:53 PDT the same query returned
+> 29 across 18 with `rme` present, stable across four runs.
+> Repeating a query inside the lag window does not test for this --- the
+> three readings that first suggested a structural gap were three samples of
+> one stale index.
+> So run both forms and union them, treat any count as a floor, and re-run
+> after a delay when a caller may have changed recently.
 > Scope by the workflow you are about to change anyway,
 > and take the owners only as a fallback:
 > an owner list is a thing someone has to remember to update,
@@ -43,7 +46,10 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > GitHub code search reads a leading `word:` as a search qualifier and drops
 > the term, so `gh search code 'uses: Morrison-Lab/gha/...'` returns 0 hits
 > under every owner list -- indistinguishable from having no consumers.
-> Measured 2026-09-06: 0 with the prefix, 30 without.
+> Measured 2026-09-07 at `--limit 1000`: 0 hits with the prefix,
+> 304 across 28 repositories without it.
+> (An earlier reading of "30 without" was the default cap, not a count ---
+> the same truncation this note warns about, in the note itself.)
 >
 > ```bash
 > # Requires an authenticated gh (run `gh auth login`, or set GH_TOKEN).

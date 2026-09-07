@@ -72,17 +72,18 @@ Guidance for Claude Code when working in this repository.
   hit.
   Find them per workflow, and run the query BOTH unscoped and owner-scoped,
   taking the union.
-  Neither form is complete and neither says so: measured 2026-09-07, the
-  unscoped query missed a real public consumer (`d-morrison/rme`) across
-  three repeated runs, while the owner list is hand-maintained and has gone
-  stale before.
-  See [`REVDEPS.md`](REVDEPS.md) for the measurement and the owner list:
+  The owner list is hand-maintained and has gone stale before, and code
+  search is an index that lags a recent push --- measured 2026-09-07, a
+  caller edited at 01:55 PDT was still absent at 02:24 and present by 02:53.
+  So union the two forms, treat any count as a floor, and re-run after a
+  delay when a caller may have changed recently.
+  See [`REVDEPS.md`](REVDEPS.md) for the measurements and the owner list:
 
   ```bash
   # Derive the major rather than hard-coding v2: gha#833 cuts a v3.
   # An empty $major here silently widens the search to every tag, pulling in
-  # @v1 callers -- measured 2026-09-07 unscoped, 34 hits unpinned against 28
-  # pinned -- so assign it first.
+  # @v1 callers, so assign it first. Measured 2026-09-07 unscoped, the
+  # unpinned form returned more hits than the pinned one.
   major=$(git ls-remote --tags origin 'v*.*.*' \
     | sed 's#.*refs/tags/##; s/\^{}$//' \
     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
@@ -2805,8 +2806,9 @@ and that sidecar files are omitted when the corresponding input is empty
 (a missing `review.txt` must not look like a present empty review).
 The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
 and asserts the facts a future edit could reverse silently:
-the model job requests EXACTLY `contents`/`pull-requests`/`issues`/`actions`
-at `read` and nothing more --- an exact SET rather than a per-key check, so
+the model job requests EXACTLY the keys
+`contents`/`pull-requests`/`issues`/`actions` and no others (the set is over
+KEYS; separate per-key assertions pin the values against `write`) --- so
 any future addition fails offline instead of at a consumer's next PR, which
 is what gha#830 did not (gha#831, gha#832) ---
 so it grants no forge-write, no `id-token: write`, and no `checks: read`,
