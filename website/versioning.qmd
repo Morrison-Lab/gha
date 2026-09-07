@@ -59,8 +59,9 @@ owners nobody had added.
 Its names last changed 2026-06-18, so it had been wrong for as long as
 nobody looked.
 Run the unscoped search too and union the results, and treat any count as a
-floor: code search is an index that lags a recent push, so a caller edited
-minutes ago can be missing from either form with nothing saying so.
+floor: a push to a caller's file can drop it out of the code-search index
+until it is reindexed, so even a long-standing caller can be missing from
+either form with nothing saying so.
 
 ## Advancing a major tag
 

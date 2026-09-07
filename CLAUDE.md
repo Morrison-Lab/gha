@@ -72,11 +72,13 @@ Guidance for Claude Code when working in this repository.
   hit.
   Find them per workflow, and run the query BOTH unscoped and owner-scoped,
   taking the union.
-  The owner list is hand-maintained and has gone stale before, and code
-  search is an index that lags a recent push --- measured 2026-09-07, a
-  caller edited at 01:55 PDT was still absent at 02:24 and present by 02:53.
+  The owner list is hand-maintained and has gone stale before, and a push to
+  a caller's file can drop that file out of the code-search index until it
+  is reindexed --- measured 2026-09-07, a caller whose matched line had been
+  unchanged for six weeks vanished from results after an unrelated edit at
+  01:55 PDT, was still absent at 02:24, and was back by 02:53.
   So union the two forms, treat any count as a floor, and re-run after a
-  delay when a caller may have changed recently.
+  delay when any caller may have been touched recently.
   See [`REVDEPS.md`](REVDEPS.md) for the measurements and the owner list:
 
   ```bash

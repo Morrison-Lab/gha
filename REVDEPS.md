@@ -30,13 +30,20 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > Use the per-workflow form for that, and the broad sweep to find callers
 > you did not know existed.
 >
-> **Code search is an INDEX, and it lags.**
-> A caller edited minutes ago may not be in it yet, and the result does not
-> say so.
+> **Code search is an INDEX, and a push to a file can drop that file out of
+> it until it is reindexed.**
+> This is wider than a new caller being late to appear: an ALREADY-INDEXED
+> caller can vanish from results after any push touching its file, even a
+> push that does not change the line you are matching on.
 > Measured 2026-09-07: at 02:24 PDT the unscoped per-workflow query returned
-> 28 hits across 17 repositories, omitting `d-morrison/rme`, whose caller had
-> been pushed at 01:55 PDT (rme#1143); by 02:53 PDT the same query returned
-> 29 across 18 with `rme` present, stable across four runs.
+> 28 hits across 17 repositories, omitting `d-morrison/rme`; by 02:53 PDT it
+> returned 29 across 18 with `rme` present, stable across four runs.
+> rme's caller had been pushed at 01:55 PDT (rme#1143) --- but that commit
+> added only a comment and a `checks: read` line, leaving the `uses:` line
+> the query matches on byte-identical since 2026-07-28.
+> So the document had matched for six weeks and was dropped anyway.
+> Read a count that FELL between two readings as this, not as a consumer
+> having removed its pin.
 > Repeating a query inside the lag window does not test for this --- the
 > three readings that first suggested a structural gap were three samples of
 > one stale index.
