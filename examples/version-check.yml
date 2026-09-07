@@ -15,8 +15,11 @@ jobs:
       pull-requests: read
       contents: read
     uses: Morrison-Lab/gha/.github/workflows/version-check.yml@v2
-    with:
-      # description-path: DESCRIPTION                    # default
-      # no-version-increment-label: 'no version increment' # default
-      # bump-branch: automated/bump-dev-version           # default; must match
-      #   bump-dev-version.yml's own pr-branch input if you changed it there.
+    # Every input is optional and is shown below at its default value.
+    # To set one, uncomment the `with:` line and the input under it:
+    #   with:
+    #     description-path: DESCRIPTION                      # default
+    #     no-version-increment-label: 'no version increment'  # default
+    #     bump-branch: automated/bump-dev-version             # default; must
+    #       match bump-dev-version.yml's own pr-branch input if you changed it
+    #       there.
