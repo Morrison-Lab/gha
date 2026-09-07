@@ -1103,21 +1103,56 @@ Note the stray \` tick here.
 Changes requested on the second pass." \
 "false" "changes-requested"
 
-# A heading inside a multi-line span is not a verdict heading, so the real one
-# below it still decides. Note this case passes with the newline-preservation
-# line removed as well: three fixtures were tried and none distinguished them,
-# so newline preservation is an unpinned invariant rather than a tested one.
-# The classifier re-splits after the transform, so its line indices stay
-# self-consistent either way -- see the note in classify-review-verdict.sh.
+# A heading inside a multi-line span is not a verdict heading. The quoted
+# heading must come AFTER the real one, or the case discriminates nothing: with
+# span stripping removed the LAST heading still has to be the quoted one for
+# last_idx to land in the wrong place. An earlier revision put it first and
+# passed with strip_code_spans deleted entirely.
+#
+# Newline preservation is a separate, unpinned invariant: three fixtures were
+# tried against a mutation dropping it and none distinguished them, because the
+# output is re-split immediately afterwards. See the note in
+# classify-review-verdict.sh.
 run_test "A verdict heading inside a multi-line code span does not win" \
-"\`\`
+"### Verdict
+
+**Ready for merge**
+
+Quoting the shape: \`\` a
 ### Verdict
-is quoted here
-\`\`
+b \`\` for reference." \
+"true" "ready-for-merge"
+
+# --- gha#827 review: a code span must not cross a blank line ---
+#
+# A code span is inline content, so CommonMark ends it at the paragraph break.
+# Scanning the document as one flat string paired two unrelated stray backticks
+# in different paragraphs and blanked everything between them, the real verdict
+# heading included. Confirmed to score clean=false verdict=no-verdict before
+# the block split was added.
+run_test "Stray backticks in separate paragraphs do not pair into a span" \
+"A note about the \`foo flag.
 
 ### Verdict
 
-**Ready for merge**" \
+**Ready for merge**
+
+See the \`bar setting." \
+"true" "ready-for-merge"
+
+# --- gha#827 review: \b before positive_targets ---
+#
+# pos_gap_pattern ends in \s* and repeats \w+, so without a leading boundary
+# the regex backtracks inside a word: "already" splits into the gap word "al"
+# plus the target "ready". Distinct root cause from the span blanking -- no
+# backticks and no underscore are involved. Confirmed to score
+# clean=false verdict=needs-more-work against origin/main.
+run_test "The word already does not supply a 'ready' target to a negator" \
+"### Verdict
+
+**Ready for merge**
+
+The base was not already current, so I updated it." \
 "true" "ready-for-merge"
 
 # A genuine blocking statement in ordinary prose after the verdict still wins.

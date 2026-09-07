@@ -150,11 +150,15 @@ def strip_machine_payloads(src):
 # review to needs-more-work (measured on Morrison-Lab/ai-config#3154, run
 # 33832648873).
 #
-# This is the inline-code sibling of gha#819's fenced-block exclusion, and the
-# reason it must be a separate pass is that the review bot's own defence does
-# not reach it: run-claude-review-attempt's brief tells the reviewer to wrap
-# quoted verdict words in single backticks, so following the brief EXACTLY is
-# what produces the false negative.
+# This is the inline-code sibling of gha#819's fenced-block exclusion.
+#
+# (An earlier revision of this comment claimed run-claude-review-attempt's
+# brief instructs the reviewer to wrap quoted verdict words in single
+# backticks. That claim came from gha#827's issue body and does not hold:
+# `grep -rn -i backtick .github/actions/run-claude-review-attempt/` returns
+# nothing. The fix stands on its own -- quoting an identifier in backticks is
+# ordinary Markdown, not a behaviour the brief induces -- but the false
+# citation is removed rather than repeated.)
 #
 # The span is replaced by a placeholder word rather than deleted. Deleting it
 # closes its neighbours up, and that direction can INVENT a match rather than
@@ -163,6 +167,21 @@ def strip_machine_payloads(src):
 # placeholder blocks that, because noun_neg_gap_pattern admits only a fixed
 # list of adjectives and "codespan" is not among them. It must also be a word
 # no pattern here matches, which rules out the obvious "code".
+#
+# The placeholder is an ORDINARY word to pos_gap_pattern, which is deliberate
+# and has one known cost. That pattern excludes "and", "but" and "whereas" as
+# gap fillers, so a span whose entire content is one of those three words
+# blocks a negated-positive match while unblanked and admits it once blanked:
+# "not `and` ready for merge" scores needs-more-work where the unbackticked
+# "not and ready for merge" scores ready-for-merge. Measured (gha#827 review).
+#
+# That is accepted rather than fixed, because both directions were weighed and
+# this one errs safely. Choosing a placeholder from the excluded set would
+# block the gap generally, so "not `really` clean" would stop matching and a
+# genuine rejection would score CLEAN -- a PR merged over a rejection. The
+# current choice errs the other way, toward a false rejection, which costs a
+# re-review. The trigger is also an artificial sentence: any other span content
+# behaves identically blanked or not.
 #
 # Newlines inside a span are preserved so the line COUNT does not change, which
 # keeps this function's output line-aligned with its input.
@@ -180,8 +199,7 @@ def strip_machine_payloads(src):
 # the empty span between the two opening ticks of a ``..`` span and leaks the
 # contents through, which is the same bug this repo already records for
 # check-new-line-breaks' strip_inline_markup. An unclosed run is left alone.
-def strip_code_spans(src_lines):
-    text = "\n".join(src_lines)
+def _scan_code_spans(text):
     out = []
     i = 0
     n = len(text)
@@ -215,6 +233,38 @@ def strip_code_spans(src_lines):
         out.append("\n" * text[j:close].count("\n"))
         i = close + run
     return "".join(out).split("\n")
+
+# A code span is INLINE content, so it cannot cross a blank line: CommonMark
+# ends the containing paragraph there. Scanning the whole document as one flat
+# string ignores that, and the consequence is a regression rather than a
+# nicety -- two unrelated stray backticks in different paragraphs pair into a
+# "span" that blanks everything between them, the real `### Verdict` heading
+# included, scoring an approving review no-verdict.
+#
+# Reproduced during review of this change: a body reading "A note about the
+# `foo flag." / blank / "### Verdict" / blank / "**Ready for merge**" / blank /
+# "See the `bar setting." scored clean=false verdict=no-verdict before this
+# split and clean=true verdict=ready-for-merge after it.
+#
+# Blank lines are emitted unchanged rather than fed to the scanner, so the line
+# count is preserved here for the same reason it is preserved inside a span.
+def strip_code_spans(src_lines):
+    out_lines = []
+    block = []
+
+    def flush():
+        if block:
+            out_lines.extend(_scan_code_spans("\n".join(block)))
+            del block[:]
+
+    for line in src_lines:
+        if line.strip():
+            block.append(line)
+        else:
+            flush()
+            out_lines.append(line)
+    flush()
+    return out_lines
 
 lines = strip_code_spans(strip_machine_payloads(text.strip().splitlines()))
 header_regex = re.compile(
@@ -299,7 +349,18 @@ pred_neg_gap_pattern = rf'(?:{aside_pattern}|(?:\s+(?:longer|currently|strictly|
 pos_neg_prefix = rf'\b(not|never|un-?|non-?|no\s+longer|without)\b{pos_gap_pattern}'
 noun_neg_prefix = rf'\b(no|zero|0|without)\b{noun_neg_gap_pattern}'
 pred_neg_prefix = rf'\b(no\s+longer|not|never|un-?|non-?)\b{pred_neg_gap_pattern}'
-positive_targets = r'(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
+# The leading \b is load-bearing (gha#827 review). pos_gap_pattern ends in
+# `\s*`, and its word repetition is `\w+`, so without a boundary here the regex
+# backtracks INSIDE a word: "already" splits into the gap word "al" plus the
+# target "ready", and any sentence of the form "... not ... already ..." after
+# the verdict heading scored a rejection. Measured against origin/main, a body
+# stating **Ready for merge** and then "The base was not already current, so I
+# updated it." classified needs-more-work.
+#
+# This is a distinct root cause from the code-span blanking above -- it needs no
+# backticks and no underscore -- but it is the same symptom, so a review body
+# carrying both was still misclassified once the span fix alone was applied.
+positive_targets = r'\b(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
 noun_negative_targets = r'(findings|blocking\s+findings|blocking\s+issues|actionable\s+findings|blockers?|changes\s+(?:requested|required))'
 pred_negative_targets = r'(needs\s+more\s+work|needs\s+work|blocked|impasse|deadlock|rejected|unapproved)'
 
