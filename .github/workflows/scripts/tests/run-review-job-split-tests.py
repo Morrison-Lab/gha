@@ -27,8 +27,8 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s)
-   and `checks: read`, which callers grant ahead of a v3 that will
-   request it. The model job itself requests exactly
+   and `checks: read`, which the currently-tagged @v2 requires and a
+   future v3 will require again. The model job itself requests exactly
    contents/pull-requests/issues/actions and no more: a callee cannot
    request a permission its caller lacks without startup-failing the
    whole run for that caller (gha#831).
@@ -759,7 +759,7 @@ def check_workflow(
             check(
                 job_permissions(review_job).get("checks") == "read",
                 "examples/claude-code-review.yml grants checks: read "
-                "(unused by @v2; granted ahead of the v3 -- gha#833)",
+                "(required by the currently-tagged @v2; kept for the v3 -- gha#833)",
             )
         grant_list_re = (
             r"`claude-code-review`[\s\S]{0,80}?grant[s]? "

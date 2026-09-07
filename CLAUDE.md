@@ -28,32 +28,43 @@ Guidance for Claude Code when working in this repository.
   read from the paginated check-runs endpoint rather than `gh pr checks`.
   "Merged work that consumers need" is the motivation, not the gate.
 
-- **Green is necessary and not sufficient: a reusable workflow's job
-  `permissions:` block is part of its CONSUMER-FACING CONTRACT.**
-  A called workflow's job cannot request a permission its caller lacks ---
-  the whole run ends in `startup_failure` before any job starts --- so
-  ADDING a scope to any `workflow_call` workflow's job is a breaking change
-  for every caller that has not granted it, and belongs in a major-tag
-  bump rather than a `v2` slide.
-  It belongs to a family of breaking changes CI cannot see, which
-  includes renaming or
-  removing a `workflow_call` input, changing an OPTIONAL input's default
-  (a required input's default is unreachable, so changing it breaks
-  nobody), making an existing optional input required, requiring a new
-  secret, and renaming or removing a JOB (this repo's own reference pages
-  tell consumers to put `review / require-review` and
-  `review / require-clean-verdict` in branch protection, so a rename
-  blocks every merge in every consumer) --- because the callee's own
-  checks all pass and this repo's dogfood caller is typically updated in
-  the same PR, so the one repository anyone would check first is immunized
-  against the very regression being shipped.
-  Measured 2026-09-06: gha#830 added `checks: read`, every check was green,
-  the slide onto c07f7d45 was correct under the bar above, and 17 of the 18
-  repositories pinning that workflow at `@v2` lost review dispatch
-  (gha#831).
+- **Green is necessary and not sufficient: check the callee's
+  `permissions:` blocks before every slide.**
+  `README.md`'s ["Widening permissions is a breaking
+  change"](README.md#widening-permissions-is-a-breaking-change) section is
+  the authority and states the rule, the parse-time failure mode, and the
+  remedy: prefer a major bump, and where one is disproportionate, sweep
+  [`REVDEPS.md`](REVDEPS.md) and PR the caller-side grant **before** sliding.
+  Follow that remedy; this bullet only adds the check that makes it fire,
+  because the rule's failure mode is that nobody consults it.
+
+  That is the measured lesson rather than a hypothetical.
+  gha#685 recorded the identical incident when gha#638 added `issues: read`
+  to `ai-code-review.yml`.
+  The rule was written down, with a worked precedent, and gha#830 added
+  `checks: read` anyway; every check was green, the slide onto c07f7d45 was
+  correct under the readiness bar above, and 17 of the 18 repositories
+  pinning that workflow at `@v2` lost review dispatch (gha#831, "Same class
+  as #685").
+  A green readiness bar is what made it feel safe, so the bar is where the
+  check belongs.
+
+  The reason it stays invisible: the callee's own checks all pass, and this
+  repo's dogfood caller is typically updated in the same PR, so the one
+  repository anyone would check first is immunized against the very
+  regression being shipped.
+  Widening `permissions:` is one of a family of breaking changes CI cannot
+  see, which includes renaming or removing a `workflow_call` input, changing
+  an OPTIONAL input's default (a required input's default is unreachable, so
+  changing it breaks nobody), making an existing optional input required,
+  requiring a new secret, and renaming or removing a JOB --- this repo's own
+  reference pages tell consumers to put `review / require-review` and
+  `review / require-clean-verdict` in branch protection, so a rename blocks
+  every merge in every consumer.
 
   Before sliding, diff the callees' job `permissions:` blocks against the
-  currently-tagged commit, and treat any ADDED key as a stop:
+  currently-tagged commit, and treat any ADDED key as a stop --- meaning go
+  do the REVDEPS sweep above, not merely eyeball the hit:
 
   ```bash
   major=$(git ls-remote --tags origin 'v*.*.*' \
@@ -65,10 +76,10 @@ Guidance for Claude Code when working in this repository.
   tagsha=$(git ls-remote origin "refs/tags/$major" "refs/tags/$major^{}" \
     | tail -1 | cut -f1)
   git fetch -q origin main
-  # Callees only: a caller's own grants are not part of anyone's contract.
   # Both extensions: a *.yml-only glob is the drift this repo has been
   # bitten by twice (see workflow_discovery.py), and it is untestable here
   # because the tree currently holds no *.yaml workflow.
+  # Callees only: a caller's own grants are not part of anyone's contract.
   for wf in $(grep -rl 'workflow_call:' .github/workflows \
       --include='*.yml' --include='*.yaml'); do
     git diff "$tagsha" FETCH_HEAD -- "$wf" | grep -E '^\+ +[a-z-]+: (read|write)' \

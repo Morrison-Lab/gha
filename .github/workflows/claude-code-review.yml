@@ -553,9 +553,9 @@ jobs:
       # v2 slide onto c07f7d45 then killed review dispatch in every
       # consumer that had not granted it. 18 repositories pin THIS
       # workflow at @v2 (not gha's tags generally) and 17 of them lacked
-      # the grant and broke; how many still lack it falls as consumers
-      # add it, so gha#831 and gha#833 track that rather than a number
-      # frozen here (15 as of 2026-09-06 22:27 PDT).
+      # the grant and broke. How many still lack it falls as consumers
+      # add it; gha#833 tracks that as the v3 precondition (gha#831 closes
+      # with this fix and freezes at 15, measured 2026-09-06 22:27 PDT).
       # The tag was never rolled back, so REMOVING IT HERE FIXES NOTHING
       # UNTIL v2 IS SLID ONTO THE MERGE COMMIT.
       #

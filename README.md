@@ -180,13 +180,15 @@ that need to write must have the **caller** grant it on the calling job:
   so without that scope the reviewer's check-status reads fail with
   HTTP 403 and a clean diff can be reported as blocked
   (ucdavis/bcs#964).
-  The `@v2` tag currently points at a commit that DOES request the
-  scope, which is why a caller lacking it fails at startup;
-  once `v2` is slid onto this change the model job stops requesting
-  it, and the 403 returns for everyone until the `v3` reinstates it.
-  Keep the grant through both: it is what makes a caller work now and
-  what makes the `v3` cost nothing later.
-  The reusable workflow does not request it at `@v2`, because a called
+  As of 2026-09-06 the `@v2` tag still points at a commit that DOES
+  request the scope, which is why a caller lacking it fails at startup.
+  Once `v2` is slid onto this change the model job stops requesting it,
+  and the 403 returns for everyone until the `v3` reinstates it.
+  Keep the grant through all three phases:
+  it is what makes a caller work today and what makes the `v3` cost
+  nothing later.
+  The reusable workflow stops requesting it once `v2` is slid onto
+  this change, because a called
   workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts,
   which is how the `v2` slide for that grant broke 17 of the 18
@@ -196,9 +198,6 @@ that need to write must have the **caller** grant it on the calling job:
   how many still lack the grant falls as consumers add it, and is
   tracked in [gha#833](https://github.com/Morrison-Lab/gha/issues/833)
   as the `v3` precondition rather than restated here).
-  Granting it now costs nothing and pre-positions the caller
-  for the `v3` tracked in
-  [gha#833](https://github.com/Morrison-Lab/gha/issues/833).
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
