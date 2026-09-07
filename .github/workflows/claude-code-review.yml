@@ -551,9 +551,10 @@ jobs:
       # request a permission its caller lacks: the whole run ends in
       # startup_failure before any job begins. #830 added it here, and the
       # v2 slide onto c07f7d45 then killed review dispatch in every
-      # consumer that had not granted it. 18 repositories pin @v2; 17 of
-      # them lacked the grant and broke, and 16 are still broken -- only
-      # ucdavis/bcs has since added it (gha#831 carries the derivation).
+      # consumer that had not granted it. 18 repositories pin @v2 and 17
+      # of them lacked the grant and broke; how many are still broken
+      # falls as consumers add it, so gha#831 tracks that rather than a
+      # number frozen here (15 as of 2026-09-06 22:27 PDT).
       # The tag was never rolled back, so REMOVING IT HERE FIXES NOTHING
       # UNTIL v2 IS SLID ONTO THE MERGE COMMIT.
       #

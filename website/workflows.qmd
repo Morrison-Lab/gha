@@ -340,6 +340,10 @@ The two Claude workflows are a pair.
   The caller is also asked to grant `checks: read`,
   which `GET .../commits/{ref}/check-runs` needs
   and `actions: read` does not cover (gha#829).
+  Grant it, but note it buys nothing today:
+  the model job does not request the scope,
+  so a caller's grant does not reach it
+  and those reads fail with HTTP 403 at `@v2` either way.
   The reusable workflow does not request it at `@v2`:
   a called workflow cannot request a permission its caller lacks,
   so adding one startup-fails every caller without it

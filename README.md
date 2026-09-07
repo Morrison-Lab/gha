@@ -161,7 +161,8 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, `actions: read`, `checks: read`,
+  `pull-requests: write`, `issues: write`, `actions: read`,
+  `checks: read` (recommended, see below),
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
   (`contents` / `pull-requests` / `issues` / `actions: read`);
@@ -186,9 +187,11 @@ that need to write must have the **caller** grant it on the calling job:
   workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts,
   which is how the `v2` slide for that grant broke 17 of the 18
-  repositories pinning `@v2`, 16 of them still broken
+  repositories pinning `@v2`
   ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
-  carries the derivation).
+  carries the derivation, and tracks how many are still broken --
+  that number falls as consumers add the grant, so it is not
+  restated here).
   Granting it now costs nothing and pre-positions the caller
   for the `v3` tracked in
   [gha#833](https://github.com/Morrison-Lab/gha/issues/833).

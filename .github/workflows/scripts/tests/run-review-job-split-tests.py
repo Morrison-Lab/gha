@@ -805,11 +805,13 @@ def check_workflow(
             perm_block = r"permissions:\n(?:      [a-z-]+: [a-z-]+\n)*?      "
             ref_blob = ref.read_text(encoding="utf-8")
             check(
-                re.search(perm_block + r"actions: read\n", ref_blob) is not None,
+                re.search(perm_block + r"actions: read(?:$| )", ref_blob, re.M)
+                is not None,
                 "website/reference/claude-code-review.qmd Example grants actions: read",
             )
             check(
-                re.search(perm_block + r"checks: read\n", ref_blob) is not None,
+                re.search(perm_block + r"checks: read(?:$| )", ref_blob, re.M)
+                is not None,
                 "website/reference/claude-code-review.qmd Example grants checks: read",
             )
         wf_doc = root / "website" / "workflows.qmd"

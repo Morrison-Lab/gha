@@ -36,8 +36,10 @@ Guidance for Claude Code when working in this repository.
   for every caller that has not granted it, and belongs in a major-tag
   bump rather than a `v2` slide.
   It belongs to a family of breaking changes CI cannot see --- renaming or
-  removing a `workflow_call` input, changing a required input's default,
-  and requiring a new secret are the others --- because the callee's own
+  removing a `workflow_call` input, changing an OPTIONAL input's default
+  (a required input's default is unreachable, so changing it breaks
+  nobody), making an existing optional input required, and requiring a
+  new secret are the others --- because the callee's own
   checks all pass and this repo's dogfood caller is typically updated in
   the same PR, so the one repository anyone would check first is immunized
   against the very regression being shipped.
@@ -59,19 +61,28 @@ Guidance for Claude Code when working in this repository.
     | tail -1 | cut -f1)
   git fetch -q origin main
   # Callees only: a caller's own grants are not part of anyone's contract.
-  for wf in $(grep -rl 'workflow_call:' .github/workflows --include='*.yml'); do
+  # Both extensions: a *.yml-only glob is the drift this repo has been
+  # bitten by twice (see workflow_discovery.py), and it is untestable here
+  # because the tree currently holds no *.yaml workflow.
+  for wf in $(grep -rl 'workflow_call:' .github/workflows \
+      --include='*.yml' --include='*.yaml'); do
     git diff "$tagsha" FETCH_HEAD -- "$wf" | grep -E '^\+ +[a-z-]+: (read|write)' \
       && echo "  ^^ in $wf"
   done
   ```
 
   A removed or unchanged key is fine; only additions break callers.
-  Read this as a prompt rather than a gate: it greps ADDED DIFF LINES, so a
-  key whose only change is its trailing comment shows up as a hit, and a
-  genuine addition to a job that previously had no `permissions:` block at
-  all shows up the same as any other.
+  Read this as a prompt rather than a gate, and read the limitations below
+  as partial --- gha#836 carries the full list, and tracks replacing this
+  with a parsed per-job set comparison.
+  It greps ADDED DIFF LINES, so a key whose only change is its trailing
+  comment shows up as a hit, a genuine addition to a job that previously
+  had no `permissions:` block at all shows up the same as any other, and
+  it cannot say WHICH job gained the key.
+  It also enumerates callees from the WORKING TREE while diffing
+  `FETCH_HEAD`, so a callee that exists on `main` but not in your checkout
+  is skipped silently.
   Confirm each hit against the two commits before treating it as a stop.
-  gha#836 tracks replacing it with a parsed per-job set comparison.
 
 - **Re-read `main`'s tip immediately before dispatching, and again after.**
   `slide-major-tag.yml` tags `$GITHUB_SHA` --- whatever `main` points at when
