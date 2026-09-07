@@ -70,22 +70,29 @@ Guidance for Claude Code when working in this repository.
   stop ---
   meaning go find the callers and PR their grants, not merely eyeball the
   hit.
-  Find them per workflow and unscoped by owner, since
-  [`REVDEPS.md`](REVDEPS.md)'s list is hand-maintained and its owner-scoped
-  fallback has gone stale before:
+  Find them per workflow, and run the query BOTH unscoped and owner-scoped,
+  taking the union.
+  Neither form is complete and neither says so: measured 2026-09-07, the
+  unscoped query missed a real public consumer (`d-morrison/rme`) across
+  three repeated runs, while the owner list is hand-maintained and has gone
+  stale before.
+  See [`REVDEPS.md`](REVDEPS.md) for the measurement and the owner list:
 
   ```bash
   # Derive the major rather than hard-coding v2: gha#833 cuts a v3.
-  # An empty $major here silently widens the search to every tag -- measured
-  # 2026-09-07, 34 hits against 29 for the pinned form -- so assign it first.
+  # An empty $major here silently widens the search to every tag, pulling in
+  # @v1 callers -- measured 2026-09-07 unscoped, 34 hits unpinned against 28
+  # pinned -- so assign it first.
   major=$(git ls-remote --tags origin 'v*.*.*' \
     | sed 's#.*refs/tags/##; s/\^{}$//' \
     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
   # --limit: a truncated gh search is silent. Re-raise the cap and re-run
-  # if the hit count comes back EQUAL to it (see REVDEPS.md). Measured
-  # 2026-09-07, the busiest workflow was claude.yml at 29 hits.
+  # if the hit count comes back EQUAL to it (see REVDEPS.md). Do not trust a
+  # remembered ceiling -- counts move, and the pinned and unpinned forms of
+  # the same query return different ones.
   gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
     --json repository,path --limit 100
+  # ... and again with --owner for each owner in REVDEPS.md; union the two.
   ```
 
   ```bash

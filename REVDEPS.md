@@ -11,8 +11,9 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > migrated yet, and is currently broken rather than merely stale, since that
 > path no longer resolves.
 >
-> **Prefer the UNSCOPED, per-workflow search.**
-> An owner-scoped list goes stale silently.
+> **Run BOTH the unscoped and the owner-scoped per-workflow search, and
+> take the union.**
+> Neither is complete on its own, and neither says so.
 > Measured 2026-09-07 against the 18 repositories pinning
 > `claude-code-review.yml@v2`:
 > the owner list this commit replaces
@@ -23,6 +24,16 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > `Lacaedemon/sparta`.
 > With those two owners added it returns all 18 --- under the PINNED,
 > per-workflow query below, not under the broad fallback beside it.
+>
+> **But the unscoped form is not complete either.**
+> Measured 2026-09-07, repeated and stable across three runs: the unscoped
+> per-workflow query returned 28 hits across 17 repositories and omitted
+> `d-morrison/rme`, a public, non-archived consumer whose caller does pin
+> this workflow at `@v2`.
+> The owner-scoped form returned 29 across 18 and included it.
+> GitHub code search does not report that it dropped anything, and the
+> truncation check below cannot see it: 28 never equals the cap.
+> So take the union of the two, and treat 18 as a floor rather than a count.
 > Scope by the workflow you are about to change anyway,
 > and take the owners only as a fallback:
 > an owner list is a thing someone has to remember to update,
@@ -36,7 +47,7 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 >
 > ```bash
 > # Requires an authenticated gh (run `gh auth login`, or set GH_TOKEN).
-> # Primary: every caller of the workflow being changed, whatever the owner.
+> # Run both of the per-workflow forms and union the results; see above.
 > # Derive the major tag rather than hard-coding it (see resolve-major-tag.sh).
 > major=$(git ls-remote --tags origin 'v*.*.*' \
 >   | sed 's#.*refs/tags/##; s/\^{}$//' \
@@ -44,7 +55,9 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
 >   --json repository,path --limit 100
 >
-> # Fallback: broad, owner-scoped. Keep this list current as orgs are added.
+> # ... and the same query again with "${OWNERS[@]}" appended.
+>
+> # Broad sweep, owner-scoped. Keep this list current as orgs are added.
 > OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
 >   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
 > # --limit matters more than it looks. The default is 30, and this broad

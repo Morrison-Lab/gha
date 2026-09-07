@@ -555,8 +555,8 @@ jobs:
       # pin THIS workflow at @v2 (not gha's tags generally) and 17 of them
       # lacked the grant and broke. How many still lack it falls as
       # consumers add it, so gha#833 tracks that count as the v3
-      # precondition; gha#831 closes with this fix, freezing its own figure
-      # at 15 (measured 2026-09-06 22:27 PDT).
+      # precondition; gha#831 closes with this fix, so its figure freezes.
+      # Last measured 2026-09-07 02:24 PDT: 14 of the 18 still lack it.
       # The tag was never rolled back, so REMOVING IT HERE FIXES NOTHING
       # UNTIL v2 IS SLID ONTO THE MERGE COMMIT.
       #

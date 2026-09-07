@@ -49,7 +49,7 @@ So treat a `permissions:` widening like any other breaking change: prefer a
 major-version bump; where a bump is disproportionate, find the callers and
 PR the caller-side grant **before** sliding the tag, and name the required
 caller edit in the change's changelog fragment.
-Find them with the UNSCOPED, per-workflow code search that
+Find them with the per-workflow code searches that
 [`REVDEPS.md`](https://github.com/Morrison-Lab/gha/blob/main/REVDEPS.md)
 documents, not by reading its consumer table:
 that table is hand-maintained, and so is the owner list beside it.
@@ -57,8 +57,10 @@ Measured 2026-09-07, the owner list this change replaces returned 10 of the
 18 repositories pinning `claude-code-review.yml@v2`, missing all 8 under
 owners nobody had added.
 Its names last changed 2026-06-18, so it had been wrong for as long as
-nobody looked --- which is the point, and the reason to prefer a query that
-derives the population over a list someone has to maintain.
+nobody looked.
+Run the unscoped search too and union the results:
+measured the same day, it missed a real public consumer the owner-scoped
+form found, so neither is complete on its own.
 
 ## Advancing a major tag
 
