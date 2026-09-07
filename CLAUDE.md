@@ -3746,6 +3746,99 @@ clean**.
 Re-trigger review (`@claude review` after the in-flight run finishes, or a
 no-op push) and read the new comment before merging or advancing the loop.
 
+## Updating a Dependabot PR's branch is what makes it reviewable
+
+The bot-exclusion gate above keys on `github.event.sender.type != 'Bot'`
+(`.github/workflows/claude-code-review.yml` lines 226, 253, and 512 as of
+2026-09-07).
+`sender` is the actor whose action triggered the `pull_request` event, not
+the PR's author -- so a `synchronize` event fired by a human's API call
+carries a human sender even on a PR GitHub still lists as authored by
+`app/dependabot`.
+That distinction is what makes the update-branch trick work: it does not
+change who authored the PR, only who triggered the next synchronize event.
+
+Measured on `Morrison-Lab/gha#838`, 2026-09-07: on head `ca6ce946`,
+`review / claude-review` was skipped under the gate above, so no
+verdict existed and `scripts/check-pr-fully-clean.py` reported the PR not
+fully clean ("No automated review comments or reviews found").
+Grep for the right string when reading a log: the check-runs API reports
+`conclusion: "skipped"`, while `gh pr checks` renders that same state as
+`skipping`.
+Running:
+
+```bash
+gh api -X PUT repos/Morrison-Lab/gha/pulls/838/update-branch \
+  -f expected_head_sha=ca6ce946...
+```
+
+produced merge commit `e16986e3`, whose `author.login` is `d-morrison`
+(committer `web-flow`).
+On that new head, `review / claude-review` ran for real and produced a
+clean verdict, and `check-pr-fully-clean.py` exited 0.
+The PR merged as `d5a7abba`.
+
+This is what lets a Dependabot PR clear the `mwc` Scope Limit's requirement
+for a clean automated review on the current head -- without it, that
+requirement's letter forbids merging any Dependabot PR, since the bot
+sender never clears the gate above.
+
+- **Do:** update a genuinely-behind Dependabot branch
+  (`update-branch`) when its head has never carried a real review, and
+  re-check the new head for a clean verdict before merging.
+
+- **Do:** attribute the un-skip to the `sender` field on the triggering
+  event, not to any change in the PR's own authorship.
+
+- **Don't:** treat this as a way to force review on an arbitrary bot PR
+  whose branch is already current -- `update-branch` only helps when
+  the branch is genuinely behind and an update is warranted anyway.
+
+- **Don't:** assume the PR's `author.login` changed; the merge commit's
+  `author.login` reads `d-morrison` only because a human triggered the
+  update, and Dependabot still owns the PR itself.
+
+## A verification instrument that a duplicate key silently passes is not verifying anything
+
+While fixing gha#823, a sweep of `examples/*.yml` stubs checked whether each
+stub's commented `with:` block would uncomment into valid YAML, using
+`yaml.safe_load` plus `isinstance(job.get('with'), dict) and
+len(job['with']) >= 1`.
+That reported exactly one broken file.
+
+It was wrong: PyYAML's non-strict loader silently keeps the **last** of a
+pair of duplicate mapping keys, so a stub whose uncommented block declares
+`with:` (or an inner key) twice still parses to a valid one-key mapping and
+passes the check.
+Re-running with a duplicate-key-rejecting loader found five broken files:
+`claude-code-review.yml`, `cursor-code-review.yml`, `gemini-code-review.yml`,
+`opencode-code-review.yml`, and `small-model-agent.yml` (caught by review on
+PR #841, 2026-09-07).
+
+The general lesson: when an instrument's pass condition is satisfiable by
+the exact defect it exists to detect, a green result from it is not
+evidence.
+Here the defect (a duplicate key) produces a valid one-key mapping, which is
+exactly how "OK" was defined, so the check could not distinguish a healthy
+stub from a broken one.
+GitHub Actions and PyYAML both resolve a duplicate key by taking the last
+occurrence silently, so the consequence in production is quiet input loss
+rather than a parse error -- nothing red anywhere.
+
+- **Do:** ask what a check's pass condition actually asserts, and whether
+  the target defect can produce that same condition by accident.
+
+- **Do:** use a duplicate-key-rejecting YAML loader (or an equivalent
+  stricter parse) whenever validity is being inferred from `safe_load`
+  succeeding on hand-authored or uncommented YAML.
+
+- **Don't:** trust a verification script's "N broken files" count without
+  checking whether its pass condition and the defect it is hunting can
+  coincide.
+
+- **Don't:** assume `yaml.safe_load` rejects duplicate keys -- it does not;
+  it silently keeps the last one.
+
 ## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
 This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
