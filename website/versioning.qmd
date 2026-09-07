@@ -46,11 +46,22 @@ the error text appears only on the run page in the UI).
 to `ai-code-review.yml` and the `v2` slide delivered it: every consumer run
 concluded `startup_failure` until the caller-side grant landed.
 So treat a `permissions:` widening like any other breaking change: prefer a
-major-version bump; where a bump is disproportionate, sweep the registered
-consumers
-([`REVDEPS.md`](https://github.com/Morrison-Lab/gha/blob/main/REVDEPS.md))
-and PR the caller-side grant **before** sliding the tag, and name the
-required caller edit in the change's changelog fragment.
+major-version bump; where a bump is disproportionate, find the callers and
+PR the caller-side grant **before** sliding the tag, and name the required
+caller edit in the change's changelog fragment.
+Find them with the per-workflow code searches that
+[`REVDEPS.md`](https://github.com/Morrison-Lab/gha/blob/main/REVDEPS.md)
+documents, not by reading its consumer table:
+that table is hand-maintained, and so is the owner list beside it.
+Measured 2026-09-07, the owner list this change replaces returned 10 of the
+18 repositories pinning `claude-code-review.yml@v2`, missing all 8 under
+owners nobody had added.
+Its names last changed 2026-06-18, so it had been wrong for as long as
+nobody looked.
+Run the unscoped search too and union the results, and treat any count as a
+floor: a push to a caller's file can drop it out of the code-search index
+until it is reindexed, so even a long-standing caller can be missing from
+either form with nothing saying so.
 
 ## Advancing a major tag
 

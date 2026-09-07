@@ -28,6 +28,129 @@ Guidance for Claude Code when working in this repository.
   read from the paginated check-runs endpoint rather than `gh pr checks`.
   "Merged work that consumers need" is the motivation, not the gate.
 
+- **Green is necessary and not sufficient: check the callee's
+  `permissions:` blocks before every slide.**
+  `README.md`'s ["Widening permissions is a breaking
+  change"](README.md#widening-permissions-is-a-breaking-change) section is
+  the authority and states the rule, the parse-time failure mode, and the
+  remedy: prefer a major bump, and where one is disproportionate, find the
+  callers and PR the caller-side grant **before** sliding.
+  Follow that remedy; this bullet only adds the check that makes it fire,
+  because the rule's failure mode is that nobody consults it.
+
+  That is the measured lesson rather than a hypothetical.
+  gha#685 recorded the identical incident when gha#638 added `issues: read`
+  to `ai-code-review.yml`.
+  The rule was written down, with a worked precedent, and gha#830 added
+  `checks: read` anyway; every check was green, the slide onto c07f7d45 was
+  correct under the readiness bar above, and 17 of the 18 repositories
+  pinning that workflow at `@v2` lost review dispatch (gha#831, "Same class
+  as #685").
+  A green readiness bar is what made it feel safe, so the bar is where the
+  check belongs.
+
+  The reason it stays invisible: the callee's own checks all pass, and this
+  repo's dogfood caller is typically updated in the same PR, so the one
+  repository anyone would check first is immunized against the very
+  regression being shipped.
+  Widening `permissions:` is one of a family of breaking changes CI cannot
+  see, which includes renaming or removing a `workflow_call` input, changing
+  an OPTIONAL input's default (a required input's default is unreachable, so
+  changing it breaks nobody), making an existing optional input required,
+  requiring a new secret, and renaming or removing a JOB --- this repo's own
+  reference pages tell consumers to put `review / require-review` and
+  `review / require-clean-verdict` in branch protection, so a rename blocks
+  every merge in every consumer.
+
+  Before sliding, diff the callees' job `permissions:` blocks against the
+  currently-tagged commit.
+  Treat an ADDED key, or a WIDENED value --- `read` to `write`, or a whole
+  block collapsing to `permissions: write-all`, neither of which adds a key
+  and both of which startup-fail a narrower caller just the same --- as a
+  stop ---
+  meaning go find the callers and PR their grants, not merely eyeball the
+  hit.
+  Find them per workflow, and run the query BOTH unscoped and owner-scoped,
+  taking the union.
+  The owner list is hand-maintained and has gone stale before, and a push to
+  a caller's file can drop that file out of the code-search index until it
+  is reindexed --- measured 2026-09-07, a caller whose matched line had been
+  unchanged for six weeks vanished from results after an unrelated edit at
+  01:55 PDT, was still absent at 02:24, and was back by 02:53.
+  So union the two forms, treat any count as a floor, and re-run after a
+  delay when any caller may have been touched recently.
+  See [`REVDEPS.md`](REVDEPS.md) for the measurements and the owner list:
+
+  ```bash
+  # Derive the major rather than hard-coding v2: gha#833 cuts a v3.
+  # An empty $major here silently widens the search to every tag, pulling in
+  # @v1 callers, so assign it first. Measured 2026-09-07 unscoped, the
+  # unpinned form returned more hits than the pinned one.
+  major=$(git ls-remote --tags origin 'v*.*.*' \
+    | sed 's#.*refs/tags/##; s/\^{}$//' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+  # --limit: a truncated gh search is silent. Re-raise the cap and re-run
+  # if the hit count comes back EQUAL to it (see REVDEPS.md). Do not trust a
+  # remembered ceiling -- counts move, and the pinned and unpinned forms of
+  # the same query return different ones.
+  gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
+    --json repository,path --limit 100
+  # ... and again with --owner for each owner in REVDEPS.md; union the two.
+  ```
+
+  ```bash
+  major=$(git ls-remote --tags origin 'v*.*.*' \
+    | sed 's#.*refs/tags/##; s/\^{}$//' \
+    | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+  # Resolve the tag from the REMOTE: a plain fetch will not move an existing
+  # local tag, so a local rev-parse reports the PRE-slide commit (see
+  # "Re-running failed jobs cannot verify a tag slide" below).
+  # --tags --force fetches the tag OBJECT, not just its sha. ls-remote reads
+  # the remote without fetching anything, so on a shallow clone -- which is
+  # what actions/checkout gives you by default -- diffing against that sha
+  # dies with "fatal: bad object". --force because a slide moves the tag.
+  # Reproduced on a --depth 1 clone, 2026-09-07.
+  git fetch -q --tags --force origin main
+  tagsha="refs/tags/$major"
+  # Both extensions: a *.yml-only glob is the drift this repo has been
+  # bitten by twice (see workflow_discovery.py), and it is untestable here
+  # because the tree currently holds no *.yaml workflow.
+  # Callees only: a caller's own grants are not part of anyone's contract.
+  for wf in $(grep -rl 'workflow_call:' .github/workflows \
+      --include='*.yml' --include='*.yaml'); do
+    # --diff-filter=M: a workflow ADDED since the tag has no callers yet,
+    # so every permission line in it would be a false positive. No workflow
+    # is added in the current v2..main range, so the filter drops nothing
+    # today; it is here for the ranges where one is. To see the shape,
+    # diff across a range that adds one -- 402d17a3~1..402d17a3, which
+    # added check-code-similarity.yml (gha#728) -- with and without it.
+    git diff --diff-filter=M "$tagsha" FETCH_HEAD -- "$wf" \
+      | grep -E '^\+ +[a-z-]+: (read|write)' && echo "  ^^ in $wf"
+  done
+  ```
+
+  A removed key is fine; additions and widenings break callers.
+  Read this as a prompt rather than a gate; gha#836 carries the reasoning
+  and tracks replacing it with a parsed per-job set comparison.
+  It greps ADDED DIFF LINES, so a key whose only change is its trailing
+  comment shows up as a hit, a genuine addition to a job that previously
+  had no `permissions:` block at all shows up the same as any other, and
+  it cannot say WHICH job gained the key.
+  `--diff-filter=M` drops workflows added since the tag, which have no
+  callers to break; a workflow RENAMED since the tag is dropped with them,
+  so check any rename by hand.
+  It also enumerates callees from the WORKING TREE while diffing
+  `FETCH_HEAD`, so a callee that exists on `main` but not in your checkout
+  is skipped silently.
+  The value pattern is unanchored, so `write` matches the prefix of
+  `write-all` and an indented `permissions: write-all` is caught --- but a
+  WORKFLOW-level one at column 0 is not, since the pattern requires leading
+  space.
+  No callee has a workflow-level block today (every callee job declares its
+  own, which would override one anyway), so that gap is currently
+  unreachable rather than merely unlikely.
+  Confirm each hit against the two commits before treating it as a stop.
+
 - **Re-read `main`'s tip immediately before dispatching, and again after.**
   `slide-major-tag.yml` tags `$GITHUB_SHA` --- whatever `main` points at when
   the run executes --- rather than a SHA you nominate.
@@ -82,8 +205,12 @@ Guidance for Claude Code when working in this repository.
   --- that report is what makes a bad slide *detectable*, which is the most the
   reporting can buy.
 
-- **Do:** slide when the commit is green and consumers need it, then report both
-  SHAs.
+- **Do:** slide when the commit is green, the callees' `permissions:` blocks
+  gained no key and widened no value since the tagged commit, and consumers
+  need it --- then report both SHAs.
+
+- **Don't:** read a green readiness bar as the whole gate; it was green when
+  gha#830 shipped the outage.
 
 - **Don't:** read this as covering a release or version bump, another
   repository, or a slide over a commit whose checks you have not read.
@@ -2685,8 +2812,12 @@ and that sidecar files are omitted when the corresponding input is empty
 (a missing `review.txt` must not look like a present empty review).
 The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
 and asserts the facts a future edit could reverse silently:
-the model job grants no forge-write (including no `id-token: write`)
-and keeps `contents: read`,
+the model job requests EXACTLY the keys
+`contents`/`pull-requests`/`issues`/`actions` and no others (the set is over
+KEYS; separate per-key assertions pin the values against `write`) --- so
+any future addition fails offline instead of at a consumer's next PR, which
+is what gha#830 did not (gha#831, gha#832) ---
+so it grants no forge-write, no `id-token: write`, and no `checks: read`,
 the posting job holds `pull-requests: write` /
 `issues: write` / `actions: read` and does not invoke the model,
 `github_token` is forwarded so the App-token write exchange is skipped,

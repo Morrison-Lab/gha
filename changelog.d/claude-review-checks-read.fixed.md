@@ -1,5 +1,15 @@
-- `claude-code-review`: the `claude-review` job now requests `checks: read`,
-  and the README, website, and example caller stub tell callers to grant it.
-  `actions: read` covers workflow runs but not `GET .../commits/{ref}/check-runs`,
-  so the reviewer's check-status reads failed with HTTP 403
-  and a clean diff was reported as blocked on human review (ucdavis/bcs#964, #829).
+- `claude-code-review`: the `claude-review` job no longer requests
+  `checks: read`.
+  A called workflow cannot request a permission its caller lacks --
+  the run ends in `startup_failure` before any job starts --
+  so requesting it in #830 broke review dispatch in 17 of the 18
+  repositories pinning this workflow at `@v2` (#831).
+  **Consumers recover only once `v2` is slid onto this merge**;
+  the tag was never rolled back, so merging alone changes nothing
+  for them.
+  Callers are still asked to grant it,
+  which costs nothing and pre-positions them for the `v3` tracked in
+  #833;
+  until then the reviewer's `GET .../commits/{ref}/check-runs` reads
+  fail with HTTP 403 and a clean diff can be reported as blocked
+  (ucdavis/bcs#964, #829).

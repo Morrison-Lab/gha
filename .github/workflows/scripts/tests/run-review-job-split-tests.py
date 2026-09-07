@@ -27,8 +27,11 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s)
-   and `checks: read` (the model job's check-run reads 403 without it,
-   gha#829), and the model job itself requests `checks: read`.
+   and `checks: read`, which the currently-tagged @v2 requires and a
+   future v3 will require again. The model job itself requests exactly
+   contents/pull-requests/issues/actions and no more: a callee cannot
+   request a permission its caller lacks without startup-failing the
+   whole run for that caller (gha#831).
 8. Every `steps.fail-check*.outputs.<name>` the workflow reads is declared
    in run-review-guard/action.yml. A composite's step outputs are
    invisible to its caller unless re-declared, and gha#804's first draft
@@ -169,10 +172,20 @@ def check_workflow(
         "claude-review does not grant id-token: write "
         "(App-token exchange is skipped; its defaults are write)",
     )
+    # An exact set, not a per-key check. A reusable workflow's job cannot
+    # request a permission its caller lacks -- the run ends in
+    # startup_failure before any job starts -- so ANY addition here is a
+    # breaking change for every consumer that has not granted it, and
+    # belongs in a major-tag bump rather than a v2 slide. #830 added
+    # checks: read, and the v2 slide onto it killed review dispatch in 17
+    # of the 18 repositories pinning THIS workflow at @v2 (gha#831). Keyed
+    # on the whole set so the next addition fails whatever it is called.
     check(
-        review_perms.get("checks") == "read",
-        "claude-review grants checks: read "
-        "(GET .../commits/{ref}/check-runs 403s without it, gha#829)",
+        set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
+        "claude-review requests exactly contents/pull-requests/issues/actions "
+        "(the set changed; ADDING one breaks every caller lacking it and "
+        "needs a v3 -- gha#831 -- while a removal is safe but still "
+        "deliberate)",
     )
     check(
         post_perms.get("pull-requests") == "write",
@@ -748,7 +761,7 @@ def check_workflow(
             check(
                 job_permissions(review_job).get("checks") == "read",
                 "examples/claude-code-review.yml grants checks: read "
-                "(the model job's check-run reads 403 without it)",
+                "(required by the currently-tagged @v2; kept for the v3 -- gha#833)",
             )
         grant_list_re = (
             r"`claude-code-review`[\s\S]{0,80}?grant[s]? "
@@ -791,23 +804,50 @@ def check_workflow(
             # Only `key: value` lines indented like the block's own entries
             # may sit between `permissions:` and the grant, so a grant that
             # merely appears somewhere later in the file does not count.
-            perm_block = r"permissions:\n(?:      [a-z-]+: [a-z-]+\n)*?      "
+            # The trailing-comment tolerance has to cover the INTERMEDIATE
+            # lines as well as the target: with it on the target alone the
+            # assertion passes only while the annotated grant happens to be
+            # last, so a pure reorder that changes no grant turns it red
+            # (mutation-confirmed, gha#832 review round 4).
+            perm_block = (
+                r"permissions:\n"
+                r"(?:      (?:[a-z-]+: [a-z-]+(?: +#[^\n]*)?|#[^\n]*)\n)*?      "
+            )
             ref_blob = ref.read_text(encoding="utf-8")
             check(
-                re.search(perm_block + r"actions: read\n", ref_blob) is not None,
+                re.search(perm_block + r"actions: read(?:$| )", ref_blob, re.M)
+                is not None,
                 "website/reference/claude-code-review.qmd Example grants actions: read",
             )
             check(
-                re.search(perm_block + r"checks: read\n", ref_blob) is not None,
+                re.search(perm_block + r"checks: read(?:$| )", ref_blob, re.M)
+                is not None,
                 "website/reference/claude-code-review.qmd Example grants checks: read",
             )
-        wf_doc = root / "website" / "workflows.qmd"
-        check(wf_doc.is_file(), "website/workflows.qmd exists")
-        if wf_doc.is_file():
+        # All FOUR copies of the model-scope parenthetical, not just this
+        # one: anchoring a single file left the natural reversal (appending
+        # `/ \`checks: read\`` to the same parenthetical) green in the other
+        # three (mutation-confirmed, gha#832 review round 4).
+        for rel in (
+            "README.md",
+            "website/permissions.qmd",
+            "website/reference/claude-code-review.qmd",
+            "website/workflows.qmd",
+        ):
+            doc = root / rel
+            if not doc.is_file():
+                check(False, f"{rel} exists (model-scope parity target)")
+                continue
             check(
-                "`actions` / `checks: read`" in wf_doc.read_text(encoding="utf-8"),
-                "website/workflows.qmd model-scope list includes checks: read",
+                re.search(
+                    r"`issues`\s*/\s*`actions: read`\)",
+                    doc.read_text(encoding="utf-8"),
+                )
+                is not None,
+                f"{rel} model-scope list ends at actions: read "
+                "(the model job holds no checks: read -- gha#831)",
             )
+
         dogfood = root / ".github" / "workflows" / "claude-review.yml"
         check(dogfood.is_file(), ".github/workflows/claude-review.yml exists")
         if dogfood.is_file():
@@ -941,7 +981,6 @@ jobs:
       pull-requests: read
       issues: read
       actions: read
-      checks: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
       - run: echo "$FC_QUOTA_REASON"
@@ -1140,8 +1179,7 @@ runs:
                 "      contents: read\n"
                 "      pull-requests: read\n"
                 "      issues: read\n"
-                "      actions: read\n"
-                "      checks: read\n",
+                "      actions: read\n",
                 "    permissions: write-all\n",
                 1,
             )
@@ -1151,6 +1189,26 @@ runs:
             run(write_all, good_action),
             False,
             "claude-review does not grant pull-requests: write",
+        )
+
+        # The write-all case above is caught by a DIFFERENT assertion (the
+        # pull-requests: write one), so nothing in this suite demonstrated
+        # that the exact-set check fires on an ADDED scope -- which is the
+        # regression it exists for. gha#831's incident was exactly one added
+        # read scope, so the case has to be an addition, not a replacement.
+        added_scope = root / "added-scope.yml"
+        added_scope.write_text(
+            good_wf.read_text().replace(
+                "      actions: read\n",
+                "      actions: read\n      checks: read\n",
+                1,
+            )
+        )
+        failures += expect(
+            "an added scope on the model job fails",
+            run(added_scope, good_action),
+            False,
+            "claude-review requests exactly",
         )
 
         empty_token = root / "empty-token.yml"

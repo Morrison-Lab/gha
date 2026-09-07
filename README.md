@@ -161,10 +161,11 @@ that need to write must have the **caller** grant it on the calling job:
     contents. Public submodules clone anonymously; private ones additionally need
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
-  `pull-requests: write`, `issues: write`, `actions: read`, `checks: read`,
+  `pull-requests: write`, `issues: write`, `actions: read`,
+  `checks: read` (grant it; required by the currently-tagged `@v2`),
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
-  (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
   write is confined to jobs that never run the model
   (`gather-context` stashes reviewers and posts
   the early dispatch notice; `post-review` downloads the review artifact
@@ -173,10 +174,31 @@ that need to write must have the **caller** grant it on the calling job:
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP
   server).
-  `checks: read` is required too:
-  `actions: read` covers workflow runs but not `GET .../commits/{ref}/check-runs`,
-  so without it the reviewer's check-status reads fail with HTTP 403
-  and a clean diff can be reported as blocked (ucdavis/bcs#964).
+  Grant `checks: read`, but note what it does and does not buy.
+  `actions: read` covers workflow runs but not
+  `GET .../commits/{ref}/check-runs`,
+  so without that scope the reviewer's check-status reads fail with
+  HTTP 403 and a clean diff can be reported as blocked
+  (ucdavis/bcs#964).
+  As of 2026-09-06 the `@v2` tag still points at a commit that DOES
+  request the scope,
+  which is why a caller lacking it fails at startup.
+  Once `v2` is slid onto this change the model job stops requesting it,
+  and the 403 returns for everyone until the `v3` reinstates it.
+  Keep the grant through all three phases:
+  it is what makes a caller work today,
+  it is harmless while the slid `@v2` ignores it,
+  and it is what makes the `v3` cost nothing later.
+  The startup failure is the reason the callee gave the scope up:
+  a called workflow cannot request a permission its caller lacks,
+  so the run ends before any job starts.
+  That is how the `v2` slide for that grant broke 17 of the 18
+  repositories pinning this workflow at `@v2`
+  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
+  carries the derivation;
+  how many still lack the grant falls as consumers add it, and is
+  tracked in [gha#833](https://github.com/Morrison-Lab/gha/issues/833)
+  as the `v3` precondition rather than restated here).
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
@@ -755,10 +777,21 @@ the error text appears only on the run page in the UI).
 to `ai-code-review.yml` and the `v2` slide delivered it: every consumer run
 concluded `startup_failure` until the caller-side grant landed.
 So treat a `permissions:` widening like any other breaking change: prefer a
-major-version bump; where a bump is disproportionate, sweep the registered
-consumers ([`REVDEPS.md`](REVDEPS.md)) and PR the caller-side grant **before**
-sliding the tag, and name the required caller edit in the change's changelog
-fragment.
+major-version bump; where a bump is disproportionate, find the callers and PR
+the caller-side grant **before** sliding the tag, and name the required caller
+edit in the change's changelog fragment.
+Find them with the per-workflow code searches that
+[`REVDEPS.md`](REVDEPS.md) documents, not by reading its consumer table:
+that table is hand-maintained, and so is the owner list beside it.
+Measured 2026-09-07, the owner list this change replaces returned 10 of the
+18 repositories pinning `claude-code-review.yml@v2`, missing all 8 under
+owners nobody had added.
+Its names last changed 2026-06-18, so it had been wrong for as long as
+nobody looked.
+Run the unscoped search too and union the results, and treat any count as a
+floor: a push to a caller's file can drop it out of the code-search index
+until it is reindexed, so even a long-standing caller can be missing from
+either form with nothing saying so.
 
 ## Reverse dependencies
 
