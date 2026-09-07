@@ -5,16 +5,28 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 
 > **Note:** This list helps us notify consumers before moving the `@v1` tag in
 > a breaking way (or cutting `@v2`). It is **not** authoritative -- always
-> verify with a code search across the consuming orgs (`d-morrison`,
-> `ucdavis`, `UCD-SERG`, `UCLA-PHP`, `UCD-IDDRC`) when releasing a breaking
-> change. A GitHub code search across those owners is the quickest way to find
-> current callers. Search **both** paths: a repo still on the old
-> `d-morrison/gha` path has not migrated yet, and is currently broken rather
-> than merely stale, since that path no longer resolves.
+> verify with a code search when releasing a breaking change.
+> Search **both** paths: a repo still on the old `d-morrison/gha` path has not
+> migrated yet, and is currently broken rather than merely stale, since that
+> path no longer resolves.
+>
+> **Prefer the UNSCOPED, per-workflow search.**
+> An owner-scoped list goes stale silently:
+> the list below omitted `Morrison-Lab` and `Lacaedemon` until 2026-09-06,
+> so a sweep run during the gha#831 outage would have found 1 of the 18
+> affected consumers and reported the rest safe.
+> Scope by the workflow you are about to change instead,
+> and take the owners as a fallback:
 >
 > ```bash
 > # Requires an authenticated gh (run `gh auth login`, or set GH_TOKEN).
-> OWNERS=(--owner d-morrison --owner ucdavis --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC)
+> # Primary: every caller of the workflow being changed, whatever the owner.
+> gh search code 'Morrison-Lab/gha/.github/workflows/<name>.yml@v2' \
+>   --json repository,path --limit 100
+>
+> # Fallback: broad, owner-scoped. Keep this list current as orgs are added.
+> OWNERS=(--owner Morrison-Lab --owner d-morrison --owner ucdavis \
+>   --owner UCD-SERG --owner UCLA-PHP --owner UCD-IDDRC --owner Lacaedemon)
 > gh search code 'uses: Morrison-Lab/gha/.github/workflows' "${OWNERS[@]}"
 > gh search code 'uses: d-morrison/gha/.github/workflows' "${OWNERS[@]}"  # not yet migrated
 > ```

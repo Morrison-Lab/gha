@@ -187,7 +187,8 @@ that need to write must have the **caller** grant it on the calling job:
   and the 403 returns for everyone until the `v3` reinstates it.
   Keep the grant through all three phases:
   it is what makes a caller work today,
-  and what makes the `v3` cost nothing later.
+  it is harmless while the slid `@v2` ignores it,
+  and it is what makes the `v3` cost nothing later.
   The startup failure is the reason the callee gave the scope up:
   a called workflow cannot request a permission its caller lacks,
   so the run ends before any job starts.

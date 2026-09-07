@@ -63,8 +63,19 @@ Guidance for Claude Code when working in this repository.
   every merge in every consumer.
 
   Before sliding, diff the callees' job `permissions:` blocks against the
-  currently-tagged commit, and treat any ADDED key as a stop --- meaning go
-  do the REVDEPS sweep above, not merely eyeball the hit:
+  currently-tagged commit.
+  Treat an ADDED key, or a WIDENED value (`read` to `write`, which adds no
+  key and startup-fails every read-only caller just the same), as a stop ---
+  meaning go find the callers and PR their grants, not merely eyeball the
+  hit.
+  Find them per workflow and unscoped by owner, since
+  [`REVDEPS.md`](REVDEPS.md)'s list is hand-maintained and its owner-scoped
+  fallback has gone stale before:
+
+  ```bash
+  gh search code 'Morrison-Lab/gha/.github/workflows/<name>.yml@v2' \
+    --json repository,path --limit 100
+  ```
 
   ```bash
   major=$(git ls-remote --tags origin 'v*.*.*' \
@@ -90,7 +101,7 @@ Guidance for Claude Code when working in this repository.
   done
   ```
 
-  A removed or unchanged key is fine; only additions break callers.
+  A removed key is fine; additions and widenings break callers.
   Read this as a prompt rather than a gate; gha#836 carries the reasoning
   and tracks replacing it with a parsed per-job set comparison.
   It greps ADDED DIFF LINES, so a key whose only change is its trailing

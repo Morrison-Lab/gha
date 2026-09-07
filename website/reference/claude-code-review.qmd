@@ -77,7 +77,8 @@ Once `v2` is slid onto this change the model job stops requesting it,
 and the 403 returns for everyone until the `v3` reinstates it.
 Keep the grant through all three phases:
 it is what makes a caller work today,
-and what makes the `v3` cost nothing later.
+it is harmless while the slid `@v2` ignores it,
+and it is what makes the `v3` cost nothing later.
 The startup failure is the reason the callee gave the scope up:
 a called workflow cannot request a permission its caller lacks,
 so the run ends before any job starts.
@@ -212,7 +213,7 @@ jobs:
       pull-requests: write
       issues: write
       actions: read
-      checks: read    # keep granted: the v3 reinstates it on the callee (gha#833)
+      checks: read    # required by the tagged @v2 now; the v3 reinstates it (gha#833)
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key

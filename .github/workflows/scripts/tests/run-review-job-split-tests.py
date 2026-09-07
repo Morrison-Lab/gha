@@ -810,7 +810,8 @@ def check_workflow(
             # last, so a pure reorder that changes no grant turns it red
             # (mutation-confirmed, gha#832 review round 4).
             perm_block = (
-                r"permissions:\n(?:      [a-z-]+: [a-z-]+(?: +#[^\n]*)?\n)*?      "
+                r"permissions:\n"
+                r"(?:      (?:[a-z-]+: [a-z-]+(?: +#[^\n]*)?|#[^\n]*)\n)*?      "
             )
             ref_blob = ref.read_text(encoding="utf-8")
             check(
