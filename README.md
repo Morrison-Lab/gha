@@ -164,7 +164,7 @@ that need to write must have the **caller** grant it on the calling job:
   `pull-requests: write`, `issues: write`, `actions: read`, `checks: read`,
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
-  (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
+  (`contents` / `pull-requests` / `issues` / `actions: read`);
   write is confined to jobs that never run the model
   (`gather-context` stashes reviewers and posts
   the early dispatch notice; `post-review` downloads the review artifact
@@ -173,10 +173,18 @@ that need to write must have the **caller** grant it on the calling job:
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP
   server).
-  `checks: read` is required too:
-  `actions: read` covers workflow runs but not `GET .../commits/{ref}/check-runs`,
-  so without it the reviewer's check-status reads fail with HTTP 403
+  `checks: read` is recommended but not yet used:
+  `actions: read` covers workflow runs but not
+  `GET .../commits/{ref}/check-runs`,
+  so the reviewer's check-status reads fail with HTTP 403
   and a clean diff can be reported as blocked (ucdavis/bcs#964).
+  The reusable workflow does not request it at `@v2`, because a called
+  workflow cannot request a permission its caller lacks --
+  the run ends in `startup_failure` before any job starts,
+  which is how the `v2` slide for that grant broke 18 consumers
+  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
+  Granting it now costs nothing and pre-positions the caller
+  for the `v3` that will request it.
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
