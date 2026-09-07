@@ -164,9 +164,16 @@ def strip_machine_payloads(src):
 # list of adjectives and "codespan" is not among them. It must also be a word
 # no pattern here matches, which rules out the obvious "code".
 #
-# Newlines inside a span are preserved so the line COUNT does not change --
-# last_idx below is a line index, so collapsing a multi-line span would shift
-# every heading position after it.
+# Newlines inside a span are preserved so the line COUNT does not change, which
+# keeps this function's output line-aligned with its input.
+#
+# That is defensive rather than load-bearing, and saying so is the honest
+# reading: no test distinguishes it. Three fixtures were tried against a
+# mutation that drops the newlines and all three scored identically, because
+# the result is re-split immediately below, so last_idx and the content slice
+# stay self-consistent whatever the line count is. Keep the preservation --
+# alignment with the source is worth having if anything here ever reports a
+# line number -- but do not claim a verdict depends on it.
 #
 # Closing follows CommonMark rather than `\`[^\`]*\``: a span opens on a run of
 # N backticks and closes only on a run of exactly N. The naive pattern matches

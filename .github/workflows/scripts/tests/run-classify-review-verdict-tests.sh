@@ -1075,16 +1075,21 @@ run_test "A code span between a negator and its target does not fabricate a matc
 Needs more work: no \`--fail-under\` findings threshold is configured." \
 "false" "needs-more-work"
 
-# A closing run must be exactly as long as the opener. The naive
-# \`[^\`]*\` pattern matches the empty span between the two opening ticks of a
-# double-tick span and leaks the contents through, which would re-expose the
-# identifier this fix exists to hide.
-run_test "A double-backtick span is closed only by a double-backtick run" \
+# A closing run must be exactly as long as the opener, so a SINGLE tick inside
+# a double-tick span does not close it. The span must therefore contain a
+# nested single-tick pair: a plain ``NOT_CLEAN`` fixture passes under a
+# close-on-any-run mutation too, because its first following run is already the
+# real closer, so it discriminates nothing.
+#
+# Confirmed: replacing the run-length test with an unconditional close scores
+# this clean=true verdict=clean rather than ready-for-merge, because the span
+# collapses to nothing and the bare words "not clean" survive into the scan.
+run_test "A single tick inside a double-tick span does not close it" \
 "### Verdict
 
 **Ready for merge**
 
-The flag is \`\`NOT_CLEAN\`\` in the report." \
+The report says \`\` \`not clean\` \`\` only for a base-currency reason." \
 "true" "ready-for-merge"
 
 # An unclosed run is left alone rather than swallowing the rest of the review,
@@ -1098,9 +1103,13 @@ Note the stray \` tick here.
 Changes requested on the second pass." \
 "false" "changes-requested"
 
-# Newlines inside a span are preserved, so a multi-line span cannot shift the
-# line index the verdict-heading scan depends on.
-run_test "A multi-line code span does not shift the verdict heading" \
+# A heading inside a multi-line span is not a verdict heading, so the real one
+# below it still decides. Note this case passes with the newline-preservation
+# line removed as well: three fixtures were tried and none distinguished them,
+# so newline preservation is an unpinned invariant rather than a tested one.
+# The classifier re-splits after the transform, so its line indices stay
+# self-consistent either way -- see the note in classify-review-verdict.sh.
+run_test "A verdict heading inside a multi-line code span does not win" \
 "\`\`
 ### Verdict
 is quoted here
