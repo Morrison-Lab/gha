@@ -150,7 +150,7 @@ jobs:
       issues: write
       id-token: write
       actions: read   # lets the reviewer read CI status (github_ci MCP server)
-      checks: read    # required by the currently-tagged @v2; keep it for the v3 (gha#833)
+      checks: read    # keep granted: the v3 reinstates it on the callee (gha#833)
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     # Pass secrets explicitly (not `secrets: inherit`) for parity with
     # examples/claude-code-review.yml; inherit only works for same-owner callers.

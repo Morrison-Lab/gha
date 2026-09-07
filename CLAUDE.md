@@ -82,8 +82,11 @@ Guidance for Claude Code when working in this repository.
   # Callees only: a caller's own grants are not part of anyone's contract.
   for wf in $(grep -rl 'workflow_call:' .github/workflows \
       --include='*.yml' --include='*.yaml'); do
-    git diff "$tagsha" FETCH_HEAD -- "$wf" | grep -E '^\+ +[a-z-]+: (read|write)' \
-      && echo "  ^^ in $wf"
+    # --diff-filter=M: a workflow ADDED since the tag has no callers yet,
+    # so every permission line in it is a false positive (measured on
+    # check-code-similarity.yml, new in gha#728).
+    git diff --diff-filter=M "$tagsha" FETCH_HEAD -- "$wf" \
+      | grep -E '^\+ +[a-z-]+: (read|write)' && echo "  ^^ in $wf"
   done
   ```
 
@@ -94,6 +97,9 @@ Guidance for Claude Code when working in this repository.
   comment shows up as a hit, a genuine addition to a job that previously
   had no `permissions:` block at all shows up the same as any other, and
   it cannot say WHICH job gained the key.
+  `--diff-filter=M` drops workflows added since the tag, which have no
+  callers to break; a workflow RENAMED since the tag is dropped with them,
+  so check any rename by hand.
   It also enumerates callees from the WORKING TREE while diffing
   `FETCH_HEAD`, so a callee that exists on `main` but not in your checkout
   is skipped silently.

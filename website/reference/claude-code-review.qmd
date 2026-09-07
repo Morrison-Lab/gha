@@ -71,17 +71,17 @@ so without that scope the reviewer's check-status reads fail with
 HTTP 403 and a clean diff can be reported as blocked
 (ucdavis/bcs#964).
 As of 2026-09-06 the `@v2` tag still points at a commit that DOES
-request the scope, which is why a caller lacking it fails at startup.
+request the scope,
+which is why a caller lacking it fails at startup.
 Once `v2` is slid onto this change the model job stops requesting it,
 and the 403 returns for everyone until the `v3` reinstates it.
 Keep the grant through all three phases:
-it is what makes a caller work today and what makes the `v3` cost
-nothing later.
-The reusable workflow stops requesting it once `v2` is slid onto
-this change, because a called
-workflow cannot request a permission its caller lacks --
-the run ends in `startup_failure` before any job starts,
-which is how the `v2` slide for that grant broke 17 of the 18
+it is what makes a caller work today,
+and what makes the `v3` cost nothing later.
+The startup failure is the reason the callee gave the scope up:
+a called workflow cannot request a permission its caller lacks,
+so the run ends before any job starts.
+That is how the `v2` slide for that grant broke 17 of the 18
 repositories pinning this workflow at `@v2`
 ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
 carries the derivation;
@@ -212,7 +212,7 @@ jobs:
       pull-requests: write
       issues: write
       actions: read
-      checks: read    # required by the currently-tagged @v2; keep it for the v3 (gha#833)
+      checks: read    # keep granted: the v3 reinstates it on the callee (gha#833)
     uses: Morrison-Lab/gha/.github/workflows/claude-code-review.yml@v2
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }} # Max-plan OAuth; empty when using API key

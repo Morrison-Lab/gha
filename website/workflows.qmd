@@ -340,7 +340,8 @@ The two Claude workflows are a pair.
   The caller is also asked to grant `checks: read`,
   which `GET .../commits/{ref}/check-runs` needs
   and `actions: read` does not cover (gha#829).
-  Grant it: the currently-tagged `@v2` requires it,
+  Grant it, and keep it granted.
+  As of 2026-09-06 the tagged `@v2` requires it,
   and once `v2` is slid onto the change that stops requesting it
   the grant is what makes the `v3` cost nothing.
   The reusable workflow stops requesting it once `v2` is slid onto

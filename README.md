@@ -181,17 +181,17 @@ that need to write must have the **caller** grant it on the calling job:
   HTTP 403 and a clean diff can be reported as blocked
   (ucdavis/bcs#964).
   As of 2026-09-06 the `@v2` tag still points at a commit that DOES
-  request the scope, which is why a caller lacking it fails at startup.
+  request the scope,
+  which is why a caller lacking it fails at startup.
   Once `v2` is slid onto this change the model job stops requesting it,
   and the 403 returns for everyone until the `v3` reinstates it.
   Keep the grant through all three phases:
-  it is what makes a caller work today and what makes the `v3` cost
-  nothing later.
-  The reusable workflow stops requesting it once `v2` is slid onto
-  this change, because a called
-  workflow cannot request a permission its caller lacks --
-  the run ends in `startup_failure` before any job starts,
-  which is how the `v2` slide for that grant broke 17 of the 18
+  it is what makes a caller work today,
+  and what makes the `v3` cost nothing later.
+  The startup failure is the reason the callee gave the scope up:
+  a called workflow cannot request a permission its caller lacks,
+  so the run ends before any job starts.
+  That is how the `v2` slide for that grant broke 17 of the 18
   repositories pinning this workflow at `@v2`
   ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
   carries the derivation;

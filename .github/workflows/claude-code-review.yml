@@ -551,11 +551,12 @@ jobs:
       # request a permission its caller lacks: the whole run ends in
       # startup_failure before any job begins. #830 added it here, and the
       # v2 slide onto c07f7d45 then killed review dispatch in every
-      # consumer that had not granted it. 18 repositories pin THIS
-      # workflow at @v2 (not gha's tags generally) and 17 of them lacked
-      # the grant and broke. How many still lack it falls as consumers
-      # add it; gha#833 tracks that as the v3 precondition (gha#831 closes
-      # with this fix and freezes at 15, measured 2026-09-06 22:27 PDT).
+      # consumer that had not granted it. As of 2026-09-06, 18 repositories
+      # pin THIS workflow at @v2 (not gha's tags generally) and 17 of them
+      # lacked the grant and broke. How many still lack it falls as
+      # consumers add it, so gha#833 tracks that count as the v3
+      # precondition; gha#831 closes with this fix, freezing its own figure
+      # at 15 (measured 2026-09-06 22:27 PDT).
       # The tag was never rolled back, so REMOVING IT HERE FIXES NOTHING
       # UNTIL v2 IS SLID ONTO THE MERGE COMMIT.
       #

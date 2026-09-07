@@ -183,7 +183,9 @@ def check_workflow(
     check(
         set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
         "claude-review requests exactly contents/pull-requests/issues/actions "
-        "(adding one breaks every caller lacking it -- gha#831; needs a v3)",
+        "(the set changed; ADDING one breaks every caller lacking it and "
+        "needs a v3 -- gha#831 -- while a removal is safe but still "
+        "deliberate)",
     )
     check(
         post_perms.get("pull-requests") == "write",
@@ -836,7 +838,11 @@ def check_workflow(
                 check(False, f"{rel} exists (model-scope parity target)")
                 continue
             check(
-                "`issues` / `actions: read`)" in doc.read_text(encoding="utf-8"),
+                re.search(
+                    r"`issues`\s*/\s*`actions: read`\)",
+                    doc.read_text(encoding="utf-8"),
+                )
+                is not None,
                 f"{rel} model-scope list ends at actions: read "
                 "(the model job holds no checks: read -- gha#831)",
             )
