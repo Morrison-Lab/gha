@@ -178,8 +178,8 @@ def check_workflow(
     # breaking change for every consumer that has not granted it, and
     # belongs in a major-tag bump rather than a v2 slide. #830 added
     # checks: read, and the v2 slide onto it killed review dispatch in 17
-    # of the 18 repositories pinning @v2 (gha#831). Keyed on the whole set
-    # so the next addition fails here whatever it is called.
+    # of the 18 repositories pinning THIS workflow at @v2 (gha#831). Keyed
+    # on the whole set so the next addition fails whatever it is called.
     check(
         set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
         "claude-review requests exactly contents/pull-requests/issues/actions "
@@ -802,7 +802,14 @@ def check_workflow(
             # Only `key: value` lines indented like the block's own entries
             # may sit between `permissions:` and the grant, so a grant that
             # merely appears somewhere later in the file does not count.
-            perm_block = r"permissions:\n(?:      [a-z-]+: [a-z-]+\n)*?      "
+            # The trailing-comment tolerance has to cover the INTERMEDIATE
+            # lines as well as the target: with it on the target alone the
+            # assertion passes only while the annotated grant happens to be
+            # last, so a pure reorder that changes no grant turns it red
+            # (mutation-confirmed, gha#832 review round 4).
+            perm_block = (
+                r"permissions:\n(?:      [a-z-]+: [a-z-]+(?: +#[^\n]*)?\n)*?      "
+            )
             ref_blob = ref.read_text(encoding="utf-8")
             check(
                 re.search(perm_block + r"actions: read(?:$| )", ref_blob, re.M)
@@ -814,18 +821,26 @@ def check_workflow(
                 is not None,
                 "website/reference/claude-code-review.qmd Example grants checks: read",
             )
-        wf_doc = root / "website" / "workflows.qmd"
-        check(wf_doc.is_file(), "website/workflows.qmd exists")
-        if wf_doc.is_file():
-            # Anchored on the CLOSING paren, not on a bare substring: the
-            # natural way to reverse this is to append `/ \`checks: read\``
-            # inside the same parenthetical, which an unanchored needle
-            # leaves green (caught by mutation on gha#832).
+        # All FOUR copies of the model-scope parenthetical, not just this
+        # one: anchoring a single file left the natural reversal (appending
+        # `/ \`checks: read\`` to the same parenthetical) green in the other
+        # three (mutation-confirmed, gha#832 review round 4).
+        for rel in (
+            "README.md",
+            "website/permissions.qmd",
+            "website/reference/claude-code-review.qmd",
+            "website/workflows.qmd",
+        ):
+            doc = root / rel
+            if not doc.is_file():
+                check(False, f"{rel} exists (model-scope parity target)")
+                continue
             check(
-                "`issues` / `actions: read`)" in wf_doc.read_text(encoding="utf-8"),
-                "website/workflows.qmd model-scope list ends at actions: read "
+                "`issues` / `actions: read`)" in doc.read_text(encoding="utf-8"),
+                f"{rel} model-scope list ends at actions: read "
                 "(the model job holds no checks: read -- gha#831)",
             )
+
         dogfood = root / ".github" / "workflows" / "claude-review.yml"
         check(dogfood.is_file(), ".github/workflows/claude-review.yml exists")
         if dogfood.is_file():

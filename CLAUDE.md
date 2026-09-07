@@ -35,17 +35,22 @@ Guidance for Claude Code when working in this repository.
   ADDING a scope to any `workflow_call` workflow's job is a breaking change
   for every caller that has not granted it, and belongs in a major-tag
   bump rather than a `v2` slide.
-  It belongs to a family of breaking changes CI cannot see --- renaming or
+  It belongs to a family of breaking changes CI cannot see, which
+  includes renaming or
   removing a `workflow_call` input, changing an OPTIONAL input's default
   (a required input's default is unreachable, so changing it breaks
-  nobody), making an existing optional input required, and requiring a
-  new secret are the others --- because the callee's own
+  nobody), making an existing optional input required, requiring a new
+  secret, and renaming or removing a JOB (this repo's own reference pages
+  tell consumers to put `review / require-review` and
+  `review / require-clean-verdict` in branch protection, so a rename
+  blocks every merge in every consumer) --- because the callee's own
   checks all pass and this repo's dogfood caller is typically updated in
   the same PR, so the one repository anyone would check first is immunized
   against the very regression being shipped.
   Measured 2026-09-06: gha#830 added `checks: read`, every check was green,
   the slide onto c07f7d45 was correct under the bar above, and 17 of the 18
-  repositories pinning `@v2` lost review dispatch (gha#831).
+  repositories pinning that workflow at `@v2` lost review dispatch
+  (gha#831).
 
   Before sliding, diff the callees' job `permissions:` blocks against the
   currently-tagged commit, and treat any ADDED key as a stop:
@@ -72,9 +77,8 @@ Guidance for Claude Code when working in this repository.
   ```
 
   A removed or unchanged key is fine; only additions break callers.
-  Read this as a prompt rather than a gate, and read the limitations below
-  as partial --- gha#836 carries the full list, and tracks replacing this
-  with a parsed per-job set comparison.
+  Read this as a prompt rather than a gate; gha#836 carries the reasoning
+  and tracks replacing it with a parsed per-job set comparison.
   It greps ADDED DIFF LINES, so a key whose only change is its trailing
   comment shows up as a hit, a genuine addition to a job that previously
   had no `permissions:` block at all shows up the same as any other, and

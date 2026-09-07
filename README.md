@@ -162,7 +162,7 @@ that need to write must have the **caller** grant it on the calling job:
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`,
-  `checks: read` (recommended, see below),
+  `checks: read` (grant it; required by the currently-tagged `@v2`),
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
   (`contents` / `pull-requests` / `issues` / `actions: read`);
@@ -174,24 +174,28 @@ that need to write must have the **caller** grant it on the calling job:
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP
   server).
-  `checks: read` is recommended, and grant it -- but note it buys
-  nothing today.
+  Grant `checks: read`, but note what it does and does not buy.
   `actions: read` covers workflow runs but not
   `GET .../commits/{ref}/check-runs`,
-  so at `@v2` the reviewer's check-status reads fail with HTTP 403
-  whether or not the caller grants it,
-  and a clean diff can be reported as blocked (ucdavis/bcs#964).
-  The model job does not request the scope, so a caller's grant does
-  not reach it.
+  so without that scope the reviewer's check-status reads fail with
+  HTTP 403 and a clean diff can be reported as blocked
+  (ucdavis/bcs#964).
+  The `@v2` tag currently points at a commit that DOES request the
+  scope, which is why a caller lacking it fails at startup;
+  once `v2` is slid onto this change the model job stops requesting
+  it, and the 403 returns for everyone until the `v3` reinstates it.
+  Keep the grant through both: it is what makes a caller work now and
+  what makes the `v3` cost nothing later.
   The reusable workflow does not request it at `@v2`, because a called
   workflow cannot request a permission its caller lacks --
   the run ends in `startup_failure` before any job starts,
   which is how the `v2` slide for that grant broke 17 of the 18
-  repositories pinning `@v2`
+  repositories pinning this workflow at `@v2`
   ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
-  carries the derivation, and tracks how many are still broken --
-  that number falls as consumers add the grant, so it is not
-  restated here).
+  carries the derivation;
+  how many still lack the grant falls as consumers add it, and is
+  tracked in [gha#833](https://github.com/Morrison-Lab/gha/issues/833)
+  as the `v3` precondition rather than restated here).
   Granting it now costs nothing and pre-positions the caller
   for the `v3` tracked in
   [gha#833](https://github.com/Morrison-Lab/gha/issues/833).
