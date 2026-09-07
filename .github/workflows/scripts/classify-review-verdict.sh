@@ -40,7 +40,33 @@ if not os.path.isfile(review_file):
 
 try:
     with open(review_file, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
+        # NUL bytes are replaced with a SPACE here, before anything downstream
+        # can rely on their absence (gha#827 review).
+        #
+        # strip_emphasis protects an intra-word underscore by swapping it for a
+        # NUL sentinel and swapping it back afterwards. That final replace
+        # cannot tell its own sentinel from a NUL that was already in the text,
+        # so a real one became an underscore, merged two words into a single
+        # \w-class token, and stopped a genuine rejection phrase from matching:
+        # "needs<NUL>more work" after the verdict heading scored
+        # ready-for-merge instead of needs-more-work. That is the false-CLEAN
+        # direction, which bypasses require-clean-verdict on a review that said
+        # the opposite.
+        #
+        # An earlier revision of the sentinel comment asserted NUL was "stripped
+        # from the review text by the time it reaches here". That was never
+        # checked and is false: check-review-execution.sh extracts the text with
+        # `jq -r`, which passes a NUL straight through, and errors="replace"
+        # does not touch it either, since NUL is a valid single-byte UTF-8
+        # codepoint rather than an invalid sequence. Verified:
+        #   python3 -c "import json; print(json.dumps({'a':'foo\x00bar'}))" \
+        #     | jq -r '.a' | od -c   ->   f o o \0 b a r
+        #
+        # A SPACE rather than deletion, for the reason the placeholder above is
+        # a word rather than nothing: deleting glues the neighbours together
+        # ("needs<NUL>more" -> "needsmore") and reproduces the same class of
+        # missed match it is meant to fix.
+        text = f.read().replace("\x00", " ")
 except Exception:
     record("false", "missing-file")
 
@@ -311,9 +337,17 @@ def strip_emphasis(s):
     # because `_` is a word character to `re`, so `\bnot\b` cannot match
     # inside the surviving NOT_CLEAN.
     #
-    # The sentinel is a character that cannot appear in the input: NUL is
-    # stripped from the review text by the time it reaches here, and using a
-    # printable stand-in risks colliding with real content.
+    # The sentinel is NUL, which is safe here only because the read at the top
+    # of this script replaces every NUL in the input with a space FIRST. A
+    # printable stand-in would risk colliding with real content instead.
+    #
+    # That ordering is load-bearing rather than incidental. The replace below
+    # cannot distinguish this sentinel from a NUL that was already in the text,
+    # so without the read-time scrub a real one became an underscore and merged
+    # two words of a genuine rejection into one token, scoring it clean
+    # (gha#827 review). An earlier revision of this comment asserted NUL was
+    # already stripped upstream; it is not, and the scrub is what makes the
+    # claim true rather than a hope.
     s = re.sub(r'(?<=[A-Za-z0-9])_(?=[A-Za-z0-9])', '\x00', s)
     return re.sub(r'[*_~`]+', ' ', s).replace('\x00', '_')
 

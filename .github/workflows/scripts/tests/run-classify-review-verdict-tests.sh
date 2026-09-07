@@ -1166,6 +1166,44 @@ run_test "A real rejection in prose after the verdict still wins" \
 On reflection this is blocked until the migration lands." \
 "false" "blocked"
 
+# --- gha#827 review: a real NUL byte must not flip a rejection to clean ---
+#
+# strip_emphasis protects an intra-word underscore with a NUL sentinel and
+# swaps it back afterwards, and that swap cannot tell its own sentinel from a
+# NUL already present in the text. Before the read-time scrub, a real NUL
+# became an underscore, merged "needs<NUL>more" into one \w-class token, and
+# scored a genuine rejection ready-for-merge -- the false-CLEAN direction,
+# which bypasses require-clean-verdict on a review that said the opposite.
+#
+# This cannot go through run_test: a bash variable cannot hold a NUL byte, so
+# the fixture is written with printf's octal escape instead. The paired control
+# is the same body with a space, which must reach the same verdict -- without
+# it the case would pass on a script that simply failed to parse the fixture.
+run_nul_test() {
+  local name="$1" sep="$2" expected_clean="$3" expected_verdict="$4"
+  local tmp_file out_file
+  tmp_file="$(mktemp)"
+  out_file="$(mktemp)"
+  printf '### Verdict\n\n**Ready for merge**\n\nOn reflection this needs%bmore work.\n' \
+    "$sep" > "$tmp_file"
+  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" > /dev/null
+  local actual_clean actual_verdict
+  actual_clean="$(grep -E '^clean=' "$out_file" | cut -d= -f2 || true)"
+  actual_verdict="$(grep -E '^verdict=' "$out_file" | cut -d= -f2 || true)"
+  rm -f "$tmp_file" "$out_file"
+  if [[ "$actual_clean" == "$expected_clean" && "$actual_verdict" == "$expected_verdict" ]]; then
+    (( passed++ )) || true
+  else
+    echo "FAIL: $name (expected clean=$expected_clean verdict=$expected_verdict, got clean=$actual_clean verdict=$actual_verdict)" >&2
+    (( failed++ )) || true
+  fi
+}
+
+run_nul_test "A real NUL byte does not flip a rejection to clean" '\000' \
+  "false" "needs-more-work"
+run_nul_test "Control: the same body with a space is also a rejection" ' ' \
+  "false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
