@@ -3759,9 +3759,12 @@ That distinction is what makes the update-branch trick work: it does not
 change who authored the PR, only who triggered the next synchronize event.
 
 Measured on `Morrison-Lab/gha#838`, 2026-09-07: on head `ca6ce946`,
-`review / claude-review` reported `skipping` under the gate above, so no
+`review / claude-review` was skipped under the gate above, so no
 verdict existed and `scripts/check-pr-fully-clean.py` reported the PR not
 fully clean ("No automated review comments or reviews found").
+Grep for the right string when reading a log: the check-runs API reports
+`conclusion: "skipped"`, while `gh pr checks` renders that same state as
+`skipping`.
 Running:
 
 ```bash
