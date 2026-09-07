@@ -697,7 +697,12 @@ a SHA is immutable, so a re-pointed tag or a compromised upstream can't silently
 change what runs -- which matters here because jobs like the preview deploy run
 with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.github/dependabot.yml)
 bumps these pins as upstreams publish releases, so they stay current instead of
-freezing. When adding a new third-party action, pin it the same way.
+freezing.
+One action is deliberately exempt: `actions/ai-inference`'s majors are
+ignored, because v3 removed the transport `summary.yml` uses, so that pin is
+frozen pending the migration in
+[gha#835](https://github.com/Morrison-Lab/gha/issues/835).
+When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
 templates intentionally track the moving major tag (currently `@v1`, except

@@ -3,7 +3,9 @@
 # Every third-party action in this repo is pinned to a full commit SHA (with the
 # version in a trailing comment) for supply-chain hardening; see README ("Pinning
 # third-party actions"). Dependabot bumps those pins as upstreams publish new
-# releases, so the pins stay current instead of silently freezing.
+# releases, so the pins stay current instead of silently freezing --- with
+# one exception, the `ignore` block below, which deliberately freezes
+# `actions/ai-inference` at its last usable major (gha#834, gha#835).
 #
 # The `/` entry below scans `.github/workflows/`; the composite actions
 # (top-level and internal `.github/actions/*` alike) live in their own
@@ -41,7 +43,7 @@ updates:
       # actions/ai-inference v3 removed the `endpoint` input outright and
       # switched to a Copilot-CLI-only provider that the runner must install
       # and authenticate first. summary.yml passes `endpoint`, passes a
-      # non-Copilot `model`, and installs no CLI, so the v3 bump in #828
+      # non-Copilot `model`, and installs no CLI, so the v3 bump in gha#828
       # broke it (gha#834). On a real run that failure would be silent --
       # the step is continue-on-error and the only handling is a warning --
       # so summary-tests was the sole detector, and it went red on main.
