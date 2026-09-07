@@ -3,9 +3,10 @@
 Repos that call `Morrison-Lab/gha` reusable workflows from their
 `.github/workflows/`.
 
-> **Note:** This list helps us notify consumers before moving the `@v1` tag in
-> a breaking way (or cutting `@v2`). It is **not** authoritative -- always
-> verify with a code search when releasing a breaking change.
+> **Note:** This list helps us notify consumers before moving a major tag in
+> a breaking way (or cutting the next one).
+> It is **not** authoritative --
+> always verify with a code search when releasing a breaking change.
 > Search **both** paths: a repo still on the old `d-morrison/gha` path has not
 > migrated yet, and is currently broken rather than merely stale, since that
 > path no longer resolves.
@@ -14,8 +15,9 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > An owner-scoped list goes stale silently.
 > Measured 2026-09-07 against the 18 repositories pinning
 > `claude-code-review.yml@v2`:
-> the pre-2026-09-06 owner list
-> (`d-morrison`, `ucdavis`, `UCD-SERG`, `UCLA-PHP`, `UCD-IDDRC`)
+> the owner list this commit replaces
+> (`d-morrison`, `ucdavis`, `UCD-SERG`, `UCLA-PHP`, `UCD-IDDRC`),
+> whose names last changed 2026-06-18,
 > returned 10 of them,
 > silently missing 8 --- the 7 under `Morrison-Lab` and
 > `Lacaedemon/sparta`.

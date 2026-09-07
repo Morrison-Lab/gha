@@ -81,6 +81,9 @@ Guidance for Claude Code when working in this repository.
   major=$(git ls-remote --tags origin 'v*.*.*' \
     | sed 's#.*refs/tags/##; s/\^{}$//' \
     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
+  # --limit: a truncated gh search is silent. Re-raise the cap and re-run
+  # if the hit count comes back EQUAL to it (see REVDEPS.md). Measured
+  # 2026-09-07, the busiest workflow was claude.yml at 29 hits.
   gh search code "Morrison-Lab/gha/.github/workflows/<name>.yml@$major" \
     --json repository,path --limit 100
   ```
@@ -108,8 +111,7 @@ Guidance for Claude Code when working in this repository.
     # diff across a range that adds one -- 402d17a3~1..402d17a3, which
     # added check-code-similarity.yml (gha#728) -- with and without it.
     git diff --diff-filter=M "$tagsha" FETCH_HEAD -- "$wf" \
-      | grep -E '^\+ +([a-z-]+: (read|write)|permissions: (read|write)-all)' \
-      && echo "  ^^ in $wf"
+      | grep -E '^\+ +[a-z-]+: (read|write)' && echo "  ^^ in $wf"
   done
   ```
 
@@ -126,6 +128,13 @@ Guidance for Claude Code when working in this repository.
   It also enumerates callees from the WORKING TREE while diffing
   `FETCH_HEAD`, so a callee that exists on `main` but not in your checkout
   is skipped silently.
+  The value pattern is unanchored, so `write` matches the prefix of
+  `write-all` and an indented `permissions: write-all` is caught --- but a
+  WORKFLOW-level one at column 0 is not, since the pattern requires leading
+  space.
+  No callee has a workflow-level block today (every callee job declares its
+  own, which would override one anyway), so that gap is currently
+  unreachable rather than merely unlikely.
   Confirm each hit against the two commits before treating it as a stop.
 
 - **Re-read `main`'s tip immediately before dispatching, and again after.**
