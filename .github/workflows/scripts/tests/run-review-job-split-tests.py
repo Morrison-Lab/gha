@@ -27,8 +27,11 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s)
-   and `checks: read` (the model job's check-run reads 403 without it,
-   gha#829), and the model job itself requests `checks: read`.
+   and `checks: read`, which callers grant ahead of a v3 that will
+   request it. The model job itself requests exactly
+   contents/pull-requests/issues/actions and no more: a callee cannot
+   request a permission its caller lacks without startup-failing the
+   whole run for that caller (gha#831).
 8. Every `steps.fail-check*.outputs.<name>` the workflow reads is declared
    in run-review-guard/action.yml. A composite's step outputs are
    invisible to its caller unless re-declared, and gha#804's first draft
@@ -169,10 +172,18 @@ def check_workflow(
         "claude-review does not grant id-token: write "
         "(App-token exchange is skipped; its defaults are write)",
     )
+    # An exact set, not a per-key check. A reusable workflow's job cannot
+    # request a permission its caller lacks -- the run ends in
+    # startup_failure before any job starts -- so ANY addition here is a
+    # breaking change for every consumer that has not granted it, and
+    # belongs in a major-tag bump rather than a v2 slide. #830 added
+    # checks: read, and the v2 slide onto it killed review dispatch in 18
+    # consumer repositories (gha#831). Keyed on the whole set so the next
+    # addition fails here whatever it is called.
     check(
-        review_perms.get("checks") == "read",
-        "claude-review grants checks: read "
-        "(GET .../commits/{ref}/check-runs 403s without it, gha#829)",
+        set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
+        "claude-review requests exactly contents/pull-requests/issues/actions "
+        "(adding one breaks every caller lacking it -- gha#831; needs a v3)",
     )
     check(
         post_perms.get("pull-requests") == "write",
@@ -805,8 +816,9 @@ def check_workflow(
         check(wf_doc.is_file(), "website/workflows.qmd exists")
         if wf_doc.is_file():
             check(
-                "`actions` / `checks: read`" in wf_doc.read_text(encoding="utf-8"),
-                "website/workflows.qmd model-scope list includes checks: read",
+                "`issues` / `actions: read`" in wf_doc.read_text(encoding="utf-8"),
+                "website/workflows.qmd model-scope list ends at actions: read "
+                "(the model job holds no checks: read -- gha#831)",
             )
         dogfood = root / ".github" / "workflows" / "claude-review.yml"
         check(dogfood.is_file(), ".github/workflows/claude-review.yml exists")
@@ -941,7 +953,6 @@ jobs:
       pull-requests: read
       issues: read
       actions: read
-      checks: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
       - run: echo "$FC_QUOTA_REASON"
@@ -1140,8 +1151,7 @@ runs:
                 "      contents: read\n"
                 "      pull-requests: read\n"
                 "      issues: read\n"
-                "      actions: read\n"
-                "      checks: read\n",
+                "      actions: read\n",
                 "    permissions: write-all\n",
                 1,
             )
