@@ -22,8 +22,13 @@ Repos that call `Morrison-Lab/gha` reusable workflows from their
 > returned 10 of them,
 > silently missing 8 --- the 7 under `Morrison-Lab` and
 > `Lacaedemon/sparta`.
-> With those two owners added it returns all 18 --- under the PINNED,
-> per-workflow query below, not under the broad fallback beside it.
+> With those two owners added it returns all 18.
+> The broad fallback beside it covers them too --- measured 2026-09-07 it
+> returns 304 hits across 28 repositories, a strict superset --- but it
+> cannot tell you WHICH callers pin the workflow you are about to change,
+> which is the question a slide turns on.
+> Use the per-workflow form for that, and the broad sweep to find callers
+> you did not know existed.
 >
 > **Code search is an INDEX, and it lags.**
 > A caller edited minutes ago may not be in it yet, and the result does not
