@@ -103,9 +103,13 @@ Guidance for Claude Code when working in this repository.
   # Resolve the tag from the REMOTE: a plain fetch will not move an existing
   # local tag, so a local rev-parse reports the PRE-slide commit (see
   # "Re-running failed jobs cannot verify a tag slide" below).
-  tagsha=$(git ls-remote origin "refs/tags/$major" "refs/tags/$major^{}" \
-    | tail -1 | cut -f1)
-  git fetch -q origin main
+  # --tags --force fetches the tag OBJECT, not just its sha. ls-remote reads
+  # the remote without fetching anything, so on a shallow clone -- which is
+  # what actions/checkout gives you by default -- diffing against that sha
+  # dies with "fatal: bad object". --force because a slide moves the tag.
+  # Reproduced on a --depth 1 clone, 2026-09-07.
+  git fetch -q --tags --force origin main
+  tagsha="refs/tags/$major"
   # Both extensions: a *.yml-only glob is the drift this repo has been
   # bitten by twice (see workflow_discovery.py), and it is untestable here
   # because the tree currently holds no *.yaml workflow.
