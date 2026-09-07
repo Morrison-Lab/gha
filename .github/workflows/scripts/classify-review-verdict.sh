@@ -140,7 +140,76 @@ def strip_machine_payloads(src):
         out.append(line)
     return out
 
-lines = strip_machine_payloads(text.strip().splitlines())
+# Inline code spans are quoted strings, not verdict statements (gha#827).
+#
+# strip_emphasis below deletes the tick CHARACTERS and classifies the words
+# inside, so `NOT_CLEAN` -- a backticked identifier naming an instrument's
+# output -- became the two words "NOT CLEAN" and matched the negated-positive
+# pattern as a rejection. Because the scan is last-match-wins, that line
+# outranked the `**Ready for merge**` line above it and flipped an approving
+# review to needs-more-work (measured on Morrison-Lab/ai-config#3154, run
+# 33832648873).
+#
+# This is the inline-code sibling of gha#819's fenced-block exclusion, and the
+# reason it must be a separate pass is that the review bot's own defence does
+# not reach it: run-claude-review-attempt's brief tells the reviewer to wrap
+# quoted verdict words in single backticks, so following the brief EXACTLY is
+# what produces the false negative.
+#
+# The span is replaced by a placeholder word rather than deleted. Deleting it
+# closes its neighbours up, and that direction can INVENT a match rather than
+# only lose one: `no `x` findings` would become "no findings", which the
+# negated-negative pattern reads as an affirmative clean statement. The
+# placeholder blocks that, because noun_neg_gap_pattern admits only a fixed
+# list of adjectives and "codespan" is not among them. It must also be a word
+# no pattern here matches, which rules out the obvious "code".
+#
+# Newlines inside a span are preserved so the line COUNT does not change --
+# last_idx below is a line index, so collapsing a multi-line span would shift
+# every heading position after it.
+#
+# Closing follows CommonMark rather than `\`[^\`]*\``: a span opens on a run of
+# N backticks and closes only on a run of exactly N. The naive pattern matches
+# the empty span between the two opening ticks of a ``..`` span and leaks the
+# contents through, which is the same bug this repo already records for
+# check-new-line-breaks' strip_inline_markup. An unclosed run is left alone.
+def strip_code_spans(src_lines):
+    text = "\n".join(src_lines)
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] != "`":
+            out.append(text[i])
+            i += 1
+            continue
+        j = i
+        while j < n and text[j] == "`":
+            j += 1
+        run = j - i
+        close = -1
+        k = j
+        while k < n:
+            if text[k] == "`":
+                m = k
+                while m < n and text[m] == "`":
+                    m += 1
+                if m - k == run:
+                    close = k
+                    break
+                k = m
+            else:
+                k += 1
+        if close == -1:
+            out.append(text[i:j])
+            i = j
+            continue
+        out.append(" codespan ")
+        out.append("\n" * text[j:close].count("\n"))
+        i = close + run
+    return "".join(out).split("\n")
+
+lines = strip_code_spans(strip_machine_payloads(text.strip().splitlines()))
 header_regex = re.compile(
     r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict'
     r'|^[ \t>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)'
@@ -174,7 +243,22 @@ if not content_lines:
 
 def strip_emphasis(s):
     # Strip markdown bold, italic, strikethrough, code ticks so inline styling around words is normalized
-    return re.sub(r'[*_~`]+', ' ', s)
+    #
+    # An underscore BETWEEN two alphanumerics is part of an identifier, not
+    # emphasis around a word: NOT_CLEAN is one token, and splitting it into
+    # "NOT CLEAN" is what let a bare (unbackticked) mention of an instrument's
+    # output read as a rejection (gha#827). Markdown does not treat an
+    # intra-word underscore as emphasis either, so this matches the renderer.
+    #
+    # Protecting it is enough on its own -- no separate guard is needed --
+    # because `_` is a word character to `re`, so `\bnot\b` cannot match
+    # inside the surviving NOT_CLEAN.
+    #
+    # The sentinel is a character that cannot appear in the input: NUL is
+    # stripped from the review text by the time it reaches here, and using a
+    # printable stand-in risks colliding with real content.
+    s = re.sub(r'(?<=[A-Za-z0-9])_(?=[A-Za-z0-9])', '\x00', s)
+    return re.sub(r'[*_~`]+', ' ', s).replace('\x00', '_')
 
 def expand_contractions(s):
     contractions = [

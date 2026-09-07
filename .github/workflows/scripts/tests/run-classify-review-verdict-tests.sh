@@ -1040,6 +1040,88 @@ run_test "An empty comment terminates rather than swallowing the rest" \
 blocked" \
 "false" "blocked"
 
+# --- gha#827: inline code spans are quoted strings, not verdict statements ---
+#
+# The first case is the measured failure verbatim (Morrison-Lab/ai-config#3154,
+# run 33832648873): a backticked identifier after the verdict heading was
+# normalised to "NOT CLEAN" and, under last-match-wins, outranked the approving
+# line above it. Confirmed to report clean=false verdict=needs-more-work against
+# the pre-fix script.
+run_test "A backticked NOT_CLEAN after the verdict does not flip it" \
+"### Verdict
+
+**Ready for merge**
+
+\`check-pr-fully-clean.py\` reports \`NOT_CLEAN\`, but every blocker is one of the two non-content categories." \
+"true" "ready-for-merge"
+
+# The bare identifier, with no backticks at all. This is the strip_emphasis
+# half of the fix rather than the code-span half, so it fails if only the span
+# pass is added.
+run_test "A bare NOT_CLEAN identifier is one token, not a negation" \
+"### Verdict
+
+**Ready for merge**
+
+The instrument printed NOT_CLEAN for a base-currency reason only." \
+"true" "ready-for-merge"
+
+# The span pass must not INVENT a verdict by closing neighbours up: deleting
+# the span outright turns this into "no findings", which the negated-negative
+# pattern reads as affirmatively clean. The placeholder is what prevents it.
+run_test "A code span between a negator and its target does not fabricate a match" \
+"### Verdict
+
+Needs more work: no \`--fail-under\` findings threshold is configured." \
+"false" "needs-more-work"
+
+# A closing run must be exactly as long as the opener. The naive
+# \`[^\`]*\` pattern matches the empty span between the two opening ticks of a
+# double-tick span and leaks the contents through, which would re-expose the
+# identifier this fix exists to hide.
+run_test "A double-backtick span is closed only by a double-backtick run" \
+"### Verdict
+
+**Ready for merge**
+
+The flag is \`\`NOT_CLEAN\`\` in the report." \
+"true" "ready-for-merge"
+
+# An unclosed run is left alone rather than swallowing the rest of the review,
+# so a real finding after it is still scored.
+run_test "An unclosed backtick run does not swallow a later finding" \
+"### Verdict
+
+**Ready for merge**
+
+Note the stray \` tick here.
+Changes requested on the second pass." \
+"false" "changes-requested"
+
+# Newlines inside a span are preserved, so a multi-line span cannot shift the
+# line index the verdict-heading scan depends on.
+run_test "A multi-line code span does not shift the verdict heading" \
+"\`\`
+### Verdict
+is quoted here
+\`\`
+
+### Verdict
+
+**Ready for merge**" \
+"true" "ready-for-merge"
+
+# A genuine blocking statement in ordinary prose after the verdict still wins.
+# Without this, a fix that simply stopped scanning post-verdict prose would
+# pass every case above.
+run_test "A real rejection in prose after the verdict still wins" \
+"### Verdict
+
+**Ready for merge**
+
+On reflection this is blocked until the migration lands." \
+"false" "blocked"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
