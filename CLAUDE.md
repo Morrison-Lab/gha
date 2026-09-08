@@ -3839,6 +3839,85 @@ rather than a parse error -- nothing red anywhere.
 - **Don't:** assume `yaml.safe_load` rejects duplicate keys -- it does not;
   it silently keeps the last one.
 
+## Check a claim against the artifact it is about, not an adjacent one
+
+Three review findings landed in one session (2026-09-07, PRs #841 and #842),
+and all three have the same shape: an assertion about an artifact that was
+never checked against the artifact itself.
+Each time the author had reasoned thoroughly about something adjacent, and
+each time the reviewer found the gap by fetching the live object instead.
+This is the gha-specific instance of
+[`Morrison-Lab/ai-config`'s `shared/workflow/verify-the-right-artifact.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/workflow/verify-the-right-artifact.md).
+
+1. **A YAML sweep's own pass condition, not the YAML.**
+   The section directly above this one is the first case:
+   a duplicate-key check whose success condition
+   (`yaml.safe_load` plus a one-key mapping)
+   was satisfiable by the exact defect it existed to detect,
+   so the reported count (one broken stub) was wrong;
+   the real count is five (gha#839, caught in PR #841 round 1).
+
+2. **A code comment's claim about an upstream pipeline, not the pipeline.**
+   `classify-review-verdict.sh` protected an intra-word underscore with a
+   `\x00` sentinel and a comment asserting
+   "NUL is stripped from the review text by the time it reaches here."
+   That was never traced and is false:
+   `check-review-execution.sh` extracts the review body with `jq -r`,
+   which passes a literal NUL byte straight through,
+   and Python's `errors="replace"` does not touch it either,
+   since NUL is a valid single-byte UTF-8 codepoint rather than an invalid
+   sequence.
+   A real NUL between two words of a genuine rejection collided with the
+   sentinel and scored the review clean (gha#842 round 2,
+   fixed by reading the file through `.replace("\x00", " ")` instead of
+   assuming the precondition).
+
+3. **A PR's claim about a linked issue's current state, not the issue.**
+   Issue #839 was retitled from "one file" to "five stubs" and carried a
+   correction comment within the hour, but its body was left arguing the
+   original single-file narrative for close to three hours afterward.
+   PR #841's own body then asserted #839 "was corrected" while that body
+   mismatch was still live.
+   The reviewer fetched #839's body directly rather than trusting the PR's
+   account of it (round 3), and the body was edited to match minutes later.
+
+The common remedy is not "be more careful" --- each case involved a
+thorough check, just of the wrong object.
+It is: when a claim is about a specific artifact (a parsed file, an
+upstream script's actual behavior, an issue's live body), fetch that
+artifact and compare the claim to it, rather than to a description of it,
+a summary of it, or an assumption about how its neighbor behaves.
+
+**Mechanization status differs across the three, and that is worth
+recording rather than glossing over.**
+Case 1 is lexically decidable (a non-strict YAML load paired with a bare
+key-count assertion), and
+[`Morrison-Lab/ai-config#3344`](https://github.com/Morrison-Lab/ai-config/issues/3344)
+tracks a hook for it.
+Case 3's shape (a `gh issue edit --title` with no accompanying body edit,
+or a PR body asserting another issue "was corrected") is a narrower
+lexical pattern with no confirmed tracking issue or hook as of this
+writing; check `Morrison-Lab/ai-config`'s hooks and open issues before
+filing a duplicate, and file one if none exists.
+Case 2 was judged **not mechanizable**: it is a domain-correctness claim
+embedded in a code comment, with no decidable lexical signal separating a
+checked claim from an unchecked one.
+Saying so explicitly is part of the record, not a gap in it --- not
+every instance of this failure class reduces to a hook.
+
+- **Do:** fetch the parsed structure, the upstream script, or the live
+  issue/PR body a claim is about, before writing the claim down.
+
+- **Do:** name, when a fix is not mechanizable, what makes it so (no
+  lexical signal, judgment-dependent) rather than leaving it unaddressed
+  with no note.
+
+- **Don't:** infer an issue's current body from its title, a comment on
+  it, or another PR's description of it --- fetch the body.
+
+- **Don't:** let a validator's own success condition go unexamined merely
+  because it is "just" the check, rather than the code under review.
+
 ## A PR fixing claude-code-review.yml (or claude.yml) itself can't self-verify before merge
 
 This repo's own dogfood workflow (`.github/workflows/claude-review.yml`)
