@@ -449,7 +449,20 @@ jobs:
         env:
           ROOT_LANDING_TARGET: ${{ inputs.root-landing-target }}
         run: |
-          echo "landing_target=$ROOT_LANDING_TARGET" >> "$GITHUB_ENV"
+          # `root-landing-target` is the only caller-supplied `inputs.*` string
+          # this workflow writes to `$GITHUB_ENV`; every other write here is a
+          # literal (`dev`, `latest-tag`, `true`, `false`). So there is no
+          # existing key=value convention to be consistent with, and writing it
+          # key=value would make this the one line where a newline in the value
+          # could append a second assignment. Delimiter form instead, with the
+          # random delimiter `claude-code-review.yml`'s `emit_quota_message`
+          # and `run-small-model-agent`'s `result_json` already use.
+          delim="eof_$(openssl rand -hex 8)"
+          {
+            echo "landing_target<<${delim}"
+            printf '%s\n' "$ROOT_LANDING_TARGET"
+            echo "${delim}"
+          } >> "$GITHUB_ENV"
           echo "Root landing page pinned to /$ROOT_LANDING_TARGET/"
 
       # On first rollout, /latest-tag/ may not exist yet on gh-pages.
