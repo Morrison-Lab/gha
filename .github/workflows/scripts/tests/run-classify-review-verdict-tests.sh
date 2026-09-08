@@ -1208,8 +1208,8 @@ run_nul_test "Control: the same body with a space is also a rejection" ' ' \
 #
 # The structured review-data payload states its own verdict directly, and a
 # machine reader should trust that field rather than re-derive it from the
-# prose triage-exemption wording (which the fallback keywords below also
-# cover on their own). Measured on sparta#1547 (a scheduled, trivial
+# prose triage-exemption wording (which the anchored "No action" rule below
+# also covers on its own). Measured on sparta#1547 (a scheduled, trivial
 # baseline-refresh PR): the review body's "### Verdict" section read "No
 # action -- ... does not need code review", which matched none of the old
 # clean_kw phrases and scored unrecognized, even though the same comment's
