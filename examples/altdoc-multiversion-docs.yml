@@ -91,6 +91,10 @@ jobs:
       # legacy-paths: main=dev      # redirect retired version dirs, e.g. a
       #                             # site that used to publish the default
       #                             # branch's docs to /main/ instead of /dev/
+      # root-landing-target: latest-tag
+      #                             # pin the site root's redirect to the
+      #                             # released docs, instead of letting each
+      #                             # deploy point it at whatever it built
       # version-dropdown-title-template: '{version}'  # navbar Versions menu
       #                             # label; "{version}" is the version being
       #                             # rendered, e.g. "v1.2.3 (stable)". Try
