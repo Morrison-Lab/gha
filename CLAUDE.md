@@ -2317,7 +2317,7 @@ path: a non-greedy `(.*?)\s*-->` regex truncated on a `-->` inside a JSON
 string and fell back silently (fixed with `raw_decode()`, which parses one
 JSON value from an offset regardless of string contents); a bare "no
 action" on a later line beat an earlier rejection under the scan's
-last-line-wins rule (fixed by anchoring the phrase to the first non-empty
+last-match-wins rule (fixed by anchoring the phrase to the first non-empty
 verdict line and voiding it when that line still carries open-work or
 rejection vocabulary); and a `CLEAN` payload with non-empty `findings` was
 trusted outright (fixed by falling through to the prose scan instead;
