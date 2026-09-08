@@ -25,3 +25,30 @@
   earlier, real rejection. The separate `does not need (code )?review`
   keyword was removed rather than anchored, since it has no fixed position
   in the triage template for an anchor to key on.
+
+- **A second review round tightened four more edges of the same
+  classifier** (#845). The `no action` anchor above required only that the
+  verdict line START with those two words, which also matched ordinary
+  prose describing unresolved work ("No action was taken on the flaky
+  test, but there are still open issues to resolve here."); it now
+  additionally requires that the rest of the line carry no still-open
+  vocabulary (`still`, `remain*`, `open`, `unresolved`, `outstanding`,
+  `but`, `however`, `not yet`, `pending`) and no rejection keyword, and
+  optionally allows a trailing `needed`/`required`/`necessary`. A heading
+  and its verdict written on the same line (`### Verdict: No action --
+  trivial`, `**Verdict:** No action -- ...`) used to keep the `Verdict:`
+  label attached to the front of `content_lines[0]`, which defeated the
+  line-anchored `no action` check; the label is now stripped so only the
+  verdict content itself becomes `content_lines[0]`. The fence-tracking
+  regexes shared by the payload scan and `strip_machine_payloads` only
+  recognized 0-3 spaces of indentation before a fence marker, so a tab- or
+  4-space-indented ` ``` ` fence around a stale `review-data` payload was
+  not tracked as fenced and the payload inside it was trusted; both
+  regexes now also recognize a fence preceded by a tab or by any number of
+  spaces, and a payload line indented by a tab or 4+ spaces with no fence
+  at all (CommonMark's plain indented code block) is excluded from the
+  payload scan directly. Finally, the `no action` anchor used to run
+  unconditionally against `content_lines[0]`, so an emphasis-only first
+  line (a bare `**`) hid a real verdict stated on a later line; the anchor
+  now runs against the first content line that is non-empty after
+  `strip_emphasis`.

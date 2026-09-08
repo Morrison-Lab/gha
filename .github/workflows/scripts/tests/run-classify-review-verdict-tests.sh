@@ -1371,6 +1371,100 @@ run_test "'does not need review' after Changes requested stays a rejection" \
 This does not need review from a human once that's fixed." \
 "false" "changes-requested"
 
+# --- gha#845 second review, finding 1: "no action" anchor was too loose ---
+#
+# The anchor only checked that the verdict line STARTED with "no action",
+# which is necessary but not sufficient: this sentence also starts with
+# those two words while describing unresolved work, and used to score
+# clean=true. The fix requires the rest of that line to carry no
+# still-open vocabulary and no rejection keyword before the anchor is
+# allowed to classify; here it fires on neither "but" nor "still open", so
+# the anchor backs off and nothing else in the line matches either.
+run_test "'No action ... but still open issues' is not the clean exemption" \
+"### Verdict
+
+No action was taken on the flaky test, but there are still open issues to resolve here." \
+"false" "unrecognized"
+
+# The anchor still recognizes the template's actual shape, including the
+# now-permitted "needed" suffix, once the guard clauses find nothing open.
+run_test "'No action needed -- trivial rename.' is the clean exemption" \
+"### Verdict
+
+No action needed -- trivial rename." \
+"true" "ready-for-merge"
+
+# --- gha#845 second review, finding 2: heading and verdict on one line ---
+#
+# header_regex matches "Verdict" wherever it appears on the line, so a
+# heading and its verdict content written on the SAME line used to survive
+# into content_lines[0] with the "Verdict:" label still attached at the
+# front -- which defeated the line-anchored no_action_anchor check and
+# scored unrecognized. Stripping the leading heading/label prefix from
+# verdict_lines[0] fixes both the ATX-heading-with-colon form and the
+# bold-label form.
+run_test "ATX heading and verdict on one line ('### Verdict: No action -- trivial')" \
+"### Verdict: No action -- trivial" \
+"true" "ready-for-merge"
+
+run_test "Bold-label heading and verdict on one line ('**Verdict:** No action ...')" \
+"## Code Review
+
+**Verdict:** No action -- automated, trivial PR that does not need code review." \
+"true" "ready-for-merge"
+
+run_test "ATX heading and a rejection on one line ('### Verdict: Needs more work')" \
+"### Verdict: Needs more work" \
+"false" "needs-more-work"
+
+# --- gha#845 second review, finding 3: tab/4-space-indented fences ---
+#
+# _FENCE_OPEN_RE/_FENCE_CLOSE_RE used to allow only 0-3 spaces of
+# indentation before a fence marker, so a tab- or 4-space-indented ```
+# fence was not tracked as a fence at all -- the review-data payload it
+# enclosed was then scanned like ordinary unfenced text and trusted as the
+# live verdict even though the prose verdict said "Needs more work". Both
+# regexes now recognize a fence preceded by a tab or by any number of
+# spaces.
+run_test "A tab-indented fence around a stale CLEAN payload does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+	\`\`\`
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->
+	\`\`\`" \
+"false" "needs-more-work"
+
+# A payload indented 4 spaces with NO fence markers at all is CommonMark's
+# plain indented code block -- a construct the old fence tracking never
+# modeled either way, since there is no ``` to look for. It is excluded
+# from the payload scan directly (_INDENTED_RE), rather than through fence
+# tracking.
+run_test "A 4-space-indented stale CLEAN payload (no fence) does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+    <!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->" \
+"false" "needs-more-work"
+
+# --- gha#845 second review, finding 4: an emphasis-only first line ---
+#
+# content_lines[0] used to be the line the anchor check ran against,
+# unconditionally. An emphasis-only line ("**" with nothing else) strips to
+# empty text, so when the real verdict sentence sits on a LATER content
+# line, the anchor never saw it and the review scored unrecognized. The
+# check now runs on the first content line that is non-empty after
+# strip_emphasis, which is content_lines[1] here.
+run_test "An emphasis-only first content line does not hide the real verdict" \
+"### Verdict
+
+**
+
+No action needed -- automated, trivial PR." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

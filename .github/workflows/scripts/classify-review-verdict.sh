@@ -91,9 +91,31 @@ if not text.strip():
 # as the live verdict: a review whose prose verdict was "Needs more work"
 # and which blockquoted (or fenced) an older CLEAN payload was classified
 # clean=true, because the payload scan searched the raw, unstripped text.
-_FENCE_OPEN_RE = re.compile(r'[ ]{0,3}(`{3,}|~{3,})')
-_FENCE_CLOSE_RE = re.compile(r'[ ]{0,3}(`{3,}|~{3,})[ \t]*$')
+# CommonMark only recognizes a fence indented 0-3 spaces; 4+ spaces or a tab
+# is an INDENTED code block instead, a distinct construct these two regexes
+# used to ignore entirely. That is a payload-trust gap rather than a
+# rendering nuance here (gha#845 second review, finding 3): a
+# `<!-- review-data: ... -->` line sitting inside a tab- or 4-space-indented
+# fence was tracked as neither fenced nor blockquoted, so the payload scan
+# below trusted it as the live verdict even while the prose verdict said
+# otherwise. The fix widens both patterns to ALSO recognize a fence marker
+# preceded by a tab or by any number of spaces (not only 0-3), so a deeply
+# indented ``` fence is tracked the same as a top-level one. That is
+# deliberately broader than CommonMark's own rule -- erring toward treating
+# more content as fenced only ever REMOVES trust from a payload, never adds
+# it, which is the safe direction for a fast path whose whole point is
+# deciding what to trust.
+_FENCE_OPEN_RE = re.compile(r'[ \t]*(`{3,}|~{3,})')
+_FENCE_CLOSE_RE = re.compile(r'[ \t]*(`{3,}|~{3,})[ \t]*$')
 _BLOCKQUOTE_RE = re.compile(r'[ \t]*>')
+# A line indented by a tab or 4+ spaces is CommonMark's plain indented code
+# block, with no fence markers at all -- so a `<!-- review-data: ... -->`
+# line indented that way was previously tracked as ordinary unfenced,
+# unquoted text and trusted like any other line. Simplest fix (gha#845
+# second review, finding 3): exclude such a line from the payload candidate
+# text outright, rather than modeling list-continuation indentation, which
+# this scan has no other reason to understand.
+_INDENTED_RE = re.compile(r'^(?:\t| {4,})')
 
 
 def _open_fence(line):
@@ -161,7 +183,7 @@ def _iter_fence_and_quote_state(lines):
 # tracking strip_machine_payloads uses below, so the two cannot disagree
 # about what counts as fenced.
 _payload_candidate_lines = [
-    ("" if (in_fence or quoted) else line)
+    ("" if (in_fence or quoted or _INDENTED_RE.match(line)) else line)
     for line, in_fence, quoted in _iter_fence_and_quote_state(text.splitlines())
 ]
 _payload_candidate_text = "\n".join(_payload_candidate_lines)
@@ -463,13 +485,40 @@ if last_idx == -1:
 
 verdict_lines = lines[last_idx:]
 
+# gha#845 second review, finding 2: verdict_lines[0] is always the line
+# header_regex matched -- the heading itself. The skip-check below already
+# drops it when it is heading-only ("### Verdict" or "**Verdict:**" with
+# nothing else), leaving the NEXT line as content_lines[0]. But a heading and
+# its verdict written on the SAME line ("### Verdict: No action -- trivial",
+# "**Verdict:** No action -- automated, trivial PR ...") is not heading-only,
+# so it used to survive into content_lines[0] verbatim, WITH the "Verdict:"
+# label still attached at the front. That label defeats the line-anchored
+# no_action_anchor check below, which requires the verdict content itself to
+# start the line -- and clean_kw carries no bare "no action" alternative to
+# fall back on (gha#845's first review already removed it as unanchored).
+# The fix strips a leading heading/label prefix from verdict_lines[0]
+# specifically, so only the REMAINDER after "Verdict:" becomes
+# content_lines[0], matching the heading-only case where that remainder was
+# always on its own line.
+_heading_prefix_re = re.compile(
+    r'^[ \t>*_#-]*(?:\*\*)?verdict:?(?:\*\*)?[: \t*_-]*',
+    re.IGNORECASE
+)
+
 content_lines = []
-for line in verdict_lines:
+for _vl_idx, line in enumerate(verdict_lines):
     if re.search(r'^[ \t>*_#-]*verdict[: \t*_-]*$', line, re.IGNORECASE) or \
        re.search(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict[: \t*_-]*$', line, re.IGNORECASE):
         continue
-    if line.strip():
-        content_lines.append(line.strip())
+    stripped = line.strip()
+    if not stripped:
+        continue
+    if _vl_idx == 0:
+        remainder = _heading_prefix_re.sub('', stripped, count=1).strip()
+        if remainder:
+            content_lines.append(remainder)
+        continue
+    content_lines.append(stripped)
 
 if not content_lines:
     content_lines = [l.strip() for l in verdict_lines if l.strip()]
@@ -583,20 +632,55 @@ clean_kw = re.compile(
 # review from a human once that's fixed" appearing as ordinary prose after
 # a real rejection.
 #
-# "no action" is kept, but ONLY as a check against content_lines[0] -- the
-# verdict line itself, i.e. the line immediately under the "### Verdict"
-# heading -- rather than as a mid-line alternative scanned against every
-# line. That is the triage template's actual shape: the exemption is
-# STATED as the verdict, not mentioned somewhere in the explanation below
-# it. Restricting the anchor to the verdict line is what lets "No action
-# has been taken since the last round" (a later, unrelated sentence) fail
-# to match while "**No action -- automated, trivial PR ...**" (the verdict
-# line itself) still does.
-no_action_anchor = re.compile(r'^\s*no\s+action\b', re.IGNORECASE)
+# "no action" is kept, but ONLY as a check against the verdict's own first
+# content line (see first_nonempty_idx below) rather than as a mid-line
+# alternative scanned against every line. That is the triage template's
+# actual shape: the exemption is STATED as the verdict, not mentioned
+# somewhere in the explanation below it. Restricting the anchor to the
+# verdict line is what lets "No action has been taken since the last round"
+# (a later, unrelated sentence) fail to match while "**No action --
+# automated, trivial PR ...**" (the verdict line itself) still does.
+#
+# Being the FIRST word of the verdict line is necessary but not sufficient
+# (gha#845 second review, finding 1): "No action was taken on the flaky
+# test, but there are still open issues to resolve here." also starts with
+# "no action", reads as ordinary triage prose rather than the clean
+# exemption, and scored clean=true. The template's actual shape has "no
+# action" stating the WHOLE verdict, with nothing left open after it -- so
+# the anchor now requires the rest of that line to carry no still-open
+# vocabulary (still_open_after_no_action) and no rejection keyword
+# (non_clean_kw / negated_positive_phrases). Any of those firing means the
+# line merely happens to start with the words "no action" while describing
+# unresolved work, so the anchor does not classify and the normal keyword
+# scan decides the line on its own -- which may still be "unrecognized" if
+# nothing else in it matches either.
+no_action_anchor = re.compile(
+    r'^\s*no\s+action(?:\s+(?:needed|required|necessary))?\b',
+    re.IGNORECASE
+)
+still_open_after_no_action = re.compile(
+    r'\b(?:still|remain\w*|open|unresolved|outstanding|but|however|not\s+yet|pending)\b',
+    re.IGNORECASE
+)
 footer_regex = re.compile(
     r'^[ \t>*_#-]*(\*\*)?(stopping\s+point|reviewed\s+commit|posted\s+by)\b',
     re.IGNORECASE
 )
+
+# gha#845 second review, finding 4: an emphasis-only first content line
+# ("**" with nothing else) hides the real verdict from the anchor check
+# above, which used to fire on content_lines[0] specifically regardless of
+# what survives strip_emphasis. "### Verdict\n\n**\n\nNo action needed --
+# automated, trivial PR." puts the actual verdict on content_lines[1], but
+# the old code checked content_lines[0] ("**", which strips to nothing) and
+# never looked further. The anchor now runs on the first content line whose
+# text is non-empty AFTER strip_emphasis, found here rather than assumed to
+# be index 0.
+first_nonempty_idx = None
+for _cl_idx, _cl in enumerate(content_lines):
+    if strip_emphasis(_cl).strip():
+        first_nonempty_idx = _cl_idx
+        break
 
 # Single ordered scan in document order: last verdict statement wins
 last_verdict = None
@@ -610,10 +694,14 @@ for line_index, line in enumerate(content_lines):
     neg_neg_spans = []
     line_matches = []
 
-    if line_index == 0:
+    if line_index == first_nonempty_idx:
         m = no_action_anchor.match(norm_line)
         if m:
-            line_matches.append((m.start(), "true", "ready-for-merge"))
+            rest = norm_line[m.end():]
+            if not still_open_after_no_action.search(rest) and \
+               not non_clean_kw.search(norm_line) and \
+               not negated_positive_phrases.search(norm_line):
+                line_matches.append((m.start(), "true", "ready-for-merge"))
 
     for m in negated_positive_phrases.finditer(norm_line):
         neg_pos_spans.append((m.start(), m.end()))
