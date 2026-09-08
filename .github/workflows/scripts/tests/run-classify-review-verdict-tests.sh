@@ -1233,10 +1233,13 @@ run_test "sparta#1547 shape: payload CLEAN wins even with unfamiliar prose" \
 Reviewed commit: abc" \
 "true" "ready-for-merge"
 
-# Same prose, no review-data block at all: the new clean_kw phrases
-# ("no action", "does not need (code )?review") must classify it on their
-# own, independent of the payload fast path above.
-run_test "Triage-exemption prose alone matches the new clean keywords" \
+# Same prose, no review-data block at all: this must classify clean on the
+# prose scan alone, independent of the payload fast path above. It passes
+# via the line-anchored no_action_anchor check (content_lines[0] starts
+# with "no action"), not via "does not need (code )?review" -- that phrase
+# was considered and deliberately not added to clean_kw (gha#845 review,
+# finding 4, above).
+run_test "Triage-exemption prose alone matches the anchored no-action rule" \
 "### Verdict
 
 **No action -- automated, trivial PR that does not need code review** (scheduled benchmark-baseline refresh with no code/behavior change)." \
@@ -1313,6 +1316,42 @@ run_test "A fenced stale CLEAN payload does not override Needs more work" \
 <!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->
 \`\`\`" \
 "false" "needs-more-work"
+
+# --- gha#845 third review, finding 1: a quoted heading/keyword wins the ---
+# --- prose scan, not only the payload scan above ---
+#
+# The two blockquote tests just above cover the review-data PAYLOAD scan,
+# which already blanked blockquoted lines before this PR. strip_machine_payloads
+# did not, so a blockquoted `> ### Verdict` heading still matched
+# header_regex (its third alternative allows a leading `>` in
+# `[ \t>*_#-]*`), moved last_idx to the quote, and a blockquoted
+# `> **Ready for merge**` after it then read as content_lines[0] and matched
+# clean_kw regardless of the leading `>` (`\bready\s+for\s+merge\b` does not
+# care what precedes it). Reproduced against the pre-fix script (52b7ad0):
+# this exact body classified clean=true verdict=ready-for-merge although its
+# own (unquoted) verdict says Needs more work.
+run_test "A blockquoted Ready-for-merge citation does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+> Earlier this said:
+> ### Verdict
+> **Ready for merge**" \
+"false" "needs-more-work"
+
+# Mirror of the test above: the body's own verdict is Ready for merge, and
+# what is quoted is an earlier Needs more work. Reproduced against 52b7ad0:
+# this body classified clean=false verdict=needs-more-work.
+run_test "A blockquoted Needs-more-work citation does not override Ready for merge" \
+"### Verdict
+
+**Ready for merge**
+
+> Earlier this said:
+> ### Verdict
+> **Needs more work**" \
+"true" "ready-for-merge"
 
 # gha#845 review, finding 2: the JSON body used to be captured with a
 # non-greedy `(.*?)\s*-->` regex, which cannot tell a "-->" INSIDE a JSON

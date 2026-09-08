@@ -17,3 +17,6 @@
   and with a heading-and-verdict-on-one-line form (`### Verdict: No action -- trivial`) stripped to its content first.
   The looser `does not need (code )?review` phrase was deliberately not added.
   Fences preceded by a tab or any run of spaces are now tracked as fences.
+  Blockquoted lines are now also blanked before the verdict-heading and prose scans,
+  the same way they were already blanked before the payload scan,
+  so a quoted `### Verdict` heading or a quoted `Ready for merge`/`Needs more work` keyword can no longer win the classification.

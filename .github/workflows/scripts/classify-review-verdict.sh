@@ -282,6 +282,19 @@ if isinstance(payload, dict) and "schema_version" in payload:
 # the end of the text. It covers top-level fences only; that sibling also
 # handles indented code blocks, and a fence nested four or more columns deep
 # inside a list is not recognized here (round 2, finding 4).
+#
+# Blockquoted lines are blanked too, not only fenced ones (gha#845 third
+# review, finding 1). The heading comment above already claims "quoted
+# blocks are not verdict statements", but until now that claim only held for
+# fenced quoting -- a line starting with `>` (optional leading whitespace)
+# fell through this loop unstripped, so a quoted `### Verdict` heading or a
+# quoted keyword could still win the heading/prose scan below. The
+# review-data payload scan above already blanks blockquoted lines for the
+# same reason (gha#845 review, finding 1) and tracks blockquote state with
+# _BLOCKQUOTE_RE via _iter_fence_and_quote_state; this reuses the same
+# regex, checked in the same position relative to the fence checks (after,
+# so a `>` inside a fence is never treated as a blockquote marker, matching
+# CommonMark and _iter_fence_and_quote_state's own docstring).
 def strip_machine_payloads(src):
     out = []
     fence_char = ""
@@ -319,6 +332,15 @@ def strip_machine_payloads(src):
         opened = _open_fence(line)
         if opened:
             fence_char, fence_len = opened
+            out.append("")
+            continue
+        if _BLOCKQUOTE_RE.match(line):
+            # The whole line is blanked, not just the comment/keyword spans
+            # within it, matching how the payload scan above treats a
+            # blockquoted line -- a reviewer quoting a prior round's
+            # heading or verdict keyword is citing it, not restating it, and
+            # any in-progress HTML comment inside the quote does not carry
+            # its open state into the next (possibly unquoted) line.
             out.append("")
             continue
         while True:
