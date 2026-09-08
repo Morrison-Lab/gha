@@ -93,6 +93,22 @@ on:
           Empty (the default) generates no `404.html`.
         type: string
         default: ''
+      root-landing-target:
+        description: >-
+          Pin the docs subdirectory the site root's redirect page points at
+          (e.g. "latest-tag"), instead of letting each deploy point the root
+          at whatever it just built. Empty (the default) keeps that behavior:
+          a default-branch push points the root at `/dev/`, and a release or a
+          `stable` dispatch points it at `/latest-tag/`. Set it to
+          "latest-tag" when the site's default audience arrives from CRAN, a
+          citation, or a search result and should land on released docs rather
+          than on unreleased behavior they do not have installed. This changes
+          only the root redirect; each version still deploys to its own
+          subdirectory, and the value is not validated against the
+          subdirectories that exist, so naming one that was never deployed
+          leaves the root pointing at a 404.
+        type: string
+        default: ''
       version-dropdown-title-template:
         description: >-
           Template for the navbar "Versions" menu's own label, where
@@ -422,6 +438,19 @@ jobs:
         run: |
           echo "subdir=dev" >> $GITHUB_ENV
           echo "landing_target=dev" >> $GITHUB_ENV
+
+      # Overrides the four steps above, which each point the site root at
+      # whatever that event just built. Deliberately does not touch `subdir`:
+      # the build still deploys to its own version subdirectory, and only the
+      # root redirect is repointed. Guarded on `landing_target` being non-empty
+      # so an event that deploys no landing page at all does not gain one.
+      - name: "[root landing override] Pin the root redirect target"
+        if: inputs.root-landing-target != '' && env.landing_target != ''
+        env:
+          ROOT_LANDING_TARGET: ${{ inputs.root-landing-target }}
+        run: |
+          echo "landing_target=$ROOT_LANDING_TARGET" >> "$GITHUB_ENV"
+          echo "Root landing page pinned to /$ROOT_LANDING_TARGET/"
 
       # On first rollout, /latest-tag/ may not exist yet on gh-pages.
       # Bootstrap it once from the archived latest stable release directory.

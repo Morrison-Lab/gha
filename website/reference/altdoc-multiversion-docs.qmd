@@ -39,8 +39,38 @@ boundary is a possible follow-up, not part of this port.
 | `dispatch-version`           | string  | `''`                        | Forward the caller's `workflow_dispatch` `version` input (`'dev'` or `'stable'`): a reusable workflow only sees `with:`-passed values. |
 | `dispatch-release-tag`       | string  | `''`                        | Forward the caller's `workflow_dispatch` `release_tag` input, required when `dispatch-version` is `'stable'`.                          |
 | `legacy-paths`               | string  | `''`                        | Retired docs subdirectories to keep working, as `old=new` pairs (e.g. `main=dev`). See [Retired version directories](#retired-version-directories). |
+| `root-landing-target`        | string  | `''`                        | Pin the docs subdirectory the site root redirects to (e.g. `latest-tag`). See [Where the site root points](#where-the-site-root-points). |
 | `version-dropdown-title-template` | string | `'{version}'`          | Label for the navbar "Versions" menu, where `{version}` is the version being rendered. See [Showing which version a reader is on](#showing-which-version-a-reader-is-on). |
 | `version-in-navbar-title`    | boolean | `true`                      | Show that version next to the navbar title, the way pkgdown does.                                                                     |
+
+## Where the site root points
+
+The site root (`/`) is a redirect page rather than a copy of any one version,
+and by default each deploy points it at whatever that deploy just built:
+a default-branch push points it at `/dev/`,
+a release or a `stable` dispatch points it at `/latest-tag/`.
+
+That default suits a site whose readers are mostly contributors.
+It suits a published package less well,
+because the readers arriving from CRAN, from a citation, or from a search
+result outnumber them,
+and a default-branch push is the more frequent event --
+so the root spends most of its time pointing at documentation for behavior
+those readers do not have installed.
+
+Set `root-landing-target` to pin it:
+
+```yaml
+root-landing-target: latest-tag
+```
+
+Two things it does not do.
+It does not change where anything deploys:
+each version still lands in its own subdirectory,
+and only the root's redirect target moves.
+And it is not validated against the subdirectories that exist,
+so a value naming a version that was never deployed leaves the root pointing
+at a 404.
 
 ## Showing which version a reader is on
 
@@ -197,6 +227,7 @@ jobs:
       dispatch-version: ${{ github.event.inputs.version }}
       dispatch-release-tag: ${{ github.event.inputs.release_tag }}
       # legacy-paths: main=dev     # keep pre-migration /main/ links working
+      # root-landing-target: latest-tag  # root redirects to released docs
       # version-dropdown-title-template: 'Version: {version}'
       # version-in-navbar-title: false
 ```
