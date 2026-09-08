@@ -2287,6 +2287,51 @@ six-hash limit, and dropping the awk's trailing word-boundary class.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
+**A fast path inserted before an existing sanitizer inherits none of that
+sanitizer's protections, and classify-review-verdict.sh's own
+gha#710/gha#805/gha#808 quoted-verdict guard is exactly what the new path
+bypassed.**
+gha#845 (Lacaedemon/sparta#1547) reported `verdict=unrecognized` on a
+review whose `review-data` payload already carried `"verdict": "CLEAN"`,
+unrecognized because the prose was the triage-exemption template ("No
+action -- automated, trivial PR that does not need code review").
+gha#846's first cut read that payload before the prose scan but from the
+raw, unstripped body -- before `strip_machine_payloads` had run -- so a
+payload quoted inside a blockquote or a fenced example overrode the live
+verdict, the identical quoted-verdict bypass the redraft rule above
+already exists to prevent, reintroduced one layer up.
+The fix shares one fence/blockquote tracker (`_iter_fence_and_quote_state`,
+via `_open_fence`/`_fence_closes`) between the payload scan and
+`strip_machine_payloads`, so the two cannot disagree about what is fenced
+or quoted.
+
+- **Do:** route a new fast path over the same untrusted text through the
+  existing sanitizer's own state, not a fresh copy of its logic.
+- **Don't:** add a fast path ahead of an existing sanitizer and assume the
+  sanitizer still protects it -- it has already returned by the time the
+  sanitizer runs.
+
+Two more local adversarial rounds found three further defects in that fast
+path: a non-greedy `(.*?)\s*-->` regex truncated on a `-->` inside a JSON
+string and fell back silently (fixed with `raw_decode()`, which parses one
+JSON value from an offset regardless of string contents); a bare "no
+action" on a LATER line beat an earlier rejection under the scan's
+last-line-wins rule (fixed by anchoring the phrase to the first non-empty
+verdict line and voiding it when that line still carries open-work or
+rejection vocabulary); and a `CLEAN` payload with non-empty `findings` was
+trusted outright (fixed by falling through to the prose scan instead;
+`NOT_CLEAN` still trusts regardless of findings).
+
+Five review rounds found these: three local adversarial rounds (round one
+authored the fast path with its own tests green; round two found the
+blockquote/fence bypass and the regex/findings gaps; round three found the
+anchor and indented-fence gaps), then four Copilot rounds, three raising
+comment/doc-accuracy findings against code that was already correct.
+Tests went 138 -> 160.
+Round one's own tests all passed, and it would have shipped the
+quoted-payload bypass unreviewed -- the argument for the adversarial round
+over a green suite alone.
+
 **`permission_denials_count` can be absent from the real execution file even
 though `claude-code-action` prints it to the job log, because the log line is
 a display value the action computes, not a field it always writes to disk.**
