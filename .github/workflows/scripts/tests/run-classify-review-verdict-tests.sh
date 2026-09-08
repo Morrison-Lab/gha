@@ -1204,6 +1204,84 @@ run_nul_test "A real NUL byte does not flip a rejection to clean" '\000' \
 run_nul_test "Control: the same body with a space is also a rejection" ' ' \
   "false" "needs-more-work"
 
+# --- gha#845: read the review-data payload's own verdict field first ---
+#
+# The structured review-data payload states its own verdict directly, and a
+# machine reader should trust that field rather than re-derive it from the
+# prose triage-exemption wording (which the fallback keywords below also
+# cover on their own). Measured on sparta#1547 (a scheduled, trivial
+# baseline-refresh PR): the review body's "### Verdict" section read "No
+# action -- ... does not need code review", which matched none of the old
+# clean_kw phrases and scored unrecognized, even though the same comment's
+# review-data payload already said "verdict": "CLEAN".
+run_test "sparta#1547 shape: payload CLEAN wins even with unfamiliar prose" \
+"### Verdict
+
+**No action -- automated, trivial PR that does not need code review** (scheduled benchmark-baseline refresh with no code/behavior change).
+
+<details>
+<summary>Review data</summary>
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+\`\`\`json
+{\"schema_version\": \"1.1\", \"reviewer\": \"claude\", \"commit_sha\": \"abc\", \"verdict\": \"CLEAN\", \"findings\": []}
+\`\`\`
+
+</details>
+
+Reviewed commit: abc" \
+"true" "ready-for-merge"
+
+# Same prose, no review-data block at all: the new clean_kw phrases
+# ("no action", "does not need (code )?review") must classify it on their
+# own, independent of the payload fast path above.
+run_test "Triage-exemption prose alone matches the new clean keywords" \
+"### Verdict
+
+**No action -- automated, trivial PR that does not need code review** (scheduled benchmark-baseline refresh with no code/behavior change)." \
+"true" "ready-for-merge"
+
+# The payload wins even when the prose disagrees with it -- e.g. a stale
+# caption left over from editing, or prose written before the payload was
+# regenerated.
+run_test "Payload NOT_CLEAN overrides prose that reads Ready for merge" \
+"### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"NOT_CLEAN\"} -->" \
+"false" "needs-more-work"
+
+# A malformed payload (not valid JSON) is not a source of truth, so this
+# falls back to the ordinary prose scan, same as no payload at all.
+run_test "Malformed review-data JSON falls back to the prose scan" \
+"### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {this is not json} -->" \
+"true" "ready-for-merge"
+
+# A payload with a schema_version but a verdict value that is neither CLEAN
+# nor NOT_CLEAN is not authoritative either, so this also falls back to the
+# prose scan.
+run_test "Payload verdict outside CLEAN/NOT_CLEAN falls back to the prose scan" \
+"### Verdict
+
+**Needs more work**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"UNKNOWN\"} -->" \
+"false" "needs-more-work"
+
+# Contractions are expanded before the keyword scan, so the contracted form
+# of the triage-exemption phrasing must match too.
+run_test "Contracted does not need code review still matches" \
+"### Verdict
+
+**No action, doesn't need code review.**" \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

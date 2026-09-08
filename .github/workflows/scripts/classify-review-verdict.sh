@@ -14,6 +14,12 @@
 # "No findings") and does NOT state an unnegated rejection or blocking status
 # ("Needs more work", "Changes requested", "Blocked", "Impasse", "Rejected").
 #
+# A well-formed structured "review-data" payload (an HTML comment carrying a
+# schema_version and a verdict of CLEAN or NOT_CLEAN) is classified from that
+# field directly and takes precedence over the prose scan (gha#845). Any
+# other body -- no such payload, malformed JSON, or a verdict value outside
+# CLEAN/NOT_CLEAN -- falls back to the prose scan unchanged.
+#
 # Offline tests live in tests/run-classify-review-verdict-tests.sh.
 set -euo pipefail
 
@@ -21,6 +27,7 @@ REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file>}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
 python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" << 'EOF'
+import json
 import os
 import re
 import sys
@@ -72,6 +79,37 @@ except Exception:
 
 if not text.strip():
     record("false", "no-output")
+
+# gha#845: the structured review-data payload states its own verdict, and a
+# machine reader should trust that field rather than re-derive it from prose.
+# This runs BEFORE strip_machine_payloads (below) discards the payload, and
+# before the prose scan, because the payload is the more authoritative
+# source when both are present -- a body whose prose says "Ready for merge"
+# but whose payload says NOT_CLEAN (a stale caption on a re-run, for
+# instance) is classified from the payload, not the prose.
+#
+# Only the LAST such comment counts, matching the prose scan's own
+# last-match-wins rule elsewhere in this file. Any block that fails to parse
+# as JSON, lacks a schema_version key, or carries a verdict outside
+# CLEAN/NOT_CLEAN falls through to the prose scan unchanged -- this is a
+# fast path for a well-formed payload, not a replacement for the fallback.
+review_data_matches = list(re.finditer(
+    r'<!--\s*review-data:\s*(.*?)\s*-->', text, re.DOTALL | re.IGNORECASE
+))
+if review_data_matches:
+    try:
+        payload = json.loads(review_data_matches[-1].group(1))
+    except (ValueError, TypeError):
+        payload = None
+    if isinstance(payload, dict) and "schema_version" in payload:
+        verdict_field = payload.get("verdict")
+        if isinstance(verdict_field, str):
+            payload_verdict = verdict_field.strip().upper()
+            if payload_verdict == "CLEAN":
+                record("true", "ready-for-merge")
+            elif payload_verdict == "NOT_CLEAN":
+                record("false", "needs-more-work")
+            # Any other verdict value falls through to the prose scan.
 
 # Machine payloads and quoted blocks are not verdict statements (gha#819).
 # This repo's reviews emit a structured review-data block AFTER the verdict
@@ -411,7 +449,7 @@ non_clean_kw = re.compile(
     re.IGNORECASE
 )
 clean_kw = re.compile(
-    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
+    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings|no\s+action|does\s+not\s+need\s+(?:code\s+)?review)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
     re.IGNORECASE
 )
 footer_regex = re.compile(
