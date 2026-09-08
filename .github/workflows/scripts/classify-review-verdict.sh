@@ -14,6 +14,12 @@
 # "No findings") and does NOT state an unnegated rejection or blocking status
 # ("Needs more work", "Changes requested", "Blocked", "Impasse", "Rejected").
 #
+# A well-formed structured "review-data" payload (an HTML comment carrying a
+# schema_version and a verdict of CLEAN or NOT_CLEAN) is classified from that
+# field directly and takes precedence over the prose scan (gha#845). Any
+# other body -- no such payload, malformed JSON, or a verdict value outside
+# CLEAN/NOT_CLEAN -- falls back to the prose scan unchanged.
+#
 # Offline tests live in tests/run-classify-review-verdict-tests.sh.
 set -euo pipefail
 
@@ -21,6 +27,7 @@ REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file>}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 
 python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" << 'EOF'
+import json
 import os
 import re
 import sys
@@ -73,6 +80,170 @@ except Exception:
 if not text.strip():
     record("false", "no-output")
 
+# --- Shared fence/blockquote region tracking (gha#845 review, finding 1) ---
+#
+# Both the review-data payload extraction below and strip_machine_payloads
+# (further down) need to know whether a given line sits inside an open
+# fenced code block. Keeping that state machine in exactly one place is what
+# makes the two agree -- a payload only strip_machine_payloads considered
+# fenced, while the payload scan above it did not (or vice versa), is
+# exactly how a blockquoted or fenced stale/adversarial payload got trusted
+# as the live verdict: a review whose prose verdict was "Needs more work"
+# and which blockquoted (or fenced) an older CLEAN payload was classified
+# clean=true, because the payload scan searched the raw, unstripped text.
+# CommonMark only recognizes a fence indented 0-3 spaces; 4+ spaces or a tab
+# is an INDENTED code block instead, a distinct construct these two regexes
+# used to ignore entirely. That is a payload-trust gap rather than a
+# rendering nuance here (gha#845 second review, finding 3): a
+# `<!-- review-data: ... -->` line sitting inside a tab- or 4-space-indented
+# fence was tracked as neither fenced nor blockquoted, so the payload scan
+# below trusted it as the live verdict even while the prose verdict said
+# otherwise. The fix widens both patterns to ALSO recognize a fence marker
+# preceded by a tab or by any number of spaces (not only 0-3), so a deeply
+# indented ``` fence is tracked the same as a top-level one. That is
+# deliberately broader than CommonMark's own rule -- erring toward treating
+# more content as fenced only ever REMOVES trust from a payload, never adds
+# it, which is the safe direction for a fast path whose whole point is
+# deciding what to trust.
+_FENCE_OPEN_RE = re.compile(r'[ \t]*(`{3,}|~{3,})')
+_FENCE_CLOSE_RE = re.compile(r'[ \t]*(`{3,}|~{3,})[ \t]*$')
+_BLOCKQUOTE_RE = re.compile(r'[ \t]*>')
+# A line indented by a tab or 4+ spaces is CommonMark's plain indented code
+# block, with no fence markers at all -- so a `<!-- review-data: ... -->`
+# line indented that way was previously tracked as ordinary unfenced,
+# unquoted text and trusted like any other line. Simplest fix (gha#845
+# second review, finding 3): exclude such a line from the payload candidate
+# text outright, rather than modeling list-continuation indentation, which
+# this scan has no other reason to understand.
+_INDENTED_RE = re.compile(r'^(?:\t| {4,})')
+
+
+def _open_fence(line):
+    """Return (char, length) if `line` opens a new fenced code block, else None."""
+    m = _FENCE_OPEN_RE.match(line)
+    if not m:
+        return None
+    return m.group(1)[0], len(m.group(1))
+
+
+def _fence_closes(line, fence_char, fence_len):
+    """Whether `line` closes a fence opened with `fence_char`/`fence_len`.
+
+    A fence closes only on a run of the same character at least as long as
+    the opener with nothing but whitespace after it (matching
+    strip-non-invoking-markup.sh's rule, and CommonMark's).
+    """
+    m = _FENCE_CLOSE_RE.match(line)
+    return bool(m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len)
+
+
+def _iter_fence_and_quote_state(lines):
+    """Yield (line, in_fence, quoted) for each source line.
+
+    in_fence tracks the SAME top-level fence state strip_machine_payloads
+    uses below, via the shared _open_fence/_fence_closes helpers, so the two
+    cannot disagree about what is fenced. quoted is True only for a
+    non-fenced blockquote line (a leading '>' after optional whitespace);
+    CommonMark does not treat a '>' inside a fence as a blockquote marker,
+    so quoted is never reported while in_fence is True.
+    """
+    fence_char = ""
+    fence_len = 0
+    for raw in lines:
+        line = raw
+        if fence_char:
+            if _fence_closes(line, fence_char, fence_len):
+                fence_char = ""
+                fence_len = 0
+            yield line, True, False
+            continue
+        opened = _open_fence(line)
+        if opened:
+            fence_char, fence_len = opened
+            yield line, True, False
+            continue
+        yield line, False, bool(_BLOCKQUOTE_RE.match(line))
+
+
+# gha#845: the structured review-data payload states its own verdict, and a
+# machine reader should trust that field rather than re-derive it from prose.
+# This runs BEFORE strip_machine_payloads (below) discards the payload, and
+# before the prose scan, because the payload is the more authoritative
+# source when both are present -- a body whose prose says "Ready for merge"
+# but whose payload says NOT_CLEAN (a stale caption on a re-run, for
+# instance) is classified from the payload, not the prose.
+#
+# The payload is read only from lines that are neither fenced nor
+# blockquoted (gha#845 review, finding 1): a `<!-- review-data: ... -->`
+# that appears only inside a `> ...` blockquote or a fenced code block is
+# someone QUOTING an earlier (possibly stale) payload, not stating the live
+# one -- the same reasoning strip_machine_payloads's own comment already
+# gives for why quoted/fenced prose isn't a verdict statement. Blockquoted
+# and fenced lines are blanked before the marker search, reusing the fence
+# tracking strip_machine_payloads uses below, so the two cannot disagree
+# about what counts as fenced.
+_payload_candidate_lines = [
+    ("" if (in_fence or quoted or _INDENTED_RE.match(line)) else line)
+    for line, in_fence, quoted in _iter_fence_and_quote_state(text.splitlines())
+]
+_payload_candidate_text = "\n".join(_payload_candidate_lines)
+
+# Only the LAST such comment counts, matching the prose scan's own
+# last-match-wins rule elsewhere in this file. Any block that fails to parse
+# as JSON, lacks a schema_version key, or carries a verdict outside
+# CLEAN/NOT_CLEAN falls through to the prose scan unchanged -- this is a
+# fast path for a well-formed payload, not a replacement for the fallback.
+#
+# The JSON body is located with json.JSONDecoder().raw_decode rather than a
+# regex (gha#845 review, finding 2): a non-greedy `(.*?)\s*-->` regex cannot
+# tell a "-->" INSIDE a JSON string value from the marker's own closing
+# delimiter, and truncates at the first one it finds -- a NOT_CLEAN payload
+# whose "note" field happened to contain the three characters "-->" produced
+# invalid JSON, silently fell back to the prose scan, and could misclassify
+# a review the payload had already marked NOT_CLEAN as ready for merge.
+# raw_decode parses exactly one JSON value starting at a given index and
+# does not care what a string's contents look like, so it has no such blind
+# spot.
+_payload_marker_re = re.compile(r'<!--\s*review-data:\s*', re.IGNORECASE)
+_payload_markers = list(_payload_marker_re.finditer(_payload_candidate_text))
+payload = None
+if _payload_markers:
+    _decoder = json.JSONDecoder()
+    _start = _payload_markers[-1].end()
+    try:
+        _decoded, _end = _decoder.raw_decode(_payload_candidate_text, _start)
+    except (ValueError, TypeError):
+        _decoded = None
+    else:
+        # Require that only whitespace and the comment's own closing "-->"
+        # follow the parsed object -- anything else means the marker wasn't
+        # actually followed by a single well-formed `{...} -->` comment, and
+        # the object that happened to parse starting at that offset isn't
+        # trustworthy just because it parsed.
+        if re.match(r'\s*-->', _payload_candidate_text[_end:]):
+            payload = _decoded
+if isinstance(payload, dict) and "schema_version" in payload:
+    verdict_field = payload.get("verdict")
+    if isinstance(verdict_field, str):
+        payload_verdict = verdict_field.strip().upper()
+        if payload_verdict == "CLEAN":
+            # A CLEAN verdict with actual findings attached is internally
+            # inconsistent, so it is not trustworthy as a fast path -- fall
+            # through to the prose scan rather than inventing a NOT_CLEAN
+            # this code never observed (gha#845 review, finding 3).
+            # NOT_CLEAN is trusted regardless of findings: a rejection with
+            # no listed findings is still a rejection.
+            findings = payload.get("findings")
+            findings_is_empty = findings is None or (
+                isinstance(findings, list) and len(findings) == 0
+            )
+            if findings_is_empty:
+                record("true", "ready-for-merge")
+            # else: falls through to the prose scan.
+        elif payload_verdict == "NOT_CLEAN":
+            record("false", "needs-more-work")
+        # Any other verdict value falls through to the prose scan.
+
 # Machine payloads and quoted blocks are not verdict statements (gha#819).
 # This repo's reviews emit a structured review-data block AFTER the verdict
 # heading -- once as an HTML comment, once in a ```json fence -- and the scan
@@ -108,9 +279,25 @@ if not text.strip():
 # Fence tracking takes its closing rule from strip-non-invoking-markup.sh: a
 # fence closes only on a run of the same character at least as long as the
 # opener with nothing but whitespace after it, and an unclosed fence runs to
-# the end of the text. It covers top-level fences only; that sibling also
-# handles indented code blocks, and a fence nested four or more columns deep
-# inside a list is not recognized here (round 2, finding 4).
+# the end of the text. A fence marker preceded by any run of spaces or a tab
+# is recognized, and a line indented by a tab or four or more spaces with no
+# fence at all (CommonMark's indented code block) is excluded from the payload
+# scan directly; what is still not modelled is a fence nested inside a list
+# item's own indentation being treated as part of that item (round 2, finding
+# 4, and the gha#845 fourth review).
+#
+# Blockquoted lines are blanked too, not only fenced ones (gha#845 third
+# review, finding 1). The heading comment above already claims "quoted
+# blocks are not verdict statements", but until now that claim only held for
+# fenced quoting -- a line starting with `>` (optional leading whitespace)
+# fell through this loop unstripped, so a quoted `### Verdict` heading or a
+# quoted keyword could still win the heading/prose scan below. The
+# review-data payload scan above already blanks blockquoted lines for the
+# same reason (gha#845 review, finding 1) and tracks blockquote state with
+# _BLOCKQUOTE_RE via _iter_fence_and_quote_state; this reuses the same
+# regex, checked in the same position relative to the fence checks (after,
+# so a `>` inside a fence is never treated as a blockquote marker, matching
+# CommonMark and _iter_fence_and_quote_state's own docstring).
 def strip_machine_payloads(src):
     out = []
     fence_char = ""
@@ -126,8 +313,10 @@ def strip_machine_payloads(src):
             line = line[idx + 3:]
             in_comment = False
         if fence_char:
-            m = re.match(r'[ ]{0,3}(`{3,}|~{3,})[ \t]*$', line)
-            if m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len:
+            # Reuses the same _fence_closes helper the review-data payload
+            # scan above uses, so the two agree on where a fence closes
+            # (gha#845 review, finding 1).
+            if _fence_closes(line, fence_char, fence_len):
                 fence_char = ""
                 fence_len = 0
             out.append("")
@@ -140,10 +329,21 @@ def strip_machine_payloads(src):
         # additionally keeps `<!-- x -->```json` from opening a fence, which
         # CommonMark does not treat as one either, since a fence must start
         # its line.
-        m = re.match(r'[ ]{0,3}(`{3,}|~{3,})', line)
-        if m:
-            fence_char = m.group(1)[0]
-            fence_len = len(m.group(1))
+        #
+        # Reuses the same _open_fence helper the review-data payload scan
+        # above uses (gha#845 review, finding 1).
+        opened = _open_fence(line)
+        if opened:
+            fence_char, fence_len = opened
+            out.append("")
+            continue
+        if _BLOCKQUOTE_RE.match(line):
+            # The whole line is blanked, not just the comment/keyword spans
+            # within it, matching how the payload scan above treats a
+            # blockquoted line -- a reviewer quoting a prior round's
+            # heading or verdict keyword is citing it, not restating it, and
+            # any in-progress HTML comment inside the quote does not carry
+            # its open state into the next (possibly unquoted) line.
             out.append("")
             continue
         while True:
@@ -310,13 +510,40 @@ if last_idx == -1:
 
 verdict_lines = lines[last_idx:]
 
+# gha#845 second review, finding 2: verdict_lines[0] is always the line
+# header_regex matched -- the heading itself. The skip-check below already
+# drops it when it is heading-only ("### Verdict" or "**Verdict:**" with
+# nothing else), leaving the NEXT line as content_lines[0]. But a heading and
+# its verdict written on the SAME line ("### Verdict: No action -- trivial",
+# "**Verdict:** No action -- automated, trivial PR ...") is not heading-only,
+# so it used to survive into content_lines[0] verbatim, WITH the "Verdict:"
+# label still attached at the front. That label defeats the line-anchored
+# no_action_anchor check below, which requires the verdict content itself to
+# start the line -- and clean_kw carries no bare "no action" alternative to
+# fall back on (gha#845's first review already removed it as unanchored).
+# The fix strips a leading heading/label prefix from verdict_lines[0]
+# specifically, so only the REMAINDER after "Verdict:" becomes
+# content_lines[0], matching the heading-only case where that remainder was
+# always on its own line.
+_heading_prefix_re = re.compile(
+    r'^[ \t>*_#-]*(?:\*\*)?verdict:?(?:\*\*)?[: \t*_-]*',
+    re.IGNORECASE
+)
+
 content_lines = []
-for line in verdict_lines:
+for _vl_idx, line in enumerate(verdict_lines):
     if re.search(r'^[ \t>*_#-]*verdict[: \t*_-]*$', line, re.IGNORECASE) or \
        re.search(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict[: \t*_-]*$', line, re.IGNORECASE):
         continue
-    if line.strip():
-        content_lines.append(line.strip())
+    stripped = line.strip()
+    if not stripped:
+        continue
+    if _vl_idx == 0:
+        remainder = _heading_prefix_re.sub('', stripped, count=1).strip()
+        if remainder:
+            content_lines.append(remainder)
+        continue
+    content_lines.append(stripped)
 
 if not content_lines:
     content_lines = [l.strip() for l in verdict_lines if l.strip()]
@@ -414,15 +641,76 @@ clean_kw = re.compile(
     r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
     re.IGNORECASE
 )
+# "no action" and "does not need (code) review" used to sit inside clean_kw
+# above, scanned against EVERY content line like any other keyword. Both
+# read fine in the repo's triage-exemption template
+# ("**No action -- automated, trivial PR that does not need code
+# review**"), but a bare, unanchored "no action" also matches ordinary
+# prose that has nothing to do with a verdict -- "No action has been taken
+# since the last round" -- and because the scan is last-line-wins, that
+# sentence appearing on a line AFTER a real "Changes requested" flipped the
+# whole review clean=true (gha#845 review, finding 4).
+#
+# "does not need (code) review" is removed outright rather than anchored:
+# unlike "no action", it has no fixed position in the triage template ("...
+# that does not need code review"), so no anchor rules out "does not need
+# review from a human once that's fixed" appearing as ordinary prose after
+# a real rejection.
+#
+# "no action" is kept, but ONLY as a check against the verdict's own first
+# content line (see first_nonempty_idx below) rather than as a mid-line
+# alternative scanned against every line. That is the triage template's
+# actual shape: the exemption is STATED as the verdict, not mentioned
+# somewhere in the explanation below it. Restricting the anchor to the
+# verdict line is what lets "No action has been taken since the last round"
+# (a later, unrelated sentence) fail to match while "**No action --
+# automated, trivial PR ...**" (the verdict line itself) still does.
+#
+# Being the FIRST word of the verdict line is necessary but not sufficient
+# (gha#845 second review, finding 1): "No action was taken on the flaky
+# test, but there are still open issues to resolve here." also starts with
+# "no action", reads as ordinary triage prose rather than the clean
+# exemption, and scored clean=true. The template's actual shape has "no
+# action" stating the WHOLE verdict, with nothing left open after it -- so
+# the anchor now requires the rest of that line to carry no still-open
+# vocabulary (still_open_after_no_action) and no rejection keyword
+# (non_clean_kw / negated_positive_phrases). Any of those firing means the
+# line merely happens to start with the words "no action" while describing
+# unresolved work, so the anchor does not classify and the normal keyword
+# scan decides the line on its own -- which may still be "unrecognized" if
+# nothing else in it matches either.
+no_action_anchor = re.compile(
+    r'^\s*no\s+action(?:\s+(?:needed|required|necessary))?\b',
+    re.IGNORECASE
+)
+still_open_after_no_action = re.compile(
+    r'\b(?:still|remain\w*|open|unresolved|outstanding|but|however|not\s+yet|pending)\b',
+    re.IGNORECASE
+)
 footer_regex = re.compile(
     r'^[ \t>*_#-]*(\*\*)?(stopping\s+point|reviewed\s+commit|posted\s+by)\b',
     re.IGNORECASE
 )
 
+# gha#845 second review, finding 4: an emphasis-only first content line
+# ("**" with nothing else) hides the real verdict from the anchor check
+# above, which used to fire on content_lines[0] specifically regardless of
+# what survives strip_emphasis. "### Verdict\n\n**\n\nNo action needed --
+# automated, trivial PR." puts the actual verdict on content_lines[1], but
+# the old code checked content_lines[0] ("**", which strips to nothing) and
+# never looked further. The anchor now runs on the first content line whose
+# text is non-empty AFTER strip_emphasis, found here rather than assumed to
+# be index 0.
+first_nonempty_idx = None
+for _cl_idx, _cl in enumerate(content_lines):
+    if strip_emphasis(_cl).strip():
+        first_nonempty_idx = _cl_idx
+        break
+
 # Single ordered scan in document order: last verdict statement wins
 last_verdict = None
 
-for line in content_lines:
+for line_index, line in enumerate(content_lines):
     if footer_regex.search(line):
         continue
 
@@ -430,6 +718,15 @@ for line in content_lines:
     neg_pos_spans = []
     neg_neg_spans = []
     line_matches = []
+
+    if line_index == first_nonempty_idx:
+        m = no_action_anchor.match(norm_line)
+        if m:
+            rest = norm_line[m.end():]
+            if not still_open_after_no_action.search(rest) and \
+               not non_clean_kw.search(norm_line) and \
+               not negated_positive_phrases.search(norm_line):
+                line_matches.append((m.start(), "true", "ready-for-merge"))
 
     for m in negated_positive_phrases.finditer(norm_line):
         neg_pos_spans.append((m.start(), m.end()))

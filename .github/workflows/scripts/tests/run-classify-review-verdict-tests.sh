@@ -1204,6 +1204,306 @@ run_nul_test "A real NUL byte does not flip a rejection to clean" '\000' \
 run_nul_test "Control: the same body with a space is also a rejection" ' ' \
   "false" "needs-more-work"
 
+# --- gha#845: read the review-data payload's own verdict field first ---
+#
+# The structured review-data payload states its own verdict directly, and a
+# machine reader should trust that field rather than re-derive it from the
+# prose triage-exemption wording (which the anchored "No action" rule below
+# also covers on its own). Measured on sparta#1547 (a scheduled, trivial
+# baseline-refresh PR): the review body's "### Verdict" section read "No
+# action -- ... does not need code review", which matched none of the old
+# clean_kw phrases and scored unrecognized, even though the same comment's
+# review-data payload already said "verdict": "CLEAN".
+run_test "sparta#1547 shape: payload CLEAN wins even with unfamiliar prose" \
+"### Verdict
+
+**No action -- automated, trivial PR that does not need code review** (scheduled benchmark-baseline refresh with no code/behavior change).
+
+<details>
+<summary>Review data</summary>
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+\`\`\`json
+{\"schema_version\": \"1.1\", \"reviewer\": \"claude\", \"commit_sha\": \"abc\", \"verdict\": \"CLEAN\", \"findings\": []}
+\`\`\`
+
+</details>
+
+Reviewed commit: abc" \
+"true" "ready-for-merge"
+
+# Same prose, no review-data block at all: this must classify clean on the
+# prose scan alone, independent of the payload fast path above. It passes
+# via the line-anchored no_action_anchor check (content_lines[0] starts
+# with "no action"), not via "does not need (code )?review" -- that phrase
+# was considered and deliberately not added to clean_kw (gha#845 review,
+# finding 4, above).
+run_test "Triage-exemption prose alone matches the anchored no-action rule" \
+"### Verdict
+
+**No action -- automated, trivial PR that does not need code review** (scheduled benchmark-baseline refresh with no code/behavior change)." \
+"true" "ready-for-merge"
+
+# The payload wins even when the prose disagrees with it -- e.g. a stale
+# caption left over from editing, or prose written before the payload was
+# regenerated.
+run_test "Payload NOT_CLEAN overrides prose that reads Ready for merge" \
+"### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"NOT_CLEAN\"} -->" \
+"false" "needs-more-work"
+
+# A malformed payload (not valid JSON) is not a source of truth, so this
+# falls back to the ordinary prose scan, same as no payload at all.
+run_test "Malformed review-data JSON falls back to the prose scan" \
+"### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {this is not json} -->" \
+"true" "ready-for-merge"
+
+# A payload with a schema_version but a verdict value that is neither CLEAN
+# nor NOT_CLEAN is not authoritative either, so this also falls back to the
+# prose scan.
+run_test "Payload verdict outside CLEAN/NOT_CLEAN falls back to the prose scan" \
+"### Verdict
+
+**Needs more work**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"UNKNOWN\"} -->" \
+"false" "needs-more-work"
+
+# gha#845 review, finding 4: "does not need (code) review" was removed from
+# clean_kw entirely (it has no fixed position in the template, so no anchor
+# rules out it appearing in ordinary explanatory prose after a rejection --
+# see the "changes requested" cases below). This test still passes, but no
+# longer via that removed keyword: its body already STARTS with "No
+# action", so the line-anchored no_action_anchor check (applied only to
+# content_lines[0], the verdict line itself) is what now classifies it
+# clean. Contractions are expanded before that check runs, so the
+# contracted "doesn't" form is unaffected either way.
+run_test "Contracted does not need code review still matches" \
+"### Verdict
+
+**No action, doesn't need code review.**" \
+"true" "ready-for-merge"
+
+# --- gha#845 review: payload trusted from a blockquoted or fenced quote ---
+#
+# The payload scan used to search the raw, unstripped review text, so a
+# `<!-- review-data: ... -->` comment someone was merely QUOTING -- inside a
+# `> ...` blockquote, or inside a fenced code block -- was trusted as the
+# live verdict even though the prose verdict said otherwise. Finding 1.
+run_test "A blockquoted stale CLEAN payload does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+> Earlier this said:
+> <!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->" \
+"false" "needs-more-work"
+
+run_test "A fenced stale CLEAN payload does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+\`\`\`
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->
+\`\`\`" \
+"false" "needs-more-work"
+
+# --- gha#845 third review, finding 1: a quoted heading/keyword wins the ---
+# --- prose scan, not only the payload scan above ---
+#
+# The two blockquote tests just above cover the review-data PAYLOAD scan,
+# which already blanked blockquoted lines before this PR. strip_machine_payloads
+# did not, so a blockquoted `> ### Verdict` heading still matched
+# header_regex (its third alternative allows a leading `>` in
+# `[ \t>*_#-]*`), moved last_idx to the quote, and a blockquoted
+# `> **Ready for merge**` after it then read as content_lines[0] and matched
+# clean_kw regardless of the leading `>` (`\bready\s+for\s+merge\b` does not
+# care what precedes it). Reproduced against the pre-fix script (52b7ad0):
+# this exact body classified clean=true verdict=ready-for-merge although its
+# own (unquoted) verdict says Needs more work.
+run_test "A blockquoted Ready-for-merge citation does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+> Earlier this said:
+> ### Verdict
+> **Ready for merge**" \
+"false" "needs-more-work"
+
+# Mirror of the test above: the body's own verdict is Ready for merge, and
+# what is quoted is an earlier Needs more work. Reproduced against 52b7ad0:
+# this body classified clean=false verdict=needs-more-work.
+run_test "A blockquoted Needs-more-work citation does not override Ready for merge" \
+"### Verdict
+
+**Ready for merge**
+
+> Earlier this said:
+> ### Verdict
+> **Needs more work**" \
+"true" "ready-for-merge"
+
+# gha#845 review, finding 2: the JSON body used to be captured with a
+# non-greedy `(.*?)\s*-->` regex, which cannot tell a "-->" INSIDE a JSON
+# string value from the marker's own closing delimiter and truncates there.
+# A NOT_CLEAN payload whose "note" field contains the three characters
+# "-->" produced invalid JSON that way, fell back to the prose scan, and
+# read "Ready for merge" from the surrounding text -- silently discarding
+# an explicit NOT_CLEAN. json.JSONDecoder().raw_decode parses exactly one
+# JSON value regardless of what its strings contain, so this now stays
+# NOT_CLEAN.
+run_test "NOT_CLEAN payload with a literal --> inside a JSON string still wins" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"NOT_CLEAN\",\"note\":\"see --> for details\"} -->" \
+"false" "needs-more-work"
+
+# gha#845 review, finding 3: a CLEAN verdict with a non-empty findings array
+# is internally inconsistent and must not be trusted as a fast path -- fall
+# through to the prose scan instead of inventing a NOT_CLEAN this code never
+# observed.
+run_test "CLEAN payload with non-empty findings falls back to the prose scan" \
+"### Verdict
+
+**Needs more work** -- see findings.
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\",\"findings\":[{\"file\":\"foo.py\",\"note\":\"bug\"}]} -->" \
+"false" "needs-more-work"
+
+# --- gha#845 review, finding 4: the old bare (unanchored) "no action" ---
+#
+# "no\s+action" used to be a plain clean_kw alternative, scanned against
+# EVERY content line, so it matched ordinary prose that has nothing to do
+# with the verdict -- and because the scan is last-line-wins, a later such
+# sentence overrode a real, earlier rejection. The fix restricts the check
+# to content_lines[0] (the verdict line itself), so a later explanatory
+# sentence that merely starts with the words "no action" no longer counts.
+run_test "'No action has been taken' after Changes requested stays a rejection" \
+"### Verdict
+
+**Changes requested**
+
+No action has been taken since the last round." \
+"false" "changes-requested"
+
+# Same shape for the removed "does not need (code) review" keyword: it has
+# no anchor to fall back on (it was removed outright, not anchored), so
+# this only ever passed because the fix stops scanning that phrase at all,
+# leaving the earlier "Changes requested" line as the only match.
+run_test "'does not need review' after Changes requested stays a rejection" \
+"### Verdict
+
+**Changes requested**
+
+This does not need review from a human once that's fixed." \
+"false" "changes-requested"
+
+# --- gha#845 second review, finding 1: "no action" anchor was too loose ---
+#
+# The anchor only checked that the verdict line STARTED with "no action",
+# which is necessary but not sufficient: this sentence also starts with
+# those two words while describing unresolved work, and used to score
+# clean=true. The fix requires the rest of that line to carry no
+# still-open vocabulary and no rejection keyword before the anchor is
+# allowed to classify; here it fires on neither "but" nor "still open", so
+# the anchor backs off and nothing else in the line matches either.
+run_test "'No action ... but still open issues' is not the clean exemption" \
+"### Verdict
+
+No action was taken on the flaky test, but there are still open issues to resolve here." \
+"false" "unrecognized"
+
+# The anchor still recognizes the template's actual shape, including the
+# now-permitted "needed" suffix, once the guard clauses find nothing open.
+run_test "'No action needed -- trivial rename.' is the clean exemption" \
+"### Verdict
+
+No action needed -- trivial rename." \
+"true" "ready-for-merge"
+
+# --- gha#845 second review, finding 2: heading and verdict on one line ---
+#
+# header_regex matches "Verdict" wherever it appears on the line, so a
+# heading and its verdict content written on the SAME line used to survive
+# into content_lines[0] with the "Verdict:" label still attached at the
+# front -- which defeated the line-anchored no_action_anchor check and
+# scored unrecognized. Stripping the leading heading/label prefix from
+# verdict_lines[0] fixes both the ATX-heading-with-colon form and the
+# bold-label form.
+run_test "ATX heading and verdict on one line ('### Verdict: No action -- trivial')" \
+"### Verdict: No action -- trivial" \
+"true" "ready-for-merge"
+
+run_test "Bold-label heading and verdict on one line ('**Verdict:** No action ...')" \
+"## Code Review
+
+**Verdict:** No action -- automated, trivial PR that does not need code review." \
+"true" "ready-for-merge"
+
+run_test "ATX heading and a rejection on one line ('### Verdict: Needs more work')" \
+"### Verdict: Needs more work" \
+"false" "needs-more-work"
+
+# --- gha#845 second review, finding 3: tab/4-space-indented fences ---
+#
+# _FENCE_OPEN_RE/_FENCE_CLOSE_RE used to allow only 0-3 spaces of
+# indentation before a fence marker, so a tab- or 4-space-indented ```
+# fence was not tracked as a fence at all -- the review-data payload it
+# enclosed was then scanned like ordinary unfenced text and trusted as the
+# live verdict even though the prose verdict said "Needs more work". Both
+# regexes now recognize a fence preceded by a tab or by any number of
+# spaces.
+run_test "A tab-indented fence around a stale CLEAN payload does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+	\`\`\`
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->
+	\`\`\`" \
+"false" "needs-more-work"
+
+# A payload indented 4 spaces with NO fence markers at all is CommonMark's
+# plain indented code block -- a construct the old fence tracking never
+# modeled either way, since there is no ``` to look for. It is excluded
+# from the payload scan directly (_INDENTED_RE), rather than through fence
+# tracking.
+run_test "A 4-space-indented stale CLEAN payload (no fence) does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+    <!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->" \
+"false" "needs-more-work"
+
+# --- gha#845 second review, finding 4: an emphasis-only first line ---
+#
+# content_lines[0] used to be the line the anchor check ran against,
+# unconditionally. An emphasis-only line ("**" with nothing else) strips to
+# empty text, so when the real verdict sentence sits on a LATER content
+# line, the anchor never saw it and the review scored unrecognized. The
+# check now runs on the first content line that is non-empty after
+# strip_emphasis, which is content_lines[1] here.
+run_test "An emphasis-only first content line does not hide the real verdict" \
+"### Verdict
+
+**
+
+No action needed -- automated, trivial PR." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
