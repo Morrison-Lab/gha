@@ -1274,13 +1274,102 @@ run_test "Payload verdict outside CLEAN/NOT_CLEAN falls back to the prose scan" 
 <!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"UNKNOWN\"} -->" \
 "false" "needs-more-work"
 
-# Contractions are expanded before the keyword scan, so the contracted form
-# of the triage-exemption phrasing must match too.
+# gha#845 review, finding 4: "does not need (code) review" was removed from
+# clean_kw entirely (it has no fixed position in the template, so no anchor
+# rules out it appearing in ordinary explanatory prose after a rejection --
+# see the "changes requested" cases below). This test still passes, but no
+# longer via that removed keyword: its body already STARTS with "No
+# action", so the line-anchored no_action_anchor check (applied only to
+# content_lines[0], the verdict line itself) is what now classifies it
+# clean. Contractions are expanded before that check runs, so the
+# contracted "doesn't" form is unaffected either way.
 run_test "Contracted does not need code review still matches" \
 "### Verdict
 
 **No action, doesn't need code review.**" \
 "true" "ready-for-merge"
+
+# --- gha#845 review: payload trusted from a blockquoted or fenced quote ---
+#
+# The payload scan used to search the raw, unstripped review text, so a
+# `<!-- review-data: ... -->` comment someone was merely QUOTING -- inside a
+# `> ...` blockquote, or inside a fenced code block -- was trusted as the
+# live verdict even though the prose verdict said otherwise. Finding 1.
+run_test "A blockquoted stale CLEAN payload does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+> Earlier this said:
+> <!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->" \
+"false" "needs-more-work"
+
+run_test "A fenced stale CLEAN payload does not override Needs more work" \
+"### Verdict
+
+**Needs more work** -- one issue remains.
+
+\`\`\`
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\"} -->
+\`\`\`" \
+"false" "needs-more-work"
+
+# gha#845 review, finding 2: the JSON body used to be captured with a
+# non-greedy `(.*?)\s*-->` regex, which cannot tell a "-->" INSIDE a JSON
+# string value from the marker's own closing delimiter and truncates there.
+# A NOT_CLEAN payload whose "note" field contains the three characters
+# "-->" produced invalid JSON that way, fell back to the prose scan, and
+# read "Ready for merge" from the surrounding text -- silently discarding
+# an explicit NOT_CLEAN. json.JSONDecoder().raw_decode parses exactly one
+# JSON value regardless of what its strings contain, so this now stays
+# NOT_CLEAN.
+run_test "NOT_CLEAN payload with a literal --> inside a JSON string still wins" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"NOT_CLEAN\",\"note\":\"see --> for details\"} -->" \
+"false" "needs-more-work"
+
+# gha#845 review, finding 3: a CLEAN verdict with a non-empty findings array
+# is internally inconsistent and must not be trusted as a fast path -- fall
+# through to the prose scan instead of inventing a NOT_CLEAN this code never
+# observed.
+run_test "CLEAN payload with non-empty findings falls back to the prose scan" \
+"### Verdict
+
+**Needs more work** -- see findings.
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"verdict\":\"CLEAN\",\"findings\":[{\"file\":\"foo.py\",\"note\":\"bug\"}]} -->" \
+"false" "needs-more-work"
+
+# --- gha#845 review, finding 4: the old bare (unanchored) "no action" ---
+#
+# "no\s+action" used to be a plain clean_kw alternative, scanned against
+# EVERY content line, so it matched ordinary prose that has nothing to do
+# with the verdict -- and because the scan is last-line-wins, a later such
+# sentence overrode a real, earlier rejection. The fix restricts the check
+# to content_lines[0] (the verdict line itself), so a later explanatory
+# sentence that merely starts with the words "no action" no longer counts.
+run_test "'No action has been taken' after Changes requested stays a rejection" \
+"### Verdict
+
+**Changes requested**
+
+No action has been taken since the last round." \
+"false" "changes-requested"
+
+# Same shape for the removed "does not need (code) review" keyword: it has
+# no anchor to fall back on (it was removed outright, not anchored), so
+# this only ever passed because the fix stops scanning that phrase at all,
+# leaving the earlier "Changes requested" line as the only match.
+run_test "'does not need review' after Changes requested stays a rejection" \
+"### Verdict
+
+**Changes requested**
+
+This does not need review from a human once that's fixed." \
+"false" "changes-requested"
 
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 

@@ -80,6 +80,69 @@ except Exception:
 if not text.strip():
     record("false", "no-output")
 
+# --- Shared fence/blockquote region tracking (gha#845 review, finding 1) ---
+#
+# Both the review-data payload extraction below and strip_machine_payloads
+# (further down) need to know whether a given line sits inside an open
+# fenced code block. Keeping that state machine in exactly one place is what
+# makes the two agree -- a payload only strip_machine_payloads considered
+# fenced, while the payload scan above it did not (or vice versa), is
+# exactly how a blockquoted or fenced stale/adversarial payload got trusted
+# as the live verdict: a review whose prose verdict was "Needs more work"
+# and which blockquoted (or fenced) an older CLEAN payload was classified
+# clean=true, because the payload scan searched the raw, unstripped text.
+_FENCE_OPEN_RE = re.compile(r'[ ]{0,3}(`{3,}|~{3,})')
+_FENCE_CLOSE_RE = re.compile(r'[ ]{0,3}(`{3,}|~{3,})[ \t]*$')
+_BLOCKQUOTE_RE = re.compile(r'[ \t]*>')
+
+
+def _open_fence(line):
+    """Return (char, length) if `line` opens a new fenced code block, else None."""
+    m = _FENCE_OPEN_RE.match(line)
+    if not m:
+        return None
+    return m.group(1)[0], len(m.group(1))
+
+
+def _fence_closes(line, fence_char, fence_len):
+    """Whether `line` closes a fence opened with `fence_char`/`fence_len`.
+
+    A fence closes only on a run of the same character at least as long as
+    the opener with nothing but whitespace after it (matching
+    strip-non-invoking-markup.sh's rule, and CommonMark's).
+    """
+    m = _FENCE_CLOSE_RE.match(line)
+    return bool(m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len)
+
+
+def _iter_fence_and_quote_state(lines):
+    """Yield (line, in_fence, quoted) for each source line.
+
+    in_fence tracks the SAME top-level fence state strip_machine_payloads
+    uses below, via the shared _open_fence/_fence_closes helpers, so the two
+    cannot disagree about what is fenced. quoted is True only for a
+    non-fenced blockquote line (a leading '>' after optional whitespace);
+    CommonMark does not treat a '>' inside a fence as a blockquote marker,
+    so quoted is never reported while in_fence is True.
+    """
+    fence_char = ""
+    fence_len = 0
+    for raw in lines:
+        line = raw
+        if fence_char:
+            if _fence_closes(line, fence_char, fence_len):
+                fence_char = ""
+                fence_len = 0
+            yield line, True, False
+            continue
+        opened = _open_fence(line)
+        if opened:
+            fence_char, fence_len = opened
+            yield line, True, False
+            continue
+        yield line, False, bool(_BLOCKQUOTE_RE.match(line))
+
+
 # gha#845: the structured review-data payload states its own verdict, and a
 # machine reader should trust that field rather than re-derive it from prose.
 # This runs BEFORE strip_machine_payloads (below) discards the payload, and
@@ -88,28 +151,76 @@ if not text.strip():
 # but whose payload says NOT_CLEAN (a stale caption on a re-run, for
 # instance) is classified from the payload, not the prose.
 #
+# The payload is read only from lines that are neither fenced nor
+# blockquoted (gha#845 review, finding 1): a `<!-- review-data: ... -->`
+# that appears only inside a `> ...` blockquote or a fenced code block is
+# someone QUOTING an earlier (possibly stale) payload, not stating the live
+# one -- the same reasoning strip_machine_payloads's own comment already
+# gives for why quoted/fenced prose isn't a verdict statement. Blockquoted
+# and fenced lines are blanked before the marker search, reusing the fence
+# tracking strip_machine_payloads uses below, so the two cannot disagree
+# about what counts as fenced.
+_payload_candidate_lines = [
+    ("" if (in_fence or quoted) else line)
+    for line, in_fence, quoted in _iter_fence_and_quote_state(text.splitlines())
+]
+_payload_candidate_text = "\n".join(_payload_candidate_lines)
+
 # Only the LAST such comment counts, matching the prose scan's own
 # last-match-wins rule elsewhere in this file. Any block that fails to parse
 # as JSON, lacks a schema_version key, or carries a verdict outside
 # CLEAN/NOT_CLEAN falls through to the prose scan unchanged -- this is a
 # fast path for a well-formed payload, not a replacement for the fallback.
-review_data_matches = list(re.finditer(
-    r'<!--\s*review-data:\s*(.*?)\s*-->', text, re.DOTALL | re.IGNORECASE
-))
-if review_data_matches:
+#
+# The JSON body is located with json.JSONDecoder().raw_decode rather than a
+# regex (gha#845 review, finding 2): a non-greedy `(.*?)\s*-->` regex cannot
+# tell a "-->" INSIDE a JSON string value from the marker's own closing
+# delimiter, and truncates at the first one it finds -- a NOT_CLEAN payload
+# whose "note" field happened to contain the three characters "-->" produced
+# invalid JSON, silently fell back to the prose scan, and could misclassify
+# a review the payload had already marked NOT_CLEAN as ready for merge.
+# raw_decode parses exactly one JSON value starting at a given index and
+# does not care what a string's contents look like, so it has no such blind
+# spot.
+_payload_marker_re = re.compile(r'<!--\s*review-data:\s*', re.IGNORECASE)
+_payload_markers = list(_payload_marker_re.finditer(_payload_candidate_text))
+payload = None
+if _payload_markers:
+    _decoder = json.JSONDecoder()
+    _start = _payload_markers[-1].end()
     try:
-        payload = json.loads(review_data_matches[-1].group(1))
+        _decoded, _end = _decoder.raw_decode(_payload_candidate_text, _start)
     except (ValueError, TypeError):
-        payload = None
-    if isinstance(payload, dict) and "schema_version" in payload:
-        verdict_field = payload.get("verdict")
-        if isinstance(verdict_field, str):
-            payload_verdict = verdict_field.strip().upper()
-            if payload_verdict == "CLEAN":
+        _decoded = None
+    else:
+        # Require that only whitespace and the comment's own closing "-->"
+        # follow the parsed object -- anything else means the marker wasn't
+        # actually followed by a single well-formed `{...} -->` comment, and
+        # the object that happened to parse starting at that offset isn't
+        # trustworthy just because it parsed.
+        if re.match(r'\s*-->', _payload_candidate_text[_end:]):
+            payload = _decoded
+if isinstance(payload, dict) and "schema_version" in payload:
+    verdict_field = payload.get("verdict")
+    if isinstance(verdict_field, str):
+        payload_verdict = verdict_field.strip().upper()
+        if payload_verdict == "CLEAN":
+            # A CLEAN verdict with actual findings attached is internally
+            # inconsistent, so it is not trustworthy as a fast path -- fall
+            # through to the prose scan rather than inventing a NOT_CLEAN
+            # this code never observed (gha#845 review, finding 3).
+            # NOT_CLEAN is trusted regardless of findings: a rejection with
+            # no listed findings is still a rejection.
+            findings = payload.get("findings")
+            findings_is_empty = findings is None or (
+                isinstance(findings, list) and len(findings) == 0
+            )
+            if findings_is_empty:
                 record("true", "ready-for-merge")
-            elif payload_verdict == "NOT_CLEAN":
-                record("false", "needs-more-work")
-            # Any other verdict value falls through to the prose scan.
+            # else: falls through to the prose scan.
+        elif payload_verdict == "NOT_CLEAN":
+            record("false", "needs-more-work")
+        # Any other verdict value falls through to the prose scan.
 
 # Machine payloads and quoted blocks are not verdict statements (gha#819).
 # This repo's reviews emit a structured review-data block AFTER the verdict
@@ -164,8 +275,10 @@ def strip_machine_payloads(src):
             line = line[idx + 3:]
             in_comment = False
         if fence_char:
-            m = re.match(r'[ ]{0,3}(`{3,}|~{3,})[ \t]*$', line)
-            if m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len:
+            # Reuses the same _fence_closes helper the review-data payload
+            # scan above uses, so the two agree on where a fence closes
+            # (gha#845 review, finding 1).
+            if _fence_closes(line, fence_char, fence_len):
                 fence_char = ""
                 fence_len = 0
             out.append("")
@@ -178,10 +291,12 @@ def strip_machine_payloads(src):
         # additionally keeps `<!-- x -->```json` from opening a fence, which
         # CommonMark does not treat as one either, since a fence must start
         # its line.
-        m = re.match(r'[ ]{0,3}(`{3,}|~{3,})', line)
-        if m:
-            fence_char = m.group(1)[0]
-            fence_len = len(m.group(1))
+        #
+        # Reuses the same _open_fence helper the review-data payload scan
+        # above uses (gha#845 review, finding 1).
+        opened = _open_fence(line)
+        if opened:
+            fence_char, fence_len = opened
             out.append("")
             continue
         while True:
@@ -449,9 +564,35 @@ non_clean_kw = re.compile(
     re.IGNORECASE
 )
 clean_kw = re.compile(
-    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings|no\s+action|does\s+not\s+need\s+(?:code\s+)?review)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
+    r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
     re.IGNORECASE
 )
+# "no action" and "does not need (code) review" used to sit inside clean_kw
+# above, scanned against EVERY content line like any other keyword. Both
+# read fine in the repo's triage-exemption template
+# ("**No action -- automated, trivial PR that does not need code
+# review**"), but a bare, unanchored "no action" also matches ordinary
+# prose that has nothing to do with a verdict -- "No action has been taken
+# since the last round" -- and because the scan is last-line-wins, that
+# sentence appearing on a line AFTER a real "Changes requested" flipped the
+# whole review clean=true (gha#845 review, finding 4).
+#
+# "does not need (code) review" is removed outright rather than anchored:
+# unlike "no action", it has no fixed position in the triage template ("...
+# that does not need code review"), so no anchor rules out "does not need
+# review from a human once that's fixed" appearing as ordinary prose after
+# a real rejection.
+#
+# "no action" is kept, but ONLY as a check against content_lines[0] -- the
+# verdict line itself, i.e. the line immediately under the "### Verdict"
+# heading -- rather than as a mid-line alternative scanned against every
+# line. That is the triage template's actual shape: the exemption is
+# STATED as the verdict, not mentioned somewhere in the explanation below
+# it. Restricting the anchor to the verdict line is what lets "No action
+# has been taken since the last round" (a later, unrelated sentence) fail
+# to match while "**No action -- automated, trivial PR ...**" (the verdict
+# line itself) still does.
+no_action_anchor = re.compile(r'^\s*no\s+action\b', re.IGNORECASE)
 footer_regex = re.compile(
     r'^[ \t>*_#-]*(\*\*)?(stopping\s+point|reviewed\s+commit|posted\s+by)\b',
     re.IGNORECASE
@@ -460,7 +601,7 @@ footer_regex = re.compile(
 # Single ordered scan in document order: last verdict statement wins
 last_verdict = None
 
-for line in content_lines:
+for line_index, line in enumerate(content_lines):
     if footer_regex.search(line):
         continue
 
@@ -468,6 +609,11 @@ for line in content_lines:
     neg_pos_spans = []
     neg_neg_spans = []
     line_matches = []
+
+    if line_index == 0:
+        m = no_action_anchor.match(norm_line)
+        if m:
+            line_matches.append((m.start(), "true", "ready-for-merge"))
 
     for m in negated_positive_phrases.finditer(norm_line):
         neg_pos_spans.append((m.start(), m.end()))
