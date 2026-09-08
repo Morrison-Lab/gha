@@ -15,8 +15,12 @@ jobs:
       pull-requests: read
       contents: read
     uses: Morrison-Lab/gha/.github/workflows/version-check.yml@v2
-    with:
-      # description-path: DESCRIPTION                    # default
-      # no-version-increment-label: 'no version increment' # default
-      # bump-branch: automated/bump-dev-version           # default; must match
-      #   bump-dev-version.yml's own pr-branch input if you changed it there.
+    # Every input is optional; each is shown below at its default value.
+    # To set one, delete the leading "# " from the `with:` line and from that
+    # input's line. The indentation left behind is already correct.
+    # bump-branch must match bump-dev-version.yml's own pr-branch input if you
+    # changed it there.
+    # with:
+    #   description-path: DESCRIPTION
+    #   no-version-increment-label: 'no version increment'
+    #   bump-branch: automated/bump-dev-version
