@@ -279,9 +279,12 @@ if isinstance(payload, dict) and "schema_version" in payload:
 # Fence tracking takes its closing rule from strip-non-invoking-markup.sh: a
 # fence closes only on a run of the same character at least as long as the
 # opener with nothing but whitespace after it, and an unclosed fence runs to
-# the end of the text. It covers top-level fences only; that sibling also
-# handles indented code blocks, and a fence nested four or more columns deep
-# inside a list is not recognized here (round 2, finding 4).
+# the end of the text. A fence marker preceded by any run of spaces or a tab
+# is recognized, and a line indented by a tab or four or more spaces with no
+# fence at all (CommonMark's indented code block) is excluded from the payload
+# scan directly; what is still not modelled is a fence nested inside a list
+# item's own indentation being treated as part of that item (round 2, finding
+# 4, and the gha#845 fourth review).
 #
 # Blockquoted lines are blanked too, not only fenced ones (gha#845 third
 # review, finding 1). The heading comment above already claims "quoted
