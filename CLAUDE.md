@@ -2325,9 +2325,14 @@ trusted outright (fixed by falling through to the prose scan instead;
 
 Seven review rounds found these: three local adversarial rounds (round one
 authored the fast path with its own tests green; round two found the
-blockquote/fence bypass and the regex/findings gaps; round three found the
-anchor and indented-fence gaps), then four Copilot rounds, three raising
-comment/doc-accuracy findings against code that was already correct.
+blockquote/fence bypass in the payload scan, the regex and findings gaps,
+and the first unanchored "no action" keyword; round three tightened that
+anchor and found the indented-fence gap), then four Copilot rounds.
+Copilot's first round found a real defect the local rounds had missed:
+`strip_machine_payloads` itself still kept blockquoted lines, so a quoted
+heading or keyword could win the heading and prose scans (fixed in
+`5793322`, which is where the shared tracker reached both scans);
+its other rounds raised comment and doc accuracy findings.
 Tests went 138 -> 160.
 Round one's own tests all passed, and it would have shipped the
 quoted-payload bypass unreviewed -- the argument for the adversarial round
