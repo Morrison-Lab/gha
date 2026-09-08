@@ -1040,6 +1040,170 @@ run_test "An empty comment terminates rather than swallowing the rest" \
 blocked" \
 "false" "blocked"
 
+# --- gha#827: inline code spans are quoted strings, not verdict statements ---
+#
+# The first case is the measured failure verbatim (Morrison-Lab/ai-config#3154,
+# run 33832648873): a backticked identifier after the verdict heading was
+# normalised to "NOT CLEAN" and, under last-match-wins, outranked the approving
+# line above it. Confirmed to report clean=false verdict=needs-more-work against
+# the pre-fix script.
+run_test "A backticked NOT_CLEAN after the verdict does not flip it" \
+"### Verdict
+
+**Ready for merge**
+
+\`check-pr-fully-clean.py\` reports \`NOT_CLEAN\`, but every blocker is one of the two non-content categories." \
+"true" "ready-for-merge"
+
+# The bare identifier, with no backticks at all. This is the strip_emphasis
+# half of the fix rather than the code-span half, so it fails if only the span
+# pass is added.
+run_test "A bare NOT_CLEAN identifier is one token, not a negation" \
+"### Verdict
+
+**Ready for merge**
+
+The instrument printed NOT_CLEAN for a base-currency reason only." \
+"true" "ready-for-merge"
+
+# The span pass must not INVENT a verdict by closing neighbours up: deleting
+# the span outright turns this into "no findings", which the negated-negative
+# pattern reads as affirmatively clean. The placeholder is what prevents it.
+run_test "A code span between a negator and its target does not fabricate a match" \
+"### Verdict
+
+Needs more work: no \`--fail-under\` findings threshold is configured." \
+"false" "needs-more-work"
+
+# A closing run must be exactly as long as the opener, so a SINGLE tick inside
+# a double-tick span does not close it. The span must therefore contain a
+# nested single-tick pair: a plain ``NOT_CLEAN`` fixture passes under a
+# close-on-any-run mutation too, because its first following run is already the
+# real closer, so it discriminates nothing.
+#
+# Confirmed: replacing the run-length test with an unconditional close scores
+# this clean=true verdict=clean rather than ready-for-merge, because the span
+# collapses to nothing and the bare words "not clean" survive into the scan.
+run_test "A single tick inside a double-tick span does not close it" \
+"### Verdict
+
+**Ready for merge**
+
+The report says \`\` \`not clean\` \`\` only for a base-currency reason." \
+"true" "ready-for-merge"
+
+# An unclosed run is left alone rather than swallowing the rest of the review,
+# so a real finding after it is still scored.
+run_test "An unclosed backtick run does not swallow a later finding" \
+"### Verdict
+
+**Ready for merge**
+
+Note the stray \` tick here.
+Changes requested on the second pass." \
+"false" "changes-requested"
+
+# A heading inside a multi-line span is not a verdict heading. The quoted
+# heading must come AFTER the real one, or the case discriminates nothing: with
+# span stripping removed the LAST heading still has to be the quoted one for
+# last_idx to land in the wrong place. An earlier revision put it first and
+# passed with strip_code_spans deleted entirely.
+#
+# Newline preservation is a separate, unpinned invariant: three fixtures were
+# tried against a mutation dropping it and none distinguished them, because the
+# output is re-split immediately afterwards. See the note in
+# classify-review-verdict.sh.
+run_test "A verdict heading inside a multi-line code span does not win" \
+"### Verdict
+
+**Ready for merge**
+
+Quoting the shape: \`\` a
+### Verdict
+b \`\` for reference." \
+"true" "ready-for-merge"
+
+# --- gha#827 review: a code span must not cross a blank line ---
+#
+# A code span is inline content, so CommonMark ends it at the paragraph break.
+# Scanning the document as one flat string paired two unrelated stray backticks
+# in different paragraphs and blanked everything between them, the real verdict
+# heading included. Confirmed to score clean=false verdict=no-verdict before
+# the block split was added.
+run_test "Stray backticks in separate paragraphs do not pair into a span" \
+"A note about the \`foo flag.
+
+### Verdict
+
+**Ready for merge**
+
+See the \`bar setting." \
+"true" "ready-for-merge"
+
+# --- gha#827 review: \b before positive_targets ---
+#
+# pos_gap_pattern ends in \s* and repeats \w+, so without a leading boundary
+# the regex backtracks inside a word: "already" splits into the gap word "al"
+# plus the target "ready". Distinct root cause from the span blanking -- no
+# backticks and no underscore are involved. Confirmed to score
+# clean=false verdict=needs-more-work against origin/main.
+run_test "The word already does not supply a 'ready' target to a negator" \
+"### Verdict
+
+**Ready for merge**
+
+The base was not already current, so I updated it." \
+"true" "ready-for-merge"
+
+# A genuine blocking statement in ordinary prose after the verdict still wins.
+# Without this, a fix that simply stopped scanning post-verdict prose would
+# pass every case above.
+run_test "A real rejection in prose after the verdict still wins" \
+"### Verdict
+
+**Ready for merge**
+
+On reflection this is blocked until the migration lands." \
+"false" "blocked"
+
+# --- gha#827 review: a real NUL byte must not flip a rejection to clean ---
+#
+# strip_emphasis protects an intra-word underscore with a NUL sentinel and
+# swaps it back afterwards, and that swap cannot tell its own sentinel from a
+# NUL already present in the text. Before the read-time scrub, a real NUL
+# became an underscore, merged "needs<NUL>more" into one \w-class token, and
+# scored a genuine rejection ready-for-merge -- the false-CLEAN direction,
+# which bypasses require-clean-verdict on a review that said the opposite.
+#
+# This cannot go through run_test: a bash variable cannot hold a NUL byte, so
+# the fixture is written with printf's octal escape instead. The paired control
+# is the same body with a space, which must reach the same verdict -- without
+# it the case would pass on a script that simply failed to parse the fixture.
+run_nul_test() {
+  local name="$1" sep="$2" expected_clean="$3" expected_verdict="$4"
+  local tmp_file out_file
+  tmp_file="$(mktemp)"
+  out_file="$(mktemp)"
+  printf '### Verdict\n\n**Ready for merge**\n\nOn reflection this needs%bmore work.\n' \
+    "$sep" > "$tmp_file"
+  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" > /dev/null
+  local actual_clean actual_verdict
+  actual_clean="$(grep -E '^clean=' "$out_file" | cut -d= -f2 || true)"
+  actual_verdict="$(grep -E '^verdict=' "$out_file" | cut -d= -f2 || true)"
+  rm -f "$tmp_file" "$out_file"
+  if [[ "$actual_clean" == "$expected_clean" && "$actual_verdict" == "$expected_verdict" ]]; then
+    (( passed++ )) || true
+  else
+    echo "FAIL: $name (expected clean=$expected_clean verdict=$expected_verdict, got clean=$actual_clean verdict=$actual_verdict)" >&2
+    (( failed++ )) || true
+  fi
+}
+
+run_nul_test "A real NUL byte does not flip a rejection to clean" '\000' \
+  "false" "needs-more-work"
+run_nul_test "Control: the same body with a space is also a rejection" ' ' \
+  "false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

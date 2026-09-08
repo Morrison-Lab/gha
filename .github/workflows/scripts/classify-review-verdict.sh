@@ -40,7 +40,33 @@ if not os.path.isfile(review_file):
 
 try:
     with open(review_file, "r", encoding="utf-8", errors="replace") as f:
-        text = f.read()
+        # NUL bytes are replaced with a SPACE here, before anything downstream
+        # can rely on their absence (gha#827 review).
+        #
+        # strip_emphasis protects an intra-word underscore by swapping it for a
+        # NUL sentinel and swapping it back afterwards. That final replace
+        # cannot tell its own sentinel from a NUL that was already in the text,
+        # so a real one became an underscore, merged two words into a single
+        # \w-class token, and stopped a genuine rejection phrase from matching:
+        # "needs<NUL>more work" after the verdict heading scored
+        # ready-for-merge instead of needs-more-work. That is the false-CLEAN
+        # direction, which bypasses require-clean-verdict on a review that said
+        # the opposite.
+        #
+        # An earlier revision of the sentinel comment asserted NUL was "stripped
+        # from the review text by the time it reaches here". That was never
+        # checked and is false: check-review-execution.sh extracts the text with
+        # `jq -r`, which passes a NUL straight through, and errors="replace"
+        # does not touch it either, since NUL is a valid single-byte UTF-8
+        # codepoint rather than an invalid sequence. Verified:
+        #   python3 -c "import json; print(json.dumps({'a':'foo\x00bar'}))" \
+        #     | jq -r '.a' | od -c   ->   f o o \0 b a r
+        #
+        # A SPACE rather than deletion, for the reason the placeholder above is
+        # a word rather than nothing: deleting glues the neighbours together
+        # ("needs<NUL>more" -> "needsmore") and reproduces the same class of
+        # missed match it is meant to fix.
+        text = f.read().replace("\x00", " ")
 except Exception:
     record("false", "missing-file")
 
@@ -140,7 +166,133 @@ def strip_machine_payloads(src):
         out.append(line)
     return out
 
-lines = strip_machine_payloads(text.strip().splitlines())
+# Inline code spans are quoted strings, not verdict statements (gha#827).
+#
+# strip_emphasis below deletes the tick CHARACTERS and classifies the words
+# inside, so `NOT_CLEAN` -- a backticked identifier naming an instrument's
+# output -- became the two words "NOT CLEAN" and matched the negated-positive
+# pattern as a rejection. Because the scan is last-match-wins, that line
+# outranked the `**Ready for merge**` line above it and flipped an approving
+# review to needs-more-work (measured on Morrison-Lab/ai-config#3154, run
+# 33832648873).
+#
+# This is the inline-code sibling of gha#819's fenced-block exclusion.
+#
+# (An earlier revision of this comment claimed run-claude-review-attempt's
+# brief instructs the reviewer to wrap quoted verdict words in single
+# backticks. That claim came from gha#827's issue body and does not hold:
+# `grep -rn -i backtick .github/actions/run-claude-review-attempt/` returns
+# nothing. The fix stands on its own -- quoting an identifier in backticks is
+# ordinary Markdown, not a behaviour the brief induces -- but the false
+# citation is removed rather than repeated.)
+#
+# The span is replaced by a placeholder word rather than deleted. Deleting it
+# closes its neighbours up, and that direction can INVENT a match rather than
+# only lose one: `no `x` findings` would become "no findings", which the
+# negated-negative pattern reads as an affirmative clean statement. The
+# placeholder blocks that, because noun_neg_gap_pattern admits only a fixed
+# list of adjectives and "codespan" is not among them. It must also be a word
+# no pattern here matches, which rules out the obvious "code".
+#
+# The placeholder is an ORDINARY word to pos_gap_pattern, which is deliberate
+# and has one known cost. That pattern excludes "and", "but" and "whereas" as
+# gap fillers, so a span whose entire content is one of those three words
+# blocks a negated-positive match while unblanked and admits it once blanked:
+# "not `and` ready for merge" scores needs-more-work where the unbackticked
+# "not and ready for merge" scores ready-for-merge. Measured (gha#827 review).
+#
+# That is accepted rather than fixed, because both directions were weighed and
+# this one errs safely. Choosing a placeholder from the excluded set would
+# block the gap generally, so "not `really` clean" would stop matching and a
+# genuine rejection would score CLEAN -- a PR merged over a rejection. The
+# current choice errs the other way, toward a false rejection, which costs a
+# re-review. The trigger is also an artificial sentence: any other span content
+# behaves identically blanked or not.
+#
+# Newlines inside a span are preserved so the line COUNT does not change, which
+# keeps this function's output line-aligned with its input.
+#
+# That is defensive rather than load-bearing, and saying so is the honest
+# reading: no test distinguishes it. Three fixtures were tried against a
+# mutation that drops the newlines and all three scored identically, because
+# the result is re-split immediately below, so last_idx and the content slice
+# stay self-consistent whatever the line count is. Keep the preservation --
+# alignment with the source is worth having if anything here ever reports a
+# line number -- but do not claim a verdict depends on it.
+#
+# Closing follows CommonMark rather than `\`[^\`]*\``: a span opens on a run of
+# N backticks and closes only on a run of exactly N. The naive pattern matches
+# the empty span between the two opening ticks of a ``..`` span and leaks the
+# contents through, which is the same bug this repo already records for
+# check-new-line-breaks' strip_inline_markup. An unclosed run is left alone.
+def _scan_code_spans(text):
+    out = []
+    i = 0
+    n = len(text)
+    while i < n:
+        if text[i] != "`":
+            out.append(text[i])
+            i += 1
+            continue
+        j = i
+        while j < n and text[j] == "`":
+            j += 1
+        run = j - i
+        close = -1
+        k = j
+        while k < n:
+            if text[k] == "`":
+                m = k
+                while m < n and text[m] == "`":
+                    m += 1
+                if m - k == run:
+                    close = k
+                    break
+                k = m
+            else:
+                k += 1
+        if close == -1:
+            out.append(text[i:j])
+            i = j
+            continue
+        out.append(" codespan ")
+        out.append("\n" * text[j:close].count("\n"))
+        i = close + run
+    return "".join(out).split("\n")
+
+# A code span is INLINE content, so it cannot cross a blank line: CommonMark
+# ends the containing paragraph there. Scanning the whole document as one flat
+# string ignores that, and the consequence is a regression rather than a
+# nicety -- two unrelated stray backticks in different paragraphs pair into a
+# "span" that blanks everything between them, the real `### Verdict` heading
+# included, scoring an approving review no-verdict.
+#
+# Reproduced during review of this change: a body reading "A note about the
+# `foo flag." / blank / "### Verdict" / blank / "**Ready for merge**" / blank /
+# "See the `bar setting." scored clean=false verdict=no-verdict before this
+# split and clean=true verdict=ready-for-merge after it.
+#
+# Blank lines are emitted unchanged rather than fed to the scanner, so the line
+# count is preserved here for the same reason it is preserved inside a span.
+def strip_code_spans(src_lines):
+    out_lines = []
+    block = []
+
+    def flush():
+        if block:
+            out_lines.extend(_scan_code_spans("\n".join(block)))
+            del block[:]
+
+    for line in src_lines:
+        if line.strip():
+            block.append(line)
+        else:
+            flush()
+            out_lines.append(line)
+    flush()
+    return out_lines
+
+lines = strip_code_spans(strip_machine_payloads(text.strip().splitlines()))
 header_regex = re.compile(
     r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict'
     r'|^[ \t>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)'
@@ -174,7 +326,30 @@ if not content_lines:
 
 def strip_emphasis(s):
     # Strip markdown bold, italic, strikethrough, code ticks so inline styling around words is normalized
-    return re.sub(r'[*_~`]+', ' ', s)
+    #
+    # An underscore BETWEEN two alphanumerics is part of an identifier, not
+    # emphasis around a word: NOT_CLEAN is one token, and splitting it into
+    # "NOT CLEAN" is what let a bare (unbackticked) mention of an instrument's
+    # output read as a rejection (gha#827). Markdown does not treat an
+    # intra-word underscore as emphasis either, so this matches the renderer.
+    #
+    # Protecting it is enough on its own -- no separate guard is needed --
+    # because `_` is a word character to `re`, so `\bnot\b` cannot match
+    # inside the surviving NOT_CLEAN.
+    #
+    # The sentinel is NUL, which is safe here only because the read at the top
+    # of this script replaces every NUL in the input with a space FIRST. A
+    # printable stand-in would risk colliding with real content instead.
+    #
+    # That ordering is load-bearing rather than incidental. The replace below
+    # cannot distinguish this sentinel from a NUL that was already in the text,
+    # so without the read-time scrub a real one became an underscore and merged
+    # two words of a genuine rejection into one token, scoring it clean
+    # (gha#827 review). An earlier revision of this comment asserted NUL was
+    # already stripped upstream; it is not, and the scrub is what makes the
+    # claim true rather than a hope.
+    s = re.sub(r'(?<=[A-Za-z0-9])_(?=[A-Za-z0-9])', '\x00', s)
+    return re.sub(r'[*_~`]+', ' ', s).replace('\x00', '_')
 
 def expand_contractions(s):
     contractions = [
@@ -208,7 +383,18 @@ pred_neg_gap_pattern = rf'(?:{aside_pattern}|(?:\s+(?:longer|currently|strictly|
 pos_neg_prefix = rf'\b(not|never|un-?|non-?|no\s+longer|without)\b{pos_gap_pattern}'
 noun_neg_prefix = rf'\b(no|zero|0|without)\b{noun_neg_gap_pattern}'
 pred_neg_prefix = rf'\b(no\s+longer|not|never|un-?|non-?)\b{pred_neg_gap_pattern}'
-positive_targets = r'(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
+# The leading \b is load-bearing (gha#827 review). pos_gap_pattern ends in
+# `\s*`, and its word repetition is `\w+`, so without a boundary here the regex
+# backtracks INSIDE a word: "already" splits into the gap word "al" plus the
+# target "ready", and any sentence of the form "... not ... already ..." after
+# the verdict heading scored a rejection. Measured against origin/main, a body
+# stating **Ready for merge** and then "The base was not already current, so I
+# updated it." classified needs-more-work.
+#
+# This is a distinct root cause from the code-span blanking above -- it needs no
+# backticks and no underscore -- but it is the same symptom, so a review body
+# carrying both was still misclassified once the span fix alone was applied.
+positive_targets = r'\b(ready\s+(?:for|to)\s+merge|ready(?!\s+(?:for|to)\b)|approved|clean|lgtm)'
 noun_negative_targets = r'(findings|blocking\s+findings|blocking\s+issues|actionable\s+findings|blockers?|changes\s+(?:requested|required))'
 pred_negative_targets = r'(needs\s+more\s+work|needs\s+work|blocked|impasse|deadlock|rejected|unapproved)'
 
