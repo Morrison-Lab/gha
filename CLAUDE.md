@@ -2307,6 +2307,7 @@ or quoted.
 
 - **Do:** route a new fast path over the same untrusted text through the
   existing sanitizer's own state, not a fresh copy of its logic.
+
 - **Don't:** add a fast path ahead of an existing sanitizer and assume the
   sanitizer still protects it -- it has already returned by the time the
   sanitizer runs.
@@ -2322,7 +2323,7 @@ rejection vocabulary); and a `CLEAN` payload with non-empty `findings` was
 trusted outright (fixed by falling through to the prose scan instead;
 `NOT_CLEAN` still trusts regardless of findings).
 
-Five review rounds found these: three local adversarial rounds (round one
+Seven review rounds found these: three local adversarial rounds (round one
 authored the fast path with its own tests green; round two found the
 blockquote/fence bypass and the regex/findings gaps; round three found the
 anchor and indented-fence gaps), then four Copilot rounds, three raising
