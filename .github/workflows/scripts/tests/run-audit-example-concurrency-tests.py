@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline cases for audit_example_concurrency.py (gha#809).
+"""Offline cases for audit_example_concurrency.py (gha#809, gha#821).
 
 Each case builds a throwaway examples/ and workflows/ pair, so the cases can
 name a collision this repo's own tree must never carry. The negative cases
@@ -7,16 +7,25 @@ are the ones to keep if the suite is trimmed: a stub with no top-level block,
 a stub whose group differs from the job's, and a callee with no job-level
 group must all pass, or the audit would fail every stub the moment any
 workflow gained a concurrency block.
+
+The gha#821 cases put a CALLER in the workflows/ directory rather than in
+examples/, which is what this repo's own dogfood callers look like. The
+population case is the one to keep from that group: narrowing the population
+back to examples/ alone leaves every other case green, because every other
+case's collision lives in a stub.
 """
 
 from __future__ import annotations
 
+import os
 import pathlib
+import re
 import subprocess
 import sys
 import tempfile
 
 SCRIPT = pathlib.Path(__file__).resolve().parent.parent / "audit_example_concurrency.py"
+REPO = SCRIPT.parent.parent.parent.parent
 
 STUB = """name: X
 on: push
@@ -90,7 +99,13 @@ jobs:
 
 
 def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.yml",
-        stub_name: str = "quarto-publish.yml"):
+        stub_name: str = "quarto-publish.yml", caller: str | None = None,
+        caller_name: str = "website-publish.yml", env: dict[str, str] | None = None):
+    """Run the audit over a throwaway tree.
+
+    ``caller`` is written into the WORKFLOWS directory rather than examples/,
+    which is where this repo's own dogfood callers live (gha#821).
+    """
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         ex = root / "examples"
@@ -101,11 +116,25 @@ def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.ym
             (ex / stub_name).write_text(stub)
         if workflow is not None:
             (wf / callee).write_text(workflow)
+        if caller is not None:
+            (wf / caller_name).write_text(caller)
         return subprocess.run(
             [sys.executable, str(SCRIPT), "--examples", str(ex), "--workflows", str(wf)],
             capture_output=True,
             text=True,
+            env={**os.environ, "GHA_WORKFLOWS_RESTORED": "", **(env or {})},
         )
+
+
+def run_live():
+    """Run the audit over this repository's own tree (gha#821)."""
+    return subprocess.run(
+        [sys.executable, str(SCRIPT), "--examples", str(REPO / "examples"),
+         "--workflows", str(REPO / ".github" / "workflows")],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "GHA_WORKFLOWS_RESTORED": ""},
+    )
 
 
 def main() -> int:
@@ -173,7 +202,7 @@ def main() -> int:
                                                         WORKFLOW.format(conc=JOB_GH)), 2, "expected a string or mapping")
     expect("missing callee is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), None), 2, "not in")
     expect("empty examples dir is an error", run(None, WORKFLOW.format(conc=JOB_GH)), 2, "no example stubs")
-    expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "examples/quarto-publish.yml")
+    expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "quarto-publish.yml: ")
     expect("stub with no jobs mapping is an error", run("name: X\non: push\n", WORKFLOW.format(conc=JOB_GH)), 2, "no 'jobs' mapping")
     # gha#811 review, finding 1: the collision written one level down.
     expect("job-level caller group collides", run(JOB_STUB.format(group="gh-pages", callee="quarto-publish.yml"),
@@ -191,11 +220,13 @@ def main() -> int:
     # gha#811 review, finding 3: the summary counts calls actually COMPARED, so
     # a call with no caller-level group at all reports zero rather than one.
     expect("a call with no caller group compares zero", run(STUB.format(top="", callee="quarto-publish.yml"),
-                                                             WORKFLOW.format(conc=JOB_GH)), 0, "compared 0 reusable-workflow")
+                                                             WORKFLOW.format(conc=JOB_GH)), 0, "compared 0 of them")
     expect("a call with a caller group compares one", run(STUB.format(top="concurrency:\n  group: publish-lock", callee="quarto-publish.yml"),
-                                                           WORKFLOW.format(conc=JOB_GH)), 0, "compared 1 reusable-workflow")
-    expect("stub count is reported", run(STUB.format(top="", callee="quarto-publish.yml"),
-                                          WORKFLOW.format(conc=JOB_GH)), 0, "examined 1 stub(s)")
+                                                           WORKFLOW.format(conc=JOB_GH)), 0, "compared 1 of them")
+    # The callee in workflows/ is a candidate caller too (it calls nothing), so
+    # the population here is two files: one stub, one workflow.
+    expect("population count names both roots", run(STUB.format(top="", callee="quarto-publish.yml"),
+                                                    WORKFLOW.format(conc=JOB_GH)), 0, "examined 2 workflow file(s) (1 under")
 
     # gha#811 review: the CALLEE side has two placements too. Checking only its
     # jobs missed a workflow_call workflow carrying its own top-level group.
@@ -225,6 +256,86 @@ def main() -> int:
     # an earlier version of this comment said exit 2 on a missing file).
     expect("another owner's uses: is skipped", run("name: X\non: push\n" + TOP_GH + "\njobs:\n  publish:\n    uses: someone-else/gha/.github/workflows/quarto-publish.yml@v2\n",
                                                     WORKFLOW.format(conc=JOB_GH)), 0, "compared 0")
+
+    # gha#821: callers are derived from the `uses:` edge, so a caller living in
+    # the workflows directory -- this repo's own dogfood shape -- is in the
+    # population. The stub here carries no group, so the only collision is the
+    # dogfood caller's; narrowing the population back to examples/ alone turns
+    # this red with exit 0.
+    expect("a collision in a caller outside examples/ is reported",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller=STUB.format(top=TOP_GH, callee="quarto-publish.yml")), 1, "website-publish.yml: top-level")
+    # The job-level placement in a dogfood caller, so the gha#811 job-level
+    # check is not silently examples-only.
+    expect("a job-level collision in a caller outside examples/ is reported",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller=JOB_STUB.format(group="gh-pages", callee="quarto-publish.yml")), 1, "website-publish.yml: job 'publish'")
+    expect("a caller outside examples/ with a different group passes",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller=STUB.format(top="concurrency:\n  group: website-publish-${{ github.ref }}", callee="quarto-publish.yml")), 0)
+    # The workflows-root half of the population is discovered through
+    # workflow_discovery, so it carries *.yaml too. examples/ and
+    # .github/workflows/ both hold only *.yml, so a *.yml-only listing on the
+    # workflows side leaves every other case and the live run green.
+    expect("a .yaml caller outside examples/ is in the population",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller=STUB.format(top=TOP_GH, callee="quarto-publish.yml"),
+               caller_name="website-publish.yaml"), 1, "website-publish.yaml: top-level")
+    # workflow_discovery excludes dotfiles, because GitHub never loads them; a
+    # `.restored-from-default-branch` marker or an editor's dotfile must not
+    # be parsed as a caller. Listing every file turns this red with exit 2.
+    expect("a dotfile in the workflows directory is not a caller",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller="not yaml: [\n", caller_name=".editor-scratch.yml"), 0)
+    # The examined count names both roots and the calls found, so a population
+    # that shrank back to the stubs alone reads differently. The dogfood caller
+    # and the stub each call the callee once, and the callee itself calls
+    # nothing.
+    expect("the examined count includes the workflows-root callers",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller=STUB.format(top="", callee="quarto-publish.yml")), 0,
+           "examined 3 workflow file(s) (1 under")
+    expect("the call count includes the workflows-root callers",
+           run(STUB.format(top="", callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               caller=STUB.format(top="", callee="quarto-publish.yml")), 0,
+           "found 2 call(s)")
+    # Under a default-branch restore the files on disk are not the PR's, so the
+    # audit skips with a notice like every sibling audit (gha#598, gha#765).
+    # The fixture collides, so dropping the skip turns this red with exit 1.
+    expect("a restored workflows tree skips with a notice",
+           run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
+               env={"GHA_WORKFLOWS_RESTORED": "1"}), 0, "::notice::Skipping audit-example-concurrency")
+
+    # The live tree: the audit still passes, and its population counts the
+    # dogfood callers under .github/workflows/ alongside the examples/ stubs.
+    # The counts are derived from the tree rather than written here, so a new
+    # stub or workflow does not turn this case red.
+    def listing(root: pathlib.Path) -> list[pathlib.Path]:
+        return [p for p in root.iterdir()
+                if p.is_file() and p.suffix in (".yml", ".yaml") and not p.name.startswith(".")]
+
+    stubs = len(listing(REPO / "examples"))
+    dogfood = listing(REPO / ".github" / "workflows")
+    live = run_live()
+    expect("the live tree passes", live, 0)
+    expect("the live population counts both roots",
+           live, 0, f"examined {stubs + len(dogfood)} workflow file(s) ({stubs} under")
+    # A textual floor for the call count: every `uses: Morrison-Lab/gha/...`
+    # line under .github/workflows/ is a dogfood call the parsed walk must
+    # also find. Zero dogfood calls would make the assertion vacuous, so that
+    # is a failure too.
+    found = re.search(r"found (\d+) call\(s\)", live.stdout)
+    dogfood_calls = sum(
+        1 for p in dogfood
+        for line in p.read_text(encoding="utf-8").splitlines()
+        if line.lstrip().startswith("uses: Morrison-Lab/gha/.github/workflows/")
+    )
+    if found is None or dogfood_calls == 0 or int(found.group(1)) < dogfood_calls:
+        print(f"::error::the live call count must include the {dogfood_calls} dogfood call(s); "
+              f"summary was {live.stdout!r}")
+        failures += 1
+    else:
+        print("OK   the live call count includes the dogfood callers")
 
     if failures:
         print(f"::error::{failures} audit-example-concurrency case(s) failed")
