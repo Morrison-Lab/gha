@@ -3112,11 +3112,35 @@ gha#437 recorded the mechanism for the review family; gha#654 then added
 same group at the top level, so every publish run on a consumer that copied
 the stub failed silently and the site stopped updating
 (`ucdavis/hac.sap`, run 33604968678).
-The audit walks every stub under `examples/`, resolves each `uses:` to the
-workflow file it names, and fails on any caller-level group that the called
-workflow also declares, at either of ITS two placements -- the callee's jobs
-and the callee's own top level; a stub naming a workflow file this repo does
-not carry is an error rather than a skip.
+The audit walks every workflow file under `examples/` AND under
+`.github/workflows/` (both extensions, through `workflow_discovery`),
+treats any job-level `uses:` naming one of our reusable workflows as a
+call, resolves it to the workflow file it names, and fails on any
+caller-level group that the called workflow also declares, at either of ITS
+two placements -- the callee's jobs and the callee's own top level; a caller
+naming a workflow file this repo does not carry is an error rather than a
+skip.
+**The population is derived from the `uses:` edge, not from a directory
+list (gha#821).**
+Until gha#821 it was the `examples/` stubs alone, so this repo's own
+dogfood callers -- `website-publish.yml` and the preview family, which call
+the same gh-pages workflows the stubs do -- were subject to the identical
+deadlock and never examined.
+Deriving callers from the edge needs no new argument and cannot drift out of
+step with where the callers happen to live; the cost is that the audit
+reads every workflow in the repo rather than 49 stubs, and a malformed
+workflow anywhere under `.github/workflows/` now fails this audit too, as it
+already fails the token and pin audits.
+A reusable workflow is a candidate caller like any other file and
+contributes nothing when it calls none of ours.
+The summary names both roots and the calls found
+(`examined 114 workflow file(s) (49 under examples, 65 under
+.github/workflows); found 61 call(s) ...` on `main` at the time of
+gha#854), so a population that silently shrank back to the stubs alone
+reads differently from one that examined the dogfood callers.
+Under a default-branch restore of `.github/workflows/` the audit skips with
+a notice, as every sibling audit here does (gha#598, gha#765): the files on
+disk are then the default branch's callers rather than the PR's.
 **Caller-level means two placements, not one.**
 A top-level block covers the whole run and so covers the calling job, and
 a block on the calling job itself is the same collision written one level
@@ -3181,6 +3205,27 @@ One case exists purely to pin the `*.yaml` half of the population, which
 neither another case nor the live run can reach -- `examples/` holds only
 `*.yml`, so reverting the glob leaves everything else green, verbatim the
 class this file documents for `workflow_discovery` above.
+The gha#821 cases write the CALLER into the workflows directory rather than
+`examples/`, which is the dogfood shape: a top-level and a job-level
+collision there are each reported, a `.yaml` caller there is in the
+population, a dotfile there is not parsed, and the examined and call counts
+include it.
+The one to keep from that group is the top-level collision, since every
+older case's collision lives in a stub and narrowing the population back to
+`examples/` alone leaves all of them green.
+Two more cases run the audit over the LIVE tree, asserting that it passes
+and that its summary counts both roots, with the counts derived from the
+tree at test time rather than written into the suite; the call count is
+held to a textual floor -- every `uses: Morrison-Lab/gha/...` line under
+`.github/workflows/` -- and a floor of zero is itself a failure, since it
+would make the assertion vacuous.
+Six mutations were confirmed to turn a named case red rather than assumed
+to: the population narrowed back to `examples/` (the top-level dogfood
+collision case), a `*.yml`-only listing (the `.yaml` caller case), dotfiles
+listed as callers (the dotfile case), the restore skip dropped (the restore
+case, whose fixture collides so the skip is what makes it exit 0), the call
+count dropped (the call-count case), and the job-level caller check dropped
+(the job-level dogfood collision case).
 The non-mapping-job guard is declared TWICE (in `job_groups` and in
 `callee_calls`), so a single-site mutation survives the suite and only
 mutating both turns its case red; read that survivor as the other site still
