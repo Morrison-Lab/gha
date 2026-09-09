@@ -467,8 +467,11 @@ which is why the capabilities above moved to `@v2`.
   in `outputs:`, and the first draft omitted that block, so every value
   arrived empty and the notice fell back to the old wording for both real
   cases while every script test stayed green.
-  `run-review-job-split-tests.py` now asserts that every
-  `steps.fail-check*.outputs.<name>` the workflow reads is declared there.
+  `run-review-job-split-tests.py` asserts that every
+  `steps.<id>.outputs.<name>` the workflow reads from one of this repo's
+  composites is declared in that composite's `outputs:` (gha#806 widened
+  it from the `fail-check*` prefix alone to every composite the workflow
+  reads).
   **The message is redacted before it leaves the guard.**
   A door rejection is exactly where the SDK quotes credential context (the
   gha#686 entry above records one), and the comment is not masked, so the
@@ -2886,6 +2889,43 @@ and `post-review` stale-checks against event-pinned
 `reviewed-head` (`github.event.pull_request.head.sha`),
 falling back to gather-context's stash-head on dispatch,
 rather than a later API fetch from the model job.
+
+**It also asserts that every composite output the workflow reads is
+declared, and that check is derived from the parsed workflow rather than
+from a list kept in the suite (gha#804, gha#806).**
+A composite's step outputs are invisible to its caller unless `action.yml`
+re-declares them, and gha#804's first draft read two `run-review-guard`
+outputs the guard never exposed while every offline suite stayed green.
+The first fix scoped the assertion to that one composite by a hard-coded
+`fail-check*` step-id prefix; gha#806 replaced the prefix with a map built
+from every step whose `uses:` names `Morrison-Lab/gha/.github/actions/<x>@...`
+or `./.github/actions/<x>`, collects every `steps.<id>.outputs.<name>` read
+from the workflow text, and asserts each name against
+`<actions-dir>/<x>/action.yml`'s `outputs:` (the `--actions-dir` flag,
+default `.github/actions`, replaced the old `--guard` path).
+Three things constrain any change to it.
+**The reads are collected from raw text, not parsed expressions**, because
+an output is read from `if:`, `env:`, `with:`, and job `outputs:` alike and
+a parsed walk that missed one placement would reproduce the silent-inert
+bug the check exists for; whole-line `#` comments are stripped, so a
+comment naming an output the workflow deliberately does not read is not a
+read, but a trailing comment or a `run:` string naming a fictitious output
+still false-positives, which is the cheap direction (one line to fix, in
+the open).
+**A step id that maps to two different composites is refused outright**,
+since a raw-text read cannot be attributed to one of them; the same id
+recurring for the SAME composite across jobs (`caller-wf` does) is fine.
+**It reports how many step/output pairs it examined, and fails on zero**,
+because a step map or read scan that matched nothing would otherwise pass
+identically to one that checked everything (38 pairs across 12 composites
+on `main` at the time gha#806 landed, all declared).
+Six self-test cases pin it, each confirmed by mutation of the check under
+test: dropping a guard output fails (the remote `uses:` form), dropping a
+`sum-costs` output fails (the local `./` form, and a composite other than
+the guard), a read of a composite with no local `action.yml` fails, a
+whole-line comment naming an undeclared output still passes, one id naming
+two composites is refused, and a template whose reads map to no composite
+fails rather than passing vacuously.
 CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
 `upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
 separate from `review-fail-check` so a failure is attributable at a glance.

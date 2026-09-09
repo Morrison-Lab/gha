@@ -32,11 +32,26 @@ the facts a future edit could reverse silently:
    contents/pull-requests/issues/actions and no more: a callee cannot
    request a permission its caller lacks without startup-failing the
    whole run for that caller (gha#831).
-8. Every `steps.fail-check*.outputs.<name>` the workflow reads is declared
-   in run-review-guard/action.yml. A composite's step outputs are
+8. Every `steps.<id>.outputs.<name>` the workflow reads from a step whose
+   `uses:` names one of this repo's composites
+   (`Morrison-Lab/gha/.github/actions/<x>@...` or `./.github/actions/<x>`)
+   is declared in that action's `outputs:`. A composite's step outputs are
    invisible to its caller unless re-declared, and gha#804's first draft
-   read two outputs the guard never exposed: every offline suite stayed
-   green while the feature was inert on a live run.
+   read two run-review-guard outputs the guard never exposed: every offline
+   suite stayed green while the feature was inert on a live run. gha#806
+   widened the check from that one hard-coded step-id prefix to every
+   composite the workflow reads, and it reports how many step/output pairs
+   it examined so a run that mapped nothing cannot pass as a run that
+   checked everything.
+
+   The reads are collected from the workflow's RAW TEXT (whole-line `#`
+   comments stripped), not from parsed expressions, so a trailing comment
+   or a `run:` string that names a fictitious `steps.<id>.outputs.<name>`
+   would false-positive. That is the cheap direction: the fix is one line
+   in the workflow, while the opposite error (a parsed walk that misses an
+   `if:` or `env:` read) is exactly the silent-inert bug this exists for.
+   A step id that maps to two different composites is refused outright,
+   since a raw-text read cannot be attributed to one of them.
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -61,7 +76,17 @@ from workflow_discovery import skip_if_restored  # noqa: E402
 
 DEFAULT_WORKFLOW = ".github/workflows/claude-code-review.yml"
 DEFAULT_ACTION = ".github/actions/run-claude-review-attempt/action.yml"
-DEFAULT_GUARD = ".github/actions/run-review-guard/action.yml"
+DEFAULT_ACTIONS_DIR = ".github/actions"
+
+# A step `uses:` that names one of THIS repo's composites, in either of the
+# two spellings the workflows write: the tagged remote form consumers (and
+# the reusable workflow itself) use, and the local form _selftest.yml uses
+# for a composite not yet at the tag. Anchored at both ends so a fork
+# (`someone/gha/.github/actions/x`) or a nested path is not claimed as ours.
+COMPOSITE_USES_RE = re.compile(
+    r"^(?:Morrison-Lab/gha/|\./)\.github/actions/([A-Za-z0-9_.-]+)(?:@\S+)?$"
+)
+STEP_OUTPUT_READ_RE = re.compile(r"steps\.([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)")
 
 # Permissions that would let the model mutate the forge or the checkout.
 # `id-token: write` is included: in the pinned action it is exchanged for a
@@ -138,10 +163,99 @@ def uses_of(job: dict) -> list[str]:
     return uses
 
 
+def composite_step_ids(jobs: dict) -> dict[str, set[str]]:
+    """Map each step id whose `uses:` names one of our composites to the
+    composite's directory name(s). A set, because the same id may legally
+    recur across jobs (`caller-wf` does); it is only ambiguous when the
+    recurrences name DIFFERENT composites, which the caller refuses."""
+    ids: dict[str, set[str]] = {}
+    for job in jobs.values():
+        if not isinstance(job, dict):
+            continue
+        for step in job.get("steps") or []:
+            if not isinstance(step, dict):
+                continue
+            uses = step.get("uses")
+            step_id = step.get("id")
+            if not isinstance(uses, str) or not isinstance(step_id, str):
+                continue
+            m = COMPOSITE_USES_RE.match(uses)
+            if m:
+                ids.setdefault(step_id, set()).add(m.group(1))
+    return ids
+
+
+def strip_whole_line_comments(text: str) -> str:
+    """Drop lines whose first non-blank character is `#`, so a comment
+    explaining an output the workflow deliberately does NOT read cannot
+    register as a read. Whole lines only: a trailing comment stays, and the
+    docstring says so."""
+    return "\n".join(
+        line for line in text.splitlines() if not line.lstrip().startswith("#")
+    )
+
+
+def check_declared_outputs(
+    workflow_path: pathlib.Path, jobs: dict, actions_dir: pathlib.Path
+) -> None:
+    """gha#804/gha#806: a composite's step outputs reach the workflow only if
+    action.yml re-declares them. Read the consumed set from the workflow's
+    text rather than from a list kept here, so a new read cannot be added
+    without also being checked, and resolve each read's composite from the
+    parsed step map rather than from a hard-coded id prefix."""
+    ids = composite_step_ids(jobs)
+    text = strip_whole_line_comments(workflow_path.read_text(encoding="utf-8"))
+    reads = sorted(set(STEP_OUTPUT_READ_RE.findall(text)))
+    examined = 0
+    composites: set[str] = set()
+    for step_id, name in reads:
+        actions = ids.get(step_id)
+        if not actions:
+            # A run: step's own output, or a step of an action that is not
+            # ours; neither has a local action.yml to check against.
+            continue
+        if len(actions) > 1:
+            die(
+                f"{workflow_path}: step id {step_id!r} names more than one "
+                f"composite ({sorted(actions)}); a raw-text read of "
+                f"steps.{step_id}.outputs.{name} cannot be attributed to one "
+                "of them, so give the steps distinct ids"
+            )
+        (action,) = actions
+        composites.add(action)
+        examined += 1
+        action_yml = actions_dir / action / "action.yml"
+        if not action_yml.is_file():
+            check(
+                False,
+                f"steps.{step_id}.outputs.{name}: {action_yml} exists (the "
+                "workflow reads an output of a composite this checkout does "
+                "not carry)",
+            )
+            continue
+        declared = set(((load_yaml(action_yml) or {}).get("outputs") or {}).keys())
+        check(
+            name in declared,
+            f"steps.{step_id}.outputs.{name} is declared in "
+            f"{action}/action.yml outputs: (a composite's step outputs are "
+            "invisible to its caller unless re-declared; gha#804, gha#806)",
+        )
+    check(
+        examined > 0,
+        "the declared-vs-consumed check examined at least one step/output "
+        "pair (zero means the step map or the read scan matched nothing, "
+        "not that every read is declared)",
+    )
+    print(
+        f"Examined {examined} step/output pair(s) across "
+        f"{len(composites)} composite(s) for declared outputs."
+    )
+
+
 def check_workflow(
     workflow_path: pathlib.Path,
     action_path: pathlib.Path,
-    guard_path: pathlib.Path = pathlib.Path(DEFAULT_GUARD),
+    actions_dir: pathlib.Path = pathlib.Path(DEFAULT_ACTIONS_DIR),
 ) -> int:
     doc = load_yaml(workflow_path)
     jobs = doc.get("jobs") or {}
@@ -449,24 +563,7 @@ def check_workflow(
         any("pack-review-payload" in u for u in review_uses),
         "claude-review packs a payload artifact for the posting job",
     )
-    # gha#804: the guard is a composite, so an output its script writes
-    # reaches the workflow only if action.yml re-declares it. Read the set
-    # the workflow actually consumes from its text rather than from a list
-    # kept here, so a new read cannot be added without also being checked.
-    guard_doc = load_yaml(guard_path)
-    declared = set((guard_doc.get("outputs") or {}).keys())
-    consumed = set(
-        re.findall(
-            r"steps\.fail-check(?:-retry)?\.outputs\.([A-Za-z0-9_-]+)",
-            workflow_path.read_text(),
-        )
-    )
-    missing = sorted(consumed - declared)
-    check(
-        not missing,
-        "every run-review-guard output the workflow reads is declared on the "
-        f"guard action (missing: {missing})",
-    )
+    check_declared_outputs(workflow_path, jobs, actions_dir)
     check(
         any("download-artifact" in u for u in post_uses),
         "post-review downloads the payload artifact",
@@ -879,12 +976,12 @@ def check_workflow(
 def run_self_test() -> int:
     script = pathlib.Path(__file__).resolve()
 
-    guard_default: list[pathlib.Path] = []
+    actions_default: list[pathlib.Path] = []
 
     def run(
         workflow: pathlib.Path,
         action: pathlib.Path,
-        guard: pathlib.Path | None = None,
+        actions_dir: pathlib.Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             [
@@ -894,8 +991,8 @@ def run_self_test() -> int:
                 str(workflow),
                 "--action",
                 str(action),
-                "--guard",
-                str(guard or guard_default[0]),
+                "--actions-dir",
+                str(actions_dir or actions_default[0]),
             ],
             capture_output=True,
             text=True,
@@ -983,9 +1080,16 @@ jobs:
       actions: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+      - id: fail-check
+        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
       - run: echo "$FC_QUOTA_REASON"
         env:
           FC_QUOTA_REASON: ${{{{ steps.fail-check.outputs.quota_reason }}}}
+      - id: sum-cost
+        uses: ./.github/actions/sum-costs
+      - run: echo "$TOTAL"
+        env:
+          TOTAL: ${{{{ steps.sum-cost.outputs.total }}}}
       - uses: Morrison-Lab/gha/.github/actions/pack-review-payload@v2
         if: "{pack_if}"
   post-review:
@@ -1052,39 +1156,109 @@ runs:
           "Bash,Edit(//tmp/**),WebFetch,WebSearch"
 """
         )
-        # gha#804: the template reads one guard output, and this guard
-        # declares it. The mutation below drops the declaration.
-        good_guard = root / "guard.yml"
-        good_guard.write_text(
-            """
-outputs:
-  quota_exhausted:
-    value: ${{ steps.run.outputs.quota_exhausted }}
-  quota_reason:
-    value: ${{ steps.run.outputs.quota_reason }}
-runs:
-  using: composite
-  steps: []
-"""
+        # gha#804/gha#806: the template reads one output from each of two
+        # composites -- run-review-guard through the tagged remote `uses:`
+        # form, sum-costs through the local `./` form -- and each fixture
+        # action declares its output. The mutations below drop one
+        # declaration at a time, so each proves its own `uses:` spelling is
+        # mapped and that a composite other than the guard is checked.
+        def make_actions(dirname: str, outputs: dict[str, list[str]]) -> pathlib.Path:
+            base = root / dirname
+            for action, names in outputs.items():
+                block = "".join(
+                    f"  {n}:\n    value: ${{{{ steps.run.outputs.{n} }}}}\n" for n in names
+                )
+                (base / action).mkdir(parents=True)
+                (base / action / "action.yml").write_text(
+                    f"outputs:\n{block}runs:\n  using: composite\n  steps: []\n"
+                )
+            return base
+
+        good_outputs = {
+            "run-review-guard": ["quota_exhausted", "quota_reason"],
+            "sum-costs": ["total"],
+        }
+        actions_default.append(make_actions("actions", good_outputs))
+        failures += expect(
+            "good split passes",
+            run(good_wf, good_action),
+            True,
+            "Examined 2 step/output pair(s) across 2 composite(s)",
         )
-        guard_default.append(good_guard)
-        failures += expect("good split passes", run(good_wf, good_action), True)
-        bad_guard = root / "guard-undeclared.yml"
-        bad_guard.write_text(
-            """
-outputs:
-  quota_exhausted:
-    value: ${{ steps.run.outputs.quota_exhausted }}
-runs:
-  using: composite
-  steps: []
-"""
+        guard_undeclared = make_actions(
+            "actions-guard-undeclared",
+            {**good_outputs, "run-review-guard": ["quota_exhausted"]},
         )
         failures += expect(
             "guard output read by the workflow but not declared fails",
-            run(good_wf, good_action, bad_guard),
+            run(good_wf, good_action, guard_undeclared),
             False,
-            "declared on the guard action",
+            "steps.fail-check.outputs.quota_reason is declared in run-review-guard/action.yml",
+        )
+        sum_undeclared = make_actions(
+            "actions-sum-undeclared",
+            {**good_outputs, "sum-costs": []},
+        )
+        failures += expect(
+            "a composite other than the guard with an undeclared output fails",
+            run(good_wf, good_action, sum_undeclared),
+            False,
+            "steps.sum-cost.outputs.total is declared in sum-costs/action.yml",
+        )
+        sum_absent = make_actions(
+            "actions-sum-absent",
+            {"run-review-guard": good_outputs["run-review-guard"]},
+        )
+        failures += expect(
+            "a read of a composite with no local action.yml fails",
+            run(good_wf, good_action, sum_absent),
+            False,
+            "steps.sum-cost.outputs.total:",
+        )
+        # A whole-line comment naming an output nobody declares must not
+        # register as a read; a trailing comment would (docstring).
+        commented_read = root / "commented-read.yml"
+        commented_read.write_text(
+            good_wf.read_text().replace(
+                "      - id: sum-cost\n",
+                "      # steps.sum-cost.outputs.nonexistent is deliberately not read\n"
+                "      - id: sum-cost\n",
+                1,
+            )
+        )
+        failures += expect(
+            "a whole-line comment naming an undeclared output still passes",
+            run(commented_read, good_action),
+            True,
+            "Examined 2 step/output pair(s)",
+        )
+        ambiguous_id = root / "ambiguous-id.yml"
+        ambiguous_id.write_text(
+            good_wf.read_text().replace(
+                "      - id: sum-cost\n        uses: ./.github/actions/sum-costs\n",
+                "      - id: sum-cost\n        uses: ./.github/actions/sum-costs\n"
+                "      - id: sum-cost\n"
+                "        uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v2\n",
+                1,
+            )
+        )
+        failures += expect(
+            "one step id naming two composites is refused",
+            run(ambiguous_id, good_action),
+            False,
+            "names more than one composite",
+        )
+        unmapped_reads = root / "unmapped-reads.yml"
+        unmapped_reads.write_text(
+            good_wf.read_text()
+            .replace("      - id: fail-check\n        uses:", "      - uses:", 1)
+            .replace("      - id: sum-cost\n        uses:", "      - uses:", 1)
+        )
+        failures += expect(
+            "a scan that maps no read to a composite fails rather than passing vacuously",
+            run(unmapped_reads, good_action),
+            False,
+            "examined at least one step/output pair",
         )
 
         bad_write = root / "bad-write.yml"
@@ -1677,23 +1851,28 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workflow", default=DEFAULT_WORKFLOW)
     parser.add_argument("--action", default=DEFAULT_ACTION)
-    parser.add_argument("--guard", default=DEFAULT_GUARD)
+    parser.add_argument(
+        "--actions-dir",
+        default=DEFAULT_ACTIONS_DIR,
+        help="directory holding <composite>/action.yml for every composite "
+        "the workflow reads outputs from (default: %(default)s)",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         return run_self_test()
     workflow = pathlib.Path(args.workflow)
     action = pathlib.Path(args.action)
-    guard = pathlib.Path(args.guard)
+    actions_dir = pathlib.Path(args.actions_dir)
     if not workflow.is_file():
         die(f"{workflow}: no such file")
     if not action.is_file():
         die(f"{action}: no such file")
-    if not guard.is_file():
-        die(f"{guard}: no such file")
+    if not actions_dir.is_dir():
+        die(f"{actions_dir}: no such directory")
     if skip_if_restored(workflow.parent, "review-job-split tests"):
         return 0
-    return check_workflow(workflow, action, guard)
+    return check_workflow(workflow, action, actions_dir)
 
 
 if __name__ == "__main__":
