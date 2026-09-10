@@ -2308,13 +2308,15 @@ still reads as payload-free, a real payload behind an unclosed fence reads as
 absent and falls back to the length signal, and two residuals are stated: a
 bare marker quoted at column 0 outside any fence reads as a payload, and so
 does a `<!--` at column 0 whose next line begins `review-data:`, since `\s*`
-spans the newline; `classify-review-verdict.sh` is the sibling detector for
-the marker, so a widening belongs in both.
-Second, for blocks alike in payload, length, which matches no documented
-vocabulary: a later heading block replaces the held draft only when it is at
-least half the length of the longest draft held so far, which starts as the
-first heading block and only ever grows; shorter, it is a correction and the
-draft it corrects is kept.
+spans the newline (production emits the marker on one line, so that is not its
+shape); `classify-review-verdict.sh` is the sibling detector for the marker,
+so a widening belongs in both.
+Second, for every other pair (both with the payload, both without, or a
+payload-bearing block after a payload-free draft), length, which matches no
+documented vocabulary: a later heading block replaces the held draft only when
+it is at least half the length of the longest draft held so far, which starts
+as the first heading block and only ever grows; shorter, it is a correction
+and the draft it corrects is kept.
 The floor is never the previous heading block, so a chain of shrinking blocks,
 each at least half the one before, cannot walk the draft below half the
 review, and a stray one-line heading ahead of the review cannot lower it.

@@ -683,20 +683,20 @@ review_text_file="$(mktemp)"
 # First, the structured review-data payload: a complete review emits the
 # `<!-- review-data:` block and an appended correction does not, so a later
 # heading block that lacks the payload never replaces a held draft that has
-# it, whatever its length. Second, for blocks alike in payload (both with,
-# or both without, as older transcripts and several fixtures are), LENGTH:
+# it, whatever its length. Second, for every other pair (both with, both
+# without, or a payload-bearing block after a payload-free draft), LENGTH:
 # a redraft restates the whole review, so it is comparable in size to the
 # draft it replaces, while a correction is a fraction of it. Such a block
 # REPLACES the current draft only when it is at least half the length of
 # the LONGEST draft held so far, which starts as the first heading block
 # and only ever grows; shorter, it is a correction and the draft it
-# corrects is kept, so the span runs from that draft through the last
-# verdict-bearing block, corrections included. The floor is never the
+# corrects is kept, so the span runs from the first verdict-bearing block
+# through the last, corrections included. The floor is never the
 # previous heading block, so a chain of shrinking blocks, each at least
 # half the one before, cannot walk the draft below half the review, and a
 # stray one-line heading ahead of the review cannot lower it. The residual
-# band
-# is stated rather than hidden: when the review itself emitted no payload,
+# band is stated rather than hidden: when the review itself emitted no
+# payload,
 # a correction at least half the review's length is still read as a
 # redraft. The measured run does not exercise that band: its 7150-character
 # review carried the payload and its corrections (0.24 and 0.21 of it) did
@@ -747,7 +747,8 @@ jq -r '
   # payload is an HTML comment opening at column 0. Two residuals: a bare
   # marker quoted at column 0 outside any fence reads as a payload, and
   # \s* spans a newline, so a `<!--` at column 0 whose next line begins
-  # `review-data:` reads as one too (which is the production shape).
+  # `review-data:` reads as one too; production emits the marker on one
+  # line (run-claude-review-attempt/action.yml), so that is not its shape.
   def has_payload:
     stripped | test("(?im)^ {0,3}<!--\\s*review-data:");
   . as $blocks

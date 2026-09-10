@@ -11,5 +11,6 @@
   corrects through the last verdict-bearing block.
   A heading block that lacks the structured review-data payload never
   replaces a held draft that carries it, whatever its length;
-  the length rule decides only between payload-alike blocks,
+  the length rule decides every other pair,
+  including a payload-bearing block arriving after a payload-free draft,
   and its boundary is pinned from both sides by fixtures.
