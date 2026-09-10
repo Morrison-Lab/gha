@@ -690,8 +690,10 @@ review_text_file="$(mktemp)"
 # REPLACES the current draft only when it is at least half the length of
 # the LONGEST draft held so far, which starts as the first heading block
 # and only ever grows; shorter, it is a correction and the draft it
-# corrects is kept, so the span runs from the first verdict-bearing block
-# through the last, corrections included. The floor is never the
+# corrects is kept; when a later block did replace the first, the span runs
+# from that draft through the last verdict-bearing block, corrections
+# included, and when none did it runs from the first verdict-bearing block
+# (the gha#710 rule, unchanged). The floor is never the
 # previous heading block, so a chain of shrinking blocks, each at least
 # half the one before, cannot walk the draft below half the review, and a
 # stray one-line heading ahead of the review cannot lower it. The residual
