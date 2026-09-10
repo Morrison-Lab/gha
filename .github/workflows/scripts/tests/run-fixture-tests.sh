@@ -153,9 +153,17 @@ declare -A expected=(
   [verdict-then-correction-quoting-payload-marker.json]=pass
   # gha#850 round 4: three payload-less heading blocks of 0.68 and 0.59 of
   # the one before. The second is a redraft (above half the review); the
-  # third is a correction, because it is under half the ORIGINAL review
+  # third is a correction, because it is under half the LONGEST held draft
   # even though it is above half the held draft. Posted: second and third.
   [verdict-shrinking-chain-no-payload.json]=pass
+  # gha#850 round 4: the same chain behind a stray one-line heading. The
+  # floor is the longest draft held so far, so the stray block does not
+  # make it vacuous; anchoring the floor on the FIRST heading block did.
+  [verdict-stray-heading-then-shrinking-chain.json]=pass
+  # gha#850 round 4: the marker quoted in an INLINE code span, which the
+  # stripper does not remove. The payload test is anchored at line start,
+  # so the span is not a payload and the review is kept.
+  [verdict-then-correction-inline-span-marker.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -216,6 +224,8 @@ declare -A must_contain=(
   [verdict-redraft-just-over-half.json]='omicron-pass second draft'
   [verdict-then-correction-quoting-payload-marker.json]='pi-pass analysis'
   [verdict-shrinking-chain-no-payload.json]='rho-pass second draft'
+  [verdict-stray-heading-then-shrinking-chain.json]='sigma-pass second draft'
+  [verdict-then-correction-inline-span-marker.json]='tau-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -256,6 +266,8 @@ declare -A must_also_contain=(
   [verdict-then-correction-near-half.json]='xi-pass correction'
   [verdict-then-correction-quoting-payload-marker.json]='pi-pass correction'
   [verdict-shrinking-chain-no-payload.json]='rho-pass correction'
+  [verdict-stray-heading-then-shrinking-chain.json]='sigma-pass correction'
+  [verdict-then-correction-inline-span-marker.json]='tau-pass correction'
 )
 
 # gha#850: the fixtures whose posted text carries more than one authored
@@ -268,6 +280,8 @@ declare -A max_verdict_headings=(
   [verdict-then-correction-near-half.json]=2
   [verdict-then-correction-quoting-payload-marker.json]=2
   [verdict-shrinking-chain-no-payload.json]=2
+  [verdict-stray-heading-then-shrinking-chain.json]=2
+  [verdict-then-correction-inline-span-marker.json]=2
 )
 
 declare -A must_not_contain=(
@@ -283,6 +297,7 @@ declare -A must_not_contain=(
   # gha#850 round 4: the first draft is superseded by the second; without
   # the absolute floor the third would supersede the second as well.
   [verdict-shrinking-chain-no-payload.json]='rho-pass first draft'
+  [verdict-stray-heading-then-shrinking-chain.json]='sigma-pass first draft'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -387,6 +402,8 @@ declare -A expected_cost=(
   [verdict-redraft-just-over-half.json]=1.52
   [verdict-then-correction-quoting-payload-marker.json]=1.53
   [verdict-shrinking-chain-no-payload.json]=1.54
+  [verdict-stray-heading-then-shrinking-chain.json]=1.55
+  [verdict-then-correction-inline-span-marker.json]=1.56
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18

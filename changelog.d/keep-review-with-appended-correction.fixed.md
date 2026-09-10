@@ -6,7 +6,8 @@
   dropped and only the correction posted, citing analysis nobody could see
   (gha#710's failure, reintroduced).
   A later heading block now replaces the current draft only when it is at
-  least half the draft's length;
+  least half the draft's length and at least half the longest draft held
+  so far;
   a shorter one is a correction, and the posted text runs from the draft it
   corrects through the last verdict-bearing block.
   A heading block that lacks the structured review-data payload never

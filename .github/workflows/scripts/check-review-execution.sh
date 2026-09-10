@@ -692,7 +692,7 @@ review_text_file="$(mktemp)"
 # it corrects is kept, so the span runs from that draft through the last
 # verdict-bearing block, corrections included. The comparison is against
 # the draft currently held, never the previous heading block, and a block
-# must also be at least half the ORIGINAL review's length to replace the
+# must also be at least half the LONGEST draft held so far to replace the
 # draft, so a chain of shrinking blocks, each at least half the one before,
 # cannot walk the draft below half the review. The residual band
 # is stated rather than hidden: when the review itself emitted no payload,
@@ -741,8 +741,12 @@ jq -r '
   # payload sitting after an UNCLOSED fence reads as absent and the block
   # falls back to the length signal, which is faithful, since GitHub
   # renders such a payload as visible code rather than a machine comment.
+  # The test is anchored at line start, because stripped text still holds
+  # inline code spans and this corpus quotes the marker in one; a real
+  # payload is an HTML comment opening at column 0. The residual: a bare
+  # marker quoted at column 0 outside any fence reads as a payload.
   def has_payload:
-    stripped | test("(?i)<!--\\s*review-data:");
+    stripped | test("(?im)^ {0,3}<!--\\s*review-data:");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
@@ -751,13 +755,17 @@ jq -r '
   # structured review-data payload when the block itself carries none; among
   # payload-alike blocks, the draft is the last one at least half as long as
   # the draft it would replace, and a shorter one is an appended correction.
-  | ( reduce $hidx[1:][] as $h ($hidx[0];
-        if ($blocks[.] | has_payload) and (($blocks[$h] | has_payload) | not)
-          then .
-        elif ($blocks[$h] | length) * 2 >= ($blocks[.] | length)
-             and ($blocks[$h] | length) * 2 >= ($blocks[$hidx[0]] | length) then $h
-        else . end)
-    ) as $draft
+  # The floor is the LONGEST block ever held as draft, not the first
+  # heading block: a stray one-line heading ahead of the review would
+  # otherwise make the floor vacuous (gha#850 round 4).
+  | ( reduce $hidx[1:][] as $h ({d: $hidx[0], f: ($blocks[$hidx[0]] | length)};
+        ($blocks[$h] | length) as $hl
+        | if ($blocks[.d] | has_payload) and (($blocks[$h] | has_payload) | not)
+            then .
+          elif $hl * 2 >= ($blocks[.d] | length) and $hl * 2 >= .f
+            then .d = $h | .f = (if $hl > .f then $hl else .f end)
+          else . end)
+      | .d ) as $draft
   | if ($hidx | length) > 1 and $draft != $hidx[0]
       then $blocks[$draft:(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) > 1
