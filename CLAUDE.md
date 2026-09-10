@@ -3198,11 +3198,41 @@ gha#437 recorded the mechanism for the review family; gha#654 then added
 same group at the top level, so every publish run on a consumer that copied
 the stub failed silently and the site stopped updating
 (`ucdavis/hac.sap`, run 33604968678).
-The audit walks every stub under `examples/`, resolves each `uses:` to the
-workflow file it names, and fails on any caller-level group that the called
-workflow also declares, at either of ITS two placements -- the callee's jobs
-and the callee's own top level; a stub naming a workflow file this repo does
-not carry is an error rather than a skip.
+The audit walks every workflow file under `examples/` AND under
+`.github/workflows/` (both extensions, through `workflow_discovery`),
+treats any job-level `uses:` naming one of our reusable workflows as a
+call, resolves it to the workflow file it names, and fails on any
+caller-level group that the called workflow also declares, at either of ITS
+two placements -- the callee's jobs and the callee's own top level; a caller
+naming a workflow file this repo does not carry is an error rather than a
+skip.
+**Within those two roots the population is derived from the `uses:` edge
+rather than from a hand-maintained list of caller filenames (gha#821).**
+Until gha#821 it was the `examples/` stubs alone, so this repo's own
+dogfood callers -- `website-publish.yml` and the preview family, which call
+the same gh-pages workflows the stubs do -- were subject to the identical
+deadlock and never examined.
+The two roots are exhaustive for this repo rather than an arbitrary pair:
+GitHub runs nothing outside `.github/workflows/`, and `examples/` is the
+stub set consumers copy.
+Reading the edge within them needs no new argument and picks a new caller up
+the moment it lands; the cost is that the audit
+reads every workflow in the repo rather than 49 stubs, and a malformed
+workflow anywhere under `.github/workflows/` now fails this audit too, as it
+already fails the token and pin audits.
+An empty or missing `--workflows` root is refused rather than reported as
+zero dogfood callers, so a mistyped root cannot read as a population that is
+merely small.
+A reusable workflow is a candidate caller like any other file and
+contributes nothing when it calls none of ours.
+The summary names both roots and the calls found
+(`examined 114 workflow file(s) (49 under examples, 65 under
+.github/workflows); found 61 call(s) ...` on `main` at the time of
+gha#854), so a population that silently shrank back to the stubs alone
+reads differently from one that examined the dogfood callers.
+Under a default-branch restore of `.github/workflows/` the audit skips with
+a notice, as every sibling audit here does (gha#598, gha#765): the files on
+disk are then the default branch's callers rather than the PR's.
 **Caller-level means two placements, not one.**
 A top-level block covers the whole run and so covers the calling job, and
 a block on the calling job itself is the same collision written one level
@@ -3267,6 +3297,57 @@ One case exists purely to pin the `*.yaml` half of the population, which
 neither another case nor the live run can reach -- `examples/` holds only
 `*.yml`, so reverting the glob leaves everything else green, verbatim the
 class this file documents for `workflow_discovery` above.
+The gha#821 cases write the CALLER into the workflows directory rather than
+`examples/`, which is the dogfood shape: a top-level and a job-level
+collision there are each reported, a `.yaml` caller there is in the
+population, a dotfile there is not parsed, and the examined and call counts
+include it.
+The one to keep from that group is the top-level collision, since every
+older case's collision lives in a stub and narrowing the population back to
+`examples/` alone leaves all of them green.
+Three more checks run the audit over the LIVE tree, asserting that it
+passes, that its summary counts both roots, and that its call count meets a
+textual floor, with each figure derived from the tree at test time rather
+than written into the suite.
+**That floor is BOTH roots' `uses: Morrison-Lab/gha/...` lines, not the
+dogfood ones alone**, which is the correction gha#854's review made: the
+summary reports one total across both roots, and the 49 stub calls clear a
+floor of 12 by themselves -- so the dogfood-only floor stayed cleared after
+the dogfood callers were dropped from the population entirely, and could
+never have gone red.
+A floor of zero dogfood calls is a failure in its own right, since it would
+make the assertion vacuous from the other direction.
+The live block, and only it, is skipped under a default-branch restore,
+where the sibling suites skip outright: every other case builds its own
+throwaway tree, so only these three read what is on disk.
+The listing those figures come from is deliberately a second implementation
+rather than a call to `discover_workflows`, since an expected value computed
+by the code under test agrees with it by construction.
+Nine mutations were confirmed to turn a named case red, rather than assumed
+to.
+The population narrowed back to `examples/` (the top-level dogfood collision
+case); the collision check skipped for a caller outside `examples/` (the
+same case); a `*.yml`-only listing on the workflows side (the `.yaml` caller
+case); dotfiles listed as callers (the dotfile case); the audit's restore
+skip dropped (the restore case, whose fixture collides, so the skip is what
+makes it exit 0); the `found N call(s)` clause dropped from the summary (the
+call-count case, plus the live floor); the job-level caller check dropped
+(the job-level dogfood collision case); the empty-`--workflows` guard
+dropped (the empty-workflows-dir case); and the live block's own restore
+skip dropped (the live cases, run with `GHA_WORKFLOWS_RESTORED=1`).
+Each mutation was applied to a COMMITTED file, confirmed applied with
+`git diff --quiet` before the suite ran, and restored with
+`git checkout --` afterwards, per this file's own mis-aimed-mutation rule.
+Two mis-aimed mutations turned up along the way, and both read as an absent
+test rather than as a bad mutation.
+The call-count one reworded the clause without removing the number.
+The live-block one set `GHA_WORKFLOWS_RESTORED=1` while `run_live` was
+clearing that variable for its own subprocess, so the guard could not be
+reached by that route at all -- the mutation was fine and the FIXTURE was
+wrong, which is why `run_live` now inherits the environment.
+Both restore routes are exercised: the environment variable, and a real
+`.github/workflows/.restored-from-default-branch` marker, which is what CI
+actually drops.
 The non-mapping-job guard is declared TWICE (in `job_groups` and in
 `callee_calls`), so a single-site mutation survives the suite and only
 mutating both turns its case red; read that survivor as the other site still
