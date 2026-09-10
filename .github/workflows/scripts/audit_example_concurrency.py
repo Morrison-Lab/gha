@@ -17,15 +17,18 @@ that copied it failed silently.
 The population is every workflow file under ``examples/`` AND under
 ``.github/workflows/`` (``.yml`` and ``.yaml``, discovered the way
 ``workflow_discovery`` discovers them), and a caller is derived from the
-``uses:`` edge itself: any file whose job-level ``uses:`` names one of our
-reusable workflows is a caller of that callee, wherever the file lives
+``uses:`` edge itself: within those two roots, any file whose job-level
+``uses:`` names one of our reusable workflows is a caller of that callee
 (gha#821, option 2). Until gha#821 the population was the ``examples/`` stubs
 alone, so this repo's own dogfood callers -- ``website-publish.yml`` and the
 preview-deploy / cleanup equivalents, which call the same gh-pages family --
-were subject to the identical deadlock and never examined. Deriving callers
-from the edge rather than from a directory list means the population cannot
-drift out of step with where the callers happen to live, and needs no new
-argument. A reusable workflow is a candidate caller like any other file; one
+were subject to the identical deadlock and never examined. The two roots are
+the whole population a caller can live in HERE, rather than an arbitrary
+choice of directories: GitHub runs nothing outside ``.github/workflows/``,
+and ``examples/`` is the stub set consumers copy. What the edge buys within
+them is that no hand-maintained list of dogfood caller filenames has to be
+kept in step -- a caller added to either root is picked up the moment it
+lands -- and that it needs no new argument. A reusable workflow is a candidate caller like any other file; one
 that calls none of ours contributes nothing, and a caller that is itself a
 callee is not special-cased. The comparison is made against the workflow each
 ``uses:`` actually names, so a job-level group added later is caught the
@@ -192,10 +195,9 @@ def candidates(root: pathlib.Path) -> list[pathlib.Path]:
 
     ``workflow_discovery`` is the one discovery rule this repo's audits share:
     both extensions, top level only, dotfiles excluded. A missing directory
-    yields nothing here rather than raising, because ``examples/`` and
-    ``.github/workflows/`` are checked for emptiness separately below -- the
-    stub population going empty is its own error, while the workflows
-    directory is already required to exist for callees to resolve.
+    yields nothing here rather than raising: ``audit`` refuses an empty result
+    from either root itself, with a message naming which root was empty, which
+    a raise from here could not do.
     """
     if not root.is_dir():
         return []
@@ -207,6 +209,13 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
     if not stubs:
         die(f"{examples_dir}: no example stubs found")
     dogfood = candidates(workflows_dir)
+    # A missing or empty --workflows is refused rather than reported as zero
+    # dogfood callers. Every callee resolution below would die on it anyway,
+    # but only once some caller happens to make a call -- so the guard is what
+    # keeps a mistyped root from ever reading as a population that is simply
+    # small (gha#854 review, finding 2).
+    if not dogfood:
+        die(f"{workflows_dir}: no workflow files found")
     # Keyed by resolved path so the two roots being the same directory (or
     # one nested in the other) examines each file once rather than twice and
     # reports each collision once.
@@ -216,27 +225,27 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
     findings: list[str] = []
     calls = 0
     compared = 0
-    for stub in population.values():
-        doc = load(stub)
-        top = group_of(stub, "top-level", doc.get("concurrency"))
-        stub_jobs = job_groups(stub, doc)
-        for job, callee in callee_calls(stub, doc):
+    for caller in population.values():
+        doc = load(caller)
+        top = group_of(caller, "top-level", doc.get("concurrency"))
+        caller_jobs = job_groups(caller, doc)
+        for job, callee in callee_calls(caller, doc):
             calls += 1
             wf = workflows_dir / callee
             if not wf.is_file():
-                die(f"{stub}: uses {callee}, which is not in {workflows_dir}")
+                die(f"{caller}: uses {callee}, which is not in {workflows_dir}")
             # Both placements deadlock, so both are checked. A top-level block
             # covers the whole run and therefore covers the calling job; a
             # block on the calling job itself is the same collision written
             # one level down, and it is syntactically valid on a job that
             # `uses:` a reusable workflow (gha#811 review).
-            caller: list[tuple[str, str]] = []
+            caller_side: list[tuple[str, str]] = []
             if top is not None:
-                caller.append(("top-level", top))
-            own = stub_jobs.get(job)
+                caller_side.append(("top-level", top))
+            own = caller_jobs.get(job)
             if own is not None:
-                caller.append((f"job {job!r}", own))
-            if not caller:
+                caller_side.append((f"job {job!r}", own))
+            if not caller_side:
                 continue
             # Counted here rather than at the top of the loop: a call with no
             # caller-level group is walked past, not compared, and a summary
@@ -257,10 +266,10 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
             if callee_top is not None:
                 callee_side.append(("its top level", callee_top))
             for cwhere, cgroup in callee_side:
-                for where, group in caller:
+                for where, group in caller_side:
                     if cgroup == group:
                         findings.append(
-                            f"{stub}: {where} concurrency group {group!r} is also "
+                            f"{caller}: {where} concurrency group {group!r} is also "
                             f"declared on {cwhere} of {callee}; the two "
                             f"deadlock (gha#809)"
                         )

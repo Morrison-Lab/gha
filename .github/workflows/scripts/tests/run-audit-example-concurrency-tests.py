@@ -10,9 +10,11 @@ workflow gained a concurrency block.
 
 The gha#821 cases put a CALLER in the workflows/ directory rather than in
 examples/, which is what this repo's own dogfood callers look like. The
-population case is the one to keep from that group: narrowing the population
-back to examples/ alone leaves every other case green, because every other
-case's collision lives in a stub.
+top-level collision case is the one to keep from that group: narrowing the
+population back to examples/ alone leaves every OLDER case green, because
+every older case's collision lives in a stub. The other gha#821 cases do go
+red under that mutation too, so the group is not one case wide; what the
+top-level case buys is that the group cannot be trimmed away entirely.
 """
 
 from __future__ import annotations
@@ -26,6 +28,11 @@ import tempfile
 
 SCRIPT = pathlib.Path(__file__).resolve().parent.parent / "audit_example_concurrency.py"
 REPO = SCRIPT.parent.parent.parent.parent
+WORKFLOWS = REPO / ".github" / "workflows"
+
+sys.path.insert(0, str(SCRIPT.parent))
+
+from workflow_discovery import is_workflows_restored  # noqa: E402
 
 STUB = """name: X
 on: push
@@ -200,9 +207,20 @@ def main() -> int:
     # clean (gha#811 review, round 2).
     expect("a list concurrency block is an error", run(STUB.format(top="concurrency: [gh-pages]", callee="quarto-publish.yml"),
                                                         WORKFLOW.format(conc=JOB_GH)), 2, "expected a string or mapping")
-    expect("missing callee is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), None), 2, "not in")
+    # A workflow the stub does not name, so the workflows dir is non-empty
+    # and the callee is the only missing thing; an empty dir is refused by
+    # its own guard below (gha#854 review, finding 2).
+    expect("missing callee is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"),
+                                              WORKFLOW.format(conc=JOB_GH), callee="unrelated.yml"), 2, "not in")
+    expect("empty workflows dir is an error", run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"),
+                                                   None), 2, "no workflow files found")
     expect("empty examples dir is an error", run(None, WORKFLOW.format(conc=JOB_GH)), 2, "no example stubs")
-    expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH)), 2, "quarto-publish.yml: ")
+    # A distinct caller filename, because the needle can no longer carry the
+    # directory -- `examples/` renders with a backslash on Windows -- and the
+    # stub and the callee otherwise default to the same name (gha#854
+    # review, finding 8).
+    expect("unparsable stub is an error", run("jobs: [\n", WORKFLOW.format(conc=JOB_GH),
+                                               stub_name="broken-stub.yml"), 2, "broken-stub.yml: ")
     expect("stub with no jobs mapping is an error", run("name: X\non: push\n", WORKFLOW.format(conc=JOB_GH)), 2, "no 'jobs' mapping")
     # gha#811 review, finding 1: the collision written one level down.
     expect("job-level caller group collides", run(JOB_STUB.format(group="gh-pages", callee="quarto-publish.yml"),
@@ -310,12 +328,34 @@ def main() -> int:
     # dogfood callers under .github/workflows/ alongside the examples/ stubs.
     # The counts are derived from the tree rather than written here, so a new
     # stub or workflow does not turn this case red.
+    # Deliberately NOT workflow_discovery.discover_workflows, which is what
+    # the audit itself walks: an expected value computed by the code under
+    # test agrees with it by construction, so a narrowed glob would move both
+    # sides together and leave this green. The duplication is the negative
+    # control (gha#854 review, finding 7).
     def listing(root: pathlib.Path) -> list[pathlib.Path]:
         return [p for p in root.iterdir()
                 if p.is_file() and p.suffix in (".yml", ".yaml") and not p.name.startswith(".")]
 
-    stubs = len(listing(REPO / "examples"))
-    dogfood = listing(REPO / ".github" / "workflows")
+    stub_files = listing(REPO / "examples")
+    stubs = len(stub_files)
+    dogfood = listing(WORKFLOWS)
+    # Only the LIVE block is skipped under a default-branch restore, where the
+    # sibling suites skip outright: every case above builds its own throwaway
+    # tree and is unaffected by what is on disk here. The files under
+    # WORKFLOWS are then the default branch's callers rather than this PR's,
+    # so a count derived from them says nothing about the diff -- and the
+    # audit itself would skip, leaving no summary for these assertions to read
+    # (gha#598, gha#765; gha#854 review, finding 1).
+    if is_workflows_restored(WORKFLOWS):
+        print("SKIP live-tree cases: .github/workflows/ was restored from the "
+              "default branch (gha#598, gha#765)")
+        if failures:
+            print(f"::error::{failures} audit-example-concurrency case(s) failed")
+            return 1
+        print("All audit-example-concurrency cases passed.")
+        return 0
+
     live = run_live()
     expect("the live tree passes", live, 0)
     expect("the live population counts both roots",
@@ -325,13 +365,24 @@ def main() -> int:
     # also find. Zero dogfood calls would make the assertion vacuous, so that
     # is a failure too.
     found = re.search(r"found (\d+) call\(s\)", live.stdout)
-    dogfood_calls = sum(
-        1 for p in dogfood
-        for line in p.read_text(encoding="utf-8").splitlines()
-        if line.lstrip().startswith("uses: Morrison-Lab/gha/.github/workflows/")
-    )
-    if found is None or dogfood_calls == 0 or int(found.group(1)) < dogfood_calls:
-        print(f"::error::the live call count must include the {dogfood_calls} dogfood call(s); "
+    def textual_calls(paths: list[pathlib.Path]) -> int:
+        return sum(
+            1 for p in paths
+            for line in p.read_text(encoding="utf-8").splitlines()
+            if line.lstrip().startswith("uses: Morrison-Lab/gha/.github/workflows/")
+        )
+
+    dogfood_calls = textual_calls(dogfood)
+    # The floor is BOTH roots' calls, not the dogfood ones alone. The summary
+    # reports one total across both, and the stubs alone contribute several
+    # times what the dogfood callers do -- so a floor of `dogfood_calls` is
+    # cleared by the stubs by themselves, and stays cleared after the dogfood
+    # callers are dropped from the population entirely. That assertion could
+    # not go red (gha#854 review, finding 3).
+    floor = textual_calls(stub_files) + dogfood_calls
+    if found is None or dogfood_calls == 0 or int(found.group(1)) < floor:
+        print(f"::error::the live call count must be at least {floor} "
+              f"({dogfood_calls} of them dogfood call(s)); "
               f"summary was {live.stdout!r}")
         failures += 1
     else:

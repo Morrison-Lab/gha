@@ -5,7 +5,7 @@
   (`.yml` and `.yaml`, discovered through `workflow_discovery.py`)
   whose job-level `uses:` names one of our reusable workflows
   is audited against that callee's concurrency groups,
-  wherever the file lives.
+  so no list of caller filenames has to be kept in step.
   `website-publish.yml` and the preview family call the same gh-pages
   workflows the stubs do and were subject to the identical deadlock (#809)
   while never being examined.
