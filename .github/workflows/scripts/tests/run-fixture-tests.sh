@@ -139,7 +139,9 @@ declare -A expected=(
   # gha#850 round 2: the payload asymmetry. A review carrying the review-data
   # payload followed by a correction at 0.70 of its length with no payload is
   # still a correction, so both are posted; length alone would have dropped
-  # the review.
+  # the review. Its marker is spelled `<!-- REVIEW-DATA:` and the quoting
+  # fixture's `<!--review-data:`, so the detector's case-folding and
+  # whitespace tolerance are each pinned by one fixture.
   [verdict-then-long-correction-with-payload.json]=pass
   # gha#850 round 2: the length boundary, pinned from both sides with no
   # payload on either block. 0.48 is kept as a correction; 0.53 supersedes.
@@ -149,6 +151,11 @@ declare -A expected=(
   # QUOTES the marker inside a fence carries no payload, so it is kept; a
   # raw-text test would read it as payload-bearing and drop the review.
   [verdict-then-correction-quoting-payload-marker.json]=pass
+  # gha#850 round 4: three payload-less heading blocks of 0.68 and 0.59 of
+  # the one before. The second is a redraft (above half the review); the
+  # third is a correction, because it is under half the ORIGINAL review
+  # even though it is above half the held draft. Posted: second and third.
+  [verdict-shrinking-chain-no-payload.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -208,6 +215,7 @@ declare -A must_contain=(
   [verdict-then-correction-near-half.json]='xi-pass analysis'
   [verdict-redraft-just-over-half.json]='omicron-pass second draft'
   [verdict-then-correction-quoting-payload-marker.json]='pi-pass analysis'
+  [verdict-shrinking-chain-no-payload.json]='rho-pass second draft'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -247,6 +255,7 @@ declare -A must_also_contain=(
   [verdict-then-long-correction-with-payload.json]='nu-pass correction'
   [verdict-then-correction-near-half.json]='xi-pass correction'
   [verdict-then-correction-quoting-payload-marker.json]='pi-pass correction'
+  [verdict-shrinking-chain-no-payload.json]='rho-pass correction'
 )
 
 # gha#850: the fixtures whose posted text carries more than one authored
@@ -258,6 +267,7 @@ declare -A max_verdict_headings=(
   [verdict-then-long-correction-with-payload.json]=2
   [verdict-then-correction-near-half.json]=2
   [verdict-then-correction-quoting-payload-marker.json]=2
+  [verdict-shrinking-chain-no-payload.json]=2
 )
 
 declare -A must_not_contain=(
@@ -268,8 +278,11 @@ declare -A must_not_contain=(
   # gha#850: a trimmed redraft above the threshold still supersedes. Raising
   # the threshold to "at least as long" keeps the first draft and fails here.
   [verdict-redraft-trimmed.json]='mu-pass first draft'
-  # gha#850 round 2: 0.55 with no payload on either block still supersedes.
+  # gha#850 round 2: 0.53 with no payload on either block still supersedes.
   [verdict-redraft-just-over-half.json]='omicron-pass first draft'
+  # gha#850 round 4: the first draft is superseded by the second; without
+  # the absolute floor the third would supersede the second as well.
+  [verdict-shrinking-chain-no-payload.json]='rho-pass first draft'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -373,6 +386,7 @@ declare -A expected_cost=(
   [verdict-then-correction-near-half.json]=1.51
   [verdict-redraft-just-over-half.json]=1.52
   [verdict-then-correction-quoting-payload-marker.json]=1.53
+  [verdict-shrinking-chain-no-payload.json]=1.54
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18

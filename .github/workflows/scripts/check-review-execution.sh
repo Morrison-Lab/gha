@@ -691,8 +691,10 @@ review_text_file="$(mktemp)"
 # draft's length in characters; shorter, it is a correction and the draft
 # it corrects is kept, so the span runs from that draft through the last
 # verdict-bearing block, corrections included. The comparison is against
-# the draft currently held, never the previous heading block, so a run of
-# corrections cannot promote one another into a redraft. The residual band
+# the draft currently held, never the previous heading block, and a block
+# must also be at least half the ORIGINAL review's length to replace the
+# draft, so a chain of shrinking blocks, each at least half the one before,
+# cannot walk the draft below half the review. The residual band
 # is stated rather than hidden: when the review itself emitted no payload,
 # a correction at least half the review's length is still read as a
 # redraft. The measured run does not exercise that band: its 7150-character
@@ -735,9 +737,12 @@ jq -r '
   # since the corpus documents the string) must not read as payload-bearing.
   # classify-review-verdict.sh is the sibling detector for this marker
   # (whitespace-tolerant, case-insensitive, non-fenced lines only); widen
-  # both together.
+  # both together. The converse of the quotation case also holds: a real
+  # payload sitting after an UNCLOSED fence reads as absent and the block
+  # falls back to the length signal, which is faithful, since GitHub
+  # renders such a payload as visible code rather than a machine comment.
   def has_payload:
-    stripped | test("(?i)<!--[ \\t]*review-data:");
+    stripped | test("(?i)<!--\\s*review-data:");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
@@ -749,7 +754,8 @@ jq -r '
   | ( reduce $hidx[1:][] as $h ($hidx[0];
         if ($blocks[.] | has_payload) and (($blocks[$h] | has_payload) | not)
           then .
-        elif ($blocks[$h] | length) * 2 >= ($blocks[.] | length) then $h
+        elif ($blocks[$h] | length) * 2 >= ($blocks[.] | length)
+             and ($blocks[$h] | length) * 2 >= ($blocks[$hidx[0]] | length) then $h
         else . end)
     ) as $draft
   | if ($hidx | length) > 1 and $draft != $hidx[0]

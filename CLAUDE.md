@@ -2303,19 +2303,23 @@ never replaces a held draft that has it, whatever its length.
 That marker is a string this corpus documents, so it is read from the same
 fence- and blockquote-stripped text the heading test uses (one `stripped`
 definition feeds both), and a correction that quotes it in a fence still reads
-as payload-free; `classify-review-verdict.sh` is the sibling detector for the
-marker, so a widening belongs in both.
+as payload-free; a real payload behind an unclosed fence reads as absent and
+falls back to the length signal; `classify-review-verdict.sh` is the sibling
+detector for the marker, so a widening belongs in both.
 Second, for blocks alike in payload, length, which matches no documented
 vocabulary: a later heading block replaces the held draft only when it is at
-least half the held draft's length in characters; shorter, it is a correction
-and the draft it corrects is kept, so the span runs from that draft through
-the last verdict-bearing block, corrections included.
+least half the held draft's length in characters and at least half the
+original review's; shorter, it is a correction and the draft it corrects is
+kept, so the span runs from that draft through the last verdict-bearing block,
+corrections included.
 The comparison is against the draft currently held, never the previous heading
-block, so a run of corrections cannot promote one another into a redraft.
+block, and the floor against the original review means a chain of shrinking
+blocks, each at least half the one before, cannot walk the draft below half
+the review.
 The residual band is stated rather than hidden: when the review itself emitted
-no payload, a correction at least half the review's length is still read as a
-redraft; the measured run sits outside that band, since its review carried the
-payload.
+no payload, a single correction at least half the review's length is still
+read as a redraft; the measured run sits outside that band, since its review
+carried the payload.
 Both signals err toward keeping.
 `verdict-then-appended-correction.json` pins that both the review's analysis
 and the last correction are posted, and declares (via `max_verdict_headings`,
@@ -2325,11 +2329,14 @@ so the gha#805 one-heading invariant still fails on a fourth;
 least half its predecessor's length supersedes it.
 `verdict-then-long-correction-with-payload.json` pins the payload asymmetry (a
 0.70-length correction kept because the review carries the payload and it does
-not), `verdict-then-correction-quoting-payload-marker.json` pins that a fenced
-quotation of the marker is not a payload, and
-`verdict-then-correction-near-half.json` with
+not) with the marker spelled `<!-- REVIEW-DATA:`,
+`verdict-then-correction-quoting-payload-marker.json` pins that a fenced
+quotation of the marker is not a payload with the real marker spelled
+`<!--review-data:`, `verdict-then-correction-near-half.json` with
 `verdict-redraft-just-over-half.json` pin the length boundary from both sides
-at 0.48 and 0.53 with no payload on either block.
+at 0.48 and 0.53 with no payload on either block, and
+`verdict-shrinking-chain-no-payload.json` pins the floor: blocks of 0.62 and
+0.59 of the one before post the second and third, never the third alone.
 
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own
