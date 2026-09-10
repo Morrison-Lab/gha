@@ -136,6 +136,15 @@ declare -A expected=(
   # its predecessor, still at least half its length, supersedes it -- only the
   # second draft is posted.
   [verdict-redraft-trimmed.json]=pass
+  # gha#850 round 2: the payload asymmetry. A review carrying the review-data
+  # payload followed by a correction at 0.70 of its length with no payload is
+  # still a correction, so both are posted; length alone would have dropped
+  # the review.
+  [verdict-then-long-correction-with-payload.json]=pass
+  # gha#850 round 2: the length boundary, pinned from both sides with no
+  # payload on either block. 0.45 is kept as a correction; 0.55 supersedes.
+  [verdict-then-correction-near-half.json]=pass
+  [verdict-redraft-just-over-half.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -191,6 +200,9 @@ declare -A must_contain=(
   # since the second correction is comparable in size to the first.
   [verdict-then-appended-correction.json]='lambda-pass analysis'
   [verdict-redraft-trimmed.json]='mu-pass trimmed redraft'
+  [verdict-then-long-correction-with-payload.json]='nu-pass analysis'
+  [verdict-then-correction-near-half.json]='xi-pass analysis'
+  [verdict-redraft-just-over-half.json]='omicron-pass second draft'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -227,14 +239,18 @@ declare -A must_also_contain=(
   [verdict-redrafted-thrice.json]='delta-pass tail is retained'
   # gha#850: the last correction, so the span still runs to the end.
   [verdict-then-appended-correction.json]='lambda-pass correction'
+  [verdict-then-long-correction-with-payload.json]='nu-pass correction'
+  [verdict-then-correction-near-half.json]='xi-pass correction'
 )
 
 # gha#850: the one fixture whose posted text carries more than one authored
 # verdict heading on purpose -- the review's, then one per appended
-# correction. Keyed by exact count, so a concatenated extra draft (four
+# correction. Keyed by a per-fixture ceiling, so a concatenated extra draft (four
 # headings) still fails the gha#805 invariant here.
 declare -A max_verdict_headings=(
   [verdict-then-appended-correction.json]=3
+  [verdict-then-long-correction-with-payload.json]=2
+  [verdict-then-correction-near-half.json]=2
 )
 
 declare -A must_not_contain=(
@@ -245,6 +261,8 @@ declare -A must_not_contain=(
   # gha#850: a trimmed redraft above the threshold still supersedes. Raising
   # the threshold to "at least as long" keeps the first draft and fails here.
   [verdict-redraft-trimmed.json]='mu-pass first draft'
+  # gha#850 round 2: 0.55 with no payload on either block still supersedes.
+  [verdict-redraft-just-over-half.json]='omicron-pass first draft'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -344,6 +362,9 @@ declare -A expected_cost=(
   [verdict-then-tab-inside-fence.json]=1.47
   [verdict-then-appended-correction.json]=1.48
   [verdict-redraft-trimmed.json]=1.49
+  [verdict-then-long-correction-with-payload.json]=1.5
+  [verdict-then-correction-near-half.json]=1.51
+  [verdict-redraft-just-over-half.json]=1.52
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18

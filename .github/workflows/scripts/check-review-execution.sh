@@ -676,19 +676,27 @@ review_text_file="$(mktemp)"
 # characters, each citing analysis "detailed above") is textually a redraft
 # under the last-heading rule, so the review was dropped and the correction
 # posted alone -- gha#710's failure, reintroduced by its own follow-up fix.
-# The two are told apart by LENGTH, which is decidable without matching any
-# vocabulary this corpus documents (a reference to "above" is a string this
-# very comment writes): a redraft restates the whole review, so it is
-# comparable in size to the draft it replaces, while a correction is a
-# fraction of it. A later heading block therefore REPLACES the current draft
-# only when it is at least half the current draft's length in characters;
-# shorter, it is a correction and the draft it corrects is kept, so the span
-# runs from that draft through the last verdict-bearing block, corrections
-# included. The comparison is against the draft currently held, never the
-# previous heading block, so a run of corrections cannot promote one another
-# into a redraft. The threshold errs toward keeping: a redraft misread as a
-# correction posts two drafts (the gha#805 verbosity), while a correction
-# misread as a redraft posts a verdict resting on analysis nobody can see.
+# Two signals tell them apart, and neither matches vocabulary this corpus
+# documents (a reference to "above" is a string this very comment writes).
+# First, the structured review-data payload: a complete review emits the
+# `<!-- review-data:` block and an appended correction does not, so a later
+# heading block that lacks the payload never replaces a held draft that has
+# it, whatever its length. Second, for blocks alike in payload (both with,
+# or both without, as older transcripts and several fixtures are), LENGTH:
+# a redraft restates the whole review, so it is comparable in size to the
+# draft it replaces, while a correction is a fraction of it. Such a block
+# REPLACES the current draft only when it is at least half the current
+# draft's length in characters; shorter, it is a correction and the draft
+# it corrects is kept, so the span runs from that draft through the last
+# verdict-bearing block, corrections included. The comparison is against
+# the draft currently held, never the previous heading block, so a run of
+# corrections cannot promote one another into a redraft. The residual band
+# is stated rather than hidden: when the review itself emitted no payload,
+# a correction at least half the review's length is still read as a
+# redraft (the measured corrections were 0.24 and 0.33 of their review).
+# Both signals err toward keeping: a redraft misread as a correction posts
+# two drafts (the gha#805 verbosity), while a correction misread as a
+# redraft posts a verdict resting on analysis nobody can see.
 # When no later heading block replaces the first, the transcript is one
 # review with corrections and takes the gha#710 span rule unchanged.
 jq -r '
@@ -718,10 +726,16 @@ jq -r '
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
   | [ $vidx[] | select($blocks[.] | authored_heading) ] as $hidx
-  # gha#850: the draft is the last heading block at least half as long as the
-  # draft it would replace; a shorter one is an appended correction.
+  # gha#850: a heading block never replaces a held draft that carries the
+  # structured review-data payload when the block itself carries none; among
+  # payload-alike blocks, the draft is the last one at least half as long as
+  # the draft it would replace, and a shorter one is an appended correction.
   | ( reduce $hidx[1:][] as $h ($hidx[0];
-        if ($blocks[$h] | length) * 2 >= ($blocks[.] | length) then $h else . end)
+        if ($blocks[.] | test("<!-- review-data:"))
+           and (($blocks[$h] | test("<!-- review-data:")) | not)
+          then .
+        elif ($blocks[$h] | length) * 2 >= ($blocks[.] | length) then $h
+        else . end)
     ) as $draft
   | if ($hidx | length) > 1 and $draft != $hidx[0]
       then $blocks[$draft:(($vidx | last) + 1)] | join("\n\n")

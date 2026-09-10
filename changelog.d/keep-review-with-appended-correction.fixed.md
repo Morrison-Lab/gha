@@ -9,3 +9,7 @@
   least half the draft's length;
   a shorter one is a correction, and the posted text runs from the draft it
   corrects through the last verdict-bearing block.
+  A heading block that lacks the structured review-data payload never
+  replaces a held draft that carries it, whatever its length;
+  the length rule decides only between payload-alike blocks,
+  and its boundary is pinned from both sides by fixtures.
