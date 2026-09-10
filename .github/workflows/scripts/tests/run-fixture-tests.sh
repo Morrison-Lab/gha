@@ -126,6 +126,16 @@ declare -A expected=(
   # needle); a tab-admitting awk counts two headings in the correct span.
   # One fixture, both halves.
   [verdict-then-tab-inside-fence.json]=pass
+  # gha#850: a complete review followed by SHORT follow-ups that each carry an
+  # authored `### Verdict` heading and cite the review "above". The
+  # last-heading rule read them as redrafts and posted only the final one,
+  # which is gha#710's dropped-analysis failure. Both the review and the
+  # corrections must be posted.
+  [verdict-then-appended-correction.json]=pass
+  # gha#850: the other side of the threshold. A genuine redraft that trimmed
+  # its predecessor, still at least half its length, supersedes it -- only the
+  # second draft is posted.
+  [verdict-redraft-trimmed.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -176,6 +186,11 @@ declare -A must_contain=(
   [verdict-then-indented-heading.json]='theta-pass analysis'
   [verdict-redraft-after-tab-fence.json]='iota-pass second draft'
   [verdict-then-tab-inside-fence.json]='kappa-pass analysis'
+  # gha#850: the review's analysis. The last-heading rule drops it; so does a
+  # comparison against the PREVIOUS heading block rather than the held draft,
+  # since the second correction is comparable in size to the first.
+  [verdict-then-appended-correction.json]='lambda-pass analysis'
+  [verdict-redraft-trimmed.json]='mu-pass trimmed redraft'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -210,6 +225,16 @@ declare -A must_contain=(
 # claims. Checked exactly like must_contain.
 declare -A must_also_contain=(
   [verdict-redrafted-thrice.json]='delta-pass tail is retained'
+  # gha#850: the last correction, so the span still runs to the end.
+  [verdict-then-appended-correction.json]='lambda-pass correction'
+)
+
+# gha#850: the one fixture whose posted text carries more than one authored
+# verdict heading on purpose -- the review's, then one per appended
+# correction. Keyed by exact count, so a concatenated extra draft (four
+# headings) still fails the gha#805 invariant here.
+declare -A max_verdict_headings=(
+  [verdict-then-appended-correction.json]=3
 )
 
 declare -A must_not_contain=(
@@ -217,6 +242,9 @@ declare -A must_not_contain=(
   # what the pre-#805 span rule (first verdict block through last) keeps.
   [verdict-redrafted-thrice.json]='alpha-pass fixture table'
   [verdict-redraft-after-tab-fence.json]='iota-pass first draft'
+  # gha#850: a trimmed redraft above the threshold still supersedes. Raising
+  # the threshold to "at least as long" keeps the first draft and fails here.
+  [verdict-redraft-trimmed.json]='mu-pass first draft'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -314,6 +342,8 @@ declare -A expected_cost=(
   [verdict-then-indented-heading.json]=1.45
   [verdict-redraft-after-tab-fence.json]=1.46
   [verdict-then-tab-inside-fence.json]=1.47
+  [verdict-then-appended-correction.json]=1.48
+  [verdict-redraft-trimmed.json]=1.49
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -488,7 +518,10 @@ assert_pass() {
   # that quoted one example heading would have failed). No interval
   # expression in the awk, per this repo's mawk rule. This is a shape check
   # on our own extraction, not a verdict parse.
-  local headings
+  # gha#850: an appended correction may legitimately carry its own heading,
+  # so a fixture built to pin that shape declares how many headings its
+  # posted text carries; every other fixture keeps the limit of one.
+  local headings max_headings="${max_verdict_headings[$fixture]:-1}"
   headings="$(awk '
     # A fence closes only on the same character, at least as long as the
     # opener (CommonMark), mirroring the jq. No interval expressions.
@@ -514,8 +547,8 @@ assert_pass() {
       if (length(hashes) <= 6) n++
     }
     END { print n + 0 }' "$posted_file")"
-  if [[ "$headings" -gt 1 ]]; then
-    echo "::error::$fixture: posted review carries $headings verdict headings (gha#805)"
+  if [[ "$headings" -gt "$max_headings" ]]; then
+    echo "::error::$fixture: posted review carries $headings verdict headings, limit $max_headings (gha#805)"
     return 1
   fi
   return 0

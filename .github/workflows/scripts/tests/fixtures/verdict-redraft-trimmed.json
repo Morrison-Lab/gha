@@ -1,0 +1,38 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe mu-pass first draft walks the change in detail.\n\n- The guard is reached by the new fixture, confirmed by commenting the arm out and watching the named case go red.\n- The threshold is declared once and read back by the harness.\n- The awk carries no interval expression.\n- The fragment names the issue.\n\n### Verdict\n\n**Ready for merge.**\n\n<!-- review-data:\n{\"schema\": \"1.1\", \"verdict\": \"ready\", \"draft\": 1}\n-->\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\nThe mu-pass trimmed redraft keeps the substance and drops the padding.\n\n- The guard is reached by the new fixture (mutation confirmed).\n- The threshold is declared once.\n\n### Verdict\n\n**Ready for merge.**\n\n<!-- review-data:\n{\"schema\": \"1.1\", \"verdict\": \"ready\", \"draft\": 2}\n-->\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "duration_ms": 120000,
+    "total_cost_usd": 1.49,
+    "permission_denials_count": 0,
+    "permission_denials": []
+  }
+]

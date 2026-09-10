@@ -51,8 +51,10 @@
 #   - otherwise writes review_text_file=<path> to $GITHUB_OUTPUT and exits 0.
 #     That file holds the span of verdict-bearing assistant blocks -- from
 #     the first block carrying a verdict line through the last, blocks
-#     between included (gha#710) -- or the final block when none carries a
-#     verdict.
+#     between included (gha#710), starting instead at the last complete
+#     REDRAFT when the reviewer wrote more than one (gha#805; a short
+#     appended correction is not a redraft, gha#850) -- or the final block
+#     when none carries a verdict.
 #   - whenever a result object is found (success, quota-skip, stub, or hard
 #     error alike), also writes total_cost_usd=<value> to $GITHUB_OUTPUT —
 #     the run incurs cost regardless of how it concluded, and the caller
@@ -666,6 +668,29 @@ review_text_file="$(mktemp)"
 # paragraph continuation. The heading test says {0,3} rather than [ \t]* for
 # exactly that reason (gha#808 review round 3, which reproduced the drop with
 # indentation instead of a fence).
+#
+# gha#850: a later authored heading is not always a redraft. A reviewer that
+# wrote a complete review and then APPENDED a short self-correction carrying
+# its own `### Verdict` heading (measured on UCD-SERG/serocalculator#685, run
+# 34292812731: a 7150-character review, then two follow-ups of 1744 and 1520
+# characters, each citing analysis "detailed above") is textually a redraft
+# under the last-heading rule, so the review was dropped and the correction
+# posted alone -- gha#710's failure, reintroduced by its own follow-up fix.
+# The two are told apart by LENGTH, which is decidable without matching any
+# vocabulary this corpus documents (a reference to "above" is a string this
+# very comment writes): a redraft restates the whole review, so it is
+# comparable in size to the draft it replaces, while a correction is a
+# fraction of it. A later heading block therefore REPLACES the current draft
+# only when it is at least half the current draft's length in characters;
+# shorter, it is a correction and the draft it corrects is kept, so the span
+# runs from that draft through the last verdict-bearing block, corrections
+# included. The comparison is against the draft currently held, never the
+# previous heading block, so a run of corrections cannot promote one another
+# into a redraft. The threshold errs toward keeping: a redraft misread as a
+# correction posts two drafts (the gha#805 verbosity), while a correction
+# misread as a redraft posts a verdict resting on analysis nobody can see.
+# When no later heading block replaces the first, the transcript is one
+# review with corrections and takes the gha#710 span rule unchanged.
 jq -r '
   def authored_heading:
     ( split("\n")
@@ -693,8 +718,13 @@ jq -r '
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
   | [ $vidx[] | select($blocks[.] | authored_heading) ] as $hidx
-  | if ($hidx | length) > 1
-      then $blocks[($hidx | last):(($vidx | last) + 1)] | join("\n\n")
+  # gha#850: the draft is the last heading block at least half as long as the
+  # draft it would replace; a shorter one is an appended correction.
+  | ( reduce $hidx[1:][] as $h ($hidx[0];
+        if ($blocks[$h] | length) * 2 >= ($blocks[.] | length) then $h else . end)
+    ) as $draft
+  | if ($hidx | length) > 1 and $draft != $hidx[0]
+      then $blocks[$draft:(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) > 1
       then $blocks[($vidx | first):(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) == 1
