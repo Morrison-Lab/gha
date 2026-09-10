@@ -3382,7 +3382,7 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-audit-example-concurrency-tests.py
 
-      - name: Assert no example stub collides with a concurrency group of the workflow it calls
+      - name: Assert no caller collides with a concurrency group of the reusable workflow it calls
         shell: bash
         run: python3 .github/workflows/scripts/audit_example_concurrency.py
 

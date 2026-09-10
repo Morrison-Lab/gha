@@ -3219,13 +3219,20 @@ tree at test time rather than written into the suite; the call count is
 held to a textual floor -- every `uses: Morrison-Lab/gha/...` line under
 `.github/workflows/` -- and a floor of zero is itself a failure, since it
 would make the assertion vacuous.
-Six mutations were confirmed to turn a named case red rather than assumed
+Seven mutations were confirmed to turn a named case red rather than assumed
 to: the population narrowed back to `examples/` (the top-level dogfood
-collision case), a `*.yml`-only listing (the `.yaml` caller case), dotfiles
-listed as callers (the dotfile case), the restore skip dropped (the restore
-case, whose fixture collides so the skip is what makes it exit 0), the call
-count dropped (the call-count case), and the job-level caller check dropped
-(the job-level dogfood collision case).
+collision case), the collision check skipped for a caller outside
+`examples/` (the same case), a `*.yml`-only listing on the workflows side
+(the `.yaml` caller case), dotfiles listed as callers (the dotfile case),
+the restore skip dropped (the restore case, whose fixture collides so the
+skip is what makes it exit 0), the `found N call(s)` clause dropped from the
+summary (the call-count case, plus the live floor), and the job-level caller
+check dropped (the job-level dogfood collision case).
+Each mutation was applied to a COMMITTED file, confirmed applied with
+`git diff --quiet` before the suite ran, and restored with
+`git checkout --` afterwards, per this file's own mis-aimed-mutation rule --
+the first pass's call-count mutation reworded the clause without removing
+the number, so it survived while looking aimed.
 The non-mapping-job guard is declared TWICE (in `job_groups` and in
 `callee_calls`), so a single-site mutation survives the suite and only
 mutating both turns its case red; read that survivor as the other site still
