@@ -470,8 +470,9 @@ which is why the capabilities above moved to `@v2`.
   `run-review-job-split-tests.py` asserts that every
   `steps.<id>.outputs.<name>` the workflow reads from one of this repo's
   composites is declared in that composite's `outputs:` (gha#806 widened
-  it from the `fail-check*` prefix alone to every composite the workflow
-  reads).
+  the check from the `fail-check*` prefix alone to every in-repo composite
+  the workflow reads, and made a read naming an undeclared step id a
+  failure rather than a skip).
   **The message is redacted before it leaves the guard.**
   A door rejection is exactly where the SDK quotes credential context (the
   gha#686 entry above records one), and the comment is not masked, so the
@@ -2890,9 +2891,10 @@ and `post-review` stale-checks against event-pinned
 falling back to gather-context's stash-head on dispatch,
 rather than a later API fetch from the model job.
 
-**It also asserts that every composite output the workflow reads is
-declared, and that check is derived from the parsed workflow rather than
-from a list kept in the suite (gha#804, gha#806).**
+**`run-review-job-split-tests.py` also asserts that every in-repo composite
+output the workflow reads is declared, and that check is derived from the
+parsed workflow rather than from a list kept in the suite (gha#804,
+gha#806).**
 A composite's step outputs are invisible to its caller unless `action.yml`
 re-declares them, and gha#804's first draft read two `run-review-guard`
 outputs the guard never exposed while every offline suite stayed green.
@@ -2903,38 +2905,69 @@ or `./.github/actions/<x>`, collects every `steps.<id>.outputs.<name>` read
 from the workflow text, and asserts each name against
 `<actions-dir>/<x>/action.yml`'s `outputs:` (the `--actions-dir` flag,
 default `.github/actions`, replaced the old `--guard` path).
-Three things constrain any change to it.
+A third-party action has no local `action.yml`, so its reads are out of
+scope rather than merely unchecked.
+Five things constrain any change to it.
 **The reads are collected from raw text, not parsed expressions**, because
 an output is read from `if:`, `env:`, `with:`, and job `outputs:` alike and
 a parsed walk that missed one placement would reproduce the silent-inert
 bug the check exists for; whole-line `#` comments are stripped, so a
 comment naming an output the workflow deliberately does not read is not a
-read, but a trailing comment or a `run:` string naming a fictitious output
-still false-positives, which is the cheap direction (one line to fix, in
-the open).
+read, but a trailing comment or a `run:` string naming an output the
+workflow does not really read still counts as one, which is the cheap
+direction (one line to fix, in the open).
+**A read whose step id NO step declares is refused, not skipped.**
+GitHub resolves such a read to the empty string, so whatever consumes it is
+silently inert -- the gha#804 defect arriving by a typo rather than by a
+missing `outputs:` block -- and the pre-gha#806 code reached that read's
+`continue` before anything could notice.
 **A step id that maps to two different composites is refused outright**,
 since a raw-text read cannot be attributed to one of them; the same id
 recurring for the SAME composite across jobs (`caller-wf` does) is fine.
+For the same reason a read cannot be attributed to the JOB it sits in, so
+an id reused across jobs for a composite in one and a `run:` step in
+another checks the second job's read against the first job's composite.
+That error is loud, names the exact pair, and costs one renamed id.
+**The `uses:` pattern allows nested paths and matches case-insensitively**,
+because GitHub resolves `<owner>/<repo>/<path>/<to>/<action>` and owner
+names in either case, and under-matching either spelling would silently
+skip that step's reads; every path segment must begin with an alphanumeric
+or `_`, which is what stops `.` and `..` climbing out of the actions
+directory.
 **It reports how many step/output pairs it examined, and fails on zero**,
 because a step map or read scan that matched nothing would otherwise pass
 identically to one that checked everything (38 pairs across 12 composites
 on `main` at the time gha#806 landed, all declared).
-Six self-test cases pin it, each confirmed by a mutation aimed at that
+Eight self-test cases pin it, each confirmed by a mutation aimed at that
 case rather than at the check in general: dropping a guard output fails
 (the remote `uses:` form), dropping a `sum-costs` output fails (the local
 `./` form, and a composite other than the guard), a read of a composite
 with no local `action.yml` fails, a whole-line comment naming an
-undeclared output still passes, one id naming two composites is refused,
-and a template whose reads map to no composite fails rather than passing
-vacuously.
-Nine mutations were confirmed to turn a named case red rather than assumed
-to: an always-passing declared check, dropping either half of the `uses:`
-alternation, dropping `quota_reason` from the real guard's `outputs:`
-(caught by the LIVE run rather than by the self-test), narrowing the read
-scan back to a `fail-check*` prefix, skipping rather than failing a missing
-`action.yml`, not stripping whole-line comments, skipping rather than
-refusing an ambiguous id, and an always-passing zero-pairs guard.
-CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
+undeclared output still passes, one id naming two composites is refused, a
+nested composite path is mapped rather than skipped, a read naming an
+undeclared step id is refused, and a template whose reads map to no
+composite fails rather than passing vacuously.
+Eleven mutations were confirmed to turn a named assertion red rather than
+assumed to:
+an always-passing declared check, dropping either half of the `uses:`
+alternation, narrowing the read scan back to a `fail-check*` prefix,
+skipping rather than failing a missing `action.yml`, not stripping
+whole-line comments, skipping rather than refusing an ambiguous id, an
+always-passing zero-pairs guard, forbidding a nested path segment, and
+skipping rather than refusing an undeclared step id -- ten of them turning
+a named SELF-TEST case red, plus dropping `quota_reason` from the real
+guard's `outputs:`, which only the LIVE run can catch, since no fixture
+carries the real composite.
+That last one is the mutation worth keeping if the sweep is ever trimmed:
+it is the only one aimed at the artifact the check actually protects.
+The `unmapped-reads` fixture gives both its steps ids that name
+third-party actions rather than deleting the ids, because deleted ids trip
+the dangling-read check first and the case would go red without ever
+reaching the zero-pairs guard it exists to pin -- this file's own
+mis-aimed-mutation lesson, met while writing the fixture rather than while
+mutating it.
+CI runs the workflow-split assertions and the self-test suite, plus a real
+`uses: ./` call to `pack-review-payload` with
 `upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
 separate from `review-fail-check` so a failure is attributable at a glance.
 `claude-code-review.yml`'s own `@v2` consumption of the new composite is

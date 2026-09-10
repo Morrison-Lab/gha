@@ -40,18 +40,29 @@ the facts a future edit could reverse silently:
    read two run-review-guard outputs the guard never exposed: every offline
    suite stayed green while the feature was inert on a live run. gha#806
    widened the check from that one hard-coded step-id prefix to every
-   composite the workflow reads, and it reports how many step/output pairs
-   it examined so a run that mapped nothing cannot pass as a run that
-   checked everything.
+   IN-REPO composite the workflow reads (a third-party action has no local
+   `action.yml` to check against, so its reads are out of scope), and it
+   reports how many step/output pairs it examined so a run that mapped
+   nothing cannot pass as a run that checked everything.
+
+   Separately, a read whose step id NO step in the workflow declares is
+   refused. GitHub resolves such a read to the empty string, so whatever
+   consumes it is silently inert -- the same defect gha#804 was filed over,
+   arriving by a typo rather than by a missing `outputs:` block.
 
    The reads are collected from the workflow's RAW TEXT (whole-line `#`
    comments stripped), not from parsed expressions, so a trailing comment
-   or a `run:` string that names a fictitious `steps.<id>.outputs.<name>`
-   would false-positive. That is the cheap direction: the fix is one line
-   in the workflow, while the opposite error (a parsed walk that misses an
-   `if:` or `env:` read) is exactly the silent-inert bug this exists for.
+   or a `run:` string that names a `steps.<id>.outputs.<name>` the workflow
+   does not really read still counts as a read. That is the cheap
+   direction: the fix is one line in the workflow, in the open, while the
+   opposite error (a parsed walk that misses an `if:` or `env:` read) is
+   exactly the silent-inert bug this exists for.
    A step id that maps to two different composites is refused outright,
-   since a raw-text read cannot be attributed to one of them.
+   since a raw-text read cannot be attributed to one of them -- and for the
+   same reason a read cannot be attributed to the JOB it sits in, so an id
+   reused across jobs for a composite in one and a `run:` step in another
+   would check the second job's read against the first job's composite.
+   That error is loud (a named failing pair) and costs one renamed id.
 
 PyYAML is required, same as run-reviewer-allowlist-tests.py.
 
@@ -82,9 +93,19 @@ DEFAULT_ACTIONS_DIR = ".github/actions"
 # two spellings the workflows write: the tagged remote form consumers (and
 # the reusable workflow itself) use, and the local form _selftest.yml uses
 # for a composite not yet at the tag. Anchored at both ends so a fork
-# (`someone/gha/.github/actions/x`) or a nested path is not claimed as ours.
+# (`someone/gha/.github/actions/x`) is not claimed as ours. Nested segments
+# ARE allowed: GitHub resolves `<owner>/<repo>/<path>/<to>/<action>` and
+# `./<path>/<to>/<action>` alike, and under-matching one would silently skip
+# its reads, which is the direction this check exists to prevent. Every
+# segment must start with an alphanumeric or `_`, which is what stops `.`
+# and `..` from climbing out of the actions directory. IGNORECASE because
+# GitHub resolves owner and repository names case-insensitively, so a
+# workflow writing `morrison-lab/gha` names the same composite we ship.
 COMPOSITE_USES_RE = re.compile(
-    r"^(?:Morrison-Lab/gha/|\./)\.github/actions/([A-Za-z0-9_.-]+)(?:@\S+)?$"
+    r"^(?:Morrison-Lab/gha/|\./)\.github/actions/"
+    r"([A-Za-z0-9_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_][A-Za-z0-9_.-]*)*)"
+    r"(?:@\S+)?$",
+    re.IGNORECASE,
 )
 STEP_OUTPUT_READ_RE = re.compile(r"steps\.([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)")
 
@@ -163,26 +184,41 @@ def uses_of(job: dict) -> list[str]:
     return uses
 
 
-def composite_step_ids(jobs: dict) -> dict[str, set[str]]:
-    """Map each step id whose `uses:` names one of our composites to the
-    composite's directory name(s). A set, because the same id may legally
+def composite_step_ids(jobs: dict) -> tuple[dict[str, set[str]], set[str]]:
+    """Return (composite step ids, every step id in the workflow).
+
+    The first maps each step id whose `uses:` names one of our composites to
+    the composite's directory name(s). A set, because the same id may legally
     recur across jobs (`caller-wf` does); it is only ambiguous when the
-    recurrences name DIFFERENT composites, which the caller refuses."""
+    recurrences name DIFFERENT composites, which the caller refuses.
+
+    The second is every id any step declares, composite or not, and exists so
+    a read naming an id NO step declares can be refused. Such a read is
+    already inert on a live run -- GitHub resolves it to the empty string --
+    which is the same silent-inertness gha#804 was filed over, so skipping it
+    for want of a composite to check it against would let the check pass over
+    exactly the defect it exists to find."""
     ids: dict[str, set[str]] = {}
+    all_ids: set[str] = set()
     for job in jobs.values():
         if not isinstance(job, dict):
             continue
         for step in job.get("steps") or []:
             if not isinstance(step, dict):
                 continue
-            uses = step.get("uses")
             step_id = step.get("id")
-            if not isinstance(uses, str) or not isinstance(step_id, str):
+            if not isinstance(step_id, str):
                 continue
-            m = COMPOSITE_USES_RE.match(uses)
+            all_ids.add(step_id)
+            uses = step.get("uses")
+            if not isinstance(uses, str):
+                continue
+            # A quoted scalar keeps its padding where a plain one does not,
+            # and an unmatched `uses:` is skipped SILENTLY, so strip first.
+            m = COMPOSITE_USES_RE.match(uses.strip())
             if m:
                 ids.setdefault(step_id, set()).add(m.group(1))
-    return ids
+    return ids, all_ids
 
 
 def strip_whole_line_comments(text: str) -> str:
@@ -203,16 +239,25 @@ def check_declared_outputs(
     text rather than from a list kept here, so a new read cannot be added
     without also being checked, and resolve each read's composite from the
     parsed step map rather than from a hard-coded id prefix."""
-    ids = composite_step_ids(jobs)
+    ids, all_ids = composite_step_ids(jobs)
     text = strip_whole_line_comments(workflow_path.read_text(encoding="utf-8"))
     reads = sorted(set(STEP_OUTPUT_READ_RE.findall(text)))
     examined = 0
     composites: set[str] = set()
+    declared_by_action: dict[str, set[str] | None] = {}
     for step_id, name in reads:
+        check(
+            step_id in all_ids,
+            f"steps.{step_id}.outputs.{name}: some step declares id "
+            f"{step_id!r} (no step does, so GitHub resolves this read to the "
+            "empty string and whatever reads it is silently inert)",
+        )
         actions = ids.get(step_id)
         if not actions:
             # A run: step's own output, or a step of an action that is not
-            # ours; neither has a local action.yml to check against.
+            # ours; neither has a local action.yml to check against. The id
+            # itself was just confirmed to exist, so this is not a dangling
+            # read, only one with nothing local to check the NAME against.
             continue
         if len(actions) > 1:
             die(
@@ -225,7 +270,19 @@ def check_declared_outputs(
         composites.add(action)
         examined += 1
         action_yml = actions_dir / action / "action.yml"
-        if not action_yml.is_file():
+        if action not in declared_by_action:
+            # Parsed once per composite rather than once per read: `main`
+            # reads 38 pairs across 12 composites, so the loop would
+            # otherwise re-read and re-parse the same file up to a dozen
+            # times. `None` records "no action.yml here", which is a
+            # different fact from "declares no outputs".
+            declared_by_action[action] = (
+                set(((load_yaml(action_yml) or {}).get("outputs") or {}).keys())
+                if action_yml.is_file()
+                else None
+            )
+        declared = declared_by_action[action]
+        if declared is None:
             check(
                 False,
                 f"steps.{step_id}.outputs.{name}: {action_yml} exists (the "
@@ -233,7 +290,6 @@ def check_declared_outputs(
                 "not carry)",
             )
             continue
-        declared = set(((load_yaml(action_yml) or {}).get("outputs") or {}).keys())
         check(
             name in declared,
             f"steps.{step_id}.outputs.{name} is declared in "
@@ -1080,6 +1136,11 @@ jobs:
       actions: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+      # `pack_if` reads steps.selfmod.outputs.self_mod, so the id has to
+      # exist or the dangling-read check refuses it -- as it would on the
+      # real workflow, where a `run:` step declares it.
+      - id: selfmod
+        run: echo "self_mod=false" >> "$GITHUB_OUTPUT"
       - id: fail-check
         uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
       - run: echo "$FC_QUOTA_REASON"
@@ -1102,6 +1163,9 @@ jobs:
       actions: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
+      # Likewise for `notice_if`'s steps.payload.outputs.resolve_outcome.
+      - id: payload
+        run: echo "resolve_outcome=success" >> "$GITHUB_OUTPUT"
       - uses: actions/download-artifact@v4
         with:
           name: claude-review-payload-${{{{ github.run_id }}}}-${{{{ github.run_attempt }}}}
@@ -1248,17 +1312,62 @@ runs:
             False,
             "names more than one composite",
         )
+        # Both ids still EXIST here -- they just name third-party actions, so
+        # nothing maps to a composite. Deleting the ids instead would trip the
+        # dangling-id check first and this case would go red without ever
+        # reaching the zero-pairs guard it exists to pin.
         unmapped_reads = root / "unmapped-reads.yml"
         unmapped_reads.write_text(
             good_wf.read_text()
-            .replace("      - id: fail-check\n        uses:", "      - uses:", 1)
-            .replace("      - id: sum-cost\n        uses:", "      - uses:", 1)
+            .replace(
+                "        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2",
+                "        uses: actions/checkout@v4",
+                1,
+            )
+            .replace(
+                "        uses: ./.github/actions/sum-costs",
+                "        uses: actions/checkout@v4",
+                1,
+            )
         )
         failures += expect(
             "a scan that maps no read to a composite fails rather than passing vacuously",
             run(unmapped_reads, good_action),
             False,
             "examined at least one step/output pair",
+        )
+        # A read whose id no step declares is inert on a live run, so it is
+        # refused rather than skipped for want of a composite to check.
+        dangling_read = root / "dangling-read.yml"
+        dangling_read.write_text(
+            good_wf.read_text().replace(
+                "steps.sum-cost.outputs.total", "steps.sum_cost.outputs.total", 1
+            )
+        )
+        failures += expect(
+            "a read naming a step id no step declares is refused",
+            run(dangling_read, good_action),
+            False,
+            "some step declares id 'sum_cost'",
+        )
+        # A composite in a nested directory is mapped, not silently skipped.
+        nested_actions = make_actions(
+            "actions-nested",
+            {**good_outputs, "nested/sum-costs": []},
+        )
+        nested_wf = root / "nested-composite.yml"
+        nested_wf.write_text(
+            good_wf.read_text().replace(
+                "        uses: ./.github/actions/sum-costs",
+                "        uses: ./.github/actions/nested/sum-costs",
+                1,
+            )
+        )
+        failures += expect(
+            "a nested composite path is mapped and its undeclared output fails",
+            run(nested_wf, good_action, nested_actions),
+            False,
+            "steps.sum-cost.outputs.total is declared in nested/sum-costs/action.yml",
         )
 
         bad_write = root / "bad-write.yml"
