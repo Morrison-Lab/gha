@@ -2335,7 +2335,7 @@ quotation of the marker is not a payload with the real marker spelled
 `<!--review-data:`, `verdict-then-correction-near-half.json` with
 `verdict-redraft-just-over-half.json` pin the length boundary from both sides
 at 0.48 and 0.53 with no payload on either block, and
-`verdict-shrinking-chain-no-payload.json` pins the floor: blocks of 0.62 and
+`verdict-shrinking-chain-no-payload.json` pins the floor: blocks of 0.68 and
 0.59 of the one before post the second and third, never the third alone.
 
 **A fast path inserted before an existing sanitizer inherits none of that
