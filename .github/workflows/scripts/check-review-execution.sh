@@ -696,16 +696,15 @@ review_text_file="$(mktemp)"
 # half the one before, cannot walk the draft below half the review, and a
 # stray one-line heading ahead of the review cannot lower it. The residual
 # band is stated rather than hidden: when the review itself emitted no
-# payload,
-# a correction at least half the review's length is still read as a
+# payload, a correction at least half the review's length is still read as a
 # redraft. The measured run does not exercise that band: its 7150-character
 # review carried the payload and its corrections (0.24 and 0.21 of it) did
-# not, so the first signal decided it.
-# Both signals err toward keeping: a redraft misread as a correction posts
-# two drafts (the gha#805 verbosity), while a correction misread as a
-# redraft posts a verdict resting on analysis nobody can see.
-# When no later heading block replaces the first, the transcript is one
-# review with corrections and takes the gha#710 span rule unchanged.
+# not, so the first signal decided it. Both signals err toward keeping: a
+# redraft misread as a correction posts two drafts (the gha#805 verbosity),
+# while a correction misread as a redraft posts a verdict resting on analysis
+# nobody can see. When no later heading block replaces the first, the
+# transcript is one review with corrections and takes the gha#710 span rule
+# unchanged.
 jq -r '
   # gha#850 round 2: the fence, blockquote and indentation stripping is one
   # definition shared by the heading test and the payload test, so the two
