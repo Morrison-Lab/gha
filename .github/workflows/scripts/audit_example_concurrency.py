@@ -28,9 +28,10 @@ choice of directories: GitHub runs nothing outside ``.github/workflows/``,
 and ``examples/`` is the stub set consumers copy. What the edge buys within
 them is that no hand-maintained list of dogfood caller filenames has to be
 kept in step -- a caller added to either root is picked up the moment it
-lands -- and that it needs no new argument. A reusable workflow is a candidate caller like any other file; one
-that calls none of ours contributes nothing, and a caller that is itself a
-callee is not special-cased. The comparison is made against the workflow each
+lands -- and that it needs no new argument. A reusable workflow is a
+candidate caller like any other file; one that calls none of ours
+contributes nothing, and a caller that is itself a callee is not
+special-cased. The comparison is made against the workflow each
 ``uses:`` actually names, so a job-level group added later is caught the
 moment it lands rather than when the next consumer copies the stub. A caller
 whose ``uses:`` names a workflow file this repo does not carry is an error,
@@ -218,7 +219,9 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
         die(f"{workflows_dir}: no workflow files found")
     # Keyed by resolved path so the two roots being the same directory (or
     # one nested in the other) examines each file once rather than twice and
-    # reports each collision once.
+    # reports each collision once. The per-root figures in the summary below
+    # are the pre-dedup listings, so they sum to more than the total in that
+    # case; the two roots do not overlap in any real invocation.
     population: dict[pathlib.Path, pathlib.Path] = {}
     for path in stubs + dogfood:
         population.setdefault(path.resolve(), path)
