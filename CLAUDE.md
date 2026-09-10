@@ -2919,13 +2919,21 @@ recurring for the SAME composite across jobs (`caller-wf` does) is fine.
 because a step map or read scan that matched nothing would otherwise pass
 identically to one that checked everything (38 pairs across 12 composites
 on `main` at the time gha#806 landed, all declared).
-Six self-test cases pin it, each confirmed by mutation of the check under
-test: dropping a guard output fails (the remote `uses:` form), dropping a
-`sum-costs` output fails (the local `./` form, and a composite other than
-the guard), a read of a composite with no local `action.yml` fails, a
-whole-line comment naming an undeclared output still passes, one id naming
-two composites is refused, and a template whose reads map to no composite
-fails rather than passing vacuously.
+Six self-test cases pin it, each confirmed by a mutation aimed at that
+case rather than at the check in general: dropping a guard output fails
+(the remote `uses:` form), dropping a `sum-costs` output fails (the local
+`./` form, and a composite other than the guard), a read of a composite
+with no local `action.yml` fails, a whole-line comment naming an
+undeclared output still passes, one id naming two composites is refused,
+and a template whose reads map to no composite fails rather than passing
+vacuously.
+Nine mutations were confirmed to turn a named case red rather than assumed
+to: an always-passing declared check, dropping either half of the `uses:`
+alternation, dropping `quota_reason` from the real guard's `outputs:`
+(caught by the LIVE run rather than by the self-test), narrowing the read
+scan back to a `fail-check*` prefix, skipping rather than failing a missing
+`action.yml`, not stripping whole-line comments, skipping rather than
+refusing an ambiguous id, and an always-passing zero-pairs guard.
 CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
 `upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
 separate from `review-fail-check` so a failure is attributable at a glance.
