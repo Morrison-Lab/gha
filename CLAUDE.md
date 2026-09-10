@@ -2287,6 +2287,31 @@ six-hash limit, and dropping the awk's trailing word-boundary class.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
+**A later authored `### Verdict` heading is not always a redraft: a reviewer
+that wrote a complete review and then appended a short self-correction
+carrying its own heading was read by the gha#805/gha#808 last-heading rule as
+a redraft, so the review was dropped and only the correction posted, citing
+analysis nobody could see (gha#710's failure reintroduced by its own follow-up
+fix).**
+Measured on UCD-SERG/serocalculator#685, run 34292812731: a 7150-character
+review followed by corrections of 1744 and 1520 characters.
+The two are told apart by LENGTH, not vocabulary (a reference to "above" is a
+string this corpus documents, so matching it would be the
+self-implicating-example hazard): a later heading block replaces the held
+draft only when it is at least half the held draft's length in characters;
+shorter, it is a correction and the draft it corrects is kept, so the span
+runs from that draft through the last verdict-bearing block, corrections
+included.
+The comparison is against the draft currently held, never the previous heading
+block, so a run of corrections cannot promote one another into a redraft.
+The threshold errs toward keeping.
+`verdict-then-appended-correction.json` pins that both the review's analysis
+and the last correction are posted, and declares (via `max_verdict_headings`)
+that its posted text carries three authored headings, so the gha#805
+one-heading invariant still fails on a fourth; `verdict-redraft-trimmed.json`
+pins the other side: a trimmed redraft still at least half its predecessor's
+length supersedes it.
+
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own
 gha#710/gha#805/gha#808 quoted-verdict guard is exactly what the new path
