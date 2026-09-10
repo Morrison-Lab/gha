@@ -153,8 +153,8 @@ declare -A expected=(
   [verdict-then-correction-quoting-payload-marker.json]=pass
   # gha#850 round 4: three payload-less heading blocks of 0.68 and 0.59 of
   # the one before. The second is a redraft (above half the review); the
-  # third is a correction, because it is under half the LONGEST held draft
-  # even though it is above half the held draft. Posted: second and third.
+  # third is a correction, because it is under half the LONGEST held draft.
+  # Posted: second and third.
   [verdict-shrinking-chain-no-payload.json]=pass
   # gha#850 round 4: the same chain behind a stray one-line heading. The
   # floor is the longest draft held so far, so the stray block does not
@@ -220,6 +220,10 @@ declare -A must_contain=(
   [verdict-then-appended-correction.json]='lambda-pass analysis'
   [verdict-redraft-trimmed.json]='mu-pass trimmed redraft'
   [verdict-then-long-correction-with-payload.json]='nu-pass analysis'
+  # gha#857 review round 5: the label-form verdict has no authored heading,
+  # so $hidx is empty; an unguarded floor init indexed $blocks with null
+  # and posted nothing while the suite stayed green. Pinned by content.
+  [verdict-label-format.json]='**Verdict:** Ready for merge.'
   [verdict-then-correction-near-half.json]='xi-pass analysis'
   [verdict-redraft-just-over-half.json]='omicron-pass second draft'
   [verdict-then-correction-quoting-payload-marker.json]='pi-pass analysis'
@@ -559,6 +563,10 @@ assert_pass() {
 
   local posted_file
   posted_file="$(sed -n 's/^review_text_file=//p' "$output_file")"
+  # gha#857 review round 5: a jq error in the span filter is swallowed and
+  # leaves the posted file EMPTY under exit 0, which the key check alone
+  # cannot see (gha#861). Every pass fixture posts something.
+  [[ -s "$posted_file" ]] || return 1
   if [[ -n "${must_contain[$fixture]:-}" ]] && ! grep -qF "${must_contain[$fixture]}" "$posted_file"; then
     return 1
   fi

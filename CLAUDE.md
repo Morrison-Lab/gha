@@ -2305,19 +2305,28 @@ fence- and blockquote-stripped text the heading test uses (one `stripped`
 definition feeds both) and anchored at line start, since stripped text still
 holds inline code spans; a correction that quotes it in a fence or a span
 still reads as payload-free, a real payload behind an unclosed fence reads as
-absent and falls back to the length signal, and a bare marker quoted at column
-0 outside any fence is the stated residual; `classify-review-verdict.sh` is
-the sibling detector for the marker, so a widening belongs in both.
+absent and falls back to the length signal, and two residuals are stated: a
+bare marker quoted at column 0 outside any fence reads as a payload, and so
+does a `<!--` at column 0 whose next line begins `review-data:`, since `\s*`
+spans the newline; `classify-review-verdict.sh` is the sibling detector for
+the marker, so a widening belongs in both.
 Second, for blocks alike in payload, length, which matches no documented
 vocabulary: a later heading block replaces the held draft only when it is at
-least half the held draft's length in characters and at least half the longest
-draft held so far; shorter, it is a correction and the draft it corrects is
-kept, so the span runs from that draft through the last verdict-bearing block,
-corrections included.
-The comparison is against the draft currently held, never the previous heading
-block, and the floor against the longest draft held means a chain of shrinking
-blocks, each at least half the one before, cannot walk the draft below half
-the review, whether or not a stray one-line heading precedes it.
+least half the length of the longest draft held so far, which starts as the
+first heading block and only ever grows; shorter, it is a correction and the
+draft it corrects is kept.
+The floor is never the previous heading block, so a chain of shrinking blocks,
+each at least half the one before, cannot walk the draft below half the
+review, and a stray one-line heading ahead of the review cannot lower it.
+When a later block does replace the first, the span runs from that draft
+through the last verdict-bearing block, corrections included; when none does,
+the transcript takes the gha#710 span rule unchanged, from the first
+verdict-bearing block.
+An empty set of authored headings (the label-form verdict) must not reach the
+floor's `$blocks[$hidx[0]]`: a jq error in the span filter is swallowed
+downstream and posts an empty review under a green check, which `assert_pass`
+now refuses by requiring a non-empty posted file (gha#861 tracks the swallow
+itself).
 The residual band is stated rather than hidden: when the review itself emitted
 no payload, a single correction at least half the review's length is still
 read as a redraft; the measured run sits outside that band, since its review
@@ -2337,11 +2346,12 @@ not) with the marker spelled `<!-- REVIEW-DATA:`;
 inline-span quotation of the marker is not a payload, the former with the real
 marker spelled `<!--review-data:`; `verdict-then-correction-near-half.json`
 with `verdict-redraft-just-over-half.json` pin the length boundary from both
-sides at 0.48 and 0.53 with no payload on either block; and
+sides at 0.48 and 0.53 with no payload on either block;
 `verdict-shrinking-chain-no-payload.json` with
 `verdict-stray-heading-then-shrinking-chain.json` pin the floor: blocks of
 0.68 and 0.59 of the one before post the second and third, never the third
-alone, with or without a stray heading ahead of them.
+alone, with or without a stray heading ahead of them; and
+`verdict-label-format.json` is pinned by content, not only by exit code.
 
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own

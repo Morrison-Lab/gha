@@ -687,14 +687,15 @@ review_text_file="$(mktemp)"
 # or both without, as older transcripts and several fixtures are), LENGTH:
 # a redraft restates the whole review, so it is comparable in size to the
 # draft it replaces, while a correction is a fraction of it. Such a block
-# REPLACES the current draft only when it is at least half the current
-# draft's length in characters; shorter, it is a correction and the draft
-# it corrects is kept, so the span runs from that draft through the last
-# verdict-bearing block, corrections included. The comparison is against
-# the draft currently held, never the previous heading block, and a block
-# must also be at least half the LONGEST draft held so far to replace the
-# draft, so a chain of shrinking blocks, each at least half the one before,
-# cannot walk the draft below half the review. The residual band
+# REPLACES the current draft only when it is at least half the length of
+# the LONGEST draft held so far, which starts as the first heading block
+# and only ever grows; shorter, it is a correction and the draft it
+# corrects is kept, so the span runs from that draft through the last
+# verdict-bearing block, corrections included. The floor is never the
+# previous heading block, so a chain of shrinking blocks, each at least
+# half the one before, cannot walk the draft below half the review, and a
+# stray one-line heading ahead of the review cannot lower it. The residual
+# band
 # is stated rather than hidden: when the review itself emitted no payload,
 # a correction at least half the review's length is still read as a
 # redraft. The measured run does not exercise that band: its 7150-character
@@ -743,8 +744,10 @@ jq -r '
   # renders such a payload as visible code rather than a machine comment.
   # The test is anchored at line start, because stripped text still holds
   # inline code spans and this corpus quotes the marker in one; a real
-  # payload is an HTML comment opening at column 0. The residual: a bare
-  # marker quoted at column 0 outside any fence reads as a payload.
+  # payload is an HTML comment opening at column 0. Two residuals: a bare
+  # marker quoted at column 0 outside any fence reads as a payload, and
+  # \s* spans a newline, so a `<!--` at column 0 whose next line begins
+  # `review-data:` reads as one too (which is the production shape).
   def has_payload:
     stripped | test("(?im)^ {0,3}<!--\\s*review-data:");
   . as $blocks
@@ -754,15 +757,23 @@ jq -r '
   # gha#850: a heading block never replaces a held draft that carries the
   # structured review-data payload when the block itself carries none; among
   # payload-alike blocks, the draft is the last one at least half as long as
-  # the draft it would replace, and a shorter one is an appended correction.
+  # the longest draft held so far, and a shorter one is an appended
+  # correction.
   # The floor is the LONGEST block ever held as draft, not the first
   # heading block: a stray one-line heading ahead of the review would
   # otherwise make the floor vacuous (gha#850 round 4).
-  | ( reduce $hidx[1:][] as $h ({d: $hidx[0], f: ($blocks[$hidx[0]] | length)};
+  # An empty $hidx (a label-form verdict, the gha#710 tail shape) must not
+  # index $blocks with null: a jq error here is swallowed downstream and
+  # posts an EMPTY review under a green check (gha#857 review round 5).
+  | ( reduce $hidx[1:][] as $h
+        ({d: $hidx[0],
+          f: (if ($hidx | length) == 0 then 0 else ($blocks[$hidx[0]] | length) end)};
         ($blocks[$h] | length) as $hl
         | if ($blocks[.d] | has_payload) and (($blocks[$h] | has_payload) | not)
             then .
-          elif $hl * 2 >= ($blocks[.d] | length) and $hl * 2 >= .f
+          # f is never below the length of the held draft, so this one test is
+          # the whole length rule.
+          elif $hl * 2 >= .f
             then .d = $h | .f = (if $hl > .f then $hl else .f end)
           else . end)
       | .d ) as $draft
