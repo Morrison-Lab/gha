@@ -134,13 +134,21 @@ def run(stub: str | None, workflow: str | None, callee: str = "quarto-publish.ym
 
 
 def run_live():
-    """Run the audit over this repository's own tree (gha#821)."""
+    """Run the audit over this repository's own tree (gha#821).
+
+    The environment is inherited, unlike ``run``'s: a fixture tree is never
+    restored, so those cases clear the flag to keep an exported one from
+    skipping them, but here the flag means what it says. Clearing it would
+    fabricate a non-restored run for the one call that reads the real tree,
+    and would make the caller's own restore guard unreachable by that route
+    -- so the guard would look load-bearing while a mutation of it changed
+    nothing (gha#854 review).
+    """
     return subprocess.run(
         [sys.executable, str(SCRIPT), "--examples", str(REPO / "examples"),
-         "--workflows", str(REPO / ".github" / "workflows")],
+         "--workflows", str(WORKFLOWS)],
         capture_output=True,
         text=True,
-        env={**os.environ, "GHA_WORKFLOWS_RESTORED": ""},
     )
 
 
