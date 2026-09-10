@@ -98,14 +98,19 @@ DEFAULT_ACTIONS_DIR = ".github/actions"
 # `./<path>/<to>/<action>` alike, and under-matching one would silently skip
 # its reads, which is the direction this check exists to prevent. Every
 # segment must start with an alphanumeric or `_`, which is what stops `.`
-# and `..` from climbing out of the actions directory. IGNORECASE because
-# GitHub resolves owner and repository names case-insensitively, so a
-# workflow writing `morrison-lab/gha` names the same composite we ship.
+# and `..` from climbing out of the actions directory. The owner/repo
+# prefix alone is case-insensitive, because GitHub resolves owner and
+# repository names that way, so a workflow writing `morrison-lab/gha`
+# names the same composite we ship. The rest of the pattern is NOT: the
+# path is a real path, and the captured segment is used verbatim to build
+# `<actions-dir>/<x>/action.yml`, so accepting `Run-Review-Guard` on a
+# case-sensitive filesystem would match here and then miss the file,
+# reporting a broken `uses:` GitHub could not resolve either as a
+# composite this checkout does not carry.
 COMPOSITE_USES_RE = re.compile(
-    r"^(?:Morrison-Lab/gha/|\./)\.github/actions/"
+    r"^(?:(?i:Morrison-Lab/gha/)|\./)\.github/actions/"
     r"([A-Za-z0-9_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_][A-Za-z0-9_.-]*)*)"
-    r"(?:@\S+)?$",
-    re.IGNORECASE,
+    r"(?:@\S+)?$"
 )
 STEP_OUTPUT_READ_RE = re.compile(r"steps\.([A-Za-z0-9_-]+)\.outputs\.([A-Za-z0-9_-]+)")
 
