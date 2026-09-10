@@ -142,9 +142,13 @@ declare -A expected=(
   # the review.
   [verdict-then-long-correction-with-payload.json]=pass
   # gha#850 round 2: the length boundary, pinned from both sides with no
-  # payload on either block. 0.45 is kept as a correction; 0.55 supersedes.
+  # payload on either block. 0.48 is kept as a correction; 0.53 supersedes.
   [verdict-then-correction-near-half.json]=pass
   [verdict-redraft-just-over-half.json]=pass
+  # gha#850 round 3: the payload test reads stripped text. A correction that
+  # QUOTES the marker inside a fence carries no payload, so it is kept; a
+  # raw-text test would read it as payload-bearing and drop the review.
+  [verdict-then-correction-quoting-payload-marker.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -203,6 +207,7 @@ declare -A must_contain=(
   [verdict-then-long-correction-with-payload.json]='nu-pass analysis'
   [verdict-then-correction-near-half.json]='xi-pass analysis'
   [verdict-redraft-just-over-half.json]='omicron-pass second draft'
+  [verdict-then-correction-quoting-payload-marker.json]='pi-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -241,16 +246,18 @@ declare -A must_also_contain=(
   [verdict-then-appended-correction.json]='lambda-pass correction'
   [verdict-then-long-correction-with-payload.json]='nu-pass correction'
   [verdict-then-correction-near-half.json]='xi-pass correction'
+  [verdict-then-correction-quoting-payload-marker.json]='pi-pass correction'
 )
 
-# gha#850: the one fixture whose posted text carries more than one authored
+# gha#850: the fixtures whose posted text carries more than one authored
 # verdict heading on purpose -- the review's, then one per appended
-# correction. Keyed by a per-fixture ceiling, so a concatenated extra draft (four
-# headings) still fails the gha#805 invariant here.
+# correction. Keyed by a per-fixture ceiling, so one concatenated extra
+# draft still fails the gha#805 invariant for each of them.
 declare -A max_verdict_headings=(
   [verdict-then-appended-correction.json]=3
   [verdict-then-long-correction-with-payload.json]=2
   [verdict-then-correction-near-half.json]=2
+  [verdict-then-correction-quoting-payload-marker.json]=2
 )
 
 declare -A must_not_contain=(
@@ -365,6 +372,7 @@ declare -A expected_cost=(
   [verdict-then-long-correction-with-payload.json]=1.5
   [verdict-then-correction-near-half.json]=1.51
   [verdict-redraft-just-over-half.json]=1.52
+  [verdict-then-correction-quoting-payload-marker.json]=1.53
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18

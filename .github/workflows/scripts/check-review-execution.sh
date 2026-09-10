@@ -676,8 +676,10 @@ review_text_file="$(mktemp)"
 # characters, each citing analysis "detailed above") is textually a redraft
 # under the last-heading rule, so the review was dropped and the correction
 # posted alone -- gha#710's failure, reintroduced by its own follow-up fix.
-# Two signals tell them apart, and neither matches vocabulary this corpus
-# documents (a reference to "above" is a string this very comment writes).
+# Two signals tell them apart. The second, length, matches no vocabulary
+# this corpus documents (a reference to "above" is a string this very
+# comment writes). The first is a documented string, which is exactly why
+# it is read from fence- and blockquote-stripped text (has_payload below).
 # First, the structured review-data payload: a complete review emits the
 # `<!-- review-data:` block and an appended correction does not, so a later
 # heading block that lacks the payload never replaces a held draft that has
@@ -693,14 +695,19 @@ review_text_file="$(mktemp)"
 # corrections cannot promote one another into a redraft. The residual band
 # is stated rather than hidden: when the review itself emitted no payload,
 # a correction at least half the review's length is still read as a
-# redraft (the measured corrections were 0.24 and 0.33 of their review).
+# redraft. The measured run does not exercise that band: its 7150-character
+# review carried the payload and its corrections (0.24 and 0.21 of it) did
+# not, so the first signal decided it.
 # Both signals err toward keeping: a redraft misread as a correction posts
 # two drafts (the gha#805 verbosity), while a correction misread as a
 # redraft posts a verdict resting on analysis nobody can see.
 # When no later heading block replaces the first, the transcript is one
 # review with corrections and takes the gha#710 span rule unchanged.
 jq -r '
-  def authored_heading:
+  # gha#850 round 2: the fence, blockquote and indentation stripping is one
+  # definition shared by the heading test and the payload test, so the two
+  # cannot disagree about what counts as quoted.
+  def stripped:
     ( split("\n")
       | reduce .[] as $l ({fence: "", flen: 0, out: []};
           # Spaces only in the indentation allowance: a tab is four columns in
@@ -717,11 +724,20 @@ jq -r '
               then .fence = "" | .flen = 0
             elif .fence != "" or ($l | test("^[ \\t]*>")) then .
             else .out += [$l] end)
-      | .out | join("\n") )
-    # One to six hashes, then at least one space or tab: seven hashes, or
-    # hashes run into the word, are paragraph text in CommonMark (Copilot on
-    # gha#808). The awk invariant in run-fixture-tests.sh mirrors both limits.
-    | test("(?im)^ {0,3}#{1,6}[ \\t]+verdict\\b");
+      | .out | join("\n") );
+  # One to six hashes, then at least one space or tab: seven hashes, or
+  # hashes run into the word, are paragraph text in CommonMark (Copilot on
+  # gha#808). The awk invariant in run-fixture-tests.sh mirrors both limits.
+  def authored_heading:
+    stripped | test("(?im)^ {0,3}#{1,6}[ \\t]+verdict\\b");
+  # The structured payload marker, read from the same stripped text: a
+  # correction that QUOTES the marker in a fence (a review of this repo does,
+  # since the corpus documents the string) must not read as payload-bearing.
+  # classify-review-verdict.sh is the sibling detector for this marker
+  # (whitespace-tolerant, case-insensitive, non-fenced lines only); widen
+  # both together.
+  def has_payload:
+    stripped | test("(?i)<!--[ \\t]*review-data:");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
@@ -731,8 +747,7 @@ jq -r '
   # payload-alike blocks, the draft is the last one at least half as long as
   # the draft it would replace, and a shorter one is an appended correction.
   | ( reduce $hidx[1:][] as $h ($hidx[0];
-        if ($blocks[.] | test("<!-- review-data:"))
-           and (($blocks[$h] | test("<!-- review-data:")) | not)
+        if ($blocks[.] | has_payload) and (($blocks[$h] | has_payload) | not)
           then .
         elif ($blocks[$h] | length) * 2 >= ($blocks[.] | length) then $h
         else . end)
