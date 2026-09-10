@@ -3252,9 +3252,16 @@ skip dropped (the live cases, run with `GHA_WORKFLOWS_RESTORED=1`).
 Each mutation was applied to a COMMITTED file, confirmed applied with
 `git diff --quiet` before the suite ran, and restored with
 `git checkout --` afterwards, per this file's own mis-aimed-mutation rule.
-The first pass's call-count mutation reworded the clause without removing
-the number, so it survived while looking aimed; that is the shape to expect
-here rather than an absent test.
+Two mis-aimed mutations turned up along the way, and both read as an absent
+test rather than as a bad mutation.
+The call-count one reworded the clause without removing the number.
+The live-block one set `GHA_WORKFLOWS_RESTORED=1` while `run_live` was
+clearing that variable for its own subprocess, so the guard could not be
+reached by that route at all -- the mutation was fine and the FIXTURE was
+wrong, which is why `run_live` now inherits the environment.
+Both restore routes are exercised: the environment variable, and a real
+`.github/workflows/.restored-from-default-branch` marker, which is what CI
+actually drops.
 The non-mapping-job guard is declared TWICE (in `job_groups` and in
 `callee_calls`), so a single-site mutation survives the suite and only
 mutating both turns its case red; read that survivor as the other site still
