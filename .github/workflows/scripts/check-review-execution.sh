@@ -715,9 +715,11 @@ review_text_file="$(mktemp)"
 # payload-bearing block after a payload-free draft -- a correction at least
 # half the review's length is still read as a redraft. Carrying the payload
 # does not put a review outside that band: the both-carrying case is the one
-# argued above, three sentences earlier in this same paragraph, to be the
+# argued above, where the payload is said not to decide that pair, to be the
 # expected future state, since the review prompt has every review append the
-# payload. The measured run sits outside the band because its CORRECTIONS
+# payload. That reference names the content rather than a distance, because a
+# sentence count rots the moment a sentence is inserted -- and the count this
+# replaced was itself wrong, which is how the rot shows up. The measured run sits outside the band because its CORRECTIONS
 # emitted no payload (0.24 and 0.21 of a 7150-character review), not because
 # its review carried one.
 #

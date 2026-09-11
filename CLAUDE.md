@@ -2338,8 +2338,8 @@ discriminate the pair -- both blocks carrying it, neither carrying it, or a
 payload-bearing block after a payload-free draft -- a correction at least half
 the review's length is still read as a redraft.
 Carrying the payload does not put a review outside that band, and the
-both-carrying case is the one the next paragraph argues is the expected future
-state.
+both-carrying case is the one argued below, where the payload is said not to
+decide that pair, to be the expected future state.
 The measured run sits outside it because its CORRECTIONS emitted no payload,
 not because its review did.
 The payload is deliberately not used to decide the both-with-payload pair,
