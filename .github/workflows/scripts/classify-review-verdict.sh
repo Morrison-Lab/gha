@@ -117,6 +117,99 @@ _BLOCKQUOTE_RE = re.compile(r'[ \t]*>')
 # this scan has no other reason to understand.
 _INDENTED_RE = re.compile(r'^(?:\t| {4,})')
 
+# gha#850 made the posted review text able to carry a LATER complete block
+# after the one the payload belongs to: an appended self-correction is kept
+# alongside the review it corrects, so both reach this scan. A payload states
+# the verdict of the block it sits in, and the last-match-wins rule above picks
+# the last MARKER rather than the last STATEMENT -- so a retracting correction,
+# which carries no payload of its own, lost to the CLEAN payload of the review
+# it retracted, and require-clean-verdict went green on a verdict the reviewer
+# had explicitly withdrawn (gha#857 review, finding 1).
+#
+# The supersession signal is an authored verdict HEADING after the last payload
+# marker, close to what check-review-execution.sh's span rule treats as a
+# complete later block. The two agree on the anchor, the hash run, and the
+# absence of leading emphasis; they differ on purpose past the word, since that
+# rule only has to decide which blocks are candidates while this one has to
+# decide whether a statement supersedes, so `### Verdict rationale` is an
+# authored heading there and not a supersession here.
+#
+# Production places the payload immediately after its own `### Verdict`
+# section (run-claude-review-attempt/action.yml); that
+# constrains where the payload goes rather than forbidding anything after it,
+# so the signal is chosen for fitting the shape rather than being unreachable
+# by any other. A single uncorrected review CAN write a heading after its
+# payload, which is why the regex below matches a verdict heading proper and
+# not any heading beginning with the word.
+#
+# The LABEL forms (`Verdict:`, `**Verdict**`) the prose scan also accepts are
+# deliberately NOT supersession signals. gha#710's follow-up tail is written
+# that way and means "my verdict stands unchanged", so reading it as a
+# retraction would invert it. A label-form tail that genuinely contradicts an
+# earlier payload is a real but pre-existing gap (it reaches the posted text
+# through gha#710's own span rule, not through gha#850's), tracked as gha#863
+# rather than widened into here.
+#
+# Matched against _payload_candidate_text, not the raw body, so a heading that
+# is fenced, blockquoted or indented cannot fake a retraction -- the same
+# exclusion the marker search itself relies on.
+#
+# The heading must be a verdict heading PROPER -- the word, then a separator or
+# the end of the line -- rather than any heading whose text starts with it. A
+# \b-terminated prefix also matched `### Verdict rationale` and
+# `### Verdict summary`, which are ordinary sections of a single uncorrected
+# review, so writing one discarded that review's payload and re-scored it from
+# prose: exactly the gha#811 failure the fast path was added to prevent
+# (gha#857 review round 2, finding 1, which reproduced all three spellings
+# flipping an approving review to `impasse`).
+#
+# A separator counts, because a status written on the heading line
+# (`### Verdict: Needs more work`) is a form this file handles deliberately in
+# its own prose scan and pins twice in its suite. Requiring end-of-line alone
+# let that spelling through unsuperseded, which is not a safe way to be wrong:
+# for a RETRACTION the pre-gha#857 behaviour is the false CLEAN this rule
+# exists to stop (round 3, finding 1).
+#
+# No leading emphasis, and the same `^ {0,3}` anchor the jq sibling uses, so
+# the two detectors agree on what a heading is. `### **Verdict:**` matching
+# here while `authored_heading` rejected it meant a block the span rule reads
+# as a gha#710 tail -- whose meaning is confirmation -- was read here as a
+# fresh complete one, inverting it and reddening an approving review; and a
+# line indented two spaces then a tab sits at column 4, which is indented code
+# to CommonMark and to the jq, but satisfied neither `_INDENTED_RE` nor a
+# `^[ \t]*` anchor (round 3, findings 2 and 5). Production mandates the exact
+# form, "a level-3 heading whose text is exactly `Verdict`"
+# (run-claude-review-attempt/action.yml), so this is also the form a
+# template-following correction writes.
+#
+# What disqualifies a heading is stated as what may NOT follow the word rather
+# than as a list of separators that may. Enumerating separators went wrong twice
+# in opposite directions: admitting a bare dash matched the hyphenated WORD in
+# `### Verdict-bearing span rule` -- vocabulary this repo writes constantly, so a
+# review OF this repo was the likeliest producer (round 4, finding 1) -- while
+# requiring whitespace before one then excluded `### Verdict (revised)`,
+# `### Verdict, revised` and an unspaced em dash, each of which leaves the stale
+# payload deciding (round 5, finding 2).
+#
+# `(?![ \t]*-?\w)` says the one thing that actually distinguishes them: a
+# heading whose word CONTINUES -- into a following word, or through a hyphen
+# JOINED to one -- is a section title, and anything else is a verdict heading
+# with or without a qualifier. What settles a dash is whether a word follows it
+# immediately, not whether a space precedes it: ` - needs more work` is a
+# separator and both `-bearing` and ` -bearing` are continuations. An earlier
+# revision keyed on the preceding space instead and so read ` -bearing` as a
+# separator (round 6, finding 4). `### Verdict rationale`, `### Verdict summary`, `### Verdict-bearing`
+# and `### Verdicts` are out; `### Verdict`, `### Verdict:`,
+# `### Verdict: Needs more work`, `### Verdict (revised)`, `### Verdict, revised`
+# and both dash spellings are in. No end-of-line alternative is needed, and with
+# it goes the question of a trailing carriage return, which could not arrive
+# anyway: _payload_candidate_text is rebuilt from text.splitlines(), which
+# consumes a CRLF pair whole.
+_SUPERSEDING_HEADING_RE = re.compile(
+    r'^ {0,3}#{1,6}[ \t]+verdict(?![ \t]*-?\w)',
+    re.IGNORECASE | re.MULTILINE,
+)
+
 
 def _open_fence(line):
     """Return (char, length) if `line` opens a new fenced code block, else None."""
@@ -207,6 +300,9 @@ _payload_candidate_text = "\n".join(_payload_candidate_lines)
 _payload_marker_re = re.compile(r'<!--\s*review-data:\s*', re.IGNORECASE)
 _payload_markers = list(_payload_marker_re.finditer(_payload_candidate_text))
 payload = None
+# Set only when a superseding heading stands the fast path down; it is the
+# floor the prose scan falls back to when it recognises no polarity.
+superseded_payload = None
 if _payload_markers:
     _decoder = json.JSONDecoder()
     _start = _payload_markers[-1].end()
@@ -222,6 +318,43 @@ if _payload_markers:
         # trustworthy just because it parsed.
         if re.match(r'\s*-->', _payload_candidate_text[_end:]):
             payload = _decoded
+
+    # gha#857 review, finding 1: the payload belongs to its own block, and
+    # gha#850 lets a later complete block ride along in the same posted text.
+    # A verdict heading after the last marker means that block's own statement
+    # is the live one, so the fast path stands down and the prose scan decides
+    # instead. That scan is last-match-wins, but over strip_machine_payloads
+    # output rather than over the raw body, which leaves one residual: an
+    # unterminated `<!--` inside an inline code span blanks every line after
+    # it, so a correction that WRITES ABOUT the marker can hide its own verdict
+    # from the scan this falls through to. Pre-existing rather than introduced
+    # here (main reaches a wrong answer on the same input by another route),
+    # tracked as gha#862.
+    #
+    # A second, sibling residual with the same consequence: the text searched
+    # above is fence-blanked over the WHOLE posted body, where the jq resets
+    # fence state per block, so an unclosed fence anywhere between the payload
+    # and a later retraction blanks that retraction's heading and the fast path
+    # never stands down. Tracked on gha#862 as its second case, because both are
+    # "a blanking rule hides the superseding block" and a fix for one should be
+    # designed knowing the other.
+    #
+    # Searching from the marker's end rather than from the parsed object's is
+    # safe because a raw newline cannot appear inside a JSON string, so `^`
+    # never matches inside the payload body. It also costs nothing to be wrong
+    # about, since the guard below runs only when the JSON parsed.
+    if payload is not None and _SUPERSEDING_HEADING_RE.search(
+        _payload_candidate_text[_payload_markers[-1].end():]
+    ):
+        # Held rather than discarded (round 5, finding 1). Standing the fast
+        # path down hands the answer to a scan that can return `unrecognized`,
+        # and a confirming tail -- `### Verdict` over "Unchanged after a second
+        # read" -- states no polarity the scan recognises. Discarding outright
+        # therefore reddened an approving review nobody had retracted, which is
+        # the direction the emphasis rule above was tightened to avoid. The
+        # prose wins whenever it says anything; this is the floor under it.
+        superseded_payload = payload
+        payload = None
 if isinstance(payload, dict) and "schema_version" in payload:
     verdict_field = payload.get("verdict")
     if isinstance(verdict_field, str):
@@ -780,6 +913,28 @@ for line_index, line in enumerate(content_lines):
 
 if last_verdict is not None:
     record(*last_verdict)
+
+# A superseding heading stood the fast path down and the prose that followed it
+# states no polarity, so there is nothing to prefer the prose FOR. Falling back
+# to the payload keeps the pre-gha#857 answer instead of inventing a red check
+# (round 5, finding 1). A retraction that does state a polarity never reaches
+# here, because last_verdict is set.
+# The SAME trust criteria the primary path applies, not a weaker set. payload is
+# whatever raw_decode returned, so it is captured before any isinstance check --
+# a JSON array or string reached `.get` and killed the run with a traceback, and
+# a dict with no schema_version was trusted here while the primary path refuses
+# it, turning a payload neither contract accepts into an asserted clean verdict
+# (round 6, findings 1 and 2).
+if isinstance(superseded_payload, dict) and "schema_version" in superseded_payload:
+    _sp = superseded_payload.get("verdict")
+    if isinstance(_sp, str):
+        _sp = _sp.strip().upper()
+        if _sp == "CLEAN":
+            _f = superseded_payload.get("findings")
+            if _f is None or (isinstance(_f, list) and len(_f) == 0):
+                record("true", "ready-for-merge")
+        elif _sp == "NOT_CLEAN":
+            record("false", "needs-more-work")
 
 record("false", "unrecognized")
 EOF

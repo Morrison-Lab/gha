@@ -15,3 +15,21 @@
   the length rule decides every other pair,
   including a payload-bearing block arriving after a payload-free draft,
   and its boundary is pinned from both sides by fixtures.
+  Because the posted text can now carry two verdict statements,
+  `classify-review-verdict` no longer lets a payload decide when an authored
+  verdict heading follows it:
+  a retracting correction carries no payload of its own,
+  so without that the retracted review's `CLEAN` payload still decided and
+  `require-clean-verdict` went green over an explicit withdrawal.
+  Label forms are excluded from that signal,
+  since gha#710's follow-up tail is written that way and means the verdict
+  stands,
+  and so is a heading whose word continues into another,
+  since an ordinary `### Verdict rationale` section in a single uncorrected
+  review would otherwise discard that review's payload and re-score it from
+  prose.
+  A qualified heading (`### Verdict (revised)`, `### Verdict: Needs more work`)
+  does supersede.
+  When the rule fires but the prose that follows states no verdict either way,
+  the payload is used after all rather than reporting no recognisable verdict,
+  so a review whose correction merely confirms it is not failed for saying so.

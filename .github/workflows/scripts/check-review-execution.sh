@@ -676,15 +676,28 @@ review_text_file="$(mktemp)"
 # characters, each citing analysis "detailed above") is textually a redraft
 # under the last-heading rule, so the review was dropped and the correction
 # posted alone -- gha#710's failure, reintroduced by its own follow-up fix.
-# Two signals tell them apart. The second, length, matches no vocabulary
-# this corpus documents (a reference to "above" is a string this very
-# comment writes). The first is a documented string, which is exactly why
-# it is read from fence- and blockquote-stripped text (has_payload below).
-# First, the structured review-data payload: a complete review emits the
+# Two signals tell them apart, named here in the order they are applied.
+#
+# FIRST, the structured review-data payload: a complete review emits the
 # `<!-- review-data:` block and an appended correction does not, so a later
 # heading block that lacks the payload never replaces a held draft that has
-# it, whatever its length. Second, for every other pair (both with, both
-# without, or a payload-bearing block after a payload-free draft), LENGTH:
+# it, whatever its length. That marker is a string this corpus documents, so
+# a review OF this repo quotes it, which is why the payload test reads
+# fence- and blockquote-stripped text (has_payload below) rather than the
+# raw block.
+#
+# SECOND, for every other pair (both with, both without, or a payload-bearing
+# block after a payload-free draft), LENGTH. Length matches no vocabulary at
+# all, so unlike the marker it cannot be faked by a block that merely writes
+# about this rule. The payload is deliberately NOT used to decide the
+# both-with-payload pair, which otherwise looks like the obvious place for
+# it: the review prompt tells every review to close with a verdict heading
+# and append the payload (run-claude-review-attempt/action.yml), so a
+# correction written to the same template carries one too, and the marker
+# stops discriminating exactly there. Length is the only signal left for
+# that pair. The measured run is consistent with the premise rather than
+# proof of it -- its corrections emitted no payload -- so the narrow reading
+# is the safe one. The cost is stated below with the other keeping bias:
 # a redraft restates the whole review, so it is comparable in size to the
 # draft it replaces, while a correction is a fraction of it. Such a block
 # REPLACES the current draft only when it is at least half the length of
@@ -697,16 +710,35 @@ review_text_file="$(mktemp)"
 # previous heading block, so a chain of shrinking blocks, each at least
 # half the one before, cannot walk the draft below half the review, and a
 # stray one-line heading ahead of the review cannot lower it. The residual
-# band is stated rather than hidden: when the review itself emitted no
-# payload, a correction at least half the review's length is still read as a
-# redraft. The measured run does not exercise that band: its 7150-character
-# review carried the payload and its corrections (0.24 and 0.21 of it) did
-# not, so the first signal decided it. Both signals err toward keeping: a
+# band is stated rather than hidden: whenever the payload cannot discriminate
+# the pair -- both blocks carrying it, neither carrying it, or a
+# payload-bearing block after a payload-free draft -- a correction at least
+# half the review-s length is still read as a redraft. Carrying the payload
+# does not put a review outside that band, and the both-carrying case is the
+# one the paragraph below argues is the expected future state. The measured
+# run sits outside it because its CORRECTIONS emitted no payload (0.24 and
+# 0.21 of a 7150-character review), not because its review carried one. Both signals err toward keeping: a
 # redraft misread as a correction posts two drafts (the gha#805 verbosity),
 # while a correction misread as a redraft posts a verdict resting on analysis
-# nobody can see. When no later heading block replaces the first, the
+# nobody can see. Verbosity is the cheaper wrong, which is why keeping wins
+# ties.
+#
+# Keeping has its own cost, and it is paid downstream rather than here
+# (gha#857 review, finding 1). The posted text can now hold two verdict
+# statements, and classify-review-verdict.sh reads the payload before any
+# prose, last-MARKER-wins -- so a retracting correction, which carries no
+# payload, lost to the CLEAN payload of the review it retracted, and
+# require-clean-verdict went green over an explicit withdrawal. That is
+# fixed in the consumer rather than by trimming the span here, because the
+# analysis the correction refers to is exactly what keeping exists to
+# preserve: the classifier now stands its payload fast path down when an
+# authored verdict heading follows the last payload marker.
+#
+# When no later heading block replaces the first, the
 # transcript is one review with corrections and takes the gha#710 span rule
 # unchanged.
+# No apostrophes anywhere inside the program below, comments included: it is
+# one single-quoted shell string, and an apostrophe would end it.
 jq -r '
   # gha#850 round 2: the fence, blockquote and indentation stripping is one
   # definition shared by the heading test and the payload test, so the two
@@ -737,9 +769,20 @@ jq -r '
   # The structured payload marker, read from the same stripped text: a
   # correction that QUOTES the marker in a fence (a review of this repo does,
   # since the corpus documents the string) must not read as payload-bearing.
-  # classify-review-verdict.sh is the sibling detector for this marker
-  # (whitespace-tolerant, case-insensitive, non-fenced lines only); widen
-  # both together. The converse of the quotation case also holds: a real
+  # classify-review-verdict.sh is the sibling detector for this marker, and
+  # the two agree on being whitespace-tolerant and case-insensitive and on
+  # ignoring fenced and blockquoted lines -- so widen those properties
+  # together. They already differ in SEVERAL places, deliberately, so
+  # re-derive the whole set before harmonizing rather than trusting a count
+  # here. Known ones: the sibling marker regex is UNANCHORED where this one
+  # requires `^ {0,3}`; the sibling blanks indented lines (via _INDENTED_RE)
+  # where this test reaches them through the same anchor; the sibling opens a
+  # fence at any indentation, tabs included, where this one requires
+  # `^ {0,3}`; and the sibling tracks fence state across the WHOLE posted
+  # text where this resets it per block. An earlier revision of this comment
+  # said there were exactly two, which is the kind of claim that stops the
+  # next reader looking for a third.
+  # The converse of the quotation case also holds: a real
   # payload sitting after an UNCLOSED fence reads as absent and the block
   # falls back to the length signal, which is faithful, since GitHub
   # renders such a payload as visible code rather than a machine comment.
