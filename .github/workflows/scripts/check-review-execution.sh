@@ -719,7 +719,8 @@ review_text_file="$(mktemp)"
 # expected future state, since the review prompt has every review append the
 # payload. That reference names the content rather than a distance, because a
 # sentence count rots the moment a sentence is inserted -- and the count this
-# replaced was itself wrong, which is how the rot shows up. The measured run sits outside the band because its CORRECTIONS
+# replaced was itself wrong, which is how the rot shows up.
+# The measured run sits outside the band because its CORRECTIONS
 # emitted no payload (0.24 and 0.21 of a 7150-character review), not because
 # its review carried one.
 #

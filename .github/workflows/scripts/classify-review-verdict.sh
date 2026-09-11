@@ -183,28 +183,32 @@ _INDENTED_RE = re.compile(r'^(?:\t| {4,})')
 # template-following correction writes.
 #
 # What disqualifies a heading is stated as what may NOT follow the word rather
-# than as a list of separators that may. Enumerating separators went wrong twice
-# in opposite directions: admitting a bare dash matched the hyphenated WORD in
-# `### Verdict-bearing span rule` -- vocabulary this repo writes constantly, so a
-# review OF this repo was the likeliest producer (round 4, finding 1) -- while
-# requiring whitespace before one then excluded `### Verdict (revised)`,
-# `### Verdict, revised` and an unspaced em dash, each of which leaves the stale
-# payload deciding (round 5, finding 2).
+# than as a list of separators that may. Enumerating separators went wrong
+# twice, in opposite directions. Admitting a bare dash matched the hyphenated
+# WORD in `### Verdict-bearing span rule`, and "verdict-bearing" is vocabulary
+# this repo writes constantly, so a review OF this repo was the likeliest
+# producer (round 4, finding 1). Requiring whitespace before one then excluded
+# `### Verdict (revised)`, `### Verdict, revised` and an unspaced em dash, each
+# of which leaves the stale payload deciding (round 5, finding 2).
 #
 # `(?![ \t]*-?\w)` says the one thing that actually distinguishes them: a
 # heading whose word CONTINUES -- into a following word, or through a hyphen
 # JOINED to one -- is a section title, and anything else is a verdict heading
 # with or without a qualifier. What settles a dash is whether a word follows it
 # immediately, not whether a space precedes it: ` - needs more work` is a
-# separator and both `-bearing` and ` -bearing` are continuations. An earlier
-# revision keyed on the preceding space instead and so read ` -bearing` as a
-# separator (round 6, finding 4). `### Verdict rationale`, `### Verdict summary`, `### Verdict-bearing`
-# and `### Verdicts` are out; `### Verdict`, `### Verdict:`,
-# `### Verdict: Needs more work`, `### Verdict (revised)`, `### Verdict, revised`
-# and both dash spellings are in. No end-of-line alternative is needed, and with
-# it goes the question of a trailing carriage return, which could not arrive
-# anyway: _payload_candidate_text is rebuilt from text.splitlines(), which
-# consumes a CRLF pair whole.
+# separator, while both `-bearing` and ` -bearing` are continuations. An
+# earlier revision keyed on the preceding space instead, and so read
+# ` -bearing` as a separator (round 6, finding 4).
+#
+# Out: `### Verdict rationale`, `### Verdict summary`, `### Verdict-bearing`,
+# `### Verdicts`.
+# In: `### Verdict`, `### Verdict:`, `### Verdict: Needs more work`,
+# `### Verdict (revised)`, `### Verdict, revised`, and both dash spellings.
+#
+# No end-of-line alternative is needed, and with it goes the question of a
+# trailing carriage return, which could not arrive anyway:
+# _payload_candidate_text is rebuilt from text.splitlines(), which consumes a
+# CRLF pair whole.
 _SUPERSEDING_HEADING_RE = re.compile(
     r'^ {0,3}#{1,6}[ \t]+verdict(?![ \t]*-?\w)',
     re.IGNORECASE | re.MULTILINE,
