@@ -713,11 +713,15 @@ review_text_file="$(mktemp)"
 # band is stated rather than hidden: whenever the payload cannot discriminate
 # the pair -- both blocks carrying it, neither carrying it, or a
 # payload-bearing block after a payload-free draft -- a correction at least
-# half the review-s length is still read as a redraft. Carrying the payload
-# does not put a review outside that band, and the both-carrying case is the
-# one the paragraph below argues is the expected future state. The measured
-# run sits outside it because its CORRECTIONS emitted no payload (0.24 and
-# 0.21 of a 7150-character review), not because its review carried one. Both signals err toward keeping: a
+# half the review's length is still read as a redraft. Carrying the payload
+# does not put a review outside that band: the both-carrying case is the one
+# argued above, three sentences earlier in this same paragraph, to be the
+# expected future state, since the review prompt has every review append the
+# payload. The measured run sits outside the band because its CORRECTIONS
+# emitted no payload (0.24 and 0.21 of a 7150-character review), not because
+# its review carried one.
+#
+# Both signals err toward keeping: a
 # redraft misread as a correction posts two drafts (the gha#805 verbosity),
 # while a correction misread as a redraft posts a verdict resting on analysis
 # nobody can see. Verbosity is the cheaper wrong, which is why keeping wins
