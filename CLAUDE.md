@@ -2293,6 +2293,256 @@ six-hash limit, and dropping the awk's trailing word-boundary class.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
+**A later authored `### Verdict` heading is not always a redraft: a reviewer
+that wrote a complete review and then appended a short self-correction
+carrying its own heading was read by the gha#805/gha#808 last-heading rule as
+a redraft, so the review was dropped and only the correction posted, citing
+analysis nobody could see (gha#710's failure reintroduced by its own follow-up
+fix).**
+Measured on UCD-SERG/serocalculator#685, run 34292812731: a 7150-character
+review carrying the structured review-data payload, followed by corrections of
+1744 and 1520 characters (0.24 and 0.21 of it) carrying none.
+Two signals tell them apart.
+First, the payload: a complete review emits the `<!-- review-data:` block and
+an appended correction does not, so a later heading block without the payload
+never replaces a held draft that has it, whatever its length.
+That marker is a string this corpus documents, so it is read from the same
+fence- and blockquote-stripped text the heading test uses (one `stripped`
+definition feeds both) and anchored at line start, since stripped text still
+holds inline code spans; a correction that quotes it in a fence or a span
+still reads as payload-free, a real payload behind an unclosed fence reads as
+absent and falls back to the length signal, and two residuals are stated: a
+bare marker quoted at column 0 outside any fence reads as a payload, and so
+does a `<!--` at column 0 whose next line begins `review-data:`, since `\s*`
+spans the newline (production emits the marker on one line, so that is not its
+shape); `classify-review-verdict.sh` is the sibling detector for the marker,
+so a widening belongs in both.
+The two already differ on two properties, deliberately, and a maintainer
+following "widen both" needs to know which: the sibling's marker regex is
+unanchored where this one requires `^ {0,3}`, and the sibling additionally
+blanks indented lines where this test reaches them through the same anchor.
+Second, for every other pair (both with the payload, both without, or a
+payload-bearing block after a payload-free draft), length, which matches no
+documented vocabulary: a later heading block replaces the held draft only when
+it is at least half the length of the longest draft held so far, which starts
+as the first heading block and only ever grows; shorter, it is a correction
+and the draft it corrects is kept.
+The floor is never the previous heading block, so a chain of shrinking blocks,
+each at least half the one before, cannot walk the draft below half the
+review, and a stray one-line heading ahead of the review cannot lower it.
+When a later block does replace the first, the span runs from that draft
+through the last verdict-bearing block, corrections included; when none does,
+the transcript takes the gha#710 span rule unchanged, from the first
+verdict-bearing block.
+An empty set of authored headings (the label-form verdict) must not reach the
+floor's `$blocks[$hidx[0]]`: a jq error in the span filter is swallowed
+downstream and posts an empty review under a green check, which `assert_pass`
+now refuses by requiring a non-empty posted file (gha#861 tracks the swallow
+itself).
+The residual band is stated rather than hidden: whenever the payload cannot
+discriminate the pair -- both blocks carrying it, neither carrying it, or a
+payload-bearing block after a payload-free draft -- a correction at least half
+the review's length is still read as a redraft.
+Carrying the payload does not put a review outside that band, and the
+both-carrying case is the one argued below, where the payload is said not to
+decide that pair, to be the expected future state.
+The measured run sits outside it because its CORRECTIONS emitted no payload,
+not because its review did.
+The payload is deliberately not used to decide the both-with-payload pair,
+which otherwise looks like the obvious place for it: the review prompt tells
+every review to close with a verdict heading and append the payload, so a
+correction written to the same template carries one too and the marker stops
+discriminating exactly there.
+`verdict-redraft-with-payload-under-half.json` pins that cell at 0.26, where
+both blocks are posted; the verdict is still right there, because the
+classifier reads the last payload marker and nothing heading-shaped follows
+it.
+Both signals err toward keeping.
+`verdict-then-appended-correction.json` pins that both the review's analysis
+and the last correction are posted, and declares (via `max_verdict_headings`,
+a per-fixture ceiling) that its posted text carries three authored headings,
+so the gha#805 one-heading invariant still fails on a fourth;
+`verdict-redraft-trimmed.json` pins the other side: a trimmed redraft still at
+least half its predecessor's length supersedes it.
+`verdict-then-long-correction-no-payload.json` pins the payload asymmetry (a
+0.66-length correction kept because the review carries the payload and it does
+not) with the marker spelled `<!-- REVIEW-DATA:`;
+`verdict-then-correction-quoting-payload-marker.json` and
+`verdict-then-correction-inline-span-marker.json` pin that a fenced or
+inline-span quotation of the marker is not a payload, the former with the real
+marker spelled `<!--review-data:`; `verdict-then-correction-near-half.json`
+with `verdict-redraft-just-over-half.json` pin the length boundary from both
+sides at 0.48 and 0.53 with no payload on either block;
+`verdict-shrinking-chain-no-payload.json` with
+`verdict-stray-heading-then-shrinking-chain.json` pin the floor: blocks of
+0.68 and 0.59 of the one before post the second and third, never the third
+alone, with or without a stray heading ahead of them; and
+`verdict-label-format.json` is pinned by content, not only by exit code.
+`verdict-label-block-before-kept-draft.json` pins the guard that separates the
+two span starts: when no later block replaced the first authored heading, the
+span falls back to gha#710's own start, the first verdict-bearing block.
+Those two coincide in every other fixture, because each one's first
+verdict-bearing block is also its first authored heading, so the guard was
+unexercised and removing it turned nothing red -- a label-form verdict block
+ahead of the review is what separates them.
+
+**Keeping the corrected draft moved the failure downstream rather than
+removing it: the posted text can now carry two verdict statements, and
+`classify-review-verdict.sh` reads the payload before any prose,
+last-MARKER-wins.**
+A retracting correction carries no payload of its own, so it lost to the
+`CLEAN` payload of the review it retracted, and `require-clean-verdict` went
+green over a verdict the reviewer had explicitly withdrawn (gha#857 review,
+finding 1).
+Reproduced end to end against both scripts, with one transcript: a full review
+carrying a `CLEAN` payload, then a short correction with its own `### Verdict`
+and `**Needs more work.**`.
+`origin/main` posted the correction alone and classified `needs-more-work`;
+`e4d2331`, this branch before the classifier fix, posted both and classified
+`ready-for-merge`; the branch as it now stands posts both and classifies
+`needs-more-work`.
+Naming the commit matters, because "the branch" no longer reproduces the
+middle row -- that is what the fix changed.
+The fix is in the consumer rather than in the span, because the analysis the
+correction refers to is exactly what keeping exists to preserve: the
+classifier stands its payload fast path down when an authored verdict heading
+follows the last payload marker, and the prose scan -- already last-match-wins
+over the whole body -- decides instead.
+The signal is a heading and never a label form, since gha#710's follow-up tail
+is written that way and means the verdict stands, so reading it as a
+retraction would invert it; a label-form tail that genuinely contradicts an
+earlier payload reaches the posted text through gha#710's own span rule rather
+than through this change, and is tracked separately.
+It is matched against the payload scan's own candidate text, so a heading that
+is fenced, blockquoted or indented cannot fake a retraction.
+
+The general shape is worth keeping separate from the incident.
+**When a change widens what a producer emits, the consumer's tie-break rule is
+part of the change even though its file is not in the diff.**
+Nothing about the span filter was wrong here in isolation, and nothing about
+the classifier was wrong before the span could carry two statements.
+The defect lived in the pair, so neither file's own tests could see it: the
+fixture suite asserts what gets posted and never classifies it, and the
+classifier suite had no two-statement input to classify.
+Ask what reads the output, and feed it the new shape.
+
+Two of the classifier cases added for it passed for the wrong reason when
+first written, both because a LATER gate produced the same answer under the
+mutation they existed to catch -- the prose scan strips fences too, so a
+wrongly superseded payload fell through to a scan that agreed with it.
+Making the prose and the payload DISAGREE is what turned them into real
+assertions.
+That is this file's own vacuous-negative-assertion rule, met in the suite
+written to close a finding about it.
+It recurred twice more in one case.
+A case turning on a non-ASCII character cannot type that character, since this
+repo's sources are ASCII, so it must build one -- and two successive attempts
+built nothing: an escape inside an ordinary double-quoted string is left
+literal by bash, and so, measured on GNU bash 5.1.16 msys, is `$'\u2014'`.
+Both passed, on the BACKSLASH not being a word character.
+Explicit UTF-8 bytes work on every build, and `od -c` is what settles it.
+The general form: when a case turns on one character, print the bytes the
+harness actually produced before believing the case tests anything.
+
+The same rule bit once more, one level up.
+The cross-script assertion added for the lesson above
+(`expected_verdict` in `run-fixture-tests.sh`, which classifies each fixture's
+posted text) caught nothing at first: every correction fixture then in the
+suite CONFIRMS the review it follows, so payload and prose agree and the
+tie-break is never consulted.
+`verdict-then-retracting-correction.json` is the shape that actually broke, and
+with it disabling the supersession rule reddens the fixture suite.
+The payload matrix had the same hole one cell over:
+`verdict-payload-free-draft-then-payload.json` covers a payload-free draft
+followed by a payload-bearing block, which both this file and the changelog
+asserted was decided by length while no fixture stood behind the claim.
+A test that feeds the right consumer the wrong input is still a test of
+nothing.
+Which fixtures that table must cover is a claim about a SET, so the suite
+derives it rather than asserting it in a comment: every fixture declaring a
+`max_verdict_headings` ceiling must carry an expectation, bar one documented
+exemption, and the run reports counts that partition that population.
+The ceiling set is a sound PROXY for "posts more than one verdict statement"
+rather than that population itself -- a fixture posting one authored heading
+beside a label-form statement carries two and needs no ceiling -- so the check
+cannot see that shape.
+Exactly two fixtures are of it; the first is in the table by hand as the
+compensating control, and the second is left out because its tail confirms
+rather than retracts, so it would discriminate nothing.
+Each expectation is read off the fixture's own stated verdict lines rather than
+off what the scripts currently emit, since recording the latter pins whatever
+behaviour exists as the contract -- the first draft of the table guessed one
+entry instead and the suite caught the guess.
+
+The supersession rule is a verdict heading PROPER -- the word, then a separator
+or the end of the line -- rather than any heading beginning with it, and it
+took three attempts to land, each attempt wrong in a different direction.
+A `\b`-terminated prefix matched `### Verdict rationale` and
+`### Verdict summary`, ordinary sections of a single uncorrected review, so
+writing one discarded that review's payload and re-scored it from prose: the
+gha#811 failure the fast path exists to prevent.
+Requiring the word to END the line then let `### Verdict: Needs more work`
+through unsuperseded, and that is not a safe way to be wrong -- for a
+retraction, the pre-gha#857 behaviour is the false `CLEAN` the rule exists to
+stop.
+Allowing leading emphasis made it disagree with `authored_heading`, which
+rejects `### **Verdict:**`, so a block the span rule reads as a gha#710 tail --
+whose meaning is confirmation -- was read here as a fresh complete one and
+reddened an approving review.
+The anchor is `^ {0,3}` for the same agreement: `_INDENTED_RE` blanks a tab or
+four spaces, and two spaces then a tab is column 4 to CommonMark and to the jq
+while satisfying neither.
+Then the separator that admits `### Verdict: Needs more work` admitted
+`### Verdict-bearing span rule` too, because a dash needs whitespace before it
+to be a separator rather than part of a hyphenated word -- and "verdict-bearing"
+is vocabulary this repo writes constantly, so a review OF this repo was the
+likeliest producer.
+Requiring that whitespace then excluded `### Verdict (revised)` and
+`### Verdict, revised`, each of which leaves the stale payload deciding.
+Five rounds, each closing one direction and opening the other, and the exit was
+to stop enumerating what MAY follow the word and state what may not: a heading
+whose word continues, into a following word or through a hyphen joined to it,
+is a section title, and everything else is a verdict heading with or without a
+qualifier.
+What settles a dash is whether a word follows it immediately, not whether a
+space precedes it: keying on the space read `### Verdict -bearing` as a
+separator, so one stray space inverted the answer.
+
+The last of those rounds found the other direction of the same rule: standing
+the fast path down must not manufacture a red check.
+A CONFIRMING tail in heading form -- `### Verdict` over "Unchanged after a
+second read" -- states no polarity the prose scan recognises, so discarding the
+payload outright returned `unrecognized` and reddened a review nobody had
+retracted.
+The payload is held as a floor instead: the prose wins whenever it says
+anything, and the held payload answers only when the scan recognises nothing.
+That floor then had to be given the primary path's own trust criteria rather
+than a weaker set.
+It captures whatever the JSON decoder returned, before any type check, so a
+scalar payload reached `.get` and killed the run with a traceback, and a
+mapping carrying no `schema_version` -- which the primary path refuses outright
+-- was trusted here, turning a payload neither contract accepts into an
+asserted clean verdict.
+A floor under a check is still a check, and it needs the same gate.
+The suite had pinned only the LABEL spelling of that sentence, which is the one
+shape the rule deliberately ignores, so the accepted shape went untested --
+a negative case for the shape a rule skips is not a case for the shape it
+takes.
+The two detectors still differ past the word, deliberately, since the span rule
+only decides which blocks are candidates while this one decides whether a
+statement supersedes.
+
+Two residuals remain, tracked rather than fixed, and they are the same shape:
+a blanking rule hides the superseding block from the check that should see it.
+The scan the fast path falls through to reads `strip_machine_payloads` output
+rather than the raw body, so an unterminated `<!--` inside an inline code span
+blanks everything after it.
+And the text the supersession check itself searches is fence-blanked over the
+whole posted body, where the jq resets fence state per block, so an unclosed
+fence between the payload and a later retraction blanks that retraction's
+heading.
+Both are on gha#862, alongside gha#863 for the label-form gap.
+
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own
 gha#710/gha#805/gha#808 quoted-verdict guard is exactly what the new path

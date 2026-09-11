@@ -51,8 +51,10 @@
 #   - otherwise writes review_text_file=<path> to $GITHUB_OUTPUT and exits 0.
 #     That file holds the span of verdict-bearing assistant blocks -- from
 #     the first block carrying a verdict line through the last, blocks
-#     between included (gha#710) -- or the final block when none carries a
-#     verdict.
+#     between included (gha#710), starting instead at the last complete
+#     REDRAFT when the reviewer wrote more than one (gha#805; a short
+#     appended correction is not a redraft, gha#850) -- or the final block
+#     when none carries a verdict.
 #   - whenever a result object is found (success, quota-skip, stub, or hard
 #     error alike), also writes total_cost_usd=<value> to $GITHUB_OUTPUT —
 #     the run incurs cost regardless of how it concluded, and the caller
@@ -666,8 +668,89 @@ review_text_file="$(mktemp)"
 # paragraph continuation. The heading test says {0,3} rather than [ \t]* for
 # exactly that reason (gha#808 review round 3, which reproduced the drop with
 # indentation instead of a fence).
+#
+# gha#850: a later authored heading is not always a redraft. A reviewer that
+# wrote a complete review and then APPENDED a short self-correction carrying
+# its own `### Verdict` heading (measured on UCD-SERG/serocalculator#685, run
+# 34292812731: a 7150-character review, then two follow-ups of 1744 and 1520
+# characters, each citing analysis "detailed above") is textually a redraft
+# under the last-heading rule, so the review was dropped and the correction
+# posted alone -- gha#710's failure, reintroduced by its own follow-up fix.
+# Two signals tell them apart, named here in the order they are applied.
+#
+# FIRST, the structured review-data payload: a complete review emits the
+# `<!-- review-data:` block and an appended correction does not, so a later
+# heading block that lacks the payload never replaces a held draft that has
+# it, whatever its length. That marker is a string this corpus documents, so
+# a review OF this repo quotes it, which is why the payload test reads
+# fence- and blockquote-stripped text (has_payload below) rather than the
+# raw block.
+#
+# SECOND, for every other pair (both with, both without, or a payload-bearing
+# block after a payload-free draft), LENGTH. Length matches no vocabulary at
+# all, so unlike the marker it cannot be faked by a block that merely writes
+# about this rule. The payload is deliberately NOT used to decide the
+# both-with-payload pair, which otherwise looks like the obvious place for
+# it: the review prompt tells every review to close with a verdict heading
+# and append the payload (run-claude-review-attempt/action.yml), so a
+# correction written to the same template carries one too, and the marker
+# stops discriminating exactly there. Length is the only signal left for
+# that pair. The measured run is consistent with the premise rather than
+# proof of it -- its corrections emitted no payload -- so the narrow reading
+# is the safe one. The cost is stated below with the other keeping bias:
+# a redraft restates the whole review, so it is comparable in size to the
+# draft it replaces, while a correction is a fraction of it. Such a block
+# REPLACES the current draft only when it is at least half the length of
+# the LONGEST draft held so far, which starts as the first heading block
+# and only ever grows; shorter, it is a correction and the draft it
+# corrects is kept; when a later block did replace the first, the span runs
+# from that draft through the last verdict-bearing block, corrections
+# included, and when none did it runs from the first verdict-bearing block
+# (the gha#710 rule, unchanged). The floor is never the
+# previous heading block, so a chain of shrinking blocks, each at least
+# half the one before, cannot walk the draft below half the review, and a
+# stray one-line heading ahead of the review cannot lower it. The residual
+# band is stated rather than hidden: whenever the payload cannot discriminate
+# the pair -- both blocks carrying it, neither carrying it, or a
+# payload-bearing block after a payload-free draft -- a correction at least
+# half the review's length is still read as a redraft. Carrying the payload
+# does not put a review outside that band: the both-carrying case is the one
+# argued above, where the payload is said not to decide that pair, to be the
+# expected future state, since the review prompt has every review append the
+# payload. That reference names the content rather than a distance, because a
+# sentence count rots the moment a sentence is inserted -- and the count this
+# replaced was itself wrong, which is how the rot shows up.
+# The measured run sits outside the band because its CORRECTIONS
+# emitted no payload (0.24 and 0.21 of a 7150-character review), not because
+# its review carried one.
+#
+# Both signals err toward keeping: a
+# redraft misread as a correction posts two drafts (the gha#805 verbosity),
+# while a correction misread as a redraft posts a verdict resting on analysis
+# nobody can see. Verbosity is the cheaper wrong, which is why keeping wins
+# ties.
+#
+# Keeping has its own cost, and it is paid downstream rather than here
+# (gha#857 review, finding 1). The posted text can now hold two verdict
+# statements, and classify-review-verdict.sh reads the payload before any
+# prose, last-MARKER-wins -- so a retracting correction, which carries no
+# payload, lost to the CLEAN payload of the review it retracted, and
+# require-clean-verdict went green over an explicit withdrawal. That is
+# fixed in the consumer rather than by trimming the span here, because the
+# analysis the correction refers to is exactly what keeping exists to
+# preserve: the classifier now stands its payload fast path down when an
+# authored verdict heading follows the last payload marker.
+#
+# When no later heading block replaces the first, the
+# transcript is one review with corrections and takes the gha#710 span rule
+# unchanged.
+# No apostrophes anywhere inside the program below, comments included: it is
+# one single-quoted shell string, and an apostrophe would end it.
 jq -r '
-  def authored_heading:
+  # gha#850 round 2: the fence, blockquote and indentation stripping is one
+  # definition shared by the heading test and the payload test, so the two
+  # cannot disagree about what counts as quoted.
+  def stripped:
     ( split("\n")
       | reduce .[] as $l ({fence: "", flen: 0, out: []};
           # Spaces only in the indentation allowance: a tab is four columns in
@@ -684,17 +767,70 @@ jq -r '
               then .fence = "" | .flen = 0
             elif .fence != "" or ($l | test("^[ \\t]*>")) then .
             else .out += [$l] end)
-      | .out | join("\n") )
-    # One to six hashes, then at least one space or tab: seven hashes, or
-    # hashes run into the word, are paragraph text in CommonMark (Copilot on
-    # gha#808). The awk invariant in run-fixture-tests.sh mirrors both limits.
-    | test("(?im)^ {0,3}#{1,6}[ \\t]+verdict\\b");
+      | .out | join("\n") );
+  # One to six hashes, then at least one space or tab: seven hashes, or
+  # hashes run into the word, are paragraph text in CommonMark (Copilot on
+  # gha#808). The awk invariant in run-fixture-tests.sh mirrors both limits.
+  def authored_heading:
+    stripped | test("(?im)^ {0,3}#{1,6}[ \\t]+verdict\\b");
+  # The structured payload marker, read from the same stripped text: a
+  # correction that QUOTES the marker in a fence (a review of this repo does,
+  # since the corpus documents the string) must not read as payload-bearing.
+  # classify-review-verdict.sh is the sibling detector for this marker, and
+  # the two agree on being whitespace-tolerant and case-insensitive and on
+  # ignoring fenced and blockquoted lines -- so widen those properties
+  # together. They already differ in SEVERAL places, deliberately, so
+  # re-derive the whole set before harmonizing rather than trusting a count
+  # here. Known ones: the sibling marker regex is UNANCHORED where this one
+  # requires `^ {0,3}`; the sibling blanks indented lines (via _INDENTED_RE)
+  # where this test reaches them through the same anchor; the sibling opens a
+  # fence at any indentation, tabs included, where this one requires
+  # `^ {0,3}`; and the sibling tracks fence state across the WHOLE posted
+  # text where this resets it per block. An earlier revision of this comment
+  # said there were exactly two, which is the kind of claim that stops the
+  # next reader looking for a third.
+  # The converse of the quotation case also holds: a real
+  # payload sitting after an UNCLOSED fence reads as absent and the block
+  # falls back to the length signal, which is faithful, since GitHub
+  # renders such a payload as visible code rather than a machine comment.
+  # The test is anchored at line start, because stripped text still holds
+  # inline code spans and this corpus quotes the marker in one; a real
+  # payload is an HTML comment opening at column 0. Two residuals: a bare
+  # marker quoted at column 0 outside any fence reads as a payload, and
+  # \s* spans a newline, so a `<!--` at column 0 whose next line begins
+  # `review-data:` reads as one too; production emits the marker on one
+  # line (run-claude-review-attempt/action.yml), so that is not its shape.
+  def has_payload:
+    stripped | test("(?im)^ {0,3}<!--\\s*review-data:");
   . as $blocks
   | [ range(0; $blocks | length)
       | select($blocks[.] | test("(?im)^[\\s>*_#-]*verdict\\b")) ] as $vidx
   | [ $vidx[] | select($blocks[.] | authored_heading) ] as $hidx
-  | if ($hidx | length) > 1
-      then $blocks[($hidx | last):(($vidx | last) + 1)] | join("\n\n")
+  # gha#850: a heading block never replaces a held draft that carries the
+  # structured review-data payload when the block itself carries none; among
+  # payload-alike blocks, the draft is the last one at least half as long as
+  # the longest draft held so far, and a shorter one is an appended
+  # correction.
+  # The floor is the LONGEST block ever held as draft, not the first
+  # heading block: a stray one-line heading ahead of the review would
+  # otherwise make the floor vacuous (gha#850 round 4).
+  # An empty $hidx (a label-form verdict, the gha#710 tail shape) must not
+  # index $blocks with null: a jq error here is swallowed downstream and
+  # posts an EMPTY review under a green check (gha#857 review round 5).
+  | ( reduce $hidx[1:][] as $h
+        ({d: $hidx[0],
+          f: (if ($hidx | length) == 0 then 0 else ($blocks[$hidx[0]] | length) end)};
+        ($blocks[$h] | length) as $hl
+        | if ($blocks[.d] | has_payload) and (($blocks[$h] | has_payload) | not)
+            then .
+          # f is never below the length of the held draft, so this one test is
+          # the whole length rule.
+          elif $hl * 2 >= .f
+            then .d = $h | .f = (if $hl > .f then $hl else .f end)
+          else . end)
+      | .d ) as $draft
+  | if ($hidx | length) > 1 and $draft != $hidx[0]
+      then $blocks[$draft:(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) > 1
       then $blocks[($vidx | first):(($vidx | last) + 1)] | join("\n\n")
     elif ($vidx | length) == 1
