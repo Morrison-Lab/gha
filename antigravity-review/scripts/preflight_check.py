@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Preflight checker for Antigravity Action and repo conventions."""
 
 import glob

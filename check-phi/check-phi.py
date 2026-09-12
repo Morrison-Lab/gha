@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Scan a repository (or just a pull request's added lines) for content that looks
 like Protected Health Information (PHI) / personally identifiable identifiers.

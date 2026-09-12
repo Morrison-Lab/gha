@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Script to detect non-standard characters in .qmd and .R files.
 
