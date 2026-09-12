@@ -2307,10 +2307,10 @@ through the last verdict-bearing block, corrections included; when none does,
 the transcript takes the gha#710 span rule unchanged, from the first
 verdict-bearing block.
 An empty set of authored headings (the label-form verdict) must not reach the
-floor's `$blocks[$hidx[0]]`: a jq error in the span filter is swallowed
-downstream and posts an empty review under a green check, which `assert_pass`
-now refuses by requiring a non-empty posted file (gha#861 tracks the swallow
-itself).
+floor's `$blocks[$hidx[0]]`: a jq error in the span filter previously was swallowed
+downstream and posted an empty review under a green check (fixed in gha#861 / gha#871,
+which now fails fast with `failure_kind=hard-error`, and which `assert_pass`
+refuses by requiring a non-empty posted file).
 The residual band is stated rather than hidden: whenever the payload cannot
 discriminate the pair -- both blocks carrying it, neither carrying it, or a
 payload-bearing block after a payload-free draft -- a correction at least half
