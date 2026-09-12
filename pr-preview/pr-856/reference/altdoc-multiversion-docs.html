@@ -871,9 +871,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  articles/*=latest-tag/vignettes/articles/*</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>Three forms are supported:</p>
 <ul>
-<li><strong>Single-segment directory rename</strong> (<code>main=dev</code>): rewrites the prefix <code>/main/</code> to <code>/dev/</code>, preserving any tail.</li>
-<li><strong>Exact whole-path key</strong> (<code>reference/index.html=latest-tag/reference.html</code>): redirects that exact path. Exact keys take precedence over wildcard patterns.</li>
-<li><strong>Prefix glob and template</strong> (<code>reference/*=latest-tag/man/*</code>): matches requests starting with <code>reference/</code> and substitutes the matched tail into the target’s <code>*</code>. The longest prefix wins among multiple prefix patterns.</li>
+<li><p><strong>Single-segment directory rename</strong> (<code>main=dev</code>): rewrites the prefix <code>/main/</code> to <code>/dev/</code>, preserving any tail.</p></li>
+<li><p><strong>Exact whole-path key</strong> (<code>reference/index.html=latest-tag/reference.html</code>): redirects that exact path. Exact keys take precedence over wildcard patterns.</p></li>
+<li><p><strong>Prefix glob and template</strong> (<code>reference/*=latest-tag/man/*</code>): matches requests starting with <code>reference/</code> and substitutes the matched tail into the target’s <code>*</code>. The longest prefix wins among multiple prefix patterns.</p></li>
 </ul>
 <p>That generates a site-root <code>404.html</code> rewriting any request under <code>/main/</code> to the same path under <code>/dev/</code>, so <code>/main/reference/index.html</code> lands on <code>/dev/reference/index.html</code>. GitHub Pages serves no server-side redirects but does serve a site-root <code>404.html</code> for unresolved paths, which is what makes deep links work – a per-directory <code>index.html</code> meta-refresh only catches the directory root.</p>
 <p>Two consequences worth knowing:</p>
