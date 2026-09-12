@@ -121,7 +121,7 @@ Do not migrate `rpt` until a follow-up actually passes these through.
 
 ## Migrating from bcs
 
-[`ucdavis/bcs`](https://github.com/ucdavis/bcs)'s bespoke
+`ucdavis/bcs`'s bespoke
 `.github/workflows/R-CMD-check.yaml` and its
 `.github/actions/install-system-deps` composite can migrate directly to
 this reusable workflow with `setup-julia: true`, `brew-packages: gettext`,
