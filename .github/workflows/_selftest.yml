@@ -2550,7 +2550,7 @@ jobs:
           target: dev
           output-dir: _ci-landing-page-legacy
           base-url: 'https://ucd-serg.github.io/serocalculator/'
-          legacy-paths: 'main=dev,master=dev'
+          legacy-paths: 'main=dev,master=dev,reference/index.html=latest-tag/reference.html,reference/*=latest-tag/man/*,articles/*=latest-tag/vignettes/articles/*,news/index.html=latest-tag/news.html'
       - name: Assert the legacy-path 404 page redirects where it should
         shell: bash
         run: |

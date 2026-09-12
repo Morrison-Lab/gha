@@ -108,8 +108,22 @@ Set `legacy-paths` to a comma- or newline-separated list of `old=new` pairs to
 keep the old links alive:
 
 ```yaml
-legacy-paths: main=dev
+legacy-paths: |
+  main=dev
+  reference/index.html=latest-tag/reference.html
+  reference/*=latest-tag/man/*
+  articles/*=latest-tag/vignettes/articles/*
 ```
+
+Three forms are supported:
+
+- **Single-segment directory rename** (`main=dev`): rewrites the prefix `/main/`
+  to `/dev/`, preserving any tail.
+- **Exact whole-path key** (`reference/index.html=latest-tag/reference.html`):
+  redirects that exact path. Exact keys take precedence over wildcard patterns.
+- **Prefix glob and template** (`reference/*=latest-tag/man/*`): matches
+  requests starting with `reference/` and substitutes the matched tail into the
+  target's `*`. The longest prefix wins among multiple prefix patterns.
 
 That generates a site-root `404.html` rewriting any request under `/main/` to
 the same path under `/dev/`, so `/main/reference/index.html` lands on

@@ -53,6 +53,18 @@ class TestParseLegacyPaths:
         parsed = mod.parse_legacy_paths("b=dev,a=dev")
         assert parsed == [("b", "dev"), ("a", "dev")]
 
+    def test_pattern_and_exact_paths(self):
+        raw = (
+            "reference/index.html=latest-tag/reference.html\n"
+            "reference/*=latest-tag/man/*\n"
+            "articles/*=latest-tag/vignettes/articles/*"
+        )
+        assert mod.parse_legacy_paths(raw) == [
+            ("reference/index.html", "latest-tag/reference.html"),
+            ("reference/*", "latest-tag/man/*"),
+            ("articles/*", "latest-tag/vignettes/articles/*"),
+        ]
+
     @pytest.mark.parametrize(
         "raw,message",
         [
@@ -62,11 +74,38 @@ class TestParseLegacyPaths:
             ("main=", "empty source or target"),
             ("dev=dev", "which would loop"),
             ("main=dev,main=latest-tag", "mapped more than once"),
+            ("*=dev", "bare '*'"),
+            ("reference/*=*", "bare '*'"),
+            ("a*b=c/*", "not at the end of the source"),
+            ("a/*/*=c/*", "not at the end of the source"),
+            ("a=b/*", "in the target with none in the source"),
+            ("a/*=b*c", "not at the end of the target"),
+            ("main=dev\ndev=prod", "which would loop"),
+            ("reference/*=reference/man/*", "which would loop"),
+            ("reference/index.html=latest-tag/reference.html\nlatest-tag/*=archive/*", "which would loop"),
         ],
     )
     def test_invalid_entries_raise(self, raw, message):
         with pytest.raises(ValueError, match=message):
             mod.parse_legacy_paths(raw)
+
+
+class TestClassifyLegacyPaths:
+    def test_classification_and_precedence_ordering(self):
+        pairs = [
+            ("main", "dev"),
+            ("reference/index.html", "latest-tag/reference.html"),
+            ("reference/*", "latest-tag/man/*"),
+            ("reference/special/*", "latest-tag/special/*"),
+        ]
+        exact, prefixes, moved = mod.classify_legacy_paths(pairs)
+        assert exact == {"reference/index.html": "latest-tag/reference.html"}
+        # Longest prefix must come first
+        assert prefixes == [
+            ("reference/special/", "latest-tag/special/*"),
+            ("reference/", "latest-tag/man/*"),
+        ]
+        assert moved == {"main": "dev"}
 
 
 class TestBasePathOf:
