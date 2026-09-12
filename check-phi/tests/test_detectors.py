@@ -364,3 +364,19 @@ def test_inline_pragma_matches_phi_allow_but_not_allowlist():
     # pragma from also firing on "phi-allowlist" (e.g. a path mention).
     assert check_phi.INLINE_PRAGMA_RE.search("ssn 123-45-6789  # phi-allow")
     assert not check_phi.INLINE_PRAGMA_RE.search("see .github/phi-allowlist.txt")
+
+
+def test_cp1252_console_does_not_crash():
+    # Issue #860: check-phi must not crash with UnicodeEncodeError when stdout
+    # encoding is cp1252 (e.g. Windows console / Git Bash) and checkmark is printed.
+    import os
+    import subprocess
+    import sys
+
+    res = subprocess.run(
+        [sys.executable, str(_MOD_PATH)],
+        env=dict(os.environ, PYTHONIOENCODING="cp1252", PHI_BASE_REF="HEAD"),
+        capture_output=True,
+        text=False,
+    )
+    assert res.returncode == 0, f"check-phi exited {res.returncode}: {res.stderr.decode('utf-8', errors='replace')}"

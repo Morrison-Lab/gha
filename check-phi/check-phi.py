@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """
 Scan a repository (or just a pull request's added lines) for content that looks
 like Protected Health Information (PHI) / personally identifiable identifiers.
@@ -41,6 +42,13 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
+
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 # Word-boundary match so the pragma "phi-allow" does NOT also fire on lines
 # that merely mention "phi-allowlist" (e.g. a path like .github/phi-allowlist.txt

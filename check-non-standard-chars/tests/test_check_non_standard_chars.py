@@ -28,6 +28,16 @@ class TestCheckNonStandardChars(unittest.TestCase):
         self.assertIn("\u2014", cnsc.NON_STANDARD_CHARS)
         self.assertIn("\u00d7", cnsc.NON_STANDARD_CHARS)
 
+    def test_cp1252_console_does_not_crash(self):
+        import subprocess
+        res = subprocess.run(
+            [sys.executable, str(script_path)],
+            env=dict(os.environ, PYTHONIOENCODING="cp1252"),
+            capture_output=True,
+            text=False,
+        )
+        self.assertEqual(res.returncode, 0, f"script exited {res.returncode}: {res.stderr.decode('utf-8', errors='replace')}")
+
 
 if __name__ == "__main__":
     unittest.main()

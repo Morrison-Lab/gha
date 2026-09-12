@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Preflight checker for Antigravity Action and repo conventions."""
 
 import glob
 import os
 import re
 import sys
+
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 
 def check_changelog_fragments() -> bool:
