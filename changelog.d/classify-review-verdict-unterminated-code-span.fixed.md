@@ -3,4 +3,3 @@
   An unterminated `<!--` inside an inline code span no longer blanks following
   lines in `strip_machine_payloads`, preventing that marker shape from hiding
   subsequent verdict headings from the prose scan.
-
