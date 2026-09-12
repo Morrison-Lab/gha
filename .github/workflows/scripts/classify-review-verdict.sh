@@ -331,11 +331,17 @@ if _payload_markers:
     # payloads so an unterminated `<!--` inside an inline code span does not blank
     # following lines (gha#862).
     #
-    # Accepted trade-off: an unclosed backtick in the SAME paragraph block as a
-    # payload or verdict heading will pair with a closing backtick across them and
-    # blank the intervening text. Because CommonMark breaks code spans at blank lines,
-    # this cannot cross paragraphs; and in the same-block case, losing the verdict
-    # heading safely defaults to fail-closed (`no-verdict`) rather than false-CLEAN.
+    # Accepted trade-off: an unclosed backtick in the same paragraph block as a
+    # payload or verdict heading will pair with a closing backtick across them
+    # and blank the intervening text. Because CommonMark breaks code spans at
+    # blank lines (§6.2), this cannot cross paragraph boundaries.
+    # When the swallowed span consumes a heading and no other verdict-bearing
+    # text survives elsewhere in the body, losing the heading defaults to
+    # fail-closed (`clean=false verdict=no-verdict`). However, if an earlier
+    # verdict heading exists in a preceding block, swallowing a subsequent
+    # retraction's heading and polarity keyword leaves that earlier verdict
+    # as the last surviving match (a pre-existing residual of strip_code_spans,
+    # tracked as a multi-heading intra-paragraph blanking limitation).
     #
     # A sibling residual: the text searched above is fence-blanked over the
     # WHOLE posted body, where the jq resets fence state per block, so an
