@@ -77,6 +77,9 @@ declare -A expected=(
   # gha#561: turn-1 zero-cost execution failure with subtype:"success" is an
   # execution/runtime error, NOT quota exhaustion. Must fail as hard-error.
   [is-error-success-turn1-zerocost.json]=fail
+  # gha#861: a jq runtime error in the span extraction filter must fail fast as
+  # hard-error rather than discarding stderr and exiting 0 with an empty review.
+  [span-jq-runtime-error.json]=fail
   # gha#446 review finding 1: permission_denials_count can be JSON null
   # (observed real evidence, not hypothetical -- see the null-denials comment
   # in check-review-execution.sh). A denied `gh pr comment`/`gh api ...
@@ -568,6 +571,7 @@ declare -A expected_cost=(
   [permission-denials-array-only-high-count.json]=3.5
   [permission-denials-mixed-tools.json]=2.75
   [permission-denials-malformed-entries.json]=1.25
+  [span-jq-runtime-error.json]=0.2
 )
 
 # gha#543: which failure each non-zero exit reports. claude-code-review.yml's
@@ -609,6 +613,7 @@ declare -A expected_kind=(
   [is-error-result.json]=hard-error
   [is-error-success-no-verdict.json]=hard-error
   [is-error-success-turn1-zerocost.json]=hard-error
+  [span-jq-runtime-error.json]=hard-error
   [empty-review-text.json]=no-output
   [short-circuit-no-result.json]=short-circuit
   [claim-comment-deferred-review.json]=deferred
