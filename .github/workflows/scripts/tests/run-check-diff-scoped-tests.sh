@@ -295,7 +295,9 @@ rc=$(run "$d" origin/main)
 rm -rf "$d"
 
 # 15. A clean scan under a non-UTF-8 console encoding (e.g. cp1252 on Windows)
-#     must not crash with UnicodeEncodeError when printing status symbols (gha#860).
+#     must not crash with UnicodeEncodeError when check-diff-scoped invokes checks (gha#860).
+#     check-diff-scoped sets PYTHONIOENCODING=utf-8 when invoking child checks, shielding
+#     them from non-UTF-8 ambient console encodings and ensuring status symbols pass safely.
 make_real_clean_repo() {
   local d
   d="$(mktemp -d)"
@@ -319,10 +321,10 @@ make_real_clean_repo() {
 d=$(make_real_clean_repo)
 rc=$( cd "$d" && PYTHONIOENCODING=cp1252 bash "$SCRIPT" origin/main >/tmp/dsout 2>&1; echo $?; )
 # Exit 3 expected because typos is absent, but new-line-breaks and phi must report OK, not FAILED
-[ "$rc" = 3 ] && ok "cp1252 console encoding does not crash with UnicodeEncodeError (gha#860)" \
+[ "$rc" = 3 ] && ok "check-diff-scoped shields checks under cp1252 console encoding (gha#860)" \
               || bad "cp1252 check" "expected 3, got $rc"
-grep -q "check-diff-scoped: phi                OK" /tmp/dsout && ok "phi passes under cp1252" \
-                                                              || bad "cp1252 phi" "phi failed under cp1252"
+grep -q "check-diff-scoped: phi                OK" /tmp/dsout && ok "phi passes under cp1252 wrapper run" \
+                                                              || bad "cp1252 phi" "phi failed under cp1252 wrapper run"
 rm -rf "$d"
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"

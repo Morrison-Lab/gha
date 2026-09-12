@@ -186,6 +186,15 @@ class TestPreflightCheck(unittest.TestCase):
         self.assertTrue(preflight_check.check_changelog_fragments())
         self.assertTrue(preflight_check.check_action_docs_sync())
 
+    def test_cp1252_console_does_not_crash(self):
+        """Verify preflight_check.py does not crash when run under cp1252 console encoding."""
+        import subprocess
+        script = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "scripts", "preflight_check.py"))
+        env = dict(os.environ, PYTHONIOENCODING="cp1252")
+        proc = subprocess.run([sys.executable, script], capture_output=True, text=False, env=env)
+        # Should not raise UnicodeEncodeError or crash with an exception trace
+        self.assertNotIn(b"UnicodeEncodeError", proc.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
