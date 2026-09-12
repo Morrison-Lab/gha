@@ -1,0 +1,38 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review\n\n### Findings\n\nNone: the phi-pass first draft.\n\n### Verdict\n\n**Ready for merge.**\n\nEach claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. \n\n<details>\n<summary>Structured Review Data (JSON)</summary>\n\n<!-- review-data:\n{\"schema_version\": \"1.1\", \"reviewer\": \"claude\", \"commit_sha\": \"abc123\", \"verdict\": \"CLEAN\", \"findings\": []}\n-->\n\n</details>\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review, redrafted\n\nThe phi-pass redraft: re-running the instrument changed the answer.\n\n### Findings\n\nOne blocking defect in the new arm.\n\n### Verdict\n\n**Needs more work.**\n\nEach claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. \n\n<details>\n<summary>Structured Review Data (JSON)</summary>\n\n<!-- review-data:\n{\"schema_version\": \"1.1\", \"reviewer\": \"claude\", \"commit_sha\": \"abc123\", \"verdict\": \"NOT_CLEAN\", \"findings\": [{\"file\": \"a.sh\", \"line\": 1, \"category\": \"bug\", \"message\": \"x\"}]}\n-->\n\n</details>\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "duration_ms": 120000,
+    "total_cost_usd": 1.58,
+    "permission_denials_count": 0,
+    "permission_denials": []
+  }
+]

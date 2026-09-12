@@ -467,8 +467,14 @@ which is why the capabilities above moved to `@v2`.
   in `outputs:`, and the first draft omitted that block, so every value
   arrived empty and the notice fell back to the old wording for both real
   cases while every script test stayed green.
-  `run-review-job-split-tests.py` now asserts that every
-  `steps.fail-check*.outputs.<name>` the workflow reads is declared there.
+  `run-review-job-split-tests.py` asserts that every
+  `steps.<id>.outputs.<name>` the workflow reads from one of this repo's
+  composites
+  is declared in that composite's `outputs:`
+  (gha#806 widened the check from the `fail-check*` prefix alone
+  to every in-repo composite the workflow reads,
+  and made a read naming an undeclared step id
+  a failure instead of a skip).
   **The message is redacted before it leaves the guard.**
   A door rejection is exactly where the SDK quotes credential context (the
   gha#686 entry above records one), and the comment is not masked, so the
@@ -2287,6 +2293,256 @@ six-hash limit, and dropping the awk's trailing word-boundary class.
 That count is a shape check on our own extraction, not a verdict parse: it
 never reads which verdict was stated.
 
+**A later authored `### Verdict` heading is not always a redraft: a reviewer
+that wrote a complete review and then appended a short self-correction
+carrying its own heading was read by the gha#805/gha#808 last-heading rule as
+a redraft, so the review was dropped and only the correction posted, citing
+analysis nobody could see (gha#710's failure reintroduced by its own follow-up
+fix).**
+Measured on UCD-SERG/serocalculator#685, run 34292812731: a 7150-character
+review carrying the structured review-data payload, followed by corrections of
+1744 and 1520 characters (0.24 and 0.21 of it) carrying none.
+Two signals tell them apart.
+First, the payload: a complete review emits the `<!-- review-data:` block and
+an appended correction does not, so a later heading block without the payload
+never replaces a held draft that has it, whatever its length.
+That marker is a string this corpus documents, so it is read from the same
+fence- and blockquote-stripped text the heading test uses (one `stripped`
+definition feeds both) and anchored at line start, since stripped text still
+holds inline code spans; a correction that quotes it in a fence or a span
+still reads as payload-free, a real payload behind an unclosed fence reads as
+absent and falls back to the length signal, and two residuals are stated: a
+bare marker quoted at column 0 outside any fence reads as a payload, and so
+does a `<!--` at column 0 whose next line begins `review-data:`, since `\s*`
+spans the newline (production emits the marker on one line, so that is not its
+shape); `classify-review-verdict.sh` is the sibling detector for the marker,
+so a widening belongs in both.
+The two already differ on two properties, deliberately, and a maintainer
+following "widen both" needs to know which: the sibling's marker regex is
+unanchored where this one requires `^ {0,3}`, and the sibling additionally
+blanks indented lines where this test reaches them through the same anchor.
+Second, for every other pair (both with the payload, both without, or a
+payload-bearing block after a payload-free draft), length, which matches no
+documented vocabulary: a later heading block replaces the held draft only when
+it is at least half the length of the longest draft held so far, which starts
+as the first heading block and only ever grows; shorter, it is a correction
+and the draft it corrects is kept.
+The floor is never the previous heading block, so a chain of shrinking blocks,
+each at least half the one before, cannot walk the draft below half the
+review, and a stray one-line heading ahead of the review cannot lower it.
+When a later block does replace the first, the span runs from that draft
+through the last verdict-bearing block, corrections included; when none does,
+the transcript takes the gha#710 span rule unchanged, from the first
+verdict-bearing block.
+An empty set of authored headings (the label-form verdict) must not reach the
+floor's `$blocks[$hidx[0]]`: a jq error in the span filter is swallowed
+downstream and posts an empty review under a green check, which `assert_pass`
+now refuses by requiring a non-empty posted file (gha#861 tracks the swallow
+itself).
+The residual band is stated rather than hidden: whenever the payload cannot
+discriminate the pair -- both blocks carrying it, neither carrying it, or a
+payload-bearing block after a payload-free draft -- a correction at least half
+the review's length is still read as a redraft.
+Carrying the payload does not put a review outside that band, and the
+both-carrying case is the one argued below, where the payload is said not to
+decide that pair, to be the expected future state.
+The measured run sits outside it because its CORRECTIONS emitted no payload,
+not because its review did.
+The payload is deliberately not used to decide the both-with-payload pair,
+which otherwise looks like the obvious place for it: the review prompt tells
+every review to close with a verdict heading and append the payload, so a
+correction written to the same template carries one too and the marker stops
+discriminating exactly there.
+`verdict-redraft-with-payload-under-half.json` pins that cell at 0.26, where
+both blocks are posted; the verdict is still right there, because the
+classifier reads the last payload marker and nothing heading-shaped follows
+it.
+Both signals err toward keeping.
+`verdict-then-appended-correction.json` pins that both the review's analysis
+and the last correction are posted, and declares (via `max_verdict_headings`,
+a per-fixture ceiling) that its posted text carries three authored headings,
+so the gha#805 one-heading invariant still fails on a fourth;
+`verdict-redraft-trimmed.json` pins the other side: a trimmed redraft still at
+least half its predecessor's length supersedes it.
+`verdict-then-long-correction-no-payload.json` pins the payload asymmetry (a
+0.66-length correction kept because the review carries the payload and it does
+not) with the marker spelled `<!-- REVIEW-DATA:`;
+`verdict-then-correction-quoting-payload-marker.json` and
+`verdict-then-correction-inline-span-marker.json` pin that a fenced or
+inline-span quotation of the marker is not a payload, the former with the real
+marker spelled `<!--review-data:`; `verdict-then-correction-near-half.json`
+with `verdict-redraft-just-over-half.json` pin the length boundary from both
+sides at 0.48 and 0.53 with no payload on either block;
+`verdict-shrinking-chain-no-payload.json` with
+`verdict-stray-heading-then-shrinking-chain.json` pin the floor: blocks of
+0.68 and 0.59 of the one before post the second and third, never the third
+alone, with or without a stray heading ahead of them; and
+`verdict-label-format.json` is pinned by content, not only by exit code.
+`verdict-label-block-before-kept-draft.json` pins the guard that separates the
+two span starts: when no later block replaced the first authored heading, the
+span falls back to gha#710's own start, the first verdict-bearing block.
+Those two coincide in every other fixture, because each one's first
+verdict-bearing block is also its first authored heading, so the guard was
+unexercised and removing it turned nothing red -- a label-form verdict block
+ahead of the review is what separates them.
+
+**Keeping the corrected draft moved the failure downstream rather than
+removing it: the posted text can now carry two verdict statements, and
+`classify-review-verdict.sh` reads the payload before any prose,
+last-MARKER-wins.**
+A retracting correction carries no payload of its own, so it lost to the
+`CLEAN` payload of the review it retracted, and `require-clean-verdict` went
+green over a verdict the reviewer had explicitly withdrawn (gha#857 review,
+finding 1).
+Reproduced end to end against both scripts, with one transcript: a full review
+carrying a `CLEAN` payload, then a short correction with its own `### Verdict`
+and `**Needs more work.**`.
+`origin/main` posted the correction alone and classified `needs-more-work`;
+`e4d2331`, this branch before the classifier fix, posted both and classified
+`ready-for-merge`; the branch as it now stands posts both and classifies
+`needs-more-work`.
+Naming the commit matters, because "the branch" no longer reproduces the
+middle row -- that is what the fix changed.
+The fix is in the consumer rather than in the span, because the analysis the
+correction refers to is exactly what keeping exists to preserve: the
+classifier stands its payload fast path down when an authored verdict heading
+follows the last payload marker, and the prose scan -- already last-match-wins
+over the whole body -- decides instead.
+The signal is a heading and never a label form, since gha#710's follow-up tail
+is written that way and means the verdict stands, so reading it as a
+retraction would invert it; a label-form tail that genuinely contradicts an
+earlier payload reaches the posted text through gha#710's own span rule rather
+than through this change, and is tracked separately.
+It is matched against the payload scan's own candidate text, so a heading that
+is fenced, blockquoted or indented cannot fake a retraction.
+
+The general shape is worth keeping separate from the incident.
+**When a change widens what a producer emits, the consumer's tie-break rule is
+part of the change even though its file is not in the diff.**
+Nothing about the span filter was wrong here in isolation, and nothing about
+the classifier was wrong before the span could carry two statements.
+The defect lived in the pair, so neither file's own tests could see it: the
+fixture suite asserts what gets posted and never classifies it, and the
+classifier suite had no two-statement input to classify.
+Ask what reads the output, and feed it the new shape.
+
+Two of the classifier cases added for it passed for the wrong reason when
+first written, both because a LATER gate produced the same answer under the
+mutation they existed to catch -- the prose scan strips fences too, so a
+wrongly superseded payload fell through to a scan that agreed with it.
+Making the prose and the payload DISAGREE is what turned them into real
+assertions.
+That is this file's own vacuous-negative-assertion rule, met in the suite
+written to close a finding about it.
+It recurred twice more in one case.
+A case turning on a non-ASCII character cannot type that character, since this
+repo's sources are ASCII, so it must build one -- and two successive attempts
+built nothing: an escape inside an ordinary double-quoted string is left
+literal by bash, and so, measured on GNU bash 5.1.16 msys, is `$'\u2014'`.
+Both passed, on the BACKSLASH not being a word character.
+Explicit UTF-8 bytes work on every build, and `od -c` is what settles it.
+The general form: when a case turns on one character, print the bytes the
+harness actually produced before believing the case tests anything.
+
+The same rule bit once more, one level up.
+The cross-script assertion added for the lesson above
+(`expected_verdict` in `run-fixture-tests.sh`, which classifies each fixture's
+posted text) caught nothing at first: every correction fixture then in the
+suite CONFIRMS the review it follows, so payload and prose agree and the
+tie-break is never consulted.
+`verdict-then-retracting-correction.json` is the shape that actually broke, and
+with it disabling the supersession rule reddens the fixture suite.
+The payload matrix had the same hole one cell over:
+`verdict-payload-free-draft-then-payload.json` covers a payload-free draft
+followed by a payload-bearing block, which both this file and the changelog
+asserted was decided by length while no fixture stood behind the claim.
+A test that feeds the right consumer the wrong input is still a test of
+nothing.
+Which fixtures that table must cover is a claim about a SET, so the suite
+derives it rather than asserting it in a comment: every fixture declaring a
+`max_verdict_headings` ceiling must carry an expectation, bar one documented
+exemption, and the run reports counts that partition that population.
+The ceiling set is a sound PROXY for "posts more than one verdict statement"
+rather than that population itself -- a fixture posting one authored heading
+beside a label-form statement carries two and needs no ceiling -- so the check
+cannot see that shape.
+Exactly two fixtures are of it; the first is in the table by hand as the
+compensating control, and the second is left out because its tail confirms
+rather than retracts, so it would discriminate nothing.
+Each expectation is read off the fixture's own stated verdict lines rather than
+off what the scripts currently emit, since recording the latter pins whatever
+behaviour exists as the contract -- the first draft of the table guessed one
+entry instead and the suite caught the guess.
+
+The supersession rule is a verdict heading PROPER -- the word, then a separator
+or the end of the line -- rather than any heading beginning with it, and it
+took three attempts to land, each attempt wrong in a different direction.
+A `\b`-terminated prefix matched `### Verdict rationale` and
+`### Verdict summary`, ordinary sections of a single uncorrected review, so
+writing one discarded that review's payload and re-scored it from prose: the
+gha#811 failure the fast path exists to prevent.
+Requiring the word to END the line then let `### Verdict: Needs more work`
+through unsuperseded, and that is not a safe way to be wrong -- for a
+retraction, the pre-gha#857 behaviour is the false `CLEAN` the rule exists to
+stop.
+Allowing leading emphasis made it disagree with `authored_heading`, which
+rejects `### **Verdict:**`, so a block the span rule reads as a gha#710 tail --
+whose meaning is confirmation -- was read here as a fresh complete one and
+reddened an approving review.
+The anchor is `^ {0,3}` for the same agreement: `_INDENTED_RE` blanks a tab or
+four spaces, and two spaces then a tab is column 4 to CommonMark and to the jq
+while satisfying neither.
+Then the separator that admits `### Verdict: Needs more work` admitted
+`### Verdict-bearing span rule` too, because a dash needs whitespace before it
+to be a separator rather than part of a hyphenated word -- and "verdict-bearing"
+is vocabulary this repo writes constantly, so a review OF this repo was the
+likeliest producer.
+Requiring that whitespace then excluded `### Verdict (revised)` and
+`### Verdict, revised`, each of which leaves the stale payload deciding.
+Five rounds, each closing one direction and opening the other, and the exit was
+to stop enumerating what MAY follow the word and state what may not: a heading
+whose word continues, into a following word or through a hyphen joined to it,
+is a section title, and everything else is a verdict heading with or without a
+qualifier.
+What settles a dash is whether a word follows it immediately, not whether a
+space precedes it: keying on the space read `### Verdict -bearing` as a
+separator, so one stray space inverted the answer.
+
+The last of those rounds found the other direction of the same rule: standing
+the fast path down must not manufacture a red check.
+A CONFIRMING tail in heading form -- `### Verdict` over "Unchanged after a
+second read" -- states no polarity the prose scan recognises, so discarding the
+payload outright returned `unrecognized` and reddened a review nobody had
+retracted.
+The payload is held as a floor instead: the prose wins whenever it says
+anything, and the held payload answers only when the scan recognises nothing.
+That floor then had to be given the primary path's own trust criteria rather
+than a weaker set.
+It captures whatever the JSON decoder returned, before any type check, so a
+scalar payload reached `.get` and killed the run with a traceback, and a
+mapping carrying no `schema_version` -- which the primary path refuses outright
+-- was trusted here, turning a payload neither contract accepts into an
+asserted clean verdict.
+A floor under a check is still a check, and it needs the same gate.
+The suite had pinned only the LABEL spelling of that sentence, which is the one
+shape the rule deliberately ignores, so the accepted shape went untested --
+a negative case for the shape a rule skips is not a case for the shape it
+takes.
+The two detectors still differ past the word, deliberately, since the span rule
+only decides which blocks are candidates while this one decides whether a
+statement supersedes.
+
+Two residuals remain, tracked rather than fixed, and they are the same shape:
+a blanking rule hides the superseding block from the check that should see it.
+The scan the fast path falls through to reads `strip_machine_payloads` output
+rather than the raw body, so an unterminated `<!--` inside an inline code span
+blanks everything after it.
+And the text the supersession check itself searches is fence-blanked over the
+whole posted body, where the jq resets fence state per block, so an unclosed
+fence between the payload and a later retraction blanks that retraction's
+heading.
+Both are on gha#862, alongside gha#863 for the label-form gap.
+
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own
 gha#710/gha#805/gha#808 quoted-verdict guard is exactly what the new path
@@ -2886,7 +3142,87 @@ and `post-review` stale-checks against event-pinned
 `reviewed-head` (`github.event.pull_request.head.sha`),
 falling back to gather-context's stash-head on dispatch,
 rather than a later API fetch from the model job.
-CI runs both, plus a real `uses: ./` call to `pack-review-payload` with
+
+**`run-review-job-split-tests.py` also asserts that every in-repo composite
+output the workflow reads is declared, and derives that check from the
+workflow itself instead of from a list kept in the suite (gha#804,
+gha#806).**
+The step map comes from the parsed YAML and the reads from the raw text,
+for the reasons below; neither is a list anybody maintains by hand.
+A composite's step outputs are invisible to its caller unless `action.yml`
+re-declares them, and gha#804's first draft read two `run-review-guard`
+outputs the guard never exposed while every offline suite stayed green.
+The first fix scoped the assertion to that one composite by a hard-coded
+`fail-check*` step-id prefix; gha#806 replaced the prefix with a map built
+from every step whose `uses:` names `Morrison-Lab/gha/.github/actions/<x>@...`
+or `./.github/actions/<x>`, collects every `steps.<id>.outputs.<name>` read
+from the workflow text, and asserts each name against
+`<actions-dir>/<x>/action.yml`'s `outputs:` (the `--actions-dir` flag,
+default `.github/actions`, replaced the old `--guard` path).
+A third-party action has no local `action.yml`, so its reads are out of
+scope, not merely unchecked.
+Five things constrain any change to the check.
+**The reads are collected from raw text, not parsed expressions.**
+An output is read from `if:`, `env:`, `with:`, and job `outputs:` alike,
+and a parsed walk that missed one placement would reproduce the
+silent-inert bug the check exists for.
+Whole-line `#` comments are stripped, so a comment naming an output the
+workflow deliberately does not read is not a read.
+A trailing comment or a `run:` string naming an output the workflow does
+not really read still counts as one, which is the cheap direction: one
+line to fix, in the open.
+**A read whose step id NO step declares is refused, not skipped.**
+GitHub resolves such a read to the empty string, so whatever consumes it is
+silently inert -- the gha#804 defect arriving by a typo rather than by a
+missing `outputs:` block -- and the pre-gha#806 code reached that read's
+`continue` before anything could notice.
+**A step id that maps to two different composites is refused outright**,
+since a raw-text read cannot be attributed to one of them; the same id
+recurring for the SAME composite across jobs (`caller-wf` does) is fine.
+A raw-text read cannot be attributed to the JOB it sits in either, so step
+ids must be unique across the whole workflow: an id used for a composite
+in one job and a `run:` step in another sends the second job's read to the
+first job's composite.
+The resulting failure names the exact pair, and renaming one id clears it.
+**The `uses:` pattern allows nested paths and matches case-insensitively**,
+because GitHub resolves `<owner>/<repo>/<path>/<to>/<action>` and owner
+names in either case, and under-matching either spelling would silently
+skip that step's reads; every path segment must begin with an alphanumeric
+or `_`, which is what stops `.` and `..` climbing out of the actions
+directory.
+**It reports how many step/output pairs it examined, and fails on zero**,
+because a step map or read scan that matched nothing would otherwise pass
+identically to one that checked everything (38 pairs across 12 composites
+on `main` at the time gha#806 landed, all declared).
+Eight self-test cases pin the check: dropping a guard output fails (the
+remote `uses:` form), dropping a `sum-costs` output fails (the local `./`
+form, and a composite other than the guard), a read of a composite with no
+local `action.yml` fails, a whole-line comment naming an undeclared output
+still passes, one id naming two composites is refused, a nested composite
+path is mapped, a read naming an undeclared step id is refused, and a
+template whose reads map to no composite fails instead of passing
+vacuously.
+Eleven mutations were confirmed to turn a named assertion red rather than
+assumed to.
+Ten of them turn a named SELF-TEST case red: an always-passing declared
+check; dropping the remote half of the `uses:` alternation; dropping the
+local half; narrowing the read scan back to a `fail-check*` prefix;
+skipping a missing `action.yml` instead of failing; leaving whole-line
+comments unstripped; skipping an ambiguous id instead of refusing it; an
+always-passing zero-pairs guard; forbidding a nested path segment; and
+skipping an undeclared step id instead of refusing it.
+The eleventh drops `quota_reason` from the real guard's `outputs:`, which
+only the LIVE run can catch, since no fixture carries the real composite.
+That is the one to keep if the sweep is ever trimmed, being the only
+mutation aimed at the artifact the check protects rather than at a fixture.
+The `unmapped-reads` fixture keeps an `id:` on both of its steps and points
+their `uses:` at third-party actions.
+Deleting the ids instead would trip the dangling-read check first, and the
+case would go red without ever reaching the zero-pairs guard it exists to
+pin -- this file's own mis-aimed-mutation lesson, met while writing the
+fixture rather than while mutating it.
+CI runs the workflow-split assertions and the self-test suite, plus a real
+`uses: ./` call to `pack-review-payload` with
 `upload: false`, as the `review-job-split` job in `_selftest.yml` -- kept
 separate from `review-fail-check` so a failure is attributable at a glance.
 `claude-code-review.yml`'s own `@v2` consumption of the new composite is
@@ -3112,11 +3448,41 @@ gha#437 recorded the mechanism for the review family; gha#654 then added
 same group at the top level, so every publish run on a consumer that copied
 the stub failed silently and the site stopped updating
 (`ucdavis/hac.sap`, run 33604968678).
-The audit walks every stub under `examples/`, resolves each `uses:` to the
-workflow file it names, and fails on any caller-level group that the called
-workflow also declares, at either of ITS two placements -- the callee's jobs
-and the callee's own top level; a stub naming a workflow file this repo does
-not carry is an error rather than a skip.
+The audit walks every workflow file under `examples/` AND under
+`.github/workflows/` (both extensions, through `workflow_discovery`),
+treats any job-level `uses:` naming one of our reusable workflows as a
+call, resolves it to the workflow file it names, and fails on any
+caller-level group that the called workflow also declares, at either of ITS
+two placements -- the callee's jobs and the callee's own top level; a caller
+naming a workflow file this repo does not carry is an error rather than a
+skip.
+**Within those two roots the population is derived from the `uses:` edge
+rather than from a hand-maintained list of caller filenames (gha#821).**
+Until gha#821 it was the `examples/` stubs alone, so this repo's own
+dogfood callers -- `website-publish.yml` and the preview family, which call
+the same gh-pages workflows the stubs do -- were subject to the identical
+deadlock and never examined.
+The two roots are exhaustive for this repo rather than an arbitrary pair:
+GitHub runs nothing outside `.github/workflows/`, and `examples/` is the
+stub set consumers copy.
+Reading the edge within them needs no new argument and picks a new caller up
+the moment it lands; the cost is that the audit
+reads every workflow in the repo rather than 49 stubs, and a malformed
+workflow anywhere under `.github/workflows/` now fails this audit too, as it
+already fails the token and pin audits.
+An empty or missing `--workflows` root is refused rather than reported as
+zero dogfood callers, so a mistyped root cannot read as a population that is
+merely small.
+A reusable workflow is a candidate caller like any other file and
+contributes nothing when it calls none of ours.
+The summary names both roots and the calls found
+(`examined 114 workflow file(s) (49 under examples, 65 under
+.github/workflows); found 61 call(s) ...` on `main` at the time of
+gha#854), so a population that silently shrank back to the stubs alone
+reads differently from one that examined the dogfood callers.
+Under a default-branch restore of `.github/workflows/` the audit skips with
+a notice, as every sibling audit here does (gha#598, gha#765): the files on
+disk are then the default branch's callers rather than the PR's.
 **Caller-level means two placements, not one.**
 A top-level block covers the whole run and so covers the calling job, and
 a block on the calling job itself is the same collision written one level
@@ -3181,6 +3547,57 @@ One case exists purely to pin the `*.yaml` half of the population, which
 neither another case nor the live run can reach -- `examples/` holds only
 `*.yml`, so reverting the glob leaves everything else green, verbatim the
 class this file documents for `workflow_discovery` above.
+The gha#821 cases write the CALLER into the workflows directory rather than
+`examples/`, which is the dogfood shape: a top-level and a job-level
+collision there are each reported, a `.yaml` caller there is in the
+population, a dotfile there is not parsed, and the examined and call counts
+include it.
+The one to keep from that group is the top-level collision, since every
+older case's collision lives in a stub and narrowing the population back to
+`examples/` alone leaves all of them green.
+Three more checks run the audit over the LIVE tree, asserting that it
+passes, that its summary counts both roots, and that its call count meets a
+textual floor, with each figure derived from the tree at test time rather
+than written into the suite.
+**That floor is BOTH roots' `uses: Morrison-Lab/gha/...` lines, not the
+dogfood ones alone**, which is the correction gha#854's review made: the
+summary reports one total across both roots, and the 49 stub calls clear a
+floor of 12 by themselves -- so the dogfood-only floor stayed cleared after
+the dogfood callers were dropped from the population entirely, and could
+never have gone red.
+A floor of zero dogfood calls is a failure in its own right, since it would
+make the assertion vacuous from the other direction.
+The live block, and only it, is skipped under a default-branch restore,
+where the sibling suites skip outright: every other case builds its own
+throwaway tree, so only these three read what is on disk.
+The listing those figures come from is deliberately a second implementation
+rather than a call to `discover_workflows`, since an expected value computed
+by the code under test agrees with it by construction.
+Nine mutations were confirmed to turn a named case red, rather than assumed
+to.
+The population narrowed back to `examples/` (the top-level dogfood collision
+case); the collision check skipped for a caller outside `examples/` (the
+same case); a `*.yml`-only listing on the workflows side (the `.yaml` caller
+case); dotfiles listed as callers (the dotfile case); the audit's restore
+skip dropped (the restore case, whose fixture collides, so the skip is what
+makes it exit 0); the `found N call(s)` clause dropped from the summary (the
+call-count case, plus the live floor); the job-level caller check dropped
+(the job-level dogfood collision case); the empty-`--workflows` guard
+dropped (the empty-workflows-dir case); and the live block's own restore
+skip dropped (the live cases, run with `GHA_WORKFLOWS_RESTORED=1`).
+Each mutation was applied to a COMMITTED file, confirmed applied with
+`git diff --quiet` before the suite ran, and restored with
+`git checkout --` afterwards, per this file's own mis-aimed-mutation rule.
+Two mis-aimed mutations turned up along the way, and both read as an absent
+test rather than as a bad mutation.
+The call-count one reworded the clause without removing the number.
+The live-block one set `GHA_WORKFLOWS_RESTORED=1` while `run_live` was
+clearing that variable for its own subprocess, so the guard could not be
+reached by that route at all -- the mutation was fine and the FIXTURE was
+wrong, which is why `run_live` now inherits the environment.
+Both restore routes are exercised: the environment variable, and a real
+`.github/workflows/.restored-from-default-branch` marker, which is what CI
+actually drops.
 The non-mapping-job guard is declared TWICE (in `job_groups` and in
 `callee_calls`), so a single-site mutation survives the suite and only
 mutating both turns its case red; read that survivor as the other site still

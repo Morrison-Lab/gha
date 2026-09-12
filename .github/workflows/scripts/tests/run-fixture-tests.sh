@@ -9,6 +9,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../../../.." && pwd)"
 check_script="$repo_root/.github/workflows/scripts/check-review-execution.sh"
+classify_script="$repo_root/.github/workflows/scripts/classify-review-verdict.sh"
 fixtures_dir="$script_dir/fixtures"
 
 # fixture file -> expected outcome:
@@ -126,6 +127,82 @@ declare -A expected=(
   # needle); a tab-admitting awk counts two headings in the correct span.
   # One fixture, both halves.
   [verdict-then-tab-inside-fence.json]=pass
+  # gha#850: a complete review followed by SHORT follow-ups that each carry an
+  # authored `### Verdict` heading and cite the review "above". The
+  # last-heading rule read them as redrafts and posted only the final one,
+  # which is gha#710's dropped-analysis failure. Both the review and the
+  # corrections must be posted.
+  [verdict-then-appended-correction.json]=pass
+  # gha#857 review, finding 3: the span rule falls back to the gha#710 start
+  # ($vidx first) whenever no later block replaced the first authored heading.
+  # That fallback and the kept-draft start coincide in every other fixture,
+  # because their first verdict-bearing block IS their first authored heading,
+  # so the guard separating the two was unexercised -- removing it turned
+  # nothing red. Here a label-form verdict block precedes the review, so the
+  # two starts differ and only the fallback keeps that block.
+  [verdict-label-block-before-kept-draft.json]=pass
+  # gha#857 review, finding 2: the cell the payload fixtures left uncovered.
+  # Both blocks carry a payload, and the later one is 0.26 of the first, so
+  # the payload cannot discriminate the pair and LENGTH decides -- reading it
+  # as a correction and posting both. That is the documented keeping bias
+  # rather than an accident, and the reason the payload is not used here is
+  # in check-review-execution.sh: the review prompt tells every review to
+  # append one, so a correction written to the same template has one too.
+  # The verdict is still right when both are posted, because the classifier
+  # reads the LAST payload marker and nothing heading-shaped follows it.
+  [verdict-redraft-with-payload-under-half.json]=pass
+  # gha#857 review round 2, finding 10: the shape the pair defect actually
+  # needed. Every other correction fixture CONFIRMS the review it follows, so
+  # the payload and the prose agree and no cross-script assertion can see the
+  # tie-break at all. Here the correction RETRACTS, which is the case where a
+  # stale payload deciding turns require-clean-verdict green over an explicit
+  # withdrawal.
+  [verdict-then-retracting-correction.json]=pass
+  # gha#857 review round 4, finding 9: the third cell of the payload matrix.
+  # The fixtures covered (draft with, block without), (both with) and (neither),
+  # and both this script's comment and the changelog assert that LENGTH decides
+  # a payload-free draft followed by a payload-BEARING block -- an assertion
+  # with no fixture behind it, so simplifying the rule to "a payload-bearing
+  # block always supersedes" would have turned nothing red.
+  [verdict-payload-free-draft-then-payload.json]=pass
+  # gha#857 review round 7: the threshold is "at least half", and its `>=`
+  # is observable only at EXACTLY half. No other fixture lands there -- the
+  # nearest are 0.48 and 0.53 -- so flipping the operator to `>` left all 59
+  # passing. This block is 330 characters against a 660-character draft, to
+  # the character, so it supersedes and only the redraft is posted.
+  [verdict-redraft-exactly-half.json]=pass
+  # gha#850: the other side of the threshold. A genuine redraft that trimmed
+  # its predecessor, still at least half its length, supersedes it -- only the
+  # second draft is posted.
+  [verdict-redraft-trimmed.json]=pass
+  # gha#850 round 2: the payload asymmetry. A review carrying the review-data
+  # payload followed by a correction at 0.66 of its length with no payload is
+  # still a correction, so both are posted; length alone would have dropped
+  # the review. Its marker is spelled `<!-- REVIEW-DATA:` and the quoting
+  # fixture's `<!--review-data:`, so the detector's case-folding and
+  # whitespace tolerance are each pinned by one fixture.
+  [verdict-then-long-correction-no-payload.json]=pass
+  # gha#850 round 2: the length boundary, pinned from both sides with no
+  # payload on either block. 0.48 is kept as a correction; 0.53 supersedes.
+  [verdict-then-correction-near-half.json]=pass
+  [verdict-redraft-just-over-half.json]=pass
+  # gha#850 round 3: the payload test reads stripped text. A correction that
+  # QUOTES the marker inside a fence carries no payload, so it is kept; a
+  # raw-text test would read it as payload-bearing and drop the review.
+  [verdict-then-correction-quoting-payload-marker.json]=pass
+  # gha#850 round 4: three payload-less heading blocks of 0.68 and 0.59 of
+  # the one before. The second is a redraft (above half the review); the
+  # third is a correction, because it is under half the LONGEST held draft.
+  # Posted: second and third.
+  [verdict-shrinking-chain-no-payload.json]=pass
+  # gha#850 round 4: the same chain behind a stray one-line heading. The
+  # floor is the longest draft held so far, so the stray block does not
+  # make it vacuous; anchoring the floor on the FIRST heading block did.
+  [verdict-stray-heading-then-shrinking-chain.json]=pass
+  # gha#850 round 4: the marker quoted in an INLINE code span, which the
+  # stripper does not remove. The payload test is anchored at line start,
+  # so the span is not a payload and the review is kept.
+  [verdict-then-correction-inline-span-marker.json]=pass
   [verdict-not-last-block.json]=pass
   [verdict-via-inline-comment-tool.json]=pass
   [verdict-via-gh-comment-heredoc.json]=pass
@@ -161,6 +238,13 @@ declare -A expected=(
 # For `pass` fixtures where the posted review_text_file's content matters
 # (gha#173): the block it must contain, and a block it must NOT contain.
 declare -A must_contain=(
+  # gha#857 review, finding 4: this was the LAST pass fixture with no content
+  # assertion at all (verdict-label-format.json, the other one on origin/main,
+  # gained its needle earlier in this branch), which made it the only one the
+  # -s check above was uniquely load-bearing for. Pinning its text gives the
+  # ordinary content path something to catch here too, so -s is a backstop
+  # rather than the sole guard for one fixture.
+  [genuine-finished-review.json]='the diff is small and self-contained'
   [verdict-not-last-block.json]='Ready for merge'
   # The needle is the MIDDLE, non-verdict block: it discriminates both the
   # pre-#710 tail-only extraction (which drops it along with block A) and a
@@ -176,6 +260,28 @@ declare -A must_contain=(
   [verdict-then-indented-heading.json]='theta-pass analysis'
   [verdict-redraft-after-tab-fence.json]='iota-pass second draft'
   [verdict-then-tab-inside-fence.json]='kappa-pass analysis'
+  # gha#850: the review's analysis. The last-heading rule drops it; so does a
+  # comparison against the PREVIOUS heading block rather than the held draft,
+  # since the second correction is comparable in size to the first.
+  [verdict-then-appended-correction.json]='lambda-pass analysis'
+  # The label block, which is exactly what the guard preserves.
+  [verdict-label-block-before-kept-draft.json]='upsilon-pass label block'
+  [verdict-redraft-with-payload-under-half.json]='phi-pass first draft'
+  [verdict-then-retracting-correction.json]='chi-pass analysis'
+  [verdict-payload-free-draft-then-payload.json]='psi-pass draft'
+  [verdict-redraft-exactly-half.json]='omega-pass redraft'
+  [verdict-redraft-trimmed.json]='mu-pass trimmed redraft'
+  [verdict-then-long-correction-no-payload.json]='nu-pass analysis'
+  # gha#857 review round 5: the label-form verdict has no authored heading,
+  # so $hidx is empty; an unguarded floor init indexed $blocks with null
+  # and posted nothing while the suite stayed green. Pinned by content.
+  [verdict-label-format.json]='**Verdict:** Ready for merge.'
+  [verdict-then-correction-near-half.json]='xi-pass analysis'
+  [verdict-redraft-just-over-half.json]='omicron-pass second draft'
+  [verdict-then-correction-quoting-payload-marker.json]='pi-pass analysis'
+  [verdict-shrinking-chain-no-payload.json]='rho-pass second draft'
+  [verdict-stray-heading-then-shrinking-chain.json]='sigma-pass second draft'
+  [verdict-then-correction-inline-span-marker.json]='tau-pass analysis'
   # gha#391: confirms review_text_file carries the actual posted verdict, not
   # just an empty/fallback string from the is_error early-fail path.
   [is-error-success-with-verdict.json]='Ready for merge'
@@ -210,13 +316,111 @@ declare -A must_contain=(
 # claims. Checked exactly like must_contain.
 declare -A must_also_contain=(
   [verdict-redrafted-thrice.json]='delta-pass tail is retained'
+  # gha#850: the last correction, so the span still runs to the end.
+  [verdict-then-appended-correction.json]='lambda-pass correction'
+  [verdict-label-block-before-kept-draft.json]='upsilon-pass correction'
+  [verdict-redraft-with-payload-under-half.json]='phi-pass redraft'
+  [verdict-then-retracting-correction.json]='chi-pass retraction'
+  [verdict-payload-free-draft-then-payload.json]='psi-pass follow-up'
+  [verdict-then-long-correction-no-payload.json]='nu-pass correction'
+  [verdict-then-correction-near-half.json]='xi-pass correction'
+  [verdict-then-correction-quoting-payload-marker.json]='pi-pass correction'
+  [verdict-shrinking-chain-no-payload.json]='rho-pass correction'
+  [verdict-stray-heading-then-shrinking-chain.json]='sigma-pass correction'
+  [verdict-then-correction-inline-span-marker.json]='tau-pass correction'
+)
+
+# gha#850: the fixtures whose posted text carries more than one authored
+# verdict heading on purpose -- the review's, then one per appended
+# correction. Keyed by a per-fixture ceiling, so one concatenated extra
+# draft still fails the gha#805 invariant for each of them.
+declare -A max_verdict_headings=(
+  [verdict-then-appended-correction.json]=3
+  [verdict-then-long-correction-no-payload.json]=2
+  [verdict-then-correction-near-half.json]=2
+  [verdict-then-correction-quoting-payload-marker.json]=2
+  [verdict-shrinking-chain-no-payload.json]=2
+  [verdict-stray-heading-then-shrinking-chain.json]=2
+  [verdict-then-correction-inline-span-marker.json]=2
+  [verdict-label-block-before-kept-draft.json]=2
+  [verdict-redraft-with-payload-under-half.json]=2
+  [verdict-then-retracting-correction.json]=2
+  [verdict-payload-free-draft-then-payload.json]=2
+)
+
+# gha#857 review round 2, finding 10: what this suite asserts is what gets
+# POSTED, and it never classifies it -- which is exactly why the gha#850 span
+# change and the gha#857 classifier tie-break could be individually correct and
+# broken as a pair. Neither file's own suite had the other's shape. So EVERY
+# fixture whose posted text carries more than one authored verdict
+# heading asserts the answer the consumer gives on it, in the
+# `clean=<x> verdict=<y>` form classify-review-verdict.sh writes, plus two
+# single-statement controls (genuine-finished-review.json and
+# verdict-redraft-trimmed.json, whose redraft supersedes so only one statement
+# is posted) so a table covering only the interesting shapes cannot drift into
+# asserting nothing about the ordinary one.
+# Each expectation is read off the fixture's own stated verdict lines, never
+# off what the scripts currently emit -- recording the latter pins whatever
+# behaviour exists as the contract (gha#857 review round 2, finding 10, and
+# round 3, finding 4).
+#
+# verdict-then-correction-inline-span-marker.json is deliberately absent. Its
+# correction writes the payload marker in an inline code span, and
+# strip_machine_payloads reads the unterminated `<!--` inside that span as
+# opening a real comment and blanks the rest of the body, so the classifier
+# returns needs-more-work over two blocks that both say Ready for merge. That
+# is a pre-existing defect rather than one of this change (main reaches a wrong
+# answer on the same input by another route), tracked as gha#862; recording its
+# current answer here would pin the bug as the contract.
+declare -A expected_verdict=(
+  # Every block of this one states Ready for merge -- its corrections confirm
+  # rather than retract -- so clean is the right answer here. Read each
+  # expectation off the fixture's own verdict lines; the first draft of this
+  # table guessed needs-more-work for it and the suite caught the guess.
+  [verdict-then-appended-correction.json]='clean=true verdict=ready-for-merge'
+  [verdict-label-block-before-kept-draft.json]='clean=true verdict=ready-for-merge'
+  [verdict-redraft-with-payload-under-half.json]='clean=false verdict=needs-more-work'
+  [verdict-then-long-correction-no-payload.json]='clean=true verdict=ready-for-merge'
+  [verdict-redraft-trimmed.json]='clean=true verdict=ready-for-merge'
+  [genuine-finished-review.json]='clean=true verdict=ready-for-merge'
+  # The one entry that fails if the classifier stops standing its payload
+  # fast path down: the review says CLEAN in its payload, the correction says
+  # Needs more work in prose, and only the supersession rule prefers the
+  # latter.
+  [verdict-then-retracting-correction.json]='clean=false verdict=needs-more-work'
+  # Its own payload and prose agree on NOT_CLEAN, and nothing heading-shaped
+  # follows that payload, so the fast path decides and agrees with both.
+  [verdict-payload-free-draft-then-payload.json]='clean=false verdict=needs-more-work'
+  # By hand, not by the derived check: one authored heading beside a label-form
+  # statement is two statements and declares no ceiling, so this is the shape
+  # the derived check structurally cannot reach.
+  [verdict-split-across-blocks.json]='clean=true verdict=ready-for-merge'
+  # The remaining multi-statement fixtures. Each states Ready for merge in
+  # every block, so clean is what their own content warrants.
+  [verdict-then-correction-near-half.json]='clean=true verdict=ready-for-merge'
+  [verdict-then-correction-quoting-payload-marker.json]='clean=true verdict=ready-for-merge'
+  [verdict-shrinking-chain-no-payload.json]='clean=true verdict=ready-for-merge'
+  [verdict-stray-heading-then-shrinking-chain.json]='clean=true verdict=ready-for-merge'
 )
 
 declare -A must_not_contain=(
+  # gha#857 review round 7: at EXACTLY half the later block supersedes, so the
+  # first draft must not be posted. With `>` instead of `>=` it is kept and
+  # this needle appears.
+  [verdict-redraft-exactly-half.json]='omega-pass first draft'
   # gha#805: the superseded first draft must not be posted. Its needle is
   # what the pre-#805 span rule (first verdict block through last) keeps.
   [verdict-redrafted-thrice.json]='alpha-pass fixture table'
   [verdict-redraft-after-tab-fence.json]='iota-pass first draft'
+  # gha#850: a trimmed redraft above the threshold still supersedes. Raising
+  # the threshold to "at least as long" keeps the first draft and fails here.
+  [verdict-redraft-trimmed.json]='mu-pass first draft'
+  # gha#850 round 2: 0.53 with no payload on either block still supersedes.
+  [verdict-redraft-just-over-half.json]='omicron-pass first draft'
+  # gha#850 round 4: the first draft is superseded by the second; without
+  # the absolute floor the third would supersede the second as well.
+  [verdict-shrinking-chain-no-payload.json]='rho-pass first draft'
+  [verdict-stray-heading-then-shrinking-chain.json]='sigma-pass first draft'
   [verdict-not-last-block.json]="I've posted my findings"
   [verdict-via-inline-comment-tool.json]="Posted the inline finding and a summary comment ending in"
   [verdict-via-gh-comment-heredoc.json]='gh pr comment'
@@ -314,6 +518,20 @@ declare -A expected_cost=(
   [verdict-then-indented-heading.json]=1.45
   [verdict-redraft-after-tab-fence.json]=1.46
   [verdict-then-tab-inside-fence.json]=1.47
+  [verdict-then-appended-correction.json]=1.48
+  [verdict-redraft-trimmed.json]=1.49
+  [verdict-then-long-correction-no-payload.json]=1.5
+  [verdict-then-correction-near-half.json]=1.51
+  [verdict-redraft-just-over-half.json]=1.52
+  [verdict-then-correction-quoting-payload-marker.json]=1.53
+  [verdict-shrinking-chain-no-payload.json]=1.54
+  [verdict-stray-heading-then-shrinking-chain.json]=1.55
+  [verdict-then-correction-inline-span-marker.json]=1.56
+  [verdict-label-block-before-kept-draft.json]=1.57
+  [verdict-redraft-with-payload-under-half.json]=1.58
+  [verdict-then-retracting-correction.json]=1.59
+  [verdict-payload-free-draft-then-payload.json]=1.6
+  [verdict-redraft-exactly-half.json]=1.61
   [spawn-denials-plus-starved-calls.json]=3.9
   [stub-background-agents-executed.json]=4.19
   [stub-background-agents-omitted-param.json]=4.18
@@ -469,6 +687,18 @@ assert_pass() {
 
   local posted_file
   posted_file="$(sed -n 's/^review_text_file=//p' "$output_file")"
+  # gha#857 review round 5: a jq error in the span filter is swallowed and
+  # leaves the posted file EMPTY under exit 0, which the key check alone
+  # cannot see (gha#861). Every pass fixture posts something.
+  #
+  # It reports itself rather than falling through to the caller's generic
+  # message (gha#857 review, finding 4): the exit code WAS 0 and
+  # review_text_file WAS written, so "expected pass but got exit=0" describes
+  # a recurrence in terms that read as contradicting it.
+  if [[ ! -s "$posted_file" ]]; then
+    echo "::error::$fixture posted an EMPTY review under exit 0 (gha#861): $posted_file" >&2
+    return 1
+  fi
   if [[ -n "${must_contain[$fixture]:-}" ]] && ! grep -qF "${must_contain[$fixture]}" "$posted_file"; then
     return 1
   fi
@@ -477,6 +707,18 @@ assert_pass() {
   fi
   if [[ -n "${must_not_contain[$fixture]:-}" ]] && grep -qF "${must_not_contain[$fixture]}" "$posted_file"; then
     return 1
+  fi
+  if [[ -n "${expected_verdict[$fixture]:-}" ]]; then
+    local verdict_out want_verdict got_verdict
+    verdict_out="$(mktemp)"
+    GITHUB_OUTPUT="$verdict_out" bash "$classify_script" "$posted_file" > /dev/null 2>&1 || true
+    want_verdict="${expected_verdict[$fixture]}"
+    got_verdict="clean=$(sed -n 's/^clean=//p' "$verdict_out" | tail -1) verdict=$(sed -n 's/^verdict=//p' "$verdict_out" | tail -1)"
+    rm -f "$verdict_out"
+    if [[ "$got_verdict" != "$want_verdict" ]]; then
+      echo "::error::$fixture posted text classified '$got_verdict', expected '$want_verdict'" >&2
+      return 1
+    fi
   fi
   # gha#805, as an invariant over every posted review rather than one
   # fixture: a comment carries at most ONE authored verdict heading. A second
@@ -488,7 +730,10 @@ assert_pass() {
   # that quoted one example heading would have failed). No interval
   # expression in the awk, per this repo's mawk rule. This is a shape check
   # on our own extraction, not a verdict parse.
-  local headings
+  # gha#850: an appended correction may legitimately carry its own heading,
+  # so a fixture built to pin that shape declares how many headings its
+  # posted text carries; every other fixture keeps the limit of one.
+  local headings max_headings="${max_verdict_headings[$fixture]:-1}"
   headings="$(awk '
     # A fence closes only on the same character, at least as long as the
     # opener (CommonMark), mirroring the jq. No interval expressions.
@@ -514,8 +759,8 @@ assert_pass() {
       if (length(hashes) <= 6) n++
     }
     END { print n + 0 }' "$posted_file")"
-  if [[ "$headings" -gt 1 ]]; then
-    echo "::error::$fixture: posted review carries $headings verdict headings (gha#805)"
+  if [[ "$headings" -gt "$max_headings" ]]; then
+    echo "::error::$fixture: posted review carries $headings verdict headings, limit $max_headings (gha#805)"
     return 1
   fi
   return 0
@@ -837,8 +1082,62 @@ else
 fi
 rm -f "$fixture" "$output_file" "$log_file"
 
+# gha#857 review round 3, finding 4: the expected_verdict table's coverage is a
+# claim about a SET, so it is derived rather than asserted in a comment. Every
+# fixture declaring a max_verdict_headings ceiling posts more than one verdict
+# statement, so each must carry an expectation unless it is the documented
+# gha#862 exemption. Without this a later fixture joins the interesting shapes
+# and is classified by nobody, which no other assertion here can see.
+#
+# The ceiling set is a sound PROXY for the multi-statement population rather
+# than that population itself: every fixture declaring a ceiling posts more than
+# one statement, but a fixture posting one authored heading beside a label-form
+# verdict statement also carries two and needs no ceiling, so the check cannot
+# see it. Measured, exactly two fixtures are of that shape --
+# verdict-split-across-blocks.json and verdict-redrafted-thrice.json -- and the
+# first is in the table by hand as the compensating control. The second is
+# deliberately not added: its tail CONFIRMS the draft rather than retracting it,
+# so payload and prose agree and it would discriminate nothing -- the same
+# reason the agreeing-verdict fixtures elsewhere in this table are controls
+# rather than the interesting cases. An earlier revision
+# named verdict-label-block-before-kept-draft.json instead, which posts two
+# authored headings and is therefore INSIDE the derived population, so the
+# control it claimed did not exist (round 5, finding 3).
+declare -A verdict_coverage_exempt=(
+  # Its correction writes the payload marker in an inline code span, and
+  # strip_machine_payloads blanks the rest of the body, so the classifier
+  # contradicts both of its stated verdicts. Recording that answer would pin
+  # the bug as the contract (gha#862).
+  [verdict-then-correction-inline-span-marker.json]=1
+)
+coverage_gaps=0
+for fixture in "${!max_verdict_headings[@]}"; do
+  if [[ -z "${expected_verdict[$fixture]:-}" && -z "${verdict_coverage_exempt[$fixture]:-}" ]]; then
+    echo "::error::$fixture posts more than one verdict statement but has no expected_verdict entry" >&2
+    coverage_gaps=$((coverage_gaps + 1))
+  fi
+done
+# Counted and worded separately from fixture failures, rather than folded into
+# them: with a gap present the summary read "1 of 59 fixture(s) did not behave as
+# expected" when no fixture had misbehaved at all -- the same self-contradicting
+# message this suite deliberately fixed for the empty-post case (round 5,
+# finding 11).
+if [[ "$coverage_gaps" -gt 0 ]]; then
+  echo "::error::$coverage_gaps ceiling-declaring fixture(s) carry no expected_verdict entry"
+fi
+# The counts PARTITION the population named, so classified + exempt equals it.
+# Reporting the whole table's size here made the two sum past the population,
+# because the table also carries single-statement controls (round 4, finding 4).
+classified_in_population=0
+for fixture in "${!max_verdict_headings[@]}"; do
+  [[ -n "${expected_verdict[$fixture]:-}" ]] && classified_in_population=$((classified_in_population + 1))
+done
+echo "Checked verdict coverage over ${#max_verdict_headings[@]} ceiling-declaring fixture(s): $classified_in_population classified, ${#verdict_coverage_exempt[@]} exempt; plus $(( ${#expected_verdict[@]} - classified_in_population )) further fixture(s) classified outside that population."
+
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures of ${#expected[@]} fixture(s) did not behave as expected"
+fi
+if [[ "$failures" -gt 0 || "$coverage_gaps" -gt 0 ]]; then
   exit 1
 fi
 echo "All ${#expected[@]} fixtures behaved as expected."

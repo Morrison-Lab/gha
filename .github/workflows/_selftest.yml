@@ -3366,9 +3366,10 @@ jobs:
   # gha#654 added `group: gh-pages` to quarto-publish.yml's deploy job while
   # examples/quarto-publish.yml still told consumers to declare the same
   # group at the top level, and every publish on a consumer that copied it
-  # failed silently. The audit compares each stub against the workflow its
-  # uses: actually names, so the next job-level group fails here rather than
-  # on a consumer.
+  # failed silently. The audit compares each caller -- an examples/ stub or
+  # one of this repo's own dogfood callers (gha#821) -- against the workflow
+  # its uses: actually names, so the next job-level group fails here rather
+  # than on a consumer.
   example-concurrency:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -3382,7 +3383,7 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-audit-example-concurrency-tests.py
 
-      - name: Assert no example stub collides with a concurrency group of the workflow it calls
+      - name: Assert no caller collides with a concurrency group of the reusable workflow it calls
         shell: bash
         run: python3 .github/workflows/scripts/audit_example_concurrency.py
 
