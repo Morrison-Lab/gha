@@ -3322,6 +3322,10 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/audit_workflow_action_pins.py
 
+      - name: Run callee permissions audit unit tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-audit-callee-permissions-tests.py
+
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,
       # gha#504, gha#582, and gha#590).
