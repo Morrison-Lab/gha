@@ -53,6 +53,11 @@ REQUIRED_INPUTS = (
     "setup-pandoc",
     "install-quarto",
     "setup-julia",
+    "julia-version",
+    "julia-project",
+    "apt-packages",
+    "brew-packages",
+    "brew-casks",
     "linux-container",
     "checkout-submodules",
     "timeout-minutes",
@@ -242,6 +247,41 @@ def check_workflow(path: pathlib.Path) -> list[str]:
                 "inputs.cran-incoming-remote; r-lib/check-r-package sets "
                 "it false when unset, so REMOTE-only cannot enable "
                 "incoming checks"
+            )
+        linkingto = str((job.get("env") or {}).get("PKG_INCLUDE_LINKINGTO") or "")
+        if linkingto != "true":
+            errors.append(
+                f"{path}: {job_name} must set PKG_INCLUDE_LINKINGTO: 'true' "
+                f"(got {linkingto!r})"
+            )
+
+        julia_cache = find_step(job, "julia-actions/cache")
+        if julia_cache is None:
+            errors.append(f"{path}: {job_name} has no julia-actions/cache step")
+        else:
+            jc_if = str(julia_cache.get("if") or "")
+            if "inputs.setup-julia" not in jc_if or "inputs.julia-project" not in jc_if:
+                errors.append(
+                    f"{path}: {job_name} julia-actions/cache step must check "
+                    f"inputs.setup-julia and inputs.julia-project (got {jc_if!r})"
+                )
+
+        instantiate = find_step(job, "julia --startup-file=no")
+        # find_step checks 'uses', but instantiate is a run: step. Let's check steps for run commands.
+        found_instantiate = False
+        for step in job.get("steps") or []:
+            if "using Pkg; Pkg.instantiate()" in str(step.get("run") or ""):
+                found_instantiate = True
+                inst_if = str(step.get("if") or "")
+                if "inputs.setup-julia" not in inst_if or "inputs.julia-project" not in inst_if:
+                    errors.append(
+                        f"{path}: {job_name} Julia instantiation step must check "
+                        f"inputs.setup-julia and inputs.julia-project (got {inst_if!r})"
+                    )
+                break
+        if not found_instantiate:
+            errors.append(
+                f"{path}: {job_name} has no Julia project instantiation step"
             )
 
     quarto = find_step(full, "quarto-actions/setup")
@@ -591,6 +631,75 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             "\n".join(errors),
             "inputs.force-suggests",
         )
+        wf.write_text(mutated)
+
+        # 11. Dropping PKG_INCLUDE_LINKINGTO from the full job must fail.
+        linkingto_line = '      PKG_INCLUDE_LINKINGTO: "true"\n'
+        if linkingto_line not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "PKG_INCLUDE_LINKINGTO env line to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(linkingto_line, "", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without PKG_INCLUDE_LINKINGTO fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "PKG_INCLUDE_LINKINGTO",
+        )
+        wf.write_text(mutated)
+
+        # 12. Dropping julia-actions/cache step must fail.
+        cache_step = (
+            "      - name: Cache Julia packages\n"
+            "        if: inputs.setup-julia && inputs.julia-project != ''\n"
+            "        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0\n"
+        )
+        if cache_step not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "julia-actions/cache step to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(cache_step, "", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without julia-actions/cache fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "julia-actions/cache",
+        )
+        wf.write_text(mutated)
+
+        # 13. Dropping Julia instantiation step must fail.
+        inst_marker = "      - name: Instantiate Julia project\n"
+        if inst_marker not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "Instantiate Julia project step to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        # Remove the first occurrence of the step (full matrix job)
+        inst_step_end = 'Pkg.instantiate(); Pkg.precompile()"\n'
+        idx_start = mutated.find(inst_marker)
+        idx_end = mutated.find(inst_step_end, idx_start) + len(inst_step_end)
+        wf.write_text(mutated[:idx_start] + mutated[idx_end:])
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without Julia instantiation fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "Julia project instantiation step",
+        )
+        wf.write_text(mutated)
 
     if failures:
         print(
