@@ -2072,14 +2072,17 @@ Run it
 with
 `python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test`;
 CI runs it as the `r-cmd-check-tests` job.
-Nine mutations are confirmed
+Sixteen mutations are confirmed
 to turn it red: flipping `cache: false`, dropping the `pull_request` gate,
 restoring upstream's `github.head_ref`-only concurrency group,
 forwarding `inputs.error-on` on the hard job, dropping `error-on` from
 the full matrix Check step, dropping `_R_CHECK_CRAN_INCOMING_`,
 dropping `_R_CHECK_FORCE_SUGGESTS_` from the full job, restoring rpt's
-skip-Quarto-on-every-ubuntu condition, and a verse-only skip that is
-not limited to `ubuntu-latest`.
+skip-Quarto-on-every-ubuntu condition, a verse-only skip that is
+not limited to `ubuntu-latest`, dropping `PKG_INCLUDE_LINKINGTO`,
+dropping `julia-actions/cache`, dropping Julia project instantiation,
+dropping `apt-get install`, dropping macOS brew install, and breaking the
+exact `' gettext '` token match.
 
 `.github/workflows/scripts/tests/run-version-check-workflow-tests.py`
 pins `version-check.yml`'s live-label exemption the same way, and for the same

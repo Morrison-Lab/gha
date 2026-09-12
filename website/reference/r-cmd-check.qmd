@@ -49,7 +49,7 @@ job-level, so splitting the steps into a composite would add a nested
 | `install-quarto` | boolean | `false` | Install Quarto via `quarto-dev/quarto-actions/setup` before the check. On the full matrix, skipped on `ubuntu-latest` only when `linux-container` contains `verse`. Separate from r-lib `setup-r-dependencies`' own `install-quarto` (default `auto` when the tree has `.qmd` files). |
 | `setup-julia` | boolean | `false` | Install Julia before the check (for JuliaCall packages). |
 | `julia-version` | string | `'1'` | Julia version to install. Only used when `setup-julia` is true. |
-| `julia-project` | string | `'inst/julia'` | Path to the Julia project to instantiate when `setup-julia` is true. |
+| `julia-project` | string | `'inst/julia'` | Path to the Julia project to instantiate when `setup-julia` is true. Pass empty string to skip. |
 | `apt-packages` | string | (common build deps) | Space-separated apt packages to install before R setup on `ubuntu-latest` runner cells without a container, and on the hard job. Pass empty string to skip. |
 | `brew-packages` | string | `''` | Space-separated Homebrew packages to install on `macos-*` runner cells before R setup. When `gettext` is included, it is force-linked and added to `~/.R/Makevars`. |
 | `brew-casks` | string | `''` | Space-separated Homebrew casks to install on `macos-*` runner cells before R setup (e.g. `xquartz`). |
