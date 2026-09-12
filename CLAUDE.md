@@ -102,53 +102,22 @@ Guidance for Claude Code when working in this repository.
   major=$(git ls-remote --tags origin 'v*.*.*' \
     | sed 's#.*refs/tags/##; s/\^{}$//' \
     | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 | cut -d. -f1)
-  # Resolve the tag from the REMOTE: a plain fetch will not move an existing
-  # local tag, so a local rev-parse reports the PRE-slide commit (see
-  # "Re-running failed jobs cannot verify a tag slide" below).
-  # --tags --force fetches the tag OBJECT, not just its sha. ls-remote reads
-  # the remote without fetching anything, so on a shallow clone -- which is
-  # what actions/checkout gives you by default -- diffing against that sha
-  # dies with "fatal: bad object". --force because a slide moves the tag.
-  # Reproduced on a --depth 1 clone, 2026-09-07.
   git fetch -q --tags --force origin main
-  tagsha="refs/tags/$major"
-  # Both extensions: a *.yml-only glob is the drift this repo has been
-  # bitten by twice (see workflow_discovery.py), and it is untestable here
-  # because the tree currently holds no *.yaml workflow.
-  # Callees only: a caller's own grants are not part of anyone's contract.
-  for wf in $(grep -rl 'workflow_call:' .github/workflows \
-      --include='*.yml' --include='*.yaml'); do
-    # --diff-filter=M: a workflow ADDED since the tag has no callers yet,
-    # so every permission line in it would be a false positive. No workflow
-    # is added in the current v2..main range, so the filter drops nothing
-    # today; it is here for the ranges where one is. To see the shape,
-    # diff across a range that adds one -- 402d17a3~1..402d17a3, which
-    # added check-code-similarity.yml (gha#728) -- with and without it.
-    git diff --diff-filter=M "$tagsha" FETCH_HEAD -- "$wf" \
-      | grep -E '^\+ +[a-z-]+: (read|write)' && echo "  ^^ in $wf"
-  done
+  # Audit all callee reusable workflows for added keys or widened permissions
+  # (parsed YAML per-job set comparison, gha#836):
+  python3 .github/workflows/scripts/audit_callee_permissions.py \
+    --base-ref "refs/tags/$major" \
+    --head-ref FETCH_HEAD
   ```
 
   A removed key is fine; additions and widenings break callers.
-  Read this as a prompt rather than a gate; gha#836 carries the reasoning
-  and tracks replacing it with a parsed per-job set comparison.
-  It greps ADDED DIFF LINES, so a key whose only change is its trailing
-  comment shows up as a hit, a genuine addition to a job that previously
-  had no `permissions:` block at all shows up the same as any other, and
-  it cannot say WHICH job gained the key.
-  `--diff-filter=M` drops workflows added since the tag, which have no
-  callers to break; a workflow RENAMED since the tag is dropped with them,
-  so check any rename by hand.
-  It also enumerates callees from the WORKING TREE while diffing
-  `FETCH_HEAD`, so a callee that exists on `main` but not in your checkout
-  is skipped silently.
-  The value pattern is unanchored, so `write` matches the prefix of
-  `write-all` and an indented `permissions: write-all` is caught --- but a
-  WORKFLOW-level one at column 0 is not, since the pattern requires leading
-  space.
-  No callee has a workflow-level block today (every callee job declares its
-  own, which would override one anyway), so that gap is currently
-  unreachable rather than merely unlikely.
+  `audit_callee_permissions.py` parses reusable workflows (`on: workflow_call`)
+  across both commits, comparing effective permissions on each callee job and
+  at workflow level (gha#836).
+  Unlike shell grep diffs, it does not cry wolf on comment edits or key
+  reorderings, catches workflow-level widenings (`write-all`), identifies the
+  exact job that widened, and ensures newly added keys are caught cleanly.
+  `slide-major-tag.yml` runs this audit directly before advancing the tag.
   Confirm each hit against the two commits before treating it as a stop.
 
 - **Re-read `main`'s tip immediately before dispatching, and again after.**

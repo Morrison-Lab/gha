@@ -11,6 +11,12 @@ name: Slide major-version tag
 
 on:
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Bypass callee permissions widening check (emergency slide only)'
+        required: false
+        default: false
+        type: boolean
 
 # Never let two slides race; the most recent dispatch wins.
 concurrency:
@@ -30,6 +36,32 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0  # full history + all tags
+
+      - name: Guard against callee permission widening
+        env:
+          ALLOW_BREAKING_SLIDE: ${{ vars.ALLOW_BREAKING_SLIDE || '' }}
+        run: |
+          source .github/workflows/scripts/resolve-major-tag.sh
+          resolve_major_tag
+          if [ -z "$MAJOR" ]; then
+            echo "::notice::No major tag found; skipping permission audit."
+            exit 0
+          fi
+
+          if ! git rev-parse --verify --quiet "refs/tags/$MAJOR^{commit}" >/dev/null; then
+            echo "::notice::Major tag $MAJOR does not exist yet; skipping permission audit."
+            exit 0
+          fi
+
+          if [ "${{ inputs.force }}" = "true" ] || [ "${ALLOW_BREAKING_SLIDE:-0}" = "1" ]; then
+            echo "::warning::Force flag set; bypassing callee permission widening audit."
+            exit 0
+          fi
+
+          echo "Auditing callee reusable workflow permissions against $MAJOR..."
+          python3 .github/workflows/scripts/audit_callee_permissions.py \
+            --base-ref "$MAJOR" \
+            --head-ref "$GITHUB_SHA"
 
       - name: Move major tag to this commit
         run: |
