@@ -1855,6 +1855,56 @@ On re-reading, my previous verdict was wrong: the change drops a guard.
 **Needs more work.**" \
 "false" "needs-more-work"
 
+# gha#862: an unterminated `<!--` inside an inline code span in a trailing block
+# does not blank following lines. Pre-#862, strip_machine_payloads stripped
+# comments before code spans, so `<!--` inside `...` blanked the rest of the
+# body and hid the superseding rejection.
+run_test "An unterminated HTML comment marker inside an inline code span does not blank following lines" "### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+In an earlier attempt I considered using \`<!-- review-data:\` but discarded it.
+
+### Verdict
+
+**Needs more work.**" \
+"false" "needs-more-work"
+
+# gha#862 counterweight: an unclosed backtick across paragraphs does not
+# swallow a subsequent machine payload because strip_code_spans resets at blank lines.
+run_test "An unclosed backtick across paragraphs does not swallow a subsequent machine payload" "Note on the \`setting flag.
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict
+
+**Ready for merge.**" \
+"true" "ready-for-merge"
+
+# gha#862 counterweight (same block): an unclosed backtick in the same paragraph
+# block pairs with a later backtick across a payload marker. Stripping code spans
+# first blanks the text between the backticks, swallowing the heading if the closer
+# is on the heading line. With no other surviving verdict heading elsewhere in the body,
+# the classifier safely falls back to no-verdict (fail-closed) rather than false-CLEAN.
+run_test "An unclosed backtick in the same paragraph block as a payload marker swallows to the closing backtick" "See the \`docs for details.
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a\"}]} -->
+### Verdict\` is what follows.
+**Needs more work.**" \
+"false" "no-verdict"
+
+# gha#862 / review round 3 finding: in a multi-heading body within the same
+# paragraph block, an unclosed backtick that swallows a later retraction's
+# heading and polarity keyword leaves an earlier surviving verdict heading
+# as the last match (pre-existing in strip_code_spans).
+run_test "An unclosed backtick swallowing a later rejection in the same block reverts to an earlier verdict" "### Verdict
+**Ready for merge.**
+Actually wait, \`reconsider:
+### Verdict
+**Needs more work due to \`real issues found.**" \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

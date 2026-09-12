@@ -366,16 +366,11 @@ declare -A max_verdict_headings=(
 # off what the scripts currently emit -- recording the latter pins whatever
 # behaviour exists as the contract (gha#857 review round 2, finding 10, and
 # round 3, finding 4).
-#
-# verdict-then-correction-inline-span-marker.json is deliberately absent. Its
-# correction writes the payload marker in an inline code span, and
-# strip_machine_payloads reads the unterminated `<!--` inside that span as
-# opening a real comment and blanks the rest of the body, so the classifier
-# returns needs-more-work over two blocks that both say Ready for merge. That
-# is a pre-existing defect rather than one of this change (main reaches a wrong
-# answer on the same input by another route), tracked as gha#862; recording its
-# current answer here would pin the bug as the contract.
 declare -A expected_verdict=(
+  # gha#862: its correction quotes the payload marker in an inline code span.
+  # Pre-#862, strip_machine_payloads saw the unterminated `<!--` inside that
+  # span and blanked the body. With spans stripped first, it correctly classifies clean.
+  [verdict-then-correction-inline-span-marker.json]='clean=true verdict=ready-for-merge'
   # Every block of this one states Ready for merge -- its corrections confirm
   # rather than retract -- so clean is the right answer here. Read each
   # expectation off the fixture's own verdict lines; the first draft of this
@@ -1108,13 +1103,7 @@ rm -f "$fixture" "$output_file" "$log_file"
 # named verdict-label-block-before-kept-draft.json instead, which posts two
 # authored headings and is therefore INSIDE the derived population, so the
 # control it claimed did not exist (round 5, finding 3).
-declare -A verdict_coverage_exempt=(
-  # Its correction writes the payload marker in an inline code span, and
-  # strip_machine_payloads blanks the rest of the body, so the classifier
-  # contradicts both of its stated verdicts. Recording that answer would pin
-  # the bug as the contract (gha#862).
-  [verdict-then-correction-inline-span-marker.json]=1
-)
+declare -A verdict_coverage_exempt=()
 coverage_gaps=0
 for fixture in "${!max_verdict_headings[@]}"; do
   if [[ -z "${expected_verdict[$fixture]:-}" && -z "${verdict_coverage_exempt[$fixture]:-}" ]]; then

@@ -327,21 +327,26 @@ if _payload_markers:
     # gha#850 lets a later complete block ride along in the same posted text.
     # A verdict heading after the last marker means that block's own statement
     # is the live one, so the fast path stands down and the prose scan decides
-    # instead. That scan is last-match-wins, but over strip_machine_payloads
-    # output rather than over the raw body, which leaves one residual: an
-    # unterminated `<!--` inside an inline code span blanks every line after
-    # it, so a correction that WRITES ABOUT the marker can hide its own verdict
-    # from the scan this falls through to. Pre-existing rather than introduced
-    # here (main reaches a wrong answer on the same input by another route),
-    # tracked as gha#862.
+    # instead. That scan is last-match-wins, stripping code spans before machine
+    # payloads so an unterminated `<!--` inside an inline code span does not blank
+    # following lines (gha#862).
     #
-    # A second, sibling residual with the same consequence: the text searched
-    # above is fence-blanked over the WHOLE posted body, where the jq resets
-    # fence state per block, so an unclosed fence anywhere between the payload
-    # and a later retraction blanks that retraction's heading and the fast path
-    # never stands down. Tracked on gha#862 as its second case, because both are
-    # "a blanking rule hides the superseding block" and a fix for one should be
-    # designed knowing the other.
+    # Accepted trade-off: an unclosed backtick in the same paragraph block as a
+    # payload or verdict heading will pair with a closing backtick across them
+    # and blank the intervening text. Because CommonMark breaks code spans at
+    # blank lines (§6.2), this cannot cross paragraph boundaries.
+    # When the swallowed span consumes a heading and no other verdict-bearing
+    # text survives elsewhere in the body, losing the heading defaults to
+    # fail-closed (`clean=false verdict=no-verdict`). However, if an earlier
+    # verdict heading exists in a preceding block, swallowing a subsequent
+    # retraction's heading and polarity keyword leaves that earlier verdict
+    # as the last surviving match (a pre-existing residual of strip_code_spans,
+    # tracked as a multi-heading intra-paragraph blanking limitation).
+    #
+    # A sibling residual: the text searched above is fence-blanked over the
+    # WHOLE posted body, where the jq resets fence state per block, so an
+    # unclosed fence anywhere between the payload and a later retraction blanks
+    # that retraction's heading and the fast path never stands down.
     #
     # Searching from the marker's end rather than from the parsed object's is
     # safe because a raw newline cannot appear inside a JSON string, so `^`
@@ -629,7 +634,7 @@ def strip_code_spans(src_lines):
     flush()
     return out_lines
 
-lines = strip_code_spans(strip_machine_payloads(text.strip().splitlines()))
+lines = strip_machine_payloads(strip_code_spans(text.strip().splitlines()))
 header_regex = re.compile(
     r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict'
     r'|^[ \t>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)'
