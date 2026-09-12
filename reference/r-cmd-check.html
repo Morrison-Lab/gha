@@ -688,6 +688,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#hard-dependencies-check" id="toc-hard-dependencies-check" class="nav-link" data-scroll-target="#hard-dependencies-check">Hard-dependencies check</a></li>
   <li><a href="#migrating-from-rpt" id="toc-migrating-from-rpt" class="nav-link" data-scroll-target="#migrating-from-rpt">Migrating from rpt</a></li>
+  <li><a href="#migrating-from-bcs" id="toc-migrating-from-bcs" class="nav-link" data-scroll-target="#migrating-from-bcs">Migrating from bcs</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
 <div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/r-cmd-check.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
@@ -808,6 +809,30 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>string</td>
 <td><code>'1'</code></td>
 <td>Julia version to install. Only used when <code>setup-julia</code> is true.</td>
+</tr>
+<tr class="odd">
+<td><code>julia-project</code></td>
+<td>string</td>
+<td><code>'inst/julia'</code></td>
+<td>Path to the Julia project to instantiate when <code>setup-julia</code> is true. Pass empty string to skip.</td>
+</tr>
+<tr class="even">
+<td><code>apt-packages</code></td>
+<td>string</td>
+<td>(common build deps)</td>
+<td>Space-separated apt packages to install before R setup on <code>ubuntu-latest</code> runner cells without a container, and on the hard job. Pass empty string to skip.</td>
+</tr>
+<tr class="odd">
+<td><code>brew-packages</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-separated Homebrew packages to install on <code>macos-*</code> runner cells before R setup. When <code>gettext</code> is included, it is force-linked and added to <code>~/.R/Makevars</code>.</td>
+</tr>
+<tr class="even">
+<td><code>brew-casks</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Space-separated Homebrew casks to install on <code>macos-*</code> runner cells before R setup (e.g.&nbsp;<code>xquartz</code>).</td>
 </tr>
 <tr class="odd">
 <td><code>linux-container</code></td>
@@ -960,6 +985,52 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 </section>
+<section id="migrating-from-bcs" class="level2">
+<h2 class="anchored" data-anchor-id="migrating-from-bcs">Migrating from bcs</h2>
+<p><code>ucdavis/bcs</code>’s bespoke <code>.github/workflows/R-CMD-check.yaml</code> and its <code>.github/actions/install-system-deps</code> composite can migrate directly to this reusable workflow with <code>setup-julia: true</code>, <code>brew-packages: gettext</code>, <code>brew-casks: xquartz</code>, and default <code>apt-packages</code>.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>bcs step</th>
+<th>This workflow</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>.github/actions/install-system-deps</code> (apt packages on Linux)</td>
+<td>Default <code>apt-packages</code> matches bcs’s package list exactly.</td>
+</tr>
+<tr class="even">
+<td><code>brew install gettext</code> and <code>brew link gettext --force</code> on macOS</td>
+<td><code>brew-packages: gettext</code>. Force-link and <code>~/.R/Makevars</code> configuration run automatically.</td>
+</tr>
+<tr class="odd">
+<td><code>brew install --cask xquartz</code> on macOS</td>
+<td><code>brew-casks: xquartz</code>.</td>
+</tr>
+<tr class="even">
+<td><code>julia-actions/setup-julia@v2</code></td>
+<td><code>setup-julia: true</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>julia-actions/cache@v2</code></td>
+<td>Automatic when <code>setup-julia: true</code> and <code>julia-project != ''</code> (pinned to v3.3.0).</td>
+</tr>
+<tr class="even">
+<td><code>Pkg.instantiate()</code> / <code>Pkg.precompile()</code> on <code>inst/julia</code></td>
+<td><code>julia-project: inst/julia</code> (the default when <code>setup-julia: true</code>).</td>
+</tr>
+<tr class="odd">
+<td><code>PKG_INCLUDE_LINKINGTO: "true"</code> in job env</td>
+<td>Always set in both jobs’ env.</td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
 <div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/r-cmd-check.yml in your repo.</span></span>
@@ -984,14 +1055,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   cran-incoming-remote: false</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   force-suggests: false         # matches r-lib/check-r-package when unset</span></span>
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-julia: true</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: true</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   linux-container: rocker/verse:latest</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">R-CMD-check-hard</span><span class="kw">:</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">hard</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">    #   julia-project: inst/julia</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''              # empty to skip; default installs build deps</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   brew-packages: gettext        # bcs macOS deps</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   brew-casks: xquartz</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: true</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   linux-container: rocker/verse:latest</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">R-CMD-check-hard</span><span class="kw">:</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/r-cmd-check.yml@v2</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">hard</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub.</p>
 <p>A brand-new capability is not usable at <code>@v2</code> until that tag slides past this merge; pin the example as-is and wait for the slide, or point a template repo at this branch to try it.</p>
 
