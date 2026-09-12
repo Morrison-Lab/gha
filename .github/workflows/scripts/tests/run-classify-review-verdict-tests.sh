@@ -1855,6 +1855,34 @@ On re-reading, my previous verdict was wrong: the change drops a guard.
 **Needs more work.**" \
 "false" "needs-more-work"
 
+# gha#862: an unterminated `<!--` inside an inline code span in a trailing block
+# does not blank following lines. Pre-#862, strip_machine_payloads stripped
+# comments before code spans, so `<!--` inside `...` blanked the rest of the
+# body and hid the superseding rejection.
+run_test "An unterminated HTML comment marker inside an inline code span does not blank following lines" "### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+In an earlier attempt I considered using \`<!-- review-data:\` but discarded it.
+
+### Verdict
+
+**Needs more work.**" \
+"false" "needs-more-work"
+
+# gha#862 counterweight: an unclosed backtick in a preceding paragraph does
+# not swallow a subsequent machine payload across blank lines.
+run_test "An unclosed backtick across paragraphs does not swallow a subsequent machine payload" "Note on the \`setting flag.
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict
+
+**Ready for merge.**" \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

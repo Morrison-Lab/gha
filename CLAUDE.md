@@ -2504,16 +2504,13 @@ The two detectors still differ past the word, deliberately, since the span rule
 only decides which blocks are candidates while this one decides whether a
 statement supersedes.
 
-Two residuals remain, tracked rather than fixed, and they are the same shape:
-a blanking rule hides the superseding block from the check that should see it.
-The scan the fast path falls through to reads `strip_machine_payloads` output
-rather than the raw body, so an unterminated `<!--` inside an inline code span
-blanks everything after it.
-And the text the supersession check itself searches is fence-blanked over the
-whole posted body, where the jq resets fence state per block, so an unclosed
-fence between the payload and a later retraction blanks that retraction's
-heading.
-Both are on gha#862, alongside gha#863 for the label-form gap.
+One residual was fixed on gha#862: the scan the fast path falls through to
+strips code spans before machine payloads, so an unterminated `<!--` inside
+an inline code span does not blank following lines.
+A sibling residual remains: the text the supersession check itself searches
+is fence-blanked over the whole posted body, where the jq resets fence state
+per block, so an unclosed fence between the payload and a later retraction blanks
+that retraction's heading (tracked alongside gha#863 for the label-form gap).
 
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own
