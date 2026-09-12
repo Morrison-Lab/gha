@@ -53,6 +53,11 @@ REQUIRED_INPUTS = (
     "setup-pandoc",
     "install-quarto",
     "setup-julia",
+    "julia-version",
+    "julia-project",
+    "apt-packages",
+    "brew-packages",
+    "brew-casks",
     "linux-container",
     "checkout-submodules",
     "timeout-minutes",
@@ -91,6 +96,16 @@ def find_step(job: dict, uses_needle: str) -> dict | None:
             continue
         uses = str(step.get("uses") or "")
         if uses_needle in uses:
+            return step
+    return None
+
+
+def find_run_step(job: dict, run_needle: str) -> dict | None:
+    for step in job.get("steps") or []:
+        if not isinstance(step, dict):
+            continue
+        run = str(step.get("run") or "")
+        if run_needle in run:
             return step
     return None
 
@@ -243,6 +258,79 @@ def check_workflow(path: pathlib.Path) -> list[str]:
                 "it false when unset, so REMOTE-only cannot enable "
                 "incoming checks"
             )
+        linkingto = str((job.get("env") or {}).get("PKG_INCLUDE_LINKINGTO") or "")
+        if linkingto != "true":
+            errors.append(
+                f"{path}: {job_name} must set PKG_INCLUDE_LINKINGTO: 'true' "
+                f"(got {linkingto!r})"
+            )
+
+        julia_cache = find_step(job, "julia-actions/cache")
+        if julia_cache is None:
+            errors.append(f"{path}: {job_name} has no julia-actions/cache step")
+        else:
+            jc_if = str(julia_cache.get("if") or "")
+            if "inputs.setup-julia" not in jc_if or "inputs.julia-project" not in jc_if:
+                errors.append(
+                    f"{path}: {job_name} julia-actions/cache step must check "
+                    f"inputs.setup-julia and inputs.julia-project (got {jc_if!r})"
+                )
+
+        instantiate = find_run_step(job, "using Pkg; Pkg.instantiate()")
+        if instantiate is None:
+            errors.append(
+                f"{path}: {job_name} has no Julia project instantiation step"
+            )
+        else:
+            inst_if = str(instantiate.get("if") or "")
+            if "inputs.setup-julia" not in inst_if or "inputs.julia-project" not in inst_if:
+                errors.append(
+                    f"{path}: {job_name} Julia instantiation step must check "
+                    f"inputs.setup-julia and inputs.julia-project (got {inst_if!r})"
+                )
+
+        apt_step = find_run_step(job, "apt-get install")
+        if apt_step is None:
+            errors.append(f"{path}: {job_name} has no apt-get install step")
+        else:
+            apt_if = str(apt_step.get("if") or "")
+            if "inputs.apt-packages" not in apt_if:
+                errors.append(
+                    f"{path}: {job_name} apt-get install step must check "
+                    f"inputs.apt-packages (got {apt_if!r})"
+                )
+            if job_name == "R-CMD-check":
+                if "runner.os == 'Linux'" not in apt_if or "inputs.linux-container == ''" not in apt_if:
+                    errors.append(
+                        f"{path}: {job_name} apt-get install step must check "
+                        f"runner.os == 'Linux' and inputs.linux-container == '' (got {apt_if!r})"
+                    )
+
+    macos_brew = find_run_step(full, "brew install")
+    if macos_brew is None:
+        errors.append(f"{path}: full matrix job has no macOS brew install step")
+    else:
+        brew_if = str(macos_brew.get("if") or "")
+        if "runner.os == 'macOS'" not in brew_if or "inputs.brew-packages" not in brew_if or "inputs.brew-casks" not in brew_if:
+            errors.append(
+                f"{path}: full matrix brew install step must check "
+                f"runner.os == 'macOS', inputs.brew-packages, and inputs.brew-casks (got {brew_if!r})"
+            )
+        brew_run = str(macos_brew.get("run") or "")
+        if "brew link gettext --force" not in brew_run or "~/.R/Makevars" not in brew_run:
+            errors.append(
+                f"{path}: full matrix brew install step must configure gettext force link and ~/.R/Makevars"
+            )
+        if "' gettext '" not in brew_run:
+            errors.append(
+                f"{path}: full matrix brew install step must match ' gettext ' with boundary spaces"
+            )
+
+    hard_brew = find_run_step(hard, "brew install")
+    if hard_brew is not None:
+        errors.append(
+            f"{path}: hard job must not contain a brew install step (runs on ubuntu only)"
+        )
 
     quarto = find_step(full, "quarto-actions/setup")
     if quarto is None:
@@ -591,6 +679,141 @@ def run_self_test(workflow: pathlib.Path, example: pathlib.Path) -> int:
             "\n".join(errors),
             "inputs.force-suggests",
         )
+        wf.write_text(mutated)
+
+        # 11. Dropping PKG_INCLUDE_LINKINGTO from the full job must fail.
+        linkingto_line = '      PKG_INCLUDE_LINKINGTO: "true"\n'
+        if linkingto_line not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "PKG_INCLUDE_LINKINGTO env line to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(linkingto_line, "", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without PKG_INCLUDE_LINKINGTO fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "PKG_INCLUDE_LINKINGTO",
+        )
+        wf.write_text(mutated)
+
+        # 12. Dropping julia-actions/cache step must fail.
+        cache_step = (
+            "      - name: Cache Julia packages\n"
+            "        if: inputs.setup-julia && inputs.julia-project != ''\n"
+            "        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0\n"
+        )
+        if cache_step not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "julia-actions/cache step to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(cache_step, "", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without julia-actions/cache fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "julia-actions/cache",
+        )
+        wf.write_text(mutated)
+
+        # 13. Dropping Julia instantiation step must fail.
+        inst_marker = "      - name: Instantiate Julia project\n"
+        if inst_marker not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "Instantiate Julia project step to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        # Remove the first occurrence of the step (full matrix job)
+        inst_step_end = 'Pkg.instantiate(); Pkg.precompile()"\n'
+        idx_start = mutated.find(inst_marker)
+        idx_end = mutated.find(inst_step_end, idx_start) + len(inst_step_end)
+        wf.write_text(mutated[:idx_start] + mutated[idx_end:])
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without Julia instantiation fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "Julia project instantiation step",
+        )
+        wf.write_text(mutated)
+
+        # 14. Dropping apt-get install step must fail.
+        apt_marker = "      - name: Install apt packages\n"
+        if apt_marker not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "Install apt packages step to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        apt_step_end = "sudo apt-get install -y $APT_PACKAGES\n"
+        idx_start = mutated.find(apt_marker)
+        idx_end = mutated.find(apt_step_end, idx_start) + len(apt_step_end)
+        wf.write_text(mutated[:idx_start] + mutated[idx_end:])
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without apt-get install fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "apt-get install step",
+        )
+        wf.write_text(mutated)
+
+        # 15. Dropping macOS brew install step must fail.
+        brew_marker = "      - name: Install macOS system dependencies\n"
+        if brew_marker not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "Install macOS system dependencies step to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        brew_step_end = "brew install --cask $BREW_CASKS\n          fi\n"
+        idx_start = mutated.find(brew_marker)
+        idx_end = mutated.find(brew_step_end, idx_start) + len(brew_step_end)
+        wf.write_text(mutated[:idx_start] + mutated[idx_end:])
+        errors = check_workflow(wf)
+        failures += expect(
+            "job without macOS brew install fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "macOS brew install step",
+        )
+        wf.write_text(mutated)
+
+        # 16. Breaking gettext token match in brew step must fail.
+        gettext_token = "' gettext '"
+        if gettext_token not in mutated:
+            print(
+                "::error::self-test: fixture workflow has no "
+                "' gettext ' token to mutate",
+                file=sys.stderr,
+            )
+            return 1
+        wf.write_text(mutated.replace(gettext_token, "' gettextBROKEN '", 1))
+        errors = check_workflow(wf)
+        failures += expect(
+            "brew step without exact ' gettext ' match fails",
+            1 if errors else 0,
+            False,
+            "\n".join(errors),
+            "' gettext '",
+        )
+        wf.write_text(mutated)
 
     if failures:
         print(

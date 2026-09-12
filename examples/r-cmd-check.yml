@@ -31,7 +31,11 @@ jobs:
     #   error-on: '"note"'             # full matrix only; hard job omits this
     #   force-suggests: false          # matches r-lib/check-r-package when unset
     #   cran-incoming-remote: false    # also sets _R_CHECK_CRAN_INCOMING_ (r-lib forces it false when unset)
-    #   setup-julia: true              # rpt: julia-actions/setup-julia
+    #   setup-julia: true              # rpt/bcs: julia-actions/setup-julia
+    #   julia-project: inst/julia      # path to Julia project to instantiate
+    #   apt-packages: ''               # space-separated apt packages (default installs common build deps)
+    #   brew-packages: ''              # space-separated Homebrew packages for macOS cells
+    #   brew-casks: ''                 # space-separated Homebrew casks for macOS cells
     #   install-quarto: true           # rpt: quarto-dev/quarto-actions/setup (skipped on ubuntu when linux-container contains verse)
     #   linux-container: rocker/verse:latest  # rpt: container on ubuntu-latest; ignored by the hard job
     #   checkout-submodules: true      # rpt: actions/checkout submodules: recursive
@@ -46,6 +50,8 @@ jobs:
       # Match extras you enable on the full job, except linux-container
       # (the hard job never uses a container: verse would preinstall Suggests).
       # setup-julia: true
+      # julia-project: inst/julia
+      # apt-packages: ''
       # install-quarto: true
       # checkout-submodules: true
       # extra-packages: local::.

@@ -49,6 +49,10 @@ job-level, so splitting the steps into a composite would add a nested
 | `install-quarto` | boolean | `false` | Install Quarto via `quarto-dev/quarto-actions/setup` before the check. On the full matrix, skipped on `ubuntu-latest` only when `linux-container` contains `verse`. Separate from r-lib `setup-r-dependencies`' own `install-quarto` (default `auto` when the tree has `.qmd` files). |
 | `setup-julia` | boolean | `false` | Install Julia before the check (for JuliaCall packages). |
 | `julia-version` | string | `'1'` | Julia version to install. Only used when `setup-julia` is true. |
+| `julia-project` | string | `'inst/julia'` | Path to the Julia project to instantiate when `setup-julia` is true. Pass empty string to skip. |
+| `apt-packages` | string | (common build deps) | Space-separated apt packages to install before R setup on `ubuntu-latest` runner cells without a container, and on the hard job. Pass empty string to skip. |
+| `brew-packages` | string | `''` | Space-separated Homebrew packages to install on `macos-*` runner cells before R setup. When `gettext` is included, it is force-linked and added to `~/.R/Makevars`. |
+| `brew-casks` | string | `''` | Space-separated Homebrew casks to install on `macos-*` runner cells before R setup (e.g. `xquartz`). |
 | `linux-container` | string | `''` | Container image for `ubuntu-latest` cells of the full matrix (e.g. `rocker/verse:latest`). Ignored on the hard job. Quarto install is skipped on ubuntu only when this image name contains `verse`. |
 | `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules before the check. |
 | `timeout-minutes` | number | `90` | Job timeout. rpt's bespoke workflow used 50. |
@@ -115,6 +119,24 @@ Do not migrate `rpt` until a follow-up actually passes these through.
 | (unset) `upload-results` (r-lib default `false`) | Default `true`. Pass `upload-results: false` to match rpt. |
 | No hard-deps job | Add the `R-CMD-check-hard` caller job from the example stub. |
 
+## Migrating from bcs
+
+`ucdavis/bcs`'s bespoke
+`.github/workflows/R-CMD-check.yaml` and its
+`.github/actions/install-system-deps` composite can migrate directly to
+this reusable workflow with `setup-julia: true`, `brew-packages: gettext`,
+`brew-casks: xquartz`, and default `apt-packages`.
+
+| bcs step | This workflow |
+|---|---|
+| `.github/actions/install-system-deps` (apt packages on Linux) | Default `apt-packages` matches bcs's package list exactly. |
+| `brew install gettext` and `brew link gettext --force` on macOS | `brew-packages: gettext`. Force-link and `~/.R/Makevars` configuration run automatically. |
+| `brew install --cask xquartz` on macOS | `brew-casks: xquartz`. |
+| `julia-actions/setup-julia@v2` | `setup-julia: true`. |
+| `julia-actions/cache@v2` | Automatic when `setup-julia: true` and `julia-project != ''` (pinned to v3.3.0). |
+| `Pkg.instantiate()` / `Pkg.precompile()` on `inst/julia` | `julia-project: inst/julia` (the default when `setup-julia: true`). |
+| `PKG_INCLUDE_LINKINGTO: "true"` in job env | Always set in both jobs' env. |
+
 ## Example
 
 ```yaml
@@ -140,6 +162,10 @@ jobs:
     #   cran-incoming-remote: false
     #   force-suggests: false         # matches r-lib/check-r-package when unset
     #   setup-julia: true
+    #   julia-project: inst/julia
+    #   apt-packages: ''              # empty to skip; default installs build deps
+    #   brew-packages: gettext        # bcs macOS deps
+    #   brew-casks: xquartz
     #   install-quarto: true
     #   linux-container: rocker/verse:latest
     #   checkout-submodules: true

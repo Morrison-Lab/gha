@@ -106,6 +106,37 @@ on:
         description: Julia version to install. Only used when setup-julia is true.
         type: string
         default: '1'
+      julia-project:
+        description: >-
+          Path to the Julia project to instantiate. Only used when
+          setup-julia is true.
+        type: string
+        default: 'inst/julia'
+      apt-packages:
+        description: >-
+          Space-separated apt packages to install before R setup on
+          ubuntu-latest runner cells without a container, and on the hard
+          job. Defaults to standard system libraries needed to build typical
+          R package dependencies from source. Pass an empty string to skip.
+        type: string
+        default: >-
+          libcurl4-openssl-dev libssl-dev libxml2-dev libfontconfig1-dev
+          libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev
+          libtiff5-dev libjpeg-dev zlib1g-dev libomp-dev build-essential
+          libcairo2-dev gettext
+      brew-packages:
+        description: >-
+          Space-separated Homebrew packages to install on macos-* runner cells
+          before R setup. When gettext is present, it is force-linked and
+          pointed to in ~/.R/Makevars.
+        type: string
+        default: ''
+      brew-casks:
+        description: >-
+          Space-separated Homebrew casks to install on macos-* runner cells
+          before R setup (e.g. xquartz).
+        type: string
+        default: ''
       linux-container:
         description: >-
           Container image for ubuntu-latest cells of the full matrix
@@ -164,6 +195,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ github.token }}
       R_KEEP_PKG_SOURCE: yes
+      PKG_INCLUDE_LINKINGTO: "true"
       # r-lib/check-r-package sets INCOMING false when unset, so REMOTE
       # alone cannot enable incoming checks. Drive both from this input
       # ({devtools} uses incoming = remote).
@@ -193,6 +225,43 @@ jobs:
         with:
           version: ${{ inputs.julia-version }}
 
+      - name: Cache Julia packages
+        if: inputs.setup-julia && inputs.julia-project != ''
+        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
+
+      - name: Install apt packages
+        if: runner.os == 'Linux' && inputs.apt-packages != '' && inputs.linux-container == ''
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
+        shell: bash
+        run: |
+          sudo apt-get update
+          # word-splitting on $APT_PACKAGES is intentional
+          # shellcheck disable=SC2086
+          sudo apt-get install -y $APT_PACKAGES
+
+      - name: Install macOS system dependencies
+        if: runner.os == 'macOS' && (inputs.brew-packages != '' || inputs.brew-casks != '')
+        env:
+          BREW_PACKAGES: ${{ inputs.brew-packages }}
+          BREW_CASKS: ${{ inputs.brew-casks }}
+        shell: bash
+        run: |
+          if [ -n "$BREW_PACKAGES" ]; then
+            # shellcheck disable=SC2086
+            brew install $BREW_PACKAGES
+            if echo " $BREW_PACKAGES " | grep -q ' gettext '; then
+              brew link gettext --force
+              mkdir -p ~/.R
+              echo "CPPFLAGS=-I$(brew --prefix gettext)/include" >> ~/.R/Makevars
+              echo "LDFLAGS=-L$(brew --prefix gettext)/lib" >> ~/.R/Makevars
+            fi
+          fi
+          if [ -n "$BREW_CASKS" ]; then
+            # shellcheck disable=SC2086
+            brew install --cask $BREW_CASKS
+          fi
+
       - name: Set up Quarto
         if: inputs.install-quarto && !(matrix.config.os == 'ubuntu-latest' && contains(inputs.linux-container, 'verse'))
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
@@ -213,6 +282,15 @@ jobs:
             ${{ inputs.extra-packages }}
           needs: check
 
+      - name: Instantiate Julia project
+        if: inputs.setup-julia && inputs.julia-project != ''
+        env:
+          JULIA_PROJECT_PATH: ${{ inputs.julia-project }}
+        shell: bash
+        run: |
+          julia --startup-file=no --project="$JULIA_PROJECT_PATH" \
+            -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
+
       - name: Check
         uses: r-lib/actions/check-r-package@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
         with:
@@ -232,6 +310,7 @@ jobs:
     env:
       GITHUB_PAT: ${{ github.token }}
       R_KEEP_PKG_SOURCE: yes
+      PKG_INCLUDE_LINKINGTO: "true"
       _R_CHECK_CRAN_INCOMING_: ${{ inputs.cran-incoming-remote }}
       _R_CHECK_CRAN_INCOMING_REMOTE_: ${{ inputs.cran-incoming-remote }}
       # Always false here: Suggests are not installed, so forcing them
@@ -260,6 +339,21 @@ jobs:
         with:
           version: ${{ inputs.julia-version }}
 
+      - name: Cache Julia packages
+        if: inputs.setup-julia && inputs.julia-project != ''
+        uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
+
+      - name: Install apt packages
+        if: inputs.apt-packages != ''
+        env:
+          APT_PACKAGES: ${{ inputs.apt-packages }}
+        shell: bash
+        run: |
+          sudo apt-get update
+          # word-splitting on $APT_PACKAGES is intentional
+          # shellcheck disable=SC2086
+          sudo apt-get install -y $APT_PACKAGES
+
       - name: Set up Quarto
         if: inputs.install-quarto
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
@@ -286,6 +380,15 @@ jobs:
             any::testthat
             ${{ inputs.extra-packages }}
           needs: check
+
+      - name: Instantiate Julia project
+        if: inputs.setup-julia && inputs.julia-project != ''
+        env:
+          JULIA_PROJECT_PATH: ${{ inputs.julia-project }}
+        shell: bash
+        run: |
+          julia --startup-file=no --project="$JULIA_PROJECT_PATH" \
+            -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
 
       - name: Check
         uses: r-lib/actions/check-r-package@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
