@@ -864,7 +864,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="retired-version-directories">Retired version directories</h2>
 <p>A site that previously published the default branch’s docs to <code>/&lt;branch&gt;/</code> – the <a href="https://github.com/insightsengineering/r-pkgdown-multiversion"><code>insightsengineering/r-pkgdown-multiversion</code></a> layout – has every <code>/main/...</code> link broken by the move to <code>/dev/</code>, this workflow’s layout and <a href="https://pkgdown.r-lib.org/reference/build_site.html">pkgdown’s own development-mode convention</a>.</p>
 <p>Set <code>legacy-paths</code> to a comma- or newline-separated list of <code>old=new</code> pairs to keep the old links alive:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">legacy-paths</span><span class="kw">:</span><span class="at"> main=dev</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">legacy-paths</span><span class="kw">: </span><span class="ch">|</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  main=dev</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  reference/index.html=latest-tag/reference.html</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  reference/*=latest-tag/man/*</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  articles/*=latest-tag/vignettes/articles/*</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>Three forms are supported:</p>
+<ul>
+<li><p><strong>Single-segment directory rename</strong> (<code>main=dev</code>): rewrites the prefix <code>/main/</code> to <code>/dev/</code>, preserving any tail.</p></li>
+<li><p><strong>Exact whole-path key</strong> (<code>reference/index.html=latest-tag/reference.html</code>): redirects that exact path. Exact keys take precedence over wildcard patterns.</p></li>
+<li><p><strong>Prefix glob and template</strong> (<code>reference/*=latest-tag/man/*</code>): matches requests starting with <code>reference/</code> and substitutes the matched tail into the target’s <code>*</code>. The longest prefix wins among multiple prefix patterns.</p></li>
+</ul>
 <p>That generates a site-root <code>404.html</code> rewriting any request under <code>/main/</code> to the same path under <code>/dev/</code>, so <code>/main/reference/index.html</code> lands on <code>/dev/reference/index.html</code>. GitHub Pages serves no server-side redirects but does serve a site-root <code>404.html</code> for unresolved paths, which is what makes deep links work – a per-directory <code>index.html</code> meta-refresh only catches the directory root.</p>
 <p>Two consequences worth knowing:</p>
 <ul>
