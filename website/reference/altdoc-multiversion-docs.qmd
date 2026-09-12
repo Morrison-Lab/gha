@@ -119,9 +119,11 @@ Three forms are supported:
 
 - **Single-segment directory rename** (`main=dev`): rewrites the prefix `/main/`
   to `/dev/`, preserving any tail.
+
 - **Exact whole-path key** (`reference/index.html=latest-tag/reference.html`):
   redirects that exact path.
   Exact keys take precedence over wildcard patterns.
+
 - **Prefix glob and template** (`reference/*=latest-tag/man/*`): matches
   requests starting with `reference/` and substitutes the matched tail into the
   target's `*`.
