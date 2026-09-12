@@ -14,16 +14,36 @@ touching ``examples/quarto-publish.yml``, which still told consumers to
 declare the same group at the top level, and every publish run on a consumer
 that copied it failed silently.
 
-The population is every ``examples/*.yml`` and ``examples/*.yaml`` stub, and
-the comparison is made
-against the workflow each ``uses:`` actually names, so a job-level group added
-later is caught the moment it lands rather than when the next consumer copies
-the stub. A stub whose ``uses:`` names a workflow file this repo does not
-carry is an error, not a skip: an audit that walks past it would report a
-tree it never examined as clean. A ``uses:`` naming a DIFFERENT owner is
-skipped, though -- somebody else's reusable workflow is not ours to resolve,
-so a stub calling one is examined for our workflows and silently not for
-theirs.
+The population is every workflow file under ``examples/`` AND under
+``.github/workflows/`` (``.yml`` and ``.yaml``, discovered the way
+``workflow_discovery`` discovers them), and a caller is derived from the
+``uses:`` edge itself: within those two roots, any file whose job-level
+``uses:`` names one of our reusable workflows is a caller of that callee
+(gha#821, option 2). Until gha#821 the population was the ``examples/`` stubs
+alone, so this repo's own dogfood callers -- ``website-publish.yml`` and the
+preview-deploy / cleanup equivalents, which call the same gh-pages family --
+were subject to the identical deadlock and never examined. The two roots are
+the whole population a caller can live in HERE, rather than an arbitrary
+choice of directories: GitHub runs nothing outside ``.github/workflows/``,
+and ``examples/`` is the stub set consumers copy. What the edge buys within
+them is that no hand-maintained list of dogfood caller filenames has to be
+kept in step -- a caller added to either root is picked up the moment it
+lands -- and that it needs no new argument. A reusable workflow is a
+candidate caller like any other file; one that calls none of ours
+contributes nothing, and a caller that is itself a callee is not
+special-cased. The comparison is made against the workflow each
+``uses:`` actually names, so a job-level group added later is caught the
+moment it lands rather than when the next consumer copies the stub. A caller
+whose ``uses:`` names a workflow file this repo does not carry is an error,
+not a skip: an audit that walks past it would report a tree it never examined
+as clean. A ``uses:`` naming a DIFFERENT owner is skipped, though -- somebody
+else's reusable workflow is not ours to resolve, so a caller of one is
+examined for our workflows and silently not for theirs.
+
+Under a default-branch restore of ``.github/workflows/`` (gha#598, gha#765)
+the audit skips with a notice, as every sibling workflow audit here does: the
+files on disk are then the default branch's callers, not the PR's, and a
+verdict over them would be about the wrong tree.
 
 The audit is ONE LEVEL deep, while GitHub permits four: a callee job that
 itself calls another of our workflows is not compared. Nothing a stub calls
@@ -40,7 +60,7 @@ Usage::
 
     python3 audit_example_concurrency.py [--examples DIR] [--workflows DIR]
 
-Exit 0 when no stub collides, 1 on a collision, 2 on a malformed or missing
+Exit 0 when no caller collides, 1 on a collision, 2 on a malformed or missing
 input.
 """
 
@@ -53,7 +73,13 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-from workflow_discovery import Unparsable, load_workflow, require_jobs  # noqa: E402
+from workflow_discovery import (  # noqa: E402
+    Unparsable,
+    discover_workflows,
+    load_workflow,
+    require_jobs,
+    skip_if_restored,
+)
 
 USES_RE = re.compile(r"^Morrison-Lab/gha/\.github/workflows/([^@/]+\.ya?ml)@")
 
@@ -165,32 +191,64 @@ def callee_calls(path: pathlib.Path, doc) -> list[tuple[str, str]]:
     return calls
 
 
+def candidates(root: pathlib.Path) -> list[pathlib.Path]:
+    """Every workflow file under ``root`` that could be a caller.
+
+    ``workflow_discovery`` is the one discovery rule this repo's audits share:
+    both extensions, top level only, dotfiles excluded. A missing directory
+    yields nothing here rather than raising: ``audit`` refuses an empty result
+    from either root itself, with a message naming which root was empty, which
+    a raise from here could not do.
+    """
+    if not root.is_dir():
+        return []
+    return discover_workflows(root)
+
+
 def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
-    stubs = sorted(examples_dir.glob("*.yml")) + sorted(examples_dir.glob("*.yaml"))
+    stubs = candidates(examples_dir)
     if not stubs:
         die(f"{examples_dir}: no example stubs found")
+    dogfood = candidates(workflows_dir)
+    # A missing or empty --workflows is refused rather than reported as zero
+    # dogfood callers. Every callee resolution below would die on it anyway,
+    # but only once some caller happens to make a call -- so the guard is what
+    # keeps a mistyped root from ever reading as a population that is simply
+    # small (gha#854 review, finding 2).
+    if not dogfood:
+        die(f"{workflows_dir}: no workflow files found")
+    # Keyed by resolved path so the two roots being the same directory (or
+    # one nested in the other) examines each file once rather than twice and
+    # reports each collision once. The per-root figures in the summary below
+    # are the pre-dedup listings, so they sum to more than the total in that
+    # case; the two roots do not overlap in any real invocation.
+    population: dict[pathlib.Path, pathlib.Path] = {}
+    for path in stubs + dogfood:
+        population.setdefault(path.resolve(), path)
     findings: list[str] = []
+    calls = 0
     compared = 0
-    for stub in stubs:
-        doc = load(stub)
-        top = group_of(stub, "top-level", doc.get("concurrency"))
-        stub_jobs = job_groups(stub, doc)
-        for job, callee in callee_calls(stub, doc):
+    for caller in population.values():
+        doc = load(caller)
+        top = group_of(caller, "top-level", doc.get("concurrency"))
+        caller_jobs = job_groups(caller, doc)
+        for job, callee in callee_calls(caller, doc):
+            calls += 1
             wf = workflows_dir / callee
             if not wf.is_file():
-                die(f"{stub}: uses {callee}, which is not in {workflows_dir}")
+                die(f"{caller}: uses {callee}, which is not in {workflows_dir}")
             # Both placements deadlock, so both are checked. A top-level block
             # covers the whole run and therefore covers the calling job; a
             # block on the calling job itself is the same collision written
             # one level down, and it is syntactically valid on a job that
             # `uses:` a reusable workflow (gha#811 review).
-            caller: list[tuple[str, str]] = []
+            caller_side: list[tuple[str, str]] = []
             if top is not None:
-                caller.append(("top-level", top))
-            own = stub_jobs.get(job)
+                caller_side.append(("top-level", top))
+            own = caller_jobs.get(job)
             if own is not None:
-                caller.append((f"job {job!r}", own))
-            if not caller:
+                caller_side.append((f"job {job!r}", own))
+            if not caller_side:
                 continue
             # Counted here rather than at the top of the loop: a call with no
             # caller-level group is walked past, not compared, and a summary
@@ -211,16 +269,21 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
             if callee_top is not None:
                 callee_side.append(("its top level", callee_top))
             for cwhere, cgroup in callee_side:
-                for where, group in caller:
+                for where, group in caller_side:
                     if cgroup == group:
                         findings.append(
-                            f"{stub}: {where} concurrency group {group!r} is also "
+                            f"{caller}: {where} concurrency group {group!r} is also "
                             f"declared on {cwhere} of {callee}; the two "
                             f"deadlock (gha#809)"
                         )
+    # Both roots are named in the count, so a population that silently
+    # shrank back to the stubs alone reads differently from one that examined
+    # the dogfood callers too (gha#821).
     print(
-        f"examined {len(stubs)} stub(s); compared {compared} reusable-workflow "
-        f"call(s) carrying a caller-level concurrency group"
+        f"examined {len(population)} workflow file(s) ({len(stubs)} under "
+        f"{examples_dir}, {len(dogfood)} under {workflows_dir}); found {calls} "
+        f"call(s) to our reusable workflows; compared {compared} of them "
+        f"carrying a caller-level concurrency group"
     )
     return findings
 
@@ -230,12 +293,15 @@ def main() -> int:
     parser.add_argument("--examples", default="examples")
     parser.add_argument("--workflows", default=".github/workflows")
     args = parser.parse_args()
-    findings = audit(pathlib.Path(args.examples), pathlib.Path(args.workflows))
+    workflows_dir = pathlib.Path(args.workflows)
+    if skip_if_restored(workflows_dir, "audit-example-concurrency"):
+        return 0
+    findings = audit(pathlib.Path(args.examples), workflows_dir)
     for finding in findings:
         print(f"::error::{finding}")
     if findings:
         return 1
-    print("no example stub collides with a concurrency group of the workflow it calls")
+    print("no caller collides with a concurrency group of the reusable workflow it calls")
     return 0
 
 

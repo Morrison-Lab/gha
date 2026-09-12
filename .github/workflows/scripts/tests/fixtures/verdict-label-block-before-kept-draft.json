@@ -1,0 +1,49 @@
+[
+  {
+    "type": "system",
+    "subtype": "init"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review, part one\n\nVerdict: provisional -- the upsilon-pass label block, pending part two.\n\nA gha#710 tail writes its status this way, with no heading of its own.\n\nEach claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. "
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "## Review, part two\n\n### Findings\n\nNone that block the merge: the upsilon-pass analysis.\n\n### Verdict\n\n**Ready for merge.**\n\nEach claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. Each claim was re-checked against the diff rather than taken on faith. \n\n<details>\n<summary>Structured Review Data (JSON)</summary>\n\n<!-- review-data:\n{\"schema_version\": \"1.1\", \"reviewer\": \"claude\", \"commit_sha\": \"abc123\", \"verdict\": \"CLEAN\", \"findings\": []}\n-->\n\n</details>\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "content": [
+        {
+          "type": "text",
+          "text": "### Correction on scope\n\nThe upsilon-pass correction: one sentence named the wrong file.\n\n### Verdict\n\n**Ready for merge** (unchanged).\n"
+        }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "num_turns": 9,
+    "duration_ms": 120000,
+    "total_cost_usd": 1.57,
+    "permission_denials_count": 0,
+    "permission_denials": []
+  }
+]

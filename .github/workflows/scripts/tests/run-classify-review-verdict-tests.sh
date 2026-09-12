@@ -1504,6 +1504,357 @@ run_test "An emphasis-only first content line does not hide the real verdict" \
 No action needed -- automated, trivial PR." \
 "true" "ready-for-merge"
 
+# --- gha#857 review, finding 1: a payload does not outlive a later verdict ---
+#
+# gha#850 made the posted review text able to carry an appended self-correction
+# alongside the review it corrects. The payload scan is last-MARKER-wins, so
+# without the supersession check the retracted review's CLEAN payload decided
+# the verdict and require-clean-verdict went green over an explicit retraction.
+# The payload here carries the keys classify-review-verdict.sh actually reads,
+# because a payload the consumer would ignore cannot pin this. It is not
+# production's full shape: run-claude-review-attempt emits it pretty-printed
+# inside a <details> block beside a paired json fence, and schema 1.1 also
+# requires detailed_assessment and holistic_assessment.
+run_test "A retracting correction beats the retracted review's CLEAN payload" \
+"### Verdict
+
+**Ready for merge.**
+
+<details>
+<summary>Structured Review Data (JSON)</summary>
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+</details>
+
+On re-reading, my previous verdict was wrong: the change drops a load-bearing guard.
+
+### Verdict
+
+**Needs more work.**" \
+"false" "needs-more-work"
+
+# The converse, so the check is not just \"a second heading means not clean\":
+# a correction that REVERSES a NOT_CLEAN payload classifies clean, from the
+# prose scan rather than from the payload. (An earlier revision called this a
+# confirming correction, which is what its heading-form sibling below is; this
+# one reverses.)
+run_test "A correction reversing a NOT_CLEAN payload classifies clean" \
+"### Verdict
+
+**Needs more work.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+On re-reading, the guard I flagged is supplied by the caller.
+
+### Verdict
+
+**Ready for merge.**" \
+"true" "ready-for-merge"
+
+# The supersession signal is a HEADING, never a label-form tail: gha#710's
+# follow-up tail is written that way and means the verdict stands, so reading
+# it as a retraction would invert it. The payload still decides here.
+run_test "A label-form tail after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+Verdict: unchanged after a second read." \
+"true" "ready-for-merge"
+
+# A heading that is merely QUOTED cannot fake a retraction -- the search runs
+# over _payload_candidate_text, whose fenced, blockquoted and indented lines
+# are already blanked. A review of this very change quotes the heading.
+#
+# The prose and the payload must DISAGREE here, or the case is vacuous: the
+# prose scan strips fences too, so with agreeing prose a wrongly-superseded
+# payload falls through to a prose scan that returns the same answer and the
+# assertion passes under the very mutation it exists to catch. So the prose
+# says ready and the payload says NOT_CLEAN, and only the payload's survival
+# produces clean=false.
+run_test "A fenced verdict heading after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+The span rule keys on a block carrying its own heading, like this one:
+
+\`\`\`markdown
+### Verdict
+
+**Needs more work.**
+\`\`\`" \
+"false" "needs-more-work"
+
+# The blockquote arm of the same exclusion, on the same disagreeing pair.
+# It is guarded twice, so no SINGLE mutation reddens it: blanking the line
+# leaves a heading regex that admits no `>`, and admitting `>` leaves a line
+# that was already blanked. Mutating both together is what kills it -- read
+# the survivor as the other gate holding, not as missing coverage.
+run_test "A blockquoted verdict heading after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+Quoting the shape the span rule keys on:
+
+> ### Verdict
+>
+> **Needs more work.**" \
+"false" "needs-more-work"
+
+# gha#857 review round 2, finding 1: the supersession signal is a verdict
+# heading PROPER, not any heading whose text begins with the word. A single
+# uncorrected review that writes an ordinary section after its payload must
+# keep the fast path -- a prefix match discarded it and re-scored the review
+# from prose, which is the gha#811 failure the fast path exists to prevent.
+# The prose here names a deadlock, so the payload surviving is the only way
+# to reach ready-for-merge.
+run_test "A 'Verdict rationale' section after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict rationale
+
+The subject of this PR is a concurrency deadlock, which is blocked upstream." \
+"true" "ready-for-merge"
+
+run_test "A 'Verdict summary' section after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict summary
+
+The subject of this PR is a concurrency deadlock, which is blocked upstream." \
+"true" "ready-for-merge"
+
+# gha#857 review round 3, finding 1: a status written on the heading line is a
+# form this file handles deliberately in its own prose scan, so it must
+# supersede too. Requiring the word to end the line let this spelling through,
+# leaving the retracted review's CLEAN payload deciding -- the very failure the
+# rule exists to stop.
+run_test "A one-line 'Verdict: <status>' correction supersedes the payload" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+On re-reading, my previous verdict was wrong: the change drops a guard.
+
+### Verdict: Needs more work" \
+"false" "needs-more-work"
+
+# gha#857 review round 3, finding 2: an emphasised heading is NOT a supersession
+# signal, because check-review-execution.sh's authored_heading rejects it too --
+# so the span rule reads such a block as a gha#710 tail, whose meaning is
+# confirmation, and reading it as a retraction here would invert it. Production
+# mandates `### Verdict` with one marker and not two, so nothing following the
+# template writes this. The prose names a deadlock, so only the payload
+# surviving reaches ready-for-merge.
+run_test "An emphasised verdict heading after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### **Verdict:**
+
+Unchanged after a second read of the deadlock this PR is blocked on." \
+"true" "ready-for-merge"
+
+# gha#857 review round 3, finding 5: two spaces then a tab is column 4, which is
+# indented code to CommonMark and to the jq sibling, but _INDENTED_RE does not
+# blank it and a `^[ \t]*` anchor admitted it. The anchor is `^ {0,3}` now.
+run_test "A tab-indented verdict heading after a payload does not supersede it" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+  	### Verdict
+
+Unchanged after a second read of the deadlock this PR is blocked on." \
+"true" "ready-for-merge"
+
+# gha#857 review round 4, finding 1: the separator alternatives must require
+# whitespace before a dash, or they match a hyphenated WORD rather than a
+# separator. "verdict-bearing" is vocabulary this repo writes constantly, so a
+# review OF this repo heading a section that way had the reviewed PR's payload
+# discarded and the review re-scored from prose -- the same gha#811 failure the
+# round-2 tightening closed for two other spellings, re-opened by the round-3
+# widening. The self-implicating example, again.
+run_test "A hyphenated word after 'Verdict' in a heading does not supersede" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict-bearing span rule
+
+The subject of this PR is a concurrency deadlock, which is blocked upstream." \
+"true" "ready-for-merge"
+
+# A dash with whitespace around it IS a separator, so the fix cannot be read as
+# "no dash ever counts".
+run_test "A spaced dash after 'Verdict' in a heading does supersede" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+On re-reading, my previous verdict was wrong: the change drops a guard.
+
+### Verdict - needs more work" \
+"false" "needs-more-work"
+
+# gha#857 review round 5, finding 1: standing the fast path down must not
+# manufacture a red check. A CONFIRMING tail in heading form states no polarity
+# the prose scan recognises, so discarding the payload outright returned
+# `unrecognized` and reddened a review nobody retracted -- the same direction the
+# emphasis rule was tightened to avoid, reached through the accepted spelling.
+# The payload is held as a floor instead. The suite pinned only the LABEL
+# spelling of this sentence before, which is the one shape the rule deliberately
+# ignores, so the accepted shape went untested.
+run_test "A confirming heading-form tail falls back to the payload, not unrecognized" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict
+
+Unchanged after a second read." \
+"true" "ready-for-merge"
+
+# The same floor under a NOT_CLEAN payload, so the fallback is not "assume
+# clean": a held payload decides in whichever direction it was written.
+run_test "A confirming heading-form tail falls back to a NOT_CLEAN payload too" \
+"### Verdict
+
+**Needs more work.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+### Verdict
+
+Unchanged after a second read." \
+"false" "needs-more-work"
+
+# gha#857 review round 5, finding 2: a qualified retraction heading must still
+# supersede. Enumerating separators excluded these, leaving the stale CLEAN
+# payload deciding -- the failure the rule exists to stop.
+run_test "A parenthesised qualifier after 'Verdict' still supersedes" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+On re-reading, my previous verdict was wrong: the change drops a guard.
+
+### Verdict (revised)
+
+**Needs more work.**" \
+"false" "needs-more-work"
+
+run_test "A comma-qualified verdict heading still supersedes" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+On re-reading, my previous verdict was wrong: the change drops a guard.
+
+### Verdict, revised
+
+**Needs more work.**" \
+"false" "needs-more-work"
+
+# gha#857 review round 6, findings 1 and 2: the held payload must pass the same
+# trust test the primary fast path applies. It is captured before any isinstance
+# check, so a non-dict payload reached .get and killed the run with a traceback,
+# and a dict lacking schema_version -- which the primary path refuses -- was
+# trusted here, turning a payload neither contract accepts into an asserted
+# clean verdict. Both must fall through to the ordinary scan.
+run_test "A scalar payload under a confirming tail does not crash the run" "### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: 42 -->
+
+### Verdict
+
+Unchanged after a second read." "false" "unrecognized"
+
+run_test "A schema-less payload is not trusted as the fallback floor" "### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"verdict\": \"CLEAN\"} -->
+
+### Verdict
+
+Unchanged after a second read." "false" "unrecognized"
+
+# gha#857 review round 6, finding 4: a hyphen JOINED to the next word is a
+# continuation whether or not a space precedes it. Keying on the preceding space
+# read this as a separator and discarded the payload.
+run_test "A spaced hyphen joined to the next word does not supersede" "### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+### Verdict -bearing span rule
+
+The subject of this PR is a concurrency deadlock, which is blocked upstream." "true" "ready-for-merge"
+
+# gha#857 review round 6, finding 3: the prose claims both dash spellings are
+# admitted and only the spaced one was pinned.
+#
+# The em dash is built from explicit UTF-8 BYTES ($'\xe2\x80\x94'), so this file
+# stays ASCII per this repo's no-non-ASCII-punctuation-in-source rule while a real
+# U+2014 reaches the script. Two earlier drafts were vacuous: one wrote the escape
+# inside an ordinary double-quoted string, where bash leaves it literal, and the
+# next used $'\u2014', which THIS bash also leaves literal -- measured, GNU bash
+# 5.1.16 msys prints the six characters rather than the dash. Both passed on the
+# BACKSLASH not being a word character, testing nothing about em dashes. The byte
+# form is portable across bash builds; verify with od -c before trusting a case
+# that turns on a non-ASCII character.
+run_test "An unspaced em dash after 'Verdict' still supersedes" "### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+On re-reading, my previous verdict was wrong: the change drops a guard.
+
+### Verdict"$'\xe2\x80\x94'"revised
+
+**Needs more work.**" \
+"false" "needs-more-work"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
