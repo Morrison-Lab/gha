@@ -85,12 +85,15 @@ on:
       legacy-paths:
         description: >-
           Retired docs subdirectories to keep working, as comma- or
-          newline-separated `old=new` pairs (e.g. "main=dev"). Useful when a
-          site migrates from a naming scheme that published the default
-          branch's docs to `/<branch>/`, which this workflow publishes to
-          `/dev/`. Generates a site-root `404.html` redirecting any request
-          under `old/` to the same path under `new/`, deep links included.
-          Empty (the default) generates no `404.html`.
+          newline-separated `old=new` pairs (e.g. "main=dev",
+          "reference/index.html=latest-tag/reference.html", or
+          "reference/*=latest-tag/man/*"). Supports single-segment directory
+          renames, exact whole-path mappings, and prefix globs with target
+          template substitution. Useful when a site migrates from a naming
+          scheme that published the default branch's docs to `/<branch>/`,
+          which this workflow publishes to `/dev/`. Generates a site-root
+          `404.html` redirecting matching requests to the target path,
+          deep links included. Empty (the default) generates no `404.html`.
         type: string
         default: ''
       root-landing-target:

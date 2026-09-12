@@ -24,9 +24,11 @@ inputs:
   legacy-paths:
     description: >-
       Retired docs subdirectories to redirect, as comma- or newline-separated
-      `old=new` pairs (e.g. "main=dev"). Generates a site-root `404.html` that
-      rewrites any request under `old/` to the same path under `new/`,
-      including deep links. Leave empty (the default) to generate no
+      `old=new` pairs (e.g. "main=dev", "reference/index.html=latest-tag/reference.html",
+      or "reference/*=latest-tag/man/*"). Supports single-segment directory renames,
+      exact whole-path mappings, and prefix globs with target template substitution.
+      Generates a site-root `404.html` that rewrites matching requests to the target
+      path, including deep links. Leave empty (the default) to generate no
       `404.html`. Redirection requires JavaScript; without it the page renders
       as a plain not-found notice linking to the docs root.
     default: ''

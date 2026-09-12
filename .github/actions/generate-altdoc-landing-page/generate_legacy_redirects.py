@@ -31,6 +31,31 @@ from urllib.parse import urlsplit
 from _site_output import docs_base_url, site_output_dir
 
 
+def _path_matches_source(path, source):
+    """Return True if `path` (a target or target prefix) would match `source`."""
+    target_has_wildcard = path.endswith("*")
+    target_clean = path[:-1].rstrip("/") if target_has_wildcard else path.rstrip("/")
+
+    if "*" in source:
+        src_prefix = source[:-1]
+        src_bare = src_prefix.rstrip("/")
+        if target_clean == src_bare:
+            return True
+        if target_clean.startswith(src_prefix):
+            return True
+        if target_has_wildcard and src_prefix.startswith(target_clean + "/"):
+            return True
+        return False
+    elif "/" in source:
+        if not target_has_wildcard:
+            return target_clean == source
+        target_prefix = path[:-1]
+        return source.startswith(target_prefix)
+    else:
+        target_first_seg = target_clean.split("/")[0]
+        return target_first_seg == source
+
+
 def parse_legacy_paths(raw):
     """Parse an `old=new` mapping from a comma- or newline-separated string.
 
@@ -62,9 +87,60 @@ def parse_legacy_paths(raw):
             )
         if old in seen:
             raise ValueError(f"legacy path {old!r} is mapped more than once")
+
+        # Wildcard validation
+        if old == "*" or old.strip("/") == "*":
+            raise ValueError(f"legacy path entry {entry!r} uses a bare '*' source")
+        if new == "*" or new.strip("/") == "*":
+            raise ValueError(f"legacy path entry {entry!r} uses a bare '*' target")
+
+        if "*" in old:
+            if old.count("*") > 1 or not old.endswith("*"):
+                raise ValueError(
+                    f"legacy path entry {entry!r} has a '*' that is not at the end of the source"
+                )
+        if "*" in new:
+            if "*" not in old:
+                raise ValueError(
+                    f"legacy path entry {entry!r} has a '*' in the target with none in the source"
+                )
+            if new.count("*") > 1 or not new.endswith("*"):
+                raise ValueError(
+                    f"legacy path entry {entry!r} has a '*' that is not at the end of the target"
+                )
+
         seen.add(old)
         pairs.append((old, new))
+
+    for old, new in pairs:
+        for other_old, _ in pairs:
+            if _path_matches_source(new, other_old):
+                raise ValueError(
+                    f"legacy path target {new!r} matches source {other_old!r}, which would loop"
+                )
+
     return pairs
+
+
+def classify_legacy_paths(pairs):
+    """Classify (old, new) pairs into exact mappings, prefix patterns, and legacy moved."""
+    exact = {}
+    prefixes = []
+    moved = {}
+    for old, new in pairs:
+        if "*" in old:
+            # Prefix glob: e.g. reference/*=latest-tag/man/*
+            prefix = old[:-1]
+            prefixes.append((prefix, new))
+        elif "/" in old:
+            # Exact whole-path: e.g. reference/index.html=latest-tag/reference.html
+            exact[old] = new
+        else:
+            # Single-segment rename: e.g. main=dev
+            moved[old] = new
+    # Longest prefix wins among prefixes
+    prefixes.sort(key=lambda item: len(item[0]), reverse=True)
+    return exact, prefixes, moved
 
 
 def base_path_of(base_url):
@@ -95,6 +171,7 @@ def js_literal(value):
 def render(base_path, pairs, docs_url):
     """Return the 404 page's HTML."""
     escaped_docs_url = html.escape(docs_url, quote=True)
+    exact, prefixes, moved = classify_legacy_paths(pairs)
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,12 +180,40 @@ def render(base_path, pairs, docs_url):
 <script>
 (function () {{
   var basePath = {js_literal(base_path)};
-  var moved = {js_literal(dict(pairs))};
+  var exact = {js_literal(exact)};
+  var prefixes = {js_literal(prefixes)};
+  var moved = {js_literal(moved)};
   var path = window.location.pathname;
   if (path.indexOf(basePath) !== 0) {{
     return;
   }}
   var rest = path.slice(basePath.length);
+  var cleanRest = rest.length > 0 && rest.charAt(rest.length - 1) === "/" ? rest.slice(0, -1) : rest;
+  if (Object.prototype.hasOwnProperty.call(exact, cleanRest)) {{
+    window.location.replace(
+      basePath + exact[cleanRest] + window.location.search + window.location.hash
+    );
+    return;
+  }}
+  for (var i = 0; i < prefixes.length; i++) {{
+    var prefix = prefixes[i][0];
+    var target = prefixes[i][1];
+    if (rest.indexOf(prefix) === 0) {{
+      var remainder = rest.slice(prefix.length);
+      var dest = target.indexOf("*") !== -1 ? target.replace("*", remainder) : target;
+      window.location.replace(
+        basePath + dest + window.location.search + window.location.hash
+      );
+      return;
+    }}
+    if (rest === prefix.slice(0, -1)) {{
+      var dest = target.indexOf("*") !== -1 ? target.replace("*", "") : target;
+      window.location.replace(
+        basePath + dest + window.location.search + window.location.hash
+      );
+      return;
+    }}
+  }}
   var slash = rest.indexOf("/");
   var head = slash === -1 ? rest : rest.slice(0, slash);
   if (!Object.prototype.hasOwnProperty.call(moved, head)) {{
@@ -149,7 +254,10 @@ def main():
     (output_dir / "404.html").write_text(page, encoding="utf-8")
 
     for old, new in pairs:
-        print(f"Legacy redirect: /{old}/... -> /{new}/...")
+        if "*" in old or "/" in old:
+            print(f"Legacy redirect: /{old} -> /{new}")
+        else:
+            print(f"Legacy redirect: /{old}/... -> /{new}/...")
 
 
 if __name__ == "__main__":

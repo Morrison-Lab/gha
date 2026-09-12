@@ -31,6 +31,24 @@ const cases = [
   ["/serocalculator/main", "/serocalculator/dev/"],
   ["/serocalculator/main/reference/index.html", "/serocalculator/dev/reference/index.html"],
   ["/serocalculator/master/articles/intro.html", "/serocalculator/dev/articles/intro.html"],
+  // Pattern-and-template and exact mappings:
+  // reference/index.html=latest-tag/reference.html (exact key takes precedence over prefix)
+  ["/serocalculator/reference/index.html", "/serocalculator/latest-tag/reference.html"],
+  // reference/*=latest-tag/man/* (wildcard remainder is substituted)
+  ["/serocalculator/reference/est_seroincidence.html", "/serocalculator/latest-tag/man/est_seroincidence.html"],
+  // articles/*=latest-tag/vignettes/articles/*
+  ["/serocalculator/articles/intro.html", "/serocalculator/latest-tag/vignettes/articles/intro.html"],
+  // news/index.html=latest-tag/news.html (exact key)
+  ["/serocalculator/news/index.html", "/serocalculator/latest-tag/news.html"],
+  // news/other.html has no wildcard mapping, so it must not redirect
+  ["/serocalculator/news/other.html", null],
+  // Empty remainder on wildcard mapping
+  ["/serocalculator/reference/", "/serocalculator/latest-tag/man/"],
+  ["/serocalculator/reference", "/serocalculator/latest-tag/man/"],
+  // Outside prefix boundaries
+  ["/serocalculator/reference_extra/index.html", null],
+  ["/serocalculator/man/est_seroincidence.html", null],
+  ["/serocalculator/vignettes/articles/intro.html", null],
   // Already on the current layout: a genuinely missing page must not redirect,
   // or a typo'd /dev/ URL would bounce forever.
   ["/serocalculator/dev/nope.html", null],
@@ -47,6 +65,10 @@ const cases = [
 const preserveCases = [
   ["/serocalculator/main/reference/index.html", "?q=1", "#est_seroincidence",
    "/serocalculator/dev/reference/index.html?q=1#est_seroincidence"],
+  ["/serocalculator/reference/index.html", "?topic=sero", "#equations",
+   "/serocalculator/latest-tag/reference.html?topic=sero#equations"],
+  ["/serocalculator/reference/est_seroincidence.html", "?q=abc", "#fig1",
+   "/serocalculator/latest-tag/man/est_seroincidence.html?q=abc#fig1"],
 ];
 
 let failures = 0;
