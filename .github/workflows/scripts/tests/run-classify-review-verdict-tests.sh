@@ -1872,8 +1872,8 @@ In an earlier attempt I considered using \`<!-- review-data:\` but discarded it.
 **Needs more work.**" \
 "false" "needs-more-work"
 
-# gha#862 counterweight: an unclosed backtick in a preceding paragraph does
-# not swallow a subsequent machine payload across blank lines.
+# gha#862 counterweight: an unclosed backtick across paragraphs does not
+# swallow a subsequent machine payload because strip_code_spans resets at blank lines.
 run_test "An unclosed backtick across paragraphs does not swallow a subsequent machine payload" "Note on the \`setting flag.
 
 <!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
@@ -1882,6 +1882,17 @@ run_test "An unclosed backtick across paragraphs does not swallow a subsequent m
 
 **Ready for merge.**" \
 "true" "ready-for-merge"
+
+# gha#862 counterweight (same block): an unclosed backtick in the same paragraph
+# block pairs with a later backtick across a payload marker. Stripping code spans
+# first blanks the text between the backticks, swallowing the heading if the closer
+# is on the heading line. The resulting absence of a verdict heading safely falls back
+# to no-verdict (fail-closed) rather than false-CLEAN.
+run_test "An unclosed backtick in the same paragraph block as a payload marker swallows to the closing backtick" "See the \`docs for details.
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a\"}]} -->
+### Verdict\` is what follows.
+**Needs more work.**" \
+"false" "no-verdict"
 
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
