@@ -365,3 +365,19 @@ def test_cli_execution_violations(tmp_path):
     assert res_warn.returncode == 0
     assert "::warning" in res_warn.stdout
     assert "::error" not in res_warn.stdout
+
+
+def test_cp1252_console(tmp_path):
+    f = tmp_path / "bad.py"
+    f.write_text("def f1(): pass\ndef f2(): pass\n", encoding="utf-8")
+    script = Path(check_mod.__file__).resolve()
+
+    res = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=False,
+        env={**os.environ, "PYTHONIOENCODING": "cp1252", "INPUT_PATH": str(tmp_path)},
+    )
+    assert res.returncode == 1
+    assert b"Found 1 file(s) with multiple function definitions" in res.stdout

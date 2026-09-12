@@ -42,6 +42,13 @@ import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 # Word-boundary match so the pragma "phi-allow" does NOT also fire on lines
 # that merely mention "phi-allowlist" (e.g. a path like .github/phi-allowlist.txt
 # in a consumer's YAML), which would silently exclude those lines from scanning.

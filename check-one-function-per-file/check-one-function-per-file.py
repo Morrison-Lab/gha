@@ -27,6 +27,13 @@ import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Set, Tuple
 
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 DEFAULT_EXTENSIONS = {
     ".R",
     ".r",

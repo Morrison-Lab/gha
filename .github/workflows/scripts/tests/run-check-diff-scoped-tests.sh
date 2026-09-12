@@ -294,5 +294,36 @@ rc=$(run "$d" origin/main)
               || bad "qmd check" "expected 1, got $rc"
 rm -rf "$d"
 
+# 15. A clean scan under a non-UTF-8 console encoding (e.g. cp1252 on Windows)
+#     must not crash with UnicodeEncodeError when printing status symbols (gha#860).
+make_real_clean_repo() {
+  local d
+  d="$(mktemp -d)"
+  (
+    cd "$d"
+    git init -q -b main .
+    git config user.email t@example.invalid; git config user.name Tester  # phi-allow
+    mkdir -p check-new-line-breaks check-phi
+    cp "$REPO_ROOT/check-new-line-breaks/check-new-line-breaks.py" check-new-line-breaks/
+    cp "$REPO_ROOT/check-phi/check-phi.py" check-phi/
+    printf '# fixture\n' > README.md
+    git add -A; git commit -qm base
+    git remote add origin "$d"
+    git update-ref refs/remotes/origin/main HEAD
+    printf 'Clean line without PHI or sembr breaks.\n' >> README.md
+    git add -A; git commit -qm clean-update
+  ) >/dev/null 2>&1
+  printf '%s' "$d"
+}
+
+d=$(make_real_clean_repo)
+rc=$( cd "$d" && PYTHONIOENCODING=cp1252 bash "$SCRIPT" origin/main >/tmp/dsout 2>&1; echo $?; )
+# Exit 3 expected because typos is absent, but new-line-breaks and phi must report OK, not FAILED
+[ "$rc" = 3 ] && ok "cp1252 console encoding does not crash with UnicodeEncodeError (gha#860)" \
+              || bad "cp1252 check" "expected 3, got $rc"
+grep -q "check-diff-scoped: phi                OK" /tmp/dsout && ok "phi passes under cp1252" \
+                                                              || bad "cp1252 phi" "phi failed under cp1252"
+rm -rf "$d"
+
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

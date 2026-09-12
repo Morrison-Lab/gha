@@ -29,6 +29,13 @@ import sys
 from pathlib import Path
 from typing import List, Tuple, Dict
 
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 # Non-standard characters to detect
 NON_STANDARD_CHARS = {
     '\u201C': 'Left double quotation mark',

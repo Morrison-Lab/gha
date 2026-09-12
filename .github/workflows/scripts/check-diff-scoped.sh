@@ -158,7 +158,7 @@ run_check() {
   # exit logic entirely, and exiting with the check's own status by accident.
   # The `|| rc=$?` form makes it part of a list, which set -e does not act on.
   local out rc=0
-  out="$(env "$@" python3 "$script" 2>&1)" || rc=$?
+  out="$(env PYTHONIOENCODING=utf-8 "$@" python3 "$script" 2>&1)" || rc=$?
   printf '%s\n' "$out"
   # Two gates, and both are load-bearing.
   #

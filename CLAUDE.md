@@ -1723,7 +1723,7 @@ finding) and 2 (refused).
 A real finding outranks an incomplete run, since the finding is actionable
 now.
 
-24 assertions across 15 cases.
+26 assertions across 16 cases.
 Nine mutations are confirmed to turn a named case red: dropping the dirty
 guard, narrowing the status scan to `--untracked-files=no`, dropping the
 merge-base gate, letting the tool-unavailable arm read as clean, letting the
