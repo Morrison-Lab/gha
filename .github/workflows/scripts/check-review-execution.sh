@@ -616,6 +616,7 @@ jq -s --argjson denials "$denials" '
         end ]
 ' "$EXECUTION_FILE" > "$blocks_file" 2>/dev/null || echo '[]' > "$blocks_file"
 review_text_file="$(mktemp)"
+span_err_file="$(mktemp)"
 # gha#710: a review can span SEVERAL assistant blocks, each carrying a
 # verdict line -- the full review with its ### Verdict in one block, then a
 # follow-up section ("my verdict stands unchanged") in a later one. Taking
@@ -746,7 +747,7 @@ review_text_file="$(mktemp)"
 # unchanged.
 # No apostrophes anywhere inside the program below, comments included: it is
 # one single-quoted shell string, and an apostrophe would end it.
-jq -r '
+if ! jq -r '
   # gha#850 round 2: the fence, blockquote and indentation stripping is one
   # definition shared by the heading test and the payload test, so the two
   # cannot disagree about what counts as quoted.
@@ -837,7 +838,14 @@ jq -r '
       then $blocks[$vidx | first]
     else ( $blocks | last ) // ""
     end
-' "$blocks_file" > "$review_text_file" 2>/dev/null || true
+' "$blocks_file" > "$review_text_file" 2>"$span_err_file"; then
+  span_err="$(cat "$span_err_file")"
+  rm -f "$span_err_file"
+  echo "failure_kind=hard-error" >> "$GITHUB_OUTPUT"
+  echo "::error::Claude review span extraction failed (jq error; gha#861): ${span_err:-unknown jq error}"
+  exit 1
+fi
+rm -f "$span_err_file"
 all_text_file="$(mktemp)"
 jq -r '.[]' "$blocks_file" > "$all_text_file" 2>/dev/null || true
 if [[ "$is_error" == "true" || "$subtype" == error_* ]]; then
