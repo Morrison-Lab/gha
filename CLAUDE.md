@@ -2072,7 +2072,7 @@ Run it
 with
 `python3 .github/workflows/scripts/tests/run-r-cmd-check-workflow-tests.py --self-test`;
 CI runs it as the `r-cmd-check-tests` job.
-Sixteen mutations are confirmed
+Fifteen mutations are confirmed
 to turn it red: flipping `cache: false`, dropping the `pull_request` gate,
 restoring upstream's `github.head_ref`-only concurrency group,
 forwarding `inputs.error-on` on the hard job, dropping `error-on` from
