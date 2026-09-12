@@ -60,7 +60,7 @@ def run_git(args: list[str], cwd: pathlib.Path) -> str:
 def init_repo(path: pathlib.Path) -> None:
     run_git(["init", "-q"], cwd=path)
     run_git(["config", "user.name", "Test Runner"], cwd=path)
-    run_git(["config", "user.email", "test@example.com"], cwd=path)
+    run_git(["config", "user.email", "t@example.invalid"], cwd=path)  # phi-allow
     run_git(["config", "commit.gpgsign", "false"], cwd=path)
 
 
