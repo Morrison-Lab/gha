@@ -3326,6 +3326,10 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/tests/run-audit-callee-permissions-tests.py
 
+      - name: Assert no callee permission widening against v2
+        shell: bash
+        run: python3 .github/workflows/scripts/audit_callee_permissions.py --base-ref v2
+
       # Asserts all runner jobs specify timeout-minutes and all caller jobs
       # specify only supported keys for reusable workflow calls (see gha#328,
       # gha#504, gha#582, and gha#590).

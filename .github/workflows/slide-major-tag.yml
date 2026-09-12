@@ -38,6 +38,8 @@ jobs:
           fetch-depth: 0  # full history + all tags
 
       - name: Guard against callee permission widening
+        env:
+          ALLOW_BREAKING_SLIDE: ${{ vars.ALLOW_BREAKING_SLIDE || '' }}
         run: |
           source .github/workflows/scripts/resolve-major-tag.sh
           resolve_major_tag

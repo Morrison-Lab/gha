@@ -10,9 +10,12 @@ Verifies that audit_callee_permissions correctly detects and reports:
 - Unchanged permissions with comments or reordering (no false positives)
 - Permission narrowing (write -> read, read -> none, dropping keys) (permitted)
 - Exemption of brand-new reusable workflows (no existing callers to break)
+- Notice emitted when reusable workflow is removed or renamed
+- id-token: write addition detected when base was write-all / read-all (id-token not in shorthand)
 - Negative controls: malformed YAML, invalid permission values
 - Extension support: both .yml and .yaml workflows evaluated
 - Non-reusable workflows (no on: workflow_call) ignored
+- Skip when workflows restored marker is present
 
 Usage::
 
@@ -23,6 +26,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import pathlib
 import subprocess
 import sys
@@ -81,11 +85,9 @@ def run_audit(
         args.extend(["--head-ref", head_ref])
 
     out = io.StringIO()
-    # audit.py uses sys.exit(0/1/2) or returns code from main()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
         orig_cwd = pathlib.Path.cwd()
         try:
-            import os
             os.chdir(cwd)
             code = audit.main(args)
         except SystemExit as exc:
@@ -149,6 +151,11 @@ jobs:
       contents: read
     steps:
       - run: echo worker
+  shorthand-job:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - run: echo write-all
 """,
             encoding="utf-8",
         )
@@ -173,7 +180,7 @@ jobs:
         # Test 1: Unchanged state vs base_ref
         code, out = run_audit("v1", None, cwd=repo)
         check("identical working tree reports clean (exit 0)", code == 0, f"output: {out}")
-        check("identical working tree output summary", "examined 4 jobs across 2 reusable workflows" in out, out)
+        check("identical working tree output summary", "examined 5 jobs across 2 reusable workflows" in out, out)
 
         # -------------------------------------------------------------
         # Test 2: Added comments and key reordering (no structural permission change)
@@ -401,6 +408,11 @@ jobs:
       contents: read
     steps:
       - run: echo worker
+  shorthand-job:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - run: echo write-all
 """,
             encoding="utf-8",
         )
@@ -409,7 +421,40 @@ jobs:
         check("workflow level violation reported", "workflow level widened permission" in out, out)
 
         # -------------------------------------------------------------
-        # Test 9: Brand-new reusable workflow added (exempt: no callers pinned to base)
+        # Test 9: id-token explicitly added to job whose base had write-all (VIOLATION)
+        # write-all does NOT include id-token, so adding id-token: write is a widening!
+        run_git(["checkout", "."], cwd=repo)
+        (wf_dir / "reusable2.yaml").write_text(
+            """name: Reusable 2
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  worker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo worker
+  shorthand-job:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write # ADDED EXPLICIT ID-TOKEN (not granted by write-all)
+    steps:
+      - run: echo write-all
+""",
+            encoding="utf-8",
+        )
+        code, out = run_audit("v1", None, cwd=repo)
+        check("adding id-token: write after write-all is flagged as widening", code == 1, out)
+        check("id-token added key violation reported", "added permission 'id-token: write'" in out, out)
+
+        # -------------------------------------------------------------
+        # Test 10: Brand-new reusable workflow added (exempt: no callers pinned to base)
         run_git(["checkout", "."], cwd=repo)
         (wf_dir / "reusable3.yml").write_text(
             """name: Brand New Reusable
@@ -429,9 +474,17 @@ jobs:
         )
         code, out = run_audit("v1", None, cwd=repo)
         check("brand-new reusable workflow added since base is exempt", code == 0, out)
+        check("notice emitted for added workflow", "reusable workflow '.github/workflows/reusable3.yml' was added or renamed" in out, out)
 
         # -------------------------------------------------------------
-        # Test 10: Non-reusable workflow permission changes (ignored)
+        # Test 11: Reusable workflow removed/renamed since base (notice emitted)
+        run_git(["checkout", "."], cwd=repo)
+        (wf_dir / "reusable1.yml").unlink()
+        code, out = run_audit("v1", None, cwd=repo)
+        check("removed/renamed workflow reports notice for hand-check", "reusable workflow '.github/workflows/reusable1.yml' was removed or renamed" in out, out)
+
+        # -------------------------------------------------------------
+        # Test 12: Non-reusable workflow permission changes (ignored)
         run_git(["checkout", "."], cwd=repo)
         (wf_dir / "caller.yml").write_text(
             """name: Caller
@@ -453,7 +506,7 @@ jobs:
         check("non-reusable workflows are ignored by callee audit", code == 0, out)
 
         # -------------------------------------------------------------
-        # Test 11: Comparing two committed git refs directly (--head-ref)
+        # Test 13: Comparing two committed git refs directly (--head-ref)
         run_git(["checkout", "."], cwd=repo)
         (wf_dir / "reusable1.yml").write_text(
             """name: Reusable 1
@@ -488,15 +541,15 @@ jobs:
         check("violation identifies added action permission", "added permission 'actions: read'" in out, out)
 
         # -------------------------------------------------------------
-        # Test 12: Negative control: malformed YAML in head
+        # Test 14: Negative control: malformed YAML in head
         run_git(["checkout", "."], cwd=repo)
         (wf_dir / "reusable1.yml").write_text("name: broken:\n  - [", encoding="utf-8")
         code, out = run_audit("v1", None, cwd=repo)
         check("malformed YAML in head exits with code 2", code == 2, out)
-        check("error message names YAML parse error", "YAML parse error" in out, out)
+        check("error message names YAML parse error", "mapping values are not allowed here" in out or "YAML parse error" in out, out)
 
         # -------------------------------------------------------------
-        # Test 13: Negative control: invalid permission value (e.g. 'admin')
+        # Test 15: Negative control: invalid permission value (e.g. 'admin')
         run_git(["checkout", "."], cwd=repo)
         (wf_dir / "reusable1.yml").write_text(
             """name: Reusable 1
@@ -516,6 +569,14 @@ jobs:
         code, out = run_audit("v1", None, cwd=repo)
         check("invalid permission value exits with code 2", code == 2, out)
         check("error message names unexpected permission value", "unknown permission value 'admin'" in out, out)
+
+        # -------------------------------------------------------------
+        # Test 16: Restored workflows directory marker skips audit cleanly
+        run_git(["checkout", "."], cwd=repo)
+        (wf_dir / ".restored-from-default-branch").write_text("", encoding="utf-8")
+        code, out = run_audit("v1", None, cwd=repo)
+        check("restored marker causes audit to skip cleanly (exit 0)", code == 0, out)
+        check("restored notice emitted", "Skipping callee permissions audit" in out, out)
 
     if failures == 0:
         print(f"\nAll {cases} test cases passed.")

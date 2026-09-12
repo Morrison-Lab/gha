@@ -36,6 +36,17 @@ import pathlib
 import subprocess
 import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+
+from workflow_discovery import (  # noqa: E402
+    Unparsable,
+    discover_workflows,
+    is_workflows_restored,
+    load_workflow,
+    require_workflows,
+    skip_if_restored,
+)
+
 # Level scale for comparing permission values: higher number means broader access.
 # none < read < write.
 LEVELS = {
@@ -45,6 +56,9 @@ LEVELS = {
 }
 
 # Standard GitHub Actions permission scopes covered by shorthand `read-all` / `write-all`.
+# NOTE: GitHub documentation explicitly notes that `id-token` is NOT included in
+# `read-all` or `write-all` and must always be requested explicitly.
+# Conversely, `vulnerability-alerts` is covered.
 SHORTHAND_KEYS = frozenset(
     [
         "actions",
@@ -53,7 +67,6 @@ SHORTHAND_KEYS = frozenset(
         "contents",
         "deployments",
         "discussions",
-        "id-token",
         "issues",
         "models",
         "packages",
@@ -62,15 +75,16 @@ SHORTHAND_KEYS = frozenset(
         "repository-projects",
         "security-events",
         "statuses",
+        "vulnerability-alerts",
     ]
 )
 
 
-def load_yaml(content: str, filename: str) -> dict:
-    """Safely parse YAML content with PyYAML, failing closed."""
+def load_yaml_str(content: str, filename: str) -> dict:
+    """Safely parse YAML content string with PyYAML, failing closed with Unparsable."""
     try:
         import yaml
-    except ImportError:
+    except ImportError:  # pragma: no cover
         print(
             "::error::PyYAML is required to parse workflows but is not "
             "installed (install it with `python3 -m pip install pyyaml`).",
@@ -81,12 +95,12 @@ def load_yaml(content: str, filename: str) -> dict:
     try:
         doc = yaml.safe_load(content)
     except (yaml.YAMLError, UnicodeDecodeError) as exc:
-        raise ValueError(f"{filename}: YAML parse error: {exc}") from exc
+        raise Unparsable(f"{filename}: YAML parse error: {exc}") from exc
 
     if doc is None:
         return {}
     if not isinstance(doc, dict):
-        raise ValueError(f"{filename}: top level is {type(doc).__name__}, not a mapping")
+        raise Unparsable(f"{filename}: top level is {type(doc).__name__}, not a mapping")
     return doc
 
 
@@ -113,19 +127,19 @@ def normalize_permissions_block(p: object, context: str) -> dict[str, str] | Non
         res = {}
         for k, v in p.items():
             if not isinstance(k, str) or not isinstance(v, str):
-                raise ValueError(
+                raise Unparsable(
                     f"{context}: permission entry {k!r}: {v!r} is not string:string"
                 )
             v_norm = v.lower().strip()
             if v_norm not in LEVELS:
-                raise ValueError(
+                raise Unparsable(
                     f"{context}: unknown permission value {v!r} for key {k!r} "
                     f"(expected one of: {', '.join(sorted(LEVELS))})"
                 )
             res[k] = v_norm
         return res
 
-    raise ValueError(f"{context}: unexpected permissions type: {type(p).__name__}")
+    raise Unparsable(f"{context}: unexpected permissions type: {type(p).__name__}")
 
 
 def extract_callee_permissions(doc: dict, filename: str) -> dict[str, dict[str, str] | None]:
@@ -141,11 +155,11 @@ def extract_callee_permissions(doc: dict, filename: str) -> dict[str, dict[str, 
 
     jobs = doc.get("jobs")
     if jobs is None or not isinstance(jobs, dict):
-        raise ValueError(f"{filename}: missing or invalid 'jobs' mapping")
+        raise Unparsable(f"{filename}: missing or invalid 'jobs' mapping")
 
     for job_id, job in sorted(jobs.items()):
         if not isinstance(job, dict):
-            raise ValueError(f"{filename}: job '{job_id}' is not a mapping")
+            raise Unparsable(f"{filename}: job '{job_id}' is not a mapping")
         job_p = normalize_permissions_block(job.get("permissions"), f"{filename}: job '{job_id}' permissions")
         res[str(job_id)] = job_p
 
@@ -189,7 +203,6 @@ def compare_target_permissions(
         return violations
 
     # Case 4: Both are dicts. Check for added keys and escalated values.
-    # base_p and head_p are guaranteed dict[str, str] here.
     assert base_p is not None and head_p is not None
 
     for key, head_val in sorted(head_p.items()):
@@ -229,7 +242,7 @@ def git_show(ref: str, path: str, cwd: pathlib.Path | None = None) -> str:
 
 
 def get_git_workflows(ref: str, workflows_dir: str = ".github/workflows", cwd: pathlib.Path | None = None) -> list[str]:
-    """List workflow files present at a given git ref."""
+    """List workflow files present at a given git ref, matching discover_workflows rules."""
     try:
         proc = subprocess.run(
             ["git", "ls-tree", "-r", "--name-only", ref, workflows_dir],
@@ -239,15 +252,15 @@ def get_git_workflows(ref: str, workflows_dir: str = ".github/workflows", cwd: p
             cwd=cwd,
         )
         files = []
+        target_dir = pathlib.Path(workflows_dir)
         for line in proc.stdout.strip().splitlines():
             line = line.strip()
             if not line:
                 continue
             p = pathlib.Path(line)
-            if p.suffix in (".yml", ".yaml") and not p.name.startswith("."):
-                # Must be directly in workflows_dir, not in a nested subdirectory
-                if p.parent == pathlib.Path(workflows_dir):
-                    files.append(line)
+            # Reuses discover_workflows rules: .yml/.yaml, no dotfiles, direct child of workflows_dir
+            if p.suffix in (".yml", ".yaml") and not p.name.startswith(".") and p.parent == target_dir:
+                files.append(line)
         return sorted(files)
     except subprocess.CalledProcessError as exc:
         raise ValueError(f"Failed to list workflows at ref {ref}: {exc.stderr.strip()}") from exc
@@ -258,29 +271,54 @@ def audit_permissions(
     head_ref: str | None = None,
     workflows_dir: str = ".github/workflows",
     cwd: pathlib.Path | None = None,
-) -> tuple[list[str], int, int]:
+) -> tuple[list[str], int, int, list[str]]:
     """Audit callee permissions between base_ref and head_ref (or working tree).
 
     Returns:
-      (violations, examined_workflows_count, examined_jobs_count)
+      (violations, examined_workflows_count, examined_jobs_count, notes)
     """
     base_files = set(get_git_workflows(base_ref, workflows_dir, cwd=cwd))
 
     if head_ref is not None:
         head_files = set(get_git_workflows(head_ref, workflows_dir, cwd=cwd))
     else:
-        # Working tree
+        # Working tree: use discover_workflows from workflow_discovery.py
         target_dir = (cwd / workflows_dir) if cwd else pathlib.Path(workflows_dir)
-        if not target_dir.is_dir():
-            raise ValueError(f"Workflows directory not found: {target_dir}")
+        discovered = discover_workflows(target_dir)
         head_files = set(
             str(p.relative_to(cwd) if cwd else p)
-            for p in target_dir.iterdir()
-            if p.is_file() and p.suffix in (".yml", ".yaml") and not p.name.startswith(".")
+            for p in discovered
         )
 
-    # Check common workflows that exist in both refs
+    # Detect workflows added or removed since base ref
     common_workflows = sorted(base_files & head_files)
+    base_only = sorted(base_files - head_files)
+    head_only = sorted(head_files - base_files)
+
+    notes: list[str] = []
+    if base_only or head_only:
+        # Check if any base_only or head_only files are reusable workflows
+        for b in base_only:
+            try:
+                b_content = git_show(base_ref, b, cwd=cwd)
+                if is_reusable_workflow(load_yaml_str(b_content, f"{b}@{base_ref}")):
+                    notes.append(
+                        f"Notice: reusable workflow '{b}' was removed or renamed since {base_ref}; verify callers by hand."
+                    )
+            except Exception:
+                pass
+        for h in head_only:
+            try:
+                if head_ref is not None:
+                    h_content = git_show(head_ref, h, cwd=cwd)
+                else:
+                    h_content = (cwd / h if cwd else pathlib.Path(h)).read_text(encoding="utf-8")
+                if is_reusable_workflow(load_yaml_str(h_content, f"{h}@(head)")):
+                    notes.append(
+                        f"Notice: reusable workflow '{h}' was added or renamed since {base_ref} (exempt: no callers pinned to {base_ref})."
+                    )
+            except Exception:
+                pass
 
     all_violations: list[str] = []
     examined_workflows = 0
@@ -289,22 +327,19 @@ def audit_permissions(
     for wf_path in common_workflows:
         # Load base workflow
         base_content = git_show(base_ref, wf_path, cwd=cwd)
-        base_doc = load_yaml(base_content, f"{wf_path}@{base_ref}")
+        base_doc = load_yaml_str(base_content, f"{wf_path}@{base_ref}")
         if not is_reusable_workflow(base_doc):
             continue
 
         # Load head workflow
         if head_ref is not None:
             head_content = git_show(head_ref, wf_path, cwd=cwd)
+            head_doc = load_yaml_str(head_content, f"{wf_path}@{head_ref}")
         else:
             file_disk = (cwd / wf_path) if cwd else pathlib.Path(wf_path)
-            head_content = file_disk.read_text(encoding="utf-8")
+            head_doc = load_workflow(file_disk)
 
-        head_doc = load_yaml(head_content, f"{wf_path}@(head)")
         if not is_reusable_workflow(head_doc):
-            # Workflow was reusable at base but no longer reusable at head.
-            # Callers calling it will fail if it's no longer reusable, but this audit
-            # focuses on permission contract widening.
             continue
 
         examined_workflows += 1
@@ -328,7 +363,6 @@ def audit_permissions(
             examined_jobs += 1
             if job_id not in base_jobs:
                 # Job added in an existing reusable workflow.
-                # If it declares permissions, callers will need to satisfy them.
                 if head_p is not None:
                     added_keys = [k for k, val in head_p.items() if val != "none"]
                     if added_keys:
@@ -346,7 +380,7 @@ def audit_permissions(
                 )
                 all_violations.extend(v)
 
-    return all_violations, examined_workflows, examined_jobs
+    return all_violations, examined_workflows, examined_jobs, notes
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -371,8 +405,12 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
+    workflows_dir_path = pathlib.Path(args.workflows_dir)
+    if skip_if_restored(workflows_dir_path, "callee permissions audit"):
+        return 0
+
     try:
-        violations, w_count, j_count = audit_permissions(
+        violations, w_count, j_count, notes = audit_permissions(
             base_ref=args.base_ref,
             head_ref=args.head_ref,
             workflows_dir=args.workflows_dir,
@@ -380,6 +418,9 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         print(f"::error::Audit failed with error: {exc}", file=sys.stderr)
         return 2
+
+    for note in notes:
+        print(f"::notice::{note}")
 
     if violations:
         print(
