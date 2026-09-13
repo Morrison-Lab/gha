@@ -1588,19 +1588,6 @@ run_test "A bold contradicting label-form tail supersedes an earlier CLEAN paylo
 **Verdict:** Needs more work." \
 "false" "needs-more-work"
 
-# gha#863: level-3 heading with bold label contradiction (### **Verdict:**)
-run_test "A bold heading label contradiction supersedes an earlier CLEAN payload" \
-"### Verdict
-
-**Ready for merge.**
-
-<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
-
-### **Verdict:**
-
-Needs more work." \
-"false" "needs-more-work"
-
 # gha#863: a contradicting label-form tail supersedes an earlier NOT_CLEAN payload
 run_test "A contradicting label-form tail supersedes an earlier NOT_CLEAN payload" \
 "### Verdict
@@ -1621,6 +1608,30 @@ run_test "An agreeing label-form tail keeps the payload fast path" \
 <!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
 
 Verdict: Ready for merge." \
+"true" "ready-for-merge"
+
+# gha#863 review finding: a contradicting tail containing an incidental
+# confirming word ("stands", "remains") still supersedes the payload.
+run_test "A contradicting tail containing incidental confirming words supersedes the payload" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+Verdict: Changes requested -- my note about the flaky test stands for the record." \
+"false" "changes-requested"
+
+# gha#863 review finding (reverse direction): an approving tail containing
+# an incidental confirming word ("remains") still supersedes a NOT_CLEAN payload.
+run_test "An approving tail containing incidental confirming words supersedes a NOT_CLEAN payload" \
+"### Verdict
+
+**Needs more work.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+Verdict: Ready for merge -- the fix remains solid after a second look." \
 "true" "ready-for-merge"
 
 # A heading that is merely QUOTED cannot fake a retraction -- the search runs

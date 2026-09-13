@@ -213,15 +213,15 @@ _SUPERSEDING_HEADING_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
-# gha#863: a candidate verdict line in heading or label form that can contradict
-# an earlier payload if its polarity disagrees. Uses the same `(?![ \t]*-?\w)`
-# exclusion so section titles (`Verdict rationale`, `Verdict summary`, `Verdict-bearing`)
-# are never treated as verdict tails.
+# gha#863: a candidate verdict line in label form (`Verdict:`, `**Verdict:**`)
+# that can contradict an earlier payload if its polarity disagrees.
+# Deliberately excludes markdown headings (`#{1,6}`), which are handled above by
+# `_SUPERSEDING_HEADING_RE` (where `### **Verdict:**` is deliberately rejected as
+# a superseding heading per gha#857 review round 3, finding 2).
+# Uses the same `(?![ \t]*-?\w)` exclusion so section titles (`Verdict rationale`,
+# `Verdict summary`, `Verdict-bearing`) are never treated as verdict tails.
 _SUPERSEDING_LABEL_RE = re.compile(
-    r'^ {0,3}(?:'
-    r'#{1,6}[ \t]+(?:\*\*)?verdict(?![ \t]*-?\w)'
-    r'|[>*_#-]*\bverdict\b(?![ \t]*-?\w)'
-    r')',
+    r'^ {0,3}(?:[>*_#-]*\bverdict\b(?![ \t]*-?\w))',
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -914,16 +914,17 @@ if _payload_markers:
     # genuinely contradicts the earlier payload's polarity stands the fast path
     # down so the prose scan decides. Confirming tails (e.g. `Verdict: unchanged
     # after a second read`, `Verdict: Ready for merge` after a CLEAN payload)
-    # do NOT contradict, so the fast path remains active.
+    # do NOT contradict in polarity (the former states no recognized polarity so
+    # _tail_verdict is None; the latter states matching polarity), so the fast path
+    # remains active.
+    # We do not use a naive confirming keyword regex across the tail text, which
+    # would cause an incidental word like 'stands' or 'remains' elsewhere in a
+    # rejection tail to suppress contradiction detection and reintroduce false-CLEAN.
     if payload is not None and _end is not None:
         _closer_match = re.match(r'\s*-->', _payload_candidate_text[_end:])
         if _closer_match:
             _tail_text = _payload_candidate_text[_end + _closer_match.end():]
-            _CONFIRMING_TAIL_RE = re.compile(
-                r'\b(?:unchanged|stands?|remains?|re-?affirmed?)\b',
-                re.IGNORECASE,
-            )
-            if _SUPERSEDING_LABEL_RE.search(_tail_text) and not _CONFIRMING_TAIL_RE.search(_tail_text):
+            if _SUPERSEDING_LABEL_RE.search(_tail_text):
                 _tail_lines = strip_machine_payloads(strip_code_spans(_tail_text.strip().splitlines()))
                 _tail_verdict, _ = classify_prose_lines(_tail_lines)
                 if _tail_verdict is not None:
