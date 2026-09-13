@@ -1553,9 +1553,8 @@ On re-reading, the guard I flagged is supplied by the caller.
 **Ready for merge.**" \
 "true" "ready-for-merge"
 
-# The supersession signal is a HEADING, never a label-form tail: gha#710's
-# follow-up tail is written that way and means the verdict stands, so reading
-# it as a retraction would invert it. The payload still decides here.
+# gha#863: a label-form tail that confirms the payload does not supersede it.
+# Confirming tails remain on the payload fast path.
 run_test "A label-form tail after a payload does not supersede it" \
 "### Verdict
 
@@ -1564,6 +1563,75 @@ run_test "A label-form tail after a payload does not supersede it" \
 <!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
 
 Verdict: unchanged after a second read." \
+"true" "ready-for-merge"
+
+# gha#863: a label-form tail that genuinely contradicts an earlier CLEAN
+# payload stands the fast path down so the prose scan decides.
+run_test "A contradicting label-form tail supersedes an earlier CLEAN payload" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+Verdict: needs more work after a second read." \
+"false" "needs-more-work"
+
+# gha#863: bold label-form contradiction (**Verdict:**)
+run_test "A bold contradicting label-form tail supersedes an earlier CLEAN payload" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+**Verdict:** Needs more work." \
+"false" "needs-more-work"
+
+# gha#863: a contradicting label-form tail supersedes an earlier NOT_CLEAN payload
+run_test "A contradicting label-form tail supersedes an earlier NOT_CLEAN payload" \
+"### Verdict
+
+**Needs more work.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+Verdict: Ready for merge." \
+"true" "ready-for-merge"
+
+# gha#863: an agreeing label-form tail keeps the payload fast path
+run_test "An agreeing label-form tail keeps the payload fast path" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+Verdict: Ready for merge." \
+"true" "ready-for-merge"
+
+# gha#863 review finding: a contradicting tail containing an incidental
+# confirming word ("stands", "remains") still supersedes the payload.
+run_test "A contradicting tail containing incidental confirming words supersedes the payload" \
+"### Verdict
+
+**Ready for merge.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"CLEAN\",\"findings\":[]} -->
+
+Verdict: Changes requested -- my note about the flaky test stands for the record." \
+"false" "changes-requested"
+
+# gha#863 review finding (reverse direction): an approving tail containing
+# an incidental confirming word ("remains") still supersedes a NOT_CLEAN payload.
+run_test "An approving tail containing incidental confirming words supersedes a NOT_CLEAN payload" \
+"### Verdict
+
+**Needs more work.**
+
+<!-- review-data: {\"schema_version\":\"1.1\",\"reviewer\":\"claude\",\"commit_sha\":\"abc\",\"verdict\":\"NOT_CLEAN\",\"findings\":[{\"file\":\"a.sh\",\"line\":1,\"category\":\"bug\",\"message\":\"x\"}]} -->
+
+Verdict: Ready for merge -- the fix remains solid after a second look." \
 "true" "ready-for-merge"
 
 # A heading that is merely QUOTED cannot fake a retraction -- the search runs
