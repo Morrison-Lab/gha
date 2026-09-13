@@ -2507,10 +2507,13 @@ statement supersedes.
 One residual was fixed on gha#862: the scan the fast path falls through to
 strips code spans before machine payloads, so an unterminated `<!--` inside
 an inline code span does not blank following lines.
+Another residual was fixed on gha#863: a label-form verdict tail that genuinely
+contradicts an earlier payload stands down the payload fast path so the prose scan
+decides, while confirming tails continue to classify from the payload.
 A sibling residual remains: the text the supersession check itself searches
 is fence-blanked over the whole posted body, where the jq resets fence state
 per block, so an unclosed fence between the payload and a later retraction blanks
-that retraction's heading (tracked alongside gha#863 for the label-form gap).
+that retraction's heading.
 
 **A fast path inserted before an existing sanitizer inherits none of that
 sanitizer's protections, and classify-review-verdict.sh's own

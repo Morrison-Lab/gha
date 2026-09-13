@@ -143,12 +143,11 @@ _INDENTED_RE = re.compile(r'^(?:\t| {4,})')
 # not any heading beginning with the word.
 #
 # The LABEL forms (`Verdict:`, `**Verdict**`) the prose scan also accepts are
-# deliberately NOT supersession signals. gha#710's follow-up tail is written
-# that way and means "my verdict stands unchanged", so reading it as a
-# retraction would invert it. A label-form tail that genuinely contradicts an
-# earlier payload is a real but pre-existing gap (it reaches the posted text
-# through gha#710's own span rule, not through gha#850's), tracked as gha#863
-# rather than widened into here.
+# checked separately below for polarity contradiction (gha#863). gha#710's follow-up
+# tail is written that way and often means "my verdict stands unchanged", so
+# confirming tails remain on the payload fast path without standing it down.
+# When a label tail genuinely contradicts the payload's polarity, the fast path
+# stands down so the prose scan decides.
 #
 # Matched against _payload_candidate_text, not the raw body, so a heading that
 # is fenced, blockquoted or indented cannot fake a retraction -- the same
@@ -214,6 +213,18 @@ _SUPERSEDING_HEADING_RE = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
+# gha#863: a candidate verdict line in heading or label form that can contradict
+# an earlier payload if its polarity disagrees. Uses the same `(?![ \t]*-?\w)`
+# exclusion so section titles (`Verdict rationale`, `Verdict summary`, `Verdict-bearing`)
+# are never treated as verdict tails.
+_SUPERSEDING_LABEL_RE = re.compile(
+    r'^ {0,3}(?:'
+    r'#{1,6}[ \t]+(?:\*\*)?verdict(?![ \t]*-?\w)'
+    r'|[>*_#-]*\bverdict\b(?![ \t]*-?\w)'
+    r')',
+    re.IGNORECASE | re.MULTILINE,
+)
+
 
 def _open_fence(line):
     """Return (char, length) if `line` opens a new fenced code block, else None."""
@@ -262,129 +273,6 @@ def _iter_fence_and_quote_state(lines):
         yield line, False, bool(_BLOCKQUOTE_RE.match(line))
 
 
-# gha#845: the structured review-data payload states its own verdict, and a
-# machine reader should trust that field rather than re-derive it from prose.
-# This runs BEFORE strip_machine_payloads (below) discards the payload, and
-# before the prose scan, because the payload is the more authoritative
-# source when both are present -- a body whose prose says "Ready for merge"
-# but whose payload says NOT_CLEAN (a stale caption on a re-run, for
-# instance) is classified from the payload, not the prose.
-#
-# The payload is read only from lines that are neither fenced nor
-# blockquoted (gha#845 review, finding 1): a `<!-- review-data: ... -->`
-# that appears only inside a `> ...` blockquote or a fenced code block is
-# someone QUOTING an earlier (possibly stale) payload, not stating the live
-# one -- the same reasoning strip_machine_payloads's own comment already
-# gives for why quoted/fenced prose isn't a verdict statement. Blockquoted
-# and fenced lines are blanked before the marker search, reusing the fence
-# tracking strip_machine_payloads uses below, so the two cannot disagree
-# about what counts as fenced.
-_payload_candidate_lines = [
-    ("" if (in_fence or quoted or _INDENTED_RE.match(line)) else line)
-    for line, in_fence, quoted in _iter_fence_and_quote_state(text.splitlines())
-]
-_payload_candidate_text = "\n".join(_payload_candidate_lines)
-
-# Only the LAST such comment counts, matching the prose scan's own
-# last-match-wins rule elsewhere in this file. Any block that fails to parse
-# as JSON, lacks a schema_version key, or carries a verdict outside
-# CLEAN/NOT_CLEAN falls through to the prose scan unchanged -- this is a
-# fast path for a well-formed payload, not a replacement for the fallback.
-#
-# The JSON body is located with json.JSONDecoder().raw_decode rather than a
-# regex (gha#845 review, finding 2): a non-greedy `(.*?)\s*-->` regex cannot
-# tell a "-->" INSIDE a JSON string value from the marker's own closing
-# delimiter, and truncates at the first one it finds -- a NOT_CLEAN payload
-# whose "note" field happened to contain the three characters "-->" produced
-# invalid JSON, silently fell back to the prose scan, and could misclassify
-# a review the payload had already marked NOT_CLEAN as ready for merge.
-# raw_decode parses exactly one JSON value starting at a given index and
-# does not care what a string's contents look like, so it has no such blind
-# spot.
-_payload_marker_re = re.compile(r'<!--\s*review-data:\s*', re.IGNORECASE)
-_payload_markers = list(_payload_marker_re.finditer(_payload_candidate_text))
-payload = None
-# Set only when a superseding heading stands the fast path down; it is the
-# floor the prose scan falls back to when it recognises no polarity.
-superseded_payload = None
-if _payload_markers:
-    _decoder = json.JSONDecoder()
-    _start = _payload_markers[-1].end()
-    try:
-        _decoded, _end = _decoder.raw_decode(_payload_candidate_text, _start)
-    except (ValueError, TypeError):
-        _decoded = None
-    else:
-        # Require that only whitespace and the comment's own closing "-->"
-        # follow the parsed object -- anything else means the marker wasn't
-        # actually followed by a single well-formed `{...} -->` comment, and
-        # the object that happened to parse starting at that offset isn't
-        # trustworthy just because it parsed.
-        if re.match(r'\s*-->', _payload_candidate_text[_end:]):
-            payload = _decoded
-
-    # gha#857 review, finding 1: the payload belongs to its own block, and
-    # gha#850 lets a later complete block ride along in the same posted text.
-    # A verdict heading after the last marker means that block's own statement
-    # is the live one, so the fast path stands down and the prose scan decides
-    # instead. That scan is last-match-wins, stripping code spans before machine
-    # payloads so an unterminated `<!--` inside an inline code span does not blank
-    # following lines (gha#862).
-    #
-    # Accepted trade-off: an unclosed backtick in the same paragraph block as a
-    # payload or verdict heading will pair with a closing backtick across them
-    # and blank the intervening text. Because CommonMark breaks code spans at
-    # blank lines (§6.2), this cannot cross paragraph boundaries.
-    # When the swallowed span consumes a heading and no other verdict-bearing
-    # text survives elsewhere in the body, losing the heading defaults to
-    # fail-closed (`clean=false verdict=no-verdict`). However, if an earlier
-    # verdict heading exists in a preceding block, swallowing a subsequent
-    # retraction's heading and polarity keyword leaves that earlier verdict
-    # as the last surviving match (a pre-existing residual of strip_code_spans,
-    # tracked as a multi-heading intra-paragraph blanking limitation).
-    #
-    # A sibling residual: the text searched above is fence-blanked over the
-    # WHOLE posted body, where the jq resets fence state per block, so an
-    # unclosed fence anywhere between the payload and a later retraction blanks
-    # that retraction's heading and the fast path never stands down.
-    #
-    # Searching from the marker's end rather than from the parsed object's is
-    # safe because a raw newline cannot appear inside a JSON string, so `^`
-    # never matches inside the payload body. It also costs nothing to be wrong
-    # about, since the guard below runs only when the JSON parsed.
-    if payload is not None and _SUPERSEDING_HEADING_RE.search(
-        _payload_candidate_text[_payload_markers[-1].end():]
-    ):
-        # Held rather than discarded (round 5, finding 1). Standing the fast
-        # path down hands the answer to a scan that can return `unrecognized`,
-        # and a confirming tail -- `### Verdict` over "Unchanged after a second
-        # read" -- states no polarity the scan recognises. Discarding outright
-        # therefore reddened an approving review nobody had retracted, which is
-        # the direction the emphasis rule above was tightened to avoid. The
-        # prose wins whenever it says anything; this is the floor under it.
-        superseded_payload = payload
-        payload = None
-if isinstance(payload, dict) and "schema_version" in payload:
-    verdict_field = payload.get("verdict")
-    if isinstance(verdict_field, str):
-        payload_verdict = verdict_field.strip().upper()
-        if payload_verdict == "CLEAN":
-            # A CLEAN verdict with actual findings attached is internally
-            # inconsistent, so it is not trustworthy as a fast path -- fall
-            # through to the prose scan rather than inventing a NOT_CLEAN
-            # this code never observed (gha#845 review, finding 3).
-            # NOT_CLEAN is trusted regardless of findings: a rejection with
-            # no listed findings is still a rejection.
-            findings = payload.get("findings")
-            findings_is_empty = findings is None or (
-                isinstance(findings, list) and len(findings) == 0
-            )
-            if findings_is_empty:
-                record("true", "ready-for-merge")
-            # else: falls through to the prose scan.
-        elif payload_verdict == "NOT_CLEAN":
-            record("false", "needs-more-work")
-        # Any other verdict value falls through to the prose scan.
 
 # Machine payloads and quoted blocks are not verdict statements (gha#819).
 # This repo's reviews emit a structured review-data block AFTER the verdict
@@ -634,7 +522,7 @@ def strip_code_spans(src_lines):
     flush()
     return out_lines
 
-lines = strip_machine_payloads(strip_code_spans(text.strip().splitlines()))
+
 header_regex = re.compile(
     r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict'
     r'|^[ \t>*_#-]*(\*\*verdict:?\*\*|\*\*verdict\*\*|verdict:)'
@@ -642,19 +530,7 @@ header_regex = re.compile(
     re.IGNORECASE
 )
 
-last_idx = -1
-for i, line in enumerate(lines):
-    if header_regex.search(line):
-        last_idx = i
 
-if last_idx == -1:
-    record("false", "no-verdict")
-
-verdict_lines = lines[last_idx:]
-
-# gha#845 second review, finding 2: verdict_lines[0] is always the line
-# header_regex matched -- the heading itself. The skip-check below already
-# drops it when it is heading-only ("### Verdict" or "**Verdict:**" with
 # nothing else), leaving the NEXT line as content_lines[0]. But a heading and
 # its verdict written on the SAME line ("### Verdict: No action -- trivial",
 # "**Verdict:** No action -- automated, trivial PR ...") is not heading-only,
@@ -672,26 +548,6 @@ _heading_prefix_re = re.compile(
     re.IGNORECASE
 )
 
-content_lines = []
-for _vl_idx, line in enumerate(verdict_lines):
-    if re.search(r'^[ \t>*_#-]*verdict[: \t*_-]*$', line, re.IGNORECASE) or \
-       re.search(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict[: \t*_-]*$', line, re.IGNORECASE):
-        continue
-    stripped = line.strip()
-    if not stripped:
-        continue
-    if _vl_idx == 0:
-        remainder = _heading_prefix_re.sub('', stripped, count=1).strip()
-        if remainder:
-            content_lines.append(remainder)
-        continue
-    content_lines.append(stripped)
-
-if not content_lines:
-    content_lines = [l.strip() for l in verdict_lines if l.strip()]
-
-if not content_lines:
-    record("false", "no-verdict")
 
 def strip_emphasis(s):
     # Strip markdown bold, italic, strikethrough, code ticks so inline styling around words is normalized
@@ -834,91 +690,281 @@ footer_regex = re.compile(
     re.IGNORECASE
 )
 
-# gha#845 second review, finding 4: an emphasis-only first content line
-# ("**" with nothing else) hides the real verdict from the anchor check
-# above, which used to fire on content_lines[0] specifically regardless of
-# what survives strip_emphasis. "### Verdict\n\n**\n\nNo action needed --
-# automated, trivial PR." puts the actual verdict on content_lines[1], but
-# the old code checked content_lines[0] ("**", which strips to nothing) and
-# never looked further. The anchor now runs on the first content line whose
-# text is non-empty AFTER strip_emphasis, found here rather than assumed to
-# be index 0.
-first_nonempty_idx = None
-for _cl_idx, _cl in enumerate(content_lines):
-    if strip_emphasis(_cl).strip():
-        first_nonempty_idx = _cl_idx
-        break
 
-# Single ordered scan in document order: last verdict statement wins
-last_verdict = None
+def classify_prose_lines(src_lines):
+    """Scan lines for a verdict heading/label and classify its prose conclusion.
 
-for line_index, line in enumerate(content_lines):
-    if footer_regex.search(line):
-        continue
+    Returns (clean_val, slug_val) if a verdict statement is recognized.
+    Returns (None, "no-verdict") if no header or content lines exist.
+    Returns (None, "unrecognized") if a header exists but states no recognized polarity.
+    """
+    last_idx = -1
+    for i, line in enumerate(src_lines):
+        if header_regex.search(line):
+            last_idx = i
 
-    norm_line = expand_contractions(strip_emphasis(line))
-    neg_pos_spans = []
-    neg_neg_spans = []
-    line_matches = []
+    if last_idx == -1:
+        return None, "no-verdict"
 
-    if line_index == first_nonempty_idx:
-        m = no_action_anchor.match(norm_line)
-        if m:
-            rest = norm_line[m.end():]
-            if not still_open_after_no_action.search(rest) and \
-               not non_clean_kw.search(norm_line) and \
-               not negated_positive_phrases.search(norm_line):
-                line_matches.append((m.start(), "true", "ready-for-merge"))
-
-    for m in negated_positive_phrases.finditer(norm_line):
-        neg_pos_spans.append((m.start(), m.end()))
-        matched_text = m.group(0).lower()
-        slug = 'needs-more-work'
-        if 'approved' in matched_text:
-            slug = 'rejected'
-        line_matches.append((m.start(), "false", slug))
-
-    for m in negated_negative_phrases.finditer(norm_line):
-        neg_neg_spans.append((m.start(), m.end()))
-        line_matches.append((m.start(), "true", "ready-for-merge"))
-
-    for m in non_clean_kw.finditer(norm_line):
-        if any(start <= m.start() < end for start, end in neg_neg_spans):
+    verdict_lines = src_lines[last_idx:]
+    content_lines = []
+    for _vl_idx, line in enumerate(verdict_lines):
+        if re.search(r"^[ \t>*_#-]*verdict[: \t*_-]*$", line, re.IGNORECASE) or \
+           re.search(r"^[ \t]*#{1,6}[ \t]+(\*\*)?verdict[: \t*_-]*$", line, re.IGNORECASE):
             continue
-        text_matched = m.group(1).lower()
-        slug = 'needs-more-work'
-        if re.search(r'\bchanges\s+(?:requested|required)\b', text_matched):
-            slug = 'changes-requested'
-        elif re.search(r'\bblocked\b', text_matched):
-            slug = 'blocked'
-        elif re.search(r'\b(impasse|deadlock)\b', text_matched):
-            slug = 'impasse'
-        elif re.search(r'\b(rejected|unapproved)\b', text_matched):
-            slug = 'rejected'
-        line_matches.append((m.start(), "false", slug))
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _vl_idx == 0:
+            remainder = _heading_prefix_re.sub("", stripped, count=1).strip()
+            if remainder:
+                content_lines.append(remainder)
+            continue
+        content_lines.append(stripped)
 
-    for m in clean_kw.finditer(norm_line):
-        if any(start <= m.start() < end for start, end in neg_pos_spans):
+    if not content_lines:
+        content_lines = [l.strip() for l in verdict_lines if l.strip()]
+
+    if not content_lines:
+        return None, "no-verdict"
+
+    first_nonempty_idx = None
+    for _cl_idx, _cl in enumerate(content_lines):
+        if strip_emphasis(_cl).strip():
+            first_nonempty_idx = _cl_idx
+            break
+
+    last_verdict = None
+    for line_index, line in enumerate(content_lines):
+        if footer_regex.search(line):
             continue
-        if any(start <= m.start() < end for start, end in neg_neg_spans):
-            continue
-        text_matched = m.group(0).lower()
-        if text_matched == 'passed':
-            # Ignore incidental test/CI/suite passed occurrences
-            prefix = norm_line[:m.start()]
-            if re.search(r'\b(?:test|tests|suite|check|checks|ci|run|step|pipeline|build|workflow)\s*$', prefix, re.IGNORECASE):
+
+        norm_line = expand_contractions(strip_emphasis(line))
+        neg_pos_spans = []
+        neg_neg_spans = []
+        line_matches = []
+
+        if line_index == first_nonempty_idx:
+            m = no_action_anchor.match(norm_line)
+            if m:
+                rest = norm_line[m.end():]
+                if not still_open_after_no_action.search(rest) and \
+                   not non_clean_kw.search(norm_line) and \
+                   not negated_positive_phrases.search(norm_line):
+                    line_matches.append((m.start(), "true", "ready-for-merge"))
+
+        for m in negated_positive_phrases.finditer(norm_line):
+            neg_pos_spans.append((m.start(), m.end()))
+            matched_text = m.group(0).lower()
+            slug = "needs-more-work"
+            if "approved" in matched_text:
+                slug = "rejected"
+            line_matches.append((m.start(), "false", slug))
+
+        for m in negated_negative_phrases.finditer(norm_line):
+            neg_neg_spans.append((m.start(), m.end()))
+            line_matches.append((m.start(), "true", "ready-for-merge"))
+
+        for m in non_clean_kw.finditer(norm_line):
+            if any(start <= m.start() < end for start, end in neg_neg_spans):
                 continue
-        slug = 'ready-for-merge'
-        if re.search(r'\bapproved\b', text_matched):
-            slug = 'approved'
-        elif re.search(r'\bclean\b', text_matched):
-            slug = 'clean'
-        line_matches.append((m.start(), "true", slug))
+            text_matched = m.group(1).lower()
+            slug = "needs-more-work"
+            if re.search(r"\bchanges\s+(?:requested|required)\b", text_matched):
+                slug = "changes-requested"
+            elif re.search(r"\bblocked\b", text_matched):
+                slug = "blocked"
+            elif re.search(r"\b(impasse|deadlock)\b", text_matched):
+                slug = "impasse"
+            elif re.search(r"\b(rejected|unapproved)\b", text_matched):
+                slug = "rejected"
+            line_matches.append((m.start(), "false", slug))
 
-    if line_matches:
-        line_matches.sort(key=lambda x: x[0])
-        _, clean_val, slug_val = line_matches[-1]
-        last_verdict = (clean_val, slug_val)
+        for m in clean_kw.finditer(norm_line):
+            if any(start <= m.start() < end for start, end in neg_pos_spans):
+                continue
+            if any(start <= m.start() < end for start, end in neg_neg_spans):
+                continue
+            text_matched = m.group(0).lower()
+            if text_matched == "passed":
+                # Ignore incidental test/CI/suite passed occurrences
+                prefix = norm_line[:m.start()]
+                if re.search(r"\b(?:test|tests|suite|check|checks|ci|run|step|pipeline|build|workflow)\s*$", prefix, re.IGNORECASE):
+                    continue
+            slug = "ready-for-merge"
+            if re.search(r"\bapproved\b", text_matched):
+                slug = "approved"
+            elif re.search(r"\bclean\b", text_matched):
+                slug = "clean"
+            line_matches.append((m.start(), "true", slug))
+
+        if line_matches:
+            line_matches.sort(key=lambda x: x[0])
+            _, clean_val, slug_val = line_matches[-1]
+            last_verdict = (clean_val, slug_val)
+
+    if last_verdict is not None:
+        return last_verdict, None
+    return None, "unrecognized"
+
+# gha#845: the structured review-data payload states its own verdict, and a
+# machine reader should trust that field rather than re-derive it from prose.
+# This runs BEFORE strip_machine_payloads (below) discards the payload, and
+# before the prose scan, because the payload is the more authoritative
+# source when both are present -- a body whose prose says "Ready for merge"
+# but whose payload says NOT_CLEAN (a stale caption on a re-run, for
+# instance) is classified from the payload, not the prose.
+#
+# The payload is read only from lines that are neither fenced nor
+# blockquoted (gha#845 review, finding 1): a `<!-- review-data: ... -->`
+# that appears only inside a `> ...` blockquote or a fenced code block is
+# someone QUOTING an earlier (possibly stale) payload, not stating the live
+# one -- the same reasoning strip_machine_payloads's own comment already
+# gives for why quoted/fenced prose isn't a verdict statement. Blockquoted
+# and fenced lines are blanked before the marker search, reusing the fence
+# tracking strip_machine_payloads uses below, so the two cannot disagree
+# about what counts as fenced.
+_payload_candidate_lines = [
+    ("" if (in_fence or quoted or _INDENTED_RE.match(line)) else line)
+    for line, in_fence, quoted in _iter_fence_and_quote_state(text.splitlines())
+]
+_payload_candidate_text = "\n".join(_payload_candidate_lines)
+
+# Only the LAST such comment counts, matching the prose scan's own
+# last-match-wins rule elsewhere in this file. Any block that fails to parse
+# as JSON, lacks a schema_version key, or carries a verdict outside
+# CLEAN/NOT_CLEAN falls through to the prose scan unchanged -- this is a
+# fast path for a well-formed payload, not a replacement for the fallback.
+#
+# The JSON body is located with json.JSONDecoder().raw_decode rather than a
+# regex (gha#845 review, finding 2): a non-greedy `(.*?)\s*-->` regex cannot
+# tell a "-->" INSIDE a JSON string value from the marker's own closing
+# delimiter, and truncates at the first one it finds -- a NOT_CLEAN payload
+# whose "note" field happened to contain the three characters "-->" produced
+# invalid JSON, silently fell back to the prose scan, and could misclassify
+# a review the payload had already marked NOT_CLEAN as ready for merge.
+# raw_decode parses exactly one JSON value starting at a given index and
+# does not care what a string's contents look like, so it has no such blind
+# spot.
+_payload_marker_re = re.compile(r'<!--\s*review-data:\s*', re.IGNORECASE)
+_payload_markers = list(_payload_marker_re.finditer(_payload_candidate_text))
+payload = None
+# Set only when a superseding heading stands the fast path down; it is the
+# floor the prose scan falls back to when it recognises no polarity.
+superseded_payload = None
+if _payload_markers:
+    _decoder = json.JSONDecoder()
+    _start = _payload_markers[-1].end()
+    try:
+        _decoded, _end = _decoder.raw_decode(_payload_candidate_text, _start)
+    except (ValueError, TypeError):
+        _decoded = None
+    else:
+        # Require that only whitespace and the comment's own closing "-->"
+        # follow the parsed object -- anything else means the marker wasn't
+        # actually followed by a single well-formed `{...} -->` comment, and
+        # the object that happened to parse starting at that offset isn't
+        # trustworthy just because it parsed.
+        if re.match(r'\s*-->', _payload_candidate_text[_end:]):
+            payload = _decoded
+
+    # gha#857 review, finding 1: the payload belongs to its own block, and
+    # gha#850 lets a later complete block ride along in the same posted text.
+    # A verdict heading after the last marker means that block's own statement
+    # is the live one, so the fast path stands down and the prose scan decides
+    # instead. That scan is last-match-wins, stripping code spans before machine
+    # payloads so an unterminated `<!--` inside an inline code span does not blank
+    # following lines (gha#862).
+    #
+    # Accepted trade-off: an unclosed backtick in the same paragraph block as a
+    # payload or verdict heading will pair with a closing backtick across them
+    # and blank the intervening text. Because CommonMark breaks code spans at
+    # blank lines (§6.2), this cannot cross paragraph boundaries.
+    # When the swallowed span consumes a heading and no other verdict-bearing
+    # text survives elsewhere in the body, losing the heading defaults to
+    # fail-closed (`clean=false verdict=no-verdict`). However, if an earlier
+    # verdict heading exists in a preceding block, swallowing a subsequent
+    # retraction's heading and polarity keyword leaves that earlier verdict
+    # as the last surviving match (a pre-existing residual of strip_code_spans,
+    # tracked as a multi-heading intra-paragraph blanking limitation).
+    #
+    # A sibling residual: the text searched above is fence-blanked over the
+    # WHOLE posted body, where the jq resets fence state per block, so an
+    # unclosed fence anywhere between the payload and a later retraction blanks
+    # that retraction's heading and the fast path never stands down.
+    #
+    # Searching from the marker's end rather than from the parsed object's is
+    # safe because a raw newline cannot appear inside a JSON string, so `^`
+    # never matches inside the payload body. It also costs nothing to be wrong
+    # about, since the guard below runs only when the JSON parsed.
+    if payload is not None and _SUPERSEDING_HEADING_RE.search(
+        _payload_candidate_text[_payload_markers[-1].end():]
+    ):
+        # Held rather than discarded (round 5, finding 1). Standing the fast
+        # path down hands the answer to a scan that can return `unrecognized`,
+        # and a confirming tail -- `### Verdict` over "Unchanged after a second
+        # read" -- states no polarity the scan recognises. Discarding outright
+        # therefore reddened an approving review nobody had retracted, which is
+        # the direction the emphasis rule above was tightened to avoid. The
+        # prose wins whenever it says anything; this is the floor under it.
+        superseded_payload = payload
+        payload = None
+
+    # gha#863: a label-form verdict tail (e.g. `Verdict:`, `**Verdict:**`) that
+    # genuinely contradicts the earlier payload's polarity stands the fast path
+    # down so the prose scan decides. Confirming tails (e.g. `Verdict: unchanged
+    # after a second read`, `Verdict: Ready for merge` after a CLEAN payload)
+    # do NOT contradict, so the fast path remains active.
+    if payload is not None and _end is not None:
+        _closer_match = re.match(r'\s*-->', _payload_candidate_text[_end:])
+        if _closer_match:
+            _tail_text = _payload_candidate_text[_end + _closer_match.end():]
+            _CONFIRMING_TAIL_RE = re.compile(
+                r'\b(?:unchanged|stands?|remains?|re-?affirmed?)\b',
+                re.IGNORECASE,
+            )
+            if _SUPERSEDING_LABEL_RE.search(_tail_text) and not _CONFIRMING_TAIL_RE.search(_tail_text):
+                _tail_lines = strip_machine_payloads(strip_code_spans(_tail_text.strip().splitlines()))
+                _tail_verdict, _ = classify_prose_lines(_tail_lines)
+                if _tail_verdict is not None:
+                    _tail_clean = _tail_verdict[0]
+                    # Check if payload polarity contradicts tail polarity:
+                    _p_field = payload.get("verdict") if isinstance(payload, dict) else None
+                    if isinstance(_p_field, str):
+                        _pv = _p_field.strip().upper()
+                        _findings = payload.get("findings")
+                        _f_empty = _findings is None or (isinstance(_findings, list) and len(_findings) == 0)
+                        _p_clean = (_pv == "CLEAN" and _f_empty)
+                        _p_not_clean = (_pv == "NOT_CLEAN")
+                        if (_p_clean and _tail_clean == "false") or (_p_not_clean and _tail_clean == "true"):
+                            superseded_payload = payload
+                            payload = None
+if isinstance(payload, dict) and "schema_version" in payload:
+    verdict_field = payload.get("verdict")
+    if isinstance(verdict_field, str):
+        payload_verdict = verdict_field.strip().upper()
+        if payload_verdict == "CLEAN":
+            # A CLEAN verdict with actual findings attached is internally
+            # inconsistent, so it is not trustworthy as a fast path -- fall
+            # through to the prose scan rather than inventing a NOT_CLEAN
+            # this code never observed (gha#845 review, finding 3).
+            # NOT_CLEAN is trusted regardless of findings: a rejection with
+            # no listed findings is still a rejection.
+            findings = payload.get("findings")
+            findings_is_empty = findings is None or (
+                isinstance(findings, list) and len(findings) == 0
+            )
+            if findings_is_empty:
+                record("true", "ready-for-merge")
+            # else: falls through to the prose scan.
+        elif payload_verdict == "NOT_CLEAN":
+            record("false", "needs-more-work")
+        # Any other verdict value falls through to the prose scan.
+
+lines = strip_machine_payloads(strip_code_spans(text.strip().splitlines()))
+last_verdict, prose_reason = classify_prose_lines(lines)
+if last_verdict is None and prose_reason == "no-verdict":
+    record("false", "no-verdict")
 
 if last_verdict is not None:
     record(*last_verdict)
