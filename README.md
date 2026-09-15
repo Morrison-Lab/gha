@@ -68,8 +68,8 @@ not reference `@main` from consumers.
 | `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
 | `r-cmd-check.yml` | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request` | `hard`, `error-on`, `force-suggests`, `setup-julia`, `julia-project`, `apt-packages`, `brew-packages`, `brew-casks`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes` |
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
-| `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent. | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names` |
-| `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names` |
+| `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent. | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names`, `timeout-minutes` |
+| `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
 | `claude-manage-project.yml` | Triage a newly-opened issue: apply a priority label and add it to the project board (trusted authors only) | `prompt-addendum`, `trusted-bot-logins` |
 | `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file`, `extra-secret-names` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model`, `extra-secret-names` |
@@ -757,10 +757,10 @@ run.
 A job that calls a reusable workflow cannot set `timeout-minutes` itself
 (GitHub rejects the key on a `uses:` job), so such a job inherits whatever
 timeout the called workflow's own job declares.
-`altdoc-multiversion-docs.yml`, `r-cmd-check.yml`, and
-`check-code-similarity.yml` additionally expose
-their timeouts as a `workflow_call` input, which is the pattern to follow if
-a consumer ever needs to raise one.
+`altdoc-multiversion-docs.yml`, `r-cmd-check.yml`,
+`check-code-similarity.yml`, `claude.yml`, and `claude-code-review.yml`
+additionally expose their timeouts as a `workflow_call` input,
+which is the pattern to follow if a consumer ever needs to raise one.
 `r-cmd-check.yml` defaults to 90 minutes
 (an `R CMD check` matrix hang ceiling, not a budget).
 

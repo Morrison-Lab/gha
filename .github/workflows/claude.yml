@@ -275,6 +275,13 @@ on:
           environment variables. Empty to skip.
         type: string
         default: ''
+      timeout-minutes:
+        description: >-
+          Job timeout for the agent run. Default 60 is the hang ceiling, not a
+          budget; lower it to match a consumer's own cap (a caller cannot set
+          timeout-minutes on a job that uses `uses:`).
+        type: number
+        default: 60
     secrets:
       # `required: false` so callers don't hard-fail at the call gate when a
       # secret is unavailable (e.g. fork-originated events): GitHub evaluates
@@ -436,7 +443,7 @@ jobs:
       cancel-in-progress: false
 
     runs-on: ${{ inputs.runs-on }}
-    timeout-minutes: 60
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: write       # push branches / commits
       pull-requests: write  # open / edit PRs
