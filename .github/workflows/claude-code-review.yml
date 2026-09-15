@@ -196,6 +196,13 @@ on:
           environment variables. Empty to skip.
         type: string
         default: ''
+      timeout-minutes:
+        description: >-
+          Job timeout for the agent run. Default 60 is the hang ceiling, not a
+          budget; lower it to match a consumer's own cap (a caller cannot set
+          timeout-minutes on a job that uses `uses:`).
+        type: number
+        default: 60
     secrets:
       # `required: false` so callers don't hard-fail at the call gate on
       # fork `pull_request` events, where secrets are unavailable: GitHub
@@ -530,7 +537,7 @@ jobs:
       reviewed-head: ${{ github.event.pull_request.head.sha }}
 
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
       contents: read
       pull-requests: read
