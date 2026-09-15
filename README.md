@@ -757,9 +757,9 @@ run.
 A job that calls a reusable workflow cannot set `timeout-minutes` itself
 (GitHub rejects the key on a `uses:` job), so such a job inherits whatever
 timeout the called workflow's own job declares.
-`altdoc-multiversion-docs.yml`, `r-cmd-check.yml`, and
-`check-code-similarity.yml` additionally expose
-their timeouts as a `workflow_call` input, which is the pattern to follow if
+`altdoc-multiversion-docs.yml`, `r-cmd-check.yml`,
+`check-code-similarity.yml`, `claude.yml`, and `claude-code-review.yml`
+additionally expose their timeouts as a `workflow_call` input, which is the pattern to follow if
 a consumer ever needs to raise one.
 `r-cmd-check.yml` defaults to 90 minutes
 (an `R CMD check` matrix hang ceiling, not a budget).

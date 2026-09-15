@@ -99,6 +99,7 @@ jobs:
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources
     #   plugins: <plugin>@<marketplace-name>
     #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)
+    #   timeout-minutes: 50  # cap the agent job; defaults to 60
     #   prompt-addendum: |
     #     This is the <name> R package. Before committing, run
     #     lintr::lint_package(), spelling::spell_check_package(), and
