@@ -3939,11 +3939,24 @@ A `workflow_dispatch` it issues itself does start a run --- that `if:` admits
 `workflow_dispatch` unconditionally --- and `claude-code-action` then
 short-circuits on the triggering actor, because `allowed-bots` defaults to
 `github-actions[bot]` alone.
-Measured on `Morrison-Lab/ai-config`, 2026-09-18: 4 of 4 dispatches with
-`triggering_actor: claude[bot]` packed `failure-kind: short-circuit`,
-`attempts: 1`, `total-cost-usd: 0.0000`, `SELF_MOD: false`, with the
-"Run Claude Code Review" step lasting 35ms; 4 of 4 with
-`triggering_actor: github-actions[bot]` reviewed normally.
+Measured on `Morrison-Lab/ai-config`, 2026-09-18.
+Every dispatch with `triggering_actor: claude[bot]` --- all four that repo has
+ever had --- packed `failure-kind: short-circuit`, `attempts: 1`,
+`total-cost-usd: 0.0000`, `SELF_MOD: false`, with the "Run Claude Code Review"
+step lasting 35ms:
+[35267489584](https://github.com/Morrison-Lab/ai-config/actions/runs/35267489584),
+[35268075963](https://github.com/Morrison-Lab/ai-config/actions/runs/35268075963),
+[35312346178](https://github.com/Morrison-Lab/ai-config/actions/runs/35312346178),
+[35312509759](https://github.com/Morrison-Lab/ai-config/actions/runs/35312509759).
+The four `triggering_actor: github-actions[bot]` dispatches checked in the same
+window reviewed normally:
+[35311949751](https://github.com/Morrison-Lab/ai-config/actions/runs/35311949751),
+[35312775441](https://github.com/Morrison-Lab/ai-config/actions/runs/35312775441),
+[35312827292](https://github.com/Morrison-Lab/ai-config/actions/runs/35312827292),
+[35312866850](https://github.com/Morrison-Lab/ai-config/actions/runs/35312866850).
+Derive the population rather than recalling it:
+`actions_list` `list_workflow_runs` on `claude-review.yml` filtered to
+`event: workflow_dispatch`, read for `triggering_actor.login`.
 A zero-cost short-circuit is also gha#368's signature, so read the actor
 before reading the failure kind --- retrying reproduces this one exactly.
 `claude[bot]` is therefore on `dispatch-on-comment`'s login allowlist: that
@@ -3952,8 +3965,10 @@ job's own dispatch runs under `GITHUB_TOKEN`, so it re-enters as
 
 - **Do:** post a `/review` comment from an agent session, and read the
   acknowledgement's link to the dispatch run.
+
 - **Don't:** dispatch `claude-review.yml` directly from one --- the run
   starts, costs nothing, and fails.
+
 - **Don't:** widen `allowed-bots` to admit `claude[bot]` instead; that admits
   the actor into every dispatched review rather than into the one path whose
   requester was checked.
