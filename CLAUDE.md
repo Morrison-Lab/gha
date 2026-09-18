@@ -3930,6 +3930,34 @@ on a tag slide.
 A human OWNER/MEMBER/COLLABORATOR `/review` or `@claude review` remains
 the reliable workaround on any older pin.
 
+**An agent session's own review requests take the `/review` path too, and a
+direct `workflow_dispatch` is the trap that looks like it works.**
+A Claude Code remote/web session acts as `claude[bot]`.
+Its pushes carry `sender.type == 'Bot'`, so the reusable workflow's automatic
+`pull_request` path skips every `review /` job.
+A `workflow_dispatch` it issues itself does start a run --- that `if:` admits
+`workflow_dispatch` unconditionally --- and `claude-code-action` then
+short-circuits on the triggering actor, because `allowed-bots` defaults to
+`github-actions[bot]` alone.
+Measured on `Morrison-Lab/ai-config`, 2026-09-18: 4 of 4 dispatches with
+`triggering_actor: claude[bot]` packed `failure-kind: short-circuit`,
+`attempts: 1`, `total-cost-usd: 0.0000`, `SELF_MOD: false`, with the
+"Run Claude Code Review" step lasting 35ms; 4 of 4 with
+`triggering_actor: github-actions[bot]` reviewed normally.
+A zero-cost short-circuit is also gha#368's signature, so read the actor
+before reading the failure kind --- retrying reproduces this one exactly.
+`claude[bot]` is therefore on `dispatch-on-comment`'s login allowlist: that
+job's own dispatch runs under `GITHUB_TOKEN`, so it re-enters as
+`github-actions[bot]` and clears both gates without loosening either.
+
+- **Do:** post a `/review` comment from an agent session, and read the
+  acknowledgement's link to the dispatch run.
+- **Don't:** dispatch `claude-review.yml` directly from one --- the run
+  starts, costs nothing, and fails.
+- **Don't:** widen `allowed-bots` to admit `claude[bot]` instead; that admits
+  the actor into every dispatched review rather than into the one path whose
+  requester was checked.
+
 **Some of these sessions have no local git checkout at all** (not just a missing
 `gh` CLI) -- there is no working tree to run `git commit`/`git push` against, so
 every change (branch, file edit, PR) must go through the MCP write tools below.
