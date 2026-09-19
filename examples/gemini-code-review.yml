@@ -48,7 +48,6 @@ jobs:
       # Wires the workflow_dispatch input through so gemini.yml can dispatch a
       # review; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
     #   gemini-model: gemini-2.5-flash
     #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)

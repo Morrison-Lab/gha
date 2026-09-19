@@ -46,7 +46,6 @@ jobs:
       # workflow can dispatch a review; empty (and ignored) on pull_request
       # runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
     #   opencode-model: opencode/big-pickle   # OpenCode Zen model; free tier available
     #   opencode-attempts: '3'                # total attempts; retries only the transient Zen network_error drop (gha#600)

@@ -111,7 +111,6 @@ jobs:
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   agents: 'claude, gemini, antigravity, cursor, opencode'
     #   claude-review-workflow-file: claude-code-review.yml
     #   gemini-review-workflow-file: gemini-code-review.yml

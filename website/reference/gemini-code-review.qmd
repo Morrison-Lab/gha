@@ -95,7 +95,6 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true
     #   gemini-model: gemini-2.5-flash
     #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)
