@@ -119,7 +119,7 @@ _ABBREV_LOWER_RE = re.compile(
     _abbrev_pattern(sorted(_ABBREV_LOWER, key=len, reverse=True))
 )
 
-# Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote.
+# Sentence boundary: [.!?] + optional closing chars + whitespace + uppercase/quote/digit/opener.
 # The closing-char class includes `*` and `_` so a sentence ending in Markdown
 # emphasis (`**Some claim.** Explanation...`, or the `__claim.__` / `_claim._`
 # underscore forms) is recognized: the emphasis close sits between the period
@@ -129,7 +129,11 @@ _ABBREV_LOWER_RE = re.compile(
 # two characters are worth their place in the class: they raise the
 # multi-sentence lines detected across Morrison-Lab/ai-config's Markdown from
 # 2837 to 3398 (+19.8%), and across this repo's from 719 to 784 (+9.0%).
-_SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z\"'`*\[])")
+# Widened 2026-09-19 (#878) to recognize digits (`0-9`), open parentheses (`(`),
+# and underscore emphasis (`_`) as sentence openers: across ai-config, detected
+# lines rise from 21,807 to 24,682 (+13.2%), and across this repo from 376 to 390
+# (+3.7%).
+_SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z0-9\"'`*\[(_])")
 
 # Lowercase-follower boundary (#389). Our prose routinely opens a sentence with
 # a bare lowercase package or repo name (`renv`, `serodynamics`, `dplyr`), which

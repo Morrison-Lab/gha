@@ -269,6 +269,91 @@ def test_all_caps_abbreviation_lookalike_still_splits():
     ]
 
 
+# ── Sentence boundary before digit, paren, or underscore opener (#878) ────────
+
+def test_digit_sentence_start_is_split():
+    """A sentence opening with a digit is a sentence boundary (#878).
+
+    Prose in this corpus routinely opens sentences with counts or numbers,
+    e.g. '19 sites across 18 hooks...'.
+    """
+    assert nlb.split_sentences(
+        "The blast radius is the whole tree, not one guard. "
+        "19 sites across 18 hooks computed a path from file this way."
+    ) == [
+        "The blast radius is the whole tree, not one guard.",
+        "19 sites across 18 hooks computed a path from file this way.",
+    ]
+    assert nlb.split_sentences(
+        "The test suites carry a second half. 15 suites used the same spelling."
+    ) == [
+        "The test suites carry a second half.",
+        "15 suites used the same spelling.",
+    ]
+
+
+def test_open_paren_sentence_start_is_split():
+    """A sentence opening with an open parenthesis is a boundary (#878).
+
+    Prose often opens a follow-on parenthetical sentence, e.g. '(Measured ...)'.
+    """
+    assert nlb.split_sentences(
+        "The test suite passed. (Measured on 2026-09-13.)"
+    ) == [
+        "The test suite passed.",
+        "(Measured on 2026-09-13.)",
+    ]
+    assert nlb.split_sentences(
+        "Completed the initial phase (v1). (Measured on 2026-09-13.)"
+    ) == [
+        "Completed the initial phase (v1).",
+        "(Measured on 2026-09-13.)",
+    ]
+
+
+def test_underscore_emphasis_sentence_start_is_split():
+    """A sentence opening with markdown underscore emphasis is a boundary (#878)."""
+    assert nlb.split_sentences(
+        "First claim was established. _Explanation follows in italic._"
+    ) == [
+        "First claim was established.",
+        "_Explanation follows in italic._",
+    ]
+
+
+def test_abbreviation_before_digit_does_not_split():
+    """Standard abbreviations before numbers must remain protected."""
+    assert nlb.split_sentences("See Fig. 1 for details.") == [
+        "See Fig. 1 for details."
+    ]
+    assert nlb.split_sentences("Item No. 2 is ready.") == [
+        "Item No. 2 is ready."
+    ]
+    assert nlb.split_sentences("Refer to Sec. 4 of the manual.") == [
+        "Refer to Sec. 4 of the manual."
+    ]
+    assert nlb.split_sentences("Wait ca. 10 minutes before retrying.") == [
+        "Wait ca. 10 minutes before retrying."
+    ]
+
+
+def test_digit_start_line_is_flagged_end_to_end():
+    """The detector, not just the splitter: a line with a digit-led sentence reports."""
+    flagged = nlb.classify_line(
+        "The blast radius is the whole tree, not one guard. "
+        "19 sites across 18 hooks computed a path."
+    )
+    assert flagged == "sentence"
+
+
+def test_open_paren_line_is_flagged_end_to_end():
+    """The detector flags a line whose second sentence opens with a paren."""
+    flagged = nlb.classify_line(
+        "The test suite passed. (Measured on 2026-09-13.)"
+    )
+    assert flagged == "sentence"
+
+
 # ── prose_line_numbers ───────────────────────────────────────────────────────
 
 def test_frontmatter_and_heading_excluded():
