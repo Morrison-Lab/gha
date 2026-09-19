@@ -3397,6 +3397,17 @@ jobs:
         shell: bash
         run: python3 .github/workflows/scripts/audit_example_concurrency.py
 
+      # gha#839: an example stub carrying both an active with: and a commented
+      # # with: uncomments into duplicate mapping keys, silently dropping real
+      # inputs like pr-number or model under GitHub Actions / PyYAML.
+      - name: Run audit_example_stubs.py unit tests
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-audit-example-stubs-tests.py
+
+      - name: Assert no caller stub uncomments into duplicate keys
+        shell: bash
+        run: python3 .github/workflows/scripts/audit_example_stubs.py
+
   # check-code-similarity wraps JPlag against a caller-supplied corpus
   # (gha#296). The unit tests run first and use a stub `java`, so they cover
   # the branches a green run never reaches -- an empty corpus, a crashed
