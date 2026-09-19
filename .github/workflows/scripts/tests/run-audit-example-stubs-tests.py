@@ -133,6 +133,112 @@ jobs:
         print(f"::error::{failures} test cases failed.", file=sys.stderr)
         sys.exit(1)
 
+    # Test QMD file extraction and include resolution via audit_files
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_path = pathlib.Path(tmpdir)
+        docs_dir = tmp_path / "docs"
+        docs_dir.mkdir()
+        examples_dir = tmp_path / "examples"
+        examples_dir.mkdir()
+
+        # Clean external example to be included
+        included_stub = examples_dir / "clean-stub.yml"
+        included_stub.write_text(
+            """name: Included Stub
+on: workflow_dispatch
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-extra.yml@v2
+    with:
+      path: '.'
+""",
+            encoding="utf-8",
+        )
+
+        # 1. Clean QMD document with direct yaml block
+        clean_qmd = docs_dir / "clean.qmd"
+        clean_qmd.write_text(
+            """---
+title: "Clean Doc"
+---
+
+Some introductory text.
+
+```yaml
+name: Doc Example
+on: workflow_dispatch
+jobs:
+  test:
+    uses: Morrison-Lab/gha/.github/workflows/test.yml@v2
+    with:
+      pr-number: 42
+```
+""",
+            encoding="utf-8",
+        )
+
+        # 2. QMD document with {{< include >}}
+        include_qmd = docs_dir / "include.qmd"
+        include_qmd.write_text(
+            """---
+title: "Include Doc"
+---
+
+```yaml
+{{< include ../examples/clean-stub.yml >}}
+```
+""",
+            encoding="utf-8",
+        )
+
+        # 3. Bad QMD document with duplicate # with: in yaml fence
+        bad_qmd = docs_dir / "bad.qmd"
+        bad_qmd.write_text(
+            """---
+title: "Bad Doc"
+---
+
+```yaml
+name: Bad Doc Example
+on: workflow_dispatch
+jobs:
+  test:
+    uses: Morrison-Lab/gha/.github/workflows/test.yml@v2
+    with:
+      pr-number: 42
+    # with:
+    #   debug: true
+```
+""",
+            encoding="utf-8",
+        )
+
+        qmd_errors = audit.audit_files([clean_qmd, include_qmd, bad_qmd])
+        if len(qmd_errors) != 1:
+            print(f"FAIL qmd_audit: expected 1 error, got {len(qmd_errors)}: {qmd_errors}", file=sys.stderr)
+            failures += 1
+        elif "bad.qmd" not in qmd_errors[0] or "duplicate key 'with'" not in qmd_errors[0]:
+            print(f"FAIL qmd_audit: unexpected error message: {qmd_errors[0]}", file=sys.stderr)
+            failures += 1
+        else:
+            print("OK   qmd_audit")
+
+        # 4. Test main() CLI with --examples-dir and --docs-dir
+        try:
+            audit.main(["--examples-dir", str(examples_dir), "--workflows-dir", str(tmp_path / "nonexistent"), "--docs-dir", str(docs_dir)])
+            print("FAIL cli_discovery: expected bad.qmd to fail main()", file=sys.stderr)
+            failures += 1
+        except SystemExit as exc:
+            if exc.code == 1:
+                print("OK   cli_discovery (caught expected error)")
+            else:
+                print(f"FAIL cli_discovery: unexpected exit code {exc.code}", file=sys.stderr)
+                failures += 1
+
+    if failures:
+        print(f"::error::{failures} test cases failed.", file=sys.stderr)
+        sys.exit(1)
+
     print("All run-audit-example-stubs tests passed cleanly.")
 
 

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Audit example caller stubs and workflows for duplicate mapping keys (gha#839).
+"""Audit example caller stubs, workflows, and documentation for duplicate mapping keys (gha#839).
 
-A consumer copying a stub from `examples/` follows documented comments to enable
-optional inputs. If a stub carries an active `with:` mapping and also a second,
-commented `# with:` key directly beneath it, uncommenting per instructions
-silently duplicates the `with:` key on the job.
+A consumer copying a stub from `examples/` or `website/reference/` follows
+documented comments to enable optional inputs. If a stub carries an active `with:`
+mapping and also a second, commented `# with:` key directly beneath it,
+uncommenting per instructions silently duplicates the `with:` key on the job.
 
 GitHub Actions and PyYAML's standard SafeLoader silently discard all but the
 last occurrence of a duplicate key in a mapping. When that happens, real job
@@ -12,14 +12,15 @@ inputs (such as `pr-number`, `endpoint-url`, or `model`) are dropped without
 error, running the workflow with missing configuration rather than failing.
 
 This audit:
-1. Validates every workflow file under `examples/` and `.github/workflows/`
-   using a strict, duplicate-key-rejecting YAML loader (`StrictSafeLoader`).
+1. Validates every workflow file under `examples/` and `.github/workflows/`, as well
+   as YAML code blocks in `website/reference/*.qmd`, using a strict,
+   duplicate-key-rejecting YAML loader (`StrictSafeLoader`).
 2. Simulates uncommenting `# with:` lines in caller jobs to assert that no
    job ends up with duplicate `with:` keys.
 
 Usage::
 
-    python3 audit_example_stubs.py [--examples-dir DIR] [--workflows-dir DIR]
+    python3 audit_example_stubs.py [--examples-dir DIR] [--workflows-dir DIR] [--docs-dir DIR]
 """
 
 from __future__ import annotations
@@ -95,6 +96,29 @@ def audit_file_content(path: pathlib.Path, text: str) -> list[str]:
     return errors
 
 
+def resolve_includes(path: pathlib.Path, text: str) -> str:
+    """Resolve Quarto `{{< include rel_path >}}` directives relative to path.parent."""
+    def repl(m: re.Match[str]) -> str:
+        rel = m.group(1).strip()
+        inc = (path.parent / rel).resolve()
+        if inc.is_file():
+            return inc.read_text(encoding="utf-8")
+        return m.group(0)
+
+    return re.sub(r"\{\{<\s*include\s+([^\s>]+)\s*>\}\}", repl, text)
+
+
+def extract_qmd_yaml_blocks(path: pathlib.Path, text: str) -> list[tuple[int, str]]:
+    """Extract (start_line, yaml_text) for each YAML code block in a Quarto/Markdown document."""
+    blocks: list[tuple[int, str]] = []
+    pattern = re.compile(r"^```(?:ya?ml)\s*\r?\n(.*?)\r?\n```\s*$", re.MULTILINE | re.DOTALL)
+    for m in pattern.finditer(text):
+        start_line = text[:m.start()].count("\n") + 1
+        block_text = resolve_includes(path, m.group(1))
+        blocks.append((start_line, block_text))
+    return blocks
+
+
 def audit_files(files: list[pathlib.Path]) -> list[str]:
     all_errors: list[str] = []
     for file_path in files:
@@ -105,8 +129,16 @@ def audit_files(files: list[pathlib.Path]) -> list[str]:
         except Exception as exc:
             all_errors.append(f"{file_path}: could not read file: {exc}")
             continue
-        errors = audit_file_content(file_path, text)
-        all_errors.extend(errors)
+
+        if file_path.suffix.lower() in {".qmd", ".md"}:
+            blocks = extract_qmd_yaml_blocks(file_path, text)
+            for line_no, block_content in blocks:
+                errors = audit_file_content(pathlib.Path(f"{file_path}:{line_no}"), block_content)
+                all_errors.extend(errors)
+        else:
+            errors = audit_file_content(file_path, text)
+            all_errors.extend(errors)
+
     return all_errors
 
 
@@ -125,10 +157,16 @@ def main(argv: list[str] | None = None) -> None:
         help="Directory containing workflow files (default: .github/workflows).",
     )
     parser.add_argument(
+        "--docs-dir",
+        type=pathlib.Path,
+        default=pathlib.Path("website/reference"),
+        help="Directory containing documentation reference pages (default: website/reference).",
+    )
+    parser.add_argument(
         "files",
         nargs="*",
         type=pathlib.Path,
-        help="Specific files to audit (defaults to all files in --examples-dir and --workflows-dir).",
+        help="Specific files to audit (defaults to all files in --examples-dir, --workflows-dir, and --docs-dir).",
     )
 
     args = parser.parse_args(argv)
@@ -144,6 +182,8 @@ def main(argv: list[str] | None = None) -> None:
             files_to_check.extend(discover_workflows(args.examples_dir))
         if args.workflows_dir.is_dir():
             files_to_check.extend(discover_workflows(args.workflows_dir))
+        if args.docs_dir and args.docs_dir.is_dir():
+            files_to_check.extend(sorted(args.docs_dir.glob("*.qmd")))
 
     if not files_to_check:
         print("::error::No files found to audit.", file=sys.stderr)
