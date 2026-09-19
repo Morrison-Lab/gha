@@ -224,7 +224,6 @@ jobs:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
     #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job

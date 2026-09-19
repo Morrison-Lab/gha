@@ -96,7 +96,6 @@ jobs:
       CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   dry-run: true
 ```
 
