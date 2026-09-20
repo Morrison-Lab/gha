@@ -3524,18 +3524,20 @@ A callee job that itself calls another of our workflows is not compared.
 Eleven workflows here do call another of ours, but none of those eleven
 declares `workflow_call:`, so none can be a callee and no nesting is
 reachable from a stub -- a limit rather than a live gap.
-The docstring states it too, so a reader of the script alone gets it.
-**And the comparison is literal string equality, so it sees constant group
-names only.**
-That covers the gh-pages family, whose groups are the constant `gh-pages`.
-It does NOT cover a group written as an expression: the review family's
-groups are `${{ }}`-valued, so no review stub can ever be flagged, and
-`altdoc-multiversion-docs.yml`'s `build` job holds a group whose `${{ }}`
-part evaluates to `github.ref` outside a pull request, so the group as a
-whole becomes `altdoc-multiversion-docs-refs/heads/main` -- identical to what
-a caller writing `altdoc-multiversion-docs-${{ github.ref }}` requests, while
-the two strings never match textually.
-gha#822 tracks normalizing expressions before comparing.
+**Groups are compared across their evaluated candidate runtime values
+(gha#822).**
+Literal string equality alone covered only constant names like `gh-pages`.
+Expressions inside `${{ }}` are evaluated across their ternary
+(`cond && branch1 || branch2`) and fallback (`A || B`) alternatives with
+whitespace normalized.
+This checks expression-valued groups for potential runtime collisions:
+the review workflows' per-PR groups (`claude-review-${{ ... }}` and siblings)
+fail when a caller reintroduces a matching PR-scoped group, and
+`altdoc-multiversion-docs.yml`'s `build` job group (whose expression
+resolves to `github.event.pull_request.number` or `github.ref`)
+collides when a caller requests `altdoc-multiversion-docs-${{ github.ref }}`
+or the PR-number equivalent.
+Unclosed `${{` and empty `${{ }}` expressions fail closed (exit 2).
 EVERY non-string scalar group is refused rather than compared, not the
 subset that happens to survive `str()`.
 YAML's scalar resolution is lossy, so the audit cannot recover what the

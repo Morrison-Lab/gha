@@ -327,10 +327,9 @@ the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 Both caller placements do it -- a top-level block, and one on the calling
 job itself.
-Follow this rule by hand for the review family: these groups are `${{ }}`
-expressions, and `audit_example_concurrency.py` compares group names as
-literal text, so it cannot check them
-([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
+`audit_example_concurrency.py` checks these groups across their candidate
+evaluated runtime values, flagging callers that declare colliding PR-scoped
+group names ([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
 The same rule covers the gh-pages family (`quarto-publish.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
@@ -340,11 +339,13 @@ and there the job fails with no runner, no steps, and no log, so the site
 silently stops publishing
 ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 `audit_example_concurrency.py` fails `_selftest.yml` when any stub under
-`examples/` declares a group its called workflow already declares -- on
-either side's two placements, so the stub's top level or its calling job
-against the callee's jobs or the callee's own top level.
-Its comparison is literal, so what it can FLAG is the constant-named
-groups above; it still examines every stub.
+`examples/` (or dogfood caller under `.github/workflows/`) declares a group
+its called workflow already declares -- on either side's two placements,
+so the stub's top level or its calling job against the callee's jobs or the
+callee's own top level.
+Expressions inside `${{ }}` are evaluated across ternary and fallback
+branches, catching both literal constant collisions and expression-valued
+collisions like review-family stubs and multiversion docs.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
