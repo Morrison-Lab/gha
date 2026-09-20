@@ -536,6 +536,18 @@ jobs:
       # as current.
       reviewed-head: ${{ github.event.pull_request.head.sha }}
 
+    env:
+      # The commit the reviewer names as reviewed, in the review-data JSON's
+      # commit_sha (gha#852). Resolved ONCE here, from the same two sources
+      # post-review's stale check reads in the same order (reviewed-head
+      # above, then gather-context's stash-head on dispatch), so the
+      # structured field and the trailing "Reviewed commit:" line that
+      # post-review stamps cannot name different commits. Never github.sha:
+      # on a pull_request event that is GitHub's ephemeral merge ref, which
+      # exists on no branch and vanishes when the PR closes -- the value a
+      # reviewer left to find the SHA itself was writing.
+      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
+
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout-minutes }}
     permissions:
@@ -1081,6 +1093,7 @@ jobs:
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
+          reviewed-commit: ${{ env.REVIEWED_COMMIT }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: 'false'
           show-full-output: ${{ inputs.show-full-output }}
@@ -1194,6 +1207,7 @@ jobs:
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
+          reviewed-commit: ${{ env.REVIEWED_COMMIT }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: 'false'
           show-full-output: ${{ inputs.show-full-output }}
