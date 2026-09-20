@@ -327,9 +327,11 @@ The two Claude workflows are a pair.
   mentions, edits files, and opens or updates PRs. A mention inside a code
   span, fence, or blockquote is not an invocation: a cheap `mention-filter`
   job runs `detect-bot-mention` and withholds the agent job ([gha#554](https://github.com/Morrison-Lab/gha/issues/554)).
-- `claude-code-review.yml` runs a read-only Claude review: a consolidated
-  summary on dispatched runs by default; add a `pull_request` trigger in the
-  caller if you also want automatic reviews on PR updates.
+- `claude-code-review.yml` runs a read-only Claude review:
+  a consolidated summary on dispatched runs by default;
+  add a `pull_request` trigger in the caller
+  if you also want automatic reviews on PR updates
+  (GitHub suppresses `pull_request` runs for conflicting PRs; gha#859).
   The model job's `GITHUB_TOKEN` has no write scopes
   (`contents` / `pull-requests` / `issues` / `actions: read`);
   jobs that hold `pull-requests: write` / `issues: write`

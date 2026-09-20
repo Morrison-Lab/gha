@@ -4626,11 +4626,6 @@ forwards `github_token`, which skips the App-token exchange that used to fail
 workflow-content validation until merge.
 A green `claude-review` check is still easy to mistake for a real review.
 
-**GitHub suppresses `pull_request` workflow runs for conflicting PRs (gha#859).**
-GitHub Actions platform policy dictates that no `pull_request` workflows run (neither on PR creation nor on `synchronize` pushes) when a pull request has merge conflicts with the target branch (`git merge-tree` shows conflict markers).
-This produces a symptom easily mistaken for a review outage: all automated checks go completely silent without even registering a skipped run.
-For a conflicting PR, review must be triggered via the `workflow_dispatch` path (`gh workflow run claude-code-review.yml -f pr_number=N`) or after merging the base branch to resolve the conflict.
-
 **Reviews of workflow-editing PRs restore the default-branch
 `.github/workflows/` tree after checkout (gha#598).**
 `detect-pr-workflow-edits` classifies top-level workflow YAML (not
@@ -4741,6 +4736,23 @@ log is not misdiagnosed as a `401`:
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
 section used to hit that same OIDC content-validation abort;
 `github_token` forwarding is what skips it now (gha#580).
+
+## GitHub suppresses pull_request workflow runs for conflicting PRs (gha#859)
+
+GitHub Actions platform policy dictates that no `pull_request` workflows run
+(neither on PR creation nor on `synchronize` pushes)
+when a pull request has merge conflicts with the target branch
+(`git merge-tree` shows conflict markers).
+This produces a symptom easily mistaken for a review outage:
+all automated checks go completely silent
+without even registering a skipped run.
+For a conflicting PR, review must be triggered via the `workflow_dispatch` path:
+
+```sh
+gh workflow run claude-code-review.yml -f pr_number=N
+```
+
+or after merging the base branch to resolve the conflict.
 
 ## `claude.yml` has four review-dispatch sites, and one is not the composite
 
