@@ -332,6 +332,111 @@ def main() -> int:
            run(STUB.format(top=TOP_GH, callee="quarto-publish.yml"), WORKFLOW.format(conc=JOB_GH),
                env={"GHA_WORKFLOWS_RESTORED": "1"}), 0, "::notice::Skipping audit-example-concurrency")
 
+    # gha#822: Expression evaluation and candidate overlap checks.
+    # Groups containing ${{ }} expressions are evaluated across their ternary
+    # and fallback (||) branches and normalized for whitespace.
+    # 1. altdoc-multiversion-docs.yml's build job collision:
+    altdoc_callee_group = (
+        "altdoc-multiversion-docs-${{ github.event_name == 'pull_request' && "
+        "github.event.pull_request.number || github.ref }}"
+    )
+    def callee_conc(group: str) -> str:
+        return f"    concurrency:\n      group: {group}"
+
+    altdoc_callee = "altdoc-multiversion-docs.yml"
+    altdoc_top = (
+        "concurrency:\n  group: altdoc-multiversion-docs-${{ github.ref }}"
+    )
+    expect("altdoc build-job expression collision fails",
+           run(STUB.format(top=altdoc_top, callee=altdoc_callee),
+               WORKFLOW.format(conc=callee_conc(altdoc_callee_group)),
+               callee=altdoc_callee), 1, "deadlock")
+    altdoc_pr_top = (
+        "concurrency:\n  group: "
+        "altdoc-multiversion-docs-${{ github.event.pull_request.number }}"
+    )
+    expect("altdoc build-job pr-number collision fails",
+           run(STUB.format(top=altdoc_pr_top, callee=altdoc_callee),
+               WORKFLOW.format(conc=callee_conc(altdoc_callee_group)),
+               callee=altdoc_callee), 1, "deadlock")
+
+    # 2. Review-family stubs: gha#437 shape (pr-number vs fallback)
+    claude_callee = "claude-code-review.yml"
+    claude_callee_group = (
+        "claude-review-${{ github.event.pull_request.number || "
+        "inputs.pr-number }}"
+    )
+    claude_437_top = (
+        "concurrency:\n  group: claude-review-${{ "
+        "github.event.pull_request.number || inputs.pr_number }}"
+    )
+    expect("review-family gha#437 caller group collides",
+           run(STUB.format(top=claude_437_top, callee=claude_callee),
+               WORKFLOW.format(conc=callee_conc(claude_callee_group)),
+               callee=claude_callee), 1, "deadlock")
+    claude_pr_top = (
+        "concurrency:\n  group: claude-review-${{ "
+        "github.event.pull_request.number }}"
+    )
+    expect("review-family pr-number alone collides",
+           run(STUB.format(top=claude_pr_top, callee=claude_callee),
+               WORKFLOW.format(conc=callee_conc(claude_callee_group)),
+               callee=claude_callee), 1, "deadlock")
+    claude_ws_top = (
+        "concurrency:\n  group: 'claude-review-${{   "
+        "github.event.pull_request.number   ||   inputs.pr-number   }}'"
+    )
+    expect("review-family with whitespace variation collides",
+           run(STUB.format(top=claude_ws_top, callee=claude_callee),
+               WORKFLOW.format(conc=callee_conc(claude_callee_group)),
+               callee=claude_callee), 1, "deadlock")
+
+    # 3. Multi-expression group collision (e.g. antigravity-review)
+    ag_callee = "antigravity-code-review.yml"
+    ag_callee_group = (
+        "antigravity-review-${{ inputs.mode }}-${{ inputs.pr-number || "
+        "github.event.pull_request.number }}"
+    )
+    ag_caller_top = (
+        "concurrency:\n  group: antigravity-review-${{ inputs.mode }}-${{ "
+        "github.event.pull_request.number }}"
+    )
+    expect("multi-expression group collides",
+           run(STUB.format(top=ag_caller_top, callee=ag_callee),
+               WORKFLOW.format(conc=callee_conc(ag_callee_group)),
+               callee=ag_callee), 1, "deadlock")
+
+    # 4. Different expression groups pass
+    custom_top = (
+        "concurrency:\n  group: custom-review-${{ "
+        "github.event.pull_request.number }}"
+    )
+    expect("different expression group passes",
+           run(STUB.format(top=custom_top, callee=claude_callee),
+               WORKFLOW.format(conc=callee_conc(claude_callee_group)),
+               callee=claude_callee), 0)
+
+    # 5. String literal branch in expression resolves to literal text
+    lit_callee_group = (
+        "deploy-${{ github.ref == 'refs/heads/main' && 'production' || "
+        "'staging' }}"
+    )
+    expect("string-literal branch in expression collides with literal",
+           run(STUB.format(top="concurrency:\n  group: deploy-production",
+                           callee="quarto-publish.yml"),
+               WORKFLOW.format(conc=callee_conc(lit_callee_group)),
+               callee="quarto-publish.yml"), 1, "deadlock")
+
+    # 6. Fail-closed expression parsing: unclosed ${{ and empty ${{ }}
+    expect("unclosed ${{ in group is an error",
+           run(STUB.format(top="concurrency:\n  group: publish-${{ github.ref",
+                           callee="quarto-publish.yml"),
+               WORKFLOW.format(conc=JOB_GH)), 2, "unclosed '${{'")
+    expect("empty ${{ }} in group is an error",
+           run(STUB.format(top="concurrency:\n  group: publish-${{   }}",
+                           callee="quarto-publish.yml"),
+               WORKFLOW.format(conc=JOB_GH)), 2, "empty '${{ }}' expression")
+
     # The live tree: the audit still passes, and its population counts the
     # dogfood callers under .github/workflows/ alongside the examples/ stubs.
     # The counts are derived from the tree rather than written here, so a new
