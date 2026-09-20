@@ -3110,10 +3110,15 @@ the loaded `resolve_outcome == 'failure'` path, including a successful
 review so Require exiting 1 does not skip the notice),
 caller grant lists (the example stub, README, permissions page,
 reference Permissions and Example) include `actions: read`,
-and `post-review` stale-checks against event-pinned
+`post-review` stale-checks against event-pinned
 `reviewed-head` (`github.event.pull_request.head.sha`),
 falling back to gather-context's stash-head on dispatch,
-rather than a later API fetch from the model job.
+rather than a later API fetch from the model job,
+and the model job resolves `REVIEWED_COMMIT` once from those same two
+sources in that same order, passes it to every attempt as
+`reviewed-commit`, and the prompt interpolates that one input into both
+review-data `commit_sha` templates, with nothing in the composite or the
+attempt inputs reading `github.sha` / `GITHUB_SHA` (gha#852).
 
 **`run-review-job-split-tests.py` also asserts that every in-repo composite
 output the workflow reads is declared, and derives that check from the
@@ -3199,6 +3204,45 @@ CI runs the workflow-split assertions and the self-test suite, plus a real
 separate from `review-fail-check` so a failure is attributable at a glance.
 `claude-code-review.yml`'s own `@v2` consumption of the new composite is
 the usual bootstrap gap until the tag slides.
+
+**The review-data JSON's `commit_sha` and the trailing `Reviewed commit:`
+line were produced in different places, which is how they came to name
+different commits (gha#852).**
+The trailing line is stamped by `post-review` from the SHA its stale check
+bounded (`reviewed-head`, then stash-head on dispatch; gha#679), while the
+JSON field was a `<sha>` placeholder the reviewer filled in itself, and the
+reviewer reached for `GITHUB_SHA` -- which on a `pull_request` event is
+GitHub's ephemeral merge ref, a commit on no branch that vanishes when the
+PR closes.
+Measured on Morrison-Lab/ai-config#3414: the line named the head
+`277da5f6` and the field named merge commit `3f1b1d6b`.
+Nothing was red, because `check-pr-fully-clean.py` accepts either the
+structured field or the body's head SHA, so the defect was latent until a
+consumer read `commit_sha` alone -- the field's natural reading.
+The fix is one resolution: the model job's `REVIEWED_COMMIT` env reads the
+same two sources in the same order as `post-review`'s `COMPARE`, every
+attempt passes it as the composite's `reviewed-commit` input, and the
+prompt interpolates that input into both `commit_sha` templates and names it
+as the commit under review, so the reviewer copies a value rather than
+finding one.
+The suite pins each hop, and the mutations to keep are the two that leave
+the value *correct today* while restoring the split: an attempt resolving
+`reviewed-commit` from `github.event.pull_request.head.sha` directly instead
+of the env (right on `pull_request`, empty on dispatch, and a second
+declaration of the source either way), and the JSON templates naming
+different sources (the hidden comment and visible fence are required
+identical, so one drifting back to `<sha>` is a silent half-fix).
+Eight mutations turn a named case red: `REVIEWED_COMMIT` from `github.sha`,
+`REVIEWED_COMMIT` without the stash-head fallback, an attempt bypassing the
+env, an attempt input carrying `github.sha`, the two templates disagreeing,
+the prompt naming the commit from `github.sha`, the prompt reading
+`$GITHUB_SHA`, and the input declaration dropped.
+The prompt still says never to substitute `GITHUB_SHA`, and the prose
+mention is deliberately not what the scan matches: the negative assertion
+keys on an expression (`${{ ... github.sha ... }}`) or a shell read
+(`$GITHUB_SHA`), which the corpus's own instruction about them cannot
+forge -- the same emitting-form anchoring `check-diff-scoped.sh`'s runtime
+guard records above.
 
 `run-fixture-tests.sh` gained three assertions alongside it, and the last two
 are the ones worth reading.
