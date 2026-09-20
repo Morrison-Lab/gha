@@ -718,7 +718,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Read-only OpenCode PR code review, run through the <a href="https://opencode.ai">opencode</a> CLI headless. The agent receives the PR diff as an attachment and may read the checked-out repository for context; it runs with file edits, shell commands, and web fetches denied, so the workflow itself posts whatever review the model produces.</p>
-<p>The default caller stub is <code>workflow_dispatch</code>-triggered. Add a <code>pull_request</code> trigger in the caller if you want automatic reviews on PR updates. There is no <code>opencode.yml</code> mention bot yet, so unlike <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a> there is no comment-triggered re-dispatch path to keep names in sync with.</p>
+<p>The default caller stub is <code>workflow_dispatch</code>-triggered. Add a <code>pull_request</code> trigger in the caller if you want automatic reviews on PR updates. GitHub suppresses <code>pull_request</code> workflow runs when a pull request has merge conflicts with the target branch (gha#859). There is no <code>opencode.yml</code> mention bot yet, so unlike <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a> there is no comment-triggered re-dispatch path to keep names in sync with.</p>
 <p>Requires an <code>OPENCODE_API_KEY</code> secret (<a href="https://opencode.ai/docs/zen/">OpenCode Zen</a>; free-tier models are available). Without it, each run posts a skip notice on the PR instead of a review.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>

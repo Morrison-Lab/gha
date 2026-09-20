@@ -715,7 +715,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Automated agentic code review, security audit, or test-suite generation via the Google Antigravity Python SDK (<code>google-antigravity</code>).</p>
-<p>Supports three operational modes (<code>code-review</code>, <code>security-audit</code>, <code>test-generation</code>) and two execution policies (<code>on-push</code> for automatic PR updates and <code>on-request</code> for manual/dispatch runs).</p>
+<p>Supports three operational modes (<code>code-review</code>, <code>security-audit</code>, <code>test-generation</code>) and two execution policies (<code>on-push</code> for automatic PR updates and <code>on-request</code> for manual/dispatch runs). GitHub suppresses <code>pull_request</code> workflow runs when a pull request has merge conflicts with the target branch (gha#859).</p>
 <p>Requires a <code>GEMINI_API_KEY</code> secret.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
