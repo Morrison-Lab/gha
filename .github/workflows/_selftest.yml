@@ -357,6 +357,11 @@ jobs:
           # expression, and reusable workflow caller rules across all
           # workflows.
           actionlint -shellcheck ""
+          # Audits caller stubs in examples/ with actionlint (gha#840).
+          # Without file arguments actionlint defaults to .github/workflows/;
+          # passing examples/*.yml ensures caller stubs are validated against
+          # schema and reusable workflow caller interfaces.
+          actionlint -shellcheck "" examples/*.yml
   # lint-changed-lines' composite can't be exercised end-to-end here: it needs
   # a live pull_request event plus an installable R package to lint against
   # (this repo is neither). Run the offline unit test for its diff-hunk parser

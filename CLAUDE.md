@@ -3621,6 +3621,10 @@ holding rather than as missing coverage.
 CI runs it as the `example-concurrency` job in `_selftest.yml`, unit tests
 first, then the live audit.
 
+**`_selftest.yml` audits `examples/*.yml` with `actionlint` alongside repository workflows (gha#840).**
+`actionlint` without arguments audits only `.github/workflows/`, which left caller stubs unlinted in CI until #823 was discovered manually.
+The `lint-workflows` job in `_selftest.yml` passes `examples/*.yml` to `actionlint -shellcheck ""` after auditing `.github/workflows/`, ensuring all 49 example caller stubs conform to GitHub Actions syntax, expression validation, and reusable workflow caller schemas.
+
 `.github/workflows/scripts/audit_capability_versioning_docs.py` closes
 gha#730: every capability that ships past the frozen `@v1` snapshot must be
 named in each hand-restated versioning-list region -- README.md's
