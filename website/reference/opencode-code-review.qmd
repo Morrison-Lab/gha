@@ -11,7 +11,10 @@ produces.
 
 The default caller stub is `workflow_dispatch`-triggered.
 Add a `pull_request` trigger in the caller if you want automatic reviews on
-PR updates. There is no `opencode.yml` mention bot yet, so unlike
+PR updates.
+GitHub suppresses `pull_request` workflow runs
+when a pull request has merge conflicts with the target branch (gha#859).
+There is no `opencode.yml` mention bot yet, so unlike
 [`gemini-code-review.yml`](gemini-code-review.qmd) there is no
 comment-triggered re-dispatch path to keep names in sync with.
 

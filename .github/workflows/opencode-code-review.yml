@@ -5,6 +5,11 @@ name: OpenCode Code Review (reusable)
 # examples/opencode-code-review.yml) holds the `on:` triggers; this reusable
 # workflow inherits the caller's event context and supports workflow_dispatch
 # and pull_request runs.
+# Note that GitHub will not trigger `pull_request` workflow runs if the pull
+# request has merge conflicts with its base branch (GitHub Actions platform
+# behaviour; gha#859). For conflicting PRs, review must be triggered via
+# `workflow_dispatch` (`gh workflow run opencode-code-review.yml -f pr_number=N`)
+# or after merging the base branch to resolve conflicts.
 #
 # Why a shell step rather than the official anomalyco/opencode/github action:
 # that action's entrypoint asserts on issue_comment /
