@@ -312,8 +312,9 @@ via `workflow_dispatch`. Install both, and keep the review stub named
 match) so the dispatch resolves.
 
 The `examples/claude-code-review.yml` stub defaults to this mention-triggered
-path only (no automatic `pull_request` trigger). Add `pull_request` in that
-stub if you want automatic review on each PR update.
+path only (no automatic `pull_request` trigger).
+Add `pull_request` in that stub if you want automatic review on each PR update
+(note that GitHub suppresses `pull_request` runs for PRs with merge conflicts; gha#859).
 
 Do not declare a `concurrency:` block reusing the callee's group in caller
 stubs for review workflows (`claude-code-review.yml`,
