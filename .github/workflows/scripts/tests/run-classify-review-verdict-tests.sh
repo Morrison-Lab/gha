@@ -1973,6 +1973,164 @@ Actually wait, \`reconsider:
 **Needs more work due to \`real issues found.**" \
 "true" "ready-for-merge"
 
+# gha#849: a disclaimer clarifying scope (e.g. "it is not a claim that the PR is fully clean")
+# does not flip an affirmative Ready for merge verdict to needs-more-work.
+run_test "Ready for merge with fully-clean disclaimer (ai-config#3361 exact reproduction)" "### Verdict
+
+**Ready for merge** (content verdict on the diff itself). Per this run's verdict-semantics instructions, this reflects that the diff has no content defects and no check has failed "$'\xe2\x80\x94'" it is not a claim that the PR is fully clean end-to-end. I confirmed via \`python3 scripts/check-pr-fully-clean.py 3361 -R Morrison-Lab/ai-config\` (exit 1) that \`validate\` and \`review / claude-review\` checks are still \`in_progress\` and no automated review has posted yet; those are in-flight/merge-gate matters for the workflow to resolve, not content findings against the diff. One non-blocking structural suggestion noted above.
+
+**Stopping Point**: Clean stopping point reached.
+
+Reviewed commit: 3dc2ad758374b641822aee4fc44841b6f6ec222b" \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by a guarantee disclaimer" "### Verdict
+
+**Ready for merge**. Note: this is not a guarantee that the PR is fully clean." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by an assertion disclaimer" "### Verdict
+
+**Ready for merge**. Note: this is not claiming that the PR is approved by CI." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by without-claiming disclaimer" "### Verdict
+
+**Ready for merge**. Without claiming that the branch is fully clean." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by not-to-say disclaimer" "### Verdict
+
+**Ready for merge**. This is not to say that the whole test suite is clean." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by meant-as-a-claim disclaimer" "### Verdict
+
+**Ready for merge**. Not meant as a claim that all checks are clean." \
+"true" "ready-for-merge"
+
+run_test "A subsequent un-disclaimed rejection still overrides Ready for merge" "### Verdict
+
+**Ready for merge**.
+
+Wait, actually this is not clean." \
+"false" "needs-more-work"
+
+run_test "A standalone disclaimer without an affirmative verdict is unrecognized" "### Verdict
+
+This is not a claim that the PR is fully clean." \
+"false" "unrecognized"
+
+run_test "A rejection followed by a disclaimer remains a rejection" "### Verdict
+
+Needs more work. This is not a claim that the PR is fully clean." \
+"false" "needs-more-work"
+
+run_test "Triage exemption followed by a disclaimer remains ready-for-merge" "### Verdict
+
+**No action -- automated, trivial PR that does not need code review**. Note: this is not a claim that the PR is fully clean." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by 'does not mean that' disclaimer" "### Verdict
+
+**Ready for merge**. This does not mean that the PR is fully clean." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by 'does not imply that' disclaimer" "### Verdict
+
+**Ready for merge**. This does not imply that the PR is fully clean." \
+"true" "ready-for-merge"
+
+run_test "Ready for merge followed by 'does not indicate that' disclaimer" "### Verdict
+
+**Ready for merge**. This does not indicate that the PR is fully clean." \
+"true" "ready-for-merge"
+
+run_test "An unpunctuated rejection following a disclaimer remains a rejection" "### Verdict
+
+It is not a claim that the PR is clean because it needs work." \
+"false" "needs-more-work"
+
+run_test "Ready for merge with disclaimer in an aside" "### Verdict
+
+**Ready for merge**. Note: not -- per the claim that CI is running -- clean." \
+"true" "ready-for-merge"
+
+run_test "Standalone adverb-interrupted disclaimers are unrecognized" "### Verdict
+
+This is not merely a claim that the PR is clean." \
+"false" "unrecognized"
+
+run_test "Standalone technically-interrupted disclaimer is unrecognized" "### Verdict
+
+This is not technically a claim that the PR is clean." \
+"false" "unrecognized"
+
+run_test "Standalone no-guarantee disclaimer is unrecognized" "### Verdict
+
+There is no guarantee that the PR is fully clean." \
+"false" "unrecognized"
+
+run_test "Ready for merge followed by no-guarantee disclaimer" "### Verdict
+
+**Ready for merge**. There is no guarantee that the PR is fully clean." \
+"true" "ready-for-merge"
+
+run_test "Standalone comma-delimited disclaimer aside is unrecognized" "### Verdict
+
+This is not, per the claim that CI is still running, clean overall." \
+"false" "unrecognized"
+
+run_test "Rejection followed by comma-delimited disclaimer aside remains a rejection" "### Verdict
+
+Needs more work.
+
+This is not, per the claim that CI is still running, clean overall." \
+"false" "needs-more-work"
+
+run_test "Standalone semicolon-delimited disclaimer aside is unrecognized" "### Verdict
+
+This is not; per the claim that CI is still running; clean overall." \
+"false" "unrecognized"
+
+run_test "Ready for merge followed by comma-delimited disclaimer aside" "### Verdict
+
+**Ready for merge**.
+
+This is not, per the claim that CI is still running, clean overall." \
+"true" "ready-for-merge"
+
+run_test "Standalone 'no findings' disclaimer is unrecognized" "### Verdict
+
+This is not a claim that there are no findings." \
+"false" "unrecognized"
+
+run_test "Rejection followed by 'no findings' disclaimer remains a rejection" "### Verdict
+
+Needs more work.
+
+This is not a claim that there are no findings." \
+"false" "needs-more-work"
+
+run_test "Standalone 'no blockers' disclaimer is unrecognized" "### Verdict
+
+This is not a claim that there are no blockers." \
+"false" "unrecognized"
+
+run_test "Rejection followed by 'no blockers' disclaimer remains a rejection" "### Verdict
+
+Needs more work.
+
+This is not a claim that there are no blockers." \
+"false" "needs-more-work"
+
+run_test "Ready for merge followed by 'no blockers' disclaimer" "### Verdict
+
+**Ready for merge**.
+
+This is not a claim that there are no blockers." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
