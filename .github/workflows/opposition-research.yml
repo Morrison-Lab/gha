@@ -1,0 +1,145 @@
+name: Opposition Research (reusable)
+
+# Reusable workflow to conduct automated opposition research on competitor
+# products, packages, or repositories, mining community demand for high-value
+# features and filing them as tracked issues (or reporting them via step summary).
+# Follows the Morrison-Lab opposition-research skill rubric.
+
+on:
+  workflow_call:
+    inputs:
+      competitor:
+        description: >-
+          Competitor product, framework, package, or GitHub repository to research (e.g. 'r-lib/actions', 'quarto-dev/quarto-actions').
+        type: string
+        required: true
+      target-repo:
+        description: >-
+          Target repository receiving the research (defaults to the calling repository).
+        type: string
+        default: ${{ github.repository }}
+      scope-guidance:
+        description: >-
+          Optional explicit scope boundaries specifying what features/shortcomings count as on-scope vs out-of-scope for our repository.
+        type: string
+        default: ''
+      dry-run:
+        description: >-
+          When true, writes discovered opportunities to the GitHub Actions job step summary instead of opening GitHub issues.
+        type: boolean
+        default: false
+      max-issues:
+        description: >-
+          Maximum number of distinct opportunity issues to open in a single run (avoids tracker flooding).
+        type: number
+        default: 3
+      labels:
+        description: >-
+          Comma-separated labels to attach to any created opportunity issues.
+        type: string
+        default: 'oppo,enhancement'
+      model:
+        description: >-
+          Claude model to run for the research session.
+        type: string
+        default: 'claude-sonnet-4-5'
+      use-ai-config:
+        description: >-
+          Whether to install the Morrison-Lab/ai-config plugin so the agent has the opposition-research skill and prompt conventions loaded.
+        type: boolean
+        default: true
+      timeout-minutes:
+        description: >-
+          Job timeout in minutes for the research run. Defaults to 45.
+        type: number
+        default: 45
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+
+jobs:
+  oppo:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      # Pre-flight account status and quota check before starting the run
+      - name: Pre-flight account status and quota check
+        id: preflight-quota
+        env:
+          HAS_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_OAUTH" != "true" ] && [ "$HAS_API_KEY" != "true" ]; then
+            echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret available for opposition research."
+            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pre-flight credential shape check
+        id: preflight-credential
+        if: steps.preflight-quota.outputs.quota_exhausted != 'true'
+        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v2
+        with:
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Run Claude Opposition Research
+        id: claude
+        if: steps.preflight-quota.outputs.quota_exhausted != 'true'
+        uses: anthropics/claude-code-action@19dda84776b3518d98b8798e591daee763049ed3 # v1.0.220
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COMPETITOR: ${{ inputs.competitor }}
+          TARGET_REPO: ${{ inputs.target-repo }}
+          SCOPE_GUIDANCE: ${{ inputs.scope-guidance }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          MAX_ISSUES: ${{ inputs.max-issues }}
+          LABELS: ${{ inputs.labels }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: ${{ inputs.model }}
+          plugin_marketplaces: |
+            ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
+          plugins: |
+            ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
+          claude_args: >-
+            --allowedTools
+            "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(gh api:*)"
+          prompt: |
+            You are an autonomous research agent conducting opposition research on a competitor product/repository.
+
+            Target Competitor: ${{ inputs.competitor }}
+            Our Repository: ${{ inputs.target-repo }}
+            Scope Guidance: ${{ inputs.scope-guidance }}
+            Dry Run: ${{ inputs.dry-run }}
+            Max Issues to File: ${{ inputs.max-issues }}
+            Labels: ${{ inputs.labels }}
+
+            Follow the Morrison-Lab opposition-research procedure:
+            1. **Map Competitor Surfaces**: Use WebSearch and WebFetch to search GitHub issues, Discussions, forums, and community channels for '${{ inputs.competitor }}'. Look for upvoted feature requests, pain points, and recurring user needs.
+            2. **Scope Filter**: Review our repository's README, workflows, and purpose. Verify that any candidate idea is strictly on-scope for '${{ inputs.target-repo }}' and aligns with our architecture.
+            3. **Deduplication Check**: Run `gh issue list --repo ${{ inputs.target-repo }} --state all --limit 100` using the Bash tool to verify whether candidate opportunities are already tracked or resolved in our repo. Do NOT file duplicate issues.
+            4. **Rank & Deliver**:
+               - Rank candidate ideas by community demand signal (vote/reaction counts, number of threads).
+               - Select up to ${{ inputs.max-issues }} highest-value, net-new opportunities.
+               - If Dry Run is 'true':
+                 Do NOT create GitHub issues. Write a structured markdown report of the findings and append it to the file at `$GITHUB_STEP_SUMMARY`.
+               - If Dry Run is 'false':
+                 Create each issue using:
+                 `gh issue create --repo "${{ inputs.target-repo }}" --title "<Title>" --body "<Body>" --label "${{ inputs.labels }}"`
+                 The issue body MUST provide:
+                 - User demand evidence with exact source links and upvote/reaction metrics.
+                 - Shortcomings of the competitor's current approach.
+                 - Proposed solution/capability for our repository.
+                 - The mandatory disclosure line at the end, preceded by a blank line:
+                   `_Posted by Claude Code (AI agent) via opposition-research workflow --- not written by a human._`
+                 Also append a summary of all created issues to `$GITHUB_STEP_SUMMARY`.

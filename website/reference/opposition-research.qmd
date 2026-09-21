@@ -1,0 +1,83 @@
+---
+title: "opposition-research.yml"
+---
+
+Conduct automated opposition research on a competitor product, framework, or repository.
+Mines public community demand signals
+(issues, discussions, forums, feature request boards)
+for high-value capabilities
+and surfaces them as tracked issues in the repository.
+
+Follows the Morrison-Lab `/oppo` skill rubric.
+The agent searches competitor community surfaces,
+filters candidate ideas against our repository's explicit scope,
+verifies that issues do not duplicate existing open or closed issues,
+and files actionable, evidence-backed opportunity issues.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `competitor` | string | *required* | Competitor product, framework, package, or repository to research. |
+| `target-repo` | string | `${{ github.repository }}` | Target repository receiving the research. |
+| `scope-guidance` | string | `''` | Explicit scope boundaries specifying what is on-scope vs out-of-scope. |
+| `dry-run` | boolean | `false` | When true, writes findings to the step summary instead of opening issues. |
+| `max-issues` | number | `3` | Maximum number of opportunity issues to open in a single run. |
+| `labels` | string | `'oppo,enhancement'` | Comma-separated labels applied to created issues. |
+| `model` | string | `'claude-sonnet-4-5'` | Claude model to use for the research session. |
+| `use-ai-config` | boolean | `true` | Install the Morrison-Lab/ai-config plugin for the opposition-research skill. |
+| `timeout-minutes` | number | `45` | Job timeout in minutes. |
+
+## Secrets
+
+| Secret | Required | Description |
+| --- | --- | --- |
+| `CLAUDE_CODE_OAUTH_TOKEN` | no | Claude Code OAuth token (Claude Max plan). |
+| `ANTHROPIC_API_KEY` | no | Direct Anthropic API key. |
+
+## Permissions
+
+Grant `contents: read` and `issues: write`.
+
+## Example
+
+```yaml
+name: Opposition Research
+
+on:
+  schedule:
+    - cron: '0 14 * * 1' # Weekly on Monday at 14:00 UTC
+  workflow_dispatch:
+    inputs:
+      competitor:
+        description: Competitor product or repository to research
+        type: string
+        default: 'r-lib/actions'
+      dry-run:
+        description: Run research without filing issues (output to step summary)
+        type: boolean
+        default: false
+
+jobs:
+  oppo:
+    permissions:
+      contents: read
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/opposition-research.yml@v2
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    with:
+      competitor: ${{ inputs.competitor || 'r-lib/actions' }}
+      dry-run: ${{ inputs.dry-run || false }}
+    #   scope-guidance: 'Specific guidance on what features are on-scope vs out-of-scope.'
+    #   max-issues: 3
+    #   labels: 'oppo,enhancement'
+    #   model: 'claude-sonnet-4-5'
+    #   use-ai-config: true
+    #   timeout-minutes: 45
+```
+
+See
+[`examples/opposition-research.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/opposition-research.yml)
+for the full caller stub.
