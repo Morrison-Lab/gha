@@ -1,0 +1,21 @@
+# Runs the standard check suite for Python package repositories
+name: Check Python package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/check-python-package.yml@v2
+    # with:
+    #   python-version: '3.12'
+    #   check-ruff: true
+    #   check-formatting: true
+    #   check-tests: true
+    #   fail: true

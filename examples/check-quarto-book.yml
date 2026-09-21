@@ -1,0 +1,23 @@
+# Runs the standard check suite for Quarto book repositories
+name: Check Quarto book
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-book.yml@v2
+    # with:
+    #   check-links: true
+    #   check-ai-tells: true
+    #   check-bibliography-dois: true
+    #   lint-qmd: true
+    #   fail: true

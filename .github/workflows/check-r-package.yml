@@ -1,0 +1,232 @@
+name: Check R Package (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      fail:
+        description: Fail the job when any enabled check reports findings.
+        type: boolean
+        default: true
+      check-junk-files:
+        description: Check for tracked operating-system and editor detritus.
+        type: boolean
+        default: true
+      junk-patterns:
+        description: Gitignore-style patterns naming what counts as junk.
+        type: string
+        default: '.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto, Thumbs.db, desktop.ini'
+      junk-paths-ignore:
+        description: Paths to exempt from the junk files scan.
+        type: string
+        default: ''
+      check-secrets:
+        description: Scan git history for committed credentials with gitleaks.
+        type: boolean
+        default: true
+      secrets-config:
+        description: Path to a custom gitleaks TOML config file.
+        type: string
+        default: ''
+      secrets-paths-ignore:
+        description: Regex patterns for paths to exempt from secret scanning.
+        type: string
+        default: ''
+      check-non-standard-chars:
+        description: Flag non-standard unicode characters, curly quotes, and smart dashes.
+        type: boolean
+        default: true
+      non-standard-chars-paths:
+        description: Comma- or space-separated list of files or globs to check.
+        type: string
+        default: ''
+      non-standard-chars-paths-ignore:
+        description: Paths or globs to exclude from non-standard character scanning.
+        type: string
+        default: ''
+      check-new-line-breaks:
+        description: Enforce semantic line breaks on modified lines.
+        type: boolean
+        default: true
+      new-line-breaks-base-ref:
+        description: Git ref to diff against for diff-scoped new line break checking.
+        type: string
+        default: ''
+      new-line-breaks-globs:
+        description: Comma- or space-separated glob patterns to check.
+        type: string
+        default: ''
+      check-typos:
+        description: Scan files for spelling typos using crate-ci/typos.
+        type: boolean
+        default: true
+      typos-config:
+        description: Custom typos config file path.
+        type: string
+        default: ''
+      typos-base-ref:
+        description: Git ref to diff against for diff-scoped typo checking.
+        type: string
+        default: ''
+      check-ai-tells:
+        description: Scan narrative prose (*.md, *.Rmd, *.qmd) for AI cliches and tells.
+        type: boolean
+        default: true
+      ai-tells-threshold:
+        description: Maximum allowed tell density (tells per 1,000 words).
+        type: string
+        default: '10'
+      ai-tells-ignore:
+        description: Comma- or space-separated list of tell names to ignore.
+        type: string
+        default: ''
+      lint-yaml:
+        description: Lint tracked YAML files with yamllint.
+        type: boolean
+        default: true
+      yaml-config-file:
+        description: Path to a yamllint config file.
+        type: string
+        default: ''
+      yaml-paths-ignore:
+        description: Patterns to exclude from YAML linting.
+        type: string
+        default: ''
+      lint-workflows:
+        description: Lint GitHub Actions workflows with actionlint and zizmor.
+        type: boolean
+        default: true
+      workflows-path:
+        description: Path containing GitHub Actions workflow files to lint.
+        type: string
+        default: '.github/workflows'
+      lint-markdown:
+        description: Lint tracked Markdown files with markdownlint-cli2.
+        type: boolean
+        default: true
+      markdown-config-file:
+        description: Path to a markdownlint config file.
+        type: string
+        default: ''
+      markdown-globs:
+        description: Git pathspecs of tracked Markdown files to lint.
+        type: string
+        default: '*.md'
+      markdown-paths-ignore:
+        description: Glob patterns to skip for Markdown linting.
+        type: string
+        default: ''
+      markdown-base-ref:
+        description: Git ref to diff against for diff-scoped list-item splice checks.
+        type: string
+        default: ''
+      check-duplicate-roxygen:
+        description: Check for duplicate roxygen parameter documentation in R code.
+        type: boolean
+        default: true
+      duplicate-roxygen-path:
+        description: Target directory to scan for duplicate roxygen documentation.
+        type: string
+        default: '.'
+      check-one-function-per-file:
+        description: Enforce single function definition per file in R/.
+        type: boolean
+        default: true
+      one-function-per-file-path:
+        description: Path to R source files.
+        type: string
+        default: 'R'
+      check-extra:
+        description: Run extra package checks (warnings as errors, readme freshness, or random-order tests).
+        type: boolean
+        default: false
+      extra-check:
+        description: Which extra check to run (warnings, random-order, or readme).
+        type: string
+        default: 'warnings'
+      check-formatting:
+        description: Check R formatting with Air.
+        type: boolean
+        default: true
+      air-version:
+        description: Air version to install.
+        type: string
+        default: '0.11.0'
+      air-path:
+        description: Path to format-check with Air.
+        type: string
+        default: '.'
+      check-news:
+        description: Check NEWS.md on pull requests.
+        type: boolean
+        default: true
+      changelog-file:
+        description: Path to changelog file.
+        type: string
+        default: 'NEWS.md'
+      check-version:
+        description: Check DESCRIPTION package version on pull requests.
+        type: boolean
+        default: true
+      description-path:
+        description: Path to DESCRIPTION file.
+        type: string
+        default: 'DESCRIPTION'
+
+jobs:
+  check-r-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run R package checks
+        uses: Morrison-Lab/gha/check-r-package@v2
+        with:
+          fail: ${{ inputs.fail }}
+          check-junk-files: ${{ inputs.check-junk-files }}
+          junk-patterns: ${{ inputs.junk-patterns }}
+          junk-paths-ignore: ${{ inputs.junk-paths-ignore }}
+          check-secrets: ${{ inputs.check-secrets }}
+          secrets-config: ${{ inputs.secrets-config }}
+          secrets-paths-ignore: ${{ inputs.secrets-paths-ignore }}
+          check-non-standard-chars: ${{ inputs.check-non-standard-chars }}
+          non-standard-chars-paths: ${{ inputs.non-standard-chars-paths }}
+          non-standard-chars-paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
+          check-new-line-breaks: ${{ inputs.check-new-line-breaks }}
+          new-line-breaks-base-ref: ${{ inputs.new-line-breaks-base-ref }}
+          new-line-breaks-globs: ${{ inputs.new-line-breaks-globs }}
+          check-typos: ${{ inputs.check-typos }}
+          typos-config: ${{ inputs.typos-config }}
+          typos-base-ref: ${{ inputs.typos-base-ref }}
+          check-ai-tells: ${{ inputs.check-ai-tells }}
+          ai-tells-threshold: ${{ inputs.ai-tells-threshold }}
+          ai-tells-ignore: ${{ inputs.ai-tells-ignore }}
+          lint-yaml: ${{ inputs.lint-yaml }}
+          yaml-config-file: ${{ inputs.yaml-config-file }}
+          yaml-paths-ignore: ${{ inputs.yaml-paths-ignore }}
+          lint-workflows: ${{ inputs.lint-workflows }}
+          workflows-path: ${{ inputs.workflows-path }}
+          lint-markdown: ${{ inputs.lint-markdown }}
+          markdown-config-file: ${{ inputs.markdown-config-file }}
+          markdown-globs: ${{ inputs.markdown-globs }}
+          markdown-paths-ignore: ${{ inputs.markdown-paths-ignore }}
+          markdown-base-ref: ${{ inputs.markdown-base-ref }}
+          check-duplicate-roxygen: ${{ inputs.check-duplicate-roxygen }}
+          duplicate-roxygen-path: ${{ inputs.duplicate-roxygen-path }}
+          check-one-function-per-file: ${{ inputs.check-one-function-per-file }}
+          one-function-per-file-path: ${{ inputs.one-function-per-file-path }}
+          check-extra: ${{ inputs.check-extra }}
+          extra-check: ${{ inputs.extra-check }}
+          check-formatting: ${{ inputs.check-formatting }}
+          air-version: ${{ inputs.air-version }}
+          air-path: ${{ inputs.air-path }}
+          check-news: ${{ inputs.check-news }}
+          changelog-file: ${{ inputs.changelog-file }}
+          check-version: ${{ inputs.check-version }}
+          description-path: ${{ inputs.description-path }}

@@ -53,6 +53,12 @@ not reference `@main` from consumers.
 | `check-one-function-per-file.yml` | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`), with header opt-out comment support | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
+| `check-repo-hygiene.yml` | Standard repository hygiene check suite (junk files, secrets, non-standard characters, new line breaks, typos, YAML lint, workflow lint, Markdown lint) | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown` |
+| `check-quarto-website.yml` | Standard check suite for Quarto website repositories: repository hygiene, AI tells, QMD prose linting, lychee link checking, and bibliography DOIs | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois` |
+| `check-quarto-book.yml` | Standard check suite for Quarto book repositories: repository hygiene, AI tells, QMD prose linting, link checking across chapters, bibliography DOIs, and equation renders | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois`, `check-equation-renders` |
+| `check-quarto-manuscript.yml` | Standard check suite for Quarto manuscript repositories: repository hygiene, AI tells, QMD prose linting, link checking, bibliography DOIs, and equation renders | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois`, `check-equation-renders` |
+| `check-r-package.yml` | Standard check suite for R package repositories: repository hygiene, AI tells, duplicate roxygen docs, one function per file, Air formatting, NEWS.md, and version check | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-duplicate-roxygen`, `check-one-function-per-file`, `check-formatting`, `check-news`, `check-version` |
+| `check-python-package.yml` | Standard check suite for Python package repositories: repository hygiene, Ruff linting and formatting, and pytest execution | `fail`, `python-version`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-ruff`, `check-formatting`, `check-tests` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`, `base-ref`, `fail-on-item-splices`, `fail-on-table-splits` |
@@ -113,7 +119,8 @@ that need to write must have the **caller** grant it on the calling job:
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
-  `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`, `check-secrets`,
+  `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`,
+  `check-python-package`, `check-r-package`, `check-repo-hygiene`, `check-secrets`,
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
@@ -628,8 +635,11 @@ Pin
 `check-formatting.yml`, `claude-manage-project.yml`,
 `opposition-research.yml`, `check-dependency-updates.yml`,
 `r-cmd-check.yml`,
-`check-code-similarity.yml`, `check-duplicate-roxygen.yml`, and
-`check-one-function-per-file.yml`
+`check-code-similarity.yml`, `check-duplicate-roxygen.yml`,
+`check-one-function-per-file.yml`,
+`check-repo-hygiene.yml`, `check-quarto-website.yml`,
+`check-quarto-book.yml`, `check-quarto-manuscript.yml`,
+`check-r-package.yml`, and `check-python-package.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -766,8 +776,14 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `opposition-research.yml`, `check-dependency-updates.yml`,
 `r-cmd-check.yml`,
 `check-code-similarity.yml`,
-`check-duplicate-roxygen.yml`, and
-`check-one-function-per-file.yml` at `@v2` -- see the
+`check-duplicate-roxygen.yml`,
+`check-one-function-per-file.yml`,
+`check-repo-hygiene.yml`,
+`check-quarto-website.yml`,
+`check-quarto-book.yml`,
+`check-quarto-manuscript.yml`,
+`check-r-package.yml`, and
+`check-python-package.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

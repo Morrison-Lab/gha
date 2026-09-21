@@ -45,6 +45,12 @@ website:
           - reference/check-one-function-per-file.qmd
           - reference/check-phi.qmd
           - reference/check-secrets.qmd
+          - reference/check-repo-hygiene.qmd
+          - reference/check-quarto-website.qmd
+          - reference/check-quarto-book.qmd
+          - reference/check-quarto-manuscript.qmd
+          - reference/check-r-package.qmd
+          - reference/check-python-package.qmd
           - reference/check-links.qmd
           - reference/lint-yaml.qmd
           - reference/lint-markdown.qmd

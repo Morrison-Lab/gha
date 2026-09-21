@@ -1,0 +1,220 @@
+name: Check Python package
+description: >-
+  Runs the standard check suite for Python package repositories:
+  repository hygiene (junk files, secrets, non-standard characters, semantic line breaks,
+  typos, YAML lint, workflow lint, Markdown lint), Ruff linting and code formatting checks,
+  and pytest test suite execution when tests are present.
+inputs:
+  fail:
+    description: Fail the action when any enabled check reports findings.
+    default: 'true'
+  python-version:
+    description: Python version to set up for testing and linting.
+    default: '3.x'
+  check-junk-files:
+    description: Check for tracked operating-system and editor detritus.
+    default: 'true'
+  junk-patterns:
+    description: Gitignore-style patterns naming what counts as junk.
+    default: '.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto, Thumbs.db, desktop.ini, __pycache__, *.pyc'
+  junk-paths-ignore:
+    description: Paths to exempt from the junk files scan.
+    default: ''
+  check-secrets:
+    description: Scan git history for committed credentials with gitleaks.
+    default: 'true'
+  secrets-config:
+    description: Path to a custom gitleaks TOML config file.
+    default: ''
+  secrets-paths-ignore:
+    description: Regex patterns for paths to exempt from secret scanning.
+    default: ''
+  check-non-standard-chars:
+    description: Flag non-standard unicode characters, curly quotes, and smart dashes.
+    default: 'true'
+  non-standard-chars-paths:
+    description: Comma- or space-separated list of files or globs to check.
+    default: ''
+  non-standard-chars-paths-ignore:
+    description: Paths or globs to exclude from non-standard character scanning.
+    default: ''
+  check-new-line-breaks:
+    description: Enforce semantic line breaks on modified lines.
+    default: 'true'
+  new-line-breaks-base-ref:
+    description: Git ref to diff against for diff-scoped new line break checking.
+    default: ''
+  new-line-breaks-globs:
+    description: Comma- or space-separated glob patterns to check.
+    default: ''
+  check-typos:
+    description: Scan files for spelling typos using crate-ci/typos.
+    default: 'true'
+  typos-config:
+    description: Custom typos config file path.
+    default: ''
+  typos-base-ref:
+    description: Git ref to diff against for diff-scoped typo checking.
+    default: ''
+  lint-yaml:
+    description: Lint tracked YAML files with yamllint.
+    default: 'true'
+  yaml-config-file:
+    description: Path to a yamllint config file.
+    default: ''
+  yaml-paths-ignore:
+    description: Patterns to exclude from YAML linting.
+    default: ''
+  lint-workflows:
+    description: Lint GitHub Actions workflows with actionlint and zizmor.
+    default: 'true'
+  workflows-path:
+    description: Path containing GitHub Actions workflow files to lint.
+    default: '.github/workflows'
+  lint-markdown:
+    description: Lint tracked Markdown files with markdownlint-cli2.
+    default: 'true'
+  markdown-config-file:
+    description: Path to a markdownlint config file.
+    default: ''
+  markdown-globs:
+    description: Git pathspecs of tracked Markdown files to lint.
+    default: '*.md'
+  markdown-paths-ignore:
+    description: Glob patterns to skip for Markdown linting.
+    default: ''
+  markdown-base-ref:
+    description: Git ref to diff against for diff-scoped list-item splice checks.
+    default: ''
+  check-ruff:
+    description: Lint Python code with Ruff.
+    default: 'true'
+  check-formatting:
+    description: Check Python formatting with Ruff format.
+    default: 'true'
+  ruff-args:
+    description: Additional command-line flags for ruff check.
+    default: ''
+  check-tests:
+    description: Run pytest if a tests/ or test/ directory exists.
+    default: 'true'
+  pytest-args:
+    description: Additional arguments for pytest.
+    default: '-v'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.6.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check for tracked junk files
+      if: inputs.check-junk-files != 'false'
+      uses: Morrison-Lab/gha/check-junk-files@v2
+      with:
+        patterns: ${{ inputs.junk-patterns }}
+        paths-ignore: ${{ inputs.junk-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for committed secrets
+      if: inputs.check-secrets != 'false'
+      uses: Morrison-Lab/gha/check-secrets@v2
+      with:
+        config: ${{ inputs.secrets-config }}
+        paths-ignore: ${{ inputs.secrets-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for non-standard characters
+      if: inputs.check-non-standard-chars != 'false'
+      uses: Morrison-Lab/gha/check-non-standard-chars@v2
+      with:
+        paths: ${{ inputs.non-standard-chars-paths }}
+        paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check new line breaks
+      if: inputs.check-new-line-breaks != 'false'
+      uses: Morrison-Lab/gha/check-new-line-breaks@v2
+      with:
+        base-ref: ${{ inputs.new-line-breaks-base-ref }}
+        globs: ${{ inputs.new-line-breaks-globs }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for typos
+      if: inputs.check-typos != 'false'
+      uses: Morrison-Lab/gha/check-typos@v2
+      with:
+        config: ${{ inputs.typos-config }}
+        base-ref: ${{ inputs.typos-base-ref }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint YAML
+      if: inputs.lint-yaml != 'false'
+      uses: Morrison-Lab/gha/lint-yaml@v2
+      with:
+        config-file: ${{ inputs.yaml-config-file }}
+        paths-ignore: ${{ inputs.yaml-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint workflows
+      if: inputs.lint-workflows != 'false'
+      uses: Morrison-Lab/gha/lint-workflows@v2
+      with:
+        path: ${{ inputs.workflows-path }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint Markdown
+      if: inputs.lint-markdown != 'false'
+      uses: Morrison-Lab/gha/lint-markdown@v2
+      with:
+        config-file: ${{ inputs.markdown-config-file }}
+        globs: ${{ inputs.markdown-globs }}
+        paths-ignore: ${{ inputs.markdown-paths-ignore }}
+        base-ref: ${{ inputs.markdown-base-ref }}
+        fail: ${{ inputs.fail }}
+
+    - name: Install Ruff
+      if: inputs.check-ruff != 'false' || inputs.check-formatting != 'false'
+      shell: bash
+      run: pip install --quiet ruff
+
+    - name: Lint Python with Ruff
+      if: inputs.check-ruff != 'false'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if git ls-files '*.py' | grep -q .; then
+          ruff check . ${{ inputs.ruff-args }}
+        else
+          echo "No Python files found; skipping ruff check."
+        fi
+
+    - name: Check Python formatting with Ruff
+      if: inputs.check-formatting != 'false'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if git ls-files '*.py' | grep -q .; then
+          ruff format --check .
+        else
+          echo "No Python files found; skipping ruff format check."
+        fi
+
+    - name: Run pytest
+      if: inputs.check-tests != 'false'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -d "tests" ] || [ -d "test" ]; then
+          pip install --quiet pytest
+          if [ -f "requirements.txt" ]; then
+            pip install --quiet -r requirements.txt || true
+          fi
+          if [ -f "pyproject.toml" ]; then
+            pip install --quiet -e . || pip install --quiet . || true
+          fi
+          pytest ${{ inputs.pytest-args }}
+        else
+          echo "No tests/ or test/ directory found; skipping pytest."
+        fi

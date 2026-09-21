@@ -1,0 +1,181 @@
+name: Check Python Package (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      fail:
+        description: Fail the job when any enabled check reports findings.
+        type: boolean
+        default: true
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      check-junk-files:
+        description: Check for tracked operating-system and editor detritus.
+        type: boolean
+        default: true
+      junk-patterns:
+        description: Gitignore-style patterns naming what counts as junk.
+        type: string
+        default: '.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto, Thumbs.db, desktop.ini, __pycache__, *.pyc'
+      junk-paths-ignore:
+        description: Paths to exempt from the junk files scan.
+        type: string
+        default: ''
+      check-secrets:
+        description: Scan git history for committed credentials with gitleaks.
+        type: boolean
+        default: true
+      secrets-config:
+        description: Path to a custom gitleaks TOML config file.
+        type: string
+        default: ''
+      secrets-paths-ignore:
+        description: Regex patterns for paths to exempt from secret scanning.
+        type: string
+        default: ''
+      check-non-standard-chars:
+        description: Flag non-standard unicode characters, curly quotes, and smart dashes.
+        type: boolean
+        default: true
+      non-standard-chars-paths:
+        description: Comma- or space-separated list of files or globs to check.
+        type: string
+        default: ''
+      non-standard-chars-paths-ignore:
+        description: Paths or globs to exclude from non-standard character scanning.
+        type: string
+        default: ''
+      check-new-line-breaks:
+        description: Enforce semantic line breaks on modified lines.
+        type: boolean
+        default: true
+      new-line-breaks-base-ref:
+        description: Git ref to diff against for diff-scoped new line break checking.
+        type: string
+        default: ''
+      new-line-breaks-globs:
+        description: Comma- or space-separated glob patterns to check.
+        type: string
+        default: ''
+      check-typos:
+        description: Scan files for spelling typos using crate-ci/typos.
+        type: boolean
+        default: true
+      typos-config:
+        description: Custom typos config file path.
+        type: string
+        default: ''
+      typos-base-ref:
+        description: Git ref to diff against for diff-scoped typo checking.
+        type: string
+        default: ''
+      lint-yaml:
+        description: Lint tracked YAML files with yamllint.
+        type: boolean
+        default: true
+      yaml-config-file:
+        description: Path to a yamllint config file.
+        type: string
+        default: ''
+      yaml-paths-ignore:
+        description: Patterns to exclude from YAML linting.
+        type: string
+        default: ''
+      lint-workflows:
+        description: Lint GitHub Actions workflows with actionlint and zizmor.
+        type: boolean
+        default: true
+      workflows-path:
+        description: Path containing GitHub Actions workflow files to lint.
+        type: string
+        default: '.github/workflows'
+      lint-markdown:
+        description: Lint tracked Markdown files with markdownlint-cli2.
+        type: boolean
+        default: true
+      markdown-config-file:
+        description: Path to a markdownlint config file.
+        type: string
+        default: ''
+      markdown-globs:
+        description: Git pathspecs of tracked Markdown files to lint.
+        type: string
+        default: '*.md'
+      markdown-paths-ignore:
+        description: Glob patterns to skip for Markdown linting.
+        type: string
+        default: ''
+      markdown-base-ref:
+        description: Git ref to diff against for diff-scoped list-item splice checks.
+        type: string
+        default: ''
+      check-ruff:
+        description: Lint Python code with Ruff.
+        type: boolean
+        default: true
+      check-formatting:
+        description: Check Python formatting with Ruff format.
+        type: boolean
+        default: true
+      ruff-args:
+        description: Additional arguments for ruff check.
+        type: string
+        default: ''
+      check-tests:
+        description: Run pytest if tests/ exists.
+        type: boolean
+        default: true
+      pytest-args:
+        description: Additional arguments for pytest.
+        type: string
+        default: '-v'
+
+jobs:
+  check-python-package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run Python package checks
+        uses: Morrison-Lab/gha/check-python-package@v2
+        with:
+          fail: ${{ inputs.fail }}
+          python-version: ${{ inputs.python-version }}
+          check-junk-files: ${{ inputs.check-junk-files }}
+          junk-patterns: ${{ inputs.junk-patterns }}
+          junk-paths-ignore: ${{ inputs.junk-paths-ignore }}
+          check-secrets: ${{ inputs.check-secrets }}
+          secrets-config: ${{ inputs.secrets-config }}
+          secrets-paths-ignore: ${{ inputs.secrets-paths-ignore }}
+          check-non-standard-chars: ${{ inputs.check-non-standard-chars }}
+          non-standard-chars-paths: ${{ inputs.non-standard-chars-paths }}
+          non-standard-chars-paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
+          check-new-line-breaks: ${{ inputs.check-new-line-breaks }}
+          new-line-breaks-base-ref: ${{ inputs.new-line-breaks-base-ref }}
+          new-line-breaks-globs: ${{ inputs.new-line-breaks-globs }}
+          check-typos: ${{ inputs.check-typos }}
+          typos-config: ${{ inputs.typos-config }}
+          typos-base-ref: ${{ inputs.typos-base-ref }}
+          lint-yaml: ${{ inputs.lint-yaml }}
+          yaml-config-file: ${{ inputs.yaml-config-file }}
+          yaml-paths-ignore: ${{ inputs.yaml-paths-ignore }}
+          lint-workflows: ${{ inputs.lint-workflows }}
+          workflows-path: ${{ inputs.workflows-path }}
+          lint-markdown: ${{ inputs.lint-markdown }}
+          markdown-config-file: ${{ inputs.markdown-config-file }}
+          markdown-globs: ${{ inputs.markdown-globs }}
+          markdown-paths-ignore: ${{ inputs.markdown-paths-ignore }}
+          markdown-base-ref: ${{ inputs.markdown-base-ref }}
+          check-ruff: ${{ inputs.check-ruff }}
+          check-formatting: ${{ inputs.check-formatting }}
+          ruff-args: ${{ inputs.ruff-args }}
+          check-tests: ${{ inputs.check-tests }}
+          pytest-args: ${{ inputs.pytest-args }}

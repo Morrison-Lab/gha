@@ -1,0 +1,213 @@
+name: Check Quarto Website (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      fail:
+        description: Fail the job when any enabled check reports findings.
+        type: boolean
+        default: true
+      check-junk-files:
+        description: Check for tracked operating-system and editor detritus.
+        type: boolean
+        default: true
+      junk-patterns:
+        description: Gitignore-style patterns naming what counts as junk.
+        type: string
+        default: '.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto, Thumbs.db, desktop.ini'
+      junk-paths-ignore:
+        description: Paths to exempt from the junk files scan.
+        type: string
+        default: ''
+      check-secrets:
+        description: Scan git history for committed credentials with gitleaks.
+        type: boolean
+        default: true
+      secrets-config:
+        description: Path to a custom gitleaks TOML config file.
+        type: string
+        default: ''
+      secrets-paths-ignore:
+        description: Regex patterns for paths to exempt from secret scanning.
+        type: string
+        default: ''
+      check-non-standard-chars:
+        description: Flag non-standard unicode characters, curly quotes, and smart dashes.
+        type: boolean
+        default: true
+      non-standard-chars-paths:
+        description: Comma- or space-separated list of files or globs to check.
+        type: string
+        default: ''
+      non-standard-chars-paths-ignore:
+        description: Paths or globs to exclude from non-standard character scanning.
+        type: string
+        default: ''
+      check-new-line-breaks:
+        description: Enforce semantic line breaks on modified lines.
+        type: boolean
+        default: true
+      new-line-breaks-base-ref:
+        description: Git ref to diff against for diff-scoped new line break checking.
+        type: string
+        default: ''
+      new-line-breaks-globs:
+        description: Comma- or space-separated glob patterns to check.
+        type: string
+        default: ''
+      check-typos:
+        description: Scan files for spelling typos using crate-ci/typos.
+        type: boolean
+        default: true
+      typos-config:
+        description: Custom typos config file path.
+        type: string
+        default: ''
+      typos-base-ref:
+        description: Git ref to diff against for diff-scoped typo checking.
+        type: string
+        default: ''
+      check-ai-tells:
+        description: Scan narrative prose (*.md, *.qmd) for AI cliches and tells.
+        type: boolean
+        default: true
+      ai-tells-threshold:
+        description: Maximum allowed tell density (tells per 1,000 words).
+        type: string
+        default: '10'
+      ai-tells-ignore:
+        description: Comma- or space-separated list of tell names to ignore.
+        type: string
+        default: ''
+      lint-yaml:
+        description: Lint tracked YAML files with yamllint.
+        type: boolean
+        default: true
+      yaml-config-file:
+        description: Path to a yamllint config file.
+        type: string
+        default: ''
+      yaml-paths-ignore:
+        description: Patterns to exclude from YAML linting.
+        type: string
+        default: ''
+      lint-workflows:
+        description: Lint GitHub Actions workflows with actionlint and zizmor.
+        type: boolean
+        default: true
+      workflows-path:
+        description: Path containing GitHub Actions workflow files to lint.
+        type: string
+        default: '.github/workflows'
+      lint-markdown:
+        description: Lint tracked Markdown files with markdownlint-cli2.
+        type: boolean
+        default: true
+      markdown-config-file:
+        description: Path to a markdownlint config file.
+        type: string
+        default: ''
+      markdown-globs:
+        description: Git pathspecs of tracked Markdown files to lint.
+        type: string
+        default: '*.md'
+      markdown-paths-ignore:
+        description: Glob patterns to skip for Markdown linting.
+        type: string
+        default: ''
+      markdown-base-ref:
+        description: Git ref to diff against for diff-scoped list-item splice checks.
+        type: string
+        default: ''
+      lint-qmd:
+        description: Lint prose sections of tracked .qmd files with markdownlint.
+        type: boolean
+        default: true
+      qmd-config-file:
+        description: Path to a markdownlint config file for QMD files.
+        type: string
+        default: ''
+      qmd-globs:
+        description: Space-separated git pathspecs of .qmd files to lint.
+        type: string
+        default: '*.qmd'
+      qmd-paths-ignore:
+        description: Patterns to skip for QMD linting.
+        type: string
+        default: ''
+      check-links:
+        description: Run lychee link checker on website files.
+        type: boolean
+        default: true
+      lychee-config:
+        description: Path to a lychee config file; falls back to bundled default.
+        type: string
+        default: ''
+      lychee-args:
+        description: Additional command-line arguments to pass to lychee.
+        type: string
+        default: '--exclude-mail'
+      check-bibliography-dois:
+        description: Validate DOIs in BibTeX bibliography files (.bib).
+        type: boolean
+        default: true
+      bib-exclude-keys:
+        description: BibTeX keys to skip for DOI validation.
+        type: string
+        default: ''
+
+jobs:
+  check-quarto-website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run Quarto website checks
+        uses: Morrison-Lab/gha/check-quarto-website@v2
+        with:
+          fail: ${{ inputs.fail }}
+          check-junk-files: ${{ inputs.check-junk-files }}
+          junk-patterns: ${{ inputs.junk-patterns }}
+          junk-paths-ignore: ${{ inputs.junk-paths-ignore }}
+          check-secrets: ${{ inputs.check-secrets }}
+          secrets-config: ${{ inputs.secrets-config }}
+          secrets-paths-ignore: ${{ inputs.secrets-paths-ignore }}
+          check-non-standard-chars: ${{ inputs.check-non-standard-chars }}
+          non-standard-chars-paths: ${{ inputs.non-standard-chars-paths }}
+          non-standard-chars-paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
+          check-new-line-breaks: ${{ inputs.check-new-line-breaks }}
+          new-line-breaks-base-ref: ${{ inputs.new-line-breaks-base-ref }}
+          new-line-breaks-globs: ${{ inputs.new-line-breaks-globs }}
+          check-typos: ${{ inputs.check-typos }}
+          typos-config: ${{ inputs.typos-config }}
+          typos-base-ref: ${{ inputs.typos-base-ref }}
+          check-ai-tells: ${{ inputs.check-ai-tells }}
+          ai-tells-threshold: ${{ inputs.ai-tells-threshold }}
+          ai-tells-ignore: ${{ inputs.ai-tells-ignore }}
+          lint-yaml: ${{ inputs.lint-yaml }}
+          yaml-config-file: ${{ inputs.yaml-config-file }}
+          yaml-paths-ignore: ${{ inputs.yaml-paths-ignore }}
+          lint-workflows: ${{ inputs.lint-workflows }}
+          workflows-path: ${{ inputs.workflows-path }}
+          lint-markdown: ${{ inputs.lint-markdown }}
+          markdown-config-file: ${{ inputs.markdown-config-file }}
+          markdown-globs: ${{ inputs.markdown-globs }}
+          markdown-paths-ignore: ${{ inputs.markdown-paths-ignore }}
+          markdown-base-ref: ${{ inputs.markdown-base-ref }}
+          lint-qmd: ${{ inputs.lint-qmd }}
+          qmd-config-file: ${{ inputs.qmd-config-file }}
+          qmd-globs: ${{ inputs.qmd-globs }}
+          qmd-paths-ignore: ${{ inputs.qmd-paths-ignore }}
+          check-links: ${{ inputs.check-links }}
+          lychee-config: ${{ inputs.lychee-config }}
+          lychee-args: ${{ inputs.lychee-args }}
+          check-bibliography-dois: ${{ inputs.check-bibliography-dois }}
+          bib-exclude-keys: ${{ inputs.bib-exclude-keys }}

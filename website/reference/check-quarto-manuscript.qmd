@@ -1,0 +1,93 @@
+---
+title: "check-quarto-manuscript.yml"
+---
+
+Bundles the standard check suite for Quarto manuscript and academic paper repositories
+(such as [`Morrison-Lab/qmt`](https://github.com/Morrison-Lab/qmt)).
+Replaces individual workflow files with a single composite action
+or reusable workflow call.
+
+## What it runs
+
+Runs the full Morrison-Lab repository hygiene pass plus manuscript-specific checks:
+
+- [`check-junk-files.yml`](check-junk-files.qmd): OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, `.RData`, etc.)
+- [`check-secrets.yml`](check-secrets.qmd): Gitleaks scan of git history for committed credentials and tokens
+- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd): flags non-standard unicode characters, curly quotes, and smart dashes
+- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd): enforces semantic line breaks on modified lines in diffs
+- [`check-typos.yml`](check-typos.qmd): crate-ci/typos CLI scan for spelling errors on modified files
+- [`check-ai-tells.yml`](check-ai-tells.qmd): scans narrative prose (*.md, *.qmd) for AI cliches and tells
+- [`lint-yaml.yml`](lint-yaml.qmd): yamllint over tracked YAML files
+- [`lint-workflows.yml`](lint-workflows.qmd): actionlint and zizmor over GitHub Actions workflows
+- [`lint-markdown.yml`](lint-markdown.qmd): markdownlint-cli2 over tracked Markdown files
+- [`lint-qmd.yml`](lint-qmd.qmd): markdownlint over prose sections of tracked `.qmd` files (80-character line length limit)
+- [`check-links.yml`](check-links.qmd): lychee link checker across manuscript sections, references, and external links
+- [`check-bibliography-dois.yml`](check-bibliography-dois.qmd): validates BibTeX bibliography entries in `.bib` files
+- [`check-equation-renders.yml`](check-equation-renders.qmd): crawls rendered HTML manuscript pages with a headless browser to ensure MathJax typesets all equations without errors (active when `equation-renders-site-dir` is specified)
+
+Every check is enabled by default.
+Opt out of any specific check by passing its boolean flag as `false`.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `fail` | boolean | `true` | Fail the job on findings (else warn only). |
+| `check-junk-files` | boolean | `true` | Enable junk files check. |
+| `junk-patterns` | string | see `check-junk-files.qmd` | Gitignore patterns naming junk files. |
+| `junk-paths-ignore` | string | `''` | Paths to exempt from junk files scan. |
+| `check-secrets` | boolean | `true` | Enable gitleaks secrets scan. |
+| `secrets-config` | string | `''` | Custom gitleaks config file path. |
+| `secrets-paths-ignore` | string | `''` | Regex paths to exempt from secrets scan. |
+| `check-non-standard-chars` | boolean | `true` | Enable non-standard character check. |
+| `non-standard-chars-paths` | string | `''` | Paths/globs to check for non-standard characters. |
+| `non-standard-chars-paths-ignore` | string | `''` | Paths/globs to exempt from non-standard character check. |
+| `check-new-line-breaks` | boolean | `true` | Enable semantic line break check. |
+| `new-line-breaks-base-ref` | string | `''` | Base ref for diff-scoping new line breaks. |
+| `new-line-breaks-globs` | string | `''` | Globs to check for new line breaks. |
+| `check-typos` | boolean | `true` | Enable typos check. |
+| `typos-config` | string | `''` | Typos configuration file path. |
+| `typos-base-ref` | string | `''` | Base ref for diff-scoping typo checks. |
+| `check-ai-tells` | boolean | `true` | Enable AI tells check on prose. |
+| `ai-tells-threshold` | string | `'10'` | Maximum allowed tell density (per 1,000 words). |
+| `ai-tells-ignore` | string | `''` | Comma- or space-separated list of tells to ignore. |
+| `lint-yaml` | boolean | `true` | Enable YAML linting. |
+| `yaml-config-file` | string | `''` | Custom yamllint config file path. |
+| `yaml-paths-ignore` | string | `''` | Patterns to exclude from YAML linting. |
+| `lint-workflows` | boolean | `true` | Enable workflow linting. |
+| `workflows-path` | string | `'.github/workflows'` | Path to workflow files. |
+| `lint-markdown` | boolean | `true` | Enable Markdown linting. |
+| `markdown-config-file` | string | `''` | Markdownlint config file path. |
+| `markdown-globs` | string | `'*.md'` | Git pathspecs of Markdown files to lint. |
+| `markdown-paths-ignore` | string | `''` | Paths to exempt from Markdown linting. |
+| `markdown-base-ref` | string | `''` | Base ref for list-item splice checks. |
+| `lint-qmd` | boolean | `true` | Enable QMD prose linting. |
+| `qmd-config-file` | string | `''` | Markdownlint config file for QMD files. |
+| `qmd-globs` | string | `'*.qmd'` | Pathspecs of QMD files to lint. |
+| `qmd-paths-ignore` | string | `''` | Patterns to skip for QMD linting. |
+| `check-links` | boolean | `true` | Enable lychee link checker. |
+| `lychee-config` | string | `''` | Path to a custom lychee config file. |
+| `lychee-args` | string | `'--exclude-mail'` | Command-line arguments for lychee. |
+| `check-bibliography-dois` | boolean | `true` | Enable bibliography DOI validation. |
+| `bib-exclude-keys` | string | `''` | BibTeX keys to skip for DOI validation. |
+| `check-equation-renders` | boolean | `true` | Enable equation render validation. |
+| `equation-renders-site-dir` | string | `''` | Directory of built HTML pages to crawl. |
+
+## Example
+
+```yaml
+name: Check Quarto manuscript
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-manuscript.yml@v2
+```
