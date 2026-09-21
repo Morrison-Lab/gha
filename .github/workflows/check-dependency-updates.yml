@@ -100,12 +100,19 @@ jobs:
             ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
           plugins: |
             ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
-          # gh api is required here to query upstream releases, tags, and commits for dependency freshness
-          # (unlike opposition-research.yml and claude-manage-project.yml which do not query upstream repos).
+          # Security boundary note: gh api queries are restricted here to
+          # read-only release, tag, and commit inspection endpoints. Note that
+          # per Claude Code tool-matching rules, trailing command wildcards do
+          # not distinguish HTTP methods (e.g. GET vs POST). The hard security
+          # boundary is enforced by the job token permissions (contents: read,
+          # issues: write); arbitrary writes to repo contents or settings are
+          # rejected at the GitHub API layer. Unrestricted wildcards like
+          # `Bash(gh api:*)` or `Bash(gh api repos/*)` are avoided per the
+          # precedent established in claude-manage-project.yml (gha#670).
           # Bash(tee:*) is allowed so the report can be written to $GITHUB_STEP_SUMMARY.
           claude_args: >-
             --allowedTools
-            "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh api repos/*),Bash(gh api \"repos/*\"),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(tee:*)"
+            "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh api repos/*/releases/latest*),Bash(gh api repos/*/tags*),Bash(gh api repos/*/commits*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(tee:*)"
           prompt: |
             You are an autonomous dependency auditor auditing the repository at '${{ inputs.target-repo }}' for recent dependency updates that our repository should take advantage of or adjust to.
 
