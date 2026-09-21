@@ -615,7 +615,7 @@ Pin
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
-`check-code-similarity.yml`, and
+`check-code-similarity.yml`, `check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine

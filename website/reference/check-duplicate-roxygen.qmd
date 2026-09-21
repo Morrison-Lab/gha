@@ -10,8 +10,8 @@ or `@inheritDotParams`.
 Reusing documentation across functions keeps parameter descriptions synchronized
 automatically, prevents documentation drift, and improves maintainability.
 
-Files, blocks, or parameters that intentionally duplicate documentation can opt out
-by adding a comment directive:
+Files, blocks, or parameters that intentionally duplicate documentation
+can opt out by adding a comment directive:
 
 ```r
 # check-duplicate-roxygen: allow-duplicates
