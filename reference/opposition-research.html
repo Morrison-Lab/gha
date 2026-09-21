@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>preview-deploy.yml – Morrison-Lab/gha</title>
+<title>opposition-research.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/check-equation-renders.html" rel="next">
-<link href="../reference/preview.html" rel="prev">
+<link href="../reference/gemini.html" rel="next">
+<link href="../reference/claude-manage-project.html" rel="prev">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="../site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="../site_libs/quarto-html/popper.min.js"></script>
@@ -332,7 +332,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/preview-deploy.html">preview-deploy.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/opposition-research.html">opposition-research.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -547,7 +547,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/preview-deploy.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/preview-deploy.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">preview-deploy.yml</span></a>
   </div>
 </li>
@@ -583,7 +583,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/opposition-research.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/opposition-research.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">opposition-research.yml</span></a>
   </div>
 </li>
@@ -696,19 +696,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#partial-adoption-and-artifact-contract" id="toc-partial-adoption-and-artifact-contract" class="nav-link" data-scroll-target="#partial-adoption-and-artifact-contract">Partial adoption and artifact contract</a></li>
+  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/preview-deploy.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/opposition-research.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/preview-deploy.html">preview-deploy.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/opposition-research.html">opposition-research.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">preview-deploy.yml</h1>
+<h1 class="title">opposition-research.yml</h1>
 </div>
 
 
@@ -725,7 +725,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>The deploy half of the PR-preview family. Triggered on the build workflow’s <code>workflow_run</code> completion, it downloads the artifact and publishes the preview to <code>gh-pages</code> in the base-repo context, then comments the preview link. Keeping it split from the read-only build half is the trust boundary, so untrusted fork code never holds write permissions. The deploy stub’s <code>on: workflow_run: workflows:</code> value must match the build workflow’s <code>name:</code>.</p>
+<p>Conduct automated opposition research on a competitor product, framework, or repository. Mines public community demand signals (issues, discussions, forums, feature request boards) for high-value capabilities and surfaces them as tracked issues in the repository.</p>
+<p>Follows the Morrison-Lab <code>/oppo</code> skill rubric. The agent searches competitor community surfaces, filters candidate ideas against our repository’s explicit scope, verifies that issues do not duplicate existing open or closed issues, and files actionable, evidence-backed opportunity issues.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
@@ -745,65 +746,132 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>pages-base-url</code></td>
+<td><code>competitor</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Custom Pages base URL (e.g.&nbsp;<code>'org.github.io'</code> or a custom domain) to override automatic URL guessing by <code>pr-preview-action</code>.</td>
+<td><em>required</em></td>
+<td>Competitor product, framework, package, or repository to research.</td>
 </tr>
 <tr class="even">
-<td><code>pages-base-path</code></td>
+<td><code>target-repo</code></td>
+<td>string</td>
+<td><code>${{ github.repository }}</code></td>
+<td>Target repository receiving the research.</td>
+</tr>
+<tr class="odd">
+<td><code>scope-guidance</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Custom Pages base path prefix to override automatic path guessing by <code>pr-preview-action</code>.</td>
+<td>Explicit scope boundaries specifying what is on-scope vs out-of-scope.</td>
+</tr>
+<tr class="even">
+<td><code>dry-run</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>When true, writes findings to the step summary instead of opening issues.</td>
+</tr>
+<tr class="odd">
+<td><code>max-issues</code></td>
+<td>number</td>
+<td><code>3</code></td>
+<td>Maximum number of opportunity issues to open in a single run.</td>
+</tr>
+<tr class="even">
+<td><code>labels</code></td>
+<td>string</td>
+<td><code>'enhancement'</code></td>
+<td>Comma-separated labels applied to created issues.</td>
+</tr>
+<tr class="odd">
+<td><code>model</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Claude model to use for the research session (empty defers to default).</td>
+</tr>
+<tr class="even">
+<td><code>use-ai-config</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Install the Morrison-Lab/ai-config plugin for the opposition-research skill.</td>
+</tr>
+<tr class="odd">
+<td><code>timeout-minutes</code></td>
+<td>number</td>
+<td><code>45</code></td>
+<td>Job timeout in minutes.</td>
 </tr>
 </tbody>
 </table>
 </section>
-<section id="partial-adoption-and-artifact-contract" class="level2">
-<h2 class="anchored" data-anchor-id="partial-adoption-and-artifact-contract">Partial adoption and artifact contract</h2>
-<p>Repositories with custom build sequences (e.g.&nbsp;bespoke multi-stage rendering, custom post-render highlighting, or multi-step assets) do not need to use <code>preview.yml</code> or <code>preview/action.yml</code> to benefit from the deploy and cleanup machinery. They can run a custom build workflow that uploads the standard three-file <code>pr-preview-site</code> artifact, and hand off directly to <code>preview-deploy.yml</code> and <code>cleanup-pr-previews.yml</code>.</p>
-<p>The artifact named <code>pr-preview-site</code> must contain:</p>
-<ul>
-<li><code>site/</code> — Directory containing the rendered HTML/site files to publish to <code>gh-pages</code>.</li>
-<li><code>meta/pr-number.txt</code> — Text file containing the pull request number (e.g.&nbsp;<code>123</code>).</li>
-<li><code>meta/action.txt</code> — Text file containing either <code>deploy</code> (to deploy or update the preview) or <code>remove</code> (when the PR is closed).</li>
-</ul>
-<p><code>preview-deploy.yml</code> downloads this artifact from the triggering <code>workflow_run</code> event, reads <code>meta/pr-number.txt</code> and <code>meta/action.txt</code>, and publishes <code>site/</code> to <code>gh-pages</code> in the base repository context without running untrusted code.</p>
+<section id="secrets" class="level2">
+<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Secret</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>CLAUDE_CODE_OAUTH_TOKEN</code></td>
+<td>no</td>
+<td>Claude Code OAuth token (Claude Max plan).</td>
+</tr>
+<tr class="even">
+<td><code>ANTHROPIC_API_KEY</code></td>
+<td>no</td>
+<td>Direct Anthropic API key.</td>
+</tr>
+</tbody>
+</table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code> (push to <code>gh-pages</code>), <code>pull-requests: write</code> (post the preview-link comment), and <code>actions: read</code> (download the build artifact).</p>
+<p>Grant <code>contents: read</code> and <code>issues: write</code>.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<p>Do not name a <code>concurrency:</code> group <code>gh-pages</code> anywhere in your caller workflow – neither a top-level block nor one on the calling job, which deadlock identically. Any other group name is fine, and is how you serialize the caller’s own runs. <code>preview-deploy.yml</code> serializes gh-pages deploys internally on its <code>deploy</code> job (<code>group: gh-pages</code>). A caller-level block with the same group name deadlocks GitHub Actions against the nested job: <code>deploy</code> fails with no runner, no steps, and no log, and PR previews silently stop updating – the published site itself is unaffected, since this workflow deploys only under <code>pr-preview/</code> (<a href="https://github.com/Morrison-Lab/gha/issues/809">gha#809</a>).</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/preview-deploy.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Deploy half of the PR-preview family: triggered when the build workflow</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># finishes, downloads its artifact, and publishes the preview to gh-pages. This</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># runs in the BASE-repo context, so its token can write --- keeping it separate</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># from the read-only build half is the trust boundary.</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: the `workflows:` value below MUST match the `name:` of your build</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># workflow (examples/preview.yml). `workflow_run` triggers only fire when this</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># file lives on the default branch.</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Quarto Preview Deploy</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_run</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">workflows</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="st">"Quarto Preview Build"</span><span class="kw">]</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">completed</span><span class="kw">]</span></span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Opposition Research</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">cron</span><span class="kw">:</span><span class="at"> </span><span class="st">'0 14 * * 1'</span><span class="co"> # Weekly on Monday at 14:00 UTC</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">inputs</span><span class="kw">:</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">competitor</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> Competitor product or repository to research</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> string</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="st">'r-lib/actions'</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">dry-run</span><span class="kw">:</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> Run research without filing issues (output to step summary)</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">type</span><span class="kw">:</span><span class="at"> boolean</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">default</span><span class="kw">:</span><span class="at"> </span><span class="ch">false</span></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">deploy</span><span class="kw">:</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">oppo</span><span class="kw">:</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span><span class="co"> # push to gh-pages</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span><span class="co"> # post the preview-link comment</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> read</span><span class="co"> # download the build artifact</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pages-base-url: 'example.org' # custom Pages base URL or custom domain</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pages-base-path: 'docs'       # custom Pages base path prefix</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview-deploy.yml"><code>examples/preview-deploy.yml</code></a> for the full caller stub.</p>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> read</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/opposition-research.yml@v2</span></span>
+<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
+<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span></span>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ANTHROPIC_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.ANTHROPIC_API_KEY }}</span></span>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">competitor</span><span class="kw">:</span><span class="at"> ${{ inputs.competitor || 'r-lib/actions' }}</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">dry-run</span><span class="kw">:</span><span class="at"> ${{ inputs.dry-run || false }}</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   scope-guidance: 'Specific guidance on what features are on-scope vs out-of-scope.'</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-issues: 3</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   labels: 'enhancement'</span></span>
+<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: 'claude-sonnet-4-5'</span></span>
+<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: true</span></span>
+<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 45</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>opposition-research.yml</code>).</p>
 
 
 </section>
@@ -1224,13 +1292,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/preview.html" class="pagination-link" aria-label="preview.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">preview.yml</span>
+      <a href="../reference/claude-manage-project.html" class="pagination-link" aria-label="claude-manage-project.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">claude-manage-project.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/check-equation-renders.html" class="pagination-link" aria-label="check-equation-renders.yml">
-        <span class="nav-page-text">check-equation-renders.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/gemini.html" class="pagination-link" aria-label="gemini.yml">
+        <span class="nav-page-text">gemini.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1239,4 +1307,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/preview-deploy.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/opposition-research.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></div></div></footer></body></html>
