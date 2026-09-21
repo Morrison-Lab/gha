@@ -36,7 +36,7 @@ jobs:
       dry-run: ${{ inputs.dry-run || false }}
     #   scope-guidance: 'Specific guidance on what features are on-scope vs out-of-scope.'
     #   max-issues: 3
-    #   labels: 'oppo,enhancement'
+    #   labels: 'enhancement'
     #   model: 'claude-sonnet-4-5'
     #   use-ai-config: true
     #   timeout-minutes: 45

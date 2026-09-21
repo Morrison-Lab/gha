@@ -37,12 +37,12 @@ on:
         description: >-
           Comma-separated labels to attach to any created opportunity issues.
         type: string
-        default: 'oppo,enhancement'
+        default: 'enhancement'
       model:
         description: >-
-          Claude model to run for the research session.
+          Claude model for the research agent to run on. Empty by default, which falls through to claude-code-action's own default.
         type: string
-        default: 'claude-sonnet-4-5'
+        default: ''
       use-ai-config:
         description: >-
           Whether to install the Morrison-Lab/ai-config plugin so the agent has the opposition-research skill and prompt conventions loaded.
@@ -68,7 +68,7 @@ jobs:
       issues: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Pre-flight account status and quota check before starting the run
       - name: Pre-flight account status and quota check
@@ -136,6 +136,7 @@ jobs:
                - If Dry Run is 'false':
                  Create each issue using:
                  `gh issue create --repo "${{ inputs.target-repo }}" --title "<Title>" --body "<Body>" --label "${{ inputs.labels }}"`
+                 (If a specified label does not exist in the repository, create without the missing label.)
                  The issue body MUST provide:
                  - User demand evidence with exact source links and upvote/reaction metrics.
                  - Shortcomings of the competitor's current approach.

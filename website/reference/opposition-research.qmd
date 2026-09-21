@@ -24,8 +24,8 @@ and files actionable, evidence-backed opportunity issues.
 | `scope-guidance` | string | `''` | Explicit scope boundaries specifying what is on-scope vs out-of-scope. |
 | `dry-run` | boolean | `false` | When true, writes findings to the step summary instead of opening issues. |
 | `max-issues` | number | `3` | Maximum number of opportunity issues to open in a single run. |
-| `labels` | string | `'oppo,enhancement'` | Comma-separated labels applied to created issues. |
-| `model` | string | `'claude-sonnet-4-5'` | Claude model to use for the research session. |
+| `labels` | string | `'enhancement'` | Comma-separated labels applied to created issues. |
+| `model` | string | `''` | Claude model to use for the research session (empty defers to default). |
 | `use-ai-config` | boolean | `true` | Install the Morrison-Lab/ai-config plugin for the opposition-research skill. |
 | `timeout-minutes` | number | `45` | Job timeout in minutes. |
 
@@ -73,7 +73,7 @@ jobs:
       dry-run: ${{ inputs.dry-run || false }}
     #   scope-guidance: 'Specific guidance on what features are on-scope vs out-of-scope.'
     #   max-issues: 3
-    #   labels: 'oppo,enhancement'
+    #   labels: 'enhancement'
     #   model: 'claude-sonnet-4-5'
     #   use-ai-config: true
     #   timeout-minutes: 45
