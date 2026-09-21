@@ -28,6 +28,9 @@ name: Claude Code Review
 
 on:
   # Optional: automatic review on PR activity.
+  # Note: GitHub suppresses pull_request workflow runs when a pull request
+  # has merge conflicts with the target branch. For conflicting PRs, resolve
+  # the conflict or trigger review via workflow_dispatch below (gha#859).
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
   # Optional: direct on-demand `/review` path (independent of @claude), plus
@@ -209,7 +212,6 @@ jobs:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
     #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)

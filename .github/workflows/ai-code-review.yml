@@ -11,6 +11,11 @@ name: AI Code Review (reusable)
 # cancelled, the selector falls through to try the next candidate agent.
 #
 # The caller stub (see examples/ai-code-review.yml) holds the `on:` triggers.
+# Note that GitHub will not trigger `pull_request` workflow runs if the pull
+# request has merge conflicts with its base branch (GitHub Actions platform
+# behaviour; gha#859). For conflicting PRs, review must be triggered via
+# `workflow_dispatch` (`gh workflow run ai-code-review.yml -f pr_number=N`)
+# or after merging the base branch to resolve conflicts.
 
 on:
   workflow_call:

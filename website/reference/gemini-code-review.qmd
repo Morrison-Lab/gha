@@ -9,6 +9,8 @@ named `gemini-code-review.yml` (or set `gemini.yml`'s `review-workflow-file`
 input to match) so the dispatch resolves.
 Add a `pull_request` trigger in the caller if you also want automatic reviews
 on PR updates.
+GitHub suppresses `pull_request` workflow runs
+when a pull request has merge conflicts with the target branch (gha#859).
 
 The stub deliberately has no `issue_comment` path.
 `gemini.yml` already owns the `@gemini review` mention, so a second
@@ -95,7 +97,6 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true
     #   gemini-model: gemini-2.5-flash
     #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)

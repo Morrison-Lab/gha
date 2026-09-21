@@ -86,6 +86,9 @@ name: AI Code Review
 
 on:
   # Optional: automatic review on PR activity.
+  # Note: GitHub suppresses pull_request workflow runs when a pull request
+  # has merge conflicts with the target branch. For conflicting PRs, resolve
+  # the conflict or trigger review via workflow_dispatch below (gha#859).
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
@@ -111,7 +114,6 @@ jobs:
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   agents: 'claude, gemini, antigravity, cursor, opencode'
     #   claude-review-workflow-file: claude-code-review.yml
     #   gemini-review-workflow-file: gemini-code-review.yml

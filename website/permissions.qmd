@@ -11,7 +11,8 @@ already include the right `permissions:` blocks; copy them as-is.
 ## Per-workflow grants
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-equation-renders`, `check-extra`,
+  `check-code-similarity`, `check-duplicate-roxygen`,
+  `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`, `check-secrets`,

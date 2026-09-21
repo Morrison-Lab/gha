@@ -601,7 +601,19 @@ def expand_contractions(s):
     return s
 
 aside_pattern = r'\s*[-,\(:;—–"\'«»“”‘’\[\]{}]\s*[^.!?\n]+?\s*[-,\):;—–"\'«»“”‘’\[\]{}]?\s*'
-pos_gap_pattern = rf'(?:{aside_pattern}|(?:\s+yet)?(?:\s+(?!(?:and|but|whereas)\b)\w+)*\s*)'
+# gha#849: a disclaimer about a positive status (e.g. "not a claim that the PR is fully clean")
+# is explanatory prose clarifying scope, neither an affirmative clean verdict nor a rejection.
+# Breaking on disclaimer trigger phrases prevents pos_gap_pattern from bridging from "not" across
+# the disclaimer into a positive target, avoiding a false needs-more-work rejection.
+_DISCLAIMER_TRIGGER = (
+    r'(?:'
+    r'(?:an?\s+)?(?:claim|statement|assertion|guarantee|promise|endorsement|certification|indication|suggestion)\s+(?:that|of)\b|'
+    r'(?:(?:to\s+)?(?:say|claim|assert|state|imply|suggest|mean|indicate)|claiming|asserting|stating|saying|guaranteeing|meaning|implying|suggesting|indicating)\s+that\b'
+    r')'
+)
+disclaimer_break = rf'(?:and|but|whereas)\b|{_DISCLAIMER_TRIGGER}'
+aside_without_disclaimer = rf'\s*[-,\(:;—–"\'«»“”‘’\[\]{{}}]\s*(?![^.!?\n]*{_DISCLAIMER_TRIGGER})[^.!?\n]+?\s*[-,\):;—–"\'«»“”‘’\[\]{{}}]?\s*'
+pos_gap_pattern = rf'(?:{aside_without_disclaimer}|(?:\s+yet)?(?:\s+(?!(?:{disclaimer_break}))\w+)*\s*)'
 noun_neg_gap_pattern = r'(?:\s+(?:actionable|blocking|open|remaining|new|unresolved|further|additional|other))*\s*'
 pred_neg_gap_pattern = rf'(?:{aside_pattern}|(?:\s+(?:longer|currently|strictly|really|necessarily|at\s+present))*\s*)'
 
@@ -639,6 +651,33 @@ clean_kw = re.compile(
     r'\b(ready\s+for\s+merge|ready\s+to\s+merge|approved|lgtm|no\s+findings|no\s+blocking\s+issues|no\s+blocking\s+findings|no\s+actionable\s+findings)\b|\bclean\b(?!\s+up\b)|\bpassed\b',
     re.IGNORECASE
 )
+# A disclaimer about a positive status (e.g. "not a claim that the PR is fully clean")
+# is explanatory prose clarifying scope, neither an affirmative clean verdict nor a rejection (gha#849).
+# Recognizing disclaimer spans ensures positive targets within the disclaimer clause do not
+# override an earlier verdict (or get misread as a standalone clean claim) and prevents
+# rejection classification.
+# Reuses the same open word-skip and aside pattern that pos_gap_pattern uses, so adverb-interrupted
+# disclaimers ("not merely a claim that...", "no guarantee that...") and aside-delimited
+# disclaimers ("not, per the claim that X, clean") build disclaimer spans reliably.
+_aside_delims = r'[-,\(:;—–"\'«»“”‘’\[\]{}]'
+_aside_close = r'[-,\):;—–"\'«»“”‘’\[\]{}]'
+_word_run = r'(?:\s+(?!(?:and|but|whereas)\b)\w+)*\s*'
+_single_gap = rf'(?:{aside_pattern}|{_word_run})'
+_disclaimer_targets = rf'(?:{positive_targets}|{clean_kw.pattern}|{negated_negative_phrases.pattern})\b'
+
+# Case 1: Trigger in main clause ("not merely a claim that ... clean", "not a claim that, as noted, ... clean")
+_pattern_main = (
+    rf'\b(?:not|never|without|no)\b{_word_run}{_DISCLAIMER_TRIGGER}'
+    rf'{_single_gap}{_disclaimer_targets}'
+)
+
+# Case 2: Trigger inside an aside ("not, per the claim that ..., clean", "not -- per the claim that ... -- clean")
+_pattern_aside = (
+    rf'\b(?:not|never|without|no)\b\s*{_aside_delims}\s*[^.!?\n]*?{_DISCLAIMER_TRIGGER}'
+    rf'[^.!?\n]*?{_aside_close}\s*{_single_gap}{_disclaimer_targets}'
+)
+
+disclaimer_phrases = re.compile(rf'{_pattern_main}|{_pattern_aside}', re.IGNORECASE)
 # "no action" and "does not need (code) review" used to sit inside clean_kw
 # above, scanned against EVERY content line like any other keyword. Both
 # read fine in the repo's triage-exemption template
@@ -742,7 +781,11 @@ def classify_prose_lines(src_lines):
         norm_line = expand_contractions(strip_emphasis(line))
         neg_pos_spans = []
         neg_neg_spans = []
+        disclaimer_spans = []
         line_matches = []
+
+        for m in disclaimer_phrases.finditer(norm_line):
+            disclaimer_spans.append((m.start(), m.end()))
 
         if line_index == first_nonempty_idx:
             m = no_action_anchor.match(norm_line)
@@ -754,6 +797,8 @@ def classify_prose_lines(src_lines):
                     line_matches.append((m.start(), "true", "ready-for-merge"))
 
         for m in negated_positive_phrases.finditer(norm_line):
+            if any(start <= m.start() < end for start, end in disclaimer_spans):
+                continue
             neg_pos_spans.append((m.start(), m.end()))
             matched_text = m.group(0).lower()
             slug = "needs-more-work"
@@ -762,6 +807,8 @@ def classify_prose_lines(src_lines):
             line_matches.append((m.start(), "false", slug))
 
         for m in negated_negative_phrases.finditer(norm_line):
+            if any(start <= m.start() < end for start, end in disclaimer_spans):
+                continue
             neg_neg_spans.append((m.start(), m.end()))
             line_matches.append((m.start(), "true", "ready-for-merge"))
 
@@ -784,6 +831,8 @@ def classify_prose_lines(src_lines):
             if any(start <= m.start() < end for start, end in neg_pos_spans):
                 continue
             if any(start <= m.start() < end for start, end in neg_neg_spans):
+                continue
+            if any(start <= m.start() < end for start, end in disclaimer_spans):
                 continue
             text_matched = m.group(0).lower()
             if text_matched == "passed":

@@ -74,6 +74,22 @@ inputs:
       LaTeX-macro review guidance step.
     required: false
     default: ''
+  reviewed-commit:
+    description: >-
+      The 40-character SHA of the commit under review, resolved by
+      claude-code-review.yml once (`github.event.pull_request.head.sha` on a
+      pull_request event; gather-context's stash-head on dispatch) and
+      interpolated into the prompt's review-data JSON template as
+      `commit_sha`, so the reviewer copies it rather than reading a SHA of
+      its own (gha#852). Left to itself the reviewer wrote `GITHUB_SHA`,
+      which on a pull_request event is GitHub's ephemeral merge ref: a
+      commit on no branch that disappears when the PR closes. The posting
+      job stamps the same resolved value on the trailing "Reviewed commit:"
+      line, so passing it here is what keeps the two from disagreeing.
+      Empty only for a caller that predates the input, in which case the
+      prompt tells the reviewer how to resolve the head itself.
+    required: false
+    default: ''
   prompt-addendum:
     description: Repo-specific review guidance (claude-code-review.yml's prompt-addendum input).
     required: false
@@ -722,6 +738,12 @@ runs:
           commits; carry out the review anyway and state a real verdict on the
           diff.
 
+          **Commit under review:** ${{ inputs.reviewed-commit != '' && format('`{0}`. That is the PR head SHA. Wherever you name the reviewed commit — the `commit_sha` field of the review-data JSON below in particular — write exactly that value.', inputs.reviewed-commit) || 'the PR head SHA, which you resolve with `gh api repos/<owner>/<repo>/pulls/<number> --jq .head.sha` and write as the `commit_sha` field of the review-data JSON below.' }}
+          Never substitute `GITHUB_SHA`, `github.sha`, or `git rev-parse HEAD`
+          for it: on an automatic review those name GitHub's ephemeral merge
+          commit, which exists on no branch and disappears when the PR
+          closes, so a consumer reading that SHA finds nothing (gha#852).
+
           **Machine-readable structured review output:**
           Immediately following your `### Verdict` section, append a folded details
           block holding the structured review JSON payload formatted exactly as:
@@ -733,7 +755,7 @@ runs:
           {
             "schema_version": "1.1",
             "reviewer": "claude",
-            "commit_sha": "<sha>",
+            "commit_sha": "${{ inputs.reviewed-commit || '<sha>' }}",
             "verdict": "CLEAN",
             "findings": [],
             "detailed_assessment": "No detailed findings after tracing changed paths and failure modes.",
@@ -745,7 +767,7 @@ runs:
           {
             "schema_version": "1.1",
             "reviewer": "claude",
-            "commit_sha": "<sha>",
+            "commit_sha": "${{ inputs.reviewed-commit || '<sha>' }}",
             "verdict": "CLEAN",
             "findings": [],
             "detailed_assessment": "No detailed findings after tracing changed paths and failure modes.",

@@ -12,6 +12,7 @@ input tables and a copy-paste example.
 | [`check-bibliography-dois.yml`](reference/check-bibliography-dois.qmd)     | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata                                                                                                                                              | `exclude-keys`, `install-quarto`, `no-metadata-check`                                                                                                                               |
 | [`check-formatting.yml`](reference/check-formatting.qmd)                   | Fail when any `.R`/`.r` file would be rewritten by Air, Posit's R formatter (Rust; no R session). Check-only                                                                                                                      | `version`, `path`                                                                                                                                                                   |
 | [`check-code-similarity.yml`](reference/check-code-similarity.qmd) | Flag code highly similar to a caller-supplied corpus of prior submissions, using JPlag. Computed entirely on the runner --- nothing is uploaded. Warns rather than fails by default, since shared skeleton code and common idioms raise similarity legitimately | `corpus-path`, `language`, `threshold`, `fail`, `base-code-path` |
+| [`check-duplicate-roxygen.yml`](reference/check-duplicate-roxygen.qmd) | Check for duplicate roxygen parameter documentation across R code files and recommend consolidation using `@inheritParams` and/or `@inheritDotParams` | `path`, `paths-ignore`, `extensions`, `min-desc-length`, `base-ref`, `fail`, `python-version` |
 | [`check-junk-files.yml`](reference/check-junk-files.qmd) | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | [`check-non-standard-chars.yml`](reference/check-non-standard-chars.qmd)   | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files                                                                                                   | `python-version`, `extensions`                                                                                                                                                      |
 | [`check-one-function-per-file.yml`](reference/check-one-function-per-file.qmd) | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`) | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
@@ -71,7 +72,8 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`,
 `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
-`check-code-similarity.yml`, and
+`check-code-similarity.yml`,
+`check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
@@ -327,9 +329,11 @@ The two Claude workflows are a pair.
   mentions, edits files, and opens or updates PRs. A mention inside a code
   span, fence, or blockquote is not an invocation: a cheap `mention-filter`
   job runs `detect-bot-mention` and withholds the agent job ([gha#554](https://github.com/Morrison-Lab/gha/issues/554)).
-- `claude-code-review.yml` runs a read-only Claude review: a consolidated
-  summary on dispatched runs by default; add a `pull_request` trigger in the
-  caller if you also want automatic reviews on PR updates.
+- `claude-code-review.yml` runs a read-only Claude review:
+  a consolidated summary on dispatched runs by default;
+  add a `pull_request` trigger in the caller
+  if you also want automatic reviews on PR updates
+  (GitHub suppresses `pull_request` runs for conflicting PRs; gha#859).
   The model job's `GITHUB_TOKEN` has no write scopes
   (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
   jobs that hold `pull-requests: write` / `issues: write`

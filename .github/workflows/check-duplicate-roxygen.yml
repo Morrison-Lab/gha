@@ -1,0 +1,59 @@
+name: Check Duplicate Roxygen (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Target directory or file path to scan.
+        type: string
+        default: '.'
+      paths-ignore:
+        description: Comma- or newline-separated list of paths or glob patterns to ignore.
+        type: string
+        default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'
+      extensions:
+        description: Comma- or space-separated list of file extensions to check.
+        type: string
+        default: '.R, .r'
+      min-desc-length:
+        description: Minimum character length of parameter description to consider for duplication.
+        type: string
+        default: '10'
+      base-ref:
+        description: Git ref to diff against for diff-scoped checking (e.g. origin/main). If empty, checks whole tree.
+        type: string
+        default: ''
+      fail:
+        description: Whether to fail the workflow if duplicate roxygen documentation is detected.
+        type: boolean
+        default: true
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+
+jobs:
+  check-duplicate-roxygen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so PR runs can diff added/modified files against the base.
+          fetch-depth: 0
+
+      - name: Check duplicate roxygen documentation
+        uses: Morrison-Lab/gha/check-duplicate-roxygen@v2
+        with:
+          path: ${{ inputs.path }}
+          # On PRs, scan only files added/modified relative to the base; on pushes,
+          # diff against the commit before the push; otherwise checks whole tree.
+          base-ref: ${{ inputs.base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1')) }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          extensions: ${{ inputs.extensions }}
+          min-desc-length: ${{ inputs.min-desc-length }}
+          fail: ${{ inputs.fail }}
+          python-version: ${{ inputs.python-version }}

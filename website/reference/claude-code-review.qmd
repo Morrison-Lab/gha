@@ -2,14 +2,19 @@
 title: "claude-code-review.yml"
 ---
 
-Run a read-only Claude review of a pull request (the `code-review` plugin). By
-default, callers run it only on dispatched runs (for `@claude review` via
-`claude.yml`), which posts a consolidated summary. If the caller also enables a
-`pull_request` trigger, it can run automatically on PR updates. A direct
-`/review` path is available too, but only if the caller also enables
-`issue_comment`. `claude.yml` dispatches it via `workflow_dispatch`; keep the
-stub named `claude-code-review.yml` (or set `claude.yml`'s
-`review-workflow-file` to match) so the dispatch resolves.
+Run a read-only Claude review of a pull request (the `code-review` plugin).
+By default, callers run it only on dispatched runs (for `@claude review` via
+`claude.yml`), which posts a consolidated summary.
+If the caller also enables a `pull_request` trigger,
+it can run automatically on PR updates.
+GitHub suppresses `pull_request` workflow runs
+when a pull request has merge conflicts with the target branch (gha#859).
+A direct `/review` path is available too,
+but only if the caller also enables `issue_comment`.
+`claude.yml` dispatches it via `workflow_dispatch`;
+keep the stub named `claude-code-review.yml`
+(or set `claude.yml`'s `review-workflow-file` to match)
+so the dispatch resolves.
 
 If you have disabled `claude.yml`, enable `issue_comment` in the stub **and**
 set the repository variable `CLAUDE_AGENT_DISABLED` to `true`, so its
@@ -220,7 +225,6 @@ jobs:
       # Wires the workflow_dispatch input through so claude.yml can re-dispatch
       # a review on Claude's commits; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
     #   track-progress: true        # ignored (gha#580); tag mode needs a writable token in the model job

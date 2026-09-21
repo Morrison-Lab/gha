@@ -24,6 +24,9 @@ name: Gemini Code Review
 
 on:
   # Optional: automatic review on PR activity.
+  # Note: GitHub suppresses pull_request workflow runs when a pull request
+  # has merge conflicts with the target branch. For conflicting PRs, resolve
+  # the conflict or trigger review via workflow_dispatch below (gha#859).
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
@@ -48,7 +51,6 @@ jobs:
       # Wires the workflow_dispatch input through so gemini.yml can dispatch a
       # review; empty (and ignored) on pull_request runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
     #   gemini-model: gemini-2.5-flash
     #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)

@@ -44,6 +44,16 @@ the facts a future edit could reverse silently:
    `action.yml` to check against, so its reads are out of scope), and it
    reports how many step/output pairs it examined so a run that mapped
    nothing cannot pass as a run that checked everything.
+9. The reviewed commit the model names (the review-data JSON's
+   `commit_sha`) is resolved once, as the model job's `REVIEWED_COMMIT`
+   env, from the event-pinned head and then gather-context's stash-head
+   -- the same two sources, in the same order, that post-review's stale
+   check and its trailing `Reviewed commit:` line use -- and every attempt
+   passes that one env through as `reviewed-commit`, which the prompt
+   interpolates into both `commit_sha` templates. Nothing hands the prompt
+   `github.sha` / `GITHUB_SHA`: on a pull_request event that is the
+   ephemeral merge ref, and it is what a reviewer left to find the SHA
+   itself wrote (gha#852).
 
    Separately, a read whose step id NO step in the workflow declares is
    refused. GitHub resolves such a read to the empty string, so whatever
@@ -624,6 +634,52 @@ def check_workflow(
         " ".join(reviewed_head.split()) == "${{ github.event.pull_request.head.sha }}",
         "reviewed-head is exactly github.event.pull_request.head.sha",
     )
+    # gha#852: the SHA the reviewer writes into the review-data JSON is
+    # resolved once, in the model job, from the same two sources and in the
+    # same order as post-review's COMPARE (pinned below), then handed to
+    # every attempt as one env. Two declarations of that source would be
+    # the shape that produced the bug: the trailing line and the JSON field
+    # named different commits because they were resolved in different
+    # places.
+    reviewed_commit = " ".join(
+        str((review.get("env") or {}).get("REVIEWED_COMMIT") or "").split()
+    )
+    check(
+        reviewed_commit
+        == "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}",
+        "claude-review resolves REVIEWED_COMMIT once, from the event head then "
+        "gather-context's stash-head (gha#852)",
+    )
+    attempt_steps = [
+        s
+        for s in review.get("steps") or []
+        if isinstance(s, dict)
+        and (
+            "run-claude-review-attempt" in str(s.get("uses", ""))
+            or s.get("id") == "claude-review"
+        )
+    ]
+    passed = [
+        " ".join(str((s.get("with") or {}).get("reviewed-commit") or "").split())
+        for s in attempt_steps
+    ]
+    check(
+        bool(passed) and all(p == "${{ env.REVIEWED_COMMIT }}" for p in passed),
+        "every run-claude-review-attempt call passes "
+        "reviewed-commit: ${{ env.REVIEWED_COMMIT }} (gha#852); "
+        f"got {passed or 'no attempt steps'}",
+    )
+    sha_inputs = sorted(
+        f"{s.get('id') or s.get('uses')}:{key}"
+        for s in attempt_steps
+        for key, val in (s.get("with") or {}).items()
+        if re.search(r"github\.sha|GITHUB_SHA", str(val))
+    )
+    check(
+        not sha_inputs,
+        "no run-claude-review-attempt input carries github.sha / GITHUB_SHA "
+        f"(gha#852); violations: {sha_inputs or 'none'}",
+    )
     check(
         any("pack-review-payload" in u for u in review_uses),
         "claude-review packs a payload artifact for the posting job",
@@ -909,6 +965,37 @@ def check_workflow(
         "(either prefix starts the inline-comment MCP server)",
     )
 
+    # gha#852: the prompt's two review-data templates (hidden comment and
+    # visible fence, required identical) take commit_sha from the ONE
+    # reviewed-commit input, and the prompt names that same input as the
+    # commit under review. The whole-file scan is the negative half: an
+    # expression reading github.sha anywhere in the composite, or a shell
+    # read of GITHUB_SHA, is the merge-ref source the input replaces.
+    check(
+        "reviewed-commit" in (action.get("inputs") or {}),
+        "run-claude-review-attempt declares a reviewed-commit input (gha#852)",
+    )
+    prompt = str(with_block.get("prompt") or "")
+    commit_sha_values = re.findall(r'"commit_sha":\s*"([^"\n]*)"', prompt)
+    check(
+        len(commit_sha_values) == 2
+        and len(set(commit_sha_values)) == 1
+        and "inputs.reviewed-commit" in commit_sha_values[0],
+        "both review-data commit_sha templates interpolate inputs.reviewed-commit, "
+        f"identically (gha#852); got {commit_sha_values}",
+    )
+    check(
+        re.search(r"Commit under review:.*inputs\.reviewed-commit", prompt) is not None,
+        "the prompt names the commit under review from inputs.reviewed-commit (gha#852)",
+    )
+    action_text = action_path.read_text(encoding="utf-8")
+    check(
+        re.search(r"\$\{\{[^}]*\bgithub\.sha\b", action_text) is None
+        and re.search(r"\$\{?GITHUB_SHA\b", action_text) is None,
+        "run-claude-review-attempt never reads github.sha / $GITHUB_SHA "
+        "(the ephemeral merge ref on a pull_request event; gha#852)",
+    )
+
     if workflow_path.name == "claude-code-review.yml":
         root = workflow_path.resolve().parent.parent.parent
         example = root / "examples" / "claude-code-review.yml"
@@ -1138,6 +1225,8 @@ jobs:
       )
 {review_conc}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
+    env:
+      REVIEWED_COMMIT: ${{{{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}}}
     permissions:
       contents: read
       pull-requests: read
@@ -1146,6 +1235,8 @@ jobs:
       checks: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+        with:
+          reviewed-commit: ${{{{ env.REVIEWED_COMMIT }}}}
       # `pack_if` reads steps.selfmod.outputs.self_mod, so the id has to
       # exist or the dangling-read check refuses it -- as it would on the
       # real workflow, where a `run:` step declares it.
@@ -1218,6 +1309,10 @@ jobs:
         good_action = root / "action.yml"
         good_action.write_text(
             """
+inputs:
+  reviewed-commit:
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -1228,6 +1323,14 @@ runs:
         claude_args: >-
           --allowedTools
           "Bash,Edit(//tmp/**),WebFetch,WebSearch"
+        prompt: |
+          **Commit under review:** ${{ inputs.reviewed-commit }}
+          <!-- review-data:
+          "commit_sha": "${{ inputs.reviewed-commit || '<sha>' }}",
+          -->
+          ```json
+          "commit_sha": "${{ inputs.reviewed-commit || '<sha>' }}",
+          ```
 """
         )
         # gha#804/gha#806: the template reads one output from each of two
@@ -1980,6 +2083,73 @@ runs:
             '          echo "Reviewed commit: $HEAD_SHA"',
             '          echo "${{ steps.payload.outputs.denied_tools }}"',
             "denied_tools is never interpolated into a run: body",
+        )
+
+        # gha#852 pins. The action-side mutations need their own helper
+        # because `mutate` only rewrites the workflow template.
+        def mutate_action(label: str, old: str, new: str, needle: str) -> int:
+            mutated = root / (label.replace(" ", "-") + ".action.yml")
+            text = good_action.read_text()
+            if old not in text:
+                print(
+                    f"::error::self-test mutation {label!r}: replacement "
+                    "target not found in the good action (vacuous)",
+                    file=sys.stderr,
+                )
+                return 1
+            mutated.write_text(text.replace(old, new, 1))
+            return expect(label, run(good_wf, mutated), False, needle)
+
+        failures += mutate(
+            "REVIEWED_COMMIT resolved from github.sha fails",
+            "      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}",
+            "      REVIEWED_COMMIT: ${{ github.sha }}",
+            "resolves REVIEWED_COMMIT once",
+        )
+        failures += mutate(
+            "REVIEWED_COMMIT without the stash-head fallback fails",
+            "      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}",
+            "      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha }}",
+            "resolves REVIEWED_COMMIT once",
+        )
+        failures += mutate(
+            "an attempt resolving reviewed-commit on its own fails",
+            "          reviewed-commit: ${{ env.REVIEWED_COMMIT }}",
+            "          reviewed-commit: ${{ github.event.pull_request.head.sha }}",
+            "passes reviewed-commit: ${{ env.REVIEWED_COMMIT }}",
+        )
+        failures += mutate(
+            "an attempt input carrying github.sha fails",
+            "          reviewed-commit: ${{ env.REVIEWED_COMMIT }}",
+            "          reviewed-commit: ${{ env.REVIEWED_COMMIT }}\n"
+            "          merge-sha: ${{ github.sha }}",
+            "no run-claude-review-attempt input carries github.sha",
+        )
+        failures += mutate_action(
+            "review-data templates naming different commit_sha sources fails",
+            "          \"commit_sha\": \"${{ inputs.reviewed-commit || '<sha>' }}\",\n"
+            "          -->",
+            "          \"commit_sha\": \"<sha>\",\n"
+            "          -->",
+            "both review-data commit_sha templates interpolate inputs.reviewed-commit",
+        )
+        failures += mutate_action(
+            "a prompt naming the commit under review from github.sha fails",
+            "          **Commit under review:** ${{ inputs.reviewed-commit }}",
+            "          **Commit under review:** ${{ github.sha }}",
+            "never reads github.sha",
+        )
+        failures += mutate_action(
+            "a prompt reading $GITHUB_SHA fails",
+            "          **Commit under review:** ${{ inputs.reviewed-commit }}",
+            "          **Commit under review:** ${{ inputs.reviewed-commit }} (also $GITHUB_SHA)",
+            "never reads github.sha",
+        )
+        failures += mutate_action(
+            "dropping the reviewed-commit input declaration fails",
+            "inputs:\n  reviewed-commit:\n    required: false\n    default: ''\n",
+            "",
+            "declares a reviewed-commit input",
         )
 
     if failures:

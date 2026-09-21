@@ -25,6 +25,8 @@ The default caller stub is dispatch-triggered.
 Add a `pull_request` trigger in the caller if you also want this workflow
 to queue a review on every PR update (in addition to, or instead of, the
 GitHub App's own automatic reviews).
+GitHub suppresses `pull_request` workflow runs
+when a pull request has merge conflicts with the target branch (gha#859).
 
 Requires a `CURSOR_API_KEY` secret.
 
@@ -96,7 +98,6 @@ jobs:
       CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
     with:
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   dry-run: true
 ```
 

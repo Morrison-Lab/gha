@@ -22,6 +22,9 @@ name: OpenCode Code Review
 
 on:
   # Optional: automatic review on PR activity.
+  # Note: GitHub suppresses pull_request workflow runs when a pull request
+  # has merge conflicts with the target branch. For conflicting PRs, resolve
+  # the conflict or trigger review via workflow_dispatch below (gha#859).
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:
@@ -46,7 +49,6 @@ jobs:
       # workflow can dispatch a review; empty (and ignored) on pull_request
       # runs.
       pr-number: ${{ inputs.pr_number }}
-    # with:
     #   checkout-submodules: true    # SUBMODULES_TOKEN secret only for private submodules
     #   opencode-model: opencode/big-pickle   # OpenCode Zen model; free tier available
     #   opencode-attempts: '3'                # total attempts; retries only the transient Zen network_error drop (gha#600)

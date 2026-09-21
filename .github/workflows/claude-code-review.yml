@@ -7,6 +7,11 @@ name: Claude Code Review (reusable)
 # The caller stub (see examples/claude-code-review.yml) holds the `on:`
 # triggers — `pull_request` for automatic review and `workflow_dispatch` so
 # claude.yml can re-dispatch a review after an @claude run pushes commits.
+# Note that GitHub will not trigger `pull_request` workflow runs if the pull
+# request has merge conflicts with its base branch (GitHub Actions platform
+# behaviour; gha#859). For conflicting PRs, review must be triggered via
+# `workflow_dispatch` (`gh workflow run claude-code-review.yml -f pr_number=N`)
+# or after merging the base branch to resolve conflicts.
 # The stub passes the dispatch's pr_number through as the `pr-number` input.
 #
 # The model and a writable forge token never share a job (gha#580).
@@ -535,6 +540,18 @@ jobs:
       # model reviewed; using that later SHA would post a stale review
       # as current.
       reviewed-head: ${{ github.event.pull_request.head.sha }}
+
+    env:
+      # The commit the reviewer names as reviewed, in the review-data JSON's
+      # commit_sha (gha#852). Resolved ONCE here, from the same two sources
+      # post-review's stale check reads in the same order (reviewed-head
+      # above, then gather-context's stash-head on dispatch), so the
+      # structured field and the trailing "Reviewed commit:" line that
+      # post-review stamps cannot name different commits. Never github.sha:
+      # on a pull_request event that is GitHub's ephemeral merge ref, which
+      # exists on no branch and vanishes when the PR closes -- the value a
+      # reviewer left to find the SHA itself was writing.
+      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
 
     runs-on: ubuntu-latest
     timeout-minutes: ${{ inputs.timeout-minutes }}
@@ -1076,6 +1093,7 @@ jobs:
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
+          reviewed-commit: ${{ env.REVIEWED_COMMIT }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: 'false'
           show-full-output: ${{ inputs.show-full-output }}
@@ -1189,6 +1207,7 @@ jobs:
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
+          reviewed-commit: ${{ env.REVIEWED_COMMIT }}
           prompt-addendum: ${{ inputs.prompt-addendum }}
           track-progress: 'false'
           show-full-output: ${{ inputs.show-full-output }}
