@@ -1,0 +1,78 @@
+---
+title: "check-dependency-updates.yml"
+---
+
+Conduct automated dependency freshness audits
+on a repository.
+Mines upstream releases, tags, and changelogs
+for pinned third-party GitHub Actions,
+`renv.lock` packages, submodules, and tool versions
+to surface high-value opportunities and to-dos
+as tracked issues in the repository.
+
+Follows the Morrison-Lab `/check-dependency-updates` skill rubric.
+The agent scans repository dependency pins,
+queries upstream GitHub APIs for latest releases and commits,
+inspects release notes for bug fixes, security patches, and features,
+verifies that issues do not duplicate existing open or closed issues,
+and files actionable, evidence-backed update issues.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `target-repo` | string | `${{ github.repository }}` | Target repository receiving the dependency audit. |
+| `dry-run` | boolean | `false` | When true, writes findings to the step summary instead of opening issues. |
+| `max-issues` | number | `5` | Maximum number of opportunity issues to open in a single run. |
+| `labels` | string | `'enhancement'` | Comma-separated labels applied to created issues. |
+| `model` | string | `''` | Claude model to use for the audit session (empty defers to default). |
+| `use-ai-config` | boolean | `true` | Install the Morrison-Lab/ai-config plugin for the dependency-audit skill. |
+| `timeout-minutes` | number | `45` | Job timeout in minutes. |
+
+## Secrets
+
+| Secret | Required | Description |
+| --- | --- | --- |
+| `CLAUDE_CODE_OAUTH_TOKEN` | no | Claude Code OAuth token (Claude Max plan). |
+| `ANTHROPIC_API_KEY` | no | Direct Anthropic API key. |
+
+## Permissions
+
+Grant `contents: read` and `issues: write`.
+
+## Example
+
+```yaml
+name: Check Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 14 * * 1' # Weekly on Monday at 14:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Run audit without filing issues (output to step summary)
+        type: boolean
+        default: false
+
+jobs:
+  audit:
+    permissions:
+      contents: read
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/check-dependency-updates.yml@v2
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    with:
+      dry-run: ${{ inputs.dry-run || false }}
+    #   max-issues: 5
+    #   labels: 'enhancement'
+    #   model: 'claude-sonnet-4-5'
+    #   use-ai-config: true
+    #   timeout-minutes: 45
+```
+
+See the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for the full caller stub (`check-dependency-updates.yml`).
