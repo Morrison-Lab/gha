@@ -343,3 +343,212 @@ f2 <- function(x) x
     monkeypatch.setattr(mod, "get_diff_modified_files", lambda ref, root: {file2.resolve()})
     dups_one = mod.find_duplicate_roxygen(tmp_path, {".R"}, [], base_ref="origin/main")
     assert len(dups_one) == 1
+
+
+def test_comma_separated_params(tmp_path):
+    r_file = tmp_path / "multi_param.R"
+    r_file.write_text(
+        """
+#' Calculate distance
+#' @param x,y Numeric coordinates of data points.
+calc_dist <- function(x, y) sqrt(x^2 + y^2)
+
+#' Another distance
+#' @param x Numeric coordinates of data points.
+other_dist <- function(x) x
+""",
+        encoding="utf-8",
+    )
+    duplicates = mod.find_duplicate_roxygen(tmp_path, {".R"}, [])
+    assert len(duplicates) == 1
+    assert duplicates[0].param_name == "x"
+    assert len(duplicates[0].occurrences) == 2
+
+
+def test_multiline_signature_with_default_parens(tmp_path):
+    r_file = tmp_path / "complex_args.R"
+    r_file.write_text(
+        """
+#' Complex function
+#' @param alpha First parameter description.
+#' @param beta Second parameter description.
+#' @param gamma Third parameter description.
+complex_fn <- function(
+    alpha = c("first", "second"),
+    beta = getOption("my_option", default = 42),
+    gamma = 100
+) {
+    list(alpha, beta, gamma)
+}
+""",
+        encoding="utf-8",
+    )
+    blocks = mod.parse_roxygen_blocks(r_file, r_file.read_text(encoding="utf-8"))
+    assert len(blocks) == 1
+    assert blocks[0].func_name == "complex_fn"
+    assert blocks[0].func_args == ["alpha", "beta", "gamma"]
+
+
+def test_indented_function(tmp_path):
+    r_file = tmp_path / "indented.R"
+    r_file.write_text(
+        """
+    #' Indented function
+    #' @param x Parameter x description.
+    indented_fn <- function(x) {
+        x + 1
+    }
+""",
+        encoding="utf-8",
+    )
+    blocks = mod.parse_roxygen_blocks(r_file, r_file.read_text(encoding="utf-8"))
+    assert len(blocks) == 1
+    assert blocks[0].func_name == "indented_fn"
+    assert blocks[0].func_args == ["x"]
+
+
+def test_param_opt_out_does_not_leak_to_block(tmp_path):
+    r_file = tmp_path / "leak.R"
+    r_file.write_text(
+        """
+#' First function
+#' @param a Common documentation for param a. # check-duplicate-roxygen: allow-duplicates
+#' @param b Common documentation for param b.
+fn_one <- function(a, b) a + b
+
+#' Second function
+#' @param a Common documentation for param a.
+#' @param b Common documentation for param b.
+fn_two <- function(a, b) a + b
+""",
+        encoding="utf-8",
+    )
+    duplicates = mod.find_duplicate_roxygen(tmp_path, {".R"}, [])
+    # 'a' is opted out in fn_one, so only 'b' should be flagged as duplicate
+    assert len(duplicates) == 1
+    assert duplicates[0].param_name == "b"
+
+
+def test_in_block_opt_out_in_first_20_lines_does_not_leak_to_file(tmp_path):
+    r_file = tmp_path / "top_block.R"
+    r_file.write_text(
+        """#' Early function with block opt-out
+#' check-duplicate-roxygen: allow-duplicates
+#' @param x Duplicate description for x.
+early_fn <- function(x) x
+
+#' Late function without opt-out
+#' @param y Duplicate description for y.
+late_fn <- function(y) y
+
+#' Partner function
+#' @param y Duplicate description for y.
+partner_fn <- function(y) y
+""",
+        encoding="utf-8",
+    )
+    duplicates = mod.find_duplicate_roxygen(tmp_path, {".R"}, [])
+    # 'x' is in the opted out block, but 'y' is in non-opted-out blocks and must be flagged
+    assert len(duplicates) == 1
+    assert duplicates[0].param_name == "y"
+
+
+def test_diff_scoped_priority_prefers_unmodified_base(tmp_path, monkeypatch):
+    base_file = tmp_path / "z_base.R"
+    base_file.write_text(
+        """
+#' Base canonical function
+#' @param val A numeric vector of predictor values.
+calc_base <- function(val) val
+""",
+        encoding="utf-8",
+    )
+    pr_file = tmp_path / "a_pr.R"
+    pr_file.write_text(
+        """
+#' PR new function
+#' @param val A numeric vector of predictor values.
+calc_pr <- function(val) val
+""",
+        encoding="utf-8",
+    )
+
+    # pr_file is modified in PR, base_file is untouched base code
+    monkeypatch.setattr(mod, "get_diff_modified_files", lambda ref, root: {pr_file.resolve()})
+    duplicates = mod.find_duplicate_roxygen(tmp_path, {".R"}, [], base_ref="origin/main")
+    assert len(duplicates) == 1
+    group = duplicates[0]
+    # Canonical primary block must be calc_base from the untouched base file!
+    assert group.primary_block.func_name == "calc_base"
+    # Recommendation must tell calc_pr to inherit from calc_base
+    assert any("calc_pr" in r and "@inheritParams calc_base" in r for r in group.recommendations)
+
+
+def test_intra_block_duplicate_param(tmp_path):
+    r_file = tmp_path / "intra.R"
+    r_file.write_text(
+        """
+#' Function with duplicate param inside block
+#' @param x A numeric vector of predictor values.
+#' @param x A numeric vector of predictor values.
+fn_intra <- function(x) x
+""",
+        encoding="utf-8",
+    )
+    duplicates = mod.find_duplicate_roxygen(tmp_path, {".R"}, [])
+    assert len(duplicates) == 1
+    group = duplicates[0]
+    assert len(group.occurrences) == 2
+    assert any("multiple times within the same function block" in r for r in group.recommendations)
+
+
+def test_namespaced_inherit_params(tmp_path):
+    r_file = tmp_path / "pkg_inherit.R"
+    r_file.write_text(
+        """
+#' Base function
+#' @param alpha Parameter alpha documentation.
+base_fn <- function(alpha) alpha
+
+#' Target function with namespaced inheritParams
+#' @inheritParams mypkg::base_fn
+#' @param alpha Parameter alpha documentation.
+target_fn <- function(alpha) alpha
+""",
+        encoding="utf-8",
+    )
+    duplicates = mod.find_duplicate_roxygen(tmp_path, {".R"}, [])
+    assert len(duplicates) == 1
+    group = duplicates[0]
+    assert any("Remove redundant '@param alpha'" in r for r in group.recommendations)
+
+
+def test_defaults_agreement():
+    import yaml
+
+    repo_root = Path(__file__).resolve().parent.parent.parent
+    action_yml = repo_root / "check-duplicate-roxygen" / "action.yml"
+    workflow_yml = repo_root / ".github" / "workflows" / "check-duplicate-roxygen.yml"
+
+    action_data = yaml.safe_load(action_yml.read_text(encoding="utf-8"))
+    workflow_data = yaml.safe_load(workflow_yml.read_text(encoding="utf-8"))
+
+    action_inputs = action_data["inputs"]
+    on_clause = workflow_data.get("on") or workflow_data.get(True)
+    workflow_inputs = on_clause["workflow_call"]["inputs"]
+
+    shared_keys = {"path", "paths-ignore", "extensions", "min-desc-length", "base-ref", "fail", "python-version"}
+    assert shared_keys.issubset(set(action_inputs.keys()))
+    assert shared_keys.issubset(set(workflow_inputs.keys()))
+
+    for key in ("path", "paths-ignore", "extensions", "min-desc-length", "base-ref", "python-version"):
+        assert str(action_inputs[key]["default"]) == str(workflow_inputs[key]["default"])
+
+    assert str(action_inputs["fail"]["default"]).lower() in ("true", "1")
+    assert str(workflow_inputs["fail"]["default"]).lower() in ("true", "1")
+
+    assert mod.DEFAULT_MIN_DESC_LENGTH == int(action_inputs["min-desc-length"]["default"])
+    expected_exts = {e.strip() for e in action_inputs["extensions"]["default"].split(",") if e.strip()}
+    assert mod.DEFAULT_EXTENSIONS == expected_exts
+    expected_ignore = [p.strip() for p in action_inputs["paths-ignore"]["default"].split(",") if p.strip()]
+    assert mod.DEFAULT_PATHS_IGNORE == expected_ignore

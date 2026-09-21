@@ -56,7 +56,7 @@ OPT_OUT_PATTERN = re.compile(
 )
 
 PARAM_REGEX = re.compile(
-    r"^#'\s*@param\s+(`[^`]+`|\.\.\.|[A-Za-z0-9._]+)\s*(.*)",
+    r"^#'\s*@param\s+((?:(?:`[^`]+`|\.\.\.|[A-Za-z0-9._]+)\s*,\s*)*(?:`[^`]+`|\.\.\.|[A-Za-z0-9._]+))(?:\s+(.*))?$",
     re.DOTALL,
 )
 
@@ -178,40 +178,88 @@ def parse_function_signature(lines: List[str], start_idx: int) -> Tuple[Optional
         return None, []
 
     combined_lines = []
-    # Collect up to 20 lines to capture multi-line function declarations
-    for j in range(idx, min(n, idx + 20)):
-        combined_lines.append(lines[j])
-        if "{" in lines[j] or ")" in lines[j]:
+    paren_depth = 0
+    started_paren = False
+    # Collect up to 40 lines to capture multi-line function declarations
+    for j in range(idx, min(n, idx + 40)):
+        cur_line = lines[j]
+        combined_lines.append(cur_line)
+        for ch in cur_line:
+            if ch == "(":
+                paren_depth += 1
+                started_paren = True
+            elif ch == ")":
+                if paren_depth > 0:
+                    paren_depth -= 1
+        if started_paren and paren_depth == 0:
+            break
+        if "{" in cur_line and not started_paren:
             break
 
     code = "\n".join(combined_lines)
 
     # Pattern 1: standard function assignment: name <- function(...) or name = function(...)
     fn_match = re.search(
-        r"^(?:`([^`]+)`|([A-Za-z0-9._]+))\s*(?:<-|=)\s*(?:function|\\)\s*\((.*?)\)",
+        r"^[ \t]*(?:`([^`]+)`|([A-Za-z0-9._]+))\s*(?:<-|=)\s*(?:function|\\)\s*\(",
         code,
-        re.DOTALL | re.MULTILINE,
+        re.MULTILINE,
     )
     if fn_match:
         name = fn_match.group(1) or fn_match.group(2)
-        raw_args = fn_match.group(3)
+        raw_args, _ = extract_balanced_paren_content(code, fn_match.end())
         args = extract_argument_names(raw_args)
         return name, args
 
     # Pattern 2: setMethod / setGeneric: setMethod("name", ...)
     s4_match = re.search(
-        r"^(?:setMethod|setGeneric)\s*\(\s*[\"']([A-Za-z0-9._]+)[\"']",
+        r"^[ \t]*(?:setMethod|setGeneric)\s*\(\s*[\"']([A-Za-z0-9._]+)[\"']",
         code,
         re.MULTILINE,
     )
     if s4_match:
         name = s4_match.group(1)
-        # Check if function(...) definition is inside
-        fn_inside = re.search(r"(?:function|\\)\s*\((.*?)\)", code, re.DOTALL)
-        args = extract_argument_names(fn_inside.group(1)) if fn_inside else []
+        fn_inside = re.search(r"(?:function|\\)\s*\(", code)
+        if fn_inside:
+            raw_args, _ = extract_balanced_paren_content(code, fn_inside.end())
+            args = extract_argument_names(raw_args)
+        else:
+            args = []
         return name, args
 
     return None, []
+
+
+def extract_balanced_paren_content(text: str, start_idx: int) -> Tuple[str, int]:
+    """Given text starting after an opening '(', extract content until matching ')'."""
+    paren_depth = 1
+    bracket_depth = 0
+    brace_depth = 0
+    in_quote = None
+    i = start_idx
+    n = len(text)
+    while i < n and paren_depth > 0:
+        c = text[i]
+        if in_quote:
+            if c == in_quote:
+                in_quote = None
+        elif c in ('"', "'", "`"):
+            in_quote = c
+        elif c == "(":
+            paren_depth += 1
+        elif c == ")":
+            paren_depth -= 1
+            if paren_depth == 0:
+                return text[start_idx:i], i + 1
+        elif c == "[":
+            bracket_depth += 1
+        elif c == "]":
+            bracket_depth = max(0, bracket_depth - 1)
+        elif c == "{":
+            brace_depth += 1
+        elif c == "}":
+            brace_depth = max(0, brace_depth - 1)
+        i += 1
+    return text[start_idx:i], i
 
 
 def extract_argument_names(raw_args: str) -> List[str]:
@@ -286,10 +334,11 @@ def parse_roxygen_blocks(file_path: Path, content: str) -> List[RoxygenBlock]:
     lines = content.splitlines()
     blocks: List[RoxygenBlock] = []
 
-    # File-level opt out check
+    # File-level opt out check: only non-roxygen comments outside roxygen blocks
     file_opted_out = False
     for line in lines[:20]:
-        if OPT_OUT_PATTERN.search(line):
+        stripped = line.strip()
+        if not stripped.startswith("#'") and OPT_OUT_PATTERN.search(stripped):
             file_opted_out = True
             break
 
@@ -332,31 +381,56 @@ def parse_single_roxygen_block(
     """Parse tags, parameters, and inheritance directives inside a roxygen block."""
     block = RoxygenBlock(file_path=file_path, start_line=start_line, end_line=end_line)
 
-    current_param: Optional[RoxygenParam] = None
+    current_params: List[RoxygenParam] = []
     desc_lines: List[str] = []
 
-    def flush_current_param():
-        nonlocal current_param, desc_lines
-        if current_param is not None:
+    def flush_current_params():
+        nonlocal current_params, desc_lines
+        if current_params:
             full_desc = " ".join(desc_lines)
-            current_param.description = normalize_whitespace(full_desc)
-            block.params.append(current_param)
-            current_param = None
+            normalized = normalize_whitespace(full_desc)
+            for p in current_params:
+                p.description = normalized
+                block.params.append(p)
+            current_params = []
             desc_lines = []
 
     for line_num, line_str in block_lines:
+        param_m = PARAM_REGEX.match(line_str)
+        if param_m:
+            flush_current_params()
+            raw_param_names = [
+                n.strip().strip("`")
+                for n in re.split(r"\s*,\s*", param_m.group(1))
+                if n.strip()
+            ]
+            initial_desc = (param_m.group(2) or "").strip()
+            param_opt_out = bool(OPT_OUT_PATTERN.search(line_str))
+            current_params = [
+                RoxygenParam(
+                    name=clean_name,
+                    description="",
+                    line=line_num,
+                    opted_out=param_opt_out,
+                )
+                for clean_name in raw_param_names
+            ]
+            desc_lines = [initial_desc] if initial_desc else []
+            continue
+
+        # In-block opt-out (only applies to whole block when not on a @param line)
         if OPT_OUT_PATTERN.search(line_str):
             block.opted_out = True
 
         inherit_m = INHERIT_PARAMS_REGEX.match(line_str)
         if inherit_m:
-            flush_current_param()
+            flush_current_params()
             block.inherit_params.append(inherit_m.group(1))
             continue
 
         dot_inherit_m = INHERIT_DOT_PARAMS_REGEX.match(line_str)
         if dot_inherit_m:
-            flush_current_param()
+            flush_current_params()
             src = dot_inherit_m.group(1)
             raw_args = dot_inherit_m.group(2) or ""
             args = [a.strip("` ") for a in raw_args.split() if a.strip()]
@@ -367,33 +441,17 @@ def parse_single_roxygen_block(
         if name_tag_m and not block.func_name:
             block.func_name = name_tag_m.group(1)
 
-        param_m = PARAM_REGEX.match(line_str)
-        if param_m:
-            flush_current_param()
-            raw_name = param_m.group(1)
-            clean_name = raw_name.strip("`")
-            initial_desc = param_m.group(2).strip()
-            param_opt_out = bool(OPT_OUT_PATTERN.search(line_str))
-            current_param = RoxygenParam(
-                name=clean_name,
-                description="",
-                line=line_num,
-                opted_out=param_opt_out,
-            )
-            desc_lines = [initial_desc] if initial_desc else []
-            continue
-
-        if current_param is not None:
+        if current_params:
             # Check if this line introduces another tag
             if TAG_REGEX.match(line_str):
-                flush_current_param()
+                flush_current_params()
             else:
                 # Continuation of current parameter description
                 continuation = re.sub(r"^#'\s?", "", line_str).strip()
                 if continuation:
                     desc_lines.append(continuation)
 
-    flush_current_param()
+    flush_current_params()
     return block
 
 
@@ -466,32 +524,64 @@ def find_duplicate_roxygen(
                 continue
 
         # Determine primary/canonical block
-        # Prefer:
-        # 1. Block with matching argument in func_args (concrete signature)
-        # 2. Block without '...' in func_args
-        # 3. Block with most parameters documented
-        # 4. Earliest alphabetical file, earliest line
+        # Priority:
+        # 1. Block in unmodified file if diff-scoped (prefer established base code over PR code)
+        # 2. Block with matching argument in func_args (concrete signature)
+        # 3. Block without '...' in func_args (concrete parameter, not forwarded via dots)
+        # 4. Block with function name
+        # 5. Block with most parameters documented
+        # 6. Alphabetical file path
+        # 7. Earliest line number
         def block_priority(item: Tuple[RoxygenBlock, RoxygenParam]):
             b, p = item
+            is_unmodified = (
+                1 if (diff_modified is not None and b.file_path.resolve() not in diff_modified) else 0
+            )
             has_exact_arg = 1 if param_name in b.func_args else 0
-            has_dot_dot_dot = 1 if "..." in b.func_args else 0
+            no_dots = 1 if "..." not in b.func_args else 0
+            has_name = 1 if b.func_name else 0
             num_params = len(b.params)
-            return (has_exact_arg, -has_dot_dot_dot, num_params, -b.start_line)
+            return (
+                -is_unmodified,
+                -has_exact_arg,
+                -no_dots,
+                -has_name,
+                -num_params,
+                str(b.file_path.resolve()),
+                b.start_line,
+                p.line,
+            )
 
-        sorted_occurrences = sorted(occurrences, key=block_priority, reverse=True)
-        primary_block = sorted_occurrences[0][0]
+        sorted_occurrences = sorted(occurrences, key=block_priority)
+        primary_block, primary_param = sorted_occurrences[0]
         primary_name = primary_block.func_name or f"`{primary_block.file_path.name}:{primary_block.start_line}`"
 
         recommendations: List[str] = []
-        for b, p in sorted_occurrences:
-            if b is primary_block:
+        for idx_occ, (b, p) in enumerate(sorted_occurrences):
+            if idx_occ == 0:
                 continue
 
             target_name = b.func_name or f"`{b.file_path.name}:{b.start_line}`"
             target_loc = f"{b.file_path.name}:{p.line}"
 
-            # Check if target already inherits from primary
-            if primary_block.func_name and primary_block.func_name in b.inherit_params:
+            if b is primary_block:
+                rec = (
+                    f"- {target_name} ({target_loc}): Duplicate '@param {param_name}' "
+                    f"declared multiple times within the same function block."
+                )
+                recommendations.append(rec)
+                continue
+
+            # Check if target already inherits from primary (support namespaced pkg::func)
+            inherits_from_primary = False
+            if primary_block.func_name:
+                for ip in b.inherit_params:
+                    clean_ip = ip.split("::")[-1]
+                    if clean_ip == primary_block.func_name:
+                        inherits_from_primary = True
+                        break
+
+            if primary_block.func_name and inherits_from_primary:
                 rec = (
                     f"- {target_name} ({target_loc}): Remove redundant '@param {param_name}' "
                     f"(already inherited via '@inheritParams {primary_block.func_name}')."
@@ -516,7 +606,7 @@ def find_duplicate_roxygen(
         group = DuplicateGroup(
             param_name=param_name,
             description=desc,
-            occurrences=occurrences,
+            occurrences=sorted_occurrences,
             primary_block=primary_block,
             recommendations=recommendations,
         )
@@ -557,7 +647,7 @@ def print_report(
             except ValueError:
                 rel = b.file_path
             fn = b.func_name or "<anonymous>"
-            is_primary = " [primary]" if b is group.primary_block else ""
+            is_primary = " [primary]" if (b, p) == (group.primary_block, group.occurrences[0][1]) else ""
             print(f"  - {rel}:{p.line} in `{fn}`{is_primary}")
 
         print("Recommendations:")
@@ -566,18 +656,24 @@ def print_report(
         print()
 
         # Emit GitHub Actions annotations
-        for b, p in group.occurrences:
-            if b is group.primary_block and len(group.occurrences) > 1:
+        for idx_occ, (b, p) in enumerate(group.occurrences):
+            if idx_occ == 0 and len(group.occurrences) > 1:
                 continue
             try:
                 rel_path = str(b.file_path.relative_to(Path.cwd())).replace("\\", "/")
             except ValueError:
                 rel_path = str(b.file_path).replace("\\", "/")
 
-            msg = (
-                f"Duplicate roxygen '@param {group.param_name}' documentation matching '{primary_name}'. "
-                f"Consolidate using @inheritParams or @inheritDotParams."
-            )
+            if b is group.primary_block:
+                msg = (
+                    f"Duplicate roxygen '@param {group.param_name}' declared multiple times "
+                    f"within the same function block."
+                )
+            else:
+                msg = (
+                    f"Duplicate roxygen '@param {group.param_name}' documentation matching '{primary_name}'. "
+                    f"Consolidate using @inheritParams or @inheritDotParams."
+                )
             print(f"::{annotation_level} file={rel_path},line={p.line}::{msg}")
 
     print("To opt out a file, block, or parameter that intentionally duplicates documentation,")

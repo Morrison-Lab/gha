@@ -75,8 +75,46 @@ jobs:
       - name: Run check-duplicate-roxygen unit tests
         shell: bash
         run: |
-          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3
           python3 -m pytest check-duplicate-roxygen/tests/ -v
+
+      - name: Prepare runtime test fixtures for composite action
+        shell: bash
+        run: |
+          mkdir -p fixture_roxygen_clean fixture_roxygen_dup
+          cat << 'EOF' > fixture_roxygen_clean/clean.R
+          # check-duplicate-roxygen: allow-duplicates
+          #' First function
+          #' @param x Vector of predictor values for model.
+          f1 <- function(x) x
+          #' Second function
+          #' @param x Vector of predictor values for model.
+          f2 <- function(x) x
+          EOF
+
+          cat << 'EOF' > fixture_roxygen_dup/dup.R
+          #' First function
+          #' @param x Vector of predictor values for model.
+          f1 <- function(x) x
+          #' Second function
+          #' @param x Vector of predictor values for model.
+          f2 <- function(x) x
+          EOF
+
+      - name: Exercise check-duplicate-roxygen on clean negative control
+        uses: ./check-duplicate-roxygen
+        with:
+          path: fixture_roxygen_clean
+          fail: 'true'
+
+      - name: Verify positive control fixture fails closed
+        shell: bash
+        run: |
+          if python3 check-duplicate-roxygen/check_duplicate_roxygen.py fixture_roxygen_dup --fail=true; then
+            echo "Expected positive control duplicate fixture to exit 1, but got 0" >&2
+            exit 1
+          fi
+          rm -rf fixture_roxygen_clean fixture_roxygen_dup
 
       - name: Check duplicate roxygen documentation
         uses: ./check-duplicate-roxygen
