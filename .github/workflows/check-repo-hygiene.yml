@@ -35,14 +35,10 @@ on:
         description: Flag non-standard unicode characters, curly quotes, and smart dashes.
         type: boolean
         default: true
-      non-standard-chars-paths:
-        description: Comma- or space-separated list of files or globs to check.
+      non-standard-chars-extensions:
+        description: Comma- or space-separated list of file extensions to check.
         type: string
-        default: ''
-      non-standard-chars-paths-ignore:
-        description: Paths or globs to exclude from non-standard character scanning.
-        type: string
-        default: ''
+        default: '.qmd, .R, .md'
       check-new-line-breaks:
         description: Enforce semantic line breaks on modified lines.
         type: boolean
@@ -131,8 +127,7 @@ jobs:
           secrets-config: ${{ inputs.secrets-config }}
           secrets-paths-ignore: ${{ inputs.secrets-paths-ignore }}
           check-non-standard-chars: ${{ inputs.check-non-standard-chars }}
-          non-standard-chars-paths: ${{ inputs.non-standard-chars-paths }}
-          non-standard-chars-paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
+          non-standard-chars-extensions: ${{ inputs.non-standard-chars-extensions }}
           check-new-line-breaks: ${{ inputs.check-new-line-breaks }}
           new-line-breaks-base-ref: ${{ inputs.new-line-breaks-base-ref }}
           new-line-breaks-globs: ${{ inputs.new-line-breaks-globs }}

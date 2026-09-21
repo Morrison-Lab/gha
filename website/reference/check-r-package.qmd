@@ -38,13 +38,14 @@ plus R package-specific checks:
   verifies R code formatting via Air (`posit-dev/setup-air`)
 - [`check-extra.yml`](check-extra.qmd):
   runs extra checks (warnings as errors, readme freshness) when opt-in
-- [`check-news.yml`](check-news.qmd):
-  verifies `NEWS.md` is updated on pull requests
-- [`version-check.yml`](version-check.qmd):
-  verifies package version consistency on pull requests
 
 Every check is enabled by default (except `check-extra`, which is opt-in).
 Opt out of any specific check by passing its boolean flag as `false`.
+
+PR metadata governance workflows that inspect pull request labels
+([`check-news.yml`](check-news.qmd), [`version-check.yml`](version-check.qmd))
+remain dedicated standalone workflows because they require
+`pull-requests: read` permissions to inspect live labels from the GitHub API.
 
 ## Inputs
 
@@ -58,8 +59,7 @@ Opt out of any specific check by passing its boolean flag as `false`.
 | `secrets-config` | string | `''` | Custom gitleaks config file path. |
 | `secrets-paths-ignore` | string | `''` | Regex paths to exempt from secrets scan. |
 | `check-non-standard-chars` | boolean | `true` | Enable non-standard character check. |
-| `non-standard-chars-paths` | string | `''` | Paths/globs to check for non-standard characters. |
-| `non-standard-chars-paths-ignore` | string | `''` | Paths/globs to exempt from non-standard character check. |
+| `non-standard-chars-extensions` | string | `'.R, .qmd, .md'` | File extensions to check for non-standard characters. |
 | `check-new-line-breaks` | boolean | `true` | Enable semantic line break check. |
 | `new-line-breaks-base-ref` | string | `''` | Base ref for diff-scoping new line breaks. |
 | `new-line-breaks-globs` | string | `''` | Globs to check for new line breaks. |
@@ -88,10 +88,6 @@ Opt out of any specific check by passing its boolean flag as `false`.
 | `check-formatting` | boolean | `true` | Enable Air R code formatting check. |
 | `air-version` | string | `'0.11.0'` | Air release version to install. |
 | `air-path` | string | `'.'` | Path to format-check. |
-| `check-news` | boolean | `true` | Enable NEWS.md check on pull requests. |
-| `changelog-file` | string | `'NEWS.md'` | Path to changelog file. |
-| `check-version` | boolean | `true` | Enable DESCRIPTION version check on pull requests. |
-| `description-path` | string | `'DESCRIPTION'` | Path to DESCRIPTION file. |
 
 ## Example
 

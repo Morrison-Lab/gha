@@ -35,14 +35,10 @@ on:
         description: Flag non-standard unicode characters, curly quotes, and smart dashes.
         type: boolean
         default: true
-      non-standard-chars-paths:
-        description: Comma- or space-separated list of files or globs to check.
+      non-standard-chars-extensions:
+        description: Comma- or space-separated list of file extensions to check.
         type: string
-        default: ''
-      non-standard-chars-paths-ignore:
-        description: Paths or globs to exclude from non-standard character scanning.
-        type: string
-        default: ''
+        default: '.R, .qmd, .md'
       check-new-line-breaks:
         description: Enforce semantic line breaks on modified lines.
         type: boolean
@@ -155,22 +151,6 @@ on:
         description: Path to format-check with Air.
         type: string
         default: '.'
-      check-news:
-        description: Check NEWS.md on pull requests.
-        type: boolean
-        default: true
-      changelog-file:
-        description: Path to changelog file.
-        type: string
-        default: 'NEWS.md'
-      check-version:
-        description: Check DESCRIPTION package version on pull requests.
-        type: boolean
-        default: true
-      description-path:
-        description: Path to DESCRIPTION file.
-        type: string
-        default: 'DESCRIPTION'
 
 jobs:
   check-r-package:
@@ -195,8 +175,7 @@ jobs:
           secrets-config: ${{ inputs.secrets-config }}
           secrets-paths-ignore: ${{ inputs.secrets-paths-ignore }}
           check-non-standard-chars: ${{ inputs.check-non-standard-chars }}
-          non-standard-chars-paths: ${{ inputs.non-standard-chars-paths }}
-          non-standard-chars-paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
+          non-standard-chars-extensions: ${{ inputs.non-standard-chars-extensions }}
           check-new-line-breaks: ${{ inputs.check-new-line-breaks }}
           new-line-breaks-base-ref: ${{ inputs.new-line-breaks-base-ref }}
           new-line-breaks-globs: ${{ inputs.new-line-breaks-globs }}
@@ -225,7 +204,3 @@ jobs:
           check-formatting: ${{ inputs.check-formatting }}
           air-version: ${{ inputs.air-version }}
           air-path: ${{ inputs.air-path }}
-          check-news: ${{ inputs.check-news }}
-          changelog-file: ${{ inputs.changelog-file }}
-          check-version: ${{ inputs.check-version }}
-          description-path: ${{ inputs.description-path }}

@@ -17,6 +17,4 @@ jobs:
     #   check-formatting: true
     #   check-duplicate-roxygen: true
     #   check-one-function-per-file: true
-    #   check-news: true
-    #   check-version: true
     #   fail: true

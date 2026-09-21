@@ -69,6 +69,43 @@ def test_bundled_actions():
         if missing_in_wf:
             failures.append(f"{cap}: action inputs not declared in workflow: {missing_in_wf}")
 
+        # Validate inputs passed by reusable workflow to action.yml
+        jobs = wf_data.get("jobs", {}) if wf_data else {}
+        for job_name, job_def in jobs.items():
+            for step in job_def.get("steps", []):
+                uses = step.get("uses", "")
+                if uses == f"./{cap}":
+                    step_with = set(step.get("with", {}).keys())
+                    undeclared_wf_with = step_with - action_inputs
+                    if undeclared_wf_with:
+                        failures.append(
+                            f"{wf_path} job '{job_name}' step '{step.get('name')}' "
+                            f"passes undeclared inputs to ./{cap}: {undeclared_wf_with}"
+                        )
+
+        # Validate inputs passed by composite action steps to callee actions
+        for step in action_data.get("runs", {}).get("steps", []):
+            uses = step.get("uses", "")
+            if uses.startswith("Morrison-Lab/gha/"):
+                # Parse action name: e.g. Morrison-Lab/gha/check-junk-files@v2 -> check-junk-files
+                callee_name = uses.split("/")[2].split("@")[0]
+                callee_action_path = REPO_ROOT / callee_name / "action.yml"
+                if not callee_action_path.exists():
+                    callee_action_path = REPO_ROOT / ".github" / "actions" / callee_name / "action.yml"
+                if callee_action_path.exists():
+                    with open(callee_action_path, "r", encoding="utf-8") as f:
+                        callee_data = yaml.safe_load(f)
+                    callee_declared_inputs = set(callee_data.get("inputs", {}).keys()) if callee_data else set()
+                    step_with = set(step.get("with", {}).keys())
+                    undeclared_callee_with = step_with - callee_declared_inputs
+                    if undeclared_callee_with:
+                        failures.append(
+                            f"{cap}/action.yml step '{step.get('name')}' passes undeclared inputs "
+                            f"to {callee_name}: {undeclared_callee_with}"
+                        )
+                else:
+                    failures.append(f"{cap}/action.yml step '{step.get('name')}' references unknown callee {callee_name}")
+
         # 4. Example file exists
         example_path = REPO_ROOT / "examples" / f"{cap}.yml"
         if not example_path.exists():

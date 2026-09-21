@@ -3,8 +3,7 @@ description: >-
   Runs the standard check suite for R package repositories (like Morrison-Lab/rpt):
   repository hygiene (junk files, secrets, non-standard characters, semantic line breaks,
   typos, YAML lint, workflow lint, Markdown lint), AI tells, duplicate roxygen documentation checks,
-  one-function-per-file enforcement, extra R-package checks, R formatting with Air,
-  NEWS.md changelog checks, and package version consistency checks.
+  one-function-per-file enforcement, extra R-package checks, and R formatting with Air.
 inputs:
   fail:
     description: Fail the action when any enabled check reports findings.
@@ -30,12 +29,9 @@ inputs:
   check-non-standard-chars:
     description: Flag non-standard unicode characters, curly quotes, and smart dashes.
     default: 'true'
-  non-standard-chars-paths:
-    description: Comma- or space-separated list of files or globs to check.
-    default: ''
-  non-standard-chars-paths-ignore:
-    description: Paths or globs to exclude from non-standard character scanning.
-    default: ''
+  non-standard-chars-extensions:
+    description: Comma- or space-separated list of file extensions to check for non-standard characters.
+    default: '.R, .qmd, .md'
   check-new-line-breaks:
     description: Enforce semantic line breaks on modified lines.
     default: 'true'
@@ -120,18 +116,6 @@ inputs:
   air-path:
     description: Path to format-check with Air.
     default: '.'
-  check-news:
-    description: Check NEWS.md on pull requests.
-    default: 'true'
-  changelog-file:
-    description: Path to changelog file.
-    default: 'NEWS.md'
-  check-version:
-    description: Check DESCRIPTION package version on pull requests.
-    default: 'true'
-  description-path:
-    description: Path to DESCRIPTION file.
-    default: 'DESCRIPTION'
 runs:
   using: composite
   steps:
@@ -155,9 +139,7 @@ runs:
       if: inputs.check-non-standard-chars != 'false'
       uses: Morrison-Lab/gha/check-non-standard-chars@v2
       with:
-        paths: ${{ inputs.non-standard-chars-paths }}
-        paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
-        fail: ${{ inputs.fail }}
+        extensions: ${{ inputs.non-standard-chars-extensions }}
 
     - name: Check new line breaks
       if: inputs.check-new-line-breaks != 'false'
@@ -234,40 +216,3 @@ runs:
       uses: Morrison-Lab/gha/check-extra@v2
       with:
         check: ${{ inputs.extra-check }}
-
-    - name: Check NEWS.md on PR
-      if: inputs.check-news != 'false' && github.event_name == 'pull_request'
-      uses: UCD-SERG/changelog-check-action@3335dbf507b538e12d43e59040fc926e849ea2e7 # v1.1.1
-      with:
-        changelog: ${{ inputs.changelog-file }}
-
-    - name: Check package version on PR
-      if: inputs.check-version != 'false' && github.event_name == 'pull_request'
-      shell: bash
-      env:
-        DESC_PATH: ${{ inputs.description-path }}
-        BASE_REF: ${{ github.base_ref }}
-      run: |
-        set -euo pipefail
-        if [ ! -f "$DESC_PATH" ]; then
-          echo "No DESCRIPTION file found at '$DESC_PATH'; skipping version check."
-          exit 0
-        fi
-        # Read HEAD version
-        head_ver=$(grep -E '^Version:' "$DESC_PATH" | awk '{print $2}' || true)
-        if [ -z "$head_ver" ]; then
-          echo "::error::Could not parse Version from $DESC_PATH"
-          exit 1
-        fi
-        # Read base version if available
-        if git rev-parse --verify "origin/$BASE_REF:$DESC_PATH" >/dev/null 2>&1; then
-          base_ver=$(git show "origin/$BASE_REF:$DESC_PATH" | grep -E '^Version:' | awk '{print $2}' || true)
-          echo "PR target branch version: $base_ver"
-          echo "PR branch version:        $head_ver"
-          if [ -n "$base_ver" ] && [ "$head_ver" != "$base_ver" ]; then
-            echo "::error::PR branch DESCRIPTION Version ($head_ver) differs from target branch ($base_ver). Dev-version bumps are handled automatically after merge."
-            exit 1
-          fi
-        else
-          echo "Base branch DESCRIPTION not reachable; skipping version comparison."
-        fi

@@ -49,8 +49,7 @@ without giving up the other checks in the suite.
 | `secrets-config` | string | `''` | Custom gitleaks config file path. |
 | `secrets-paths-ignore` | string | `''` | Regex paths to exempt from secrets scan. |
 | `check-non-standard-chars` | boolean | `true` | Enable non-standard character check. |
-| `non-standard-chars-paths` | string | `''` | Paths/globs to check for non-standard characters. |
-| `non-standard-chars-paths-ignore` | string | `''` | Paths/globs to exempt from non-standard character check. |
+| `non-standard-chars-extensions` | string | `'.qmd, .R, .md'` | File extensions to check for non-standard characters. |
 | `check-new-line-breaks` | boolean | `true` | Enable semantic line break check. |
 | `new-line-breaks-base-ref` | string | `''` | Base ref for diff-scoping new line breaks. |
 | `new-line-breaks-globs` | string | `''` | Globs to check for new line breaks. |

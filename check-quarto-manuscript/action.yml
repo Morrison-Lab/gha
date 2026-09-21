@@ -30,12 +30,9 @@ inputs:
   check-non-standard-chars:
     description: Flag non-standard unicode characters, curly quotes, and smart dashes.
     default: 'true'
-  non-standard-chars-paths:
-    description: Comma- or space-separated list of files or globs to check.
-    default: ''
-  non-standard-chars-paths-ignore:
-    description: Paths or globs to exclude from non-standard character scanning.
-    default: ''
+  non-standard-chars-extensions:
+    description: Comma- or space-separated list of file extensions to check for non-standard characters.
+    default: '.qmd, .md'
   check-new-line-breaks:
     description: Enforce semantic line breaks on modified lines.
     default: 'true'
@@ -149,9 +146,7 @@ runs:
       if: inputs.check-non-standard-chars != 'false'
       uses: Morrison-Lab/gha/check-non-standard-chars@v2
       with:
-        paths: ${{ inputs.non-standard-chars-paths }}
-        paths-ignore: ${{ inputs.non-standard-chars-paths-ignore }}
-        fail: ${{ inputs.fail }}
+        extensions: ${{ inputs.non-standard-chars-extensions }}
 
     - name: Check new line breaks
       if: inputs.check-new-line-breaks != 'false'

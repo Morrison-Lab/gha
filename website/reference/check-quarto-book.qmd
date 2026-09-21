@@ -4,12 +4,13 @@ title: "check-quarto-book.yml"
 
 Bundles the standard check suite for Quarto book repositories
 (such as [`Morrison-Lab/qbt`](https://github.com/Morrison-Lab/qbt)).
-Replaces up to 21 individual workflow files with a single composite action
+Replaces individual workflow files with a single composite action
 or reusable workflow call.
 
 ## What it runs
 
-Runs the full Morrison-Lab repository hygiene pass plus book-specific checks:
+Runs the full Morrison-Lab repository hygiene pass
+plus book-specific checks:
 
 - [`check-junk-files.yml`](check-junk-files.qmd):
   OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, etc.)
@@ -32,12 +33,14 @@ Runs the full Morrison-Lab repository hygiene pass plus book-specific checks:
 - [`lint-qmd.yml`](lint-qmd.qmd):
   markdownlint over prose sections of tracked `.qmd` files
 - [`check-links.yml`](check-links.qmd):
-  lychee link checker across book chapters, references, and external links
+  lychee link checker across book chapters,
+  references, and external links
 - [`check-bibliography-dois.yml`](check-bibliography-dois.qmd):
   validates BibTeX bibliography entries in `.bib` files
 - [`check-equation-renders.yml`](check-equation-renders.qmd):
-  crawls rendered HTML book pages to ensure MathJax typesets all equations
-  without errors (active when `equation-renders-site-dir` is specified)
+  crawls rendered HTML book pages to ensure MathJax
+  typesets all equations without errors
+  (active when `equation-renders-site-dir` is specified)
 
 Every check is enabled by default.
 Opt out of any specific check by passing its boolean flag as `false`.
@@ -54,8 +57,7 @@ Opt out of any specific check by passing its boolean flag as `false`.
 | `secrets-config` | string | `''` | Custom gitleaks config file path. |
 | `secrets-paths-ignore` | string | `''` | Regex paths to exempt from secrets scan. |
 | `check-non-standard-chars` | boolean | `true` | Enable non-standard character check. |
-| `non-standard-chars-paths` | string | `''` | Paths/globs to check for non-standard characters. |
-| `non-standard-chars-paths-ignore` | string | `''` | Paths/globs to exempt from non-standard character check. |
+| `non-standard-chars-extensions` | string | `'.qmd, .md'` | File extensions to check for non-standard characters. |
 | `check-new-line-breaks` | boolean | `true` | Enable semantic line break check. |
 | `new-line-breaks-base-ref` | string | `''` | Base ref for diff-scoping new line breaks. |
 | `new-line-breaks-globs` | string | `''` | Globs to check for new line breaks. |

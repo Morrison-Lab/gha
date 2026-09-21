@@ -1,6 +1,7 @@
 - **Add bundled repo actions and reusable workflows**
   (#865).
-  Adds six composite actions and paired reusable workflows that bundle standard check suites by repository type:
+  Adds six composite actions and paired reusable workflows
+  that bundle standard check suites by repository type:
   `check-repo-hygiene` for common repository hygiene and secret leakage checks,
   `check-quarto-website` for Quarto website projects,
   `check-quarto-book` for Quarto book projects,
