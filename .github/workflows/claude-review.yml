@@ -37,8 +37,23 @@ jobs:
   # `gh workflow run` needs the workflow present on the default branch, so
   # `/review` works once this file is merged there.
   dispatch-on-comment:
-    # OWNER/MEMBER/COLLABORATOR, or cursor[bot] (Cloud Agents post /review
-    # and @claude review under that App login with author_association NONE).
+    # OWNER/MEMBER/COLLABORATOR, or an allowlisted App login whose
+    # author_association is NONE: cursor[bot] (Cloud Agents post /review and
+    # @claude review under it) and claude[bot] (a Claude Code remote/web
+    # session, and its subagents, act under it).
+    #
+    # claude[bot] is here because this is the ONLY review-request pathway such
+    # a session has. Its pushes carry sender.type == 'Bot', which skips the
+    # reusable workflow's automatic pull_request path; and a workflow_dispatch
+    # it issues itself starts a run that claude-code-action then short-circuits
+    # at zero cost, because `allowed-bots` admits github-actions[bot] and not
+    # claude[bot] (measured on Morrison-Lab/ai-config, 2026-09-18: 4 of 4
+    # claude[bot] dispatches short-circuited, 4 of 4 github-actions[bot]
+    # dispatches reviewed). The dispatch below runs under GITHUB_TOKEN, so it
+    # re-enters as github-actions[bot] and clears both gates without widening
+    # either. Nothing this workflow posts begins with /review, so a review
+    # cannot re-enter this path.
+    #
     # This gate lives entirely in the caller, so it takes effect on merge to
     # main without waiting for an @v2 slide.
     if: >-
@@ -46,7 +61,7 @@ jobs:
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/review') &&
       (contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association) ||
-      contains(fromJSON('["cursor[bot]"]'), github.event.comment.user.login))
+      contains(fromJSON('["claude[bot]","cursor[bot]"]'), github.event.comment.user.login))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
