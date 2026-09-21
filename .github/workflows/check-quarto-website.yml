@@ -98,7 +98,7 @@ on:
       workflows-path:
         description: Path containing GitHub Actions workflow files to lint.
         type: string
-        default: '.github/workflows'
+        default: '.'
       lint-markdown:
         description: Lint tracked Markdown files with markdownlint-cli2.
         type: boolean
@@ -162,8 +162,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      issues: write
-      pull-requests: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

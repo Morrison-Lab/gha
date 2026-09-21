@@ -12,7 +12,6 @@ jobs:
   check:
     permissions:
       contents: read
-      pull-requests: read
     uses: Morrison-Lab/gha/.github/workflows/check-r-package.yml@v2
     # with:
     #   check-formatting: true

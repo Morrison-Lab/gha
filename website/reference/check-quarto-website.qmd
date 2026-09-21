@@ -55,7 +55,7 @@ Opt out of any specific check by passing its boolean flag as `false`
 | `yaml-config-file` | string | `''` | Custom yamllint config file path. |
 | `yaml-paths-ignore` | string | `''` | Patterns to exclude from YAML linting. |
 | `lint-workflows` | boolean | `true` | Enable workflow linting. |
-| `workflows-path` | string | `'.github/workflows'` | Path to workflow files. |
+| `workflows-path` | string | `'.'` | Path to workflow files. |
 | `lint-markdown` | boolean | `true` | Enable Markdown linting. |
 | `markdown-config-file` | string | `''` | Markdownlint config file path. |
 | `markdown-globs` | string | `'*.md'` | Git pathspecs of Markdown files to lint. |
@@ -85,7 +85,5 @@ jobs:
   check:
     permissions:
       contents: read
-      issues: write
-      pull-requests: read
     uses: Morrison-Lab/gha/.github/workflows/check-quarto-website.yml@v2
 ```

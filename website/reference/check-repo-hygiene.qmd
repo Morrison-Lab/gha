@@ -51,7 +51,7 @@ without giving up the other checks in the suite.
 | `yaml-config-file` | string | `''` | Custom yamllint config file path. |
 | `yaml-paths-ignore` | string | `''` | Paths to exempt from YAML linting. |
 | `lint-workflows` | boolean | `true` | Enable workflow linting. |
-| `workflows-path` | string | `'.github/workflows'` | Path to workflow files. |
+| `workflows-path` | string | `'.'` | Path to workflow files. |
 | `lint-markdown` | boolean | `true` | Enable Markdown linting. |
 | `markdown-config-file` | string | `''` | Markdownlint config file path. |
 | `markdown-globs` | string | `'*.md'` | Git pathspecs of Markdown files to lint. |

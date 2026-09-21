@@ -77,7 +77,7 @@ inputs:
     default: 'true'
   workflows-path:
     description: Path containing GitHub Actions workflow files to lint.
-    default: '.github/workflows'
+    default: '.'
   lint-markdown:
     description: Lint tracked Markdown files with markdownlint-cli2.
     default: 'true'
@@ -264,6 +264,10 @@ runs:
           base_ver=$(git show "origin/$BASE_REF:$DESC_PATH" | grep -E '^Version:' | awk '{print $2}' || true)
           echo "PR target branch version: $base_ver"
           echo "PR branch version:        $head_ver"
+          if [ -n "$base_ver" ] && [ "$head_ver" != "$base_ver" ]; then
+            echo "::error::PR branch DESCRIPTION Version ($head_ver) differs from target branch ($base_ver). Dev-version bumps are handled automatically after merge."
+            exit 1
+          fi
         else
           echo "Base branch DESCRIPTION not reachable; skipping version comparison."
         fi

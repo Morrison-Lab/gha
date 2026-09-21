@@ -76,7 +76,7 @@ inputs:
     default: 'true'
   workflows-path:
     description: Path containing GitHub Actions workflow files to lint.
-    default: '.github/workflows'
+    default: '.'
   lint-markdown:
     description: Lint tracked Markdown files with markdownlint-cli2.
     default: 'true'
@@ -216,7 +216,6 @@ runs:
       with:
         lychee-config: ${{ inputs.lychee-config }}
         lychee-args: ${{ inputs.lychee-args }}
-        create-issue-on-main: 'false'
         fail: ${{ inputs.fail }}
 
     - name: Check bibliography DOIs
