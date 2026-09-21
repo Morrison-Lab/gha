@@ -78,7 +78,7 @@ trap 'git config --global --unset url."$tmp_dir/remote1.git".insteadOf || true; 
 
 GITHUB_WORKSPACE="$ws" GITHUB_OUTPUT="$output_file" REPOS="test/remote1" CURRENT_REPO="test/caller" bash "$script" > "$tmp_dir/log3.txt"
 
-if [ -f "$ws/.reference-repos/remote1/README.md" ]; then
+if [ -f "$ws/.reference-repos/test/remote1/README.md" ]; then
   echo "OK   checkout-reference-repos.sh successfully checked out remote1"
 else
   echo "::error::checkout-reference-repos.sh failed to check out remote1"
@@ -97,6 +97,18 @@ if grep -q 'Reference Repositories Available' "$output_file" && grep -q 'test/re
 else
   echo "::error::checkout-reference-repos.sh failed to generate guidance output"
   failures=$((failures + 1))
+fi
+
+# Verify token does not pollute global git config
+rm -rf "$ws/.reference-repos/test/remote1"
+rm -f "$output_file"
+GITHUB_WORKSPACE="$ws" GITHUB_OUTPUT="$output_file" REPOS="test/remote1" CURRENT_REPO="test/caller" TOKEN="dummy-secret-token-12345" bash "$script" > "$tmp_dir/log4.txt" 2>&1 || true
+
+if git config --global --get-regexp '^url\..*dummy-secret-token' >/dev/null 2>&1; then
+  echo "::error::checkout-reference-repos.sh leaked TOKEN into global git config"
+  failures=$((failures + 1))
+else
+  echo "OK   checkout-reference-repos.sh does not leak TOKEN into global git config"
 fi
 
 # Verify git status in workspace is completely clean

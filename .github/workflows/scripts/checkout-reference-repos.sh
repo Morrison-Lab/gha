@@ -16,7 +16,7 @@ CURRENT_REPO="${CURRENT_REPO:-}"
 WORKSPACE="${GITHUB_WORKSPACE:-$(pwd)}"
 
 # Normalize and clean repo list: replace commas and newlines with spaces
-CLEAN_REPOS=$(echo "$REPOS" | tr ',\n' '  ' | xargs 2>/dev/null || true)
+CLEAN_REPOS=$(printf '%s' "$REPOS" | tr ',\n' '  ')
 
 set_output() {
   local key="$1"
@@ -26,7 +26,7 @@ set_output() {
   fi
 }
 
-if [ -z "$CLEAN_REPOS" ]; then
+if [ -z "${CLEAN_REPOS//[[:space:]]/}" ]; then
   set_output "dir" ""
   set_output "repos" ""
   if [ -n "${GITHUB_OUTPUT:-}" ]; then
@@ -44,17 +44,13 @@ mkdir -p "$TARGET_DIR"
 
 # Ensure target directory is ignored by git in the parent repository
 # so git status, git diff, and untracked file scans stay clean.
-if [ -d "$WORKSPACE/.git" ]; then
-  EXCLUDE_FILE="$WORKSPACE/.git/info/exclude"
+# Works in regular repositories, submodules, and worktrees.
+if git -C "$WORKSPACE" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  EXCLUDE_FILE="$(git -C "$WORKSPACE" rev-parse --git-path info/exclude)"
   mkdir -p "$(dirname "$EXCLUDE_FILE")"
   if ! grep -qs "^/$TARGET_DIR_NAME/" "$EXCLUDE_FILE" 2>/dev/null; then
     echo "/$TARGET_DIR_NAME/" >> "$EXCLUDE_FILE"
   fi
-fi
-
-# Configure auth token rewrite if provided
-if [ -n "$TOKEN" ]; then
-  git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
 fi
 
 CLONED_LIST=""
@@ -81,14 +77,18 @@ for item in $CLEAN_REPOS; do
     continue
   fi
 
-  REPO_NAME="${REPO_SPEC##*/}"
-  DEST="$TARGET_DIR/$REPO_NAME"
+  DEST="$TARGET_DIR/$REPO_SPEC"
 
   if [ -d "$DEST" ]; then
-    echo "::notice::Reference repo $REPO_NAME already exists at $DEST; skipping clone."
+    echo "::notice::Reference repo $REPO_SPEC already exists at $DEST; skipping clone."
   else
     echo "Cloning reference repo $REPO_SPEC into $DEST..."
-    CLONE_CMD=(git clone --depth 1)
+    mkdir -p "$(dirname "$DEST")"
+    CLONE_CMD=(git)
+    if [ -n "$TOKEN" ]; then
+      CLONE_CMD+=(-c "url.https://x-access-token:${TOKEN}@github.com/.insteadOf=https://github.com/")
+    fi
+    CLONE_CMD+=(clone --depth 1)
     if [ -n "$REF" ]; then
       CLONE_CMD+=(--branch "$REF")
     fi
@@ -108,7 +108,7 @@ for item in $CLEAN_REPOS; do
     CLONED_LIST="$CLONED_LIST, $REPO_SPEC"
   fi
 
-  GUIDANCE_ITEMS="${GUIDANCE_ITEMS}- \`$REPO_SPEC\` is available locally at \`$TARGET_DIR_NAME/$REPO_NAME\`\n"
+  GUIDANCE_ITEMS="${GUIDANCE_ITEMS}- \`$REPO_SPEC\` is available locally at \`$TARGET_DIR_NAME/$REPO_SPEC\`\n"
 done
 
 set_output "dir" "$TARGET_DIR_NAME"
