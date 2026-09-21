@@ -200,7 +200,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
 `small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `r-cmd-check`,
-`check-code-similarity`, and
+`check-code-similarity`,
+`check-duplicate-roxygen`, and
 `check-one-function-per-file` -- see
 the Versioning section
 of `README.md`).
@@ -287,6 +288,7 @@ which is why the capabilities above moved to `@v2`.
   which is proprietary and needs a paid licence for organization accounts.
   `check-links/` bundles `lychee.default.toml`;
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
+  `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
@@ -1952,6 +1954,10 @@ suite testing the top-level function parsers across Python (AST), R (brace/paren
 Shell (parameter expansion protection), JavaScript/TypeScript (generics, block comment stripping with line preservation),
 and Julia (multiple dispatch deduplication), along with opt-out header directives and defaults-agreement.
 Run it with `python3 -m pytest check-one-function-per-file/tests/ -v`.
+
+`check-duplicate-roxygen/tests/test_check_duplicate_roxygen.py` is a pytest
+suite testing roxygen block parsing, function signature extraction, duplicate parameter detection across functions and files, recommendation formulation (`@inheritParams` and `@inheritDotParams`), opt-out directives, and diff-scoping.
+Run it with `python3 -m pytest check-duplicate-roxygen/tests/ -v`.
 
 **The refusal cases are the ones to keep if the suite is ever trimmed, and
 they all fail in one direction.**

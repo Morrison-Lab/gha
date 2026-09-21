@@ -1,0 +1,14 @@
+# Copy to .github/workflows/check-duplicate-roxygen.yml in your repo.
+name: Check Duplicate Roxygen
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-duplicate-roxygen.yml@v2

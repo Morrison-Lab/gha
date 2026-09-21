@@ -25,7 +25,8 @@ to `@v2`;
 `spellcheck.yml`,
 `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`,
 `claude-manage-project.yml`, `r-cmd-check.yml`,
-`check-code-similarity.yml`, and
+`check-code-similarity.yml`,
+`check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
 only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
