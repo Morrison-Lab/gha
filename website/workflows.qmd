@@ -345,8 +345,9 @@ The two Claude workflows are a pair.
   which `GET .../commits/{ref}/check-runs` needs
   and `actions: read` does not cover (gha#829).
   Grant it, and keep it granted.
-  The tagged `@v2` requires it at startup regardless of whether the
-  model job uses it.
+  It is optional under the currently-tagged `@v2`
+  (which no longer requests it, per gha#832)
+  but required by the model job once you adopt `@v3`.
   The model job briefly gave the scope up, because a called workflow
   cannot request a permission its caller lacks, so requesting one
   startup-fails every caller without it

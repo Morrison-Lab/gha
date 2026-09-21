@@ -163,8 +163,9 @@ that need to write must have the **caller** grant it on the calling job:
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`,
-  `checks: read` (grant it; required by `@v2` at startup, and by the model
-  job again as of `@v3`),
+  `checks: read` (grant it; optional under `@v2`,
+  which no longer requests it per gha#832,
+  but required by the model job as of `@v3`),
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
   (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
@@ -195,8 +196,10 @@ that need to write must have the **caller** grant it on the calling job:
   [`v3`](https://github.com/Morrison-Lab/gha/issues/833) fixes by
   reinstating it there, now that the caller-side grant above is
   established practice.
-  Keep granting `checks: read` regardless: it is required by `@v2` at
-  startup, and it is what the model job on `@v3` actually uses.
+  Keep granting `checks: read` regardless:
+  it is optional under the currently-tagged `@v2`
+  (which no longer requests it, per gha#832)
+  but required by the model job once you adopt `@v3`.
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
