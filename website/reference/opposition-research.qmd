@@ -82,5 +82,3 @@ jobs:
 See the
 [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
 directory for the full caller stub (`opposition-research.yml`).
-
-
