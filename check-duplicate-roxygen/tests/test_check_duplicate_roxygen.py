@@ -552,3 +552,13 @@ def test_defaults_agreement():
     assert mod.DEFAULT_EXTENSIONS == expected_exts
     expected_ignore = [p.strip() for p in action_inputs["paths-ignore"]["default"].split(",") if p.strip()]
     assert mod.DEFAULT_PATHS_IGNORE == expected_ignore
+
+
+def test_param_redos_resilience():
+    # Verify that comma-separated parameter parsing has no polynomial/exponential backtracking
+    attack_line = "#' @param " + ".,...," * 200 + "x final_desc"
+    res = mod.parse_param_line(attack_line)
+    assert res is not None
+    names, desc = res
+    assert len(names) == 401
+    assert desc == "final_desc"

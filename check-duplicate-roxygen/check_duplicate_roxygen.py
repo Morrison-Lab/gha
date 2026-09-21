@@ -55,10 +55,9 @@ OPT_OUT_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-PARAM_REGEX = re.compile(
-    r"^#'\s*@param\s+((?:(?:`[^`]+`|\.\.\.|[A-Za-z0-9._]+)\s*,\s*)*(?:`[^`]+`|\.\.\.|[A-Za-z0-9._]+))(?:\s+(.*))?$",
-    re.DOTALL,
-)
+# Token pattern for roxygen parameter names: `identifier`, ..., or [A-Za-z0-9._]+
+PARAM_TOKEN_REGEX = re.compile(r"^(`[^`]+`|\.\.\.|[A-Za-z0-9._]+)(.*)$", re.DOTALL)
+PARAM_COMMA_REGEX = re.compile(r"^[ \t]*,[ \t]*(.*)$", re.DOTALL)
 
 TAG_REGEX = re.compile(r"^#'\s*@([a-zA-Z0-9._]+)")
 INHERIT_PARAMS_REGEX = re.compile(r"^#'\s*@inheritParams\s+([A-Za-z0-9._:]+)")
@@ -372,6 +371,39 @@ def parse_roxygen_blocks(file_path: Path, content: str) -> List[RoxygenBlock]:
     return blocks
 
 
+def parse_param_line(line_str: str) -> Optional[Tuple[List[str], str]]:
+    """Parse roxygen @param line into parameter names and initial description.
+
+    Uses sequential token parsing to eliminate catastrophic regex backtracking.
+    """
+    m = re.match(r"^#'\s*@param\s+(.*)$", line_str, re.DOTALL)
+    if not m:
+        return None
+    rest = m.group(1).strip()
+    if not rest:
+        return None
+
+    param_names: List[str] = []
+    while rest:
+        tm = PARAM_TOKEN_REGEX.match(rest)
+        if not tm:
+            break
+        name = tm.group(1).strip("`")
+        param_names.append(name)
+        rest = tm.group(2)
+        comma_m = PARAM_COMMA_REGEX.match(rest)
+        if comma_m:
+            rest = comma_m.group(1)
+        else:
+            break
+
+    if not param_names:
+        return None
+
+    desc = rest.strip()
+    return param_names, desc
+
+
 def parse_single_roxygen_block(
     file_path: Path,
     start_line: int,
@@ -396,15 +428,10 @@ def parse_single_roxygen_block(
             desc_lines = []
 
     for line_num, line_str in block_lines:
-        param_m = PARAM_REGEX.match(line_str)
-        if param_m:
+        param_info = parse_param_line(line_str)
+        if param_info is not None:
             flush_current_params()
-            raw_param_names = [
-                n.strip().strip("`")
-                for n in re.split(r"\s*,\s*", param_m.group(1))
-                if n.strip()
-            ]
-            initial_desc = (param_m.group(2) or "").strip()
+            raw_param_names, initial_desc = param_info
             param_opt_out = bool(OPT_OUT_PATTERN.search(line_str))
             current_params = [
                 RoxygenParam(
