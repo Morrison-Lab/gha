@@ -233,6 +233,7 @@ def git_show(ref: str, path: str, cwd: pathlib.Path | None = None) -> str:
             ["git", "show", f"{ref}:{path}"],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=True,
             cwd=cwd,
         )
@@ -248,18 +249,19 @@ def get_git_workflows(ref: str, workflows_dir: str = ".github/workflows", cwd: p
             ["git", "ls-tree", "-r", "--name-only", ref, workflows_dir],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             check=True,
             cwd=cwd,
         )
         files = []
-        target_dir = pathlib.Path(workflows_dir)
+        target_posix = pathlib.PurePosixPath(workflows_dir).as_posix()
         for line in proc.stdout.strip().splitlines():
             line = line.strip()
             if not line:
                 continue
-            p = pathlib.Path(line)
+            p = pathlib.PurePosixPath(line)
             # Reuses discover_workflows rules: .yml/.yaml, no dotfiles, direct child of workflows_dir
-            if p.suffix in (".yml", ".yaml") and not p.name.startswith(".") and p.parent == target_dir:
+            if p.suffix in (".yml", ".yaml") and not p.name.startswith(".") and p.parent.as_posix() == target_posix:
                 files.append(line)
         return sorted(files)
     except subprocess.CalledProcessError as exc:
@@ -271,6 +273,7 @@ def audit_permissions(
     head_ref: str | None = None,
     workflows_dir: str = ".github/workflows",
     cwd: pathlib.Path | None = None,
+    exempt_workflows: list[str] | set[str] | None = None,
 ) -> tuple[list[str], int, int, list[str]]:
     """Audit callee permissions between base_ref and head_ref (or working tree).
 
@@ -286,7 +289,7 @@ def audit_permissions(
         target_dir = (cwd / workflows_dir) if cwd else pathlib.Path(workflows_dir)
         discovered = discover_workflows(target_dir)
         head_files = set(
-            str(p.relative_to(cwd) if cwd else p)
+            (p.relative_to(cwd) if cwd else p).as_posix()
             for p in discovered
         )
 
@@ -320,6 +323,14 @@ def audit_permissions(
             except Exception:
                 pass
 
+    exempt_set = set()
+    if exempt_workflows:
+        for ew in exempt_workflows:
+            ew_clean = str(ew).strip()
+            if ew_clean:
+                exempt_set.add(pathlib.PurePosixPath(ew_clean).as_posix())
+                exempt_set.add(pathlib.PurePosixPath(ew_clean).name)
+
     all_violations: list[str] = []
     examined_workflows = 0
     examined_jobs = 0
@@ -340,6 +351,12 @@ def audit_permissions(
             head_doc = load_workflow(file_disk)
 
         if not is_reusable_workflow(head_doc):
+            continue
+
+        if wf_path in exempt_set or pathlib.PurePosixPath(wf_path).name in exempt_set:
+            notes.append(
+                f"Notice: reusable workflow '{wf_path}' is exempt from permission widening audit."
+            )
             continue
 
         examined_workflows += 1
@@ -402,6 +419,12 @@ def main(argv: list[str] | None = None) -> int:
         default=".github/workflows",
         help="Directory containing GitHub Actions workflows (default: .github/workflows).",
     )
+    parser.add_argument(
+        "--exempt-workflow",
+        action="append",
+        default=[],
+        help="Path or filename of reusable workflow exempt from widening audit (e.g. major version bump).",
+    )
 
     args = parser.parse_args(argv)
 
@@ -414,6 +437,7 @@ def main(argv: list[str] | None = None) -> int:
             base_ref=args.base_ref,
             head_ref=args.head_ref,
             workflows_dir=args.workflows_dir,
+            exempt_workflows=args.exempt_workflow,
         )
     except Exception as exc:
         print(f"::error::Audit failed with error: {exc}", file=sys.stderr)

@@ -27,11 +27,11 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s)
-   and `checks: read`, which the currently-tagged @v2 requires and a
-   future v3 will require again. The model job itself requests exactly
-   contents/pull-requests/issues/actions and no more: a callee cannot
-   request a permission its caller lacks without startup-failing the
-   whole run for that caller (gha#831).
+   and `checks: read` (the model job's check-run reads 403 without it,
+   gha#829), and the model job itself requests exactly
+   contents/pull-requests/issues/actions/checks and no more -- reinstated
+   as of v3 (gha#833) after v2 dropped it (gha#831) to stop startup-failing
+   every caller that had not yet granted it.
 8. Every `steps.<id>.outputs.<name>` the workflow reads from a step whose
    `uses:` names one of this repo's composites
    (`Morrison-Lab/gha/.github/actions/<x>@...` or `./.github/actions/<x>`)
@@ -359,18 +359,22 @@ def check_workflow(
     )
     # An exact set, not a per-key check. A reusable workflow's job cannot
     # request a permission its caller lacks -- the run ends in
-    # startup_failure before any job starts -- so ANY addition here is a
-    # breaking change for every consumer that has not granted it, and
-    # belongs in a major-tag bump rather than a v2 slide. #830 added
-    # checks: read, and the v2 slide onto it killed review dispatch in 17
-    # of the 18 repositories pinning THIS workflow at @v2 (gha#831). Keyed
-    # on the whole set so the next addition fails whatever it is called.
+    # startup_failure before any job starts -- so ANY addition beyond this
+    # v3 baseline is a breaking change for every consumer still on @v2, and
+    # belongs in its own major-tag bump rather than a v3 slide, exactly as
+    # #830's checks: read addition broke 17 of the 18 @v2 consumers when
+    # v2 was slid onto it (gha#831). checks: read itself is back in the set
+    # because @v3 (gha#833) is the sanctioned major-tag bump for it, not a
+    # slide of an existing tag. Keyed on the whole set so the next addition
+    # fails whatever it is called.
     check(
-        set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
-        "claude-review requests exactly contents/pull-requests/issues/actions "
-        "(the set changed; ADDING one breaks every caller lacking it and "
-        "needs a v3 -- gha#831 -- while a removal is safe but still "
-        "deliberate)",
+        set(review_perms)
+        == {"contents", "pull-requests", "issues", "actions", "checks"},
+        "claude-review requests exactly "
+        "contents/pull-requests/issues/actions/checks "
+        "(the set changed; ADDING one breaks every @v3 caller lacking it "
+        "and needs its own major-tag bump, while a removal drops the "
+        "gha#833 fix and needs to be deliberate, not accidental)",
     )
     check(
         post_perms.get("pull-requests") == "write",
@@ -1006,7 +1010,7 @@ def check_workflow(
             check(
                 job_permissions(review_job).get("checks") == "read",
                 "examples/claude-code-review.yml grants checks: read "
-                "(required by the currently-tagged @v2; kept for the v3 -- gha#833)",
+                "(required by @v2, and by @v3's model job -- gha#833)",
             )
         grant_list_re = (
             r"`claude-code-review`[\s\S]{0,80}?grant[s]? "
@@ -1085,12 +1089,12 @@ def check_workflow(
                 continue
             check(
                 re.search(
-                    r"`issues`\s*/\s*`actions: read`\)",
+                    r"`issues`\s*/\s*`actions`\s*/\s*`checks: read`\)",
                     doc.read_text(encoding="utf-8"),
                 )
                 is not None,
-                f"{rel} model-scope list ends at actions: read "
-                "(the model job holds no checks: read -- gha#831)",
+                f"{rel} model-scope list ends at checks: read "
+                "(the model job holds checks: read again as of v3 -- gha#833)",
             )
 
         dogfood = root / ".github" / "workflows" / "claude-review.yml"
@@ -1228,6 +1232,7 @@ jobs:
       pull-requests: read
       issues: read
       actions: read
+      checks: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
@@ -1570,7 +1575,8 @@ runs:
                 "      contents: read\n"
                 "      pull-requests: read\n"
                 "      issues: read\n"
-                "      actions: read\n",
+                "      actions: read\n"
+                "      checks: read\n",
                 "    permissions: write-all\n",
                 1,
             )
@@ -1587,17 +1593,39 @@ runs:
         # that the exact-set check fires on an ADDED scope -- which is the
         # regression it exists for. gha#831's incident was exactly one added
         # read scope, so the case has to be an addition, not a replacement.
+        # checks: read is now part of the v3 baseline (gha#833), so the
+        # added scope has to be something else entirely to still exercise
+        # an addition rather than restoring what #831 already covers.
         added_scope = root / "added-scope.yml"
         added_scope.write_text(
             good_wf.read_text().replace(
-                "      actions: read\n",
-                "      actions: read\n      checks: read\n",
+                "      checks: read\n",
+                "      checks: read\n      security-events: read\n",
                 1,
             )
         )
         failures += expect(
             "an added scope on the model job fails",
             run(added_scope, good_action),
+            False,
+            "claude-review requests exactly",
+        )
+
+        # The mirror of added_scope: DROPPING checks: read from the v3
+        # baseline has to fail too, since that's the actual regression this
+        # change guards against going forward -- losing gha#833's fix by a
+        # careless future edit, the same way #831 lost it once already.
+        dropped_checks = root / "dropped-checks.yml"
+        dropped_checks.write_text(
+            good_wf.read_text().replace(
+                "      actions: read\n      checks: read\n",
+                "      actions: read\n",
+                1,
+            )
+        )
+        failures += expect(
+            "dropping checks: read from the model job fails",
+            run(dropped_checks, good_action),
             False,
             "claude-review requests exactly",
         )

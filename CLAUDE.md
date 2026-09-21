@@ -3097,11 +3097,12 @@ and that sidecar files are omitted when the corresponding input is empty
 The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
 and asserts the facts a future edit could reverse silently:
 the model job requests EXACTLY the keys
-`contents`/`pull-requests`/`issues`/`actions` and no others (the set is over
-KEYS; separate per-key assertions pin the values against `write`) --- so
-any future addition fails offline instead of at a consumer's next PR, which
-is what gha#830 did not (gha#831, gha#832) ---
-so it grants no forge-write, no `id-token: write`, and no `checks: read`,
+`contents`/`pull-requests`/`issues`/`actions`/`checks` and no others (the set
+is over KEYS; separate per-key assertions pin the values against `write`)
+--- so any future addition beyond this v3 baseline fails offline instead of
+at a consumer's next PR, which is what gha#830 did not (gha#831, gha#832,
+gha#833) ---
+so it grants no forge-write and no `id-token: write`,
 the posting job holds `pull-requests: write` /
 `issues: write` / `actions: read` and does not invoke the model,
 `github_token` is forwarded so the App-token write exchange is skipped,
