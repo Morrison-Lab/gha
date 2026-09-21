@@ -778,14 +778,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tr class="even">
 <td><code>labels</code></td>
 <td>string</td>
-<td><code>'oppo,enhancement'</code></td>
+<td><code>'enhancement'</code></td>
 <td>Comma-separated labels applied to created issues.</td>
 </tr>
 <tr class="odd">
 <td><code>model</code></td>
 <td>string</td>
-<td><code>'claude-sonnet-4-5'</code></td>
-<td>Claude model to use for the research session.</td>
+<td><code>''</code></td>
+<td>Claude model to use for the research session (empty defers to default).</td>
 </tr>
 <tr class="even">
 <td><code>use-ai-config</code></td>
@@ -867,7 +867,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">dry-run</span><span class="kw">:</span><span class="at"> ${{ inputs.dry-run || false }}</span></span>
 <span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   scope-guidance: 'Specific guidance on what features are on-scope vs out-of-scope.'</span></span>
 <span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-issues: 3</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   labels: 'oppo,enhancement'</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   labels: 'enhancement'</span></span>
 <span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #   model: 'claude-sonnet-4-5'</span></span>
 <span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: true</span></span>
 <span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 45</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
