@@ -1,0 +1,51 @@
+---
+title: "check-duplicate-roxygen.yml"
+---
+
+Check for duplicate roxygen parameter documentation across R code files.
+The check scans R files to detect duplicated roxygen2 `@param` descriptions
+across functions and recommends consolidating them using `@inheritParams`
+or `@inheritDotParams`.
+
+Reusing documentation across functions keeps parameter descriptions synchronized
+automatically, prevents documentation drift, and improves maintainability.
+
+Files, blocks, or parameters that intentionally duplicate documentation
+can opt out by adding a comment directive:
+
+```r
+# check-duplicate-roxygen: allow-duplicates
+```
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | string | `'.'` | Target directory or file path to scan. |
+| `paths-ignore` | string | `'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'` | Comma- or newline-separated paths or glob patterns to ignore. |
+| `extensions` | string | `'.R, .r'` | Comma- or space-separated list of file extensions to check. |
+| `min-desc-length` | string | `'10'` | Minimum character length of parameter description to consider for duplication. |
+| `base-ref` | string | `''` | Git ref to diff against for diff-scoped checking (e.g. `origin/main`). On pull requests and pushes, defaults to the PR base ref or previous commit automatically for diff-scoping. |
+| `fail` | boolean | `true` | Whether to fail the workflow if duplicate roxygen documentation is detected. |
+| `python-version` | string | `'3.x'` | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check duplicate roxygen
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-duplicate-roxygen.yml@v2
+```
+
+See the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for caller stubs (e.g. `examples/check-duplicate-roxygen.yml`).
