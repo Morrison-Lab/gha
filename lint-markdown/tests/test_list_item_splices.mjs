@@ -64,6 +64,30 @@ Introductory paragraph line directly preceding a list item.
   assert.match(stdout, /Found 1 list-item merge splice/);
   assert.match(stdout, /single_line_splice\.md,line=4/);
 
+  // Positive control 3: paragraph following spaced thematic break spliced onto list item
+  const spacedHrSpliceFile = join(testDir, 'spaced_hr_splice.md');
+  const spacedHrSpliceContent = `# Spaced HR Splice
+
+* * *
+Paragraph following spaced thematic break.
+* Spliced bullet item.
+`;
+  writeFileSync(spacedHrSpliceFile, spacedHrSpliceContent);
+
+  failed = false;
+  try {
+    stdout = execFileSync('node', [scriptPath], {
+      env: { ...process.env, MARKDOWNLINT_GLOBS: spacedHrSpliceFile, LIST_ITEM_SPLICE_BASE_REF: 'all' },
+      encoding: 'utf8',
+    });
+  } catch (err) {
+    failed = true;
+    stdout = err.stdout || '';
+  }
+  assert.strictEqual(failed, true, 'Expected check_list_item_splices.mjs to fail on spaced_hr_splice.md');
+  assert.match(stdout, /Found 1 list-item merge splice/);
+  assert.match(stdout, /spaced_hr_splice\.md,line=5/);
+
   // Test empty base-ref skip
   stdout = execFileSync('node', [scriptPath], {
     env: { ...process.env, MARKDOWNLINT_GLOBS: spliceFile, LIST_ITEM_SPLICE_BASE_REF: '' },
@@ -118,6 +142,9 @@ Introductory paragraph line directly preceding a list item.
 
 ---
 * Item after HR
+
+* * *
+* Item after spaced HR
 `;
   writeFileSync(cleanFile, cleanContent);
 

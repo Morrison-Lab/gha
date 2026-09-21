@@ -1652,8 +1652,8 @@ than asserting the resolution alone (gha#741 review).
 
 `lint-markdown/check_list_item_splices.mjs` (tested by
 `node lint-markdown/tests/test_list_item_splices.mjs`) flags list-item merge
-splices: a list item spliced directly onto a previous item's continuation line
-with no intervening blank line (gha#324).
+splices: a list item spliced directly onto preceding paragraph text
+with no intervening blank line (gha#324, gha#895).
 CI runs it as part of the `lint-markdown` composite action and job in
 `_selftest.yml`.
 
