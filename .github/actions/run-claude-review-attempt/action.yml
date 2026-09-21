@@ -126,6 +126,14 @@ inputs:
       skips it.
     required: false
     default: 'true'
+  use-posit-skills:
+    description: >-
+      'true' (the default) to install the posit-dev/skills plugin
+      (posit-dev@posit-dev-skills) alongside the built-in code-review and
+      ai-config plugins below (claude-code-review.yml's use-posit-skills
+      input). Any other value skips it.
+    required: false
+    default: 'true'
   extra-plugin-marketplaces:
     description: >-
       Extra newline-separated plugin marketplace Git URLs, appended to the
@@ -202,7 +210,7 @@ runs:
         # claude-code-action's base-action/src/install-plugins.ts:
         # parseMarketplaces()/parsePlugins() both `.map(trim).filter(length)`.)
         #
-        # The ai-config URL and plugin ref are spelled out here AND in
+        # The ai-config and posit-dev URLs and plugin refs are spelled out here AND in
         # claude.yml (the agent's copy) rather than shared from one place: a
         # composite action cannot `uses:` a sibling local action, because a
         # relative path resolves against the CALLER's checkout instead of this
@@ -211,10 +219,12 @@ runs:
         plugin_marketplaces: |
           https://github.com/anthropics/claude-code.git
           ${{ inputs.use-ai-config == 'true' && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
+          ${{ inputs.use-posit-skills == 'true' && 'https://github.com/posit-dev/skills.git' || '' }}
           ${{ inputs.extra-plugin-marketplaces }}
         plugins: |
           code-review@claude-code-plugins
           ${{ inputs.use-ai-config == 'true' && 'ai-config@Morrison-Lab' || '' }}
+          ${{ inputs.use-posit-skills == 'true' && 'posit-dev@posit-dev-skills' || '' }}
           ${{ inputs.extra-plugins }}
         # The inline-comment MCP tool (`mcp__github_inline_comment__create_inline_comment`)
         # is intentionally NOT allowlisted, and neither is `mcp__github__*`
@@ -713,6 +723,8 @@ runs:
           launch after it. Use WebSearch/WebFetch to check for it (and fetch
           any URL the PR already cites for it) before flagging it as a
           possible hallucination.
+
+          ${{ inputs.use-posit-skills == 'true' && '**Posit critical review guidelines.** The `posit-dev@posit-dev-skills` plugin is active: apply the `critical-code-reviewer` rubric — evaluate correctness, edge cases, severity tiers (blocking, required changes, suggestions, noted), and maintain constructive scrutiny.' || '' }}
 
           **Put every finding in the review you write as your final
           message**, including line-specific ones. Group those by file with
