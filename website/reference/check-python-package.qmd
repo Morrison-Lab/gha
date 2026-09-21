@@ -10,17 +10,28 @@ or reusable workflow call.
 
 Runs the full Morrison-Lab repository hygiene pass plus Python package checks:
 
-- [`check-junk-files.yml`](check-junk-files.qmd): OS and editor detritus (`.DS_Store`, `Thumbs.db`, `__pycache__`, `*.pyc`, etc.)
-- [`check-secrets.yml`](check-secrets.qmd): Gitleaks scan of git history for committed credentials and tokens
-- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd): flags non-standard unicode characters, curly quotes, and smart dashes
-- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd): enforces semantic line breaks on modified lines in diffs
-- [`check-typos.yml`](check-typos.qmd): crate-ci/typos CLI scan for spelling errors on modified files
-- [`lint-yaml.yml`](lint-yaml.qmd): yamllint over tracked YAML files
-- [`lint-workflows.yml`](lint-workflows.qmd): actionlint and zizmor over GitHub Actions workflows
-- [`lint-markdown.yml`](lint-markdown.qmd): markdownlint-cli2 over tracked Markdown files
-- **Python linting**: runs `ruff check` on the codebase
-- **Python formatting**: runs `ruff format --check` to enforce consistent formatting
-- **Python tests**: executes `pytest` when a `tests/` or `test/` directory is present
+- [`check-junk-files.yml`](check-junk-files.qmd):
+  OS and editor detritus (`.DS_Store`, `Thumbs.db`, `__pycache__`, etc.)
+- [`check-secrets.yml`](check-secrets.qmd):
+  Gitleaks scan of git history for committed credentials and tokens
+- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd):
+  flags non-standard unicode characters, curly quotes, and smart dashes
+- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd):
+  enforces semantic line breaks on modified lines in diffs
+- [`check-typos.yml`](check-typos.qmd):
+  crate-ci/typos CLI scan for spelling errors on modified files
+- [`lint-yaml.yml`](lint-yaml.qmd):
+  yamllint over tracked YAML files
+- [`lint-workflows.yml`](lint-workflows.qmd):
+  actionlint and zizmor over GitHub Actions workflows
+- [`lint-markdown.yml`](lint-markdown.qmd):
+  markdownlint-cli2 over tracked Markdown files
+- **Python linting**:
+  runs `ruff check` on the codebase
+- **Python formatting**:
+  runs `ruff format --check` to enforce consistent formatting
+- **Python tests**:
+  executes `pytest` when a `tests/` or `test/` directory is present
 
 Every check is enabled by default.
 Opt out of any specific check by passing its boolean flag as `false`.

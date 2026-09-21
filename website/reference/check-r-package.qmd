@@ -4,28 +4,44 @@ title: "check-r-package.yml"
 
 Bundles the standard check suite for R package repositories
 (such as [`Morrison-Lab/rpt`](https://github.com/Morrison-Lab/rpt)).
-Replaces individual hygiene and R code review checks with a single composite action
-or reusable workflow call.
+Replaces individual hygiene and R code review checks
+with a single composite action or reusable workflow call.
 
 ## What it runs
 
-Runs the full Morrison-Lab repository hygiene pass plus R package-specific checks:
+Runs the full Morrison-Lab repository hygiene pass
+plus R package-specific checks:
 
-- [`check-junk-files.yml`](check-junk-files.qmd): OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, `.RData`, etc.)
-- [`check-secrets.yml`](check-secrets.qmd): Gitleaks scan of git history for committed credentials and tokens
-- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd): flags non-standard unicode characters, curly quotes, and smart dashes
-- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd): enforces semantic line breaks on modified lines in diffs
-- [`check-typos.yml`](check-typos.qmd): crate-ci/typos CLI scan for spelling errors on modified files
-- [`check-ai-tells.yml`](check-ai-tells.qmd): scans narrative prose (*.md, *.Rmd, *.qmd) for AI cliches and tells
-- [`lint-yaml.yml`](lint-yaml.qmd): yamllint over tracked YAML files
-- [`lint-workflows.yml`](lint-workflows.qmd): actionlint and zizmor over GitHub Actions workflows
-- [`lint-markdown.yml`](lint-markdown.qmd): markdownlint-cli2 over tracked Markdown files
-- [`check-duplicate-roxygen.yml`](check-duplicate-roxygen.qmd): detects duplicated `@param` documentation across `R/` files
-- [`check-one-function-per-file.yml`](check-one-function-per-file.qmd): enforces single function definition per file in `R/`
-- [`check-formatting.yml`](check-formatting.qmd): verifies R code formatting via Air (`posit-dev/setup-air`)
-- [`check-extra.yml`](check-extra.qmd): runs extra checks (warnings as errors, readme freshness) when opt-in
-- [`check-news.yml`](check-news.qmd): verifies `NEWS.md` is updated on pull requests
-- [`version-check.yml`](version-check.qmd): verifies package version consistency on pull requests
+- [`check-junk-files.yml`](check-junk-files.qmd):
+  OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, etc.)
+- [`check-secrets.yml`](check-secrets.qmd):
+  Gitleaks scan of git history for committed credentials and tokens
+- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd):
+  flags non-standard unicode characters, curly quotes, and smart dashes
+- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd):
+  enforces semantic line breaks on modified lines in diffs
+- [`check-typos.yml`](check-typos.qmd):
+  crate-ci/typos CLI scan for spelling errors on modified files
+- [`check-ai-tells.yml`](check-ai-tells.qmd):
+  scans narrative prose (`*.md`, `*.Rmd`, `*.qmd`) for AI cliches and tells
+- [`lint-yaml.yml`](lint-yaml.qmd):
+  yamllint over tracked YAML files
+- [`lint-workflows.yml`](lint-workflows.qmd):
+  actionlint and zizmor over GitHub Actions workflows
+- [`lint-markdown.yml`](lint-markdown.qmd):
+  markdownlint-cli2 over tracked Markdown files
+- [`check-duplicate-roxygen.yml`](check-duplicate-roxygen.qmd):
+  detects duplicated `@param` documentation across `R/` files
+- [`check-one-function-per-file.yml`](check-one-function-per-file.qmd):
+  enforces single function definition per file in `R/`
+- [`check-formatting.yml`](check-formatting.qmd):
+  verifies R code formatting via Air (`posit-dev/setup-air`)
+- [`check-extra.yml`](check-extra.qmd):
+  runs extra checks (warnings as errors, readme freshness) when opt-in
+- [`check-news.yml`](check-news.qmd):
+  verifies `NEWS.md` is updated on pull requests
+- [`version-check.yml`](version-check.qmd):
+  verifies package version consistency on pull requests
 
 Every check is enabled by default (except `check-extra`, which is opt-in).
 Opt out of any specific check by passing its boolean flag as `false`.

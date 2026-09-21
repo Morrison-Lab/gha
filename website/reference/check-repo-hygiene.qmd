@@ -2,25 +2,35 @@
 title: "check-repo-hygiene.yml"
 ---
 
-Bundles the standard repository hygiene check suite for Morrison-Lab repositories.
+Bundles the standard repository hygiene check suite
+for Morrison-Lab repositories.
 Runs eight fundamental checks in a single job or composite action:
 
-- [`check-junk-files.yml`](check-junk-files.qmd): OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, `.RData`, etc.)
-- [`check-secrets.yml`](check-secrets.qmd): Gitleaks scan of git history for committed credentials and tokens
-- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd): flags non-standard unicode characters, curly quotes, and smart dashes
-- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd): enforces semantic line breaks on modified lines in diffs
-- [`check-typos.yml`](check-typos.qmd): crate-ci/typos CLI scan for spelling errors on modified files
-- [`lint-yaml.yml`](lint-yaml.qmd): yamllint over tracked YAML files
-- [`lint-workflows.yml`](lint-workflows.qmd): actionlint and zizmor over GitHub Actions workflows
-- [`lint-markdown.yml`](lint-markdown.qmd): markdownlint-cli2 over tracked Markdown files
+- [`check-junk-files.yml`](check-junk-files.qmd):
+  OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, etc.)
+- [`check-secrets.yml`](check-secrets.qmd):
+  Gitleaks scan of git history for committed credentials and tokens
+- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd):
+  flags non-standard unicode characters, curly quotes, and smart dashes
+- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd):
+  enforces semantic line breaks on modified lines in diffs
+- [`check-typos.yml`](check-typos.qmd):
+  crate-ci/typos CLI scan for spelling errors on modified files
+- [`lint-yaml.yml`](lint-yaml.qmd):
+  yamllint over tracked YAML files
+- [`lint-workflows.yml`](lint-workflows.qmd):
+  actionlint and zizmor over GitHub Actions workflows
+- [`lint-markdown.yml`](lint-markdown.qmd):
+  markdownlint-cli2 over tracked Markdown files
 
 ## When to use this workflow
 
-Use this workflow in general repositories that do not fit a specific template type
-(such as `ai-config` or tool repositories),
+Use this workflow in general repositories that do not fit a specific template
+type (such as `ai-config` or tool repositories),
 or when you want a baseline hygiene pass across any repo.
-Repository types like Quarto websites, Quarto books, Quarto manuscripts, and R packages
-have their own dedicated bundled workflows that build on top of these checks.
+Repository types like Quarto websites, Quarto books, Quarto manuscripts,
+and R packages have their own dedicated bundled workflows
+that build on top of these checks.
 
 Every individual check is enabled by default,
 and can be individually disabled with a boolean flag

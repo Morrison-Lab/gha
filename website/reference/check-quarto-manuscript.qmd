@@ -2,7 +2,8 @@
 title: "check-quarto-manuscript.yml"
 ---
 
-Bundles the standard check suite for Quarto manuscript and academic paper repositories
+Bundles the standard check suite for Quarto manuscript
+and academic paper repositories
 (such as [`Morrison-Lab/qmt`](https://github.com/Morrison-Lab/qmt)).
 Replaces individual workflow files with a single composite action
 or reusable workflow call.
@@ -11,19 +12,33 @@ or reusable workflow call.
 
 Runs the full Morrison-Lab repository hygiene pass plus manuscript-specific checks:
 
-- [`check-junk-files.yml`](check-junk-files.qmd): OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, `.RData`, etc.)
-- [`check-secrets.yml`](check-secrets.qmd): Gitleaks scan of git history for committed credentials and tokens
-- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd): flags non-standard unicode characters, curly quotes, and smart dashes
-- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd): enforces semantic line breaks on modified lines in diffs
-- [`check-typos.yml`](check-typos.qmd): crate-ci/typos CLI scan for spelling errors on modified files
-- [`check-ai-tells.yml`](check-ai-tells.qmd): scans narrative prose (*.md, *.qmd) for AI cliches and tells
-- [`lint-yaml.yml`](lint-yaml.qmd): yamllint over tracked YAML files
-- [`lint-workflows.yml`](lint-workflows.qmd): actionlint and zizmor over GitHub Actions workflows
-- [`lint-markdown.yml`](lint-markdown.qmd): markdownlint-cli2 over tracked Markdown files
-- [`lint-qmd.yml`](lint-qmd.qmd): markdownlint over prose sections of tracked `.qmd` files (80-character line length limit)
-- [`check-links.yml`](check-links.qmd): lychee link checker across manuscript sections, references, and external links
-- [`check-bibliography-dois.yml`](check-bibliography-dois.qmd): validates BibTeX bibliography entries in `.bib` files
-- [`check-equation-renders.yml`](check-equation-renders.qmd): crawls rendered HTML manuscript pages with a headless browser to ensure MathJax typesets all equations without errors (active when `equation-renders-site-dir` is specified)
+- [`check-junk-files.yml`](check-junk-files.qmd):
+  OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, etc.)
+- [`check-secrets.yml`](check-secrets.qmd):
+  Gitleaks scan of git history for committed credentials and tokens
+- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd):
+  flags non-standard unicode characters, curly quotes, and smart dashes
+- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd):
+  enforces semantic line breaks on modified lines in diffs
+- [`check-typos.yml`](check-typos.qmd):
+  crate-ci/typos CLI scan for spelling errors on modified files
+- [`check-ai-tells.yml`](check-ai-tells.qmd):
+  scans narrative prose (`*.md`, `*.qmd`) for AI cliches and tells
+- [`lint-yaml.yml`](lint-yaml.qmd):
+  yamllint over tracked YAML files
+- [`lint-workflows.yml`](lint-workflows.qmd):
+  actionlint and zizmor over GitHub Actions workflows
+- [`lint-markdown.yml`](lint-markdown.qmd):
+  markdownlint-cli2 over tracked Markdown files
+- [`lint-qmd.yml`](lint-qmd.qmd):
+  markdownlint over prose sections of tracked `.qmd` files
+- [`check-links.yml`](check-links.qmd):
+  lychee link checker across manuscript sections, references, and external links
+- [`check-bibliography-dois.yml`](check-bibliography-dois.qmd):
+  validates BibTeX bibliography entries in `.bib` files
+- [`check-equation-renders.yml`](check-equation-renders.qmd):
+  crawls rendered HTML manuscript pages to ensure MathJax typesets all equations
+  without errors (active when `equation-renders-site-dir` is specified)
 
 Every check is enabled by default.
 Opt out of any specific check by passing its boolean flag as `false`.
