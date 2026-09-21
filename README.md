@@ -261,6 +261,10 @@ that need to write must have the **caller** grant it on the calling job:
   grant `contents: read`, `issues: write`, `repository-projects: write`, and
   add the `CLAUDE_CODE_OAUTH_TOKEN` secret (required).
 
+- `opposition-research` (mines competitor feature demand and files opportunity
+  issues) → grant `contents: read`, `issues: write`, and pass either
+  `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
+
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
   The `preview` build half is read-only, above.
@@ -747,7 +751,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `small-model-agent.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `opposition-research.yml`, `r-cmd-check.yml`,
 `check-code-similarity.yml`,
 `check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml` at `@v2` -- see the
