@@ -136,6 +136,9 @@ already include the right `permissions:` blocks; copy them as-is.
 - `opposition-research` mines competitor feature demand and files opportunity
   issues, so grant `contents: read`, `issues: write`, and pass either
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
+- `check-dependency-updates` audits dependencies and files update issues, so
+  grant `contents: read`, `issues: write`, and pass either
+  `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
 - `altdoc-multiversion-docs` deploys to `gh-pages`, comments PR previews, and
   rewrites rendered links, so grant `contents: write`,
   `pull-requests: write`, and `issues: write`, and set Settings -> Pages ->
