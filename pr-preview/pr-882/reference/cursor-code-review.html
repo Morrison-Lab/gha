@@ -397,6 +397,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-duplicate-roxygen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-duplicate-roxygen.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-formatting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-formatting.yml</span></a>
   </div>
@@ -717,7 +723,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <p>Queue a <a href="https://cursor.com/docs/bugbot.md">Cursor Bugbot</a> review for a pull request. Bugbot posts its own inline comments and the <code>Cursor Bugbot</code> check; this workflow’s success means the review was <strong>queued</strong>, not that findings have already landed.</p>
 <p>It calls Cursor’s Enterprise Bugbot API (<code>POST /bugbot/review</code>) with a <code>CURSOR_API_KEY</code> that has <code>admin:*</code> scope. Team and individual Cursor plans should enable Bugbot in the <a href="https://cursor.com/docs/bugbot.md">Cursor dashboard</a> instead of this workflow. A Team-plan key is rejected as <code>HTTP 401 Invalid Team API Key</code> (measured on this repo’s dogfood caller, run 32694255358, 2026-08-24); that is the wrong key class, not a missing <code>secrets:</code> pass-through. Once the GitHub App is connected, Bugbot can run on every PR update, or on a PR comment <code>cursor review</code> / <code>bugbot run</code>. Customize that path with <code>.cursor/BUGBOT.md</code>; this workflow has no prompt-addendum input because the trigger API does not take one.</p>
-<p>The default caller stub is dispatch-triggered. Add a <code>pull_request</code> trigger in the caller if you also want this workflow to queue a review on every PR update (in addition to, or instead of, the GitHub App’s own automatic reviews).</p>
+<p>The default caller stub is dispatch-triggered. Add a <code>pull_request</code> trigger in the caller if you also want this workflow to queue a review on every PR update (in addition to, or instead of, the GitHub App’s own automatic reviews). GitHub suppresses <code>pull_request</code> workflow runs when a pull request has merge conflicts with the target branch (gha#859).</p>
 <p>Requires a <code>CURSOR_API_KEY</code> secret.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -816,8 +822,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CURSOR_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.CURSOR_API_KEY }}</span></span>
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   dry-run: true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">    #   dry-run: true</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>cursor-code-review.yml</code>).</p>
 
 

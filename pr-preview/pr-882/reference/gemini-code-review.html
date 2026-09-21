@@ -397,6 +397,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-duplicate-roxygen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-duplicate-roxygen.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-formatting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-formatting.yml</span></a>
   </div>
@@ -715,7 +721,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Read-only Gemini PR code review. The default caller stub is dispatch-triggered: <a href="../reference/gemini.html"><code>gemini.yml</code></a> re-dispatches this workflow on an <code>@gemini review</code> mention, so keep the stub named <code>gemini-code-review.yml</code> (or set <code>gemini.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. Add a <code>pull_request</code> trigger in the caller if you also want automatic reviews on PR updates.</p>
+<p>Read-only Gemini PR code review. The default caller stub is dispatch-triggered: <a href="../reference/gemini.html"><code>gemini.yml</code></a> re-dispatches this workflow on an <code>@gemini review</code> mention, so keep the stub named <code>gemini-code-review.yml</code> (or set <code>gemini.yml</code>’s <code>review-workflow-file</code> input to match) so the dispatch resolves. Add a <code>pull_request</code> trigger in the caller if you also want automatic reviews on PR updates. GitHub suppresses <code>pull_request</code> workflow runs when a pull request has merge conflicts with the target branch (gha#859).</p>
 <p>The stub deliberately has no <code>issue_comment</code> path. <code>gemini.yml</code> already owns the <code>@gemini review</code> mention, so a second comment-triggered dispatch job would review the same PR twice on the one phrasing both matchers accept — the double-dispatch <a href="https://github.com/UCD-SERG/serodynamics/issues/277">UCD-SERG/serodynamics#277</a> ran into.</p>
 <p>Requires a <code>GEMINI_API_KEY</code> secret.</p>
 <section id="inputs" class="level2">
@@ -840,12 +846,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">GEMINI_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.GEMINI_API_KEY }}</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-model: gemini-2.5-flash</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   gemini-model: gemini-2.5-flash</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to reviewer env (needs secrets: inherit)</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>gemini-code-review.yml</code>).</p>
 
 

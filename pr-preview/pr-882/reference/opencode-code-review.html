@@ -397,6 +397,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-duplicate-roxygen.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-duplicate-roxygen.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/check-formatting.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-formatting.yml</span></a>
   </div>
@@ -718,7 +724,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 <p>Read-only OpenCode PR code review, run through the <a href="https://opencode.ai">opencode</a> CLI headless. The agent receives the PR diff as an attachment and may read the checked-out repository for context; it runs with file edits, shell commands, and web fetches denied, so the workflow itself posts whatever review the model produces.</p>
-<p>The default caller stub is <code>workflow_dispatch</code>-triggered. Add a <code>pull_request</code> trigger in the caller if you want automatic reviews on PR updates. There is no <code>opencode.yml</code> mention bot yet, so unlike <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a> there is no comment-triggered re-dispatch path to keep names in sync with.</p>
+<p>The default caller stub is <code>workflow_dispatch</code>-triggered. Add a <code>pull_request</code> trigger in the caller if you want automatic reviews on PR updates. GitHub suppresses <code>pull_request</code> workflow runs when a pull request has merge conflicts with the target branch (gha#859). There is no <code>opencode.yml</code> mention bot yet, so unlike <a href="../reference/gemini-code-review.html"><code>gemini-code-review.yml</code></a> there is no comment-triggered re-dispatch path to keep names in sync with.</p>
 <p>Requires an <code>OPENCODE_API_KEY</code> secret (<a href="https://opencode.ai/docs/zen/">OpenCode Zen</a>; free-tier models are available). Without it, each run posts a skip notice on the PR instead of a review.</p>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
@@ -850,12 +856,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">OPENCODE_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.OPENCODE_API_KEY }}</span></span>
 <span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
 <span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pr-number</span><span class="kw">:</span><span class="at"> ${{ inputs.pr_number }}</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-model: opencode/big-pickle</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-attempts: '3'</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-model: opencode/big-pickle</span></span>
+<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    #   opencode-attempts: '3'</span></span>
+<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    #     Repo-specific review guidance.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for the full caller stub (<code>opencode-code-review.yml</code>).</p>
 
 
