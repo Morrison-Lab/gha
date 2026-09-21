@@ -739,10 +739,12 @@ change what runs -- which matters here because jobs like the preview deploy run
 with `contents: write` + `pull-requests: write`. [`.github/dependabot.yml`](.github/dependabot.yml)
 bumps these pins as upstreams publish releases, so they stay current instead of
 freezing.
-One action is deliberately exempt: `actions/ai-inference`'s majors are
-ignored, because v3 removed the transport `summary.yml` uses, so that pin is
-frozen pending the migration in
-[gha#835](https://github.com/Morrison-Lab/gha/issues/835).
+One action is deliberately exempt: `actions/ai-inference` is pinned to `@v2`
+and ignores major updates,
+because v3 removed the configurable `endpoint` transport `summary.yml` uses
+and switched to a Copilot-CLI-only runner interface.
+The v2 pin is permanently retained to preserve custom OpenAI-compatible
+endpoint support (gha#835).
 When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
