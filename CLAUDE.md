@@ -202,8 +202,14 @@ major tag each capability's own reference page documents (`@v1` for most,
 `small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `opposition-research`,
 `check-dependency-updates`, `r-cmd-check`,
 `check-code-similarity`,
-`check-duplicate-roxygen`, and
-`check-one-function-per-file` -- see
+`check-duplicate-roxygen`,
+`check-one-function-per-file`,
+`check-repo-hygiene`,
+`check-quarto-website`,
+`check-quarto-book`,
+`check-quarto-manuscript`,
+`check-r-package`, and
+`check-python-package` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,

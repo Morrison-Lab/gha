@@ -1,0 +1,20 @@
+# Runs the standard check suite for R package repositories
+name: Check R package
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/check-r-package.yml@v2
+    # with:
+    #   check-formatting: true
+    #   check-duplicate-roxygen: true
+    #   check-one-function-per-file: true
+    #   fail: true

@@ -1,0 +1,85 @@
+---
+title: "check-repo-hygiene.yml"
+---
+
+Bundles the standard repository hygiene check suite
+for Morrison-Lab repositories.
+Runs eight fundamental checks in a single job or composite action:
+
+- [`check-junk-files.yml`](check-junk-files.qmd):
+  OS and editor detritus (`.DS_Store`, `Thumbs.db`, `.Rhistory`, etc.)
+- [`check-secrets.yml`](check-secrets.qmd):
+  Gitleaks scan of git history for committed credentials and tokens
+- [`check-non-standard-chars.yml`](check-non-standard-chars.qmd):
+  flags non-standard unicode characters, curly quotes, and smart dashes
+- [`check-new-line-breaks.yml`](check-new-line-breaks.qmd):
+  enforces semantic line breaks on modified lines in diffs
+- [`check-typos.yml`](check-typos.qmd):
+  crate-ci/typos CLI scan for spelling errors on modified files
+- [`lint-yaml.yml`](lint-yaml.qmd):
+  yamllint over tracked YAML files
+- [`lint-workflows.yml`](lint-workflows.qmd):
+  actionlint and zizmor over GitHub Actions workflows
+- [`lint-markdown.yml`](lint-markdown.qmd):
+  markdownlint-cli2 over tracked Markdown files
+
+## When to use this workflow
+
+Use this workflow in general repositories that do not fit a specific template
+type (such as `ai-config` or tool repositories),
+or when you want a baseline hygiene pass across any repo.
+Repository types like Quarto websites, Quarto books, Quarto manuscripts,
+and R packages have their own dedicated bundled workflows
+that build on top of these checks.
+
+Every individual check is enabled by default,
+and can be individually disabled with a boolean flag
+(`check-junk-files: false`, `check-secrets: false`, etc.)
+without giving up the other checks in the suite.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `fail` | boolean | `true` | Fail the job on findings (else warn only). |
+| `check-junk-files` | boolean | `true` | Enable junk files check. |
+| `junk-patterns` | string | see `check-junk-files.qmd` | Gitignore patterns naming junk files. |
+| `junk-paths-ignore` | string | `''` | Paths to exempt from junk files scan. |
+| `check-secrets` | boolean | `true` | Enable gitleaks secrets scan. |
+| `secrets-config` | string | `''` | Custom gitleaks config file path. |
+| `secrets-paths-ignore` | string | `''` | Regex paths to exempt from secrets scan. |
+| `check-non-standard-chars` | boolean | `true` | Enable non-standard character check. |
+| `non-standard-chars-extensions` | string | `'.qmd, .R, .md'` | File extensions to check for non-standard characters. |
+| `check-new-line-breaks` | boolean | `true` | Enable semantic line break check. |
+| `new-line-breaks-base-ref` | string | `''` | Base ref for diff-scoping new line breaks. |
+| `new-line-breaks-globs` | string | `''` | Globs to check for new line breaks. |
+| `check-typos` | boolean | `true` | Enable typos check. |
+| `typos-config` | string | `''` | Typos configuration file path. |
+| `typos-base-ref` | string | `''` | Base ref for diff-scoping typo checks. |
+| `lint-yaml` | boolean | `true` | Enable YAML linting. |
+| `yaml-config-file` | string | `''` | Custom yamllint config file path. |
+| `yaml-paths-ignore` | string | `''` | Paths to exempt from YAML linting. |
+| `lint-workflows` | boolean | `true` | Enable workflow linting. |
+| `workflows-path` | string | `'.'` | Path to workflow files. |
+| `lint-markdown` | boolean | `true` | Enable Markdown linting. |
+| `markdown-config-file` | string | `''` | Markdownlint config file path. |
+| `markdown-globs` | string | `'*.md'` | Git pathspecs of Markdown files to lint. |
+| `markdown-paths-ignore` | string | `''` | Paths to exempt from Markdown linting. |
+| `markdown-base-ref` | string | `''` | Base ref for list-item splice checks. |
+
+## Example
+
+```yaml
+name: Check repo hygiene
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  hygiene:
+    permissions:
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/check-repo-hygiene.yml@v2
+```

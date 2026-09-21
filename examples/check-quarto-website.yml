@@ -1,0 +1,21 @@
+# Runs the standard check suite for Quarto website repositories
+name: Check Quarto website
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    permissions:
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-website.yml@v2
+    # with:
+    #   check-links: true
+    #   check-ai-tells: true
+    #   check-bibliography-dois: true
+    #   lint-qmd: true
+    #   fail: true

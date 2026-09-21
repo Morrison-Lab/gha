@@ -1,0 +1,25 @@
+# Runs the standard repository hygiene check suite
+name: Check repo hygiene
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  hygiene:
+    permissions:
+      contents: read
+    uses: Morrison-Lab/gha/.github/workflows/check-repo-hygiene.yml@v2
+    # with:
+    #   check-junk-files: true
+    #   check-secrets: true
+    #   check-non-standard-chars: true
+    #   check-new-line-breaks: true
+    #   check-typos: true
+    #   lint-yaml: true
+    #   lint-workflows: true
+    #   lint-markdown: true
+    #   fail: true

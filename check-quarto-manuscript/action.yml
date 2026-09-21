@@ -1,0 +1,228 @@
+name: Check Quarto manuscript
+description: >-
+  Runs the standard check suite for Quarto manuscript repositories (like Morrison-Lab/qmt):
+  repository hygiene (junk files, secrets, non-standard characters, semantic line breaks,
+  typos, YAML lint, workflow lint, Markdown lint), AI tells, QMD prose linting,
+  lychee link checking across manuscript sections, bibliography DOI validation,
+  and MathJax equation render validation.
+inputs:
+  fail:
+    description: Fail the action when any enabled check reports findings.
+    default: 'true'
+  check-junk-files:
+    description: Check for tracked operating-system and editor detritus.
+    default: 'true'
+  junk-patterns:
+    description: Gitignore-style patterns naming what counts as junk.
+    default: '.DS_Store, ._*, .Rproj.user, .Rhistory, .RData, .httr-oauth, .quarto, Thumbs.db, desktop.ini'
+  junk-paths-ignore:
+    description: Paths to exempt from the junk files scan.
+    default: ''
+  check-secrets:
+    description: Scan git history for committed credentials with gitleaks.
+    default: 'true'
+  secrets-config:
+    description: Path to a custom gitleaks TOML config file.
+    default: ''
+  secrets-paths-ignore:
+    description: Regex patterns for paths to exempt from secret scanning.
+    default: ''
+  check-non-standard-chars:
+    description: Flag non-standard unicode characters, curly quotes, and smart dashes.
+    default: 'true'
+  non-standard-chars-extensions:
+    description: Comma- or space-separated list of file extensions to check for non-standard characters.
+    default: '.qmd, .md'
+  check-new-line-breaks:
+    description: Enforce semantic line breaks on modified lines.
+    default: 'true'
+  new-line-breaks-base-ref:
+    description: Git ref to diff against for diff-scoped new line break checking.
+    default: ''
+  new-line-breaks-globs:
+    description: Comma- or space-separated glob patterns to check.
+    default: ''
+  check-typos:
+    description: Scan files for spelling typos using crate-ci/typos.
+    default: 'true'
+  typos-config:
+    description: Custom typos config file path.
+    default: ''
+  typos-base-ref:
+    description: Git ref to diff against for diff-scoped typo checking.
+    default: ''
+  check-ai-tells:
+    description: Scan narrative prose (*.md, *.qmd) for AI cliches and tells.
+    default: 'true'
+  ai-tells-threshold:
+    description: Maximum allowed tell density (tells per 1,000 words).
+    default: '10'
+  ai-tells-ignore:
+    description: Comma- or space-separated list of tell names to ignore.
+    default: ''
+  lint-yaml:
+    description: Lint tracked YAML files with yamllint.
+    default: 'true'
+  yaml-config-file:
+    description: Path to a yamllint config file.
+    default: ''
+  yaml-paths-ignore:
+    description: Patterns to exclude from YAML linting.
+    default: ''
+  lint-workflows:
+    description: Lint GitHub Actions workflows with actionlint and zizmor.
+    default: 'true'
+  workflows-path:
+    description: Path containing GitHub Actions workflow files to lint.
+    default: '.'
+  lint-markdown:
+    description: Lint tracked Markdown files with markdownlint-cli2.
+    default: 'true'
+  markdown-config-file:
+    description: Path to a markdownlint config file.
+    default: ''
+  markdown-globs:
+    description: Git pathspecs of tracked Markdown files to lint.
+    default: '*.md'
+  markdown-paths-ignore:
+    description: Glob patterns to skip for Markdown linting.
+    default: ''
+  markdown-base-ref:
+    description: Git ref to diff against for diff-scoped list-item splice checks.
+    default: ''
+  lint-qmd:
+    description: Lint prose sections of tracked .qmd files with markdownlint.
+    default: 'true'
+  qmd-config-file:
+    description: Path to a markdownlint config file for QMD files.
+    default: ''
+  qmd-globs:
+    description: Space-separated git pathspecs of .qmd files to lint.
+    default: '*.qmd'
+  qmd-paths-ignore:
+    description: Patterns to skip for QMD linting.
+    default: ''
+  check-links:
+    description: Run lychee link checker on manuscript files.
+    default: 'true'
+  lychee-config:
+    description: Path to a lychee config file; falls back to bundled default.
+    default: ''
+  lychee-args:
+    description: Additional command-line arguments to pass to lychee.
+    default: '--exclude-mail'
+  check-bibliography-dois:
+    description: Validate DOIs in BibTeX bibliography files (.bib).
+    default: 'true'
+  bib-exclude-keys:
+    description: BibTeX keys to skip for DOI validation.
+    default: ''
+  check-equation-renders:
+    description: Validate that MathJax equations render in built HTML manuscript pages.
+    default: 'true'
+  equation-renders-site-dir:
+    description: Path to built HTML manuscript directory to crawl. If empty or missing, this check is skipped.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Check for tracked junk files
+      if: inputs.check-junk-files != 'false'
+      uses: Morrison-Lab/gha/check-junk-files@v2
+      with:
+        patterns: ${{ inputs.junk-patterns }}
+        paths-ignore: ${{ inputs.junk-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for committed secrets
+      if: inputs.check-secrets != 'false'
+      uses: Morrison-Lab/gha/check-secrets@v2
+      with:
+        config: ${{ inputs.secrets-config }}
+        paths-ignore: ${{ inputs.secrets-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for non-standard characters
+      if: inputs.check-non-standard-chars != 'false'
+      uses: Morrison-Lab/gha/check-non-standard-chars@v2
+      with:
+        extensions: ${{ inputs.non-standard-chars-extensions }}
+
+    - name: Check new line breaks
+      if: inputs.check-new-line-breaks != 'false'
+      uses: Morrison-Lab/gha/check-new-line-breaks@v2
+      with:
+        base-ref: ${{ inputs.new-line-breaks-base-ref }}
+        globs: ${{ inputs.new-line-breaks-globs }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for typos
+      if: inputs.check-typos != 'false'
+      uses: Morrison-Lab/gha/check-typos@v2
+      with:
+        config: ${{ inputs.typos-config }}
+        base-ref: ${{ inputs.typos-base-ref }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check AI tells
+      if: inputs.check-ai-tells != 'false'
+      uses: Morrison-Lab/gha/check-ai-tells@v2
+      with:
+        threshold: ${{ inputs.ai-tells-threshold }}
+        ignore-tells: ${{ inputs.ai-tells-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint YAML
+      if: inputs.lint-yaml != 'false'
+      uses: Morrison-Lab/gha/lint-yaml@v2
+      with:
+        config-file: ${{ inputs.yaml-config-file }}
+        paths-ignore: ${{ inputs.yaml-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint workflows
+      if: inputs.lint-workflows != 'false'
+      uses: Morrison-Lab/gha/lint-workflows@v2
+      with:
+        path: ${{ inputs.workflows-path }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint Markdown
+      if: inputs.lint-markdown != 'false'
+      uses: Morrison-Lab/gha/lint-markdown@v2
+      with:
+        config-file: ${{ inputs.markdown-config-file }}
+        globs: ${{ inputs.markdown-globs }}
+        paths-ignore: ${{ inputs.markdown-paths-ignore }}
+        base-ref: ${{ inputs.markdown-base-ref }}
+        fail: ${{ inputs.fail }}
+
+    - name: Lint QMD
+      if: inputs.lint-qmd != 'false'
+      uses: Morrison-Lab/gha/lint-qmd@v2
+      with:
+        config-file: ${{ inputs.qmd-config-file }}
+        globs: ${{ inputs.qmd-globs }}
+        paths-ignore: ${{ inputs.qmd-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check links
+      if: inputs.check-links != 'false'
+      uses: Morrison-Lab/gha/check-links@v2
+      with:
+        lychee-config: ${{ inputs.lychee-config }}
+        lychee-args: ${{ inputs.lychee-args }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check bibliography DOIs
+      if: inputs.check-bibliography-dois != 'false'
+      uses: Morrison-Lab/gha/check-bibliography-dois@v2
+      with:
+        exclude-keys: ${{ inputs.bib-exclude-keys }}
+
+    - name: Check equation renders
+      if: inputs.check-equation-renders != 'false' && inputs.equation-renders-site-dir != ''
+      uses: Morrison-Lab/gha/check-equation-renders@v2
+      with:
+        site-dir: ${{ inputs.equation-renders-site-dir }}
+        fail: ${{ inputs.fail }}

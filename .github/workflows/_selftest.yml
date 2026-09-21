@@ -188,6 +188,26 @@ jobs:
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py
 
+  bundle-repo-actions-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Run bundle-repo-actions contract tests
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pyyaml==6.0.3
+          python3 .github/workflows/scripts/tests/run-bundle-repo-actions-tests.py
+      - name: Exercise check-repo-hygiene composite action
+        uses: ./check-repo-hygiene
+        with:
+          fail: 'false'
+
   lint-qmd:
 
     runs-on: ubuntu-latest
