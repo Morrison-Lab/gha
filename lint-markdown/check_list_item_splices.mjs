@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// check-one-function-per-file: allow-multiple
 // Flag list-item merge splices: a list item spliced directly onto preceding
 // paragraph text without an intervening blank line (#324, #895).
 //
