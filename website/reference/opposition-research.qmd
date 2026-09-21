@@ -2,7 +2,8 @@
 title: "opposition-research.yml"
 ---
 
-Conduct automated opposition research on a competitor product, framework, or repository.
+Conduct automated opposition research
+on a competitor product, framework, or repository.
 Mines public community demand signals
 (issues, discussions, forums, feature request boards)
 for high-value capabilities
@@ -78,6 +79,8 @@ jobs:
     #   timeout-minutes: 45
 ```
 
-See
-[`examples/opposition-research.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/opposition-research.yml)
-for the full caller stub.
+See the
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for the full caller stub (`opposition-research.yml`).
+
+
