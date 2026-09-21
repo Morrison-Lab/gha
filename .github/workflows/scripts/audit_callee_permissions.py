@@ -254,14 +254,13 @@ def get_git_workflows(ref: str, workflows_dir: str = ".github/workflows", cwd: p
             cwd=cwd,
         )
         files = []
-        target_dir = pathlib.Path(workflows_dir)
+        target_posix = pathlib.PurePosixPath(workflows_dir).as_posix()
         for line in proc.stdout.strip().splitlines():
             line = line.strip()
             if not line:
                 continue
             p = pathlib.PurePosixPath(line)
             # Reuses discover_workflows rules: .yml/.yaml, no dotfiles, direct child of workflows_dir
-            target_posix = pathlib.PurePosixPath(workflows_dir).as_posix()
             if p.suffix in (".yml", ".yaml") and not p.name.startswith(".") and p.parent.as_posix() == target_posix:
                 files.append(line)
         return sorted(files)
