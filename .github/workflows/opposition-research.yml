@@ -94,7 +94,7 @@ jobs:
       - name: Run Claude Opposition Research
         id: claude
         if: steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
-        uses: anthropics/claude-code-action@19dda84776b3518d98b8798e591daee763049ed3 # v1.0.220
+        uses: anthropics/claude-code-action@2261fcfc88e7de1b55f179edd588805e12de71f2 # v1.0.228
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COMPETITOR: ${{ inputs.competitor }}
