@@ -113,6 +113,8 @@ function findListItemSplices(path, addedLinesSet) {
         let sawBlank = false;
         let blockStartLine = prevLine;
 
+        const isIndented = (str) => /^(?:\s{2,}|\t)/.test(str);
+
         for (let j = i - 2; j >= 0; j--) {
           const candidate = lines[j];
           const boundary = classifyBoundary(candidate);
@@ -120,7 +122,7 @@ function findListItemSplices(path, addedLinesSet) {
           if (boundary === 'blank') {
             // A blank line can only be crossed if the block below it began with indentation
             // (i.e. an indented block within a loose list item per CommonMark 5.2).
-            if (!/^\s{2,}|\t/.test(blockStartLine)) break;
+            if (!isIndented(blockStartLine)) break;
             sawBlank = true;
             continue;
           }
@@ -135,7 +137,7 @@ function findListItemSplices(path, addedLinesSet) {
           }
 
           // If we crossed a blank line, any preceding prose line must also be indented to belong to the list item
-          if (sawBlank && !/^\s{2,}|\t/.test(candidate)) {
+          if (sawBlank && !isIndented(candidate)) {
             break;
           }
           blockStartLine = candidate;

@@ -88,6 +88,30 @@ Paragraph following spaced thematic break.
   assert.match(stdout, /Found 1 list-item merge splice/);
   assert.match(stdout, /spaced_hr_splice\.md,line=5/);
 
+  // Positive control 4: unindented paragraph with mid-line tab after blank line spliced onto list item
+  const tabSpliceFile = join(testDir, 'tab_splice.md');
+  const tabSpliceContent = `* Item A
+  wrapped continuation of A.
+
+Not indented paragraph, containing a tab\tcharacter in the middle of this line.
+* Item B
+`;
+  writeFileSync(tabSpliceFile, tabSpliceContent);
+
+  failed = false;
+  try {
+    stdout = execFileSync('node', [scriptPath], {
+      env: { ...process.env, MARKDOWNLINT_GLOBS: tabSpliceFile, LIST_ITEM_SPLICE_BASE_REF: 'all' },
+      encoding: 'utf8',
+    });
+  } catch (err) {
+    failed = true;
+    stdout = err.stdout || '';
+  }
+  assert.strictEqual(failed, true, 'Expected check_list_item_splices.mjs to fail on tab_splice.md');
+  assert.match(stdout, /Found 1 list-item merge splice/);
+  assert.match(stdout, /tab_splice\.md,line=5/);
+
   // Test empty base-ref skip
   stdout = execFileSync('node', [scriptPath], {
     env: { ...process.env, MARKDOWNLINT_GLOBS: spliceFile, LIST_ITEM_SPLICE_BASE_REF: '' },
