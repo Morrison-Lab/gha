@@ -113,7 +113,7 @@ jobs:
             ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
           claude_args: >-
             --allowedTools
-            "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(gh api:*)"
+            "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(tee:*)"
           prompt: |
             You are an autonomous research agent conducting opposition research on a competitor product/repository.
 
@@ -132,7 +132,7 @@ jobs:
                - Rank candidate ideas by community demand signal (vote/reaction counts, number of threads).
                - Select up to ${{ inputs.max-issues }} highest-value, net-new opportunities.
                - If Dry Run is 'true':
-                 Do NOT create GitHub issues. Write a structured markdown report of the findings and append it to the file at `$GITHUB_STEP_SUMMARY`.
+                 Do NOT create GitHub issues. Write a structured markdown report of the findings and append it to the file at `$GITHUB_STEP_SUMMARY` using `tee -a "$GITHUB_STEP_SUMMARY"`.
                - If Dry Run is 'false':
                  Create each issue using:
                  `gh issue create --repo "${{ inputs.target-repo }}" --title "<Title>" --body "<Body>" --label "${{ inputs.labels }}"`
@@ -142,4 +142,4 @@ jobs:
                  - Proposed solution/capability for our repository.
                  - The mandatory disclosure line at the end, preceded by a blank line:
                    `_Posted by Claude Code (AI agent) via opposition-research workflow --- not written by a human._`
-                 Also append a summary of all created issues to `$GITHUB_STEP_SUMMARY`.
+                 Also append a summary of all created issues to `$GITHUB_STEP_SUMMARY` using `tee -a "$GITHUB_STEP_SUMMARY"`.
