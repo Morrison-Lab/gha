@@ -72,7 +72,8 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`,
-`check-formatting.yml`, `claude-manage-project.yml`, `opposition-research.yml`, `r-cmd-check.yml`,
+`check-formatting.yml`, `claude-manage-project.yml`,
+`opposition-research.yml`, `r-cmd-check.yml`,
 `check-code-similarity.yml`,
 `check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
