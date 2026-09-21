@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Flag list-item merge splices: a list item spliced directly onto a previous
-// item's continuation line with no intervening blank line (#324).
+// check-one-function-per-file: allow-multiple
+// Flag list-item merge splices: a list item spliced directly onto preceding
+// paragraph text without an intervening blank line (#324, #895).
 //
 // Configuration (env vars, set by the composite action):
 //   MARKDOWNLINT_GLOBS             Space-separated git pathspecs of tracked
@@ -55,6 +56,17 @@ function getAddedLines(baseRef, pathspecs) {
   }
 }
 
+function classifyBoundary(line) {
+  if (line === null || line === undefined || line.trim() === '') return 'blank';
+  if (/^\s*(`{3,}|~{3,})/.test(line)) return 'fence';
+  if (/^\s*#+/.test(line)) return 'heading';
+  if (/^\s*([-*_])[ \t]*(?:\1[ \t]*){2,}\s*$/.test(line)) return 'hr';
+  if (/^\s*\|/.test(line)) return 'table';
+  if (/^\s*>/.test(line)) return 'blockquote';
+  if (/^\s*([*+-]|\d+\.)\s+/.test(line)) return 'list-item';
+  return 'prose';
+}
+
 function findListItemSplices(path, addedLinesSet) {
   const lines = readFileSync(path, 'utf8').split('\n');
   const findings = [];
@@ -90,21 +102,56 @@ function findListItemSplices(path, addedLinesSet) {
 
     const isListItem = /^\s*([*+-]|\d+\.)\s+/.test(line);
     if (isListItem && prevLine !== null) {
-      const isPrevBlank = prevLine.trim() === '';
-      const isPrevListItem = /^\s*([*+-]|\d+\.)\s+/.test(prevLine);
-      const isPrevHeading = /^\s*#+/.test(prevLine);
-      const isPrevBlockquote = /^\s*>/.test(prevLine);
-      const isPrevTable = /^\s*\|/.test(prevLine);
-      const isPrevHR = /^\s*[-*_]{3,}\s*$/.test(prevLine);
+      const prevBoundary = classifyBoundary(prevLine);
 
-      if (!isPrevBlank && !isPrevListItem && !isPrevHeading && !isPrevBlockquote && !isPrevTable && !isPrevHR) {
-        if (!addedLinesSet || addedLinesSet.has(lineNo) || addedLinesSet.has(prevLineNo)) {
-          findings.push({
-            path,
-            line: lineNo,
-            prevLineText: prevLine.trim(),
-            lineText: line.trim(),
-          });
+      if (prevBoundary === 'prose') {
+        // Walk back from prevLine to find if it belongs to a preceding list item.
+        // A list item continuation can be:
+        // 1. An ordinary tight wrapped list item continuation (non-blank block starting with a list marker, #895).
+        // 2. An indented paragraph in a loose list item (where blank lines separate indented paragraphs per CommonMark 5.2).
+        let isListItemContinuation = false;
+        let sawBlank = false;
+        let blockStartLine = prevLine;
+
+        const isIndented = (str) => /^(?:\s{2,}|\t)/.test(str);
+
+        for (let j = i - 2; j >= 0; j--) {
+          const candidate = lines[j];
+          const boundary = classifyBoundary(candidate);
+
+          if (boundary === 'blank') {
+            // A blank line can only be crossed if the block below it began with indentation
+            // (i.e. an indented block within a loose list item per CommonMark 5.2).
+            if (!isIndented(blockStartLine)) break;
+            sawBlank = true;
+            continue;
+          }
+
+          if (boundary === 'fence' || boundary === 'heading' || boundary === 'hr' || boundary === 'table' || boundary === 'blockquote') {
+            break;
+          }
+
+          if (boundary === 'list-item') {
+            isListItemContinuation = true;
+            break;
+          }
+
+          // If we crossed a blank line, any preceding prose line must also be indented to belong to the list item
+          if (sawBlank && !isIndented(candidate)) {
+            break;
+          }
+          blockStartLine = candidate;
+        }
+
+        if (!isListItemContinuation) {
+          if (!addedLinesSet || addedLinesSet.has(lineNo) || addedLinesSet.has(prevLineNo)) {
+            findings.push({
+              path,
+              line: lineNo,
+              prevLineText: prevLine.trim(),
+              lineText: line.trim(),
+            });
+          }
         }
       }
     }
@@ -117,7 +164,7 @@ function findListItemSplices(path, addedLinesSet) {
 function report(findings) {
   console.log(`Found ${findings.length} list-item merge splice(s):\n`);
   for (const f of findings) {
-    console.log(`::error file=${f.path},line=${f.line}::List-item merged directly onto continuation line without intervening blank line: ${f.lineText}`);
+    console.log(`::error file=${f.path},line=${f.line}::List-item merged directly onto preceding paragraph text without intervening blank line: ${f.lineText}`);
   }
 }
 
