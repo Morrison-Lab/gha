@@ -22,6 +22,9 @@ name: Cursor Code Review
 
 on:
   # Optional: automatic review on PR activity.
+  # Note: GitHub suppresses pull_request workflow runs when a pull request
+  # has merge conflicts with the target branch. For conflicting PRs, resolve
+  # the conflict or trigger review via workflow_dispatch below (gha#859).
   # pull_request:
   #   types: [opened, synchronize, ready_for_review, reopened]
   workflow_dispatch:

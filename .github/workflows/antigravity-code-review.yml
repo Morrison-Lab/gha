@@ -2,6 +2,11 @@ name: Antigravity Code Review & Audit (reusable)
 
 # Reusable Google Antigravity SDK PR review, security audit, and test generation workflow.
 # Supports workflow_dispatch and pull_request runs.
+# Note that GitHub will not trigger `pull_request` workflow runs if the pull
+# request has merge conflicts with its base branch (GitHub Actions platform
+# behaviour; gha#859). For conflicting PRs, review must be triggered via
+# `workflow_dispatch` (`gh workflow run antigravity-code-review.yml -f pr_number=N`)
+# or after merging the base branch to resolve conflicts.
 
 on:
   workflow_call:

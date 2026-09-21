@@ -1,0 +1,44 @@
+name: Check duplicate roxygen documentation
+description: >-
+  Check for duplicate roxygen parameter documentation across R code files
+  and recommend consolidation using @inheritParams and/or @inheritDotParams.
+inputs:
+  path:
+    description: Target directory or file path to scan.
+    default: '.'
+  paths-ignore:
+    description: Comma- or newline-separated list of paths or glob patterns to ignore.
+    default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'
+  extensions:
+    description: Comma- or space-separated list of file extensions to check.
+    default: '.R, .r'
+  min-desc-length:
+    description: Minimum character length of parameter description to consider for duplication.
+    default: '10'
+  base-ref:
+    description: Git ref to diff against for diff-scoped checking (e.g. origin/main). If empty, checks whole tree.
+    default: ''
+  fail:
+    description: Whether to fail the workflow if duplicate roxygen documentation is detected.
+    default: 'true'
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.6.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check duplicate roxygen documentation
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        INPUT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        INPUT_EXTENSIONS: ${{ inputs.extensions }}
+        INPUT_MIN_DESC_LENGTH: ${{ inputs.min-desc-length }}
+        INPUT_FAIL: ${{ inputs.fail }}
+      run: python3 "$GITHUB_ACTION_PATH/check_duplicate_roxygen.py"

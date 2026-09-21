@@ -11,7 +11,8 @@ already include the right `permissions:` blocks; copy them as-is.
 ## Per-workflow grants
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-equation-renders`, `check-extra`,
+  `check-code-similarity`, `check-duplicate-roxygen`,
+  `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`, `check-secrets`,
@@ -68,41 +69,41 @@ already include the right `permissions:` blocks; copy them as-is.
   `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
 - `claude-code-review` (read-only review) grants `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`,
-  `checks: read` (grant it; required by the currently-tagged `@v2`),
+  `checks: read` (grant it; optional under `@v2`,
+  which no longer requests it per gha#832,
+  but required by the model job as of `@v3`),
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
-  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
   write is confined to jobs that never run the model
   (`gather-context` and `post-review`) (gha#580).
   `actions: read` is required on the caller: a `permissions:` block sets
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP
   server).
-  Grant `checks: read`, but note what it does and does not buy.
+  Grant `checks: read` regardless of which tag you pin, but note what it
+  does and does not buy.
   `actions: read` covers workflow runs but not
   `GET .../commits/{ref}/check-runs`,
-  so without that scope the reviewer's check-status reads fail with
+  so without `checks: read` the reviewer's check-status reads fail with
   HTTP 403 and a clean diff can be reported as blocked
   (ucdavis/bcs#964).
-  As of 2026-09-06 the `@v2` tag still points at a commit that DOES
-  request the scope,
-  which is why a caller lacking it fails at startup.
-  Once `v2` is slid onto this change the model job stops requesting it,
-  and the 403 returns for everyone until the `v3` reinstates it.
-  Keep the grant through all three phases:
-  it is what makes a caller work today,
-  it is harmless while the slid `@v2` ignores it,
-  and it is what makes the `v3` cost nothing later.
-  The startup failure is the reason the callee gave the scope up:
-  a called workflow cannot request a permission its caller lacks,
-  so the run ends before any job starts.
-  That is how the `v2` slide for that grant broke 17 of the 18
-  repositories pinning this workflow at `@v2`
-  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
-  carries the derivation;
-  how many still lack the grant falls as consumers add it, and is
-  tracked in [gha#833](https://github.com/Morrison-Lab/gha/issues/833)
-  as the `v3` precondition rather than restated here).
+  The model job briefly lost this scope on `@v2`: a called workflow
+  cannot request a permission its caller lacks, so the run ends in
+  `startup_failure` before any job begins, and `@v2`'s original grant of
+  `checks: read` on the model job broke startup for 17 of the 18
+  repositories pinning this workflow at `@v2` that had not yet added the
+  caller-side grant above
+  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
+  Dropping the scope from the model job un-broke those callers but
+  reopened the 403 for everyone -- which is what
+  [`v3`](https://github.com/Morrison-Lab/gha/issues/833) fixes by
+  reinstating it there, now that the caller-side grant above is
+  established practice.
+  Keep granting `checks: read` regardless:
+  it is optional under the currently-tagged `@v2`
+  (which no longer requests it, per gha#832)
+  but required by the model job once you adopt `@v3`.
 - `cursor-code-review` queues a Cursor Bugbot review.
   It is read-only, above, but does need the `CURSOR_API_KEY` secret
   (Enterprise, `admin:*` scope).

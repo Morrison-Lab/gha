@@ -96,6 +96,7 @@ jobs:
     #   dispatch-on-assignee: '["claude"]'     # assigning an issue dispatches a run, no mention needed
     #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt
     #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)
+    #   use-posit-skills: false     # skip the posit-dev/skills plugin (installed by default)
     #   plugin-marketplaces: https://github.com/<owner>/<repo>.git   # further plugin sources
     #   plugins: <plugin>@<marketplace-name>
     #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)

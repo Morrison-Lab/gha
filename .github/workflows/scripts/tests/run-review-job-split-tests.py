@@ -27,11 +27,11 @@ the facts a future edit could reverse silently:
    missing (`download.outcome != 'success'` on a finished review).
 7. Caller grant lists include `actions: read` (a `permissions:` block
    sets unspecified scopes to none; without it `download-artifact` 403s)
-   and `checks: read`, which the currently-tagged @v2 requires and a
-   future v3 will require again. The model job itself requests exactly
-   contents/pull-requests/issues/actions and no more: a callee cannot
-   request a permission its caller lacks without startup-failing the
-   whole run for that caller (gha#831).
+   and `checks: read` (the model job's check-run reads 403 without it,
+   gha#829), and the model job itself requests exactly
+   contents/pull-requests/issues/actions/checks and no more -- reinstated
+   as of v3 (gha#833) after v2 dropped it (gha#831) to stop startup-failing
+   every caller that had not yet granted it.
 8. Every `steps.<id>.outputs.<name>` the workflow reads from a step whose
    `uses:` names one of this repo's composites
    (`Morrison-Lab/gha/.github/actions/<x>@...` or `./.github/actions/<x>`)
@@ -44,6 +44,16 @@ the facts a future edit could reverse silently:
    `action.yml` to check against, so its reads are out of scope), and it
    reports how many step/output pairs it examined so a run that mapped
    nothing cannot pass as a run that checked everything.
+9. The reviewed commit the model names (the review-data JSON's
+   `commit_sha`) is resolved once, as the model job's `REVIEWED_COMMIT`
+   env, from the event-pinned head and then gather-context's stash-head
+   -- the same two sources, in the same order, that post-review's stale
+   check and its trailing `Reviewed commit:` line use -- and every attempt
+   passes that one env through as `reviewed-commit`, which the prompt
+   interpolates into both `commit_sha` templates. Nothing hands the prompt
+   `github.sha` / `GITHUB_SHA`: on a pull_request event that is the
+   ephemeral merge ref, and it is what a reviewer left to find the SHA
+   itself wrote (gha#852).
 
    Separately, a read whose step id NO step in the workflow declares is
    refused. GitHub resolves such a read to the empty string, so whatever
@@ -349,18 +359,22 @@ def check_workflow(
     )
     # An exact set, not a per-key check. A reusable workflow's job cannot
     # request a permission its caller lacks -- the run ends in
-    # startup_failure before any job starts -- so ANY addition here is a
-    # breaking change for every consumer that has not granted it, and
-    # belongs in a major-tag bump rather than a v2 slide. #830 added
-    # checks: read, and the v2 slide onto it killed review dispatch in 17
-    # of the 18 repositories pinning THIS workflow at @v2 (gha#831). Keyed
-    # on the whole set so the next addition fails whatever it is called.
+    # startup_failure before any job starts -- so ANY addition beyond this
+    # v3 baseline is a breaking change for every consumer still on @v2, and
+    # belongs in its own major-tag bump rather than a v3 slide, exactly as
+    # #830's checks: read addition broke 17 of the 18 @v2 consumers when
+    # v2 was slid onto it (gha#831). checks: read itself is back in the set
+    # because @v3 (gha#833) is the sanctioned major-tag bump for it, not a
+    # slide of an existing tag. Keyed on the whole set so the next addition
+    # fails whatever it is called.
     check(
-        set(review_perms) == {"contents", "pull-requests", "issues", "actions"},
-        "claude-review requests exactly contents/pull-requests/issues/actions "
-        "(the set changed; ADDING one breaks every caller lacking it and "
-        "needs a v3 -- gha#831 -- while a removal is safe but still "
-        "deliberate)",
+        set(review_perms)
+        == {"contents", "pull-requests", "issues", "actions", "checks"},
+        "claude-review requests exactly "
+        "contents/pull-requests/issues/actions/checks "
+        "(the set changed; ADDING one breaks every @v3 caller lacking it "
+        "and needs its own major-tag bump, while a removal drops the "
+        "gha#833 fix and needs to be deliberate, not accidental)",
     )
     check(
         post_perms.get("pull-requests") == "write",
@@ -619,6 +633,52 @@ def check_workflow(
     check(
         " ".join(reviewed_head.split()) == "${{ github.event.pull_request.head.sha }}",
         "reviewed-head is exactly github.event.pull_request.head.sha",
+    )
+    # gha#852: the SHA the reviewer writes into the review-data JSON is
+    # resolved once, in the model job, from the same two sources and in the
+    # same order as post-review's COMPARE (pinned below), then handed to
+    # every attempt as one env. Two declarations of that source would be
+    # the shape that produced the bug: the trailing line and the JSON field
+    # named different commits because they were resolved in different
+    # places.
+    reviewed_commit = " ".join(
+        str((review.get("env") or {}).get("REVIEWED_COMMIT") or "").split()
+    )
+    check(
+        reviewed_commit
+        == "${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}",
+        "claude-review resolves REVIEWED_COMMIT once, from the event head then "
+        "gather-context's stash-head (gha#852)",
+    )
+    attempt_steps = [
+        s
+        for s in review.get("steps") or []
+        if isinstance(s, dict)
+        and (
+            "run-claude-review-attempt" in str(s.get("uses", ""))
+            or s.get("id") == "claude-review"
+        )
+    ]
+    passed = [
+        " ".join(str((s.get("with") or {}).get("reviewed-commit") or "").split())
+        for s in attempt_steps
+    ]
+    check(
+        bool(passed) and all(p == "${{ env.REVIEWED_COMMIT }}" for p in passed),
+        "every run-claude-review-attempt call passes "
+        "reviewed-commit: ${{ env.REVIEWED_COMMIT }} (gha#852); "
+        f"got {passed or 'no attempt steps'}",
+    )
+    sha_inputs = sorted(
+        f"{s.get('id') or s.get('uses')}:{key}"
+        for s in attempt_steps
+        for key, val in (s.get("with") or {}).items()
+        if re.search(r"github\.sha|GITHUB_SHA", str(val))
+    )
+    check(
+        not sha_inputs,
+        "no run-claude-review-attempt input carries github.sha / GITHUB_SHA "
+        f"(gha#852); violations: {sha_inputs or 'none'}",
     )
     check(
         any("pack-review-payload" in u for u in review_uses),
@@ -905,6 +965,37 @@ def check_workflow(
         "(either prefix starts the inline-comment MCP server)",
     )
 
+    # gha#852: the prompt's two review-data templates (hidden comment and
+    # visible fence, required identical) take commit_sha from the ONE
+    # reviewed-commit input, and the prompt names that same input as the
+    # commit under review. The whole-file scan is the negative half: an
+    # expression reading github.sha anywhere in the composite, or a shell
+    # read of GITHUB_SHA, is the merge-ref source the input replaces.
+    check(
+        "reviewed-commit" in (action.get("inputs") or {}),
+        "run-claude-review-attempt declares a reviewed-commit input (gha#852)",
+    )
+    prompt = str(with_block.get("prompt") or "")
+    commit_sha_values = re.findall(r'"commit_sha":\s*"([^"\n]*)"', prompt)
+    check(
+        len(commit_sha_values) == 2
+        and len(set(commit_sha_values)) == 1
+        and "inputs.reviewed-commit" in commit_sha_values[0],
+        "both review-data commit_sha templates interpolate inputs.reviewed-commit, "
+        f"identically (gha#852); got {commit_sha_values}",
+    )
+    check(
+        re.search(r"Commit under review:.*inputs\.reviewed-commit", prompt) is not None,
+        "the prompt names the commit under review from inputs.reviewed-commit (gha#852)",
+    )
+    action_text = action_path.read_text(encoding="utf-8")
+    check(
+        re.search(r"\$\{\{[^}]*\bgithub\.sha\b", action_text) is None
+        and re.search(r"\$\{?GITHUB_SHA\b", action_text) is None,
+        "run-claude-review-attempt never reads github.sha / $GITHUB_SHA "
+        "(the ephemeral merge ref on a pull_request event; gha#852)",
+    )
+
     if workflow_path.name == "claude-code-review.yml":
         root = workflow_path.resolve().parent.parent.parent
         example = root / "examples" / "claude-code-review.yml"
@@ -919,7 +1010,7 @@ def check_workflow(
             check(
                 job_permissions(review_job).get("checks") == "read",
                 "examples/claude-code-review.yml grants checks: read "
-                "(required by the currently-tagged @v2; kept for the v3 -- gha#833)",
+                "(required by @v2, and by @v3's model job -- gha#833)",
             )
         grant_list_re = (
             r"`claude-code-review`[\s\S]{0,80}?grant[s]? "
@@ -998,12 +1089,12 @@ def check_workflow(
                 continue
             check(
                 re.search(
-                    r"`issues`\s*/\s*`actions: read`\)",
+                    r"`issues`\s*/\s*`actions`\s*/\s*`checks: read`\)",
                     doc.read_text(encoding="utf-8"),
                 )
                 is not None,
-                f"{rel} model-scope list ends at actions: read "
-                "(the model job holds no checks: read -- gha#831)",
+                f"{rel} model-scope list ends at checks: read "
+                "(the model job holds checks: read again as of v3 -- gha#833)",
             )
 
         dogfood = root / ".github" / "workflows" / "claude-review.yml"
@@ -1134,13 +1225,18 @@ jobs:
       )
 {review_conc}    outputs:
       reviewed-head: ${{{{ github.event.pull_request.head.sha }}}}
+    env:
+      REVIEWED_COMMIT: ${{{{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}}}
     permissions:
       contents: read
       pull-requests: read
       issues: read
       actions: read
+      checks: read
     steps:
       - uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+        with:
+          reviewed-commit: ${{{{ env.REVIEWED_COMMIT }}}}
       # `pack_if` reads steps.selfmod.outputs.self_mod, so the id has to
       # exist or the dangling-read check refuses it -- as it would on the
       # real workflow, where a `run:` step declares it.
@@ -1213,6 +1309,10 @@ jobs:
         good_action = root / "action.yml"
         good_action.write_text(
             """
+inputs:
+  reviewed-commit:
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -1223,6 +1323,14 @@ runs:
         claude_args: >-
           --allowedTools
           "Bash,Edit(//tmp/**),WebFetch,WebSearch"
+        prompt: |
+          **Commit under review:** ${{ inputs.reviewed-commit }}
+          <!-- review-data:
+          "commit_sha": "${{ inputs.reviewed-commit || '<sha>' }}",
+          -->
+          ```json
+          "commit_sha": "${{ inputs.reviewed-commit || '<sha>' }}",
+          ```
 """
         )
         # gha#804/gha#806: the template reads one output from each of two
@@ -1467,7 +1575,8 @@ runs:
                 "      contents: read\n"
                 "      pull-requests: read\n"
                 "      issues: read\n"
-                "      actions: read\n",
+                "      actions: read\n"
+                "      checks: read\n",
                 "    permissions: write-all\n",
                 1,
             )
@@ -1484,17 +1593,39 @@ runs:
         # that the exact-set check fires on an ADDED scope -- which is the
         # regression it exists for. gha#831's incident was exactly one added
         # read scope, so the case has to be an addition, not a replacement.
+        # checks: read is now part of the v3 baseline (gha#833), so the
+        # added scope has to be something else entirely to still exercise
+        # an addition rather than restoring what #831 already covers.
         added_scope = root / "added-scope.yml"
         added_scope.write_text(
             good_wf.read_text().replace(
-                "      actions: read\n",
-                "      actions: read\n      checks: read\n",
+                "      checks: read\n",
+                "      checks: read\n      security-events: read\n",
                 1,
             )
         )
         failures += expect(
             "an added scope on the model job fails",
             run(added_scope, good_action),
+            False,
+            "claude-review requests exactly",
+        )
+
+        # The mirror of added_scope: DROPPING checks: read from the v3
+        # baseline has to fail too, since that's the actual regression this
+        # change guards against going forward -- losing gha#833's fix by a
+        # careless future edit, the same way #831 lost it once already.
+        dropped_checks = root / "dropped-checks.yml"
+        dropped_checks.write_text(
+            good_wf.read_text().replace(
+                "      actions: read\n      checks: read\n",
+                "      actions: read\n",
+                1,
+            )
+        )
+        failures += expect(
+            "dropping checks: read from the model job fails",
+            run(dropped_checks, good_action),
             False,
             "claude-review requests exactly",
         )
@@ -1952,6 +2083,73 @@ runs:
             '          echo "Reviewed commit: $HEAD_SHA"',
             '          echo "${{ steps.payload.outputs.denied_tools }}"',
             "denied_tools is never interpolated into a run: body",
+        )
+
+        # gha#852 pins. The action-side mutations need their own helper
+        # because `mutate` only rewrites the workflow template.
+        def mutate_action(label: str, old: str, new: str, needle: str) -> int:
+            mutated = root / (label.replace(" ", "-") + ".action.yml")
+            text = good_action.read_text()
+            if old not in text:
+                print(
+                    f"::error::self-test mutation {label!r}: replacement "
+                    "target not found in the good action (vacuous)",
+                    file=sys.stderr,
+                )
+                return 1
+            mutated.write_text(text.replace(old, new, 1))
+            return expect(label, run(good_wf, mutated), False, needle)
+
+        failures += mutate(
+            "REVIEWED_COMMIT resolved from github.sha fails",
+            "      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}",
+            "      REVIEWED_COMMIT: ${{ github.sha }}",
+            "resolves REVIEWED_COMMIT once",
+        )
+        failures += mutate(
+            "REVIEWED_COMMIT without the stash-head fallback fails",
+            "      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}",
+            "      REVIEWED_COMMIT: ${{ github.event.pull_request.head.sha }}",
+            "resolves REVIEWED_COMMIT once",
+        )
+        failures += mutate(
+            "an attempt resolving reviewed-commit on its own fails",
+            "          reviewed-commit: ${{ env.REVIEWED_COMMIT }}",
+            "          reviewed-commit: ${{ github.event.pull_request.head.sha }}",
+            "passes reviewed-commit: ${{ env.REVIEWED_COMMIT }}",
+        )
+        failures += mutate(
+            "an attempt input carrying github.sha fails",
+            "          reviewed-commit: ${{ env.REVIEWED_COMMIT }}",
+            "          reviewed-commit: ${{ env.REVIEWED_COMMIT }}\n"
+            "          merge-sha: ${{ github.sha }}",
+            "no run-claude-review-attempt input carries github.sha",
+        )
+        failures += mutate_action(
+            "review-data templates naming different commit_sha sources fails",
+            "          \"commit_sha\": \"${{ inputs.reviewed-commit || '<sha>' }}\",\n"
+            "          -->",
+            "          \"commit_sha\": \"<sha>\",\n"
+            "          -->",
+            "both review-data commit_sha templates interpolate inputs.reviewed-commit",
+        )
+        failures += mutate_action(
+            "a prompt naming the commit under review from github.sha fails",
+            "          **Commit under review:** ${{ inputs.reviewed-commit }}",
+            "          **Commit under review:** ${{ github.sha }}",
+            "never reads github.sha",
+        )
+        failures += mutate_action(
+            "a prompt reading $GITHUB_SHA fails",
+            "          **Commit under review:** ${{ inputs.reviewed-commit }}",
+            "          **Commit under review:** ${{ inputs.reviewed-commit }} (also $GITHUB_SHA)",
+            "never reads github.sha",
+        )
+        failures += mutate_action(
+            "dropping the reviewed-commit input declaration fails",
+            "inputs:\n  reviewed-commit:\n    required: false\n    default: ''\n",
+            "",
+            "declares a reviewed-commit input",
         )
 
     if failures:

@@ -50,11 +50,12 @@ itself calls another of our workflows is not compared. Nothing a stub calls
 declares ``workflow_call:`` and also calls another of ours today, so that is
 a limit rather than a live gap.
 
-Groups are compared as LITERAL TEXT, so only constant names are covered.
-An expression-valued group never matches textually, which is why no review
-stub can be flagged (their groups are ``${{ }}``-valued) and why
-``altdoc-multiversion-docs.yml``'s ``build`` group is missed. gha#822 tracks
-comparing by evaluated value instead.
+Groups are compared across their evaluated candidate runtime values (gha#822).
+An expression-valued group is evaluated across its ternary
+(``cond && branch1 || branch2``) and fallback (``A || B``) alternatives with
+whitespace normalized, so expression-valued groups -- including review-family
+per-PR stubs and ``altdoc-multiversion-docs.yml``'s ``build`` group -- are
+checked for potential runtime collisions, failing when candidate sets intersect.
 
 Usage::
 
@@ -67,6 +68,7 @@ input.
 from __future__ import annotations
 
 import argparse
+import itertools
 import pathlib
 import re
 import sys
@@ -152,6 +154,166 @@ def group_of(path: pathlib.Path, where: str, block) -> str | None:
     if not group:
         die(f"{path}: {where} concurrency names no group")
     return group
+
+
+def parse_group_segments(
+    group: str, path: pathlib.Path, where: str
+) -> list[tuple[str, str]]:
+    """Parse a concurrency group into ('lit', text) and ('expr', expr) segments.
+
+    Unclosed '${{' or empty '${{ }}' refuses (exit 2) rather than reading as
+    absent or literal text, so broken expressions fail closed (gha#822).
+    """
+    segments: list[tuple[str, str]] = []
+    pos = 0
+    while pos < len(group):
+        start = group.find("${{", pos)
+        if start == -1:
+            segments.append(("lit", group[pos:]))
+            break
+        if start > pos:
+            segments.append(("lit", group[pos:start]))
+        end = group.find("}}", start + 3)
+        if end == -1:
+            die(f"{path}: {where} concurrency group has unclosed '${{{{'")
+        expr = group[start + 3 : end].strip()
+        if not expr:
+            die(
+                f"{path}: {where} concurrency group has empty "
+                f"'${{{{ }}}}' expression"
+            )
+        segments.append(("expr", expr))
+        pos = end + 2
+    return segments
+
+
+def split_top_level(expr: str, delimiter: str) -> list[str]:
+    """Split `expr` by `delimiter` ('||' or '&&') at top level, respecting
+    quotes and parens."""
+    parts: list[str] = []
+    current: list[str] = []
+    i = 0
+    n = len(expr)
+    in_single_quotes = False
+    paren_depth = 0
+    delim_len = len(delimiter)
+
+    while i < n:
+        ch = expr[i]
+        if ch == "'" and not in_single_quotes:
+            in_single_quotes = True
+            current.append(ch)
+            i += 1
+        elif ch == "'" and in_single_quotes:
+            if i + 1 < n and expr[i + 1] == "'":
+                current.append("''")
+                i += 2
+            else:
+                in_single_quotes = False
+                current.append(ch)
+                i += 1
+        elif in_single_quotes:
+            current.append(ch)
+            i += 1
+        elif ch == "(":
+            paren_depth += 1
+            current.append(ch)
+            i += 1
+        elif ch == ")":
+            if paren_depth > 0:
+                paren_depth -= 1
+            current.append(ch)
+            i += 1
+        elif paren_depth == 0 and expr[i : i + delim_len] == delimiter:
+            parts.append("".join(current).strip())
+            current = []
+            i += delim_len
+        else:
+            current.append(ch)
+            i += 1
+
+    parts.append("".join(current).strip())
+    return [p for p in parts if p]
+
+
+def strip_matching_parens(s: str) -> str:
+    s = s.strip()
+    while s.startswith("(") and s.endswith(")"):
+        depth = 0
+        matched = True
+        for idx, ch in enumerate(s):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0 and idx < len(s) - 1:
+                    matched = False
+                    break
+        if matched and depth == 0:
+            s = s[1:-1].strip()
+        else:
+            break
+    return s
+
+
+def extract_branches(expr: str) -> list[str]:
+    """Extract candidate evaluated branches from an expression."""
+    expr = strip_matching_parens(expr.strip())
+    or_parts = split_top_level(expr, "||")
+    if len(or_parts) > 1:
+        branches: list[str] = []
+        for part in or_parts:
+            for b in extract_branches(part):
+                if b not in branches:
+                    branches.append(b)
+        return branches
+
+    and_parts = split_top_level(expr, "&&")
+    if len(and_parts) > 1:
+        val = and_parts[-1].strip()
+        return extract_branches(val)
+
+    return [expr]
+
+
+def branch_to_str(branch: str) -> str:
+    """Format an expression branch into its evaluated representation.
+
+    A branch that is a single-quoted string literal (e.g. 'production')
+    resolves to its unquoted literal text; any other expression is
+    normalized to ${{ b }}.
+    """
+    if (
+        len(branch) >= 2
+        and branch.startswith("'")
+        and branch.endswith("'")
+        and "''" not in branch[1:-1]
+    ):
+        return branch[1:-1]
+    return f"${{{{ {branch} }}}}"
+
+
+def possible_groups(path: pathlib.Path, where: str, group: str) -> set[str]:
+    """All candidate evaluated forms of a concurrency group string (gha#822).
+
+    Evaluates expressions into their potential runtime values by resolving
+    ternary and fallback (||) branches and normalizing ${{ }} spacing.
+    A group with no expressions evaluates to a singleton set containing itself.
+    """
+    segments = parse_group_segments(group, path, where)
+    choices: list[list[str]] = []
+    for kind, text in segments:
+        if kind == "lit":
+            choices.append([text])
+        else:
+            branches = extract_branches(text)
+            choices.append([branch_to_str(b) for b in branches])
+
+    results: set[str] = set()
+    for combo in itertools.product(*choices):
+        results.add("".join(combo))
+    return results
+
 
 
 def job_groups(path: pathlib.Path, doc) -> dict[str, str]:
@@ -269,13 +431,27 @@ def audit(examples_dir: pathlib.Path, workflows_dir: pathlib.Path) -> list[str]:
             if callee_top is not None:
                 callee_side.append(("its top level", callee_top))
             for cwhere, cgroup in callee_side:
+                c_possible = possible_groups(wf, cwhere, cgroup)
                 for where, group in caller_side:
-                    if cgroup == group:
-                        findings.append(
-                            f"{caller}: {where} concurrency group {group!r} is also "
-                            f"declared on {cwhere} of {callee}; the two "
-                            f"deadlock (gha#809)"
-                        )
+                    caller_possible = possible_groups(caller, where, group)
+                    overlap = caller_possible & c_possible
+                    if overlap:
+                        if cgroup == group:
+                            findings.append(
+                                f"{caller}: {where} concurrency group "
+                                f"{group!r} is also declared on {cwhere} of "
+                                f"{callee}; the two deadlock (gha#809)"
+                            )
+                        else:
+                            matched = ", ".join(
+                                repr(x) for x in sorted(overlap)
+                            )
+                            findings.append(
+                                f"{caller}: {where} concurrency group "
+                                f"{group!r} overlaps with {cgroup!r} declared "
+                                f"on {cwhere} of {callee} (both can evaluate "
+                                f"to {matched}); the two deadlock (gha#809)"
+                            )
     # Both roots are named in the count, so a population that silently
     # shrank back to the stubs alone reads differently from one that examined
     # the dogfood callers too (gha#821).

@@ -200,7 +200,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
 `small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `r-cmd-check`,
-`check-code-similarity`, and
+`check-code-similarity`,
+`check-duplicate-roxygen`, and
 `check-one-function-per-file` -- see
 the Versioning section
 of `README.md`).
@@ -287,6 +288,7 @@ which is why the capabilities above moved to `@v2`.
   which is proprietary and needs a paid licence for organization accounts.
   `check-links/` bundles `lychee.default.toml`;
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
+  `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
@@ -1652,26 +1654,25 @@ than asserting the resolution alone (gha#741 review).
 
 `lint-markdown/check_list_item_splices.mjs` (tested by
 `node lint-markdown/tests/test_list_item_splices.mjs`) flags list-item merge
-splices: a list item spliced directly onto a previous item's continuation line
-with no intervening blank line (gha#324).
+splices: a list item spliced directly onto preceding paragraph text
+with no intervening blank line (gha#324, gha#895).
 CI runs it as part of the `lint-markdown` composite action and job in
 `_selftest.yml`.
 
-**Its commonest trigger is an ordinary wrapped bullet list.**
 The condition flags a list item whose immediately-preceding line is non-blank
-and is not itself a list item, heading, blockquote, table row, or thematic break.
-The continuation line of a previous wrapped bullet satisfies that non-blank
-preceding-line condition.
-So a wrapped bullet followed immediately by the next bullet --- without a blank
-line between them --- is flagged as a splice.
-The repo's house style requires multi-line wrapped list items to be separated
-from adjacent items by an intervening blank line.
+and belongs to a paragraph rather than an existing list item or block structure (gha#324).
+To avoid false positives on ordinary wrapped lists (gha#895), the check walks back
+from the preceding line to identify whether it belongs to a preceding list item:
+tight wrapped continuations and indented paragraphs of loose list items are recognized,
+so the subsequent list item is admitted without requiring an artificial intervening blank line.
+Thematic break detection requires matching characters and admits spaced delimiters
+(such as `* * *` and `- - -`) per CommonMark.
 The check is diff-scoped via `LIST_ITEM_SPLICE_BASE_REF` on PRs (set to `all`
 for a full scan, or skipped with a warning when empty).
-Negative controls in `test_list_item_splices.mjs` verify that wrapped bullets
-separated by blank lines pass cleanly, and that fenced code blocks
-(` ``` `, `~~~`), table rows, headings, blockquotes, and thematic breaks are
-exempt from triggering splice errors.
+Negative controls in `test_list_item_splices.mjs` verify that ordinary wrapped lists
+(with or without blank lines, and loose multi-paragraph items), fenced code blocks
+(` ``` `, `~~~`), table rows, headings, blockquotes, and thematic breaks (compact or spaced)
+pass cleanly without triggering splice errors.
 
 `lint-markdown/check_table_splits.mjs` (tested by
 `node lint-markdown/tests/test_table_splits.mjs`) flags split GFM tables
@@ -1953,6 +1954,10 @@ suite testing the top-level function parsers across Python (AST), R (brace/paren
 Shell (parameter expansion protection), JavaScript/TypeScript (generics, block comment stripping with line preservation),
 and Julia (multiple dispatch deduplication), along with opt-out header directives and defaults-agreement.
 Run it with `python3 -m pytest check-one-function-per-file/tests/ -v`.
+
+`check-duplicate-roxygen/tests/test_check_duplicate_roxygen.py` is a pytest
+suite testing roxygen block parsing, function signature extraction, duplicate parameter detection across functions and files, recommendation formulation (`@inheritParams` and `@inheritDotParams`), opt-out directives, and diff-scoping.
+Run it with `python3 -m pytest check-duplicate-roxygen/tests/ -v`.
 
 **The refusal cases are the ones to keep if the suite is ever trimmed, and
 they all fail in one direction.**
@@ -3092,11 +3097,12 @@ and that sidecar files are omitted when the corresponding input is empty
 The YAML suite reads `claude-code-review.yml` and `run-claude-review-attempt`
 and asserts the facts a future edit could reverse silently:
 the model job requests EXACTLY the keys
-`contents`/`pull-requests`/`issues`/`actions` and no others (the set is over
-KEYS; separate per-key assertions pin the values against `write`) --- so
-any future addition fails offline instead of at a consumer's next PR, which
-is what gha#830 did not (gha#831, gha#832) ---
-so it grants no forge-write, no `id-token: write`, and no `checks: read`,
+`contents`/`pull-requests`/`issues`/`actions`/`checks` and no others (the set
+is over KEYS; separate per-key assertions pin the values against `write`)
+--- so any future addition beyond this v3 baseline fails offline instead of
+at a consumer's next PR, which is what gha#830 did not (gha#831, gha#832,
+gha#833) ---
+so it grants no forge-write and no `id-token: write`,
 the posting job holds `pull-requests: write` /
 `issues: write` / `actions: read` and does not invoke the model,
 `github_token` is forwarded so the App-token write exchange is skipped,
@@ -3110,10 +3116,15 @@ the loaded `resolve_outcome == 'failure'` path, including a successful
 review so Require exiting 1 does not skip the notice),
 caller grant lists (the example stub, README, permissions page,
 reference Permissions and Example) include `actions: read`,
-and `post-review` stale-checks against event-pinned
+`post-review` stale-checks against event-pinned
 `reviewed-head` (`github.event.pull_request.head.sha`),
 falling back to gather-context's stash-head on dispatch,
-rather than a later API fetch from the model job.
+rather than a later API fetch from the model job,
+and the model job resolves `REVIEWED_COMMIT` once from those same two
+sources in that same order, passes it to every attempt as
+`reviewed-commit`, and the prompt interpolates that one input into both
+review-data `commit_sha` templates, with nothing in the composite or the
+attempt inputs reading `github.sha` / `GITHUB_SHA` (gha#852).
 
 **`run-review-job-split-tests.py` also asserts that every in-repo composite
 output the workflow reads is declared, and derives that check from the
@@ -3199,6 +3210,45 @@ CI runs the workflow-split assertions and the self-test suite, plus a real
 separate from `review-fail-check` so a failure is attributable at a glance.
 `claude-code-review.yml`'s own `@v2` consumption of the new composite is
 the usual bootstrap gap until the tag slides.
+
+**The review-data JSON's `commit_sha` and the trailing `Reviewed commit:`
+line were produced in different places, which is how they came to name
+different commits (gha#852).**
+The trailing line is stamped by `post-review` from the SHA its stale check
+bounded (`reviewed-head`, then stash-head on dispatch; gha#679), while the
+JSON field was a `<sha>` placeholder the reviewer filled in itself, and the
+reviewer reached for `GITHUB_SHA` -- which on a `pull_request` event is
+GitHub's ephemeral merge ref, a commit on no branch that vanishes when the
+PR closes.
+Measured on Morrison-Lab/ai-config#3414: the line named the head
+`277da5f6` and the field named merge commit `3f1b1d6b`.
+Nothing was red, because `check-pr-fully-clean.py` accepts either the
+structured field or the body's head SHA, so the defect was latent until a
+consumer read `commit_sha` alone -- the field's natural reading.
+The fix is one resolution: the model job's `REVIEWED_COMMIT` env reads the
+same two sources in the same order as `post-review`'s `COMPARE`, every
+attempt passes it as the composite's `reviewed-commit` input, and the
+prompt interpolates that input into both `commit_sha` templates and names it
+as the commit under review, so the reviewer copies a value rather than
+finding one.
+The suite pins each hop, and the mutations to keep are the two that leave
+the value *correct today* while restoring the split: an attempt resolving
+`reviewed-commit` from `github.event.pull_request.head.sha` directly instead
+of the env (right on `pull_request`, empty on dispatch, and a second
+declaration of the source either way), and the JSON templates naming
+different sources (the hidden comment and visible fence are required
+identical, so one drifting back to `<sha>` is a silent half-fix).
+Eight mutations turn a named case red: `REVIEWED_COMMIT` from `github.sha`,
+`REVIEWED_COMMIT` without the stash-head fallback, an attempt bypassing the
+env, an attempt input carrying `github.sha`, the two templates disagreeing,
+the prompt naming the commit from `github.sha`, the prompt reading
+`$GITHUB_SHA`, and the input declaration dropped.
+The prompt still says never to substitute `GITHUB_SHA`, and the prose
+mention is deliberately not what the scan matches: the negative assertion
+keys on an expression (`${{ ... github.sha ... }}`) or a shell read
+(`$GITHUB_SHA`), which the corpus's own instruction about them cannot
+forge -- the same emitting-form anchoring `check-diff-scoped.sh`'s runtime
+guard records above.
 
 `run-fixture-tests.sh` gained three assertions alongside it, and the last two
 are the ones worth reading.
@@ -3480,18 +3530,20 @@ A callee job that itself calls another of our workflows is not compared.
 Eleven workflows here do call another of ours, but none of those eleven
 declares `workflow_call:`, so none can be a callee and no nesting is
 reachable from a stub -- a limit rather than a live gap.
-The docstring states it too, so a reader of the script alone gets it.
-**And the comparison is literal string equality, so it sees constant group
-names only.**
-That covers the gh-pages family, whose groups are the constant `gh-pages`.
-It does NOT cover a group written as an expression: the review family's
-groups are `${{ }}`-valued, so no review stub can ever be flagged, and
-`altdoc-multiversion-docs.yml`'s `build` job holds a group whose `${{ }}`
-part evaluates to `github.ref` outside a pull request, so the group as a
-whole becomes `altdoc-multiversion-docs-refs/heads/main` -- identical to what
-a caller writing `altdoc-multiversion-docs-${{ github.ref }}` requests, while
-the two strings never match textually.
-gha#822 tracks normalizing expressions before comparing.
+**Groups are compared across their evaluated candidate runtime values
+(gha#822).**
+Literal string equality alone covered only constant names like `gh-pages`.
+Expressions inside `${{ }}` are evaluated across their ternary
+(`cond && branch1 || branch2`) and fallback (`A || B`) alternatives with
+whitespace normalized.
+This checks expression-valued groups for potential runtime collisions:
+the review workflows' per-PR groups (`claude-review-${{ ... }}` and siblings)
+fail when a caller reintroduces a matching PR-scoped group, and
+`altdoc-multiversion-docs.yml`'s `build` job group (whose expression
+resolves to `github.event.pull_request.number` or `github.ref`)
+collides when a caller requests `altdoc-multiversion-docs-${{ github.ref }}`
+or the PR-number equivalent.
+Unclosed `${{` and empty `${{ }}` expressions fail closed (exit 2).
 EVERY non-string scalar group is refused rather than compared, not the
 subset that happens to survive `str()`.
 YAML's scalar resolution is lossy, so the audit cannot recover what the
@@ -3576,6 +3628,10 @@ mutating both turns its case red; read that survivor as the other site still
 holding rather than as missing coverage.
 CI runs it as the `example-concurrency` job in `_selftest.yml`, unit tests
 first, then the live audit.
+
+**`_selftest.yml` audits `examples/*.yml` with `actionlint` alongside repository workflows (gha#840).**
+`actionlint` without arguments audits only `.github/workflows/`, which left caller stubs unlinted in CI until #823 was discovered manually.
+The `lint-workflows` job in `_selftest.yml` passes `examples/*.yml` to `actionlint -shellcheck ""` after auditing `.github/workflows/`, ensuring all 49 example caller stubs conform to GitHub Actions syntax, expression validation, and reusable workflow caller schemas.
 
 `.github/workflows/scripts/audit_capability_versioning_docs.py` closes
 gha#730: every capability that ships past the frozen `@v1` snapshot must be
@@ -3929,6 +3985,49 @@ admits that login: that path is entirely in the caller and does not wait
 on a tag slide.
 A human OWNER/MEMBER/COLLABORATOR `/review` or `@claude review` remains
 the reliable workaround on any older pin.
+
+**An agent session's own review requests take the `/review` path too, and a
+direct `workflow_dispatch` is the trap that looks like it works.**
+A Claude Code remote/web session acts as `claude[bot]`.
+Its pushes carry `sender.type == 'Bot'`, so the reusable workflow's automatic
+`pull_request` path skips every `review /` job.
+A `workflow_dispatch` it issues itself does start a run --- that `if:` admits
+`workflow_dispatch` unconditionally --- and `claude-code-action` then
+short-circuits on the triggering actor, because `allowed-bots` defaults to
+`github-actions[bot]` alone.
+Measured on `Morrison-Lab/ai-config`, 2026-09-18.
+Every dispatch with `triggering_actor: claude[bot]` --- all four that repo has
+ever had --- packed `failure-kind: short-circuit`, `attempts: 1`,
+`total-cost-usd: 0.0000`, `SELF_MOD: false`, with the "Run Claude Code Review"
+step lasting 35ms:
+[35267489584](https://github.com/Morrison-Lab/ai-config/actions/runs/35267489584),
+[35268075963](https://github.com/Morrison-Lab/ai-config/actions/runs/35268075963),
+[35312346178](https://github.com/Morrison-Lab/ai-config/actions/runs/35312346178),
+[35312509759](https://github.com/Morrison-Lab/ai-config/actions/runs/35312509759).
+The four `triggering_actor: github-actions[bot]` dispatches checked in the same
+window reviewed normally:
+[35311949751](https://github.com/Morrison-Lab/ai-config/actions/runs/35311949751),
+[35312775441](https://github.com/Morrison-Lab/ai-config/actions/runs/35312775441),
+[35312827292](https://github.com/Morrison-Lab/ai-config/actions/runs/35312827292),
+[35312866850](https://github.com/Morrison-Lab/ai-config/actions/runs/35312866850).
+Derive the population rather than recalling it:
+`actions_list` `list_workflow_runs` on `claude-review.yml` filtered to
+`event: workflow_dispatch`, read for `triggering_actor.login`.
+A zero-cost short-circuit is also gha#368's signature, so read the actor
+before reading the failure kind --- retrying reproduces this one exactly.
+`claude[bot]` is therefore on `dispatch-on-comment`'s login allowlist: that
+job's own dispatch runs under `GITHUB_TOKEN`, so it re-enters as
+`github-actions[bot]` and clears both gates without loosening either.
+
+- **Do:** post a `/review` comment from an agent session, and read the
+  acknowledgement's link to the dispatch run.
+
+- **Don't:** dispatch `claude-review.yml` directly from one --- the run
+  starts, costs nothing, and fails.
+
+- **Don't:** widen `allowed-bots` to admit `claude[bot]` instead; that admits
+  the actor into every dispatched review rather than into the one path whose
+  requester was checked.
 
 **Some of these sessions have no local git checkout at all** (not just a missing
 `gh` CLI) -- there is no working tree to run `git commit`/`git push` against, so
@@ -4688,6 +4787,23 @@ log is not misdiagnosed as a `401`:
 The [Test changes against a template repo](#test-changes-against-a-template-repo-before-declaring-ready-to-merge)
 section used to hit that same OIDC content-validation abort;
 `github_token` forwarding is what skips it now (gha#580).
+
+## GitHub suppresses pull_request workflow runs for conflicting PRs (gha#859)
+
+GitHub Actions platform policy dictates that no `pull_request` workflows run
+(neither on PR creation nor on `synchronize` pushes)
+when a pull request has merge conflicts with the target branch
+(`git merge-tree` shows conflict markers).
+This produces a symptom easily mistaken for a review outage:
+all automated checks go completely silent
+without even registering a skipped run.
+For a conflicting PR, review must be triggered via the `workflow_dispatch` path:
+
+```sh
+gh workflow run claude-code-review.yml -f pr_number=N
+```
+
+or after merging the base branch to resolve the conflict.
 
 ## `claude.yml` has four review-dispatch sites, and one is not the composite
 

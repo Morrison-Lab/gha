@@ -8,6 +8,8 @@ the Google Antigravity Python SDK (`google-antigravity`).
 Supports three operational modes (`code-review`, `security-audit`,
 `test-generation`) and two execution policies (`on-push` for automatic PR
 updates and `on-request` for manual/dispatch runs).
+GitHub suppresses `pull_request` workflow runs
+when a pull request has merge conflicts with the target branch (gha#859).
 
 Requires a `GEMINI_API_KEY` secret.
 

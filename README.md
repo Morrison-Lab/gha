@@ -47,6 +47,7 @@ not reference `@main` from consumers.
 | `check-bibliography-dois.yml` | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata | `exclude-keys`, `install-quarto`, `no-metadata-check` |
 | `check-formatting.yml` | Fail when any `.R`/`.r` file would be rewritten by Air, Posit's R formatter (Rust; no R session). Check-only | `version`, `path` |
 | `check-code-similarity.yml` | Flag code highly similar to a caller-supplied corpus of prior submissions, using JPlag. Computed entirely on the runner --- nothing is uploaded. Warns rather than fails by default, since shared skeleton code and common idioms raise similarity legitimately | `corpus-path`, `language`, `threshold`, `fail`, `base-code-path` |
+| `check-duplicate-roxygen.yml` | Check for duplicate roxygen parameter documentation across R code files and recommend consolidation using `@inheritParams` and/or `@inheritDotParams` | `path`, `paths-ignore`, `extensions`, `min-desc-length`, `base-ref`, `fail`, `python-version` |
 | `check-junk-files.yml` | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
 | `check-one-function-per-file.yml` | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`), with header opt-out comment support | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
@@ -68,8 +69,8 @@ not reference `@main` from consumers.
 | `check-extra.yml` | Extra R-package checks that `R CMD check` passes over: warnings as errors on examples/tests/vignettes, random test order, and a README.Rmd render that can also fail when `README.md` is stale | `path`, `extra-packages`, `install-quarto`, `check-warnings`, `check-random-order`, `check-readme`, `check-readme-freshness` |
 | `r-cmd-check.yml` | Run `R CMD check` across an OS x R-version matrix, with an optional hard-dependencies-only job gated to `pull_request` | `hard`, `error-on`, `force-suggests`, `setup-julia`, `julia-project`, `apt-packages`, `brew-packages`, `brew-casks`, `install-quarto`, `linux-container`, `extra-packages`, `timeout-minutes` |
 | `update-snapshots.yml` | Regenerate testthat snapshots, accept the new output, commit, and push -- the workflow only verifies the suite passes against the accepted snapshots; their correctness is judged at PR review of the pushed commit | `ref`, `pr-mode`, `julia`, `extra-packages`, `apt-packages`, `commit-message` |
-| `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent. | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names`, `timeout-minutes` |
-| `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
+| `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent. | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names`, `timeout-minutes` |
+| `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
 | `claude-manage-project.yml` | Triage a newly-opened issue: apply a priority label and add it to the project board (trusted authors only) | `prompt-addendum`, `trusted-bot-logins` |
 | `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file`, `extra-secret-names` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model`, `extra-secret-names` |
@@ -107,7 +108,7 @@ that need to write must have the **caller** grant it on the calling job:
   `models: read`, `contents: read`.
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
-  `check-code-similarity`, `check-equation-renders`, `check-extra`,
+  `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`, `check-secrets`,
@@ -162,10 +163,12 @@ that need to write must have the **caller** grant it on the calling job:
     a `SUBMODULES_TOKEN` secret.
 - `claude-code-review` (read-only review) → grant `contents: read`,
   `pull-requests: write`, `issues: write`, `actions: read`,
-  `checks: read` (grant it; required by the currently-tagged `@v2`),
+  `checks: read` (grant it; optional under `@v2`,
+  which no longer requests it per gha#832,
+  but required by the model job as of `@v3`),
   and either the `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY` secret.
   The model job's `GITHUB_TOKEN` has no write scopes
-  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
   write is confined to jobs that never run the model
   (`gather-context` stashes reviewers and posts
   the early dispatch notice; `post-review` downloads the review artifact
@@ -174,31 +177,29 @@ that need to write must have the **caller** grant it on the calling job:
   unspecified scopes to none, and `post-review` needs it to download the
   packed artifact (the model job also uses it for the `github_ci` MCP
   server).
-  Grant `checks: read`, but note what it does and does not buy.
+  Grant `checks: read` regardless of which tag you pin, but note what it
+  does and does not buy.
   `actions: read` covers workflow runs but not
   `GET .../commits/{ref}/check-runs`,
-  so without that scope the reviewer's check-status reads fail with
+  so without `checks: read` the reviewer's check-status reads fail with
   HTTP 403 and a clean diff can be reported as blocked
   (ucdavis/bcs#964).
-  As of 2026-09-06 the `@v2` tag still points at a commit that DOES
-  request the scope,
-  which is why a caller lacking it fails at startup.
-  Once `v2` is slid onto this change the model job stops requesting it,
-  and the 403 returns for everyone until the `v3` reinstates it.
-  Keep the grant through all three phases:
-  it is what makes a caller work today,
-  it is harmless while the slid `@v2` ignores it,
-  and it is what makes the `v3` cost nothing later.
-  The startup failure is the reason the callee gave the scope up:
-  a called workflow cannot request a permission its caller lacks,
-  so the run ends before any job starts.
-  That is how the `v2` slide for that grant broke 17 of the 18
-  repositories pinning this workflow at `@v2`
-  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)
-  carries the derivation;
-  how many still lack the grant falls as consumers add it, and is
-  tracked in [gha#833](https://github.com/Morrison-Lab/gha/issues/833)
-  as the `v3` precondition rather than restated here).
+  The model job briefly lost this scope on `@v2`: a called workflow
+  cannot request a permission its caller lacks, so the run ends in
+  `startup_failure` before any job begins, and `@v2`'s original grant of
+  `checks: read` on the model job broke startup for 17 of the 18
+  repositories pinning this workflow at `@v2` that had not yet added the
+  caller-side grant above
+  ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
+  Dropping the scope from the model job un-broke those callers but
+  reopened the 403 for everyone -- which is what
+  [`v3`](https://github.com/Morrison-Lab/gha/issues/833) fixes by
+  reinstating it there, now that the caller-side grant above is
+  established practice.
+  Keep granting `checks: read` regardless:
+  it is optional under the currently-tagged `@v2`
+  (which no longer requests it, per gha#832)
+  but required by the model job once you adopt `@v3`.
 
   - **Optional:** set `checkout-submodules: true` so the reviewer can read
     submodule contents instead of reporting them as uninitialized. Public
@@ -312,8 +313,9 @@ via `workflow_dispatch`. Install both, and keep the review stub named
 match) so the dispatch resolves.
 
 The `examples/claude-code-review.yml` stub defaults to this mention-triggered
-path only (no automatic `pull_request` trigger). Add `pull_request` in that
-stub if you want automatic review on each PR update.
+path only (no automatic `pull_request` trigger).
+Add `pull_request` in that stub if you want automatic review on each PR update
+(note that GitHub suppresses `pull_request` runs for PRs with merge conflicts; gha#859).
 
 Do not declare a `concurrency:` block reusing the callee's group in caller
 stubs for review workflows (`claude-code-review.yml`,
@@ -326,10 +328,9 @@ the nested job's group and cancels the run
 ([gha#437](https://github.com/Morrison-Lab/gha/issues/437)).
 Both caller placements do it -- a top-level block, and one on the calling
 job itself.
-Follow this rule by hand for the review family: these groups are `${{ }}`
-expressions, and `audit_example_concurrency.py` compares group names as
-literal text, so it cannot check them
-([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
+`audit_example_concurrency.py` checks these groups across their candidate
+evaluated runtime values, flagging callers that declare colliding PR-scoped
+group names ([gha#822](https://github.com/Morrison-Lab/gha/issues/822)).
 The same rule covers the gh-pages family (`quarto-publish.yml`,
 `preview-deploy.yml`, `cleanup-pr-previews.yml`,
 `altdoc-multiversion-docs.yml`), whose deploy or cleanup job declares
@@ -339,11 +340,13 @@ and there the job fails with no runner, no steps, and no log, so the site
 silently stops publishing
 ([gha#809](https://github.com/Morrison-Lab/gha/issues/809)).
 `audit_example_concurrency.py` fails `_selftest.yml` when any stub under
-`examples/` declares a group its called workflow already declares -- on
-either side's two placements, so the stub's top level or its calling job
-against the callee's jobs or the callee's own top level.
-Its comparison is literal, so what it can FLAG is the constant-named
-groups above; it still examines every stub.
+`examples/` (or dogfood caller under `.github/workflows/`) declares a group
+its called workflow already declares -- on either side's two placements,
+so the stub's top level or its calling job against the callee's jobs or the
+callee's own top level.
+Expressions inside `${{ }}` are evaluated across ternary and fallback
+branches, catching both literal constant collisions and expression-valued
+collisions like review-family stubs and multiversion docs.
 
 You can also start a review **directly**, without waking the `@claude` agent, by
 commenting `/review` at the start of a PR comment -- but that path is opt-in:
@@ -612,7 +615,7 @@ Pin
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
-`check-code-similarity.yml`, and
+`check-code-similarity.yml`, `check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
@@ -651,6 +654,9 @@ well after the freeze -- see
 [gha#510](https://github.com/Morrison-Lab/gha/issues/510)); pin to `@v2`.
 `opencode-code-review.yml` postdates the freeze as well
 (added in [gha#586](https://github.com/Morrison-Lab/gha/issues/586)); pin to
+`@v2`.
+`check-duplicate-roxygen.yml` postdates the freeze as well
+(added in [gha#897](https://github.com/Morrison-Lab/gha/pull/897)); pin to
 `@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
@@ -741,7 +747,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `small-model-agent.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
-`check-code-similarity.yml`, and
+`check-code-similarity.yml`,
+`check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 

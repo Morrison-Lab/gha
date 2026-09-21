@@ -12,6 +12,7 @@ input tables and a copy-paste example.
 | [`check-bibliography-dois.yml`](reference/check-bibliography-dois.qmd)     | Validate book/article BibTeX entries have resolvable DOIs matching CrossRef metadata                                                                                                                                              | `exclude-keys`, `install-quarto`, `no-metadata-check`                                                                                                                               |
 | [`check-formatting.yml`](reference/check-formatting.qmd)                   | Fail when any `.R`/`.r` file would be rewritten by Air, Posit's R formatter (Rust; no R session). Check-only                                                                                                                      | `version`, `path`                                                                                                                                                                   |
 | [`check-code-similarity.yml`](reference/check-code-similarity.qmd) | Flag code highly similar to a caller-supplied corpus of prior submissions, using JPlag. Computed entirely on the runner --- nothing is uploaded. Warns rather than fails by default, since shared skeleton code and common idioms raise similarity legitimately | `corpus-path`, `language`, `threshold`, `fail`, `base-code-path` |
+| [`check-duplicate-roxygen.yml`](reference/check-duplicate-roxygen.qmd) | Check for duplicate roxygen parameter documentation across R code files and recommend consolidation using `@inheritParams` and/or `@inheritDotParams` | `path`, `paths-ignore`, `extensions`, `min-desc-length`, `base-ref`, `fail`, `python-version` |
 | [`check-junk-files.yml`](reference/check-junk-files.qmd) | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
 | [`check-non-standard-chars.yml`](reference/check-non-standard-chars.qmd)   | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files                                                                                                   | `python-version`, `extensions`                                                                                                                                                      |
 | [`check-one-function-per-file.yml`](reference/check-one-function-per-file.qmd) | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`) | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
@@ -39,8 +40,8 @@ input tables and a copy-paste example.
 | [`preview-deploy.yml`](reference/preview-deploy.qmd)                       | Deploy half: publish the artifact to `gh-pages` and comment the preview link                                                                                                                                                      | `pages-base-url`, `pages-base-path`                                                                                                                                 |
 | [`check-equation-renders.yml`](reference/check-equation-renders.qmd)       | Crawl the build artifact with a headless browser and fail on equations MathJax can't render                                                                                                                                       | `fail`                                                                                                                                                                              |
 | [`cleanup-pr-previews.yml`](reference/cleanup-pr-previews.qmd)             | Housekeeping: delete preview directories for closed PRs                                                                                                                                                                           | `preview-dir`, `compact-history`                                                                                                                                                    |
-| [`claude.yml`](reference/claude.qmd)                                       | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent.                                                                  | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names`, `timeout-minutes`                                                           |
-| [`claude-code-review.yml`](reference/claude-code-review.qmd)               | Read-only Claude PR review (default stub is mention-triggered via `workflow_dispatch`; add `pull_request` for automatic reviews)                                                                                                  | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
+| [`claude.yml`](reference/claude.qmd)                                       | Agent-mode Claude Code bot: responds to `@claude`, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent.                                                                  | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names`, `timeout-minutes`                                                           |
+| [`claude-code-review.yml`](reference/claude-code-review.qmd)               | Read-only Claude PR review (default stub is mention-triggered via `workflow_dispatch`; add `pull_request` for automatic reviews)                                                                                                  | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
 | [`claude-manage-project.yml`](reference/claude-manage-project.qmd) | Triage a newly-opened issue: apply a priority label and add it to the project board. Gated to OWNER/MEMBER/COLLABORATOR authors, since the issue body reaches a write-capable agent | `prompt-addendum`, `trusted-bot-logins` |
 | [`gemini.yml`](reference/gemini.qmd)                                       | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli`, edits files, opens/updates PRs                                                                                                                 | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file`, `extra-secret-names` |
 | [`gemini-code-review.yml`](reference/gemini-code-review.qmd)               | Read-only Gemini PR review (default stub is mention-triggered via `workflow_dispatch`; add `pull_request` for automatic reviews)                                                                                                   | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model`, `extra-secret-names`                                                                                                               |
@@ -71,7 +72,8 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`,
 `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
-`check-code-similarity.yml`, and
+`check-code-similarity.yml`,
+`check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine behavioral fork: `@v1` stays
@@ -327,11 +329,13 @@ The two Claude workflows are a pair.
   mentions, edits files, and opens or updates PRs. A mention inside a code
   span, fence, or blockquote is not an invocation: a cheap `mention-filter`
   job runs `detect-bot-mention` and withholds the agent job ([gha#554](https://github.com/Morrison-Lab/gha/issues/554)).
-- `claude-code-review.yml` runs a read-only Claude review: a consolidated
-  summary on dispatched runs by default; add a `pull_request` trigger in the
-  caller if you also want automatic reviews on PR updates.
+- `claude-code-review.yml` runs a read-only Claude review:
+  a consolidated summary on dispatched runs by default;
+  add a `pull_request` trigger in the caller
+  if you also want automatic reviews on PR updates
+  (GitHub suppresses `pull_request` runs for conflicting PRs; gha#859).
   The model job's `GITHUB_TOKEN` has no write scopes
-  (`contents` / `pull-requests` / `issues` / `actions: read`);
+  (`contents` / `pull-requests` / `issues` / `actions` / `checks: read`);
   jobs that hold `pull-requests: write` / `issues: write`
   never invoke the model (gha#580).
   The caller still grants `actions: read`: `post-review` downloads the
@@ -341,15 +345,17 @@ The two Claude workflows are a pair.
   which `GET .../commits/{ref}/check-runs` needs
   and `actions: read` does not cover (gha#829).
   Grant it, and keep it granted.
-  As of 2026-09-06 the tagged `@v2` requires it,
-  and once `v2` is slid onto the change that stops requesting it
-  the grant is what makes the `v3` cost nothing.
-  The callee gives the scope up because a called workflow cannot
-  request a permission its caller lacks,
-  so requesting one startup-fails every caller without it
+  It is optional under the currently-tagged `@v2`
+  (which no longer requests it, per gha#832)
+  but required by the model job once you adopt `@v3`.
+  The model job briefly gave the scope up, because a called workflow
+  cannot request a permission its caller lacks, so requesting one
+  startup-fails every caller without it
   ([gha#831](https://github.com/Morrison-Lab/gha/issues/831)).
-  The scope returns to the callee in the `v3` tracked in
-  [gha#833](https://github.com/Morrison-Lab/gha/issues/833).
+  The scope is back on the model job in
+  [`v3`](https://github.com/Morrison-Lab/gha/issues/833),
+  now that the caller-side grant above is established practice --
+  a caller already granting it moves to `@v3` at no cost.
 
 An `@claude review` mention (or any commit Claude pushes) routes through
 `claude.yml`, which dispatches `claude-code-review.yml` via `workflow_dispatch`.
