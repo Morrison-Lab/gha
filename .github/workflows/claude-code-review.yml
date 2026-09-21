@@ -172,12 +172,22 @@ on:
           code-review@claude-code-plugins.
         type: boolean
         default: true
+      use-posit-skills:
+        description: >-
+          Install the posit-dev/skills plugin (posit-dev@posit-dev-skills), so
+          the reviewer applies Posit's critical code review guidelines
+          (including the critical-code-reviewer skill) alongside the built-in
+          code-review@claude-code-plugins and ai-config@Morrison-Lab. On by
+          default; set false to opt out.
+        type: boolean
+        default: true
       plugin-marketplaces:
         description: >-
           Extra newline-separated Claude Code plugin marketplace Git URLs,
-          added on top of the two marketplaces this workflow already uses
-          (anthropics/claude-code.git for the code-review plugin, and
-          Morrison-Lab/ai-config.git unless use-ai-config is false). Pair with
+          added on top of the marketplaces this workflow already uses
+          (anthropics/claude-code.git for the code-review plugin,
+          Morrison-Lab/ai-config.git unless use-ai-config is false, and
+          posit-dev/skills.git unless use-posit-skills is false). Pair with
           the plugins input below -- adding a marketplace alone installs
           nothing. Empty by default.
         type: string
@@ -186,10 +196,11 @@ on:
         description: >-
           Extra newline-separated Claude Code plugin refs to install
           (<plugin>@<marketplace-name>), added on top of the built-in
-          code-review@claude-code-plugins and ai-config@Morrison-Lab. Each
-          marketplace name must match the name that marketplace declares in
-          its own .claude-plugin/marketplace.json -- it is not derived from
-          the URL written into plugin-marketplaces. Empty by default.
+          code-review@claude-code-plugins, ai-config@Morrison-Lab, and
+          posit-dev@posit-dev-skills. Each marketplace name must match the
+          name that marketplace declares in its own
+          .claude-plugin/marketplace.json -- it is not derived from the URL
+          written into plugin-marketplaces. Empty by default.
         type: string
         default: ''
       extra-secret-names:
@@ -1100,6 +1111,7 @@ jobs:
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
           use-ai-config: ${{ inputs.use-ai-config }}
+          use-posit-skills: ${{ inputs.use-posit-skills }}
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
           github-token: ${{ github.token }}
@@ -1214,6 +1226,7 @@ jobs:
           allowed-bots: ${{ inputs.allowed-bots }}
           model: ${{ inputs.model }}
           use-ai-config: ${{ inputs.use-ai-config }}
+          use-posit-skills: ${{ inputs.use-posit-skills }}
           extra-plugin-marketplaces: ${{ inputs.plugin-marketplaces }}
           extra-plugins: ${{ inputs.plugins }}
           github-token: ${{ github.token }}

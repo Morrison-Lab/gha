@@ -161,14 +161,23 @@ on:
           directory -- the two compose.
         type: boolean
         default: true
+      use-posit-skills:
+        description: >-
+          Install the posit-dev/skills plugin (posit-dev@posit-dev-skills), so
+          the agent has Posit's developer skills available alongside the
+          lab's shared skills and workflow conventions. On by default; set
+          false to opt out.
+        type: boolean
+        default: true
       plugin-marketplaces:
         description: >-
           Extra newline-separated Claude Code plugin marketplace Git URLs,
           passed through to claude-code-action's plugin_marketplaces and
-          added on top of the Morrison-Lab/ai-config.git marketplace
-          use-ai-config adds by default. Use to give Claude a further
-          skills/commands source. Pair with the plugins input below --
-          adding a marketplace alone installs nothing. Empty by default.
+          added on top of the marketplaces this workflow already uses
+          (Morrison-Lab/ai-config.git unless use-ai-config is false, and
+          posit-dev/skills.git unless use-posit-skills is false). Use to give
+          Claude a further skills/commands source. Pair with the plugins input
+          below -- adding a marketplace alone installs nothing. Empty by default.
         type: string
         default: ''
       plugins:
@@ -176,10 +185,10 @@ on:
           Extra newline-separated Claude Code plugin refs to install
           (<plugin>@<marketplace-name>), passed through to
           claude-code-action's plugins and added on top of whatever
-          use-ai-config installs. Each marketplace name must match the name
-          that marketplace declares in its own .claude-plugin/marketplace.json
-          -- it is not derived from the URL written into plugin-marketplaces.
-          Empty by default.
+          use-ai-config and use-posit-skills install. Each marketplace name must
+          match the name that marketplace declares in its own
+          .claude-plugin/marketplace.json -- it is not derived from the URL
+          written into plugin-marketplaces. Empty by default.
         type: string
         default: ''
       claude-args:
@@ -845,20 +854,22 @@ jobs:
           # Let Claude read CI results (check runs / job logs) on PRs.
           additional_permissions: |
             actions: read
-          # ai-config is installed by default (use-ai-config); the extra-input
-          # slot below it is empty unless a caller sets plugin-marketplaces /
+          # ai-config and posit-dev are installed by default (use-ai-config, use-posit-skills);
+          # the extra-input slot below them is empty unless a caller sets plugin-marketplaces /
           # plugins. Leaving either slot blank is a no-op: claude-code-action's
           # own installPlugins() trims and filters blank/whitespace-only lines
           # before parsing, so a blank line adds no marketplace and installs
-          # nothing. The two ai-config literals are also spelled out in
+          # nothing. The ai-config and posit-dev literals are also spelled out in
           # .github/actions/run-claude-review-attempt/action.yml (the
           # reviewer's copy); see the comment there for why they aren't shared
           # from one place. Update both sites together.
           plugin_marketplaces: |
             ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
+            ${{ inputs.use-posit-skills && 'https://github.com/posit-dev/skills.git' || '' }}
             ${{ inputs.plugin-marketplaces }}
           plugins: |
             ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
+            ${{ inputs.use-posit-skills && 'posit-dev@posit-dev-skills' || '' }}
             ${{ inputs.plugins }}
           # Append the WebFetch grants (empty when webfetch-allowlist-url is
           # unset). Multiple --allowedTools flags accumulate in the CLI.
