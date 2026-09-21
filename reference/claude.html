@@ -857,6 +857,18 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Install the <a href="https://github.com/posit-dev/skills"><code>posit-dev/skills</code></a> plugin (<code>posit-dev@posit-dev-skills</code>), giving the agent Posit’s developer skills alongside the lab’s shared skills and workflow conventions. Set false to opt out.</td>
 </tr>
 <tr class="odd">
+<td><code>reference-repos</code></td>
+<td>string</td>
+<td><code>'Morrison-Lab/gha'</code></td>
+<td>Space-, comma-, or newline-separated list of GitHub repositories (<code>owner/repo</code> or <code>owner/repo@ref</code>) checked out into <code>.reference-repos/</code> so the agent can inspect their files and schemas directly. Set to <code>'none'</code> or <code>''</code> to disable.</td>
+</tr>
+<tr class="even">
+<td><code>reference-repos-token</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Optional GitHub token with read access to private reference repositories (e.g.&nbsp;<code>SUBMODULES_TOKEN</code> or a PAT). Public reference repositories clone anonymously.</td>
+</tr>
+<tr class="odd">
 <td><code>plugin-marketplaces</code></td>
 <td>string</td>
 <td><code>''</code></td>
@@ -1027,14 +1039,15 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">    #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt</span></span>
 <span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)</span></span>
 <span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-posit-skills: false     # skip the posit-dev/skills plugin (installed by default)</span></span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;</span></span>
-<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)</span></span>
-<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
-<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a><span class="co">    #     This is the &lt;name&gt; R package. Before committing, run</span></span>
-<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a><span class="co">    #     lintr::lint_package(), spelling::spell_check_package(), and</span></span>
-<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a><span class="co">    #     devtools::test(); add a NEWS.md bullet for user-facing changes.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co">    #   reference-repos: 'Morrison-Lab/gha'  # check out reference repos into .reference-repos/ for the agent</span></span>
+<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources</span></span>
+<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;</span></span>
+<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)</span></span>
+<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
+<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
+<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a><span class="co">    #     This is the &lt;name&gt; R package. Before committing, run</span></span>
+<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a><span class="co">    #     lintr::lint_package(), spelling::spell_check_package(), and</span></span>
+<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a><span class="co">    #     devtools::test(); add a NEWS.md bullet for user-facing changes.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/claude.yml"><code>examples/claude.yml</code></a> for the full caller stub.</p>
 
 
