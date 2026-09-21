@@ -10,4 +10,4 @@
   Dependabot now ignores majors for that action.
   That is a freeze rather than a deferral:
   upstream removed `github-models` support entirely in v3,
-  so migrating is an architecture change, tracked in gha#835.
+  and migration was evaluated and resolved in gha#835 by retaining `@v2` permanently.

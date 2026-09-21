@@ -744,7 +744,7 @@ and ignores major updates,
 because v3 removed the configurable `endpoint` transport `summary.yml` uses
 and switched to a Copilot-CLI-only runner interface.
 The v2 pin is permanently retained to preserve custom OpenAI-compatible
-endpoint support (gha#835).
+endpoint support ([gha#835](https://github.com/Morrison-Lab/gha/issues/835)).
 When adding a new third-party action, pin it the same way.
 
 First-party `Morrison-Lab/gha/*` self-references and most [`examples/`](examples/)
