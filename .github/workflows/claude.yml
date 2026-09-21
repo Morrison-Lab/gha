@@ -191,6 +191,22 @@ on:
           written into plugin-marketplaces. Empty by default.
         type: string
         default: ''
+      reference-repos:
+        description: >-
+          Space-, comma-, or newline-separated list of GitHub repositories
+          (owner/repo or owner/repo@ref) to check out into `.reference-repos/`
+          so the agent can directly inspect their workflows, actions,
+          rules, and source files. Defaults to 'Morrison-Lab/gha'. Set to
+          'none' or '' to disable.
+        type: string
+        default: 'Morrison-Lab/gha'
+      reference-repos-token:
+        description: >-
+          Optional GitHub token with read access to private reference repositories
+          (e.g. SUBMODULES_TOKEN or a personal access token). Public reference
+          repositories clone anonymously or with the job token.
+        type: string
+        default: ''
       claude-args:
         description: Args passed to claude-code-action (allowed/disallowed tools, etc.).
         type: string
@@ -800,6 +816,16 @@ jobs:
             echo "args=" >> "$GITHUB_OUTPUT"
           fi
 
+      # Check out reference repositories so the agent can inspect their
+      # workflows, actions, scripts, rules, and guidelines directly (gha#866).
+      - name: Checkout reference repositories
+        id: checkout-ref-repos
+        if: steps.gate.outputs.skip != 'true' && inputs.reference-repos != '' && inputs.reference-repos != 'none'
+        uses: Morrison-Lab/gha/.github/actions/checkout-reference-repos@v2
+        with:
+          reference-repos: ${{ inputs.reference-repos }}
+          reference-repos-token: ${{ secrets.SUBMODULES_TOKEN || inputs.reference-repos-token }}
+
       # Expose the caller repo's skills to Claude as *project* skills so an
       # "@claude <skill>" mention can invoke them by name. claude-code-action
       # doesn't load ~/.claude skills (the runner's home is fresh), so create
@@ -942,6 +968,9 @@ jobs:
             For an explicit `@claude review` request, do NOT post your own
             review; a post-step dispatches the dedicated code-review workflow
             instead.
+
+            ${{ steps.checkout-ref-repos.outputs.guidance }}
+
             ${{ inputs.prompt-addendum }}
 
       # Extracted into its own step (rather than duplicated inline in each

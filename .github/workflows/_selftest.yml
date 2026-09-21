@@ -1657,6 +1657,55 @@ jobs:
           fi
           echo "pack-review-payload wrote payload.json and the denied_tools sidecar"
 
+  checkout-reference-repos:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Run checkout-reference-repos tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-checkout-reference-repos-tests.sh
+      - name: Exercise checkout-reference-repos composite action end-to-end
+        id: checkout-e2e
+        uses: ./.github/actions/checkout-reference-repos
+        with:
+          reference-repos: 'Morrison-Lab/gha Morrison-Lab/ai-config'
+          reference-repos-dir: .test-reference-repos
+          current-repo: 'Morrison-Lab/gha'
+      - name: Assert checkout-reference-repos outputs and git hygiene
+        shell: bash
+        env:
+          DIR: ${{ steps.checkout-e2e.outputs.dir }}
+          REPOS: ${{ steps.checkout-e2e.outputs.repos }}
+          GUIDANCE: ${{ steps.checkout-e2e.outputs.guidance }}
+        run: |
+          set -euo pipefail
+          if [[ "$DIR" != ".test-reference-repos" ]]; then
+            echo "::error::expected DIR to be .test-reference-repos, got '$DIR'"
+            exit 1
+          fi
+          if [[ "$REPOS" != "Morrison-Lab/ai-config" ]]; then
+            echo "::error::expected REPOS to be Morrison-Lab/ai-config, got '$REPOS'"
+            exit 1
+          fi
+          if [[ ! -d ".test-reference-repos/Morrison-Lab/ai-config" ]]; then
+            echo "::error::expected cloned repo directory .test-reference-repos/Morrison-Lab/ai-config"
+            exit 1
+          fi
+          if [[ ! "$GUIDANCE" =~ "Morrison-Lab/ai-config" ]]; then
+            echo "::error::expected GUIDANCE to mention Morrison-Lab/ai-config"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::git status is dirty after checkout-reference-repos"
+            git status --porcelain
+            exit 1
+          fi
+          echo "checkout-reference-repos passed end-to-end assertions"
+
   # gha#686: the pre-flight credential-shape check claude-code-review.yml runs
   # before it spends money on an SDK call that a malformed secret dooms.
   # Kept as its own job rather than folded into review-fail-check, so a failure

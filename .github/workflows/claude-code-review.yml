@@ -203,6 +203,23 @@ on:
           written into plugin-marketplaces. Empty by default.
         type: string
         default: ''
+      reference-repos:
+        description: >-
+          Space-, comma-, or newline-separated list of GitHub repositories
+          (owner/repo or owner/repo@ref) to check out into `.reference-repos/`
+          so the reviewer can directly inspect their workflows, actions,
+          rules, and source files. Defaults to 'Morrison-Lab/gha'. When
+          `lab-manual` is true, 'UCD-SERG/lab-manual' is also automatically
+          included unless already present. Set to 'none' or '' to disable.
+        type: string
+        default: 'Morrison-Lab/gha'
+      reference-repos-token:
+        description: >-
+          Optional GitHub token with read access to private reference repositories
+          (e.g. SUBMODULES_TOKEN or a personal access token). Public reference
+          repositories clone anonymously or with the job token.
+        type: string
+        default: ''
       extra-secret-names:
         description: >-
           Space-, comma-, or newline-separated list of caller secret names to
@@ -756,6 +773,39 @@ jobs:
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
+      # Check out reference repositories so the reviewer can inspect their
+      # workflows, guidelines, and schemas directly instead of theorizing
+      # without access (gha#866).
+      - name: Resolve reference repositories list
+        id: resolve-ref-repos
+        if: steps.selfmod.outputs.self_mod != 'true'
+        env:
+          USER_REPOS: ${{ inputs.reference-repos }}
+          LAB_MANUAL: ${{ inputs.lab-manual }}
+        run: |
+          set -euo pipefail
+          if [ "$USER_REPOS" = "none" ] || [ -z "$USER_REPOS" ]; then
+            REPOS=""
+          else
+            REPOS="$USER_REPOS"
+          fi
+          if [ "$LAB_MANUAL" = "true" ]; then
+            if [ -z "$REPOS" ]; then
+              REPOS="UCD-SERG/lab-manual"
+            elif [[ ! " $REPOS " =~ [[:space:]]UCD-SERG/lab-manual([[:space:]]|$) ]]; then
+              REPOS="$REPOS UCD-SERG/lab-manual"
+            fi
+          fi
+          echo "repos=$REPOS" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout reference repositories
+        id: checkout-ref-repos
+        if: steps.selfmod.outputs.self_mod != 'true' && steps.resolve-ref-repos.outputs.repos != ''
+        uses: Morrison-Lab/gha/.github/actions/checkout-reference-repos@v2
+        with:
+          reference-repos: ${{ steps.resolve-ref-repos.outputs.repos }}
+          reference-repos-token: ${{ secrets.SUBMODULES_TOKEN || inputs.reference-repos-token }}
+
       # Optional system/pip packages the reviewer's Bash tool can use — e.g. a
       # computer-algebra system (`apt-packages: maxima`, `pip-packages: sympy`)
       # so a math-heavy repo's reviewer can symbolically check a derivation
@@ -1101,6 +1151,7 @@ jobs:
           incremental-context: ${{ steps.increment.outputs.context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
+          reference-repos-guidance: ${{ steps.checkout-ref-repos.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}
@@ -1216,6 +1267,7 @@ jobs:
           incremental-context: ${{ steps.increment.outputs.context }}
           labmanual-guidance: ${{ steps.labmanual.outputs.guidance }}
           latexmacros-guidance: ${{ steps.latexmacros.outputs.guidance }}
+          reference-repos-guidance: ${{ steps.checkout-ref-repos.outputs.guidance }}
           pr-state: ${{ steps.stash.outputs.pr_state }}
           pr-merged: ${{ steps.stash.outputs.pr_merged }}
           pr-diff-file: ${{ steps.prdiff.outputs.path }}

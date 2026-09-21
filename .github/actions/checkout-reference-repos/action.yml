@@ -1,0 +1,57 @@
+name: Checkout reference repositories
+description: >-
+  Check out reference repositories (such as Morrison-Lab/gha, UCD-SERG/lab-manual,
+  or Morrison-Lab/ai-config) into a dot-prefixed local directory so AI reviewers
+  and agents can inspect their source files, schemas, workflows, and guidelines.
+  Automatically ignores the directory in git to prevent dirtying the workspace.
+inputs:
+  reference-repos:
+    description: >-
+      Space-, comma-, or newline-separated list of GitHub repositories in
+      owner/repo or owner/repo@ref format (e.g. 'Morrison-Lab/gha UCD-SERG/lab-manual').
+      Leave empty to skip checkout.
+    required: false
+    default: ''
+  reference-repos-dir:
+    description: >-
+      Directory name under $GITHUB_WORKSPACE where reference repositories are
+      checked out. Dot-prefixed so tools treat it as auxiliary data.
+    required: false
+    default: '.reference-repos'
+  reference-repos-token:
+    description: >-
+      Optional GitHub personal access token with read access to private reference
+      repositories. Public repositories clone anonymously or with the job token.
+    required: false
+    default: ''
+  current-repo:
+    description: >-
+      The current repository name (e.g. github.repository) to automatically skip
+      cloning itself.
+    required: false
+    default: ${{ github.repository }}
+outputs:
+  dir:
+    description: The relative directory where reference repositories are checked out.
+    value: ${{ steps.checkout.outputs.dir }}
+  repos:
+    description: Comma-separated list of checked out repository names.
+    value: ${{ steps.checkout.outputs.repos }}
+  guidance:
+    description: Formatted Markdown guidance block describing available reference repositories.
+    value: ${{ steps.checkout.outputs.guidance }}
+runs:
+  using: composite
+  steps:
+    - name: Checkout reference repositories
+      id: checkout
+      shell: bash
+      env:
+        REPOS: ${{ inputs.reference-repos }}
+        TARGET_DIR_NAME: ${{ inputs.reference-repos-dir }}
+        TOKEN: ${{ inputs.reference-repos-token }}
+        CURRENT_REPO: ${{ inputs.current-repo }}
+      run: |
+        set -euo pipefail
+        SCRIPT="${{ github.action_path }}/../../workflows/scripts/checkout-reference-repos.sh"
+        bash "$SCRIPT"
