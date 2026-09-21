@@ -79,10 +79,13 @@ def run_audit(
     head_ref: str | None,
     cwd: pathlib.Path,
     workflows_dir: str = ".github/workflows",
+    extra_args: list[str] | None = None,
 ) -> tuple[int, str]:
     args = ["--base-ref", base_ref, "--workflows-dir", workflows_dir]
     if head_ref is not None:
         args.extend(["--head-ref", head_ref])
+    if extra_args:
+        args.extend(extra_args)
 
     out = io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
@@ -577,6 +580,48 @@ jobs:
         code, out = run_audit("v1", None, cwd=repo)
         check("restored marker causes audit to skip cleanly (exit 0)", code == 0, out)
         check("restored notice emitted", "Skipping callee permissions audit" in out, out)
+
+        # -------------------------------------------------------------
+        # Test 17: Exempt workflow bypasses widening check with notice
+        run_git(["checkout", "."], cwd=repo)
+        (wf_dir / ".restored-from-default-branch").unlink(missing_ok=True)
+        # Add a widening permission to reusable1.yml
+        (wf_dir / "reusable1.yml").write_text(
+            """name: Reusable 1
+on:
+  workflow_call:
+
+jobs:
+  job-a:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write  # Widened from read
+    steps:
+      - run: echo a
+""",
+            encoding="utf-8",
+        )
+        # Without exemption: fails with code 1
+        code, out = run_audit("v1", None, cwd=repo)
+        check("widening without exemption fails", code == 1, out)
+        # With exemption by relative path: succeeds with code 0 and notice
+        code, out = run_audit(
+            "v1",
+            None,
+            cwd=repo,
+            extra_args=["--exempt-workflow", ".github/workflows/reusable1.yml"],
+        )
+        check("exempt workflow passes with code 0", code == 0, out)
+        check("exempt workflow notice emitted", "Notice: reusable workflow '.github/workflows/reusable1.yml' is exempt" in out, out)
+        # With exemption by filename: succeeds with code 0 and notice
+        code, out = run_audit(
+            "v1",
+            None,
+            cwd=repo,
+            extra_args=["--exempt-workflow", "reusable1.yml"],
+        )
+        check("exempt workflow by basename passes with code 0", code == 0, out)
 
     if failures == 0:
         print(f"\nAll {cases} test cases passed.")
