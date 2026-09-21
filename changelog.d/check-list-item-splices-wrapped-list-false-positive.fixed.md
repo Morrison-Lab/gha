@@ -3,7 +3,8 @@
   table row, heading, blockquote, or thematic break;
   wrapped continuation lines of a preceding list item triggered the check,
   failing builds on valid tight lists.
-  The check now walks back from the preceding line to the start of its non-blank block:
-  if the block began with a list marker,
-  the preceding line is recognized as a list-item continuation line rather than a paragraph continuation line,
-  and the subsequent list item is admitted without requiring an artificial intervening blank line.
+  The check now walks back from the preceding line to identify whether it belongs to a preceding list item:
+  tight wrapped continuations and indented paragraphs of loose list items are recognized,
+  admitting the subsequent list item without requiring an artificial intervening blank line.
+  Thematic break detection was also tightened to require matching characters and admit spaced delimiters
+  (such as `* * *` and `- - -`) per CommonMark.

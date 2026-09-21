@@ -145,6 +145,12 @@ Paragraph following spaced thematic break.
 
 * * *
 * Item after spaced HR
+
+* Item A
+  continuation line one
+
+  continuation line two, still part of A per indentation
+* Item B
 `;
   writeFileSync(cleanFile, cleanContent);
 

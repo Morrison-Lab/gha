@@ -1660,15 +1660,17 @@ CI runs it as part of the `lint-markdown` composite action and job in
 The condition flags a list item whose immediately-preceding line is non-blank
 and belongs to a paragraph rather than an existing list item or block structure (gha#324).
 To avoid false positives on ordinary wrapped lists (gha#895), the check walks back
-from the preceding line to the start of its non-blank block:
-if the block began with a list marker, the preceding line is recognized as a list-item
-continuation line, so the subsequent list item is admitted as an ordinary tight list
-item without requiring an artificial intervening blank line.
+from the preceding line to identify whether it belongs to a preceding list item:
+tight wrapped continuations and indented paragraphs of loose list items are recognized,
+so the subsequent list item is admitted without requiring an artificial intervening blank line.
+Thematic break detection requires matching characters and admits spaced delimiters
+(such as `* * *` and `- - -`) per CommonMark.
 The check is diff-scoped via `LIST_ITEM_SPLICE_BASE_REF` on PRs (set to `all`
 for a full scan, or skipped with a warning when empty).
 Negative controls in `test_list_item_splices.mjs` verify that ordinary wrapped lists
-(with or without blank lines), fenced code blocks (` ``` `, `~~~`), table rows,
-headings, blockquotes, and thematic breaks pass cleanly without triggering splice errors.
+(with or without blank lines, and loose multi-paragraph items), fenced code blocks
+(` ``` `, `~~~`), table rows, headings, blockquotes, and thematic breaks (compact or spaced)
+pass cleanly without triggering splice errors.
 
 `lint-markdown/check_table_splits.mjs` (tested by
 `node lint-markdown/tests/test_table_splits.mjs`) flags split GFM tables
