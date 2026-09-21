@@ -1,0 +1,42 @@
+# Copy to .github/workflows/opposition-research.yml in your repo.
+#
+# Runs automated opposition research on a competitor product, framework,
+# or repository, mining public community surfaces (issues, discussions,
+# forums) for demanded features and filing them as issues in your repo.
+#
+# NOTE: requires either CLAUDE_CODE_OAUTH_TOKEN (Claude Max plan) or
+# ANTHROPIC_API_KEY. Pass secrets explicitly below.
+name: Opposition Research
+
+on:
+  schedule:
+    - cron: '0 14 * * 1' # Weekly on Monday at 14:00 UTC
+  workflow_dispatch:
+    inputs:
+      competitor:
+        description: Competitor product or repository to research
+        type: string
+        default: 'r-lib/actions'
+      dry-run:
+        description: Run research without filing issues (output to step summary)
+        type: boolean
+        default: false
+
+jobs:
+  oppo:
+    permissions:
+      contents: read
+      issues: write
+    uses: Morrison-Lab/gha/.github/workflows/opposition-research.yml@v2
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    with:
+      competitor: ${{ inputs.competitor || 'r-lib/actions' }}
+      dry-run: ${{ inputs.dry-run || false }}
+    #   scope-guidance: 'Specific guidance on what features are on-scope vs out-of-scope.'
+    #   max-issues: 3
+    #   labels: 'enhancement'
+    #   model: 'claude-sonnet-4-5'
+    #   use-ai-config: true
+    #   timeout-minutes: 45

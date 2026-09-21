@@ -72,6 +72,7 @@ not reference `@main` from consumers.
 | `claude.yml` | Agent-mode Claude Code bot: responds to `@claude` mentions, edits files, opens/updates PRs. A quoted or code-span mention starts only a cheap filter job, not the agent. | `setup-r`, `install-quarto`, `use-renv`, `apt-packages`, `pip-packages`, `checkout-submodules`, `link-skills`, `eager-pr`, `prompt-addendum`, `webfetch-allowlist-url`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `reviewer`, `dispatch-review-on-agent-push`, `report-cost`, `trusted-bot-logins`, `dispatch-on-assignee`, `extra-secret-names`, `timeout-minutes` |
 | `claude-code-review.yml` | Read-only Claude PR review (default stub runs on `workflow_dispatch` from `@claude review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `allowed-bots`, `track-progress`, `apt-packages`, `pip-packages`, `lab-manual`, `check-latex-macros`, `use-ai-config`, `use-posit-skills`, `plugin-marketplaces`, `plugins`, `report-cost`, `model`, `extra-secret-names`, `timeout-minutes` |
 | `claude-manage-project.yml` | Triage a newly-opened issue: apply a priority label and add it to the project board (trusted authors only) | `prompt-addendum`, `trusted-bot-logins` |
+| `opposition-research.yml` | Automated opposition research: mine competitor community demand for features and file high-value opportunities as issues | `competitor`, `target-repo`, `scope-guidance`, `dry-run`, `max-issues`, `labels`, `model`, `use-ai-config`, `timeout-minutes` |
 | `gemini.yml` | Agent-mode Gemini CLI bot: responds to `@gemini` and `@gemini-cli` mentions, edits files, opens/updates PRs | `setup-r`, `install-quarto`, `use-renv`, `renv-cache-version`, `r-extra-packages`, `apt-packages`, `pip-packages`, `checkout-submodules`, `eager-pr`, `reviewer`, `mark-ready-for-review`, `prompt-addendum`, `gemini-model`, `review-workflow-file`, `extra-secret-names` |
 | `gemini-code-review.yml` | Read-only Gemini PR code review (default stub runs on `workflow_dispatch` from `@gemini review`; add `pull_request` in the caller for automatic reviews) | `pr-number`, `prompt-addendum`, `checkout-submodules`, `gemini-model`, `extra-secret-names` |
 | `antigravity-code-review.yml` | Automated agentic code review, security audit, or test-suite generation via Google Antigravity SDK (`google-antigravity`) | `mode`, `pr-number`, `prompt-addendum`, `trigger-policy`, `checkout-submodules`, `model`, `workload-identity-provider`, `service-account`, `gcp-project`, `gcp-location`, `max-diff-lines`, `max-diff-files`, `fail-on-error` |
@@ -259,6 +260,10 @@ that need to write must have the **caller** grant it on the calling job:
 - `claude-manage-project` (files issues and updates the project board) →
   grant `contents: read`, `issues: write`, `repository-projects: write`, and
   add the `CLAUDE_CODE_OAUTH_TOKEN` secret (required).
+
+- `opposition-research` (mines competitor feature demand and files opportunity
+  issues) → grant `contents: read`, `issues: write`, and pass either
+  `CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`.
 
 - `preview-deploy` (deploy half, pushes `gh-pages` + comments) → grant
   `contents: write`, `pull-requests: write`, `actions: read`.
@@ -614,7 +619,7 @@ Pin
 `lint-changed-files.yml`,
 `check-new-line-breaks.yml`, `check-secrets.yml`, `check-junk-files.yml`,
 `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `opposition-research.yml`, `r-cmd-check.yml`,
 `check-code-similarity.yml`, `check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
@@ -746,7 +751,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `antigravity-code-review.yml`, `cursor-code-review.yml`, `opencode-code-review.yml`, `ai-code-review.yml`, `bump-dev-version.yml`,
 `small-model-agent.yml`,
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
-`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `r-cmd-check.yml`,
+`spellcheck.yml`, `check-typos.yml`, `check-extra.yml`, `check-formatting.yml`, `claude-manage-project.yml`, `opposition-research.yml`, `r-cmd-check.yml`,
 `check-code-similarity.yml`,
 `check-duplicate-roxygen.yml`, and
 `check-one-function-per-file.yml` at `@v2` -- see the
