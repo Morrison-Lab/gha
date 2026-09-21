@@ -217,7 +217,7 @@ on:
         description: >-
           Optional GitHub token with read access to private reference repositories
           (e.g. SUBMODULES_TOKEN or a personal access token). Public reference
-          repositories clone anonymously or with the job token.
+          repositories clone anonymously.
         type: string
         default: ''
       extra-secret-names:
@@ -784,10 +784,11 @@ jobs:
           LAB_MANUAL: ${{ inputs.lab-manual }}
         run: |
           set -euo pipefail
-          if [ "$USER_REPOS" = "none" ] || [ -z "$USER_REPOS" ]; then
+          CLEAN_USER_REPOS=$(printf '%s' "$USER_REPOS" | tr ',\n' '  ')
+          if [ "$CLEAN_USER_REPOS" = "none" ] || [ -z "${CLEAN_USER_REPOS//[[:space:]]/}" ]; then
             REPOS=""
           else
-            REPOS="$USER_REPOS"
+            REPOS="$CLEAN_USER_REPOS"
           fi
           if [ "$LAB_MANUAL" = "true" ]; then
             if [ -z "$REPOS" ]; then

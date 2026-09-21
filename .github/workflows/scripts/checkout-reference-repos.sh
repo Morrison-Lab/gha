@@ -55,6 +55,7 @@ fi
 
 CLONED_LIST=""
 GUIDANCE_ITEMS=""
+declare -A SEEN_REPOS=()
 
 for item in $CLEAN_REPOS; do
   [ -z "$item" ] && continue
@@ -77,27 +78,42 @@ for item in $CLEAN_REPOS; do
     continue
   fi
 
+  # Avoid duplicate clone and guidance entries for duplicated inputs
+  if [ -n "${SEEN_REPOS["$REPO_SPEC"]:-}" ]; then
+    continue
+  fi
+  SEEN_REPOS["$REPO_SPEC"]=1
+
   DEST="$TARGET_DIR/$REPO_SPEC"
 
   if [ -d "$DEST" ]; then
-    echo "::notice::Reference repo $REPO_SPEC already exists at $DEST; skipping clone."
+    echo "::notice::Reference repo $REPO_SPEC already exists at $DEST; skipping checkout."
   else
-    echo "Cloning reference repo $REPO_SPEC into $DEST..."
-    mkdir -p "$(dirname "$DEST")"
-    CLONE_CMD=(git)
-    if [ -n "$TOKEN" ]; then
-      CLONE_CMD+=(-c "url.https://x-access-token:${TOKEN}@github.com/.insteadOf=https://github.com/")
-    fi
-    CLONE_CMD+=(clone --depth 1)
-    if [ -n "$REF" ]; then
-      CLONE_CMD+=(--branch "$REF")
-    fi
-    CLONE_CMD+=("https://github.com/${REPO_SPEC}.git" "$DEST")
+    echo "Checking out reference repo $REPO_SPEC into $DEST..."
+    mkdir -p "$DEST"
+    git init -q "$DEST"
+    git -C "$DEST" remote add origin "https://github.com/${REPO_SPEC}.git"
 
-    if "${CLONE_CMD[@]}"; then
+    FETCH_ENV=()
+    if [ -n "$TOKEN" ]; then
+      FETCH_ENV=(
+        "GIT_CONFIG_COUNT=1"
+        "GIT_CONFIG_KEY_0=url.https://x-access-token:${TOKEN}@github.com/.insteadOf"
+        "GIT_CONFIG_VALUE_0=https://github.com/"
+      )
+    fi
+
+    FETCH_TARGET="HEAD"
+    if [ -n "$REF" ]; then
+      FETCH_TARGET="$REF"
+    fi
+
+    if env "${FETCH_ENV[@]}" git -C "$DEST" fetch --depth 1 origin "$FETCH_TARGET" >/dev/null 2>&1 && \
+       git -C "$DEST" checkout -q FETCH_HEAD >/dev/null 2>&1; then
       echo "Successfully checked out $REPO_SPEC."
     else
-      echo "::warning::Failed to clone reference repository $REPO_SPEC; proceeding with remaining repos."
+      echo "::warning::Failed to check out reference repository $REPO_SPEC; proceeding with remaining repos."
+      rm -rf "$DEST"
       continue
     fi
   fi

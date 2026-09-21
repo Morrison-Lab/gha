@@ -34,6 +34,7 @@ mkdir -p "$repo1_work"
   git remote add origin "$tmp_dir/remote1.git"
   git push -u origin HEAD -q
 )
+repo1_sha="$(git -C "$repo1_work" rev-parse HEAD)"
 
 # Test workspace
 ws="$tmp_dir/workspace"
@@ -99,7 +100,39 @@ else
   failures=$((failures + 1))
 fi
 
-# Verify token does not pollute global git config
+# Test Case 4: Duplicate input deduplication
+rm -rf "$ws/.reference-repos"
+rm -f "$output_file"
+GITHUB_WORKSPACE="$ws" GITHUB_OUTPUT="$output_file" REPOS="test/remote1, test/remote1"$'\n'"test/remote1" CURRENT_REPO="test/caller" bash "$script" > "$tmp_dir/log_dup.txt"
+
+count_repos=$(grep -c 'test/remote1' "$output_file" || true)
+if grep -q '^repos=test/remote1$' "$output_file" && [ "$count_repos" -eq 2 ]; then
+  echo "OK   checkout-reference-repos.sh deduplicates repeated input repositories"
+else
+  echo "::error::checkout-reference-repos.sh failed to deduplicate repeated input repositories"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+
+# Test Case 5: Commit SHA ref checkout
+rm -rf "$ws/.reference-repos"
+rm -f "$output_file"
+GITHUB_WORKSPACE="$ws" GITHUB_OUTPUT="$output_file" REPOS="test/remote1@$repo1_sha" CURRENT_REPO="test/caller" bash "$script" > "$tmp_dir/log_sha.txt"
+
+if [ -f "$ws/.reference-repos/test/remote1/README.md" ]; then
+  checked_out_head="$(git -C "$ws/.reference-repos/test/remote1" rev-parse HEAD)"
+  if [ "$checked_out_head" = "$repo1_sha" ]; then
+    echo "OK   checkout-reference-repos.sh successfully checked out arbitrary commit SHA ref"
+  else
+    echo "::error::checkout-reference-repos.sh checked out wrong SHA: $checked_out_head != $repo1_sha"
+    failures=$((failures + 1))
+  fi
+else
+  echo "::error::checkout-reference-repos.sh failed to check out SHA ref"
+  failures=$((failures + 1))
+fi
+
+# Test Case 6: Verify token does not pollute global git config
 rm -rf "$ws/.reference-repos/test/remote1"
 rm -f "$output_file"
 GITHUB_WORKSPACE="$ws" GITHUB_OUTPUT="$output_file" REPOS="test/remote1" CURRENT_REPO="test/caller" TOKEN="dummy-secret-token-12345" bash "$script" > "$tmp_dir/log4.txt" 2>&1 || true
@@ -111,7 +144,7 @@ else
   echo "OK   checkout-reference-repos.sh does not leak TOKEN into global git config"
 fi
 
-# Verify git status in workspace is completely clean
+# Test Case 7: Verify git status in workspace is completely clean
 cd "$ws"
 if [ -z "$(git status --porcelain)" ]; then
   echo "OK   git status in caller workspace remains clean after checkout"

@@ -21,7 +21,7 @@ inputs:
   reference-repos-token:
     description: >-
       Optional GitHub personal access token with read access to private reference
-      repositories. Public repositories clone anonymously or with the job token.
+      repositories. Public repositories clone anonymously.
     required: false
     default: ''
   current-repo:

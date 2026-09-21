@@ -204,7 +204,7 @@ on:
         description: >-
           Optional GitHub token with read access to private reference repositories
           (e.g. SUBMODULES_TOKEN or a personal access token). Public reference
-          repositories clone anonymously or with the job token.
+          repositories clone anonymously.
         type: string
         default: ''
       claude-args:
