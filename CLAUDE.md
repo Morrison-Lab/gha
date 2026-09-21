@@ -1657,21 +1657,18 @@ with no intervening blank line (gha#324).
 CI runs it as part of the `lint-markdown` composite action and job in
 `_selftest.yml`.
 
-**Its commonest trigger is an ordinary wrapped bullet list.**
 The condition flags a list item whose immediately-preceding line is non-blank
-and is not itself a list item, heading, blockquote, table row, or thematic break.
-The continuation line of a previous wrapped bullet satisfies that non-blank
-preceding-line condition.
-So a wrapped bullet followed immediately by the next bullet --- without a blank
-line between them --- is flagged as a splice.
-The repo's house style requires multi-line wrapped list items to be separated
-from adjacent items by an intervening blank line.
+and belongs to a paragraph rather than an existing list item or block structure (gha#324).
+To avoid false positives on ordinary wrapped lists (gha#895), the check walks back
+from the preceding line to the start of its non-blank block:
+if the block began with a list marker, the preceding line is recognized as a list-item
+continuation line, so the subsequent list item is admitted as an ordinary tight list
+item without requiring an artificial intervening blank line.
 The check is diff-scoped via `LIST_ITEM_SPLICE_BASE_REF` on PRs (set to `all`
 for a full scan, or skipped with a warning when empty).
-Negative controls in `test_list_item_splices.mjs` verify that wrapped bullets
-separated by blank lines pass cleanly, and that fenced code blocks
-(` ``` `, `~~~`), table rows, headings, blockquotes, and thematic breaks are
-exempt from triggering splice errors.
+Negative controls in `test_list_item_splices.mjs` verify that ordinary wrapped lists
+(with or without blank lines), fenced code blocks (` ``` `, `~~~`), table rows,
+headings, blockquotes, and thematic breaks pass cleanly without triggering splice errors.
 
 `lint-markdown/check_table_splits.mjs` (tested by
 `node lint-markdown/tests/test_table_splits.mjs`) flags split GFM tables

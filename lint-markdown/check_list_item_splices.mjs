@@ -98,13 +98,34 @@ function findListItemSplices(path, addedLinesSet) {
       const isPrevHR = /^\s*[-*_]{3,}\s*$/.test(prevLine);
 
       if (!isPrevBlank && !isPrevListItem && !isPrevHeading && !isPrevBlockquote && !isPrevTable && !isPrevHR) {
-        if (!addedLinesSet || addedLinesSet.has(lineNo) || addedLinesSet.has(prevLineNo)) {
-          findings.push({
-            path,
-            line: lineNo,
-            prevLineText: prevLine.trim(),
-            lineText: line.trim(),
-          });
+        // Walk back from prevLine to the start of its non-blank block.
+        // If the block started with a list item, prevLine is a list-item continuation line
+        // and line is simply the next item in an ordinary tight wrapped list, not a splice (#895).
+        let isListItemContinuation = false;
+        for (let j = i - 1; j >= 0; j--) {
+          const candidate = lines[j];
+          if (candidate.trim() === '') break;
+          if (/^\s*(`{3,}|~{3,})/.test(candidate)) break;
+          if (/^\s*#+/.test(candidate)) break;
+          if (/^\s*[-*_]{3,}\s*$/.test(candidate)) break;
+          if (/^\s*\|/.test(candidate)) break;
+          if (/^\s*>/.test(candidate)) break;
+
+          if (/^\s*([*+-]|\d+\.)\s+/.test(candidate)) {
+            isListItemContinuation = true;
+            break;
+          }
+        }
+
+        if (!isListItemContinuation) {
+          if (!addedLinesSet || addedLinesSet.has(lineNo) || addedLinesSet.has(prevLineNo)) {
+            findings.push({
+              path,
+              line: lineNo,
+              prevLineText: prevLine.trim(),
+              lineText: line.trim(),
+            });
+          }
         }
       }
     }
