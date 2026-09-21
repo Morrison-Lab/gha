@@ -74,6 +74,12 @@ inputs:
       LaTeX-macro review guidance step.
     required: false
     default: ''
+  reference-repos-guidance:
+    description: >-
+      Reference repositories guidance, from claude-code-review.yml's Checkout
+      reference repositories step (gha#866).
+    required: false
+    default: ''
   reviewed-commit:
     description: >-
       The 40-character SHA of the commit under review, resolved by
@@ -707,6 +713,8 @@ runs:
           ${{ inputs.labmanual-guidance }}
 
           ${{ inputs.latexmacros-guidance }}
+
+          ${{ inputs.reference-repos-guidance }}
 
           **Watch for AI hallucinations.** This diff may be partly
           machine-authored, so scrutinize it for confident-but-fabricated

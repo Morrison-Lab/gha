@@ -69,6 +69,8 @@ website:
           - reference/claude.qmd
           - reference/claude-code-review.qmd
           - reference/claude-manage-project.qmd
+          - reference/opposition-research.qmd
+          - reference/check-dependency-updates.qmd
           - reference/gemini.qmd
           - reference/gemini-code-review.qmd
           - reference/antigravity-code-review.qmd

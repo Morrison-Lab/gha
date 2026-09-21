@@ -1,0 +1,151 @@
+name: Check Dependency Updates (reusable)
+
+# Reusable workflow to audit repository dependencies (GitHub Actions pins,
+# renv packages, tool versions, submodules) for available updates, mining
+# changelogs for high-value improvements and filing discovered opportunities
+# and to-dos as tracked issues (or reporting them via step summary).
+# Follows the Morrison-Lab check-dependency-updates skill rubric.
+
+on:
+  workflow_call:
+    inputs:
+      target-repo:
+        description: >-
+          Target repository receiving the dependency audit (defaults to the calling repository).
+        type: string
+        default: ${{ github.repository }}
+      dry-run:
+        description: >-
+          When true, writes discovered updates to the GitHub Actions job step summary instead of opening GitHub issues.
+        type: boolean
+        default: false
+      max-issues:
+        description: >-
+          Maximum number of distinct opportunity/to-do issues to open in a single run (avoids tracker flooding).
+        type: number
+        default: 5
+      labels:
+        description: >-
+          Comma-separated labels to attach to any created update issues.
+        type: string
+        default: 'enhancement'
+      model:
+        description: >-
+          Claude model for the research agent to run on. Empty by default, which falls through to claude-code-action's own default.
+        type: string
+        default: ''
+      use-ai-config:
+        description: >-
+          Whether to install the Morrison-Lab/ai-config plugin so the agent has the check-dependency-updates skill and prompt conventions loaded.
+        type: boolean
+        default: true
+      timeout-minutes:
+        description: >-
+          Job timeout in minutes for the audit run. Defaults to 45.
+        type: number
+        default: 45
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Pre-flight account status and quota check before starting the run
+      - name: Pre-flight account status and quota check
+        id: preflight-quota
+        env:
+          HAS_OAUTH: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' }}
+          HAS_API_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          set -euo pipefail
+          if [ "$HAS_OAUTH" != "true" ] && [ "$HAS_API_KEY" != "true" ]; then
+            echo "::warning::No CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY secret available for check-dependency-updates."
+            echo "quota_exhausted=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pre-flight credential shape check
+        id: preflight-credential
+        if: steps.preflight-quota.outputs.quota_exhausted != 'true'
+        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v2
+        with:
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Run Claude Dependency Auditor
+        id: claude
+        if: steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
+        uses: anthropics/claude-code-action@19dda84776b3518d98b8798e591daee763049ed3 # v1.0.220
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_REPO: ${{ inputs.target-repo }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          MAX_ISSUES: ${{ inputs.max-issues }}
+          LABELS: ${{ inputs.labels }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: ${{ inputs.model }}
+          plugin_marketplaces: |
+            ${{ inputs.use-ai-config && 'https://github.com/Morrison-Lab/ai-config.git' || '' }}
+          plugins: |
+            ${{ inputs.use-ai-config && 'ai-config@Morrison-Lab' || '' }}
+          # Security boundary note: gh api queries are restricted here to
+          # read-only release, tag, and commit inspection endpoints. Note that
+          # per Claude Code tool-matching rules, trailing command wildcards do
+          # not distinguish HTTP methods (e.g. GET vs POST). The hard security
+          # boundary is enforced by the job token permissions (contents: read,
+          # issues: write); arbitrary writes to repo contents or settings are
+          # rejected at the GitHub API layer. Unrestricted wildcards like
+          # `Bash(gh api:*)` or `Bash(gh api repos/*)` are avoided per the
+          # precedent established in claude-manage-project.yml (gha#670).
+          # Bash(tee:*) is allowed so the report can be written to $GITHUB_STEP_SUMMARY.
+          claude_args: >-
+            --allowedTools
+            "WebSearch,WebFetch,Read,Glob,Grep,Bash(gh api repos/*/releases/latest*),Bash(gh api repos/*/tags*),Bash(gh api repos/*/commits*),Bash(gh issue list:*),Bash(gh issue view:*),Bash(gh issue create:*),Bash(tee:*)"
+          prompt: |
+            You are an autonomous dependency auditor auditing the repository at '${{ inputs.target-repo }}' for recent dependency updates that our repository should take advantage of or adjust to.
+
+            Target Repository: ${{ inputs.target-repo }}
+            Dry Run: ${{ inputs.dry-run }}
+            Max Issues to File: ${{ inputs.max-issues }}
+            Labels: ${{ inputs.labels }}
+
+            Follow the Morrison-Lab check-dependency-updates procedure:
+            1. **Scan Existing Dependency Pins**:
+               - Scan `.github/workflows/` and `.github/actions/` using Glob and Grep for all third-party `uses:` action pins.
+               - Check `renv.lock` if present for R package pins.
+               - Check `.gitmodules` if present for git submodules.
+               - Check workflow files for pinned tool versions (such as Quarto, Pandoc, Node, Python).
+            2. **Query Upstream for Freshness**:
+               - For third-party GitHub actions, run `gh api repos/<owner>/<repo>/releases/latest` to check the latest release tag.
+               - If a newer release exists, resolve the commit SHA and inspect the release notes / changelog using WebFetch.
+               - Look for notable bug fixes, security patches, performance improvements, or new features worth adopting.
+            3. **Deduplication Check**:
+               - Run `gh issue list --repo ${{ inputs.target-repo }} --state all --limit 100` using the Bash tool to verify whether candidate updates or to-dos are already tracked or resolved in our repo. Do NOT file duplicate issues.
+            4. **Rank & Deliver**:
+               - Rank candidate updates by value (security fixes > bug fixes > high-value new features).
+               - Select up to ${{ inputs.max-issues }} highest-value, net-new opportunities or to-dos.
+               - If Dry Run is 'true':
+                 Do NOT create GitHub issues. Write a structured markdown report of the findings and append it to the file at `$GITHUB_STEP_SUMMARY` using `tee -a "$GITHUB_STEP_SUMMARY"`.
+               - If Dry Run is 'false':
+                 Create each issue using:
+                 `gh issue create --repo "${{ inputs.target-repo }}" --title "<Title>" --body "<Body>" --label "${{ inputs.labels }}"`
+                 (If a specified label does not exist in the repository, create without the missing label.)
+                 The issue body MUST provide:
+                 - The specific dependency name and current vs latest version.
+                 - Summary of what the update buys (features, fixes, security improvements) with links to release notes.
+                 - Actionable to-do steps for adopting the update and testing it.
+                 - The mandatory disclosure line at the end, preceded by a blank line:
+                    `_Posted by Claude Code (AI agent) --- not written by a human._`
+                 Also append a summary of all created issues to `$GITHUB_STEP_SUMMARY` using `tee -a "$GITHUB_STEP_SUMMARY"`.

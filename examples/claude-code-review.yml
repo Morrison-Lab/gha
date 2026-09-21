@@ -215,6 +215,7 @@ jobs:
     #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules
     #   allowed-bots: 'github-actions[bot],claude'   # accept more bot actors (default: github-actions[bot])
     #   lab-manual: false           # skip the R/tidyverse SERG lab manual (default true; set false for non-R/Quarto repos)
+    #   reference-repos: 'Morrison-Lab/gha'  # check out reference repos into .reference-repos/ for the reviewer
     #   apt-packages: maxima         # system packages for the reviewer's Bash tool, e.g. a CAS
     #   pip-packages: sympy          # pip packages, e.g. a computer-algebra system for math-heavy repos
     #   check-latex-macros: true    # flag LaTeX simplifiable via d-morrison/macros; also needs checkout-submodules: true

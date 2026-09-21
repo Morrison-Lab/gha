@@ -199,7 +199,8 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `r-cmd-check`,
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `opposition-research`,
+`check-dependency-updates`, `r-cmd-check`,
 `check-code-similarity`,
 `check-duplicate-roxygen`, and
 `check-one-function-per-file` -- see
