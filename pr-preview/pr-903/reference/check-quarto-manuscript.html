@@ -771,19 +771,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="what-it-runs">What it runs</h2>
 <p>Runs the full Morrison-Lab repository hygiene pass plus manuscript-specific checks:</p>
 <ul>
-<li><a href="../reference/check-junk-files.html"><code>check-junk-files.yml</code></a>: OS and editor detritus (<code>.DS_Store</code>, <code>Thumbs.db</code>, <code>.Rhistory</code>, <code>.RData</code>, etc.)</li>
+<li><a href="../reference/check-junk-files.html"><code>check-junk-files.yml</code></a>: OS and editor detritus (<code>.DS_Store</code>, <code>Thumbs.db</code>, <code>.Rhistory</code>, etc.)</li>
 <li><a href="../reference/check-secrets.html"><code>check-secrets.yml</code></a>: Gitleaks scan of git history for committed credentials and tokens</li>
 <li><a href="../reference/check-non-standard-chars.html"><code>check-non-standard-chars.yml</code></a>: flags non-standard unicode characters, curly quotes, and smart dashes</li>
 <li><a href="../reference/check-new-line-breaks.html"><code>check-new-line-breaks.yml</code></a>: enforces semantic line breaks on modified lines in diffs</li>
 <li><a href="../reference/check-typos.html"><code>check-typos.yml</code></a>: crate-ci/typos CLI scan for spelling errors on modified files</li>
-<li><a href="../reference/check-ai-tells.html"><code>check-ai-tells.yml</code></a>: scans narrative prose (<em>.md, </em>.qmd) for AI cliches and tells</li>
+<li><a href="../reference/check-ai-tells.html"><code>check-ai-tells.yml</code></a>: scans narrative prose (<code>*.md</code>, <code>*.qmd</code>) for AI cliches and tells</li>
 <li><a href="../reference/lint-yaml.html"><code>lint-yaml.yml</code></a>: yamllint over tracked YAML files</li>
 <li><a href="../reference/lint-workflows.html"><code>lint-workflows.yml</code></a>: actionlint and zizmor over GitHub Actions workflows</li>
 <li><a href="../reference/lint-markdown.html"><code>lint-markdown.yml</code></a>: markdownlint-cli2 over tracked Markdown files</li>
-<li><a href="../reference/lint-qmd.html"><code>lint-qmd.yml</code></a>: markdownlint over prose sections of tracked <code>.qmd</code> files (80-character line length limit)</li>
+<li><a href="../reference/lint-qmd.html"><code>lint-qmd.yml</code></a>: markdownlint over prose sections of tracked <code>.qmd</code> files</li>
 <li><a href="../reference/check-links.html"><code>check-links.yml</code></a>: lychee link checker across manuscript sections, references, and external links</li>
 <li><a href="../reference/check-bibliography-dois.html"><code>check-bibliography-dois.yml</code></a>: validates BibTeX bibliography entries in <code>.bib</code> files</li>
-<li><a href="../reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a>: crawls rendered HTML manuscript pages with a headless browser to ensure MathJax typesets all equations without errors (active when <code>equation-renders-site-dir</code> is specified)</li>
+<li><a href="../reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a>: crawls rendered HTML manuscript pages to ensure MathJax typesets all equations without errors (active when <code>equation-renders-site-dir</code> is specified)</li>
 </ul>
 <p>Every check is enabled by default. Opt out of any specific check by passing its boolean flag as <code>false</code>.</p>
 </section>
@@ -854,192 +854,186 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Enable non-standard character check.</td>
 </tr>
 <tr class="odd">
-<td><code>non-standard-chars-paths</code></td>
+<td><code>non-standard-chars-extensions</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Paths/globs to check for non-standard characters.</td>
+<td><code>'.qmd, .md'</code></td>
+<td>File extensions to check for non-standard characters.</td>
 </tr>
 <tr class="even">
-<td><code>non-standard-chars-paths-ignore</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Paths/globs to exempt from non-standard character check.</td>
-</tr>
-<tr class="odd">
 <td><code>check-new-line-breaks</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable semantic line break check.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>new-line-breaks-base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Base ref for diff-scoping new line breaks.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>new-line-breaks-globs</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Globs to check for new line breaks.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>check-typos</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable typos check.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>typos-config</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Typos configuration file path.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>typos-base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Base ref for diff-scoping typo checks.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check-ai-tells</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable AI tells check on prose.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>ai-tells-threshold</code></td>
 <td>string</td>
 <td><code>'10'</code></td>
 <td>Maximum allowed tell density (per 1,000 words).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>ai-tells-ignore</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Comma- or space-separated list of tells to ignore.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>lint-yaml</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable YAML linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>yaml-config-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Custom yamllint config file path.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>yaml-paths-ignore</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Patterns to exclude from YAML linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>lint-workflows</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable workflow linting.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>workflows-path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
 <td>Path to workflow files.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>lint-markdown</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable Markdown linting.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>markdown-config-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Markdownlint config file path.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>markdown-globs</code></td>
 <td>string</td>
 <td><code>'*.md'</code></td>
 <td>Git pathspecs of Markdown files to lint.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>markdown-paths-ignore</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Paths to exempt from Markdown linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>markdown-base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Base ref for list-item splice checks.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>lint-qmd</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable QMD prose linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>qmd-config-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Markdownlint config file for QMD files.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>qmd-globs</code></td>
 <td>string</td>
 <td><code>'*.qmd'</code></td>
 <td>Pathspecs of QMD files to lint.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>qmd-paths-ignore</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Patterns to skip for QMD linting.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>check-links</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable lychee link checker.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>lychee-config</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Path to a custom lychee config file.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>lychee-args</code></td>
 <td>string</td>
 <td><code>'--exclude-mail'</code></td>
 <td>Command-line arguments for lychee.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check-bibliography-dois</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable bibliography DOI validation.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>bib-exclude-keys</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>BibTeX keys to skip for DOI validation.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check-equation-renders</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable equation render validation.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>equation-renders-site-dir</code></td>
 <td>string</td>
 <td><code>''</code></td>

@@ -771,7 +771,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="what-it-runs">What it runs</h2>
 <p>Runs the full Morrison-Lab repository hygiene pass plus Python package checks:</p>
 <ul>
-<li><a href="../reference/check-junk-files.html"><code>check-junk-files.yml</code></a>: OS and editor detritus (<code>.DS_Store</code>, <code>Thumbs.db</code>, <code>__pycache__</code>, <code>*.pyc</code>, etc.)</li>
+<li><a href="../reference/check-junk-files.html"><code>check-junk-files.yml</code></a>: OS and editor detritus (<code>.DS_Store</code>, <code>Thumbs.db</code>, <code>__pycache__</code>, etc.)</li>
 <li><a href="../reference/check-secrets.html"><code>check-secrets.yml</code></a>: Gitleaks scan of git history for committed credentials and tokens</li>
 <li><a href="../reference/check-non-standard-chars.html"><code>check-non-standard-chars.yml</code></a>: flags non-standard unicode characters, curly quotes, and smart dashes</li>
 <li><a href="../reference/check-new-line-breaks.html"><code>check-new-line-breaks.yml</code></a>: enforces semantic line breaks on modified lines in diffs</li>
@@ -858,138 +858,132 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Enable non-standard character check.</td>
 </tr>
 <tr class="even">
-<td><code>non-standard-chars-paths</code></td>
+<td><code>non-standard-chars-extensions</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Paths/globs to check for non-standard characters.</td>
+<td><code>'.py, .qmd, .md'</code></td>
+<td>File extensions to check for non-standard characters.</td>
 </tr>
 <tr class="odd">
-<td><code>non-standard-chars-paths-ignore</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Paths/globs to exempt from non-standard character check.</td>
-</tr>
-<tr class="even">
 <td><code>check-new-line-breaks</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable semantic line break check.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>new-line-breaks-base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Base ref for diff-scoping new line breaks.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>new-line-breaks-globs</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Globs to check for new line breaks.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check-typos</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable typos check.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>typos-config</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Typos configuration file path.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>typos-base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Base ref for diff-scoping typo checks.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>lint-yaml</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable YAML linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>yaml-config-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Custom yamllint config file path.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>yaml-paths-ignore</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Patterns to exclude from YAML linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>lint-workflows</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable workflow linting.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>workflows-path</code></td>
 <td>string</td>
 <td><code>'.'</code></td>
 <td>Path to workflow files.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>lint-markdown</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable Markdown linting.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>markdown-config-file</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Markdownlint config file path.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>markdown-globs</code></td>
 <td>string</td>
 <td><code>'*.md'</code></td>
 <td>Git pathspecs of Markdown files to lint.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>markdown-paths-ignore</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Paths to exempt from Markdown linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>markdown-base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Base ref for list-item splice checks.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>check-ruff</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable Ruff linting.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check-formatting</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Enable Ruff formatting check.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>ruff-args</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>Additional arguments for Ruff.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check-tests</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Run pytest if tests/ exists.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>pytest-args</code></td>
 <td>string</td>
 <td><code>'-v'</code></td>
