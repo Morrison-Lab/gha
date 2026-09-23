@@ -1137,11 +1137,12 @@ jobs:
         # flag -- attempt 1 was the odd one out.
         #
         # This does not weaken the guard. `outcome` is read BEFORE
-        # continue-on-error is applied, so the retry's own
-        # `steps.claude-review.outcome == 'success'` gate keeps its exact
-        # meaning, and a genuine failure still reaches resolve-final through
-        # fail-check (as action_short_circuit when no execution file was
-        # written, or as a hard error otherwise).
+        # continue-on-error is applied: the retry gate requires
+        # `steps.claude-review.outcome == 'success'` or
+        # `steps.fail-check.outputs.no_execution_file == 'true'` (gha#905),
+        # so an action error where an execution file was produced (hard SDK
+        # error) is never retried. A genuine failure still reaches
+        # resolve-final through fail-check.
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
@@ -1472,7 +1473,7 @@ jobs:
             else
               echo "::error::Attempt 1 failed but the retry failed for a different reason (hard SDK error, empty output, or a no-verdict result above the denial-count threshold) — treating as a failed review."
             fi
-          elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" || "${{ steps.claude-review-retry.outcome }}" == "failure" || "${{ steps.exec-file-retry.outcome }}" == "failure" ]]; then
+          elif [[ "${{ steps.claude-review-retry.outcome }}" == "success" || "${{ steps.exec-file-retry.outcome }}" == "failure" ]]; then
             # The retry ran but wrote no checkable execution file (or exec-file-retry failed),
             # so the guard never classified it and has no kind to offer. Name it here rather
             # than letting it normalize to `unknown`: "no execution file" IS
