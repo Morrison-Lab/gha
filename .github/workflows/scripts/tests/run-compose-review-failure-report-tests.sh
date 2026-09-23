@@ -149,6 +149,8 @@ check_contains "single denial with empty names is singular" \
 out="$(run_compose short-circuit '' '')"
 check_contains "absent denial data is reported as unrecorded" '**Denied tools:** not recorded.' "$out"
 check_not_contains "absent denial data does not claim none" '**Denied tools:** none.' "$out"
+check_contains "short-circuit points to Run Claude Code Review step" 'Run Claude Code Review' "$out"
+check_contains "short-circuit mentions allowed_bots" 'allowed_bots' "$out"
 
 # --- the 999999 sentinel is not a number of denials -------------------------
 # The guard hands over a non-empty DENIED_TOOLS wording for the unparseable

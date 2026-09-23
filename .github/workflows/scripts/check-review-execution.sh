@@ -98,7 +98,7 @@ if [[ ! -f "$EXECUTION_FILE" ]]; then
   echo "action_short_circuit=true" >> "$GITHUB_OUTPUT"
   echo "no_execution_file=true" >> "$GITHUB_OUTPUT"
   echo "failure_kind=short-circuit" >> "$GITHUB_OUTPUT"
-  echo "::error::Claude review produced no execution output (action short-circuit / setup failure; gha#368) — treating as a failed review."
+  echo "::error::Claude review produced no execution output (action exited non-zero or short-circuited; gha#368, gha#906) — check the Run Claude Code Review step log above for the underlying cause (e.g. unpermitted bot actor in allowed_bots, missing dependencies, or setup failure)."
   exit 1
 fi
 # Handles NDJSON stream or a single JSON array; grabs the last result object.
