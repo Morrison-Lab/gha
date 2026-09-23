@@ -78,7 +78,7 @@ else
   echo "  exit $err_code, $err_out"
 fi
 
-# --- missing workflows tree on the ref fails rather than leaving the PR copy
+# --- missing workflows tree on the ref drops PR copy and sets marker (gha#904)
 repo2="$tmpdir/nowf"
 mkdir -p "$repo2"
 git -C "$repo2" init -q -b main
@@ -94,15 +94,18 @@ git -C "$repo2" add -A
 git -C "$repo2" commit -q -m "pr added workflows"
 
 set +e
-err_out="$(cd "$repo2" && DEFAULT_BRANCH=main DEFAULT_REF=main bash "$restore" 2>&1)"
-err_code=$?
+out="$(cd "$repo2" && DEFAULT_BRANCH=main DEFAULT_REF=main bash "$restore" 2>&1)"
+exit_code=$?
 set -e
-if [ "$err_code" -ne 0 ] && [ -f "$repo2/.github/workflows/review.yml" ]; then
-  pass "missing default-branch workflows tree fails and leaves the tree"
+if [ "$exit_code" -eq 0 ] \
+  && [ ! -f "$repo2/.github/workflows/review.yml" ] \
+  && [ -f "$repo2/.github/workflows/.restored-from-default-branch" ]; then
+  pass "missing default-branch workflows tree drops PR copy, sets marker, and exits 0"
 else
-  fail "missing default-branch workflows tree"
-  echo "  exit $err_code, $err_out"
+  fail "missing default-branch workflows tree should drop PR copy, set marker, and exit 0"
+  echo "  exit $exit_code, $out"
   echo "  review.yml exists=$([ -f "$repo2/.github/workflows/review.yml" ] && echo yes || echo no)"
+  echo "  marker exists=$([ -f "$repo2/.github/workflows/.restored-from-default-branch" ] && echo yes || echo no)"
 fi
 
 # --- mutation: deleting the rm -rf would leave pr-only.yml. Confirm the

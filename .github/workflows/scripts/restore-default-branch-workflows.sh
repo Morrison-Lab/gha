@@ -38,8 +38,14 @@ fi
 # missing path and prints nothing, so an existence probe has to be
 # cat-file, not ls-tree's status.
 if ! git cat-file -e "$ref:.github/workflows" 2>/dev/null; then
-  echo "restore-default-branch-workflows.sh: $ref has no .github/workflows tree" >&2
-  exit 1
+  # The default branch has no workflows. The trusted state is therefore an
+  # empty tree, which is reachable -- drop the PR's copy and continue, rather
+  # than reporting a restore failure a re-run cannot fix (gha#904).
+  rm -rf .github/workflows
+  mkdir -p .github/workflows
+  touch .github/workflows/.restored-from-default-branch
+  echo "restore-default-branch-workflows.sh: $ref has no .github/workflows tree; removed the PR's copy"
+  exit 0
 fi
 
 # Drop the PR's workflow tree, including files the default branch does
