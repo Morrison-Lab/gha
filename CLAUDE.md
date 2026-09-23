@@ -369,9 +369,10 @@ which is why the capabilities above moved to `@v2`.
   `.github/workflows/` then checks it out from `origin/<default-branch>`.
   A pathspec checkout alone does not delete a workflow the PR added, so
   the `rm -rf` is load-bearing (pinned by the suite's extra-file case).
-  The script probes `git cat-file -e "$ref:.github/workflows"` *before*
-  deleting, so a missing tree on the trusted ref fails rather than
-  wiping the working copy.
+  The script probes `git cat-file -e "$ref:.github/workflows"`;
+  if the default branch has no `.github/workflows` tree (e.g. a repository's
+  first workflow PR), it removes the PR's copy, drops the marker, and succeeds
+  cleanly with an empty workflow directory (gha#904).
   On restore, it drops `.github/workflows/.restored-from-default-branch` so
   workflow-parsing test suites and audits skip with a notice rather than
   asserting against default-branch files (gha#765).
@@ -3314,8 +3315,8 @@ that response as complete would dispatch `--ref` at an unknown tree.
 exercises `restore-default-branch-workflows.sh` against throwaway git
 repos in `$TMPDIR`: a modified workflow plus a PR-only file must be
 replaced/deleted, a missing `DEFAULT_BRANCH` fails closed, a ref with no
-`.github/workflows` tree fails *before* deleting, and a pathspec-only
-checkout is shown not to delete the PR-only file (so the `rm -rf` is
+`.github/workflows` tree drops the PR copy, sets the marker, and exits 0 (gha#904),
+and a pathspec-only checkout is shown not to delete the PR-only file (so the `rm -rf` is
 load-bearing).
 CI runs it in the same `review-fail-check` job.
 There is no live `uses:` of the restore composite against this checkout:
