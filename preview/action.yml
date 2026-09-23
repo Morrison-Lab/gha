@@ -246,7 +246,6 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        Rscript -e "tinytex::tlmgr_repo('https://mirror.ctan.org/systems/texlive/tlnet')"
         Rscript -e "tinytex::tlmgr_install(c('luacolor', 'lua-ul'))"
 
     - name: Restore Quarto freeze

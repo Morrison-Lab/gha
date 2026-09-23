@@ -2761,6 +2761,64 @@ jobs:
     with:
       path: website
       deploy: false
+
+  # preview with PDF rendering (gha#907): exercise the preview composite action
+  # with a Quarto document requiring luacolor, proving TinyTeX packages resolve
+  # from the bundle's configured default repository without package search failures.
+  preview-pdf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Create a minimal Quarto fixture requiring luacolor
+        shell: bash
+        run: |
+          set -euo pipefail
+          FIXTURE_DIR="${{ runner.temp }}/_ci-preview-pdf"
+          mkdir -p "$FIXTURE_DIR"
+          cat << 'EOF' > "$FIXTURE_DIR/_quarto.yml"
+          project:
+            type: website
+            output-dir: _site
+          EOF
+          cat << 'EOF' > "$FIXTURE_DIR/index.qmd"
+          ---
+          title: "Selftest PDF with luacolor"
+          format:
+            pdf:
+              pdf-engine: lualatex
+              header-includes:
+                - \usepackage{luacolor}
+          ---
+
+          Render test for luacolor package resolution.
+          EOF
+      - name: Build preview with PDF format
+        uses: ./preview
+        with:
+          path: ${{ runner.temp }}/_ci-preview-pdf
+          use-renv: false
+          r-packages: 'tinytex'
+          install-package: false
+          setup-chrome: false
+          apt-packages: ''
+          submodules: 'false'
+          tinytex: true
+          formats: 'pdf'
+      - name: Assert PDF was generated
+        shell: bash
+        run: |
+          set -euo pipefail
+          PDF_FILE="${{ runner.temp }}/_ci-preview-pdf/_site/index.pdf"
+          if [ ! -f "$PDF_FILE" ]; then
+            echo "::error::Expected PDF output was not generated at $PDF_FILE"
+            exit 1
+          fi
+          echo "PDF successfully rendered with luacolor: $PDF_FILE"
+
   # check-equation-renders is brand new, so (like check-phi/quarto-publish above)
   # it isn't at the released tag the reusable workflow pins yet. Exercise the
   # local composite against a fixture with one good page and one page with two

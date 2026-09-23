@@ -182,6 +182,12 @@ def check_preview(
             ".github/workflows/preview.yml build job 'if' condition does not parse extra-preview-labels with fromJSON"
         )
 
+    # 8. Ensure TinyTeX repository is not repointed via tlmgr_repo (gha#907)
+    if "tlmgr_repo" in composite_text:
+        errors.append(
+            "preview/action.yml should not repoint TinyTeX repository with tlmgr_repo (gha#907)"
+        )
+
     return errors
 
 
@@ -250,6 +256,16 @@ def run_self_test() -> int:
             "declare extra-preview-labels on action.yml",
             DEFAULT_COMPOSITE,
             baseline_composite.replace("fail-on-render-warning:", "extra-preview-labels:\n    default: ''\n  fail-on-render-warning:"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "repoint tinytex repository with tlmgr_repo",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace(
+                'Rscript -e "tinytex::tlmgr_install',
+                'Rscript -e "tinytex::tlmgr_repo(\'https://example.com\')"\n        Rscript -e "tinytex::tlmgr_install',
+            ),
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
