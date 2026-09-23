@@ -1463,7 +1463,7 @@ jobs:
             if [[ "${{ steps.fail-check-retry.outputs.stub_review }}" == "true" ]]; then
               echo "::error::Attempt 1 failed and the retry ALSO ended without a verdict with a low denial count — treating as a failed review."
             elif [[ "${{ steps.fail-check-retry.outputs.action_short_circuit }}" == "true" ]]; then
-              echo "::error::Attempt 1 failed and the retry ALSO failed due to action short-circuit / missing execution file (gha#368) — treating as a failed review."
+              echo "::error::Attempt 1 failed and the retry ALSO failed due to action short-circuit / missing execution file (gha#368, gha#906; check the Run Claude Code Review step log for setup or allowed_bots failures) — treating as a failed review."
             else
               echo "::error::Attempt 1 failed but the retry failed for a different reason (hard SDK error, empty output, or a no-verdict result above the denial-count threshold) — treating as a failed review."
             fi
@@ -1493,7 +1493,7 @@ jobs:
             if [[ "${{ steps.fail-check.outputs.stub_review }}" == "true" ]]; then
               echo "::error::Attempt 1 produced a stub review (gha#185's low-denial signature) but the retry itself did not run to completion — treating as a failed review."
             elif [[ "${{ steps.fail-check.outputs.action_short_circuit }}" == "true" ]]; then
-              echo "::error::Attempt 1 failed due to action short-circuit / missing execution file (gha#368) but the retry itself did not run to completion — treating as a failed review."
+              echo "::error::Attempt 1 failed due to action short-circuit / missing execution file (gha#368, gha#906; check the Run Claude Code Review step log for setup or allowed_bots failures) but the retry itself did not run to completion — treating as a failed review."
             else
               echo "::error::Claude review did not complete successfully and was not eligible for a stub-review retry (either a hard SDK error, empty output, or a no-verdict result above the denial-count threshold — see gha#198)."
             fi

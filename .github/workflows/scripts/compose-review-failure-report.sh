@@ -199,7 +199,7 @@ case "$kind" in
     ;;
   short-circuit)
     printf 'The action exited before writing an execution-output file, so there is no transcript to check for a verdict (gha#368). Nothing can be concluded about the diff from this run.\n\n'
-    printf 'Check the `Run Claude Code Review` step in the linked run. A short-circuit there is usually a setup or credential failure rather than anything about the PR.\n\n'
+    printf 'Check the `Run Claude Code Review` step in the linked run: if the action exited non-zero, the root cause (such as an unpermitted bot actor in `allowed_bots`, invalid flags, or a setup/credential failure) will be reported in that step'"'"'s error log rather than here (gha#906). Re-running without addressing that cause will fail identically.\n\n'
     ;;
   hard-error)
     printf 'The run ended in an SDK-level error state'
