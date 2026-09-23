@@ -91,10 +91,15 @@ jobs:
           # '/reviewer' or handle a newline/tab after the command. Enforce the real
           # match here: the body must begin with a standalone '/review' token,
           # followed by whitespace (space/tab/newline) or end-of-string.
+          # Match case-insensitively (e.g. '/Review', '/REVIEW') matching GitHub
+          # Actions' startsWith() case insensitivity (gha#908).
+          shopt -s nocasematch
           if [[ ! "$COMMENT_BODY" =~ ^/review([[:space:]]|$) ]]; then
+            shopt -u nocasematch
             echo "Comment does not start with a standalone '/review' command; skipping dispatch."
             exit 0
           fi
+          shopt -u nocasematch
           # This workflow's own filename, so the dispatch resolves regardless
           # of what the file is named in a consumer repo — WF_PATH (from the
           # shared parse-workflow-ref action, above) is the
