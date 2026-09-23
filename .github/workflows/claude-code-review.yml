@@ -1137,11 +1137,12 @@ jobs:
         # flag -- attempt 1 was the odd one out.
         #
         # This does not weaken the guard. `outcome` is read BEFORE
-        # continue-on-error is applied, so the retry's own
-        # `steps.claude-review.outcome == 'success'` gate keeps its exact
-        # meaning, and a genuine failure still reaches resolve-final through
-        # fail-check (as action_short_circuit when no execution file was
-        # written, or as a hard error otherwise).
+        # continue-on-error is applied: the retry gate requires
+        # `steps.claude-review.outcome == 'success'` or
+        # `steps.fail-check.outputs.no_execution_file == 'true'` (gha#905),
+        # so an action error where an execution file was produced (hard SDK
+        # error) is never retried. A genuine failure still reaches
+        # resolve-final through fail-check.
         continue-on-error: true
         uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
         with:
@@ -1247,15 +1248,20 @@ jobs:
       # Same-prompt retry for retryable signatures:
       # 1) Low-denial stub reviews (gha#185): the SDK call succeeded and
       #    produced real text without a verdict, with a low denial count.
-      # 2) Action short-circuits (gha#368): missing execution file or missing
-      #    result object (e.g. transient setup/runner crash).
+      # 2) Action short-circuits (gha#368, gha#905): missing execution file or
+      #    missing result object (e.g. transient setup/runner crash).
+      #    gha#905: admits the missing execution file case even when the action
+      #    exited non-zero (steps.claude-review.outcome != 'success'), because
+      #    an attempt that produced no execution file spent $0.0000 and is safe
+      #    to retry. A non-zero attempt that wrote an execution file is excluded
+      #    to avoid re-spending a hard SDK error (gha#198).
       # A hard SDK error or high-denial stub (gha#198) is excluded, and so is
       # a background-agent stub (gha#551: an executed background spawn parked
       # the turn; the guard withholds stub_review, so this gate never fires).
       - name: Retry Claude Code Review after a stub result or action short-circuit
         id: claude-review-retry
         if: >-
-          steps.claude-review.outcome == 'success' &&
+          (steps.claude-review.outcome == 'success' || steps.fail-check.outputs.no_execution_file == 'true') &&
           steps.fail-check.outcome == 'failure' &&
           (steps.fail-check.outputs.stub_review == 'true' || steps.fail-check.outputs.action_short_circuit == 'true')
         continue-on-error: true
