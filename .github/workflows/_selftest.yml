@@ -844,6 +844,9 @@ jobs:
       - name: Run detect-review-request matcher tests
         shell: bash
         run: bash .github/workflows/scripts/tests/run-detect-review-request-tests.sh
+      - name: Run dispatch-on-comment matcher tests
+        shell: bash
+        run: bash .github/workflows/scripts/tests/run-dispatch-on-comment-tests.sh
       # Separate from the matcher tests above because the stripper already
       # has two consumers (detect-review-request and detect-bot-mention /
       # mention-filter) and its failure
