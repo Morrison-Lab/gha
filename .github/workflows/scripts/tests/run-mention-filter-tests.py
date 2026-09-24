@@ -80,7 +80,7 @@ EXPECTED_FILTER_JOB_IF = (
 )
 
 EXPECTED_DETECT_USES = (
-    "Morrison-Lab/gha/.github/actions/detect-bot-mention@v2"
+    "Morrison-Lab/gha/.github/actions/detect-bot-mention@v3"
 )
 
 EXPECTED_FILTER_PERMISSIONS = {"contents": "read"}
@@ -252,7 +252,7 @@ def main() -> int:
         )
         check(
             step_uses(filt_mention[0]) == EXPECTED_DETECT_USES,
-            "detect-bot-mention uses the exact @v2 ref "
+            "detect-bot-mention uses the exact @v3 ref "
             "(a relative ./ path inside a reusable workflow resolves "
             "against the caller checkout, gha#284)",
         )

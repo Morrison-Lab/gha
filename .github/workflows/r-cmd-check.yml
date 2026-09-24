@@ -211,7 +211,7 @@ jobs:
 
       - name: Checkout submodules
         if: inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -325,7 +325,7 @@ jobs:
 
       - name: Checkout submodules
         if: inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 

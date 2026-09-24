@@ -165,7 +165,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Quarto website checks
-        uses: Morrison-Lab/gha/check-quarto-website@v2
+        uses: Morrison-Lab/gha/check-quarto-website@v3
         with:
           fail: ${{ inputs.fail }}
           check-junk-files: ${{ inputs.check-junk-files }}

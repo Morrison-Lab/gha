@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Check for tracked junk files
-        uses: Morrison-Lab/gha/check-junk-files@v2
+        uses: Morrison-Lab/gha/check-junk-files@v3
         with:
           patterns: ${{ inputs.patterns }}
           paths-ignore: ${{ inputs.paths-ignore }}

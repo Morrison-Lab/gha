@@ -191,14 +191,14 @@ jobs:
 
       - name: Bump the dev version
         id: bump
-        uses: Morrison-Lab/gha/.github/actions/bump-dev-version@v2
+        uses: Morrison-Lab/gha/.github/actions/bump-dev-version@v3
         with:
           description-path: ${{ inputs.description-path }}
 
       - name: Open PR if the version moved
         id: sync
         if: ${{ !inputs.dry-run }}
-        uses: Morrison-Lab/gha/open-sync-pr@v2
+        uses: Morrison-Lab/gha/open-sync-pr@v3
         with:
           branch: ${{ inputs.pr-branch }}
           base: ${{ inputs.base-branch }}

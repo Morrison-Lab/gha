@@ -46,7 +46,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check one function per file
-        uses: Morrison-Lab/gha/check-one-function-per-file@v2
+        uses: Morrison-Lab/gha/check-one-function-per-file@v3
         with:
           path: ${{ inputs.path }}
           # On PRs, scan only files added/modified relative to the base; on pushes,

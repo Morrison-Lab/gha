@@ -49,7 +49,7 @@ jobs:
           persist-credentials: false
 
       - name: Spellcheck
-        uses: Morrison-Lab/gha/spellcheck@v2
+        uses: Morrison-Lab/gha/spellcheck@v3
         with:
           path: ${{ inputs.path }}
           exclude: ${{ inputs.exclude }}

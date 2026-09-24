@@ -622,7 +622,7 @@ jobs:
       # consumer's stub. (Ported from qwt — gha #45.)
       - name: Parse caller workflow ref
         id: caller-wf
-        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v3
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
@@ -636,7 +636,7 @@ jobs:
       # the PR's workflow changes stay in the saved diff (gha#598).
       - name: Detect whether the PR edits workflow files
         id: wf-edits
-        uses: Morrison-Lab/gha/.github/actions/detect-pr-workflow-edits@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-pr-workflow-edits@v3
         with:
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
@@ -694,7 +694,7 @@ jobs:
         id: restore-wf
         if: success() && steps.wf-edits.outputs.workflow_edits == 'true'
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/restore-default-branch-workflows@v2
+        uses: Morrison-Lab/gha/.github/actions/restore-default-branch-workflows@v3
         with:
           default-branch: ${{ github.event.repository.default_branch }}
 
@@ -734,7 +734,7 @@ jobs:
       - name: Build self-review skip notice body
         id: build-notice
         if: steps.selfmod.outputs.self_mod == 'true'
-        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
+        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v3
         with:
           workflow-path: ${{ steps.selfmod.outputs.wf_path }}
           caller-workflow-path: ${{ steps.caller-wf.outputs.path }}
@@ -769,7 +769,7 @@ jobs:
       # .github/actions/checkout-submodules.
       - name: Checkout submodules
         if: steps.selfmod.outputs.self_mod != 'true' && inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -802,7 +802,7 @@ jobs:
       - name: Checkout reference repositories
         id: checkout-ref-repos
         if: steps.selfmod.outputs.self_mod != 'true' && steps.resolve-ref-repos.outputs.repos != ''
-        uses: Morrison-Lab/gha/.github/actions/checkout-reference-repos@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-reference-repos@v3
         with:
           reference-repos: ${{ steps.resolve-ref-repos.outputs.repos }}
           reference-repos-token: ${{ secrets.SUBMODULES_TOKEN || inputs.reference-repos-token }}
@@ -813,7 +813,7 @@ jobs:
       # instead of eyeballing it. Empty by default; most repos need neither.
       - name: Install packages
         if: steps.selfmod.outputs.self_mod != 'true'
-        uses: Morrison-Lab/gha/.github/actions/install-packages@v2
+        uses: Morrison-Lab/gha/.github/actions/install-packages@v3
         with:
           apt-packages: ${{ inputs.apt-packages }}
           pip-packages: ${{ inputs.pip-packages }}
@@ -1063,7 +1063,7 @@ jobs:
       - name: Pre-flight credential shape check
         id: preflight-credential
         if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true'
-        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v2
+        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v3
         with:
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -1073,7 +1073,7 @@ jobs:
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
         if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
+        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v3
         with:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
@@ -1093,7 +1093,7 @@ jobs:
       - name: Install the incremental-range script
         id: increment-scripts
         if: steps.selfmod.outputs.self_mod != 'true' && steps.preflight-quota.outputs.quota_exhausted != 'true' && steps.preflight-credential.outputs.malformed != 'true'
-        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v2
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
         with:
           scripts: 'compute-incremental-range.sh'
       - name: Compute what changed since the last reviewed commit
@@ -1144,7 +1144,7 @@ jobs:
         # error) is never retried. A genuine failure still reaches
         # resolve-final through fail-check.
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+        uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v3
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -1228,7 +1228,7 @@ jobs:
       - name: Resolve and upload execution file path
         id: exec-file
         if: always() && steps.claude-review.outcome != 'skipped'
-        uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
+        uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v3
         with:
           execution-file: ${{ steps.claude-review.outputs.execution_file }}
           attempt-label: attempt1
@@ -1241,7 +1241,7 @@ jobs:
         id: fail-check
         if: always() && steps.exec-file.outcome == 'success'
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
+        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v3
         with:
           execution-file: ${{ steps.exec-file.outputs.path }}
 
@@ -1265,7 +1265,7 @@ jobs:
           steps.fail-check.outcome == 'failure' &&
           (steps.fail-check.outputs.stub_review == 'true' || steps.fail-check.outputs.action_short_circuit == 'true')
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v2
+        uses: Morrison-Lab/gha/.github/actions/run-claude-review-attempt@v3
         with:
           claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -1296,7 +1296,7 @@ jobs:
         id: exec-file-retry
         if: always() && steps.claude-review-retry.outcome != 'skipped'
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v2
+        uses: Morrison-Lab/gha/.github/actions/upload-review-execution@v3
         with:
           execution-file: ${{ steps.claude-review-retry.outputs.execution_file }}
           attempt-label: attempt2
@@ -1305,7 +1305,7 @@ jobs:
         id: fail-check-retry
         if: always() && steps.exec-file-retry.outcome == 'success'
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v2
+        uses: Morrison-Lab/gha/.github/actions/run-review-guard@v3
         with:
           execution-file: ${{ steps.exec-file-retry.outputs.path }}
 
@@ -1319,7 +1319,7 @@ jobs:
       - name: Sum attempt costs
         id: sum-cost
         if: always() && steps.selfmod.outputs.self_mod != 'true'
-        uses: Morrison-Lab/gha/.github/actions/sum-costs@v2
+        uses: Morrison-Lab/gha/.github/actions/sum-costs@v3
         with:
           cost-a: ${{ steps.fail-check.outputs.total_cost_usd }}
           cost-b: ${{ steps.fail-check-retry.outputs.total_cost_usd }}
@@ -1531,7 +1531,7 @@ jobs:
           (steps.selfmod.outputs.self_mod == 'true' ||
            steps.resolve-final.outcome == 'success' ||
            steps.resolve-final.outcome == 'failure')
-        uses: Morrison-Lab/gha/.github/actions/pack-review-payload@v2
+        uses: Morrison-Lab/gha/.github/actions/pack-review-payload@v3
         with:
           pr-number: ${{ github.event.pull_request.number || inputs.pr-number }}
           caller-wf-path: ${{ steps.caller-wf.outputs.path }}
@@ -1588,7 +1588,7 @@ jobs:
       # a targeting source (gha#580 review).
       - name: Parse caller workflow ref
         id: caller-wf
-        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v2
+        uses: Morrison-Lab/gha/.github/actions/parse-workflow-ref@v3
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
@@ -1743,7 +1743,7 @@ jobs:
       - name: Build self-review skip notice body
         id: build-notice
         if: steps.target.outputs.stale != 'true' && steps.payload.outputs.self_mod == 'true'
-        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v2
+        uses: Morrison-Lab/gha/.github/actions/build-self-review-skip-notice@v3
         with:
           workflow-path: ${{ steps.payload.outputs.wf_path || steps.target.outputs.caller_wf_path }}
           caller-workflow-path: ${{ steps.target.outputs.caller_wf_path }}
@@ -1777,7 +1777,7 @@ jobs:
       - name: Build quota-exhausted notice body
         id: build-quota-notice
         if: steps.target.outputs.stale != 'true' && steps.payload.outputs.quota_exhausted == 'true'
-        uses: Morrison-Lab/gha/.github/actions/build-quota-skip-notice@v2
+        uses: Morrison-Lab/gha/.github/actions/build-quota-skip-notice@v3
         with:
           quota-reason: ${{ steps.payload.outputs.quota_reason }}
           quota-message: ${{ steps.payload.outputs.quota_message }}
@@ -1821,7 +1821,7 @@ jobs:
            (steps.download.outcome != 'success' &&
             (needs.claude-review.result == 'success' ||
              needs.claude-review.result == 'failure')))
-        uses: Morrison-Lab/gha/.github/actions/report-review-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-review-failure@v3
         with:
           failure-kind: ${{ steps.payload.outputs.failure_kind }}
           pr-number: ${{ steps.target.outputs.pr_number }}
@@ -1875,7 +1875,7 @@ jobs:
           steps.payload.outputs.quota_exhausted != 'true' &&
           steps.payload.outputs.cancelled != 'true' &&
           steps.payload.outputs.review_present == 'true'
-        uses: Morrison-Lab/gha/.github/actions/classify-review-verdict@v2
+        uses: Morrison-Lab/gha/.github/actions/classify-review-verdict@v3
         with:
           review-text-file: ${{ steps.payload.outputs.review_text_file }}
 

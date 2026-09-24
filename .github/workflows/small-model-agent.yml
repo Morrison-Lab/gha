@@ -104,7 +104,7 @@ jobs:
 
       - name: Checkout submodules
         if: inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -134,19 +134,19 @@ jobs:
       - name: Run YAML linter gate
         if: inputs.run-gates
         id: gate-yaml
-        uses: Morrison-Lab/gha/lint-yaml@v2
+        uses: Morrison-Lab/gha/lint-yaml@v3
         continue-on-error: true
 
       - name: Run Markdown linter gate
         if: inputs.run-gates
         id: gate-markdown
-        uses: Morrison-Lab/gha/lint-markdown@v2
+        uses: Morrison-Lab/gha/lint-markdown@v3
         continue-on-error: true
 
       - name: Run PHI tripwire gate
         if: inputs.run-gates
         id: gate-phi
-        uses: Morrison-Lab/gha/check-phi@v2
+        uses: Morrison-Lab/gha/check-phi@v3
         continue-on-error: true
 
       # Export requested consumer secrets into the agent environment (gha#618).
@@ -154,14 +154,14 @@ jobs:
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
         if: inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
+        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v3
         with:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
 
       - name: Execute small-model agent runner
         id: run-agent
-        uses: Morrison-Lab/gha/.github/actions/run-small-model-agent@v2
+        uses: Morrison-Lab/gha/.github/actions/run-small-model-agent@v3
         with:
           endpoint-url: ${{ inputs.endpoint-url }}
           api-key: ${{ secrets.API_KEY }}

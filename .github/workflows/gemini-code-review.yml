@@ -197,7 +197,7 @@ jobs:
 
       - name: Checkout submodules
         if: success() && steps.dispatch-guard.outputs.blocked != 'true' && inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -232,7 +232,7 @@ jobs:
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
         if: success() && steps.dispatch-guard.outputs.blocked != 'true' && steps.preflight-gemini-quota.outputs.quota_skip != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
+        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v3
         with:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
@@ -398,7 +398,7 @@ jobs:
       - name: Classify and report Gemini CLI failure
         id: gemini-failure
         if: steps.gemini-run.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-gemini-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-gemini-failure@v3
         with:
           error-output: ${{ steps.gemini-run.outputs.error }}
           entity-number: ${{ steps.resolve-pr.outputs.pr-num }}

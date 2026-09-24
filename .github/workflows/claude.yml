@@ -400,7 +400,7 @@ jobs:
           github.event_name == 'pull_request_review_comment' ||
           github.event_name == 'pull_request_review' ||
           github.event_name == 'issues'
-        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v3
         with:
           comment-body: ${{ github.event.comment.body }}
           review-body: ${{ github.event.review.body }}
@@ -597,7 +597,7 @@ jobs:
         id: review_request
         if: steps.gate.outputs.skip != 'true'
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v3
         with:
           comment-body: ${{ github.event.comment.body }}
           review-body: ${{ github.event.review.body }}
@@ -614,7 +614,7 @@ jobs:
       # anonymous fallback; see .github/actions/checkout-submodules.
       - name: Checkout submodules
         if: steps.gate.outputs.skip != 'true' && inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -731,7 +731,7 @@ jobs:
       # setup-r-dependencies can build against them.
       - name: Install packages
         if: steps.gate.outputs.skip != 'true'
-        uses: Morrison-Lab/gha/.github/actions/install-packages@v2
+        uses: Morrison-Lab/gha/.github/actions/install-packages@v3
         with:
           apt-packages: ${{ inputs.apt-packages }}
           pip-packages: ${{ inputs.pip-packages }}
@@ -821,7 +821,7 @@ jobs:
       - name: Checkout reference repositories
         id: checkout-ref-repos
         if: steps.gate.outputs.skip != 'true' && inputs.reference-repos != '' && inputs.reference-repos != 'none'
-        uses: Morrison-Lab/gha/.github/actions/checkout-reference-repos@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-reference-repos@v3
         with:
           reference-repos: ${{ inputs.reference-repos }}
           reference-repos-token: ${{ secrets.SUBMODULES_TOKEN || inputs.reference-repos-token }}
@@ -860,7 +860,7 @@ jobs:
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
         if: steps.gate.outputs.skip != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
+        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v3
         with:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
@@ -984,7 +984,7 @@ jobs:
       - name: Extract run cost
         id: cost
         if: always() && steps.gate.outputs.skip != 'true' && inputs.report-cost
-        uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v2
+        uses: Morrison-Lab/gha/.github/actions/extract-total-cost@v3
         with:
           execution-file: ${{ steps.claude.outputs.execution_file || '/home/runner/work/_temp/claude-execution-output.json' }}
 
@@ -1082,7 +1082,7 @@ jobs:
       # too rather than mistaking it for a clean run.
       - name: Report a rejected PR-branch push
         if: always() && steps.push_pr.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v3
         with:
           push-log: ${{ runner.temp }}/push-pr-branch.log
           entity-number: ${{ github.event.pull_request.number || github.event.issue.number }}
@@ -1274,7 +1274,7 @@ jobs:
       # workflow rather than letting the agent self-review.
       - name: Dispatch code review
         if: always() && steps.gate.outputs.skip != 'true' && (github.event.pull_request.number || github.event.issue.pull_request) && steps.review_request.outputs.match == 'true'
-        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v3
         with:
           pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
@@ -1336,13 +1336,13 @@ jobs:
         id: late_review_request
         if: always() && steps.late_bodies.outcome == 'success'
         continue-on-error: true
-        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v3
         with:
           bodies-file: ${{ steps.late_bodies.outputs.path }}
 
       - name: Dispatch review for a late @claude review comment
         if: always() && steps.late_review_request.outputs.match == 'true'
-        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v3
         with:
           pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
@@ -1360,7 +1360,7 @@ jobs:
           steps.head_before.outputs.sha != '' &&
           steps.head_after.outputs.sha != '' &&
           steps.head_after.outputs.sha != steps.head_before.outputs.sha
-        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v3
         with:
           pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
@@ -1503,7 +1503,7 @@ jobs:
       # command did not".
       - name: Report a rejected issue-branch push
         if: always() && steps.push_issue.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v3
         with:
           push-log: ${{ runner.temp }}/push-issue-branch.log
           entity-number: ${{ github.event.issue.number }}

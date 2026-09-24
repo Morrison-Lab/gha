@@ -122,7 +122,7 @@ jobs:
       - name: Detect genuine @gemini or @gemini-cli mention
         id: detect-mention
         if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
-        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-bot-mention@v3
         with:
           comment-body: ${{ github.event.comment.body || '' }}
           review-body: ${{ github.event.review.body || '' }}
@@ -133,7 +133,7 @@ jobs:
       - name: Detect @gemini review request
         id: detect-review
         if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
-        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v2
+        uses: Morrison-Lab/gha/.github/actions/detect-review-request@v3
         with:
           comment-body: ${{ github.event.comment.body || '' }}
           review-body: ${{ github.event.review.body || '' }}
@@ -145,7 +145,7 @@ jobs:
           steps.detect-mention.outputs.match != 'false' &&
           steps.detect-review.outputs.match == 'true' &&
           (github.event.issue.pull_request || github.event.pull_request.number)
-        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v2
+        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v3
         with:
           pr-number: ${{ github.event.issue.number || github.event.pull_request.number }}
 
@@ -259,7 +259,7 @@ jobs:
 
       - name: Checkout submodules
         if: steps.gate.outputs.skip != 'true' && inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -407,7 +407,7 @@ jobs:
       # variables, registers masks for values, and appends them to $GITHUB_ENV.
       - name: Export extra secrets to environment
         if: steps.gate.outputs.skip != 'true' && inputs.extra-secret-names != ''
-        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v2
+        uses: Morrison-Lab/gha/.github/actions/export-extra-secrets@v3
         with:
           extra-secret-names: ${{ inputs.extra-secret-names }}
           secrets-json: ${{ toJson(secrets) }}
@@ -517,7 +517,7 @@ jobs:
 
       - name: Report a rejected PR-branch push
         if: always() && steps.push_pr.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v3
         with:
           push-log: ${{ runner.temp }}/push-pr-branch.log
           entity-number: ${{ github.event.pull_request.number || github.event.issue.number }}
@@ -603,7 +603,7 @@ jobs:
           steps.head_before.outputs.sha != '' &&
           steps.head_after.outputs.sha != '' &&
           steps.head_after.outputs.sha != steps.head_before.outputs.sha
-        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v2
+        uses: Morrison-Lab/gha/.github/actions/dispatch-review@v3
         with:
           pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
@@ -691,7 +691,7 @@ jobs:
 
       - name: Report a rejected issue-branch push
         if: always() && steps.push_issue.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-push-failure@v3
         with:
           push-log: ${{ runner.temp }}/push-issue-branch.log
           entity-number: ${{ github.event.issue.number }}
@@ -773,7 +773,7 @@ jobs:
       - name: Classify and report Gemini CLI failure
         id: gemini-failure
         if: steps.gate.outputs.skip != 'true' && steps.gemini-run.outcome == 'failure'
-        uses: Morrison-Lab/gha/.github/actions/report-gemini-failure@v2
+        uses: Morrison-Lab/gha/.github/actions/report-gemini-failure@v3
         with:
           error-output: ${{ steps.gemini-run.outputs.error }}
           entity-number: ${{ github.event.issue.number || github.event.pull_request.number }}

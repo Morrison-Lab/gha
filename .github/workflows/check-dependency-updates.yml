@@ -77,7 +77,7 @@ jobs:
       - name: Pre-flight credential shape check
         id: preflight-credential
         if: steps.preflight-quota.outputs.quota_exhausted != 'true'
-        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v2
+        uses: Morrison-Lab/gha/.github/actions/check-credential-shape@v3
         with:
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
