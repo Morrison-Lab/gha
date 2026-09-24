@@ -181,6 +181,58 @@ def test_checker_agrees_on_quoted_brace_bare_and_profile_divs(project):
     assert check() == 0
 
 
+LIST_VALUED_PROFILE_DIVS = {
+    "when-profile comma": '\n::: {.content-visible when-profile="assign,solution"}\nsecret\n:::\n',
+    "when-profile space": '\n::: {.content-visible when-profile="assign solution"}\nsecret\n:::\n',
+    "unless-profile comma": '\n::: {.content-hidden unless-profile="assign,solution"}\nsecret\n:::\n',
+    "unless-profile space": '\n::: {.content-hidden unless-profile="assign solution"}\nsecret\n:::\n',
+    "content-visible unless-profile comma": '\n::: {.content-visible unless-profile="assign,solution"}\nsecret\n:::\n',
+    "content-hidden when-profile comma": '\n::: {.content-hidden when-profile="assign,solution"}\nsecret\n:::\n',
+    "empty profile": '\n::: {.content-visible when-profile=""}\nsecret\n:::\n',
+}
+
+
+@pytest.mark.parametrize("div", LIST_VALUED_PROFILE_DIVS.values(), ids=LIST_VALUED_PROFILE_DIVS.keys())
+def test_generator_refuses_list_valued_profile_attribute(project, capsys, div):
+    write(project / "hw" / "hw1.qmd", HOMEWORK + div)
+    assert generate() == 1
+    assert not student(project).exists()
+    out = capsys.readouterr().out
+    assert "hw1.qmd" in out
+    assert "must be one profile name" in out
+
+
+@needs_quarto
+@pytest.mark.parametrize("div", LIST_VALUED_PROFILE_DIVS.values(), ids=LIST_VALUED_PROFILE_DIVS.keys())
+def test_checker_refuses_list_valued_profile_attribute_in_source(project, capsys, div):
+    write(project / "hw" / "hw1.qmd", HOMEWORK + div)
+    assert check() == 1
+    out = capsys.readouterr().out
+    assert "hw1.qmd" in out
+    assert "must be one profile name" in out
+
+
+def test_generator_refuses_list_valued_profile_in_included_fragment(project, capsys):
+    fragment = project / "exercises" / "topic" / "_exr-a.qmd"
+    write(fragment, FRAGMENT + '\n::: {.content-visible when-profile="assign,solution"}\nsecret in fragment\n:::\n')
+    assert generate() == 1
+    assert not student(project).exists()
+    out = capsys.readouterr().out
+    assert "hw1.qmd" in out
+    assert "must be one profile name" in out
+
+
+@needs_quarto
+def test_checker_refuses_list_valued_profile_in_included_fragment(project, capsys):
+    fragment = project / "exercises" / "topic" / "_exr-a.qmd"
+    write(fragment, FRAGMENT + '\n::: {.content-visible when-profile="assign,solution"}\nsecret in fragment\n:::\n')
+    assert check() == 1
+    out = capsys.readouterr().out
+    assert "hw1.qmd" in out
+    assert "must be one profile name" in out
+
+
+
 RAW_ANSWER_DIVS = {
     "hidden class": '<div class="sol">\nsecret raw\n</div>\n',
     "upper case": '<DIV CLASS="other sol">\nsecret raw\n</DIV>\n',
