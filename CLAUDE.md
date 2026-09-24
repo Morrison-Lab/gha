@@ -4935,12 +4935,13 @@ proposed fix.
 Both undercounts were caught by an adversarial review rather than by the
 author.)
 
-## `dispatch-review.sh` omits `--ref` in four cases; its header names three
+## `dispatch-review.sh` targets the default branch (or omits `--ref`) in four cases; its header names three
 
 Any documentation of the dispatch command has to carry those cases, because
 one of them is a trust boundary rather than a convenience.
-At `838011e`, `.github/workflows/scripts/dispatch-review.sh` drops `--ref`
-when:
+`.github/workflows/scripts/dispatch-review.sh` routes to the default branch
+(substituting `--ref "$DEFAULT_BRANCH"` when known, or omitting `--ref` when
+unset --- gha#931) when:
 
 1. `PR_BRANCH` cannot be resolved;
 2. `PR_HEAD_REPO` differs from `REPO`, that is, the PR is from a fork
@@ -4950,7 +4951,7 @@ when:
    `.github/workflows/*.yml` (gha#598);
 
 4. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
-   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same omission.
+   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same fallback.
 
 The script's own header comment names only the first three, so case 4 is
 derivable from the code alone --- read the branches, not the comment.

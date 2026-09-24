@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Resolves PR_BRANCH / PR_HEAD_REPO if empty, determines whether --ref should
-# be passed (omitting --ref for fork PRs, when PR_BRANCH cannot be resolved,
-# or when the PR edits top-level workflow YAML so GitHub executes the
-# default-branch caller rather than the PR head --- gha#598), and dispatches
-# the review workflow via `gh workflow run`. (gha#419)
+# be passed (substituting --ref "$DEFAULT_BRANCH" when known, or omitting --ref,
+# for fork PRs, when PR_BRANCH cannot be resolved, or when the PR edits top-level
+# workflow YAML so GitHub executes the default-branch caller rather than the PR
+# head --- gha#598, gha#931), and dispatches the review workflow via
+# `gh workflow run`. (gha#419)
 set -euo pipefail
 
 if [[ "${1:-}" == "--self-test" ]]; then
@@ -66,7 +67,11 @@ fi
 # runs instead --- trusted YAML, and the review job checkouts the PR head for the code. (gha#598)
 if [ -z "${PR_CHANGED_FILES+x}" ]; then
   if ! PR_CHANGED_FILES=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$script_dir/list-pr-changed-files.sh"); then
-    echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref so GitHub executes default-branch workflow YAML."
+    if [[ -n "$DEFAULT_BRANCH" ]]; then
+      echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF from the default branch ($DEFAULT_BRANCH) so GitHub executes trusted workflow YAML."
+    else
+      echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref so GitHub executes default-branch workflow YAML."
+    fi
     PR_CHANGED_FILES=""
     FORCE_DEFAULT_BRANCH_WORKFLOWS=true
   fi

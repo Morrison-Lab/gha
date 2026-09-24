@@ -243,6 +243,32 @@ else
   failures=$((failures + 1))
 fi
 
+# Test 16: Incomplete file set with DEFAULT_BRANCH set passes --ref with the default branch and prints updated notice
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in
+    */files*)
+      printf 'README.md\nCLAUDE.md\n'
+      exit 0
+      ;;
+    */pulls/*)
+      echo '{"changed_files":5}'
+      exit 0
+      ;;
+  esac
+done
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="137" PR_BRANCH="feature-truncated" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'dispatching claude-code-review.yml from the default branch (main)' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=137'; then
+  echo "OK   dispatch-review.sh passes default branch --ref when files list is truncated and DEFAULT_BRANCH is set"
+else
+  echo "::error::dispatch-review.sh failed truncated files list with DEFAULT_BRANCH test; got: $out"
+  failures=$((failures + 1))
+fi
+
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures dispatch-review test case(s) failed"
   exit 1
