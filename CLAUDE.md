@@ -4939,7 +4939,7 @@ proposed fix.
 Both undercounts were caught by an adversarial review rather than by the
 author.)
 
-## `dispatch-review.sh` targets the default branch (or omits `--ref`) in four cases; its header names three
+## `dispatch-review.sh` targets the default branch in two cases, and skips review dispatch in two (gha#921)
 
 Any documentation of the dispatch command has to carry those cases, because
 one of them is a trust boundary rather than a convenience.
@@ -4949,21 +4949,30 @@ unset --- gha#931) when:
 
 1. `PR_BRANCH` cannot be resolved;
 2. `PR_HEAD_REPO` differs from `REPO`, that is, the PR is from a fork
-   (gha#289);
+   (gha#289).
+
+It skips review dispatch entirely (exiting 0 without calling `gh workflow run`
+and emitting an explanatory notice) when:
 
 3. `detect-pr-workflow-edits.sh` reports the PR edits top-level
-   `.github/workflows/*.yml` (gha#598);
+   `.github/workflows/*.yml` (gha#598, gha#921);
 
 4. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
-   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same fallback.
+   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same skip (gha#598, gha#921).
 
-The script's own header comment names only the first three, so case 4 is
+The script's own header comment names these cases, so case 4 is
 derivable from the code alone --- read the branches, not the comment.
 
-Case 3 is why the flat form is unsafe to document: with `--ref` pointing at
-the PR branch, GitHub executes the PR head's own unreviewed caller YAML under
-this repository's model credentials, which is exactly what gha#598 exists to
-prevent.
+Before gha#921, cases 3 and 4 routed to the default branch.
+Because GitHub Actions attaches check-runs to the workflow run commit SHA,
+default-branch dispatches registered on `main` rather than the PR head and
+preempted the in-flight `pull_request` review, destroying the only review
+whose check-runs could reach the PR head (gha#921).
+Skipping dispatch leaves the push-triggered `pull_request` review to evaluate
+the PR head with default-branch workflows restored after checkout.
+With `--ref` pointing at the PR branch, GitHub executes the PR head's own
+unreviewed caller YAML under this repository's model credentials, which is
+what gha#598 exists to prevent.
 So write the conditional form, or say which case the given form covers, per
 [`Morrison-Lab/ai-config`'s `shared/writing/fact-check-prose.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/fact-check-prose.md)
 ("A command written into documentation is a condensation of the code that
