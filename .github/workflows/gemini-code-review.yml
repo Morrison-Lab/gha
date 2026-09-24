@@ -86,7 +86,7 @@ jobs:
     # review run alone, or wait for any in-flight dispatched review to
     # finish first.
     concurrency:
-      group: gemini-review-${{ inputs.pr-number || github.event.pull_request.number }}
+      group: gemini-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ inputs.pr-number || github.event.pull_request.number }}
       cancel-in-progress: true
     outputs:
       quota_skip: ${{ steps.gemini-failure.outputs.kind == 'quota-or-auth' || steps.preflight-gemini-quota.outputs.quota_skip == 'true' }}

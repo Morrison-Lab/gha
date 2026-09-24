@@ -113,13 +113,14 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 8: A PR that edits top-level workflow YAML omits --ref even on a
-# same-repo branch, so GitHub executes the default-branch caller (gha#598).
+# Test 8: A PR that edits top-level workflow YAML skips review dispatch
+# rather than dispatching from the default branch, which would preempt
+# in-flight PR-head reviews and attach check-runs to the default branch (gha#921).
 out="$(PR_NUMBER="129" PR_BRANCH="feature-wf" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" PR_CHANGED_FILES=".github/workflows/_selftest.yml" DRY_RUN="true" bash "$dispatch_script")"
-if echo "$out" | grep -q 'edits workflow files' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=129' && ! echo "$out" | grep -q -- '--ref feature-wf'; then
-  echo "OK   dispatch-review.sh omits --ref when the PR edits workflow YAML"
+if echo "$out" | grep -q 'edits workflow files' && echo "$out" | grep -q 'skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips review dispatch when the PR edits workflow YAML"
 else
-  echo "::error::dispatch-review.sh failed to omit --ref for a workflow-editing PR; got: $out"
+  echo "::error::dispatch-review.sh failed to skip review dispatch for a workflow-editing PR; got: $out"
   failures=$((failures + 1))
 fi
 
@@ -134,27 +135,26 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 10: A failed files-list API call omits --ref rather than dispatching
-# at an unknown PR head (gha#598). PR_CHANGED_FILES is unset so the live
-# lookup runs; the mock gh fails.
+# Test 10: A failed files-list API call skips review dispatch rather than
+# dispatching at an unknown PR head or from the default branch (gha#598, gha#921).
+# PR_CHANGED_FILES is unset so the live lookup runs; the mock gh fails.
 cat <<'EOF' > "$tmp_dir/gh"
 #!/usr/bin/env bash
 echo "Unexpected gh invocation: $@" >&2
 exit 1
 EOF
 out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="131" PR_BRANCH="feature-api-fail" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
-if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=131' && ! echo "$out" | grep -q -- '--ref feature-api-fail'; then
-  echo "OK   dispatch-review.sh omits --ref when the files API fails"
+if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch when the files API fails"
 else
-  echo "::error::dispatch-review.sh did not omit --ref on files-API failure; got: $out"
+  echo "::error::dispatch-review.sh did not skip dispatch on files-API failure; got: $out"
   failures=$((failures + 1))
 fi
 
 # Test 11: A successful but truncated files list (listed < changed_files)
-# omits --ref. GitHub's endpoint caps at 3000 files and still returns 200,
-# so treating that 200 as complete would dispatch --ref at an unknown tree.
-# The notice must not be the "edits workflow files" one: truncation is not
-# a detected workflow edit.
+# skips review dispatch. GitHub's endpoint caps at 3000 files and still returns 200,
+# so treating that 200 as complete would risk executing untrusted workflow YAML
+# or preempting PR-head checks (gha#598, gha#921).
 cat <<'EOF' > "$tmp_dir/gh"
 #!/usr/bin/env bash
 for arg in "$@"; do
@@ -173,10 +173,10 @@ echo "Unexpected gh invocation: $@" >&2
 exit 1
 EOF
 out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="132" PR_BRANCH="feature-truncated" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
-if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml  -f pr_number=132' && ! echo "$out" | grep -q -- '--ref feature-truncated' && ! echo "$out" | grep -q 'edits workflow files'; then
-  echo "OK   dispatch-review.sh omits --ref when the files list is truncated"
+if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch when the files list is truncated"
 else
-  echo "::error::dispatch-review.sh did not omit --ref on a truncated files list; got: $out"
+  echo "::error::dispatch-review.sh did not skip dispatch on a truncated files list; got: $out"
   failures=$((failures + 1))
 fi
 
@@ -217,12 +217,12 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 14: Workflow-editing PR with DEFAULT_BRANCH includes --ref with the default branch
+# Test 14: Workflow-editing PR with DEFAULT_BRANCH skips dispatch (gha#921)
 out="$(PR_NUMBER="135" PR_BRANCH="feature-wf" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" PR_CHANGED_FILES=".github/workflows/_selftest.yml" DRY_RUN="true" bash "$dispatch_script")"
-if echo "$out" | grep -q 'edits workflow files' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=135'; then
-  echo "OK   dispatch-review.sh passes default branch --ref for workflow edits when DEFAULT_BRANCH is set"
+if echo "$out" | grep -q 'edits workflow files' && echo "$out" | grep -q 'skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch for workflow edits even when DEFAULT_BRANCH is set"
 else
-  echo "::error::dispatch-review.sh failed to pass default branch --ref for workflow edits; got: $out"
+  echo "::error::dispatch-review.sh failed to skip dispatch for workflow edits with DEFAULT_BRANCH; got: $out"
   failures=$((failures + 1))
 fi
 
@@ -243,7 +243,7 @@ else
   failures=$((failures + 1))
 fi
 
-# Test 16: Incomplete file set with DEFAULT_BRANCH set passes --ref with the default branch and prints updated notice
+# Test 16: Incomplete file set with DEFAULT_BRANCH set skips dispatch (gha#921)
 cat <<'EOF' > "$tmp_dir/gh"
 #!/usr/bin/env bash
 for arg in "$@"; do
@@ -262,8 +262,8 @@ echo "Unexpected gh invocation: $@" >&2
 exit 1
 EOF
 out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="137" PR_BRANCH="feature-truncated" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" DRY_RUN="true" bash "$dispatch_script")"
-if echo "$out" | grep -q 'dispatching claude-code-review.yml from the default branch (main)' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=137'; then
-  echo "OK   dispatch-review.sh passes default branch --ref when files list is truncated and DEFAULT_BRANCH is set"
+if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch when files list is truncated even when DEFAULT_BRANCH is set"
 else
   echo "::error::dispatch-review.sh failed truncated files list with DEFAULT_BRANCH test; got: $out"
   failures=$((failures + 1))

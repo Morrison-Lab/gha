@@ -191,23 +191,47 @@ jobs:
           # list-pr-changed-files.sh.
           changed=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.changed_files') || changed=""
           listed=0
+          skip_dispatch=false
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
-            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref (gha#598)."
-            REF_ARG=""
+            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+            skip_dispatch=true
+            echo "reason=workflow_edits" >> "$GITHUB_OUTPUT"
+            NOTICE_BODY=":warning: Review was not dispatched: Could not verify whether PR #$PR_NUMBER edits workflow files (file list API failed). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+            printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+              | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                  --method POST \
+                  -H "Content-Type: application/json" \
+                  --input - > /dev/null || true
           else
             files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
-              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref (gha#598)."
-              REF_ARG=""
+              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+              skip_dispatch=true
+              echo "reason=workflow_edits" >> "$GITHUB_OUTPUT"
+              NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+                | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                    --method POST \
+                    -H "Content-Type: application/json" \
+                    --input - > /dev/null || true
             elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
-              echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
-              REF_ARG=""
+              echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
+              skip_dispatch=true
+              echo "reason=workflow_edits" >> "$GITHUB_OUTPUT"
+              NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+                | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                    --method POST \
+                    -H "Content-Type: application/json" \
+                    --input - > /dev/null || true
             fi
           fi
-          gh workflow run "$REVIEW_WF" --repo "$REPO" $REF_ARG -f pr_number="$PR_NUMBER"
+          if [ "$skip_dispatch" = "false" ]; then
+            gh workflow run "$REVIEW_WF" --repo "$REPO" $REF_ARG -f pr_number="$PR_NUMBER"
+          fi
 
       - name: Decide whether the agent should run
         id: gate
@@ -224,6 +248,9 @@ jobs:
           skip=false
           if [ "$MENTION_MATCH" = "false" ]; then
             echo "No genuine @gemini mention outside code blocks or quotes; skipping the agent."
+            skip=true
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_REASON" = "workflow_edits" ]; then
+            echo "Workflow edits on PR; skipping review dispatch and agent."
             skip=true
           elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "success" ]; then
             echo "Review dispatched to the dedicated reviewer; skipping the agent."
@@ -748,24 +775,27 @@ jobs:
           # list-pr-changed-files.sh.
           changed=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq '.changed_files') || changed=""
           listed=0
+          skip_dispatch=false
           if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files?per_page=100" --paginate --jq '.[].filename'); then
-            echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
-            gh_review_ref=()
+            echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+            skip_dispatch=true
           else
             files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
-              echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
-              gh_review_ref=()
+              echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+              skip_dispatch=true
             elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
-              echo "::notice::PR #$PR_NUM edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
-              gh_review_ref=()
+              echo "::notice::PR #$PR_NUM edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#921)."
+              skip_dispatch=true
             fi
           fi
-          gh workflow run "$REVIEW_WF" "${gh_review_ref[@]}" -f pr_number="$PR_NUM" \
-            || echo "::warning::Could not dispatch $REVIEW_WF."
+          if [ "$skip_dispatch" = "false" ]; then
+            gh workflow run "$REVIEW_WF" "${gh_review_ref[@]}" -f pr_number="$PR_NUM" \
+              || echo "::warning::Could not dispatch $REVIEW_WF."
+          fi
           if [ "$MARK_READY" = "true" ] && [ "$GEMINI_OUTCOME" = "success" ]; then
             if gh pr ready "${PR_URL##*/}"; then
               PR_VERB="${PR_VERB/draft /}"

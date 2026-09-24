@@ -386,8 +386,9 @@ only ever shipped at `@v3`.
   `action.yml` files).
   `claude-code-review.yml` uses it to restore
   default-branch workflow copies instead of skipping the review (gha#598);
-  `dispatch-review.sh` uses it to omit `--ref` so GitHub executes the
-  default-branch caller rather than the PR head's YAML.
+  `dispatch-review.sh` uses it to skip review dispatch so default-branch
+  dispatches do not preempt in-flight PR-head reviews or register check-runs
+  on the default branch (gha#921).
   A missing `PR_CHANGED_FILES` variable fails closed (exit 2) rather than
   reporting a clean tree.
   Listing the PR's files goes through `list-pr-changed-files.sh`, which
@@ -4773,17 +4774,22 @@ The restore drops `.github/workflows/.restored-from-default-branch` so
 workflow-parsing test suites and audits detect the restore and skip rather
 than measuring the default-branch copy (gha#765).
 
-**Dispatched reviews omit `--ref` when the PR edits workflow YAML**, so
-GitHub executes the default-branch *caller* rather than the PR head's copy.
-That is the trusted-YAML half; the restore is the trusted-on-disk half.
-Fork PRs already omitted `--ref` (gha#289).
-A no-`--ref` dispatch's check-runs land on the default branch (gha#285);
-the review comment still posts on the PR.
-Before gha#598 the guard instead skipped outright, which is what gha#286
-recorded: an `@claude review` comment produced only a `$0.60` cost comment and
-no verdict, because the PR touched `claude-review.yml` itself.
-Check the job's step list rather than its conclusion when reading any run from
-that era.
+**Dispatched reviews skip dispatch when the PR edits workflow YAML (gha#921).**
+Passing `--ref $PR_BRANCH` would execute untrusted PR-head workflow YAML
+under repo credentials (gha#598).
+Dispatching without `--ref` (or with `--ref $DEFAULT_BRANCH`) runs on the
+default branch and registers check-runs against the default branch rather
+than the PR head (gha#285).
+Crucially, default-branch dispatches previously shared the `cancel-in-progress`
+concurrency group (`claude-review-<PR>`) with the automatic `pull_request` run,
+preempting and destroying the only review whose check-runs reached the PR head
+(gha#921).
+Dispatchers (`dispatch-review.sh`, `claude-review.yml`, `claude.yml`, `gemini.yml`,
+and example stubs) now skip review dispatch on workflow-editing PRs with an
+actionable notice explaining that push-triggered reviews evaluate the PR.
+Review workflows also isolate default-branch dispatches into a separate
+concurrency group (`claude-review-default-<PR>`) so manual dispatches cannot
+preempt the PR head's `pull_request` review.
 
 **This does not switch to `pull_request_target`.**
 `pull_request` executes the PR's triggering workflow YAML.
@@ -4933,7 +4939,7 @@ proposed fix.
 Both undercounts were caught by an adversarial review rather than by the
 author.)
 
-## `dispatch-review.sh` targets the default branch (or omits `--ref`) in four cases; its header names three
+## `dispatch-review.sh` targets the default branch in two cases, and skips review dispatch in two (gha#921)
 
 Any documentation of the dispatch command has to carry those cases, because
 one of them is a trust boundary rather than a convenience.
@@ -4943,21 +4949,32 @@ unset --- gha#931) when:
 
 1. `PR_BRANCH` cannot be resolved;
 2. `PR_HEAD_REPO` differs from `REPO`, that is, the PR is from a fork
-   (gha#289);
+   (gha#289).
 
-3. `detect-pr-workflow-edits.sh` reports the PR edits top-level
-   `.github/workflows/*.yml` (gha#598);
+It skips review dispatch entirely (exiting 0 without calling `gh workflow run`
+and emitting an explanatory notice) when:
 
-4. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
-   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same fallback.
+1. `detect-pr-workflow-edits.sh` reports the PR edits top-level
+   `.github/workflows/*.yml` (gha#598, gha#921);
 
-The script's own header comment names only the first three, so case 4 is
-derivable from the code alone --- read the branches, not the comment.
+2. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
+   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same skip (gha#598, gha#921).
 
-Case 3 is why the flat form is unsafe to document: with `--ref` pointing at
-the PR branch, GitHub executes the PR head's own unreviewed caller YAML under
-this repository's model credentials, which is exactly what gha#598 exists to
-prevent.
+The script's own header comment names the two default-branch fallback cases
+and the workflow-edits skip case, while omitting the incomplete-file-list skip case ---
+so skip case 2 is derivable from the code alone;
+read the branches, not only the comment.
+
+Before gha#921, the two skip cases routed to the default branch instead.
+Because GitHub Actions attaches check-runs to the workflow run commit SHA,
+default-branch dispatches registered on `main` rather than the PR head and
+preempted the in-flight `pull_request` review, destroying the only review
+whose check-runs could reach the PR head (gha#921).
+Skipping dispatch leaves the push-triggered `pull_request` review to evaluate
+the PR head with default-branch workflows restored after checkout.
+With `--ref` pointing at the PR branch, GitHub executes the PR head's own
+unreviewed caller YAML under this repository's model credentials, which is
+what gha#598 exists to prevent.
 So write the conditional form, or say which case the given form covers, per
 [`Morrison-Lab/ai-config`'s `shared/writing/fact-check-prose.md`](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/fact-check-prose.md)
 ("A command written into documentation is a condensation of the code that

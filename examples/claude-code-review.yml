@@ -173,9 +173,14 @@ jobs:
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE from the default branch."
             REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
           fi
-          # When the PR edits top-level workflow YAML, execute the default-branch
-          # caller rather than the PR head (gha#598). Nested paths under
-          # workflows/scripts/ are not workflows. Keep this grep in sync with
+          # When the PR edits top-level workflow YAML, manual dispatches cannot
+          # execute untrusted workflow YAML from the PR branch, and default-branch
+          # dispatches cannot attach status checks to the PR head while preempting
+          # the in-flight push-triggered review (gha#598, gha#921).
+          # Skip review dispatch on workflow edits so the push-triggered pull_request review
+          # (which restores default-branch workflows after checkout) runs to completion on
+          # the PR head without being destroyed by a default-branch dispatch.
+          # Nested paths under workflows/scripts/ are not workflows. Keep this grep in sync with
           # detect-pr-workflow-edits.sh.
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). A 200 with a short list is
@@ -183,19 +188,37 @@ jobs:
           changed=$(jq -r '.changed_files' <<< "$PR_JSON")
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
-            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE from the default branch so GitHub executes default-branch workflow YAML (gha#598)."
-            REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
+            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: Could not verify whether PR #$PR_NUMBER edits workflow files (file list API failed). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+            printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+              | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                  --method POST \
+                  -H "Content-Type: application/json" \
+                  --input - > /dev/null || true
+            exit 0
           else
             files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
-              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE from the default branch so GitHub executes default-branch workflow YAML (gha#598)."
-              REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
+              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+              NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+                | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                    --method POST \
+                    -H "Content-Type: application/json" \
+                    --input - > /dev/null || true
+              exit 0
             elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
-              echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $WF_FILE from the default branch so GitHub executes trusted workflow YAML (gha#598)."
-              REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
+              echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
+              NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+                | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                    --method POST \
+                    -H "Content-Type: application/json" \
+                    --input - > /dev/null || true
+              exit 0
             fi
           fi
           # --repo is required: this job doesn't check out the repo, so gh has no
