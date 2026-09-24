@@ -111,8 +111,8 @@ def parse_bool(value: str, name: str) -> bool:
 def profile_name(value: str, key: str = "profile") -> str:
     """Validate that a profile attribute names exactly one profile.
 
-    Quarto matches a when-profile or unless-profile value as a single profile
-    name and does not split on commas or whitespace.
+    Quarto matches a when-profile or unless-profile value as a single profile name
+    and does not split on commas or whitespace.
     A list-valued attribute can never match in Quarto,
     so refuse it.
     """

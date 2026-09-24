@@ -232,7 +232,6 @@ def test_checker_refuses_list_valued_profile_in_included_fragment(project, capsy
     assert "must be one profile name" in out
 
 
-
 RAW_ANSWER_DIVS = {
     "hidden class": '<div class="sol">\nsecret raw\n</div>\n',
     "upper case": '<DIV CLASS="other sol">\nsecret raw\n</DIV>\n',
