@@ -166,9 +166,6 @@ _STUDY_ID_LITERAL_PATTERN = r"(['\"])(?=[A-Za-z0-9]*[0-9])([A-Za-z0-9]{8,})\1"
 _STUDY_ID_SCALAR_RE = re.compile(_ID_VAR_PREFIX + _SCALAR_OP + _STUDY_ID_LITERAL_PATTERN)
 _STUDY_ID_IN_OPEN_RE = re.compile(_ID_VAR_PREFIX + r"\s+(?:not\s+)?in\s*\(")
 _STUDY_ID_LITERAL_RE = re.compile(r"^(['\"])(?=[A-Za-z0-9]*[0-9])([A-Za-z0-9]{8,})\1$")
-_STUDY_ID_RE = re.compile(
-    _ID_VAR_PREFIX + r"(?:" + _SCALAR_OP + r"|\s+(?:not\s+)?in\s*\(\s*)" + _STUDY_ID_LITERAL_PATTERN
-)
 
 
 def _extract_in_list_elements(
