@@ -93,13 +93,13 @@ jobs:
 
       - name: Checkout submodules
         if: inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
       - name: Write, check and render the student .qmd files
         id: student-qmd
-        uses: Morrison-Lab/gha/student-qmd@v2
+        uses: Morrison-Lab/gha/student-qmd@v3
         with:
           sources: ${{ inputs.sources }}
           working-directory: ${{ inputs.working-directory }}

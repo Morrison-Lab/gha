@@ -92,7 +92,7 @@ jobs:
 
       - name: Queue Cursor Bugbot review
         if: success() && steps.dispatch-guard.outputs.blocked != 'true'
-        uses: Morrison-Lab/gha/.github/actions/trigger-bugbot-review@v2
+        uses: Morrison-Lab/gha/.github/actions/trigger-bugbot-review@v3
         with:
           pr-url: ${{ github.server_url }}/${{ github.repository }}/pull/${{ steps.resolve-pr.outputs.pr-num }}
           api-key: ${{ secrets.CURSOR_API_KEY }}

@@ -157,7 +157,7 @@ jobs:
 
       - name: Checkout submodules
         if: success() && steps.dispatch-guard.outputs.blocked != 'true' && inputs.checkout-submodules
-        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v3
         with:
           submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
 
@@ -446,7 +446,7 @@ jobs:
           steps.prep-prompt.outputs.prompt-file != '' &&
           steps.dispatch-guard.outputs.blocked != 'true' &&
           steps.preflight-secret.outputs.secret_skip != 'true'
-        uses: Morrison-Lab/gha/.github/actions/report-opencode-run@v2
+        uses: Morrison-Lab/gha/.github/actions/report-opencode-run@v3
         with:
           exit-code: ${{ steps.run.outputs.exitcode }}
           review-file: review-output.md

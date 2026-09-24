@@ -46,7 +46,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check duplicate roxygen documentation
-        uses: Morrison-Lab/gha/check-duplicate-roxygen@v2
+        uses: Morrison-Lab/gha/check-duplicate-roxygen@v3
         with:
           path: ${{ inputs.path }}
           # On PRs, scan only files added/modified relative to the base; on pushes,

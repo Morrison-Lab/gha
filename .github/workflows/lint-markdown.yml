@@ -70,7 +70,7 @@ jobs:
           fetch-depth: 0
 
       - name: Lint Markdown
-        uses: Morrison-Lab/gha/lint-markdown@v2
+        uses: Morrison-Lab/gha/lint-markdown@v3
         with:
           config-file: ${{ inputs.config-file }}
           globs: ${{ inputs.globs }}

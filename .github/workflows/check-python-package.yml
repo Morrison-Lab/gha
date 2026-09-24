@@ -141,7 +141,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Python package checks
-        uses: Morrison-Lab/gha/check-python-package@v2
+        uses: Morrison-Lab/gha/check-python-package@v3
         with:
           fail: ${{ inputs.fail }}
           python-version: ${{ inputs.python-version }}

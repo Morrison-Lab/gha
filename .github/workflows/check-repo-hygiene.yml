@@ -117,7 +117,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run repository hygiene checks
-        uses: Morrison-Lab/gha/check-repo-hygiene@v2
+        uses: Morrison-Lab/gha/check-repo-hygiene@v3
         with:
           fail: ${{ inputs.fail }}
           check-junk-files: ${{ inputs.check-junk-files }}

@@ -194,7 +194,7 @@ jobs:
     steps:
       - name: Build preview
         id: build
-        uses: Morrison-Lab/gha/preview@v2
+        uses: Morrison-Lab/gha/preview@v3
         # The `type: boolean` inputs above are coerced to the strings
         # 'true'/'false' when passed to the composite action, which compares
         # them as strings (e.g. `inputs.use-renv == 'true'`).

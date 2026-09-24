@@ -66,7 +66,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Warnings as errors
-        uses: Morrison-Lab/gha/check-extra@v2
+        uses: Morrison-Lab/gha/check-extra@v3
         with:
           check: warnings
           path: ${{ inputs.path }}
@@ -87,7 +87,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Random test order
-        uses: Morrison-Lab/gha/check-extra@v2
+        uses: Morrison-Lab/gha/check-extra@v3
         with:
           check: random-order
           path: ${{ inputs.path }}
@@ -108,7 +108,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: README render
-        uses: Morrison-Lab/gha/check-extra@v2
+        uses: Morrison-Lab/gha/check-extra@v3
         with:
           check: readme
           path: ${{ inputs.path }}

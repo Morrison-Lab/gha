@@ -149,7 +149,7 @@ jobs:
       # checked out on disk.
       - name: Compare versions
         if: steps.exempt.outputs.skip != 'true'
-        uses: Morrison-Lab/gha/.github/actions/check-dev-version@v2
+        uses: Morrison-Lab/gha/.github/actions/check-dev-version@v3
         with:
           working-description: working/${{ inputs.description-path }}
           compare-description: compare/${{ inputs.description-path }}

@@ -76,7 +76,7 @@ jobs:
           persist-credentials: false
 
       - name: Test coverage
-        uses: Morrison-Lab/gha/test-coverage@v2
+        uses: Morrison-Lab/gha/test-coverage@v3
         with:
           path: ${{ inputs.path }}
           install-quarto: ${{ inputs.install-quarto }}
@@ -103,7 +103,7 @@ jobs:
           persist-credentials: false
 
       - name: Examples and vignettes coverage
-        uses: Morrison-Lab/gha/test-coverage@v2
+        uses: Morrison-Lab/gha/test-coverage@v3
         with:
           path: ${{ inputs.path }}
           install-quarto: ${{ inputs.install-quarto }}

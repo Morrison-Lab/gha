@@ -16,7 +16,7 @@ jobs:
       create-issue-on-main: false
   # check-non-standard-chars's extensions input is brand new, so (like
   # lint-yaml/lint-markdown below) it isn't at the released `@v2` tag its
-  # reusable workflow's internal `uses: Morrison-Lab/gha/check-non-standard-chars@v2`
+  # reusable workflow's internal `uses: Morrison-Lab/gha/check-non-standard-chars@v3`
   # step resolves against yet. Exercise the local composite directly.
   chars:
     runs-on: ubuntu-latest
@@ -666,7 +666,7 @@ jobs:
           post-comment: 'false'
   # check-new-line-breaks is brand new, so (like check-phi/lint-yaml/lint-markdown
   # above) it doesn't exist at the released `@v2` tag its reusable workflow's
-  # internal `uses: Morrison-Lab/gha/check-new-line-breaks@v2` step resolves
+  # internal `uses: Morrison-Lab/gha/check-new-line-breaks@v3` step resolves
   # against yet. Exercise the local composite directly so the selftest covers
   # the actual PR code; consumers use the reusable workflow once `@v2` includes
   # the action. base-ref makes this a real diff-scoped run against whatever
@@ -768,7 +768,7 @@ jobs:
           python3 -m pytest check-new-line-breaks/tests/ -q
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-secrets@v2` step resolves against yet.
+  # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.
   # Exercise the local composite directly so the selftest covers the actual PR
   # code. Unlike the phi job this is deliberately NOT diff-scoped: the whole
   # point is that a secret committed and later removed is still exposed, so the
@@ -2301,7 +2301,7 @@ jobs:
           echo "run-small-model-agent correctly returned status=failed in result-json on gate failure"
   # request-dependabot-review is brand new, so (like the internal composites
   # tested above) its own reusable-workflow layer isn't exercisable end-to-end
-  # yet: it calls build-reviewer-args via `Morrison-Lab/gha/...@v2`, which won't
+  # yet: it calls build-reviewer-args via `Morrison-Lab/gha/...@v3`, which won't
   # resolve until @v2 is advanced past this PR's merge. Test the local
   # build-reviewer-args composite directly instead -- the same "test-coverage"
   # precedent used below, and the same offline-unit-test-plus-real-`uses:`-e2e
@@ -2970,7 +2970,7 @@ jobs:
           fi
           echo "open-sync-pr correctly no-opped on a clean tree."
   # bump-dev-version / version-check are brand new. Their reusable workflows'
-  # own internal `uses: Morrison-Lab/gha/.github/actions/...@v2` steps can't
+  # own internal `uses: Morrison-Lab/gha/.github/actions/...@v3` steps can't
   # resolve until `@v2` is slid past this merge (the lint-yaml/lint-markdown
   # precedent above), and bump-dev-version.yml also pushes a real branch/PR --
   # a write side effect, like bump-submodule/sync-shared-fragments above. So
@@ -3359,7 +3359,7 @@ jobs:
           echo "The vignette fixture failed without 'exclude', so the exclude assertion is not vacuous."
   # check-extra is brand new, so (like test-coverage/spellcheck above) it
   # isn't at the released `@v2` tag its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-extra@v2` step resolves against yet.
+  # `uses: Morrison-Lab/gha/check-extra@v3` step resolves against yet.
   # Exercise the local composite against a generated R-package fixture.
   # Three sequential `uses: ./check-extra` calls (one per check) prove each
   # `check` input's wiring; a fourth call against a warning-in-example
@@ -3897,7 +3897,7 @@ jobs:
 
   # check-junk-files is brand new, so (like check-secrets above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-junk-files@v2` step resolves against yet.
+  # `uses: Morrison-Lab/gha/check-junk-files@v3` step resolves against yet.
   # Exercise the local composite directly so the selftest covers the actual PR
   # code.
   junk-files:
@@ -3980,7 +3980,7 @@ jobs:
 
   # check-typos is brand new, so (like check-junk-files above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-typos@v2` step resolves against yet.
+  # `uses: Morrison-Lab/gha/check-typos@v3` step resolves against yet.
   # Exercise the local composite directly so the selftest covers the actual PR
   # code. This repo's own tree currently carries a handful of pre-existing
   # typos (`unparseable`, measured 2026-08-26), so the no-base-ref call below
@@ -4107,7 +4107,7 @@ jobs:
 
   # check-formatting is brand new, so (like check-typos above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
-  # `uses: Morrison-Lab/gha/check-formatting@v2` step resolves against yet.
+  # `uses: Morrison-Lab/gha/check-formatting@v3` step resolves against yet.
   # Exercise the local composite directly so the selftest covers the actual
   # PR code. This repo's own `.R` files are not Air-formatted, and this
   # capability must not reformat them (gha#333: consumers opt in with their

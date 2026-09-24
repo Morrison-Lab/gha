@@ -118,13 +118,13 @@ jobs:
     steps:
       - name: Install the review-delivery classifier
         id: scripts
-        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v2
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
         with:
           scripts: 'classify-review-delivery.sh,detect-pr-workflow-edits.sh'
 
       - name: Resolve PR info
         id: pr-info
-        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v2
+        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v3
         with:
           pr-number: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
 

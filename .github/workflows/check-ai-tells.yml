@@ -41,7 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Check AI tells
-        uses: Morrison-Lab/gha/check-ai-tells@v2
+        uses: Morrison-Lab/gha/check-ai-tells@v3
         with:
           paths: ${{ inputs.paths }}
           paths-ignore: ${{ inputs.paths-ignore }}

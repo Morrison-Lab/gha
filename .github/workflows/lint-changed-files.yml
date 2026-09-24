@@ -86,7 +86,7 @@ jobs:
           persist-credentials: false
 
       - name: Lint R files
-        uses: Morrison-Lab/gha/lint-changed-files@v2
+        uses: Morrison-Lab/gha/lint-changed-files@v3
         with:
           scope: ${{ inputs.scope }}
           path: ${{ inputs.path }}
