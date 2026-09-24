@@ -57,7 +57,7 @@ check "filename containing workflows" "false" "my-workflows.yml"
 # Pipefail regression test for gha#915:
 # Under set -o pipefail, the old `printf '%s\n' "$files" | grep -qE ...` fails open
 # when grep exits after matching line 1 and printf dies of SIGPIPE on large input.
-# A here-string must succeed 20/20 trials on large inputs (>100k bytes).
+# detect-pr-workflow-edits.sh must succeed 20/20 trials on large inputs (>100k bytes).
 echo "Running pipefail large-input trials (gha#915)..."
 large_files=".github/workflows/match.yml"$'\n'
 for i in $(seq 1 3500); do
@@ -84,9 +84,9 @@ else
 fi
 
 # Static assertion against the deployed files in .github/workflows and examples:
-# Asserts that no file in the repository uses the vulnerable piped-grep pattern,
-# and that all 6 expected call sites in the 5 files implement the safe here-string
-# guard with CR-stripping.
+# Asserts that no file in the repository uses the vulnerable piped-grep pattern or
+# inlined regex, and that all 6 expected call sites in the 5 files install
+# detect-pr-workflow-edits.sh via install-gha-scripts and invoke it (gha#920).
 echo "Checking repository workflow files and example templates..."
 
 vulnerable_piped_greps=$(grep -rnE "printf.*\|[[:space:]]*grep -q.*github/workflows" "$repo_root/.github/workflows" "$repo_root/examples" || true)
@@ -99,6 +99,16 @@ else
   echo "OK   no vulnerable piped workflow greps in .github/workflows/ or examples/"
 fi
 
+inlined_workflow_greps=$(grep -rnE "grep -qE '\^\.github/workflows" "$repo_root/.github/workflows" "$repo_root/examples" || true)
+checked=$((checked + 1))
+if [ -n "$inlined_workflow_greps" ]; then
+  echo "FAIL: Found inlined workflow grep pattern in workflow files (should use detect-pr-workflow-edits.sh):" >&2
+  echo "$inlined_workflow_greps" >&2
+  failures=$((failures + 1))
+else
+  echo "OK   no inlined workflow greps in .github/workflows/ or examples/"
+fi
+
 target_files=(
   "$repo_root/.github/workflows/claude-review.yml"
   "$repo_root/.github/workflows/claude.yml"
@@ -107,30 +117,30 @@ target_files=(
   "$repo_root/examples/claude-code-review.yml"
 )
 
-expected_guard='grep -qE '\''^\.github/workflows/[^/]+\.ya?ml$'\'' <<< "$files"'
-expected_strip='files=$(printf '\''%s'\'' "$files" | tr -d '\''\r'\'')'
+expected_install="scripts: 'detect-pr-workflow-edits.sh'"
+expected_guard='bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh"'
 
 for target in "${target_files[@]}"; do
   rel_path="${target#$repo_root/}"
   checked=$((checked + 1))
-  if ! grep -Fq "$expected_guard" "$target"; then
-    echo "FAIL: $rel_path missing required here-string workflow guard" >&2
+  if ! grep -Fq "$expected_install" "$target"; then
+    echo "FAIL: $rel_path missing required install-gha-scripts step for detect-pr-workflow-edits.sh" >&2
     failures=$((failures + 1))
-  elif ! grep -Fq "$expected_strip" "$target"; then
-    echo "FAIL: $rel_path missing required CR stripping before workflow guard" >&2
+  elif ! grep -Fq "$expected_guard" "$target"; then
+    echo "FAIL: $rel_path missing required call to detect-pr-workflow-edits.sh" >&2
     failures=$((failures + 1))
   else
-    echo "OK   $rel_path contains safe here-string guard and CR-stripping"
+    echo "OK   $rel_path installs and calls detect-pr-workflow-edits.sh"
   fi
 done
 
 gemini_count=$(grep -Fc "$expected_guard" "$repo_root/.github/workflows/gemini.yml" || true)
 checked=$((checked + 1))
 if [ "$gemini_count" -ne 2 ]; then
-  echo "FAIL: gemini.yml expected 2 here-string sites, found $gemini_count" >&2
+  echo "FAIL: gemini.yml expected 2 detect-pr-workflow-edits.sh sites, found $gemini_count" >&2
   failures=$((failures + 1))
 else
-  echo "OK   gemini.yml contains both here-string dispatch guard sites"
+  echo "OK   gemini.yml contains both detect-pr-workflow-edits.sh dispatch guard sites"
 fi
 
 if [[ "$failures" -gt 0 ]]; then
