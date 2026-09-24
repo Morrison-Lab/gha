@@ -5,6 +5,9 @@
 # Usage: bash .github/workflows/scripts/tests/run-workflow-edit-guard-tests.sh
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../../.." && pwd)"
+
 matches_workflow_edits() {
   local files="$1"
   files=$(printf '%s' "$files" | tr -d '\r')
@@ -78,6 +81,56 @@ if [[ "$pipefail_fails" -gt 0 ]]; then
   failures=$((failures + 1))
 else
   echo "OK   pipefail large-input trials ($pipefail_trials/$pipefail_trials passed, 0 failures)"
+fi
+
+# Static assertion against the deployed files in .github/workflows and examples:
+# Asserts that no file in the repository uses the vulnerable piped-grep pattern,
+# and that all 6 expected call sites in the 5 files implement the safe here-string
+# guard with CR-stripping.
+echo "Checking repository workflow files and example templates..."
+
+vulnerable_piped_greps=$(grep -rnE "printf.*\|[[:space:]]*grep -q.*github/workflows" "$repo_root/.github/workflows" "$repo_root/examples" || true)
+checked=$((checked + 1))
+if [ -n "$vulnerable_piped_greps" ]; then
+  echo "FAIL: Found vulnerable piped grep pattern in workflow files:" >&2
+  echo "$vulnerable_piped_greps" >&2
+  failures=$((failures + 1))
+else
+  echo "OK   no vulnerable piped workflow greps in .github/workflows/ or examples/"
+fi
+
+target_files=(
+  "$repo_root/.github/workflows/claude-review.yml"
+  "$repo_root/.github/workflows/claude.yml"
+  "$repo_root/.github/workflows/gemini.yml"
+  "$repo_root/examples/antigravity-code-review.yml"
+  "$repo_root/examples/claude-code-review.yml"
+)
+
+expected_guard='grep -qE '\''^\.github/workflows/[^/]+\.ya?ml$'\'' <<< "$files"'
+expected_strip='files=$(printf '\''%s'\'' "$files" | tr -d '\''\r'\'')'
+
+for target in "${target_files[@]}"; do
+  rel_path="${target#$repo_root/}"
+  checked=$((checked + 1))
+  if ! grep -Fq "$expected_guard" "$target"; then
+    echo "FAIL: $rel_path missing required here-string workflow guard" >&2
+    failures=$((failures + 1))
+  elif ! grep -Fq "$expected_strip" "$target"; then
+    echo "FAIL: $rel_path missing required CR stripping before workflow guard" >&2
+    failures=$((failures + 1))
+  else
+    echo "OK   $rel_path contains safe here-string guard and CR-stripping"
+  fi
+done
+
+gemini_count=$(grep -Fc "$expected_guard" "$repo_root/.github/workflows/gemini.yml" || true)
+checked=$((checked + 1))
+if [ "$gemini_count" -ne 2 ]; then
+  echo "FAIL: gemini.yml expected 2 here-string sites, found $gemini_count" >&2
+  failures=$((failures + 1))
+else
+  echo "OK   gemini.yml contains both here-string dispatch guard sites"
 fi
 
 if [[ "$failures" -gt 0 ]]; then
