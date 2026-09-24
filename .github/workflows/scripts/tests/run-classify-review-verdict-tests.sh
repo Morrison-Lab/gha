@@ -2131,6 +2131,134 @@ run_test "Ready for merge followed by 'no blockers' disclaimer" "### Verdict
 This is not a claim that there are no blockers." \
 "true" "ready-for-merge"
 
+# --- gha#932: Review on closed/merged PR must not produce a clean verdict ---
+
+run_test "Prose verdict 'No action — PR is closed/merged' classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**" \
+"false" "skipped"
+
+run_test "ATX on-line verdict '### Verdict: No action -- PR is closed' classifies as skipped" \
+"### Verdict: No action -- PR is closed" \
+"false" "skipped"
+
+run_test "ATX on-line verdict '### Verdict: Skipped -- PR is merged' classifies as skipped" \
+"### Verdict: Skipped -- PR is merged" \
+"false" "skipped"
+
+run_test "ATX on-line verdict '### Verdict: PR is closed/merged' classifies as skipped" \
+"### Verdict: PR is closed/merged" \
+"false" "skipped"
+
+run_test "Structured payload with SKIPPED verdict classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": \"unknown\",
+  \"verdict\": \"SKIPPED\",
+  \"findings\": [],
+  \"detailed_assessment\": \"No paths were inspected because the PR state is closed and merged.\",
+  \"holistic_assessment\": \"Review skipped without inspection because the pull request is closed or merged.\"
+}
+-->" \
+"false" "skipped"
+
+run_test "Payload with CLEAN but unknown commit_sha and closed/merged prose classifies as skipped (gha#932)" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": \"unknown\",
+  \"verdict\": \"CLEAN\",
+  \"findings\": [],
+  \"detailed_assessment\": \"No paths were inspected because the PR state is closed and merged.\",
+  \"holistic_assessment\": \"No whole-change concerns after checking requirements, integration, regression risk, scope, and validation.\"
+}
+-->" \
+"false" "skipped"
+
+run_test "Payload with CLEAN but null commit_sha and closed/merged prose classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": null,
+  \"verdict\": \"CLEAN\",
+  \"findings\": []
+}
+-->" \
+"false" "skipped"
+
+run_test "Payload with CLEAN but placeholder <sha> commit_sha and closed/merged prose classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": \"<sha>\",
+  \"verdict\": \"CLEAN\",
+  \"findings\": []
+}
+-->" \
+"false" "skipped"
+
+run_test "No action needed prose mentioning past merge in previous commit classifies as ready-for-merge (gha#932)" "### Verdict
+
+**No action needed** — the fix was already merged in a previous commit." \
+"true" "ready-for-merge"
+
+run_test "No action PR closed classifies as skipped (gha#932)" "### Verdict
+
+No action: PR is closed" \
+"false" "skipped"
+
+run_test "No action PR merged classifies as skipped (gha#932)" "### Verdict
+
+No action - PR is merged" \
+"false" "skipped"
+
+run_test "Review skipped classifies as skipped (gha#932)" "### Verdict
+
+Review skipped: PR is closed" \
+"false" "skipped"
+
+run_test "Verdict opening with Merged fixes without clean kw classifies as unrecognized not skipped (gha#932)" "### Verdict
+
+Merged in the latest fixes and the diff looks good overall." \
+"false" "unrecognized"
+
+run_test "Verdict opening with Closed nit without clean kw classifies as unrecognized not skipped (gha#932)" "### Verdict
+
+Closed out the remaining nit; looks good." \
+"false" "unrecognized"
+
+run_test "Verdict opening with Closed-form derivation without clean kw classifies as unrecognized not skipped (gha#932)" "### Verdict
+
+Closed-form derivation checks out; no issues found." \
+"false" "unrecognized"
+
+run_test "Verdict opening with Closed-form derivation and approved classifies as approved (gha#932)" "### Verdict
+
+**Approved** — closed-form derivation checks out; no issues found." \
+"true" "approved"
+
+run_test "Verdict opening with Merged fixes and ready for merge classifies as ready-for-merge (gha#932)" "### Verdict
+
+**Ready for merge** — merged in the latest fixes." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

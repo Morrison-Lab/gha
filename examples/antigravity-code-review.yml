@@ -75,6 +75,12 @@ jobs:
           fi
           WF_FILE=$(basename "$WF_PATH")
           PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          PR_STATE=$(jq -r '.state' <<< "$PR_JSON")
+          PR_MERGED=$(jq -r '.merged' <<< "$PR_JSON")
+          if [[ "$PR_STATE" == "closed" || "$PR_MERGED" == "true" ]]; then
+            echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
+            exit 0
+          fi
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
 

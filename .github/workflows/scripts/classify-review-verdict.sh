@@ -791,10 +791,18 @@ def classify_prose_lines(src_lines):
             m = no_action_anchor.match(norm_line)
             if m:
                 rest = norm_line[m.end():]
-                if not still_open_after_no_action.search(rest) and \
+                # Only classify as skipped when the "no action" specifically refers
+                # to the PR itself being closed/merged or review being skipped,
+                # not when a clean verdict mentions a past merge in prose (e.g.
+                # "**No action needed** — the fix was already merged in a previous commit.")
+                if re.search(r'\b(?:pr\s+(?:is\s+)?(?:already\s+)?(?:closed|merged)|pr\s+(?:closed|merged)|review\s+(?:is\s+)?skipped)\b', rest, re.IGNORECASE):
+                    line_matches.append((m.start(), "false", "skipped"))
+                elif not still_open_after_no_action.search(rest) and \
                    not non_clean_kw.search(norm_line) and \
                    not negated_positive_phrases.search(norm_line):
                     line_matches.append((m.start(), "true", "ready-for-merge"))
+            elif re.search(r'^\s*(?:review\s+(?:is\s+)?skipped\b|skipped\b.*?\bpr\b.*?\b(?:closed|merged)\b|(?:this\s+)?pr\s+(?:is\s+)?(?:already\s+)?(?:closed|merged)\b)', norm_line, re.IGNORECASE):
+                line_matches.append((0, "false", "skipped"))
 
         for m in negated_positive_phrases.finditer(norm_line):
             if any(start <= m.start() < end for start, end in disclaimer_spans):
@@ -986,7 +994,8 @@ if _payload_markers:
                         _f_empty = _findings is None or (isinstance(_findings, list) and len(_findings) == 0)
                         _p_clean = (_pv == "CLEAN" and _f_empty)
                         _p_not_clean = (_pv == "NOT_CLEAN")
-                        if (_p_clean and _tail_clean == "false") or (_p_not_clean and _tail_clean == "true"):
+                        _p_skipped = (_pv == "SKIPPED")
+                        if (_p_clean and _tail_clean == "false") or (_p_not_clean and _tail_clean == "true") or (_p_skipped and _tail_clean == "true"):
                             superseded_payload = payload
                             payload = None
 if isinstance(payload, dict) and "schema_version" in payload:
@@ -1004,9 +1013,16 @@ if isinstance(payload, dict) and "schema_version" in payload:
             findings_is_empty = findings is None or (
                 isinstance(findings, list) and len(findings) == 0
             )
-            if findings_is_empty:
+            commit_sha = payload.get("commit_sha")
+            commit_is_unknown = (
+                (commit_sha is None and "commit_sha" in payload)
+                or (isinstance(commit_sha, str) and commit_sha.strip().lower() in ("unknown", "", "null", "none", "<sha>"))
+            )
+            if findings_is_empty and not commit_is_unknown:
                 record("true", "ready-for-merge")
             # else: falls through to the prose scan.
+        elif payload_verdict == "SKIPPED":
+            record("false", "skipped")
         elif payload_verdict == "NOT_CLEAN":
             record("false", "needs-more-work")
         # Any other verdict value falls through to the prose scan.
@@ -1036,8 +1052,15 @@ if isinstance(superseded_payload, dict) and "schema_version" in superseded_paylo
         _sp = _sp.strip().upper()
         if _sp == "CLEAN":
             _f = superseded_payload.get("findings")
-            if _f is None or (isinstance(_f, list) and len(_f) == 0):
+            _commit = superseded_payload.get("commit_sha")
+            _c_unknown = (
+                (_commit is None and "commit_sha" in superseded_payload)
+                or (isinstance(_commit, str) and _commit.strip().lower() in ("unknown", "", "null", "none", "<sha>"))
+            )
+            if (_f is None or (isinstance(_f, list) and len(_f) == 0)) and not _c_unknown:
                 record("true", "ready-for-merge")
+        elif _sp == "SKIPPED":
+            record("false", "skipped")
         elif _sp == "NOT_CLEAN":
             record("false", "needs-more-work")
 
