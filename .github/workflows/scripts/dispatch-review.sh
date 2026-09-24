@@ -78,10 +78,12 @@ if [ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" != "true" ]; then
 fi
 
 if [[ -z "$PR_BRANCH" ]]; then
-  echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
   REF_ARGS=()
   if [[ -n "$DEFAULT_BRANCH" ]]; then
+    echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF from the default branch ($DEFAULT_BRANCH)."
     REF_ARGS=(--ref "$DEFAULT_BRANCH")
+  else
+    echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
   fi
   if [[ "$DRY_RUN" == "true" ]]; then
     if [[ ${#REF_ARGS[@]} -gt 0 ]]; then
@@ -96,10 +98,12 @@ if [[ -z "$PR_BRANCH" ]]; then
 else
   REF_ARGS=(--ref "$PR_BRANCH")
   if [[ "$PR_HEAD_REPO" != "$REPO" ]]; then
-    echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
     REF_ARGS=()
     if [[ -n "$DEFAULT_BRANCH" ]]; then
+      echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF from the default branch ($DEFAULT_BRANCH)."
       REF_ARGS=(--ref "$DEFAULT_BRANCH")
+    else
+      echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
     fi
   fi
   if [[ "$workflow_edits" == "true" ]]; then
