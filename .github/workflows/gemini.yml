@@ -191,13 +191,14 @@ jobs:
             echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref (gha#598)."
             REF_ARG=""
           else
+            files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref (gha#598)."
               REF_ARG=""
-            elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
               echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
               REF_ARG=""
             fi
@@ -744,13 +745,14 @@ jobs:
             echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
             gh_review_ref=()
           else
+            files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUM; dispatching $REVIEW_WF without --ref (gha#598)."
               gh_review_ref=()
-            elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
               echo "::notice::PR #$PR_NUM edits workflow files; dispatching $REVIEW_WF from the default branch (gha#598)."
               gh_review_ref=()
             fi

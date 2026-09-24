@@ -3302,6 +3302,14 @@ that the output is the string `true` or `false` --- a detector that
 always returned `false` would still pass the boolean-only check on a
 workflow-editing PR.
 
+`.github/workflows/scripts/tests/run-workflow-edit-guard-tests.sh`
+exercises the inline workflow-edit dispatch guard (gha#915) offline:
+it asserts matching for top-level workflow YAML, rejection of nested
+`workflows/scripts/` paths and composite `action.yml` files, CRLF handling
+via `tr -d '\r'`, and resistance to `set -o pipefail` fail-open under
+large changed-file inputs (>100k bytes) across repeated trials.
+CI runs it in the same `review-fail-check` job.
+
 `.github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh`
 exercises `list-pr-changed-files.sh` against a stub `gh`: a complete
 two-file list succeeds, a list shorter than `changed_files` fails
