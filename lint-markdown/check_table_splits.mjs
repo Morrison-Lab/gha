@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// check-one-function-per-file: allow-multiple
 // Flag a blank line that splits a GFM table (#558): a table's rows continue
 // after a blank line, but the continuation has no delimiter row of its own,
 // so GFM ends the table at the blank line and renders every row below it as
@@ -222,11 +223,12 @@ function findTableSplits(path) {
   return findings;
 }
 
-function report(findings) {
+function report(findings, fail = true) {
   console.log(`Found ${findings.length} split GFM table(s):\n`);
+  const level = fail ? 'error' : 'warning';
   for (const f of findings) {
     console.log(
-      `::error file=${f.path},line=${f.line}::A blank line ends the table above, and this block of ${f.rows} row(s) has no delimiter row of its own, so it renders as literal text. Remove the blank line, or give this block its own header and delimiter row: ${f.text}`
+      `::${level} file=${f.path},line=${f.line}::A blank line ends the table above, and this block of ${f.rows} row(s) has no delimiter row of its own, so it renders as literal text. Remove the blank line, or give this block its own header and delimiter row: ${f.text}`
     );
   }
 }
@@ -244,7 +246,7 @@ function main() {
     return;
   }
 
-  report(findings);
+  report(findings, fail);
   if (fail) process.exitCode = 1;
 }
 
