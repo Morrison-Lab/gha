@@ -186,6 +186,8 @@ RAW_ANSWER_DIVS = {
     "tag over two lines": '<div id="x"\n     class="sol">\nsecret raw\n</div>\n',
     "profile div": '<div class="content-visible" when-profile="solution">\nsecret raw\n</div>\n',
     "data- profile div": '<div class="content-hidden" data-unless-profile="solution">\nsecret raw\n</div>\n',
+    "repeated class, first wins": '<div class="sol" class="note">\nsecret raw\n</div>\n',
+    "repeated class, case differs": '<div CLASS="sol" class="note">\nsecret raw\n</div>\n',
 }
 
 
@@ -219,8 +221,9 @@ def test_generator_names_the_included_file_holding_a_raw_div(project, capsys):
         '```html\n<div class="sol">shown as code</div>\n```\n',
         'Write `<div class="sol">` in HTML, or better, `::: {.sol}`.\n',
         '<!-- <div class="sol"> -->\n',
+        '<div class="note" class="sol">\nPandoc keeps the first class.\n</div>\n',
     ],
-    ids=["benign class", "code block", "code span", "comment"],
+    ids=["benign class", "code block", "code span", "comment", "repeated class, benign first"],
 )
 def test_generator_allows_other_raw_divs(project, text):
     write(project / "hw" / "hw1.qmd", HOMEWORK + "\n" + text)
@@ -237,8 +240,9 @@ def test_benign_raw_div_passes_the_check(project):
 
 @needs_quarto
 def test_checker_refuses_raw_html_answer_div_in_source(project, capsys):
-    """The check refuses the source too, so a student file written some
-    other way is not passed on the strength of the AST comparison alone."""
+    """The check refuses a source carrying a raw answer div even when the
+    student file predates it (a stale output directory, say), so the
+    refusal comes from scanning the source, not from the AST comparison."""
     assert generate() == 0
     write(project / "hw" / "hw1.qmd", HOMEWORK + '\n<div class="sol">\nsecret raw\n</div>\n')
     assert check() == 1

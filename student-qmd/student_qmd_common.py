@@ -292,7 +292,10 @@ def raw_div_hides(tag: str, cfg: Config) -> bool:
     """
     attrs = {}
     for m in HTML_ATTR.finditer(tag[len("<div") :]):
-        attrs[m.group(1).lower()] = next((v for v in m.groups()[1:] if v is not None), "")
+        # Pandoc, like the HTML parsing spec, keeps the first of a repeated
+        # attribute, so `<div class="sol" class="note">` is a .sol div.
+        value = next((v for v in m.groups()[1:] if v is not None), "")
+        attrs.setdefault(m.group(1).lower(), value)
     classes = set(attrs.get("class", "").split())
     if classes & cfg.hidden_classes:
         return True
