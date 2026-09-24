@@ -12,7 +12,7 @@ jobs:
   check:
     permissions:
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/check-quarto-manuscript.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-manuscript.yml@v3
     # with:
     #   check-links: true
     #   check-ai-tells: true

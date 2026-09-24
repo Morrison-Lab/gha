@@ -64,7 +64,7 @@ jobs:
     permissions:
       contents: read
       issues: write
-    uses: Morrison-Lab/gha/.github/workflows/opposition-research.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/opposition-research.yml@v3
     secrets:
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

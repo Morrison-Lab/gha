@@ -199,22 +199,20 @@ major tag each capability's own reference page documents (`@v1` for most,
 `request-dependabot-review`, `sync-upstream`, `check-news`,
 `altdoc-multiversion-docs`, `report-failure`, `gemini`,
 `gemini-code-review`, `antigravity-code-review`, `cursor-code-review`, `ai-code-review`, `opencode-code-review`, `bump-dev-version`, `version-check`,
-`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`, `opposition-research`,
-`check-dependency-updates`, `r-cmd-check`,
-`check-code-similarity`,
-`check-duplicate-roxygen`,
-`check-one-function-per-file`,
-`check-repo-hygiene`,
-`check-quarto-website`,
-`check-quarto-book`,
-`check-quarto-manuscript`,
-`check-r-package`,
-`check-python-package`, and
-`student-qmd` -- see
+`small-model-agent`, `check-ai-tells`, `lint-workflows`, `spellcheck`, `check-typos`, `check-extra`, `check-formatting`, `claude-manage-project`,
+`r-cmd-check`,
+`check-code-similarity`, and
+`check-one-function-per-file` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
-which is why the capabilities above moved to `@v2`.
+which is why the capabilities above moved to `@v2`,
+while `opposition-research`, `check-dependency-updates`,
+`check-duplicate-roxygen`, `check-repo-hygiene`,
+`check-quarto-website`, `check-quarto-book`,
+`check-quarto-manuscript`, `check-r-package`,
+`check-python-package`, and `student-qmd`
+only ever shipped at `@v3`.
 
 ### Layout
 

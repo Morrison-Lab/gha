@@ -43,7 +43,7 @@ on:
   workflow_dispatch:
 jobs:
   check:
-    uses: Morrison-Lab/gha/.github/workflows/check-duplicate-roxygen.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-duplicate-roxygen.yml@v3
 ```
 
 See the

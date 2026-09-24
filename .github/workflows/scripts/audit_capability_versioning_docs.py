@@ -74,13 +74,14 @@ from __future__ import annotations
 import argparse
 import pathlib
 import re
+import subprocess
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from workflow_discovery import skip_if_restored  # noqa: E402
 
 SELF_USES_RE = re.compile(
-    r"uses:\s*Morrison-Lab/gha/(?:\.github/(?:workflows|actions)/)?(\S+?)@(v\d+)\b"
+    r"uses:\s*Morrison-Lab/gha/(\S+?)@(v\d+)\b"
 )
 
 # (file relative to repo root, start heading line or None for start-of-file,
@@ -137,25 +138,87 @@ def discover_population(repo_root: pathlib.Path) -> dict[str, pathlib.Path]:
 
 def extract_pin(example_path: pathlib.Path, name: str) -> str:
     """Return the major tag `name`'s own example stub pins itself to."""
+    return extract_pin_and_path(example_path, name)[0]
+
+
+def extract_pin_and_path(example_path: pathlib.Path, name: str) -> tuple[str, str]:
+    """Return (major_tag, raw_path) `name`'s own example stub pins itself to."""
     text = example_path.read_text(encoding="utf-8")
-    found: set[str] = set()
+    found: set[tuple[str, str]] = set()
     for match in SELF_USES_RE.finditer(text):
         raw_path, tag = match.group(1), match.group(2)
-        stem = raw_path[:-4] if raw_path.endswith(".yml") else raw_path
-        if stem == name:
-            found.add(tag)
+        parts = pathlib.PurePosixPath(raw_path).parts
+        stem = pathlib.PurePosixPath(raw_path).stem
+        if stem == name or (stem in ("action", "index") and len(parts) > 1 and parts[-2] == name):
+            found.add((tag, raw_path))
 
     if not found:
         raise AuditError(
             f"{example_path}: no self-referencing "
             f"'uses: Morrison-Lab/gha/...{name}...@vN' line found"
         )
-    if len(found) > 1:
+    tags = {tag for tag, _ in found}
+    if len(tags) > 1:
         raise AuditError(
             f"{example_path}: found conflicting self-referencing pins for "
-            f"'{name}': {sorted(found)}"
+            f"'{name}': {sorted(tags)}"
         )
-    return found.pop()
+    return sorted(found)[0]
+
+
+def candidate_paths_for_raw_path(raw_path: str) -> list[str]:
+    """Convert a uses: Morrison-Lab/gha/<raw_path> to candidate repo file paths."""
+    if raw_path.endswith((".yml", ".yaml")):
+        return [raw_path]
+    return [f"{raw_path}/action.yml", f"{raw_path}/action.yaml"]
+
+
+def check_pin_exists_in_git(repo_root: pathlib.Path, tag: str, candidate_paths: list[str]) -> bool:
+    """Return True if at least one candidate path exists at git tag `tag`."""
+    for rel_path in candidate_paths:
+        res = subprocess.run(
+            ["git", "cat-file", "-e", f"{tag}:{rel_path}"],
+            cwd=repo_root,
+            capture_output=True,
+        )
+        if res.returncode == 0:
+            return True
+    return False
+
+
+def repo_has_tags(repo_root: pathlib.Path) -> bool:
+    """Return True if the repository has any git tags fetched."""
+    res = subprocess.run(
+        ["git", "tag", "-l"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return res.returncode == 0 and bool(res.stdout.strip())
+
+
+def git_tag_exists(repo_root: pathlib.Path, tag: str) -> bool:
+    """Return True if git tag `tag` exists in the repository."""
+    res = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}"],
+        cwd=repo_root,
+        capture_output=True,
+    )
+    return res.returncode == 0
+
+
+def is_git_repo(repo_root: pathlib.Path) -> bool:
+    """Return True if `repo_root` is inside a git repository or worktree."""
+    git_marker = repo_root / ".git"
+    if not git_marker.exists():
+        return False
+    res = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return res.returncode == 0 and res.stdout.strip() == "true"
 
 
 def extract_region(repo_root: pathlib.Path, rel_path: str, start: str | None, end: str) -> str:
@@ -192,18 +255,23 @@ def is_listed(region_text: str, name: str) -> bool:
     return f"`{name}`" in region_text or f"`{name}.yml`" in region_text
 
 
-def run_audit(repo_root: pathlib.Path) -> tuple[list[str], int, int]:
+def run_audit(
+    repo_root: pathlib.Path, check_git_tags: bool = True
+) -> tuple[list[str], int, int]:
     """Return (findings, capability count, region count)."""
     population = discover_population(repo_root)
 
-    pins = {name: extract_pin(example, name) for name, example in population.items()}
+    pin_infos = {
+        name: extract_pin_and_path(example, name)
+        for name, example in population.items()
+    }
 
     region_texts: dict[tuple[str, str | None, str], str] = {
         region: extract_region(repo_root, *region) for region in REGIONS
     }
 
     findings: list[str] = []
-    for name, tag in sorted(pins.items()):
+    for name, (tag, _raw_path) in sorted(pin_infos.items()):
         if tag == BASELINE_TAG:
             continue
         for region in REGIONS:
@@ -215,6 +283,27 @@ def run_audit(repo_root: pathlib.Path) -> tuple[list[str], int, int]:
                 f"MISSING: '{name}' pins {tag} in its own example stub "
                 f"but is not listed in {location}"
             )
+
+    if check_git_tags and is_git_repo(repo_root):
+        if not repo_has_tags(repo_root):
+            raise AuditError(
+                "No git tags found in repository. Ensure tags are fetched "
+                "(e.g., git fetch --tags or actions/checkout with fetch-depth: 0)."
+            )
+        for name, (tag, raw_path) in sorted(pin_infos.items()):
+            if not git_tag_exists(repo_root, tag):
+                findings.append(
+                    f"ABSENT: '{name}' pins {tag} in its own example stub, "
+                    f"but tag {tag} does not exist in git"
+                )
+                continue
+            candidates = candidate_paths_for_raw_path(raw_path)
+            if not check_pin_exists_in_git(repo_root, tag, candidates):
+                paths_desc = " or ".join(f"'{c}'" for c in candidates)
+                findings.append(
+                    f"ABSENT: '{name}' pins {tag} in its own example stub, "
+                    f"but {paths_desc} does not exist at tag {tag}"
+                )
 
     return findings, len(population), len(REGIONS)
 

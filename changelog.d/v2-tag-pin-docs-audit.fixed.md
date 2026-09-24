@@ -1,0 +1,4 @@
+- Docs and audit: retarget caller stubs and documentation to `@v3` for ten capabilities introduced after the `@v2` cut.
+  `check-dependency-updates`, `check-duplicate-roxygen`, `check-python-package`, `check-quarto-book`, `check-quarto-manuscript`, `check-quarto-website`, `check-r-package`, `check-repo-hygiene`, `opposition-research`, and `student-qmd` were created after `@v2` and only exist at `@v3`.
+  Their caller stubs (`examples/*.yml`), reference pages (`website/reference/*.qmd`), and versioning lists (`README.md`, `CLAUDE.md`, `website/versioning.qmd`, `website/workflows.qmd`) were mistakenly pinned to `@v2`, which would fail caller workflows attempting to checkout non-existent paths at that tag.
+  `audit_capability_versioning_docs.py` now verifies that pinned capability paths actually exist at the referenced git tag via `git cat-file -e`, catching absent tag pins automatically (gha#928).

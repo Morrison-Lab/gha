@@ -11,7 +11,7 @@ on:
 
 jobs:
   student-qmd:
-    uses: Morrison-Lab/gha/.github/workflows/student-qmd.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/student-qmd.yml@v3
     with:
       # Sources whose answers sit in .sol divs, as paths or globs.
       sources: |

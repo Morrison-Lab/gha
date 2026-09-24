@@ -87,5 +87,5 @@ jobs:
   check:
     permissions:
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/check-python-package.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-python-package.yml@v3
 ```

@@ -635,14 +635,16 @@ Pin
 `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`,
 `check-formatting.yml`, `claude-manage-project.yml`,
-`opposition-research.yml`, `check-dependency-updates.yml`,
 `r-cmd-check.yml`,
-`check-code-similarity.yml`, `check-duplicate-roxygen.yml`,
-`check-one-function-per-file.yml`,
-`check-repo-hygiene.yml`, `check-quarto-website.yml`,
-`check-quarto-book.yml`, `check-quarto-manuscript.yml`,
-`check-r-package.yml`, `check-python-package.yml`, and `student-qmd.yml`
+`check-code-similarity.yml`, and
+`check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
+`check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-python-package.yml`, `check-quarto-book.yml`,
+`check-quarto-manuscript.yml`, `check-quarto-website.yml`,
+`check-r-package.yml`, `check-repo-hygiene.yml`,
+`opposition-research.yml`, and `student-qmd.yml`
+only ever shipped at `@v3` (too new to exist at the `@v2` tag).
 `quarto-publish.yml` additionally has a genuine
 
 behavioral fork: `@v1` deploys via the GitHub Actions Pages artifact, while
@@ -679,9 +681,6 @@ well after the freeze -- see
 [gha#510](https://github.com/Morrison-Lab/gha/issues/510)); pin to `@v2`.
 `opencode-code-review.yml` postdates the freeze as well
 (added in [gha#586](https://github.com/Morrison-Lab/gha/issues/586)); pin to
-`@v2`.
-`check-duplicate-roxygen.yml` postdates the freeze as well
-(added in [gha#897](https://github.com/Morrison-Lab/gha/pull/897)); pin to
 `@v2`.
 `summary.yml`, `bump-submodule.yml`, and `sync-shared-fragments.yml` were
 audited in the same pass and found unchanged since the freeze, so `@v1`
@@ -775,18 +774,15 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-ai-tells.yml`, `version-check.yml`, `lint-workflows.yml`,
 `spellcheck.yml`, `check-typos.yml`, `check-extra.yml`,
 `check-formatting.yml`, `claude-manage-project.yml`,
-`opposition-research.yml`, `check-dependency-updates.yml`,
 `r-cmd-check.yml`,
-`check-code-similarity.yml`,
-`check-duplicate-roxygen.yml`,
-`check-one-function-per-file.yml`,
-`check-repo-hygiene.yml`,
-`check-quarto-website.yml`,
-`check-quarto-book.yml`,
-`check-quarto-manuscript.yml`,
-`check-r-package.yml`,
-`check-python-package.yml`, and
-`student-qmd.yml` at `@v2` -- see the
+`check-code-similarity.yml`, and
+`check-one-function-per-file.yml` at `@v2`, and
+`check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-python-package.yml`, `check-quarto-book.yml`,
+`check-quarto-manuscript.yml`, `check-quarto-website.yml`,
+`check-r-package.yml`, `check-repo-hygiene.yml`,
+`opposition-research.yml`, and
+`student-qmd.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts
