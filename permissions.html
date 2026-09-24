@@ -49,9 +49,9 @@ ul.task-list li input[type="checkbox"] {
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" class="quarto-color-scheme-extra" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-f6e81f4864cb6d8b696b855696ff1c11.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
-<link href="site_libs/bootstrap/bootstrap-dark-86a62c4a56120b95dfa8e5b77e93b73a.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
-<link href="site_libs/bootstrap/bootstrap-f6e81f4864cb6d8b696b855696ff1c11.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-89af0c2d685ccb09a4d7d65decb66752.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-dark-34dbf897b697f50edbbc4554a08e61a3.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme quarto-color-alternate" id="quarto-bootstrap" data-mode="dark">
+<link href="site_libs/bootstrap/bootstrap-89af0c2d685ccb09a4d7d65decb66752.min.css" rel="stylesheet" append-hash="true" class="quarto-color-scheme-extra" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -440,6 +440,12 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="./reference/student-qmd.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">student-qmd.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="./reference/check-links.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">check-links.yml</span></a>
   </div>
@@ -736,7 +742,7 @@ ul.task-list li input[type="checkbox"] {
 <h2 class="anchored" data-anchor-id="per-workflow-grants">Per-workflow grants</h2>
 <ul>
 <li><!--readonly-workflows:begin-->
-<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-code-similarity</code>, <code>check-duplicate-roxygen</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-formatting</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-one-function-per-file</code>, <code>check-phi</code>, <code>check-python-package</code>, <code>check-quarto-book</code>, <code>check-quarto-manuscript</code>, <code>check-quarto-website</code>, <code>check-r-package</code>, <code>check-repo-hygiene</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-files</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>r-cmd-check</code>, <code>spellcheck</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
+<code>check-ai-tells</code>, <code>check-bibliography-dois</code>, <code>check-code-similarity</code>, <code>check-duplicate-roxygen</code>, <code>check-equation-renders</code>, <code>check-extra</code>, <code>check-formatting</code>, <code>check-junk-files</code>, <code>check-new-line-breaks</code>, <code>check-news</code>, <code>check-non-standard-chars</code>, <code>check-one-function-per-file</code>, <code>check-phi</code>, <code>check-python-package</code>, <code>check-quarto-book</code>, <code>check-quarto-manuscript</code>, <code>check-quarto-website</code>, <code>check-r-package</code>, <code>check-repo-hygiene</code>, <code>check-secrets</code>, <code>check-typos</code>, <code>cursor-code-review</code>, <code>lint-changed-files</code>, <code>lint-changed-lines</code>, <code>lint-markdown</code>, <code>lint-qmd</code>, <code>lint-workflows</code>, <code>lint-yaml</code>, <code>preview</code>, <code>r-cmd-check</code>, <code>spellcheck</code>, <code>student-qmd</code>, <code>test-coverage</code>, <code>version-check</code><!--readonly-workflows:end--> need only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed. This list is checked against the workflows’ own <code>permissions:</code> blocks by <code>.github/workflows/scripts/tests/run-permissions-docs-tests.py</code>; keep the markers around it.</li>
 <li><code>check-links</code> opens an issue on <code>main</code> failures, so grant <code>issues: write</code>, <code>pull-requests: read</code>, <code>contents: read</code>.</li>
 <li><code>summary</code> comments on issues and calls the models API, so grant <code>issues: write</code>, <code>models: read</code>, <code>contents: read</code>.</li>
 <li><code>update-snapshots</code> pushes the snapshot-update commit back to the branch, so grant <code>contents: write</code>.</li>
