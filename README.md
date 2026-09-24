@@ -59,6 +59,7 @@ not reference `@main` from consumers.
 | `check-quarto-manuscript.yml` | Standard check suite for Quarto manuscript repositories: repository hygiene, AI tells, QMD prose linting, link checking, bibliography DOIs, and equation renders | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois`, `check-equation-renders` |
 | `check-r-package.yml` | Standard check suite for R package repositories: repository hygiene, AI tells, duplicate roxygen docs, one function per file, and Air formatting | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-duplicate-roxygen`, `check-one-function-per-file`, `check-formatting` |
 | `check-python-package.yml` | Standard check suite for Python package repositories: repository hygiene, Ruff linting and formatting, and pytest execution | `fail`, `python-version`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-ruff`, `check-formatting`, `check-tests` |
+| `student-qmd.yml` | Write a self-contained student `.qmd` per assessment source whose answers sit in `.sol` divs (includes inlined; answer-key-only divs and comments removed), check each against its source with Pandoc, and render each alone in an empty directory | `sources`, `working-directory`, `output-dir`, `hidden-classes`, `answer-profiles`, `student-profile`, `drop-render-chunks`, `require-answers`, `check`, `render`, `render-to`, `index-title`, `index-back-href`, `checkout-submodules`, `artifact-name` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`, `base-ref`, `fail-on-item-splices`, `fail-on-table-splits` |
@@ -124,8 +125,8 @@ that need to write must have the **caller** grant it on the calling job:
   `check-r-package`, `check-repo-hygiene`, `check-secrets`,
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
-  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
-  `version-check`<!--readonly-workflows:end--> → only
+  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `student-qmd`,
+  `test-coverage`, `version-check`<!--readonly-workflows:end--> → only
   `contents: read` (the default), so no `permissions:` block is needed.
   This list is checked against the workflows' own `permissions:` blocks by
   `.github/workflows/scripts/tests/run-permissions-docs-tests.py`; keep the
@@ -640,7 +641,7 @@ Pin
 `check-one-function-per-file.yml`,
 `check-repo-hygiene.yml`, `check-quarto-website.yml`,
 `check-quarto-book.yml`, `check-quarto-manuscript.yml`,
-`check-r-package.yml`, and `check-python-package.yml`
+`check-r-package.yml`, `check-python-package.yml`, and `student-qmd.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `quarto-publish.yml` additionally has a genuine
 
@@ -783,8 +784,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-quarto-website.yml`,
 `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`,
-`check-r-package.yml`, and
-`check-python-package.yml` at `@v2` -- see the
+`check-r-package.yml`,
+`check-python-package.yml`, and
+`student-qmd.yml` at `@v2` -- see the
 Versioning section above), and so are **not** SHA-pinned.
 
 ### Job timeouts

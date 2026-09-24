@@ -1,0 +1,126 @@
+name: Student .qmd files (reusable)
+
+# Writes a self-contained student .qmd per assessment source whose answers
+# sit in .sol divs, checks each one against its source with Quarto's Pandoc,
+# renders each one alone in an empty directory, and optionally uploads them
+# as an artifact. See website/reference/student-qmd.qmd.
+
+on:
+  workflow_call:
+    inputs:
+      sources:
+        description: Source .qmd paths or globs, separated by spaces or newlines.
+        type: string
+        required: true
+      working-directory:
+        description: Directory to run in; sources and output-dir are relative to it.
+        type: string
+        default: '.'
+      output-dir:
+        description: Directory to write the student .qmd files to.
+        type: string
+        default: '_student-qmd'
+      hidden-classes:
+        description: Div classes only the answer key shows.
+        type: string
+        default: 'sol rubric'
+      answer-profiles:
+        description: Quarto profiles whose when-profile content is answer-key only.
+        type: string
+        default: 'solution solutions rubric'
+      student-profile:
+        description: The profile the student copy renders under.
+        type: string
+        default: 'assign'
+      drop-render-chunks:
+        description: Also remove fenced code blocks that run quarto render.
+        type: boolean
+        default: false
+      require-answers:
+        description: Fail a source that has no answer-key-only div, rather than warn.
+        type: boolean
+        default: true
+      check:
+        description: Check each student file against its source.
+        type: boolean
+        default: true
+      render:
+        description: Render each student file alone in an empty directory.
+        type: boolean
+        default: true
+      render-to:
+        description: Output format for that render.
+        type: string
+        default: 'html'
+      index-title:
+        description: When set, also write an index.html in output-dir with this title.
+        type: string
+        default: ''
+      index-back-href:
+        description: A back link for that index page.
+        type: string
+        default: ''
+      quarto-version:
+        description: Quarto version to install.
+        type: string
+        default: 'release'
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      checkout-submodules:
+        description: Initialize the caller's git submodules first (for includes that live in one).
+        type: boolean
+        default: false
+      artifact-name:
+        description: When set, upload the student .qmd files as a workflow artifact with this name.
+        type: string
+        default: ''
+    secrets:
+      SUBMODULES_TOKEN:
+        description: Token with read access to private submodules (only needed when checkout-submodules is true).
+        required: false
+
+jobs:
+  student-qmd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout submodules
+        if: inputs.checkout-submodules
+        uses: Morrison-Lab/gha/.github/actions/checkout-submodules@v2
+        with:
+          submodules-token: ${{ secrets.SUBMODULES_TOKEN }}
+
+      - name: Write, check and render the student .qmd files
+        id: student-qmd
+        uses: Morrison-Lab/gha/student-qmd@v2
+        with:
+          sources: ${{ inputs.sources }}
+          working-directory: ${{ inputs.working-directory }}
+          output-dir: ${{ inputs.output-dir }}
+          hidden-classes: ${{ inputs.hidden-classes }}
+          answer-profiles: ${{ inputs.answer-profiles }}
+          student-profile: ${{ inputs.student-profile }}
+          drop-render-chunks: ${{ inputs.drop-render-chunks }}
+          require-answers: ${{ inputs.require-answers }}
+          check: ${{ inputs.check }}
+          render: ${{ inputs.render }}
+          render-to: ${{ inputs.render-to }}
+          index-title: ${{ inputs.index-title }}
+          index-back-href: ${{ inputs.index-back-href }}
+          quarto-version: ${{ inputs.quarto-version }}
+          python-version: ${{ inputs.python-version }}
+
+      - name: Upload the student .qmd files
+        if: inputs.artifact-name != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ steps.student-qmd.outputs.output-dir }}
+          if-no-files-found: error

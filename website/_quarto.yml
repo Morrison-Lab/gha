@@ -51,6 +51,7 @@ website:
           - reference/check-quarto-manuscript.qmd
           - reference/check-r-package.qmd
           - reference/check-python-package.qmd
+          - reference/student-qmd.qmd
           - reference/check-links.qmd
           - reference/lint-yaml.qmd
           - reference/lint-markdown.qmd

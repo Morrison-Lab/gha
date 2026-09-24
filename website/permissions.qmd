@@ -22,8 +22,8 @@ already include the right `permissions:` blocks; copy them as-is.
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`,
   `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
-  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `test-coverage`,
-  `version-check`<!--readonly-workflows:end--> need only
+  `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `student-qmd`,
+  `test-coverage`, `version-check`<!--readonly-workflows:end--> need only
   `contents: read` (the default), so no `permissions:` block is needed.
   This list is checked against the workflows' own `permissions:` blocks by
   `.github/workflows/scripts/tests/run-permissions-docs-tests.py`; keep the

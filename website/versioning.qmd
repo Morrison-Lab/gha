@@ -33,8 +33,9 @@ to `@v2`;
 `check-quarto-website.yml`,
 `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`,
-`check-r-package.yml`, and
-`check-python-package.yml`
+`check-r-package.yml`,
+`check-python-package.yml`, and
+`student-qmd.yml`
 only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag). See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
@@ -163,7 +164,8 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-one-function-per-file.yml`,
 `check-repo-hygiene.yml`, `check-quarto-website.yml`,
 `check-quarto-book.yml`, `check-quarto-manuscript.yml`,
-`check-r-package.yml`, and `check-python-package.yml` at
+`check-r-package.yml`, `check-python-package.yml`, and
+`student-qmd.yml` at
 `@v2` - see the
 versioning note above), so
 they are **not** SHA-pinned.

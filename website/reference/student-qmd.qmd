@@ -1,0 +1,132 @@
+---
+title: "student-qmd.yml"
+---
+
+Writes the `.qmd` files a course can hand to students,
+from assessment sources that keep each answer beside its question.
+
+A homework or exam whose answers sit in `.sol` divs,
+or whose included question fragments carry them,
+can never be given out as it stands.
+This capability writes a self-contained copy of each source,
+proves the copy carries nothing it should not,
+and renders it alone the way a student would.
+
+It is ported from `Morrison-Lab/mlg`'s `tools/make_student_qmd.py`
+and the `--student-qmd` half of its `tools/check_student_copy.py`,
+with the extras `Morrison-Lab/epi204`'s generator needed.
+
+## What it does
+
+For each source, three steps, each able to fail the job:
+
+1. **Write** `<output-dir>/<source file name>`:
+   - every `{{< include >}}` is inlined, recursively,
+     resolved the way Quarto resolves it:
+     a path starting with `/` from the project root,
+     and any other path from the directory of the top-level document,
+     even inside an included file;
+   - an included file's own front matter is dropped.
+     Quarto merges it into the document instead,
+     so a key other than `filters` gets a warning;
+   - every answer-key-only div is removed with everything inside it:
+     a div with one of the `hidden-classes`,
+     and a `content-visible` or `content-hidden` div
+     that Quarto shows only under one of the `answer-profiles`
+     or hides under the `student-profile`;
+   - HTML comments outside code, and whole-line `#` comments in the front matter,
+     are removed, since they carry instructor notes;
+   - with `drop-render-chunks`, fenced code blocks that run `quarto render`
+     are removed too, with any div they leave empty.
+
+   It fails rather than guess on a missing include, unbalanced divs,
+   an unclosed code fence or comment,
+   or two sources with the same file name.
+2. **Check** each written file against its source with Quarto's own Pandoc
+   (`quarto pandoc`), so the check shares no parser with the writer.
+   A file fails when it is missing, still has an include,
+   has an answer-key-only div, an HTML comment or a front-matter comment,
+   or differs in any other way from its source's AST
+   with those parts taken out.
+   A source div classed `.solution`, `.answer` or the like fails too:
+   the assign filter passes such a div through untouched,
+   so an answer written in one would reach every student.
+3. **Render** each written file alone, in an empty directory outside the repository,
+   so anything it still needs from the repository fails here
+   rather than on a student's machine.
+   A file with executable cells needs their engine (R, Python, ...)
+   set up before this runs, or `render: false`.
+
+The defaults match the
+[`coatless-quarto/assign`](https://github.com/coatless-quarto/assign) filter:
+it hides `.sol` and `.rubric` divs,
+and shows them under the `solution`, `solutions` and `rubric` profiles.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sources` | string | *(required)* | Source `.qmd` paths or globs (`**` allowed), separated by spaces or newlines. |
+| `working-directory` | string | `'.'` | Directory to run in; `sources` and `output-dir` are relative to it. |
+| `output-dir` | string | `'_student-qmd'` | Directory to write the student files to, one per source, named as the source. |
+| `hidden-classes` | string | `'sol rubric'` | Div classes only the answer key shows. |
+| `answer-profiles` | string | `'solution solutions rubric'` | Profiles whose `when-profile` content is answer-key only. |
+| `student-profile` | string | `'assign'` | The profile the student copy renders under. |
+| `drop-render-chunks` | boolean | `false` | Also remove fenced code blocks that run `quarto render`. |
+| `require-answers` | boolean | `true` | Fail a source with no answer-key-only div; when false, warn instead. A run in which no source has one still fails. |
+| `check` | boolean | `true` | Check each student file against its source. |
+| `render` | boolean | `true` | Render each student file alone in an empty directory. |
+| `render-to` | string | `'html'` | Output format for that render. |
+| `index-title` | string | `''` | When set, also write an `index.html` in `output-dir` listing the files. |
+| `index-back-href` | string | `''` | A back link for that index page. |
+| `quarto-version` | string | `'release'` | Quarto version to install. |
+| `python-version` | string | `'3.x'` | Python version to set up. |
+| `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules first (for includes that live in one). |
+| `artifact-name` | string | `''` | When set, upload the student files as a workflow artifact with this name. |
+
+The composite action (`Morrison-Lab/gha/student-qmd@v2`)
+takes the same inputs except the last two,
+plus `install-quarto` (default `'true'`),
+and outputs `output-dir` (an absolute path) and `count`.
+
+## Permissions
+
+Needs only `contents: read`, the default,
+so the caller needs no `permissions:` block.
+
+## Example
+
+```yaml
+name: Student .qmd files
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  student-qmd:
+    uses: Morrison-Lab/gha/.github/workflows/student-qmd.yml@v2
+    with:
+      sources: |
+        Homework/**/hw*.qmd
+        Exams/**/exam*.qmd
+      # drop-render-chunks: true      # also drop `quarto render` code blocks
+      # require-answers: false        # warn, not fail, on a source with no answers
+      # render: false                 # skip rendering (e.g. cells need R)
+      # artifact-name: student-qmd    # upload the files
+```
+
+To publish the files with a site instead,
+call the composite action in the job that builds the site,
+with `output-dir` inside the rendered output.
+
+## What stays with the caller
+
+Checks about a whole project's render,
+such as how many pages a render produced
+or whether every question fragment names the assign filter in its front matter,
+are specific to each course repository and are not part of this capability.

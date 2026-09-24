@@ -1,0 +1,176 @@
+name: Student .qmd files
+description: >-
+  Write a self-contained student .qmd file for each source whose answers sit
+  in .sol divs (includes inlined; answer-key-only divs, HTML comments and
+  front-matter comments removed), check each one against its source with
+  Quarto's Pandoc, and render each one alone in an empty directory.
+inputs:
+  sources:
+    description: >-
+      Source .qmd paths or globs (`**` allowed), separated by spaces or
+      newlines, relative to working-directory.
+      Globs are expanded by the script, not the shell, so quote nothing.
+      A pattern matching no file is a warning; matching nothing at all is an error.
+    required: true
+  working-directory:
+    description: Directory to run in; sources and output-dir are relative to it.
+    default: '.'
+  output-dir:
+    description: Directory to write the student .qmd files to, one per source, named as the source.
+    default: '_student-qmd'
+  hidden-classes:
+    description: >-
+      Div classes that only the answer key shows.
+      The default is what the coatless-quarto/assign filter hides.
+    default: 'sol rubric'
+  answer-profiles:
+    description: >-
+      Quarto profiles whose `when-profile` content is answer-key only,
+      so a `content-visible` div shown only under one of them is removed.
+    default: 'solution solutions rubric'
+  student-profile:
+    description: >-
+      The profile the student copy renders under, so a `content-visible`
+      div with `unless-profile` naming it is removed too.
+    default: 'assign'
+  drop-render-chunks:
+    description: >-
+      Also remove fenced code blocks that run `quarto render` (build notes
+      kept in the source), and any div that removing them leaves empty.
+    default: 'false'
+  require-answers:
+    description: >-
+      Fail a source that has no answer-key-only div, since nothing about its
+      student file was tested. When false, warn instead; a run in which no
+      source has one still fails.
+    default: 'true'
+  check:
+    description: Check each student file against its source with Quarto's Pandoc.
+    default: 'true'
+  render:
+    description: >-
+      Render each student file alone in an empty directory, to prove it needs
+      nothing from the repository. A file with executable cells needs their
+      engine (R, Python, ...) set up before this action.
+    default: 'true'
+  render-to:
+    description: Output format for that render.
+    default: 'html'
+  index-title:
+    description: When set, also write an index.html in output-dir with this title, listing the files.
+    default: ''
+  index-back-href:
+    description: A back link for that index page.
+    default: ''
+  install-quarto:
+    description: Install Quarto. Set false when an earlier step already has.
+    default: 'true'
+  quarto-version:
+    description: Quarto version to install.
+    default: 'release'
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+outputs:
+  output-dir:
+    description: Absolute path of the directory holding the student .qmd files.
+    value: ${{ steps.generate.outputs.output-dir }}
+  count:
+    description: Number of student .qmd files written.
+    value: ${{ steps.generate.outputs.count }}
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.6.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Set up Quarto
+      if: inputs.install-quarto == 'true'
+      uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
+      with:
+        version: ${{ inputs.quarto-version }}
+
+    - name: Write the student .qmd files
+      id: generate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INPUT_SOURCES: ${{ inputs.sources }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_HIDDEN_CLASSES: ${{ inputs.hidden-classes }}
+        INPUT_ANSWER_PROFILES: ${{ inputs.answer-profiles }}
+        INPUT_STUDENT_PROFILE: ${{ inputs.student-profile }}
+        INPUT_DROP_RENDER_CHUNKS: ${{ inputs.drop-render-chunks }}
+        INPUT_INDEX_TITLE: ${{ inputs.index-title }}
+        INPUT_INDEX_BACK_HREF: ${{ inputs.index-back-href }}
+      run: |
+        set -euo pipefail
+        # The scripts expand globs themselves, so stop bash expanding them first.
+        set -f
+        read -r -d '' -a sources <<< "$INPUT_SOURCES" || true
+        set +f
+        if [ "${#sources[@]}" -eq 0 ]; then
+          echo "::error::the sources input is empty"
+          exit 1
+        fi
+        list="$RUNNER_TEMP/student-qmd-files.txt"
+        python3 "$GITHUB_ACTION_PATH/make_student_qmd.py" "${sources[@]}" \
+          --output-dir "$INPUT_OUTPUT_DIR" \
+          --hidden-classes "$INPUT_HIDDEN_CLASSES" \
+          --answer-profiles "$INPUT_ANSWER_PROFILES" \
+          --student-profile "$INPUT_STUDENT_PROFILE" \
+          --drop-render-chunks "$INPUT_DROP_RENDER_CHUNKS" \
+          --index-title "$INPUT_INDEX_TITLE" \
+          --index-back-href "$INPUT_INDEX_BACK_HREF" \
+          --list-file "$list"
+        {
+          echo "output-dir=$(cd "$INPUT_OUTPUT_DIR" && pwd)"
+          echo "count=$(wc -l < "$list" | tr -d ' ')"
+          echo "list=$list"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Check each student .qmd file against its source
+      if: inputs.check == 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INPUT_SOURCES: ${{ inputs.sources }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_HIDDEN_CLASSES: ${{ inputs.hidden-classes }}
+        INPUT_ANSWER_PROFILES: ${{ inputs.answer-profiles }}
+        INPUT_STUDENT_PROFILE: ${{ inputs.student-profile }}
+        INPUT_DROP_RENDER_CHUNKS: ${{ inputs.drop-render-chunks }}
+        INPUT_REQUIRE_ANSWERS: ${{ inputs.require-answers }}
+      run: |
+        set -euo pipefail
+        set -f
+        read -r -d '' -a sources <<< "$INPUT_SOURCES" || true
+        set +f
+        python3 "$GITHUB_ACTION_PATH/check_student_qmd.py" "${sources[@]}" \
+          --output-dir "$INPUT_OUTPUT_DIR" \
+          --hidden-classes "$INPUT_HIDDEN_CLASSES" \
+          --answer-profiles "$INPUT_ANSWER_PROFILES" \
+          --student-profile "$INPUT_STUDENT_PROFILE" \
+          --drop-render-chunks "$INPUT_DROP_RENDER_CHUNKS" \
+          --require-answers "$INPUT_REQUIRE_ANSWERS"
+
+    # A student renders the file on their own machine, outside the project,
+    # so render each one alone in an empty directory: anything it still needs
+    # from the repository fails here rather than on the student's machine.
+    - name: Render each student .qmd file on its own
+      if: inputs.render == 'true'
+      shell: bash
+      env:
+        LIST: ${{ steps.generate.outputs.list }}
+        INPUT_RENDER_TO: ${{ inputs.render-to }}
+      run: |
+        set -euo pipefail
+        while IFS= read -r f; do
+          dir=$(mktemp -d)
+          cp "$f" "$dir/"
+          echo "::group::quarto render $(basename "$f")"
+          (cd "$dir" && quarto render "$(basename "$f")" --to "$INPUT_RENDER_TO")
+          echo "::endgroup::"
+        done < "$LIST"
