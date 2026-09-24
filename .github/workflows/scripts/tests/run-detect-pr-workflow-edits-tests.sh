@@ -80,6 +80,28 @@ check "empty caller path cannot mark caller_edited" \
   ".github/workflows/claude-review.yml" \
   "" true false ".github/workflows/claude-review.yml"
 
+# Reading from stdin via '-' argument
+out_stdin="$(CALLER_WF_PATH=".github/workflows/claude-review.yml" bash "$detect" - <<< $'.github/workflows/_selftest.yml\nREADME.md')"
+got_edits="$(sed -n 's/^workflow_edits=//p' <<<"$out_stdin")"
+checked=$((checked + 1))
+if [ "$got_edits" = "true" ]; then
+  echo "OK   stdin '-' argument reads from standard input"
+else
+  echo "FAIL: stdin '-' argument (want workflow_edits=true, got $got_edits)"
+  failures=$((failures + 1))
+fi
+
+# Reading from stdin via PR_CHANGED_FILES='-'
+out_env_dash="$(PR_CHANGED_FILES="-" CALLER_WF_PATH=".github/workflows/claude-review.yml" bash "$detect" <<< $'.github/workflows/_selftest.yml\nREADME.md')"
+got_edits_dash="$(sed -n 's/^workflow_edits=//p' <<<"$out_env_dash")"
+checked=$((checked + 1))
+if [ "$got_edits_dash" = "true" ]; then
+  echo "OK   PR_CHANGED_FILES='-' reads from standard input"
+else
+  echo "FAIL: PR_CHANGED_FILES='-' (want workflow_edits=true, got $got_edits_dash)"
+  failures=$((failures + 1))
+fi
+
 # Unset PR_CHANGED_FILES must fail rather than report a clean tree.
 set +e
 err_out="$(CALLER_WF_PATH=".github/workflows/claude-review.yml" bash "$detect" 2>&1)"

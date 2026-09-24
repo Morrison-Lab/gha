@@ -10,8 +10,9 @@ repo_root="$(cd "$script_dir/../../../.." && pwd)"
 
 matches_workflow_edits() {
   local files="$1"
-  files=$(printf '%s' "$files" | tr -d '\r')
-  if grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
+  local detect_out
+  detect_out="$(CALLER_WF_PATH="" bash "$repo_root/.github/workflows/scripts/detect-pr-workflow-edits.sh" - <<< "$files")"
+  if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
     return 0
   fi
   return 1
@@ -99,7 +100,7 @@ else
   echo "OK   no vulnerable piped workflow greps in .github/workflows/ or examples/"
 fi
 
-inlined_workflow_greps=$(grep -rnE "grep -qE '\^\.github/workflows" "$repo_root/.github/workflows" "$repo_root/examples" || true)
+inlined_workflow_greps=$(grep -rnF --exclude="run-workflow-edit-guard-tests.sh" "grep -qE '^\.github/workflows" "$repo_root/.github/workflows" "$repo_root/examples" || true)
 checked=$((checked + 1))
 if [ -n "$inlined_workflow_greps" ]; then
   echo "FAIL: Found inlined workflow grep pattern in workflow files (should use detect-pr-workflow-edits.sh):" >&2
@@ -118,7 +119,7 @@ target_files=(
 )
 
 expected_install="scripts: 'detect-pr-workflow-edits.sh'"
-expected_guard='bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh"'
+expected_guard='bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files"'
 
 for target in "${target_files[@]}"; do
   rel_path="${target#$repo_root/}"

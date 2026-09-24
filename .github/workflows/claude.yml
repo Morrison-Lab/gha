@@ -1603,7 +1603,7 @@ jobs:
                 echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
                 skip_dispatch=true
               else
-                detect_out="$(PR_CHANGED_FILES="$files" CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh")"
+                detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
                 if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
                   echo "::notice::PR #$PR_NUM edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#921)."
                   skip_dispatch=true
