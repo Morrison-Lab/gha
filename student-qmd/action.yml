@@ -38,6 +38,17 @@ inputs:
       Also remove fenced code blocks that run `quarto render` (build notes
       kept in the source), and any div that removing them leaves empty.
     default: 'false'
+  prune-macros:
+    description: >-
+      Keep only the LaTeX macro definitions
+      (`\def`, `\let`, `\newcommand` and the like, each at the start of a line)
+      that the student file uses, directly or through another macro.
+      A definition inside an answer-key-only div is refused,
+      and so is one whose braces do not close before a blank line or a fence.
+      The check leaves definitions out of its comparison;
+      Pandoc expands the macros inside math,
+      so a needed definition that went missing still fails it.
+    default: 'false'
   require-answers:
     description: >-
       Fail a source that has no answer-key-only div, since nothing about its
@@ -103,6 +114,7 @@ runs:
         INPUT_ANSWER_PROFILES: ${{ inputs.answer-profiles }}
         INPUT_STUDENT_PROFILE: ${{ inputs.student-profile }}
         INPUT_DROP_RENDER_CHUNKS: ${{ inputs.drop-render-chunks }}
+        INPUT_PRUNE_MACROS: ${{ inputs.prune-macros }}
         INPUT_INDEX_TITLE: ${{ inputs.index-title }}
         INPUT_INDEX_BACK_HREF: ${{ inputs.index-back-href }}
       run: |
@@ -122,6 +134,7 @@ runs:
           --answer-profiles "$INPUT_ANSWER_PROFILES" \
           --student-profile "$INPUT_STUDENT_PROFILE" \
           --drop-render-chunks "$INPUT_DROP_RENDER_CHUNKS" \
+          --prune-macros "$INPUT_PRUNE_MACROS" \
           --index-title "$INPUT_INDEX_TITLE" \
           --index-back-href "$INPUT_INDEX_BACK_HREF" \
           --list-file "$list"
@@ -142,6 +155,7 @@ runs:
         INPUT_ANSWER_PROFILES: ${{ inputs.answer-profiles }}
         INPUT_STUDENT_PROFILE: ${{ inputs.student-profile }}
         INPUT_DROP_RENDER_CHUNKS: ${{ inputs.drop-render-chunks }}
+        INPUT_PRUNE_MACROS: ${{ inputs.prune-macros }}
         INPUT_REQUIRE_ANSWERS: ${{ inputs.require-answers }}
       run: |
         set -euo pipefail
@@ -154,6 +168,7 @@ runs:
           --answer-profiles "$INPUT_ANSWER_PROFILES" \
           --student-profile "$INPUT_STUDENT_PROFILE" \
           --drop-render-chunks "$INPUT_DROP_RENDER_CHUNKS" \
+          --prune-macros "$INPUT_PRUNE_MACROS" \
           --require-answers "$INPUT_REQUIRE_ANSWERS"
 
     # A student renders the file on their own machine, outside the project,

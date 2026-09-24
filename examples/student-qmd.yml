@@ -18,6 +18,7 @@ jobs:
         Homework/**/hw*.qmd
         Exams/**/exam*.qmd
       # drop-render-chunks: true      # also drop `quarto render` code blocks
+      # prune-macros: true            # drop unused LaTeX macro definitions
       # require-answers: false        # warn, not fail, on a source with no answers
       # render: false                 # skip rendering (e.g. cells need R)
       # artifact-name: student-qmd    # upload the files
