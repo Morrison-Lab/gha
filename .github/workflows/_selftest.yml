@@ -4370,3 +4370,98 @@ jobs:
             echo "::error::an unreachable remote must fail, not report a clean comparison"
             exit 1
           fi
+
+  student-qmd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate the fixture projects
+        shell: bash
+        run: bash student-qmd/tests/make-fixture.sh _ci-student-qmd
+
+      # The whole action, as a consumer runs it: generate, check against the
+      # source with Quarto's Pandoc, and render the student file alone in an
+      # empty directory. This call also installs the Quarto the later steps use.
+      - name: A clean source must pass generate, check and render
+        id: good
+        uses: ./student-qmd
+        with:
+          working-directory: _ci-student-qmd/good
+          sources: hw/*.qmd
+          output-dir: _student
+
+      - name: Assert the student file was written without its answers
+        shell: bash
+        env:
+          OUT: ${{ steps.good.outputs.output-dir }}
+          COUNT: ${{ steps.good.outputs.count }}
+        run: |
+          set -euo pipefail
+          [ "$COUNT" = '1' ] || { echo "::error::expected 1 student file, got '$COUNT'"; exit 1; }
+          f="$OUT/hw1.qmd"
+          [ -s "$f" ] || { echo "::error::$f is missing or empty"; exit 1; }
+          if grep -q 'FIXTURE-ANSWER' "$f"; then
+            echo "::error::$f still carries an answer"
+            exit 1
+          fi
+          grep -q 'State the answer to exercise A.' "$f" || { echo "::error::the included question is missing"; exit 1; }
+          grep -q 'NESTED-INCLUDE-TOP-DOC-RULE' "$f" || { echo "::error::the nested include was not inlined"; exit 1; }
+
+      # The generator resolves a nested include against the directory of the
+      # document being rendered, not the including file. That is a claim about
+      # Quarto, so pin it against Quarto: the fixture puts a different file at
+      # each candidate path, and the render must pick the same one.
+      - name: Assert Quarto resolves the nested include the way the generator does
+        shell: bash
+        working-directory: _ci-student-qmd/good
+        run: |
+          set -euo pipefail
+          quarto render hw/hw1.qmd --to html
+          grep -q 'NESTED-INCLUDE-TOP-DOC-RULE' hw/hw1.html
+          if grep -q 'NESTED-INCLUDE-INCLUDING-FILE-RULE' hw/hw1.html; then
+            echo "::error::Quarto resolved the nested include against the including file; the generator no longer matches it"
+            exit 1
+          fi
+
+      # An answer in a `.solution` div is not hidden by the assign filter, so
+      # it reaches the student file. The generator leaves it (it is not a
+      # hidden class); the check must refuse it. Render is off so that the
+      # check is the only step that can fail here.
+      - name: A misnamed answer div must fail the check
+        id: misnamed
+        continue-on-error: true
+        uses: ./student-qmd
+        with:
+          working-directory: _ci-student-qmd/misnamed
+          sources: hw/*.qmd
+          output-dir: _student
+          render: 'false'
+          install-quarto: 'false'
+
+      - name: Assert the misnamed answer failed the check, not the generator
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.misnamed.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != 'failure' ]; then
+            echo "::error::expected a misnamed answer div to fail, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          # The file exists and carries the leaked answer, so the generator
+          # ran and the check is what stopped it.
+          grep -q 'FIXTURE-ANSWER-B' _ci-student-qmd/misnamed/_student/hw1.qmd
+
+      - name: Run the student-qmd unit tests, including the mlg#22 negative controls
+        shell: bash
+        env:
+          STUDENT_QMD_REQUIRE_QUARTO: '1'
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest
+          python3 -m pytest student-qmd/tests/ -q

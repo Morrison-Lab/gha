@@ -208,8 +208,9 @@ major tag each capability's own reference page documents (`@v1` for most,
 `check-quarto-website`,
 `check-quarto-book`,
 `check-quarto-manuscript`,
-`check-r-package`, and
-`check-python-package` -- see
+`check-r-package`,
+`check-python-package`, and
+`student-qmd` -- see
 the Versioning section
 of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
@@ -296,6 +297,38 @@ which is why the capabilities above moved to `@v2`.
   `check-links/` bundles `lychee.default.toml`;
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
+  `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
+  per assessment source and checks it against the source.
+  The writer (`make_student_qmd.py`) and the checker
+  (`check_student_qmd.py`) share `student_qmd_common.py`'s settings,
+  include expansion and div-visibility rule, but not the div and comment
+  removal:
+  the writer removes by scanning lines, while the checker parses both files
+  with `quarto pandoc` and compares the ASTs, so a line-scanning bug in the
+  writer is not repeated in the check.
+  Include expansion is the shared part the check cannot audit, which is why
+  the selftest renders the fixture with Quarto itself and asserts which
+  nested include it picked.
+  Nested includes resolve against the top-level document's directory, as
+  Quarto resolves them, not against the including file;
+  an included file's own front matter is dropped with a warning for any key
+  other than `filters`, because Quarto merges it rather than dropping it;
+  a source whose answer sits in a misnamed div (`.solution`,
+  `.answer`, ...) fails, since the assign filter passes such a div through;
+  and a source whose answer sits in a raw HTML `<div class="sol">` fails in
+  both the writer and the checker, with its file and line.
+  Pandoc reads such a tag as the same div as `:::` syntax, so the assign
+  filter hides it, while the writer removes only `:::` divs and would copy
+  it into the student file.
+  That refusal is shared (`raw_answer_divs`) rather than independent,
+  because it has to hold with `check: false`;
+  the checker's AST comparison still catches the leak independently when it
+  runs.
+  A `when-profile`/`unless-profile` value naming several profiles is split
+  into names, though Quarto 1.10.18 compares the whole value as one name
+  (measured: `when-profile="assign,solution"` shows under no profile);
+  splitting cannot leak an answer, and `hides()`'s docstring records the
+  over-removal it costs;
   `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
@@ -1966,6 +1999,35 @@ Run it with `python3 -m pytest check-one-function-per-file/tests/ -v`.
 `check-duplicate-roxygen/tests/test_check_duplicate_roxygen.py` is a pytest
 suite testing roxygen block parsing, function signature extraction, duplicate parameter detection across functions and files, recommendation formulation (`@inheritParams` and `@inheritDotParams`), opt-out directives, and diff-scoping.
 Run it with `python3 -m pytest check-duplicate-roxygen/tests/ -v`.
+
+`student-qmd/tests/test_student_qmd.py` is a pytest suite driving the writer
+and the checker against Quarto projects built in `tmp_path` per case
+(gha#922).
+Every negative control `Morrison-Lab/mlg#22` ran against its own copy of this
+check is one of its cases, and each is a damage to a generated file that the
+checker must name: an answer div in three spellings (quoted-brace, bare, and a
+`when-profile="solution"` div), a leaked answer (two characters, and a paragraph), a leftover include,
+an HTML comment, added metadata, an end-of-line front-matter comment, a
+dropped exercise, a `quarto render` chunk, and a missing file.
+A source with an answer in a raw HTML `<div class="sol">` must fail the
+writer with no student file written, and fail the checker's source-side
+check, while a `<div class="note">` control must pass both;
+the writer's five `:::` spellings of an answer div are also run through the
+checker, so the two cannot disagree about them unnoticed.
+The cases that need Quarto skip without it unless
+`STUDENT_QMD_REQUIRE_QUARTO=1` is set, as the `student-qmd` selftest job sets
+it, so a CI runner that lost Quarto fails instead of passing on the pure
+Python cases alone.
+That job also runs the real composite twice against a fixture generated at
+runtime by `student-qmd/tests/make-fixture.sh`: a clean project whose student
+file must be written without its answers and must render alone, and the same
+project with its answer in a `.solution` div, which must fail the check
+rather than the generator.
+The clean project places a different marker file at each path a nested
+include could resolve to, and the job renders it with Quarto itself to pin
+that the generator picks the one Quarto picks --- the one claim the Pandoc
+check cannot audit, since both sides of that check share the include
+expansion.
 
 **The refusal cases are the ones to keep if the suite is ever trimmed, and
 they all fail in one direction.**
