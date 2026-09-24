@@ -188,7 +188,9 @@ run_check() {
 
 run_check new-line-breaks check-new-line-breaks/check-new-line-breaks.py python_available \
   "NLB_BASE_REF=$base_ref" "NLB_GLOBS=${NLB_GLOBS:-*.md *.qmd}"
-run_check phi             check-phi/check-phi.py                         python_available "PHI_BASE_REF=$base_ref"
+run_check phi             check-phi/check-phi.py                         python_available \
+  "PHI_BASE_REF=$base_ref" \
+  "PHI_PATHS_IGNORE=${PHI_PATHS_IGNORE:-check-phi/tests/**,test-coverage/tests/**,check-new-line-breaks/tests/**,spellcheck/tests/**,check-typos/tests/**,check-extra/tests/**}"
 run_check typos           check-typos/check-typos.py                     typos_available  "TYPOS_BASE_REF=$base_ref"
 
 if [ "$unavailable_count" -gt 0 ]; then
