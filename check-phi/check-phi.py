@@ -128,8 +128,8 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # The scan supports both scalar assignments/comparisons and membership lists.
 #
 # A membership `in (...)` list flags every qualifying quoted literal in the
-# list, not merely the first (gha#926). A list can also span lines until its
-# closing `)`.
+# list, not merely the first (gha#926).
+# A list can also span lines until its closing `)`.
 #
 # A value-keyed second sweep in `scan_lines()` sweeps all scanned lines for
 # occurrences of any flagged study identifier, finding bare pasted listings in
@@ -194,9 +194,11 @@ def _extract_in_list_elements(
                 i = end_comment + 2
                 continue
             break
-        # Skip line comments: // or --
-        if (c == "/" and i + 1 < n and line[i + 1] == "/") or (
-            c == "-" and i + 1 < n and line[i + 1] == "-"
+        # Skip line comments: //, --, or #
+        if (
+            (c == "/" and i + 1 < n and line[i + 1] == "/")
+            or (c == "-" and i + 1 < n and line[i + 1] == "-")
+            or c == "#"
         ):
             break
         if c in ("'", '"'):
@@ -576,6 +578,15 @@ def scan_lines(
     # Pass 2: value-keyed second sweep for study_id
     active_names = {name for name, _ in active}
     if "study_id" in active_names and _STUDY_ID_STATE.flagged_values:
+        val_patterns = [
+            (
+                val,
+                re.compile(
+                    r"(?<![A-Za-z0-9])" + re.escape(val) + r"(?![A-Za-z0-9])"
+                ),
+            )
+            for val in sorted(_STUDY_ID_STATE.flagged_values)
+        ]
         for path, lineno, text in rows:
             if INLINE_PRAGMA_RE.search(text):
                 continue
@@ -583,10 +594,7 @@ def scan_lines(
                 continue
             key = (path, lineno)
             spans = _STUDY_ID_STATE.reported_spans.setdefault(key, set())
-            for val in _STUDY_ID_STATE.flagged_values:
-                val_re = re.compile(
-                    r"(?<![A-Za-z0-9])" + re.escape(val) + r"(?![A-Za-z0-9])"
-                )
+            for val, val_re in val_patterns:
                 for m in val_re.finditer(text):
                     start, end = m.start(), m.end()
                     overlap = any(

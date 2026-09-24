@@ -336,6 +336,22 @@ def test_study_id_value_sweep_respects_allowlist():
     assert findings[0][0] == "file1.sas"
 
 
+def test_study_id_in_list_handles_line_comment_with_paren():
+    # A line comment containing a closing paren does not terminate the list early.
+    rows = [
+        ("script.py", 1, 'where study_id in (  # (first cohort)\n'),
+        ("script.py", 2, '    "1ABCDEFGHI",\n'),
+        ("script.py", 3, '    "AB12345678"\n'),
+        ("script.py", 4, ')\n'),
+    ]
+    check_phi._reset_study_id_state()
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active)
+    assert len(findings) == 2
+    assert findings[0][1] == 2
+    assert findings[1][1] == 3
+
+
 def test_study_id_membership_operator_requires_a_preceding_space():
     # The negative control for the `in` branch, and the reason it carries the
     # same `\s+` as `eq`/`ne`: without it, an ordinary function call whose name
