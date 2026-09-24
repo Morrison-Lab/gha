@@ -191,12 +191,6 @@ jobs:
           if [ "$IS_FORK" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching without --ref."
           fi
-          # Omit --ref when the PR edits top-level workflow YAML so GitHub
-          # executes the default-branch caller (gha#598). Also drop the
-          # branch filter: a no-ref dispatch lands on the default branch,
-          # and scoping gh run list to $PR_BRANCH would miss it.
-          # GET .../files is capped at 3000 files (GitHub REST "List pull
-          # requests files", read 2026-08-26). Keep in sync with
           # When the PR edits top-level workflow YAML, manual dispatches cannot
           # execute untrusted workflow YAML from the PR branch, and default-branch
           # dispatches cannot attach status checks to the PR head while preempting
