@@ -4954,10 +4954,10 @@ unset --- gha#931) when:
 It skips review dispatch entirely (exiting 0 without calling `gh workflow run`
 and emitting an explanatory notice) when:
 
-3. `detect-pr-workflow-edits.sh` reports the PR edits top-level
+1. `detect-pr-workflow-edits.sh` reports the PR edits top-level
    `.github/workflows/*.yml` (gha#598, gha#921);
 
-4. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
+2. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
    `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same skip (gha#598, gha#921).
 
 The script's own header comment names these cases, so case 4 is
