@@ -2131,6 +2131,89 @@ run_test "Ready for merge followed by 'no blockers' disclaimer" "### Verdict
 This is not a claim that there are no blockers." \
 "true" "ready-for-merge"
 
+# --- gha#932: Review on closed/merged PR must not produce a clean verdict ---
+
+run_test "Prose verdict 'No action — PR is closed/merged' classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**" \
+"false" "skipped"
+
+run_test "ATX on-line verdict '### Verdict: No action -- PR is closed' classifies as skipped" \
+"### Verdict: No action -- PR is closed" \
+"false" "skipped"
+
+run_test "ATX on-line verdict '### Verdict: Skipped -- PR is merged' classifies as skipped" \
+"### Verdict: Skipped -- PR is merged" \
+"false" "skipped"
+
+run_test "ATX on-line verdict '### Verdict: PR is closed/merged' classifies as skipped" \
+"### Verdict: PR is closed/merged" \
+"false" "skipped"
+
+run_test "Structured payload with SKIPPED verdict classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": \"unknown\",
+  \"verdict\": \"SKIPPED\",
+  \"findings\": [],
+  \"detailed_assessment\": \"No paths were inspected because the PR state is closed and merged.\",
+  \"holistic_assessment\": \"Review skipped without inspection because the pull request is closed or merged.\"
+}
+-->" \
+"false" "skipped"
+
+run_test "Payload with CLEAN but unknown commit_sha and closed/merged prose classifies as skipped (gha#932)" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": \"unknown\",
+  \"verdict\": \"CLEAN\",
+  \"findings\": [],
+  \"detailed_assessment\": \"No paths were inspected because the PR state is closed and merged.\",
+  \"holistic_assessment\": \"No whole-change concerns after checking requirements, integration, regression risk, scope, and validation.\"
+}
+-->" \
+"false" "skipped"
+
+run_test "Payload with CLEAN but null commit_sha and closed/merged prose classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": null,
+  \"verdict\": \"CLEAN\",
+  \"findings\": []
+}
+-->" \
+"false" "skipped"
+
+run_test "Payload with CLEAN but placeholder <sha> commit_sha and closed/merged prose classifies as skipped" "### Verdict
+
+**No action — PR is closed/merged**
+
+<!-- review-data:
+{
+  \"schema_version\": \"1.1\",
+  \"reviewer\": \"claude\",
+  \"commit_sha\": \"<sha>\",
+  \"verdict\": \"CLEAN\",
+  \"findings\": []
+}
+-->" \
+"false" "skipped"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

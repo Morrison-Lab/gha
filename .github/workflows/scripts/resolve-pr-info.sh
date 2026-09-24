@@ -31,9 +31,20 @@ fi
 
 pr_branch=""
 pr_head_repo=""
+pr_state=""
+pr_merged=""
+is_closed="false"
 if [[ -n "$PR_JSON" ]]; then
   pr_branch=$(jq -r '.head.ref // .branch // empty' <<< "$PR_JSON" 2>/dev/null || true)
   pr_head_repo=$(jq -r '.head.repo.full_name // .head_repo // empty' <<< "$PR_JSON" 2>/dev/null || true)
+  pr_state=$(jq -r '.state // empty' <<< "$PR_JSON" 2>/dev/null || true)
+  pr_merged=$(jq -r 'if .merged != null then (.merged | tostring) else empty end' <<< "$PR_JSON" 2>/dev/null || true)
+  is_closed_field=$(jq -r 'if .closed != null then (.closed | tostring) else empty end' <<< "$PR_JSON" 2>/dev/null || true)
+  pr_state_lower=$(echo "$pr_state" | tr '[:upper:]' '[:lower:]')
+  pr_merged_lower=$(echo "$pr_merged" | tr '[:upper:]' '[:lower:]')
+  if [[ "$pr_state_lower" == "closed" || "$pr_state_lower" == "merged" || "$pr_merged_lower" == "true" || "$is_closed_field" == "true" ]]; then
+    is_closed="true"
+  fi
 fi
 
 is_fork="false"
@@ -51,9 +62,15 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   echo "pr_head_repo=$pr_head_repo" >> "$GITHUB_OUTPUT"
   echo "is_fork=$is_fork" >> "$GITHUB_OUTPUT"
   echo "ref_arg=$ref_arg" >> "$GITHUB_OUTPUT"
+  echo "pr_state=$pr_state" >> "$GITHUB_OUTPUT"
+  echo "pr_merged=$pr_merged" >> "$GITHUB_OUTPUT"
+  echo "is_closed=$is_closed" >> "$GITHUB_OUTPUT"
 fi
 
 echo "pr_branch=$pr_branch"
 echo "pr_head_repo=$pr_head_repo"
 echo "is_fork=$is_fork"
 echo "ref_arg=$ref_arg"
+echo "pr_state=$pr_state"
+echo "pr_merged=$pr_merged"
+echo "is_closed=$is_closed"

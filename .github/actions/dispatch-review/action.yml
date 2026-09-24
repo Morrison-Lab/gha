@@ -41,6 +41,10 @@ inputs:
     description: Default branch name used when falling back (e.g. fork PRs, workflow edits).
     required: false
     default: ${{ github.event.repository.default_branch }}
+  is-closed:
+    description: Whether the PR is known to be closed or merged.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -56,6 +60,7 @@ runs:
         REVIEW_WF: ${{ inputs.review-workflow-file }}
         CONTEXT_NOTICE: ${{ inputs.context-notice }}
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
+        IS_CLOSED: ${{ inputs.is-closed }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail

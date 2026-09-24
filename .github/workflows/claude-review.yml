@@ -114,6 +114,12 @@ jobs:
           # `require-review`'s check-run lands on the wrong commit and never
           # supersedes a stale cancelled run tied to the PR's real head SHA.
           PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+          PR_STATE=$(jq -r '.state' <<< "$PR_JSON")
+          PR_MERGED=$(jq -r '.merged' <<< "$PR_JSON")
+          if [[ "$PR_STATE" == "closed" || "$PR_MERGED" == "true" ]]; then
+            echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
+            exit 0
+          fi
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) (/review comment)."

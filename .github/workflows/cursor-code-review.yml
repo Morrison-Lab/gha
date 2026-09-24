@@ -76,16 +76,21 @@ jobs:
           PR_NUMBER: ${{ steps.resolve-pr.outputs.pr-num }}
         run: |
           set -euo pipefail
-          if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author); then
+          if ! PR_JSON=$(gh pr view "$PR_NUMBER" --repo "$REPO" --json isCrossRepository,author,state,closed); then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
-            echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository status; failing closed."
+            echo "::error::Could not resolve PR #$PR_NUMBER's cross-repository/state status; failing closed."
             exit 1
           fi
           IS_CROSS_REPO=$(jq -r '.isCrossRepository' <<< "$PR_JSON")
           AUTHOR_LOGIN=$(jq -r '.author.login' <<< "$PR_JSON")
+          PR_STATE=$(jq -r '.state' <<< "$PR_JSON")
+          IS_CLOSED=$(jq -r '.closed' <<< "$PR_JSON")
           if [[ "$IS_CROSS_REPO" == "true" || "$AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
             echo "blocked=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- fork or Dependabot PR."
+          elif [[ "$PR_STATE" == "CLOSED" || "$PR_STATE" == "MERGED" || "$IS_CLOSED" == "true" ]]; then
+            echo "blocked=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Dispatched review of PR #$PR_NUMBER skipped -- PR is closed or merged (state=$PR_STATE, closed=$IS_CLOSED)."
           else
             echo "blocked=false" >> "$GITHUB_OUTPUT"
           fi

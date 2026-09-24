@@ -50,10 +50,58 @@ GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --
 
 if grep -q '^pr_branch=$' "$output_file" && \
    grep -q '^is_fork=false$' "$output_file" && \
-   grep -q '^ref_arg=$' "$output_file"; then
+   grep -q '^ref_arg=$' "$output_file" && \
+   grep -q '^is_closed=false$' "$output_file"; then
   echo "OK   resolve-pr-info.sh handles empty JSON correctly"
 else
   echo "::error::resolve-pr-info.sh failed empty JSON test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 4: Closed PR
+closed_json='{"head": {"ref": "patch-closed", "repo": {"full_name": "Morrison-Lab/gha"}}, "state": "closed", "merged": false}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$closed_json" >/dev/null
+
+if grep -q '^pr_branch=patch-closed$' "$output_file" && \
+   grep -q '^pr_state=closed$' "$output_file" && \
+   grep -q '^is_closed=true$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh handles closed PR correctly"
+else
+  echo "::error::resolve-pr-info.sh failed closed PR test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 5: Merged PR
+merged_json='{"head": {"ref": "patch-merged", "repo": {"full_name": "Morrison-Lab/gha"}}, "state": "closed", "merged": true}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$merged_json" >/dev/null
+
+if grep -q '^pr_branch=patch-merged$' "$output_file" && \
+   grep -q '^pr_merged=true$' "$output_file" && \
+   grep -q '^is_closed=true$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh handles merged PR correctly"
+else
+  echo "::error::resolve-pr-info.sh failed merged PR test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 6: Uppercase state and boolean closed (GraphQL / gh pr view format)
+graphql_json='{"head": {"ref": "patch-gql", "repo": {"full_name": "Morrison-Lab/gha"}}, "state": "CLOSED", "closed": true}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$graphql_json" >/dev/null
+
+if grep -q '^pr_branch=patch-gql$' "$output_file" && \
+   grep -q '^is_closed=true$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh handles uppercase CLOSED and boolean closed field correctly"
+else
+  echo "::error::resolve-pr-info.sh failed uppercase CLOSED test"
   cat "$output_file"
   failures=$((failures + 1))
 fi

@@ -269,6 +269,33 @@ else
   failures=$((failures + 1))
 fi
 
+# Test 17: Closed/merged PR with --is-closed true skips dispatch
+out="$(PR_NUMBER="138" PR_BRANCH="feature-closed" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" IS_CLOSED="true" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'PR #138 is closed or merged; skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch when IS_CLOSED is true"
+else
+  echo "::error::dispatch-review.sh failed to skip dispatch when IS_CLOSED is true; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 18: Empty PR_BRANCH where API returns closed PR skips dispatch
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+if [[ "$1" == "api" ]]; then
+  echo '{"branch":"api-branch","head_repo":"Morrison-Lab/gha","state":"closed","merged":false}'
+  exit 0
+fi
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="139" PR_BRANCH="" PR_HEAD_REPO="" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'PR #139 is closed or merged; skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch when resolve-pr-info discovers closed PR"
+else
+  echo "::error::dispatch-review.sh failed to skip dispatch on closed PR from API; got: $out"
+  failures=$((failures + 1))
+fi
+
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures dispatch-review test case(s) failed"
   exit 1

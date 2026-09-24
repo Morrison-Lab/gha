@@ -21,6 +21,7 @@ REPO="${GH_REPO:-${REPO:-}}"
 CONTEXT_NOTICE="${CONTEXT_NOTICE:-}"
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-}"
 DRY_RUN="${DRY_RUN:-false}"
+IS_CLOSED="${IS_CLOSED:-false}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -31,6 +32,7 @@ while [[ $# -gt 0 ]]; do
     --repo) REPO="$2"; shift 2 ;;
     --context-notice) CONTEXT_NOTICE="$2"; shift 2 ;;
     --default-branch) DEFAULT_BRANCH="$2"; shift 2 ;;
+    --is-closed) IS_CLOSED="$2"; shift 2 ;;
     --dry-run) DRY_RUN="true"; shift ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -46,6 +48,11 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
+if [[ "$IS_CLOSED" == "true" ]]; then
+  echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
+  exit 0
+fi
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ -z "$PR_BRANCH" ]]; then
@@ -53,6 +60,11 @@ if [[ -z "$PR_BRANCH" ]]; then
   info=$("$script_dir/resolve-pr-info.sh" --repo "$REPO" --pr-number "$PR_NUMBER")
   PR_BRANCH=$(echo "$info" | sed -n 's/^pr_branch=//p')
   PR_HEAD_REPO=$(echo "$info" | sed -n 's/^pr_head_repo=//p')
+  is_closed=$(echo "$info" | sed -n 's/^is_closed=//p')
+  if [[ "$is_closed" == "true" ]]; then
+    echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
+    exit 0
+  fi
 fi
 
 NOTICE_SUFFIX=""
