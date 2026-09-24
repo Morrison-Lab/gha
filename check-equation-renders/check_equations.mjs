@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// check-one-function-per-file: allow-multiple
 // Crawl a built Quarto/HTML site with a headless browser, let MathJax finish
 // typesetting each page, then scan the DOM for MathJax's own error markers.
 //
@@ -224,9 +225,10 @@ async function main() {
       if (errors.length === 0) continue;
       const relPath = htmlFiles[i];
       totalErrors += errors.length;
+      const level = fail ? 'error' : 'warning';
       for (const { anchorId, message } of errors) {
         const location = anchorId ? `${relPath}#${anchorId}` : relPath;
-        console.log(`::error file=${relPath}::Equation render error at ${location}: ${message}`);
+        console.log(`::${level} file=${relPath}::Equation render error at ${location}: ${message}`);
       }
     }
   } finally {

@@ -161,10 +161,11 @@ function findListItemSplices(path, addedLinesSet) {
   return findings;
 }
 
-function report(findings) {
+function report(findings, fail = true) {
   console.log(`Found ${findings.length} list-item merge splice(s):\n`);
+  const level = fail ? 'error' : 'warning';
   for (const f of findings) {
-    console.log(`::error file=${f.path},line=${f.line}::List-item merged directly onto preceding paragraph text without intervening blank line: ${f.lineText}`);
+    console.log(`::${level} file=${f.path},line=${f.line}::List-item merged directly onto preceding paragraph text without intervening blank line: ${f.lineText}`);
   }
 }
 
@@ -199,7 +200,7 @@ function main() {
     return;
   }
 
-  report(findings);
+  report(findings, fail);
   if (fail) process.exitCode = 1;
 }
 

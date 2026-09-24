@@ -881,9 +881,10 @@ def main() -> int:
         print("No lines missing semantic breaks.")
         return 0
 
+    severity = "error" if fail else "warning"
     for violation in violations:
         message = _REASON_MESSAGES[violation.reason]
-        print(f"::error file={violation.path},line={violation.line}::"
+        print(f"::{severity} file={violation.path},line={violation.line}::"
               f"{message}: {violation.preview}")
 
     print(

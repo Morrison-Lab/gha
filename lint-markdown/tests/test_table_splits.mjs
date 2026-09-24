@@ -48,6 +48,13 @@ try {
   assert.match(res.stdout, /Found 1 split GFM table/);
   assert.match(res.stdout, /split\.md,line=8/);
   assert.match(res.stdout, /block of 2 row\(s\)/);
+  assert.match(res.stdout, /::error file=.*split\.md,line=8/);
+
+  // Non-blocking mode: fail=false emits ::warning rather than ::error and exits 0
+  let warnRes = run(split, { TABLE_SPLIT_FAIL: 'false' });
+  assert.strictEqual(warnRes.failed, false, 'Expected split table to pass when fail=false');
+  assert.match(warnRes.stdout, /::warning file=.*split\.md,line=8/);
+  assert.doesNotMatch(warnRes.stdout, /::error file=/);
 
   // 2. Positive control: the other split shape -- a blank line between the
   //    header row and its delimiter row, which leaves neither block a table.

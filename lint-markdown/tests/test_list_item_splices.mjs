@@ -192,6 +192,21 @@ Not indented paragraph, containing a tab\tcharacter in the middle of this line.
   assert.strictEqual(failed, false, 'Expected check_list_item_splices.mjs to pass on clean.md');
   assert.match(stdout, /No list-item merge splices found/);
 
+  // Test non-blocking mode: fail=false emits ::warning rather than ::error
+  failed = false;
+  try {
+    stdout = execFileSync('node', [scriptPath], {
+      env: { ...process.env, MARKDOWNLINT_GLOBS: spliceFile, LIST_ITEM_SPLICE_BASE_REF: 'all', LIST_ITEM_SPLICE_FAIL: 'false' },
+      encoding: 'utf8',
+    });
+  } catch (err) {
+    failed = true;
+    stdout = err.stdout || '';
+  }
+  assert.strictEqual(failed, false, 'Expected check_list_item_splices.mjs to pass when fail=false');
+  assert.match(stdout, /::warning file=.*splice\.md,line=7/);
+  assert.doesNotMatch(stdout, /::error file=/);
+
   console.log('✓ All list-item merge splice tests passed!');
 
 } finally {
