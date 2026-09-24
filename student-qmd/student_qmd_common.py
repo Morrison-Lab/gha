@@ -2,12 +2,19 @@
 """What the student-qmd generator and check share.
 
 make_student_qmd.py writes a student copy line by line; check_student_qmd.py
-reads it back with Pandoc. They deliberately share no div or comment parser,
-so a mistake in one is caught by the other. What they do share is here:
+reads it back with Pandoc. They deliberately share no parser for removing
+divs and comments, so a mistake in one is caught by the other. What they do
+share is here:
 
 - which divs only the answer key shows (`hides`), given classes and
   profile attributes each side extracts in its own way;
-- where the front matter ends, and how includes resolve.
+- where the front matter ends, and how includes resolve;
+- the refusal of an answer written in a raw HTML `<div>` (`raw_answer_divs`).
+  Pandoc reads `<div class="sol">` as the same div as `::: {.sol}`, so the
+  assign filter hides it, but the generator removes only `:::` divs and would
+  copy it into the student file. Rather than parse HTML nesting line by line,
+  both halves refuse such a source, naming the file and line, whether or not
+  the check runs.
 
 Include resolution is shared rather than duplicated because it must match
 Quarto, not merely agree with itself: Quarto resolves every include,
@@ -25,6 +32,7 @@ import glob
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 INCLUDE = re.compile(r"^\s*\{\{<\s*include\s+(\S+)\s*>\}\}\s*$")
 
@@ -43,6 +51,23 @@ DEFAULT_STUDENT_PROFILE = "assign"
 MISNAMED_ANSWER = frozenset(
     {"solution", "solutions", "soln", "answer", "answers", "ans", "answer-key", "key"}
 )
+
+
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
+CODE_SPAN = re.compile(r"(`+).*?(?<!`)\1(?!`)")
+# A raw HTML div start tag, which Pandoc's native_divs extension (on by
+# default) reads as a Div node. The tag may run onto later lines, and a
+# quoted attribute value may hold a `>`.
+RAW_DIV = re.compile(r"""<div(?=[\s/>]|$)(?:[^>"']|"[^"]*"|'[^']*')*""", re.IGNORECASE)
+HTML_ATTR = re.compile(r"""([^\s"'<>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?""")
+VISIBILITY_CLASSES = frozenset({"content-visible", "content-hidden"})
+# Pandoc keeps a `data-` prefix, so `data-when-profile` reaches Quarto under
+# that name; it is refused too, since an author writing it meant a profile.
+PROFILE_ATTRS = frozenset(
+    {"when-profile", "unless-profile", "data-when-profile", "data-unless-profile"}
+)
+# How many lines a raw div start tag may run onto.
+MAX_TAG_LINES = 20
 
 
 class StudentQmdError(Exception):
@@ -94,6 +119,18 @@ def hides(classes: set[str], profile_attrs: list[tuple[str, str]], cfg: Config) 
     profile, content-visible unless the student profile, content-hidden
     unless an answer profile, content-hidden when the student profile.
     `profile_attrs` holds (`when-profile` or `unless-profile`, value) pairs.
+
+    A value naming several profiles is split into its names. Quarto 1.10.18
+    does not split it: rendering `when-profile="assign,solution"` (or
+    `"assign solution"`) under each of the assign, solution and an unrelated
+    profile showed that Quarto compares the whole value as one profile name,
+    so `when-profile` with a list never matches and `unless-profile` with a
+    list always does. Splitting still removes every div that could carry an
+    answer (a list naming an answer profile is removed, and Quarto never
+    shows it anyway), so the student file cannot leak one. The cost is in
+    the other direction: `content-visible unless-profile` and
+    `content-hidden when-profile` with a list naming the student profile are
+    removed here, though Quarto shows them under every profile.
     """
     if classes & cfg.hidden_classes:
         return True
@@ -180,12 +217,16 @@ def resolve_include(target: str, doc: Path) -> Path:
     return (doc.resolve().parent / target).resolve()
 
 
-def expand_includes(doc: Path, warn: bool = True) -> list[str]:
+def expand_includes(
+    doc: Path, warn: bool = True, visit: Callable[[Path, list[str]], None] | None = None
+) -> list[str]:
     """Return `doc`'s lines with every include shortcode expanded, recursively.
 
     Like Quarto, this expands an include line wherever it stands, in a code
     block or an HTML comment too. Unlike Quarto, it drops an included file's
-    front matter rather than merging it (see `strip_front_matter`).
+    front matter rather than merging it (see `strip_front_matter`). `visit`,
+    when given, is called with each file read and its own lines, so a
+    problem can be reported against the file and line it is on.
     """
 
     def expand(path: Path, seen: tuple[Path, ...]) -> list[str]:
@@ -194,6 +235,8 @@ def expand_includes(doc: Path, warn: bool = True) -> list[str]:
         if not path.is_file():
             raise StudentQmdError(f"included file not found: {path}")
         lines = path.read_text(encoding="utf-8").splitlines()
+        if visit is not None:
+            visit(path, lines)
         if seen:
             lines = strip_front_matter(lines, path if warn else None)
         out: list[str] = []
@@ -206,6 +249,85 @@ def expand_includes(doc: Path, warn: bool = True) -> list[str]:
         return out
 
     return expand(doc.resolve(), ())
+
+
+def fence_closes(line: str, fence: str) -> bool:
+    """A fence closes on a run of the same character at least as long as the
+    opener, with nothing else on the line."""
+    run = line.strip()
+    return bool(run) and set(run) == {fence[0]} and len(run) >= len(fence)
+
+
+def visible_text(line: str, in_comment: bool) -> tuple[str, bool]:
+    """`line` with HTML comments and code spans blanked out, and whether a
+    comment is still open at its end."""
+    spans = [m.span() for m in CODE_SPAN.finditer(line)]
+    out = []
+    i = 0
+    while i < len(line):
+        if in_comment:
+            end = line.find("-->", i)
+            if end < 0:
+                break
+            in_comment = False
+            i = end + 3
+        elif span := next((b for a, b in spans if a == i), None):
+            out.append(" ")
+            i = span
+        elif line.startswith("<!--", i):
+            in_comment = True
+            i += 4
+        else:
+            out.append(line[i])
+            i += 1
+    return "".join(out), in_comment
+
+
+def raw_div_hides(tag: str, cfg: Config) -> bool:
+    """Whether a raw `<div ...` start tag names a hidden class, or a
+    profile-visibility class with any profile attribute.
+
+    This errs toward refusing: a profile div is refused whichever profile it
+    names, since writing it with `:::` costs nothing.
+    """
+    attrs = {}
+    for m in HTML_ATTR.finditer(tag[len("<div") :]):
+        attrs[m.group(1).lower()] = next((v for v in m.groups()[1:] if v is not None), "")
+    classes = set(attrs.get("class", "").split())
+    if classes & cfg.hidden_classes:
+        return True
+    return bool(classes & VISIBILITY_CLASSES and PROFILE_ATTRS & attrs.keys())
+
+
+def raw_answer_divs(path: Path, lines: list[str], cfg: Config) -> list[str]:
+    """One message per raw HTML `<div>` in `lines` that hides an answer.
+
+    Code blocks, code spans and HTML comments are skipped. Anything else
+    that looks like such a tag is reported, including one Pandoc would not
+    read as a div (in an indented code block, say): this errs toward
+    refusing.
+    """
+    found = []
+    fence = ""
+    in_comment = False
+    for n, line in enumerate(lines, start=1):
+        if fence:
+            if fence_closes(line, fence):
+                fence = ""
+            continue
+        if not in_comment and (m := FENCE.match(line)):
+            fence = m.group(1)
+            continue
+        text, in_comment = visible_text(line, in_comment)
+        for m in re.finditer(r"<div(?=[\s/>]|$)", text, re.IGNORECASE):
+            tail = " ".join([text[m.start() :], *lines[n : n + MAX_TAG_LINES]])
+            tag = RAW_DIV.match(tail)
+            if tag and raw_div_hides(tag.group(0), cfg):
+                found.append(
+                    f"{path}:{n}: an answer in a raw HTML <div>, which the student copy "
+                    "cannot remove; write it as a ::: div, such as ::: {.sol}"
+                )
+    return found
 
 
 def find_sources(patterns: list[str]) -> list[Path]:

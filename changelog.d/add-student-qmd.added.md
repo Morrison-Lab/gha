@@ -11,6 +11,7 @@
   Pandoc,
   refuses a source whose answer sits in a misnamed div (`.solution`,
   `.answer`, ...) the assign filter would pass through,
+  or in a raw HTML `<div>` the writer cannot remove,
   and renders each file alone in an empty directory.
   Ported from `Morrison-Lab/mlg`'s `make_student_qmd.py` and the
   `--student-qmd` half of `check_student_copy.py` (mlg#22),

@@ -313,8 +313,22 @@ which is why the capabilities above moved to `@v2`.
   Quarto resolves them, not against the including file;
   an included file's own front matter is dropped with a warning for any key
   other than `filters`, because Quarto merges it rather than dropping it;
-  and a source whose answer sits in a misnamed div (`.solution`,
+  a source whose answer sits in a misnamed div (`.solution`,
   `.answer`, ...) fails, since the assign filter passes such a div through;
+  and a source whose answer sits in a raw HTML `<div class="sol">` fails in
+  both the writer and the checker, with its file and line.
+  Pandoc reads such a tag as the same div as `:::` syntax, so the assign
+  filter hides it, while the writer removes only `:::` divs and would copy
+  it into the student file.
+  That refusal is shared (`raw_answer_divs`) rather than independent,
+  because it has to hold with `check: false`;
+  the checker's AST comparison still catches the leak independently when it
+  runs.
+  A `when-profile`/`unless-profile` value naming several profiles is split
+  into names, though Quarto 1.10.18 compares the whole value as one name
+  (measured: `when-profile="assign,solution"` shows under no profile);
+  splitting cannot leak an answer, and `hides()`'s docstring records the
+  over-removal it costs;
   `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).
@@ -1995,6 +2009,11 @@ checker must name: an answer div in three spellings (quoted-brace, bare, and a
 `when-profile="solution"` div), a leaked answer (two characters, and a paragraph), a leftover include,
 an HTML comment, added metadata, an end-of-line front-matter comment, a
 dropped exercise, a `quarto render` chunk, and a missing file.
+A source with an answer in a raw HTML `<div class="sol">` must fail the
+writer with no student file written, and fail the checker's source-side
+check, while a `<div class="note">` control must pass both;
+the writer's five `:::` spellings of an answer div are also run through the
+checker, so the two cannot disagree about them unnoticed.
 The cases that need Quarto skip without it unless
 `STUDENT_QMD_REQUIRE_QUARTO=1` is set, as the `student-qmd` selftest job sets
 it, so a CI runner that lost Quarto fails instead of passing on the pure

@@ -153,19 +153,96 @@ def test_generator_drops_two_line_sol_opener(project):
     assert "secret answer" not in student(project).read_text()
 
 
+FIVE_SPELLINGS = (
+    '\n::: {data-note="}" .sol}\nsecret one\n:::\n'
+    "\n::: sol\nsecret two\n:::\n"
+    '\n::: {.content-visible when-profile="solution"}\nsecret three\n:::\n'
+    '\n::: {.content-hidden unless-profile="solution"}\nsecret four\n:::\n'
+    '\n::: {.content-visible unless-profile="assign"}\nsecret five\n:::\n'
+)
+
+
 def test_generator_drops_quoted_brace_bare_and_profile_divs(project):
-    extra = (
-        '\n::: {data-note="}" .sol}\nsecret one\n:::\n'
-        "\n::: sol\nsecret two\n:::\n"
-        '\n::: {.content-visible when-profile="solution"}\nsecret three\n:::\n'
-        '\n::: {.content-hidden unless-profile="solution"}\nsecret four\n:::\n'
-        '\n::: {.content-visible unless-profile="assign"}\nsecret five\n:::\n'
-    )
-    write(project / "hw" / "hw1.qmd", HOMEWORK + extra)
+    write(project / "hw" / "hw1.qmd", HOMEWORK + FIVE_SPELLINGS)
     assert generate() == 0
     text = student(project).read_text()
     for word in ("one", "two", "three", "four", "five"):
         assert f"secret {word}" not in text
+
+
+@needs_quarto
+def test_checker_agrees_on_quoted_brace_bare_and_profile_divs(project):
+    """The writer's line scan and the checker's Pandoc AST must agree that
+    each of these spellings is an answer div, or the check would fail a
+    correct file (or pass a wrong one) on exactly these."""
+    write(project / "hw" / "hw1.qmd", HOMEWORK + FIVE_SPELLINGS)
+    assert generate() == 0
+    assert check() == 0
+
+
+RAW_ANSWER_DIVS = {
+    "hidden class": '<div class="sol">\nsecret raw\n</div>\n',
+    "upper case": '<DIV CLASS="other sol">\nsecret raw\n</DIV>\n',
+    "tag over two lines": '<div id="x"\n     class="sol">\nsecret raw\n</div>\n',
+    "profile div": '<div class="content-visible" when-profile="solution">\nsecret raw\n</div>\n',
+    "data- profile div": '<div class="content-hidden" data-unless-profile="solution">\nsecret raw\n</div>\n',
+}
+
+
+@pytest.mark.parametrize("div", RAW_ANSWER_DIVS.values(), ids=RAW_ANSWER_DIVS.keys())
+def test_generator_refuses_raw_html_answer_div(project, capsys, div):
+    """Pandoc reads a raw <div class="sol"> as the same div as ::: {.sol},
+    so the assign filter hides it, but the writer removes only ::: divs.
+    Copied through, it would leak the answer with check: false."""
+    source = HOMEWORK + "\n" + div
+    write(project / "hw" / "hw1.qmd", source)
+    assert generate() == 1
+    assert not student(project).exists()
+    out = capsys.readouterr().out
+    line = source.splitlines().index(div.splitlines()[0]) + 1
+    assert f"hw1.qmd:{line}: an answer in a raw HTML <div>" in out
+    assert "::: div" in out
+
+
+def test_generator_names_the_included_file_holding_a_raw_div(project, capsys):
+    fragment = project / "exercises" / "topic" / "_exr-a.qmd"
+    write(fragment, FRAGMENT + '\n<div class="sol">\nsecret raw\n</div>\n')
+    assert generate() == 1
+    line = len(FRAGMENT.splitlines()) + 2
+    assert f"_exr-a.qmd:{line}: an answer in a raw HTML <div>" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '<div class="note">\nA hint for students.\n</div>\n',
+        '```html\n<div class="sol">shown as code</div>\n```\n',
+        'Write `<div class="sol">` in HTML, or better, `::: {.sol}`.\n',
+        '<!-- <div class="sol"> -->\n',
+    ],
+    ids=["benign class", "code block", "code span", "comment"],
+)
+def test_generator_allows_other_raw_divs(project, text):
+    write(project / "hw" / "hw1.qmd", HOMEWORK + "\n" + text)
+    assert generate() == 0
+
+
+@needs_quarto
+def test_benign_raw_div_passes_the_check(project):
+    write(project / "hw" / "hw1.qmd", HOMEWORK + '\n<div class="note">\nA hint for students.\n</div>\n')
+    assert generate() == 0
+    assert "A hint for students." in student(project).read_text()
+    assert check() == 0
+
+
+@needs_quarto
+def test_checker_refuses_raw_html_answer_div_in_source(project, capsys):
+    """The check refuses the source too, so a student file written some
+    other way is not passed on the strength of the AST comparison alone."""
+    assert generate() == 0
+    write(project / "hw" / "hw1.qmd", HOMEWORK + '\n<div class="sol">\nsecret raw\n</div>\n')
+    assert check() == 1
+    assert "an answer in a raw HTML <div>" in capsys.readouterr().out
 
 
 def test_generator_keeps_student_profile_div(project):

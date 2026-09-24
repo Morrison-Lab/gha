@@ -26,8 +26,18 @@ each source that students can open and render themselves:
 It fails, rather than guess, on a missing include, unbalanced divs, a code
 fence that is never closed, or a comment that is never closed.
 
+It also fails on an answer written in a raw HTML `<div>` rather than a `:::`
+div: a `<div>` with a hidden class, or a `content-visible` or
+`content-hidden` one with a profile attribute. Pandoc reads such a tag as the
+same div as `:::` syntax, so the assign filter hides it, but this removes
+only `:::` divs and would copy the answer into the student file. The error
+names the file and line and asks for `:::` syntax; it does not depend on the
+check running. Code blocks, code spans and HTML comments are not scanned.
+
 It works line by line; check_student_qmd.py reads its output with Pandoc
-instead, so the two do not share a div or comment parser.
+instead, so the two do not share the parser that removes divs and comments.
+The raw HTML div refusal is the one scan they share, since both apply it to
+the source rather than to the student file.
 
 Ported from Morrison-Lab/mlg's tools/make_student_qmd.py (mlg#22), itself a
 port of Morrison-Lab/epi204's scripts/generate-assign-qmd.R.
@@ -44,22 +54,25 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from student_qmd_common import (  # noqa: E402
+    CODE_SPAN,
     DEFAULT_ANSWER_PROFILES,
     DEFAULT_HIDDEN_CLASSES,
     DEFAULT_STUDENT_PROFILE,
     Config,
+    FENCE,
     StudentQmdError,
     check_unique_names,
     expand_includes,
+    fence_closes,
     find_sources,
     front_matter_end,
     hides,
     output_path,
     parse_bool,
+    raw_answer_divs,
     split_list,
 )
 
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 DIV_OPEN = re.compile(r"^\s*:{3,}\s*\S")
 DIV_CLOSE = re.compile(r"^\s*(:{3,})\s*$")
 # A div opener's attributes: `::: {.a #b k="v"}`, or Pandoc's shorthand
@@ -89,13 +102,6 @@ def answer_only(line: str, cfg: Config) -> bool:
     classes = set(re.findall(r"(?<![\w-])\.([\w-]+)", bare))
     profiles = [(f"{kind}-profile", "".join(values)) for kind, *values in PROFILE.findall(attrs)]
     return hides(classes, profiles, cfg)
-
-
-def fence_closes(line: str, fence: str) -> bool:
-    """A fence closes on a run of the same character at least as long as the
-    opener, with nothing else on the line."""
-    run = line.strip()
-    return bool(run) and set(run) == {fence[0]} and len(run) >= len(fence)
 
 
 def code_mask(lines: list[str]) -> list[bool]:
@@ -153,9 +159,6 @@ def drop_hidden_divs(lines: list[str], cfg: Config) -> list[str]:
     if depth != 0:
         raise StudentQmdError(f"unbalanced ::: divs (depth {depth} at end of document)")
     return out
-
-
-CODE_SPAN = re.compile(r"(`+).*?(?<!`)\1(?!`)")
 
 
 def find_comment_start(line: str, start: int = 0) -> int:
@@ -309,7 +312,11 @@ def drop_yaml_comments(lines: list[str]) -> list[str]:
 
 
 def student_qmd(src: Path, cfg: Config) -> str:
-    lines = drop_yaml_comments(expand_includes(src))
+    raw: list[str] = []
+    expanded = expand_includes(src, visit=lambda path, ls: raw.extend(raw_answer_divs(path, ls, cfg)))
+    if raw:
+        raise StudentQmdError("; ".join(raw))
+    lines = drop_yaml_comments(expanded)
     lines = drop_hidden_divs(drop_html_comments(lines), cfg)
     if cfg.drop_render_chunks:
         lines = drop_render_chunks(lines)

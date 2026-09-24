@@ -4,7 +4,8 @@
 
 make_student_qmd.py writes the files line by line. This reads each written
 file and its source with Quarto's own Pandoc (`quarto pandoc`), so it shares
-no div or comment parser with the generator. A file fails if it:
+no parser for removing divs and comments with the generator. A file fails if
+it:
 
 - is missing, or still has an include shortcode, so it is not self-contained;
 - has an answer-key-only div (a div with a hidden class, or a div Quarto
@@ -20,7 +21,9 @@ It also refuses a source that has no answer-key-only div at all, since then
 nothing was tested, and a source div classed `.solution`, `.answer` or the
 like but no hidden class: the assign filter passes such a div through
 untouched, so an answer written in one would reach every render and the
-student file with nothing else noticing.
+student file with nothing else noticing. It refuses an answer written in a
+raw HTML `<div>` too, as the generator does, since the generator cannot
+remove one.
 
 Ported from the --student-qmd half of Morrison-Lab/mlg's
 tools/check_student_copy.py (mlg#22).
@@ -50,6 +53,7 @@ from student_qmd_common import (  # noqa: E402
     hides,
     output_path,
     parse_bool,
+    raw_answer_divs,
 )
 
 # Answer lines shorter than this are too generic to name in the report; the
@@ -279,8 +283,12 @@ def check_one(
     src: Path, dest: Path, cfg: Config, require_answers: bool = True
 ) -> tuple[list[str], int]:
     """Check one student file against its source; return failures and answers."""
-    source = parse("\n".join(expand_includes(src, warn=False)))
-    failures = check_source(src, source, cfg, require_answers)
+    raw: list[str] = []
+    expanded = expand_includes(
+        src, warn=False, visit=lambda path, ls: raw.extend(raw_answer_divs(path, ls, cfg))
+    )
+    source = parse("\n".join(expanded))
+    failures = raw + check_source(src, source, cfg, require_answers)
     if not dest.is_file():
         failures.append(f"{dest}: missing; was make_student_qmd.py run?")
         return failures, 0

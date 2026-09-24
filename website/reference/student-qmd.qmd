@@ -42,8 +42,19 @@ For each source, three steps, each able to fail the job:
    It fails rather than guess on a missing include, unbalanced divs,
    an unclosed code fence or comment,
    or two sources with the same file name.
+
+   Write answers with `:::` div syntax, not raw HTML.
+   Pandoc reads `<div class="sol">` as the same div as `::: {.sol}`,
+   so the assign filter hides it,
+   but the writer removes only `:::` divs.
+   So a source with a raw `<div>` carrying one of the `hidden-classes`,
+   or a `content-visible` or `content-hidden` one with a profile attribute,
+   fails with its file and line,
+   whether or not `check` is on.
+   Code blocks, code spans and HTML comments are not scanned.
 2. **Check** each written file against its source with Quarto's own Pandoc
-   (`quarto pandoc`), so the check shares no parser with the writer.
+   (`quarto pandoc`), so the check shares no parser for divs and comments
+   with the writer.
    A file fails when it is missing, still has an include,
    has an answer-key-only div, an HTML comment or a front-matter comment,
    or differs in any other way from its source's AST
@@ -51,6 +62,7 @@ For each source, three steps, each able to fail the job:
    A source div classed `.solution`, `.answer` or the like fails too:
    the assign filter passes such a div through untouched,
    so an answer written in one would reach every student.
+   So does a source with an answer in a raw HTML `<div>`, as in the writer.
 3. **Render** each written file alone, in an empty directory outside the repository,
    so anything it still needs from the repository fails here
    rather than on a student's machine.
