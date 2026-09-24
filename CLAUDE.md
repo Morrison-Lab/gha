@@ -4960,10 +4960,12 @@ and emitting an explanatory notice) when:
 2. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
    `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same skip (gha#598, gha#921).
 
-The script's own header comment names these cases, so case 4 is
-derivable from the code alone --- read the branches, not the comment.
+The script's own header comment names the two default-branch fallback cases
+and the workflow-edits skip case, while omitting the incomplete-file-list skip case ---
+so skip case 2 is derivable from the code alone;
+read the branches, not only the comment.
 
-Before gha#921, cases 3 and 4 routed to the default branch.
+Before gha#921, the two skip cases routed to the default branch instead.
 Because GitHub Actions attaches check-runs to the workflow run commit SHA,
 default-branch dispatches registered on `main` rather than the PR head and
 preempted the in-flight `pull_request` review, destroying the only review
