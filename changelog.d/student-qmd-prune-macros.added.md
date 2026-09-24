@@ -4,7 +4,9 @@
   so a course whose shared macro file defines thousands of macros
   no longer opens every student file with them (gha#927).
   Every definition of a used name is kept.
-  A definition inside an answer-key-only div is refused.
+  A definition inside an answer-key-only div is refused,
+  and so is one whose braces do not close
+  before a blank line or a fence.
   The check leaves definitions out of its comparison,
   so a needed definition that went missing still fails it
   through the math it changes.

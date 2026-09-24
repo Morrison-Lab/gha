@@ -73,7 +73,7 @@ from student_qmd_common import (  # noqa: E402
     raw_answer_divs,
     split_list,
 )
-from student_qmd_macros import macro_groups, prune_macros  # noqa: E402
+from student_qmd_macros import MacroError, macro_groups, prune_macros  # noqa: E402
 
 DIV_OPEN = re.compile(r"^\s*:{3,}\s*\S")
 DIV_CLOSE = re.compile(r"^\s*(:{3,})\s*$")
@@ -340,8 +340,11 @@ def prune_student_macros(lines: list[str], shown: list[str]) -> list[str]:
     dropped with the div: the check takes definitions out of its comparison,
     so an answer written into one would reach nothing that notices.
     """
-    before = Counter(g.name for g in macro_groups(lines, body_mask(lines)))
-    after = Counter(g.name for g in macro_groups(shown, body_mask(shown)))
+    try:
+        before = Counter(g.name for g in macro_groups(lines, body_mask(lines)))
+        after = Counter(g.name for g in macro_groups(shown, body_mask(shown)))
+    except MacroError as err:
+        raise StudentQmdError(f"{err} (counting from the top, includes inlined)") from err
     if hidden := sorted(before - after):
         raise StudentQmdError(
             "a macro definition inside an answer-key-only div, which prune-macros "

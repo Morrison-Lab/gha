@@ -34,6 +34,7 @@ from student_qmd_common import (  # noqa: E402
     find_sources,
     resolve_include,
 )
+from student_qmd_macros import MacroDef, MacroError, brace_depth, macro_groups, prune_macros  # noqa: E402
 
 HAVE_QUARTO = shutil.which("quarto") is not None
 needs_quarto = pytest.mark.skipif(
@@ -576,12 +577,36 @@ def test_prune_is_off_by_default(macro_project):
     assert r"\unused" in student(macro_project).read_text()
 
 
-def test_prune_leaves_an_unbalanced_definition_and_what_follows(macro_project):
+def test_prune_refuses_a_definition_that_never_closes(macro_project, capsys):
     write(macro_project / "macros.qmd", "\\def\\open{{x}\n\\def\\gone{g}\n")
-    assert generate("--prune-macros", "true") == 0
-    text = student(macro_project).read_text()
-    assert r"\def\open{{x}" in text
-    assert r"\def\gone{g}" in text
+    assert generate("--prune-macros", "true") == 1
+    assert "definition of \\open do not close" in capsys.readouterr().out
+    assert generate() == 0
+
+
+def test_a_definition_stops_at_a_fence_rather_than_taking_text_in():
+    # `:::}` would balance the braces, taking the callout and its text into
+    # an unused definition that pruning then drops.
+    lines = ["\\def\\weird{", "::: {.callout-note}", "Real text.", ":::}", "$\\vx$", "\\def\\vx{v}"]
+    with pytest.raises(MacroError, match="weird"):
+        prune_macros(lines)
+
+
+def test_a_definition_stops_at_a_blank_line():
+    with pytest.raises(MacroError, match="open"):
+        macro_groups(["\\def\\open{", "", "Real text.}"])
+
+
+def test_a_brace_in_a_tex_comment_is_not_counted():
+    lines = ["\\newcommand{\\foo}{", "% a stray brace {", "  bar", "}", "\\def\\baz{used}"]
+    assert macro_groups(lines) == [MacroDef("foo", 0, 4), MacroDef("baz", 4, 5)]
+
+
+def test_escaped_characters_are_not_braces_or_comments():
+    assert brace_depth("\\{ \\} \\% {") == 1
+    assert brace_depth("a \\\\% {") == 0
+    lines = ["\\def\\\\{", "  \\relax", "}", "\\def\\after{a}"]
+    assert macro_groups(lines) == [MacroDef("\\", 0, 3), MacroDef("after", 3, 4)]
 
 
 def test_prune_refuses_a_definition_inside_an_answer(macro_project, capsys):
@@ -636,3 +661,13 @@ def test_check_names_a_dropped_empty_block(project, capsys):
     path.write_text(path.read_text().replace("::: {#refs}\n:::\n", ""))
     assert check() == 1
     assert "expected '(an empty Div #refs)', found '(nothing)'" in capsys.readouterr().out
+
+
+
+def test_checker_keeps_and_flags_a_raw_block_whose_definition_never_closes():
+    # Pandoc parses an unclosed definition as text, so no real source makes
+    # this block; the checker still must not strip a guess out of one.
+    block = {"t": "RawBlock", "c": ["tex", "\\def\\open{{x}\n\\def\\gone{g}"]}
+    found: list[str] = []
+    assert check_student_qmd.without_macro_defs(block, found) == block
+    assert found and found[0].startswith("!") and "open" in found[0]

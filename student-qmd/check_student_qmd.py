@@ -55,7 +55,7 @@ from student_qmd_common import (  # noqa: E402
     parse_bool,
     raw_answer_divs,
 )
-from student_qmd_macros import macro_groups  # noqa: E402
+from student_qmd_macros import MacroError, macro_groups  # noqa: E402
 
 # Answer lines shorter than this are too generic to name in the report; the
 # whole-document comparison still covers them.
@@ -225,7 +225,14 @@ def without_macro_defs(node: object, found: list[str]) -> object:
     if raw_tex(node):
         lines = node["c"][1].split("\n")
         kept = lines
-        for g in reversed(macro_groups(lines)):
+        try:
+            groups = macro_groups(lines)
+        except MacroError as err:
+            # Left in place, so the block is still compared as it stands;
+            # the caller reports entries starting "!" as failures.
+            found.append(f"!{err}")
+            return node
+        for g in reversed(groups):
             found.append("\n".join(lines[g.start : g.end]))
             kept = kept[: g.start] + kept[g.end :]
         text = "\n".join(kept)
@@ -314,7 +321,7 @@ def check_source(src: Path, source: dict, cfg: Config, require_answers: bool = T
             if defs:
                 failures.append(
                     f"{src}: a macro definition inside an answer-key-only div, which "
-                    f"prune-macros refuses: {defs[-1].splitlines()[0][:70]!r}"
+                    f"prune-macros refuses: {defs[-1].lstrip('!').splitlines()[0][:70]!r}"
                 )
     if not find(source["blocks"], lambda n: answer_div(n, cfg)):
         message = f"{src}: no answer-key-only divs found, so its student file was not tested"
@@ -359,7 +366,12 @@ def check_one(
         student_defs: list[str] = []
         source_blocks = without_macro_defs(source_blocks, source_defs)
         student_blocks = without_macro_defs(student_blocks, student_defs)
+        for path, defs in ((src, source_defs), (dest, student_defs)):
+            for err in sorted({d for d in defs if d.startswith("!")}):
+                failures.append(f"{path}: raw TeX {err[1:]}")
         for extra in sorted(set(student_defs) - set(source_defs)):
+            if extra.startswith("!"):
+                continue
             failures.append(
                 f"{dest}: a macro definition its source does not have: "
                 f"{extra.splitlines()[0][:70]!r}"

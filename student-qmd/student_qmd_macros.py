@@ -28,7 +28,14 @@ DEF_SYMBOL = re.compile(r"^\\def\\([^A-Za-z0-9\s])")
 # \newcommand{\name}, \renewcommand{\name}, \providecommand{\name}, with or
 # without a star.
 COMMAND = re.compile(r"^\\(?:provide|renew|new)command\*?\s*\{\\([A-Za-z0-9]+)\}")
-ESCAPED_BRACE = re.compile(r"\\[{}]")
+# A line a definition cannot run onto: a blank line, a div fence or a code
+# fence. Pandoc ends a raw TeX block at a blank line, and a definition that
+# reached one of these has lost its closing brace.
+BOUNDARY = re.compile(r"^\s*(?:$|:::|```|~~~)")
+
+
+class MacroError(ValueError):
+    """A macro definition whose braces do not close where it ends."""
 
 
 @dataclass(frozen=True)
@@ -46,12 +53,34 @@ def macro_def_name(line: str) -> str | None:
     return None
 
 
+def brace_depth(line: str) -> int:
+    """Unescaped `{` minus unescaped `}` in `line`, up to any `%` comment.
+
+    A backslash takes the character after it with it, so `\\{`, `\\%` and
+    the `\\\\` in `\\def\\\\{` are not braces or a comment.
+    """
+    depth = 0
+    chars = iter(line)
+    for c in chars:
+        if c == "\\":
+            next(chars, None)
+        elif c == "%":
+            break
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+    return depth
+
+
 def macro_groups(lines: list[str], skip: list[bool] | None = None) -> list[MacroDef]:
     """The macro definitions in `lines`, each possibly spanning lines.
 
-    A definition runs until its unescaped braces balance. Lines marked in
-    `skip`, such as code, never start one. Once a definition's braces fail
-    to balance, no later line starts one either.
+    A definition runs until its braces balance. Lines marked in `skip`, such
+    as code, never start one. A definition that reaches a blank line, a
+    fence or the end of `lines` first raises MacroError: counting on to
+    wherever the braces happen to balance could take ordinary text into the
+    definition, and pruning would then drop that text with it.
     """
     groups = []
     start: int | None = None
@@ -65,13 +94,17 @@ def macro_groups(lines: list[str], skip: list[bool] | None = None) -> list[Macro
             if found is None:
                 continue
             start, name, depth = i, found, 0
-        bare = ESCAPED_BRACE.sub("", line)
-        depth += bare.count("{") - bare.count("}")
+        elif BOUNDARY.match(line):
+            break
+        depth += brace_depth(line)
         if depth <= 0:
             groups.append(MacroDef(name, start, i + 1))
             start = None
-    # A definition whose braces never balance is not taken for one, so
-    # pruning cannot drop the rest of the document with it.
+    if start is not None:
+        raise MacroError(
+            f"line {start + 1}: the braces of the definition of \\{name} do not close "
+            "before a blank line, a fence or the end of the file"
+        )
     return groups
 
 
