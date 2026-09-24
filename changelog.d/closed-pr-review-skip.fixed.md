@@ -14,5 +14,6 @@
   when skipping a closed or merged PR,
   `claude-code-review.yml` omits the `Reviewed commit:` stamp on skips,
   and dispatch gates (`dispatch-review.sh`, `resolve-pr-info.sh`,
-  `claude-review.yml`, and `dispatch-guard` across review workflows)
+  `claude.yml`, `gemini.yml`, `claude-review.yml`,
+  and `dispatch-guard` across review workflows)
   now reject closed and merged PRs before launching review runs.

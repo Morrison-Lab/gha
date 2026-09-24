@@ -791,13 +791,17 @@ def classify_prose_lines(src_lines):
             m = no_action_anchor.match(norm_line)
             if m:
                 rest = norm_line[m.end():]
-                if re.search(r'\b(?:closed|merged|skip\w*)\b', norm_line, re.IGNORECASE):
+                # Only classify as skipped when the "no action" specifically refers
+                # to the PR itself being closed/merged or review being skipped,
+                # not when a clean verdict mentions a past merge in prose (e.g.
+                # "**No action needed** — the fix was already merged in a previous commit.")
+                if re.search(r'\b(?:pr\s+(?:is\s+)?(?:already\s+)?(?:closed|merged)|pr\s+(?:closed|merged)|review\s+(?:is\s+)?skipped)\b', rest, re.IGNORECASE):
                     line_matches.append((m.start(), "false", "skipped"))
                 elif not still_open_after_no_action.search(rest) and \
                    not non_clean_kw.search(norm_line) and \
                    not negated_positive_phrases.search(norm_line):
                     line_matches.append((m.start(), "true", "ready-for-merge"))
-            elif re.search(r'^\s*(?:review\s+)?skipped\b|^\s*(?:pr\s+is\s+)?(?:closed|merged)\b', norm_line, re.IGNORECASE):
+            elif re.search(r'^\s*(?:(?:review\s+)?skipped\b|(?:pr\s+(?:is\s+)?)?(?:closed|merged)\b)', norm_line, re.IGNORECASE):
                 line_matches.append((0, "false", "skipped"))
 
         for m in negated_positive_phrases.finditer(norm_line):

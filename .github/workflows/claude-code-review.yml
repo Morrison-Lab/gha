@@ -1838,6 +1838,18 @@ jobs:
           run-url: ${{ steps.target.outputs.run_url }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Classify review verdict
+        id: classify-verdict
+        if: >-
+          steps.target.outputs.stale != 'true' &&
+          steps.payload.outputs.resolve_outcome == 'success' &&
+          steps.payload.outputs.quota_exhausted != 'true' &&
+          steps.payload.outputs.cancelled != 'true' &&
+          steps.payload.outputs.review_present == 'true'
+        uses: Morrison-Lab/gha/.github/actions/classify-review-verdict@v3
+        with:
+          review-text-file: ${{ steps.payload.outputs.review_text_file }}
+
       - name: Post review comment
         id: post-comment
         if: >-
@@ -1857,6 +1869,7 @@ jobs:
           # both were empty -- so no live-head API fallback exists here. A
           # later fetch could name a commit the model never read.
           HEAD_SHA: ${{ steps.target.outputs.reviewed_sha }}
+          VERDICT: ${{ steps.classify-verdict.outputs.verdict }}
         run: |
           REVIEW="$(cat "$REVIEW_TEXT_FILE")"
           if [[ -z "$REVIEW" ]]; then
@@ -1865,7 +1878,7 @@ jobs:
           fi
           COMMIT_SHA="$HEAD_SHA"
           BODY_FILE="$(mktemp)"
-          if echo "$REVIEW" | grep -qiE 'no action\s*[-—–]+\s*pr is (closed|merged)|"verdict":\s*"SKIPPED"|"commit_sha":\s*"unknown"'; then
+          if [[ "$VERDICT" == "skipped" ]]; then
             printf '%s\n\n---\n\n%s' \
               "**Claude finished review** — [View run]($RUN_URL)" \
               "$REVIEW" > "$BODY_FILE"
@@ -1877,18 +1890,6 @@ jobs:
           fi
           COMMENT_URL="$(gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file "$BODY_FILE")"
           echo "comment_url=$COMMENT_URL" >> "$GITHUB_OUTPUT"
-
-      - name: Classify review verdict
-        id: classify-verdict
-        if: >-
-          steps.target.outputs.stale != 'true' &&
-          steps.payload.outputs.resolve_outcome == 'success' &&
-          steps.payload.outputs.quota_exhausted != 'true' &&
-          steps.payload.outputs.cancelled != 'true' &&
-          steps.payload.outputs.review_present == 'true'
-        uses: Morrison-Lab/gha/.github/actions/classify-review-verdict@v3
-        with:
-          review-text-file: ${{ steps.payload.outputs.review_text_file }}
 
       - name: Post cost comment
         if: >-

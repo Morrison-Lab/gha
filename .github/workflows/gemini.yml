@@ -176,6 +176,10 @@ jobs:
             echo "reason=fork" >> "$GITHUB_OUTPUT"
             exit 1
           fi
+          if [ "${{ steps.pr-info.outputs.is_closed }}" = "true" ]; then
+            echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
+            exit 0
+          fi
           if [ -z "$PR_BRANCH" ]; then
             echo "::warning::Could not read PR #$PR_NUMBER; cannot dispatch $REVIEW_WF."
             exit 1
@@ -283,7 +287,9 @@ jobs:
           gh pr checkout "$PR_NUMBER"
           echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> "$GITHUB_OUTPUT"
           echo "starting_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "head_repo=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.repo.full_name')" >> "$GITHUB_OUTPUT"
+          PR_INFO=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '{head_repo: .head.repo.full_name, state: .state, merged: .merged}')
+          echo "head_repo=$(echo "$PR_INFO" | jq -r .head_repo)" >> "$GITHUB_OUTPUT"
+          echo "is_closed=$(echo "$PR_INFO" | jq -r 'if .state == "closed" or .merged == true then "true" else "false" end')" >> "$GITHUB_OUTPUT"
 
       - name: Set up branch for issue trigger
         id: issue_branch
@@ -608,6 +614,7 @@ jobs:
           pr-number: ${{ github.event.pull_request.number || github.event.issue.number }}
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
           pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
+          is-closed: ${{ steps.pr_checkout.outputs.is_closed }}
           review-workflow-file: ${{ inputs.review-workflow-file }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 

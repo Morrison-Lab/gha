@@ -2214,6 +2214,26 @@ run_test "Payload with CLEAN but placeholder <sha> commit_sha and closed/merged 
 -->" \
 "false" "skipped"
 
+run_test "No action needed prose mentioning past merge in previous commit classifies as ready-for-merge (gha#932)" "### Verdict
+
+**No action needed** — the fix was already merged in a previous commit." \
+"true" "ready-for-merge"
+
+run_test "No action PR closed classifies as skipped (gha#932)" "### Verdict
+
+No action: PR is closed" \
+"false" "skipped"
+
+run_test "No action PR merged classifies as skipped (gha#932)" "### Verdict
+
+No action - PR is merged" \
+"false" "skipped"
+
+run_test "Review skipped classifies as skipped (gha#932)" "### Verdict
+
+Review skipped: PR is closed" \
+"false" "skipped"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then
