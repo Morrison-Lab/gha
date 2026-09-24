@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// check-one-function-per-file: allow-multiple
 // Flag a blank line that splits a GFM table (#558): a table's rows continue
 // after a blank line, but the continuation has no delimiter row of its own,
 // so GFM ends the table at the blank line and renders every row below it as

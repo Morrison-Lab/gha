@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// check-one-function-per-file: allow-multiple
 // Crawl a built Quarto/HTML site with a headless browser, let MathJax finish
 // typesetting each page, then scan the DOM for MathJax's own error markers.
 //
