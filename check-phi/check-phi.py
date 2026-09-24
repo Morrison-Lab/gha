@@ -41,7 +41,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
@@ -125,6 +125,16 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # digits would have passed over most of the sites while reporting a confident
 # number.
 #
+# The scan supports both scalar assignments/comparisons and membership lists.
+#
+# A membership `in (...)` list flags every qualifying quoted literal in the
+# list, not merely the first (gha#926).
+# A list can also span lines until its closing `)`.
+#
+# A value-keyed second sweep in `scan_lines()` sweeps all scanned lines for
+# occurrences of any flagged study identifier, finding bare pasted listings in
+# comment blocks or unflagged code (gha#926).
+#
 # Precision comes from requiring all three of: an id-suggestive variable name,
 # an assignment, comparison, or membership operator, and a *quoted* literal of
 # at least eight alphanumerics containing at least one digit. An unquoted
@@ -139,70 +149,168 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # repository that pseudonymizes in place needs an allowlist entry for its own
 # placeholder shape.
 #
-# The scan is line-based, so a match must fall entirely on one line --- name,
-# operator, and literal together. An `in (...)` list is therefore reached only
-# when its first element sits on the same line as the name and the operator.
-# A list whose opening paren ends the line is missed in full, not merely past
-# its first element:
-#
-#     where StudyID_c in (
-#         "...",
-#     );
-#
-# yields nothing on any of its lines, and that holds however uniform the list
-# is. On a single line, a qualifying id sitting behind a shorter non-id element
-# (`in ("A", "...")`) is missed too; there the alternative is a skip pattern
-# whose looseness costs more than the case is worth.
-#
-# Nothing here reaches an identifier with no variable name beside it --- a
-# pasted `proc print` block listing bare ids passes straight through, exactly
-# as the csv_phi_header detector cannot see an unlabeled column.
-#
-# Nor does it reach one whose name gives nothing away. In the same exposure, a
-# real identifier was passed as `get_IDs(IDs = "...")`: a bare `IDs` is far too
-# common to key on without drowning the check in noise, so that site was found
-# only by searching for the *values*, which are known once redaction begins.
-# Read this detector as a tripwire for identifiers nobody was looking for, not
-# as proof that a tree is clean.
-_STUDY_ID_RE = re.compile(
-    # A lookbehind rather than \b: an underscore is a word character, so \b
-    # finds no boundary in `base_patient_id` and the name would be skipped.
+# Nor does it reach one whose name gives nothing away without prior flagging.
+# In the exposure this detector was built from, a real identifier was passed as
+# `get_IDs(IDs = "...")`: a bare `IDs` is far too common to key on without
+# drowning the check in noise, so that site was found only by searching for
+# the *values*, which are known once redaction begins or once an ID variable
+# flags the value elsewhere in the scan.
+_ID_VAR_PREFIX = (
     r"(?i)(?<![A-Za-z0-9])"
     r"(?:study|subject|participant|patient|member|enrollee|respondent)"
     r"[\s_-]*(?:id|identifier)s?(?:_[a-z0-9]{1,4})?"
-    # Optional close of a subscripted column, `df["patient_id"] = ...`.
     r"(?:[\"']\s*\]{1,2})?"
-    # `<-` and `<<-` matter as much as `=` here: R and Quarto are the target
-    # ecosystem, and `<-` is the dominant assignment form in both. SAS's
-    # word-form comparisons (`eq`, `ne`) need whitespace around them, so they
-    # are a separate alternative rather than another symbol.
-    #
-    # SAS's `in (...)` membership test is a third shape, and the one that let a
-    # real identifier through: it takes a leading space like `eq`/`ne`, but
-    # closes on a paren rather than a space, so it is its own alternative
-    # again. That leading `\s+` is load-bearing rather than decorative ---
-    # without it `patient_idin("...")` reads as a match on an ordinary function
-    # call. SAS itself requires the token boundary, so nothing real is lost.
-    # `\s*\(` covers `in (` and `in(` alike, and the leading `(?i)` already
-    # covers the uppercase `IN` that SAS is usually written in.
-    #
-    # `not in (...)` is covered too. The other operator families each carry
-    # both polarities (`==`/`!=`, `eq`/`ne`), and membership should not be the
-    # one that reaches only the affirmative: excluding a named participant,
-    # `if StudyID_c not in ("...") then delete;`, is exactly as ordinary a
-    # place for a hard-coded identifier as selecting one. The `\s+` before
-    # `not` keeps the same token-boundary guard, so `study_idnot in (...)` and
-    # `study_id notin (...)` both stay out.
-    r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+|\s+(?:not\s+)?in\s*\(\s*)"
-    r"(['\"])(?=[A-Za-z0-9]*[0-9])[A-Za-z0-9]{8,}\1"
 )
+_SCALAR_OP = r"(?:\s*(?:<<-|<-|!=|==|=|:)\s*|\s+(?:eq|ne)\s+)"
+_STUDY_ID_LITERAL_PATTERN = r"(['\"])(?=[A-Za-z0-9]*[0-9])([A-Za-z0-9]{8,})\1"
+_STUDY_ID_SCALAR_RE = re.compile(_ID_VAR_PREFIX + _SCALAR_OP + _STUDY_ID_LITERAL_PATTERN)
+_STUDY_ID_IN_OPEN_RE = re.compile(_ID_VAR_PREFIX + r"\s+(?:not\s+)?in\s*\(")
+_STUDY_ID_LITERAL_RE = re.compile(r"^(['\"])(?=[A-Za-z0-9]*[0-9])([A-Za-z0-9]{8,})\1$")
+
+
+def _extract_in_list_elements(
+    line: str, start_idx: int = 0
+) -> Tuple[List[Tuple[int, int, str]], bool]:
+    """Parse quoted literals and check for closing paren in an in (...) list.
+
+    Returns (elements, closed), where elements is a list of
+    (col, quote_start, value) where col is 1-based start column of quote,
+    and closed is True if a closing ')' or statement terminator was found.
+    """
+    elements: List[Tuple[int, int, str]] = []
+    i = start_idx
+    n = len(line)
+    closed = False
+
+    while i < n:
+        c = line[i]
+        # Skip block comments: /* ... */
+        if c == "/" and i + 1 < n and line[i + 1] == "*":
+            end_comment = line.find("*/", i + 2)
+            if end_comment != -1:
+                i = end_comment + 2
+                continue
+            break
+        # Skip line comments: //, --, or #
+        if (
+            (c == "/" and i + 1 < n and line[i + 1] == "/")
+            or (c == "-" and i + 1 < n and line[i + 1] == "-")
+            or c == "#"
+        ):
+            break
+        if c in ("'", '"'):
+            quote_char = c
+            quote_start = i
+            j = i + 1
+            while j < n:
+                if line[j] == quote_char:
+                    if j + 1 < n and line[j + 1] == quote_char:
+                        j += 2
+                        continue
+                    if j > quote_start and line[j - 1] == "\\":
+                        j += 1
+                        continue
+                    break
+                j += 1
+            if j < n and line[j] == quote_char:
+                token = line[quote_start : j + 1]
+                m = _STUDY_ID_LITERAL_RE.match(token)
+                if m:
+                    elements.append((quote_start + 1, quote_start, m.group(2)))
+                i = j + 1
+                continue
+            break
+        elif c in (")", ";"):
+            closed = True
+            break
+        i += 1
+
+    return elements, closed
+
+
+class _StudyIdTracker:
+    def __init__(self) -> None:
+        self.in_list: bool = False
+        self.last_path: Optional[str] = None
+        self.last_lineno: int = 0
+        self.line_count: int = 0
+        self.flagged_values: Set[str] = set()
+        self.reported_spans: Dict[Tuple[str, int], Set[Tuple[int, int]]] = {}
+
+    def reset(self) -> None:
+        self.in_list = False
+        self.last_path = None
+        self.last_lineno = 0
+        self.line_count = 0
+        self.flagged_values.clear()
+        self.reported_spans.clear()
+
+
+_STUDY_ID_STATE = _StudyIdTracker()
+
+
+def _reset_study_id_state() -> None:
+    _STUDY_ID_STATE.reset()
 
 
 def _detect_study_id(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
-    return [
-        (m.start() + 1, "Possible study/participant identifier literal")
-        for m in _STUDY_ID_RE.finditer(line)
-    ]
+    global _STUDY_ID_STATE
+    key = (path, lineno)
+    if key not in _STUDY_ID_STATE.reported_spans:
+        _STUDY_ID_STATE.reported_spans[key] = set()
+
+    # Reset in_list state if file changed or line sequence broken
+    if _STUDY_ID_STATE.in_list:
+        if (
+            path != _STUDY_ID_STATE.last_path
+            or lineno != _STUDY_ID_STATE.last_lineno + 1
+            or _STUDY_ID_STATE.line_count >= 50
+        ):
+            _STUDY_ID_STATE.in_list = False
+            _STUDY_ID_STATE.line_count = 0
+
+    hits: List[Tuple[int, str]] = []
+
+    # 1. Continuation of an in (...) list from a preceding line:
+    if _STUDY_ID_STATE.in_list:
+        _STUDY_ID_STATE.last_lineno = lineno
+        _STUDY_ID_STATE.line_count += 1
+        elements, closed = _extract_in_list_elements(line, 0)
+        for col, quote_start, val in elements:
+            hits.append((col, "Possible study/participant identifier literal"))
+            _STUDY_ID_STATE.flagged_values.add(val)
+            _STUDY_ID_STATE.reported_spans[key].add(
+                (quote_start, quote_start + len(val) + 2)
+            )
+        if closed:
+            _STUDY_ID_STATE.in_list = False
+            _STUDY_ID_STATE.line_count = 0
+
+    # 2. Check for scalar comparisons/assignments on this line:
+    for m in _STUDY_ID_SCALAR_RE.finditer(line):
+        val = m.group(2)
+        hits.append((m.start() + 1, "Possible study/participant identifier literal"))
+        _STUDY_ID_STATE.flagged_values.add(val)
+        _STUDY_ID_STATE.reported_spans[key].add((m.start(1), m.end(2) + 1))
+
+    # 3. Check for in (...) opening on this line:
+    for m_in in _STUDY_ID_IN_OPEN_RE.finditer(line):
+        start_idx = m_in.end()
+        elements, closed = _extract_in_list_elements(line, start_idx)
+        for idx, (col, quote_start, val) in enumerate(elements):
+            report_col = (m_in.start() + 1) if idx == 0 else col
+            hits.append((report_col, "Possible study/participant identifier literal"))
+            _STUDY_ID_STATE.flagged_values.add(val)
+            _STUDY_ID_STATE.reported_spans[key].add(
+                (quote_start, quote_start + len(val) + 2)
+            )
+        if not closed:
+            _STUDY_ID_STATE.in_list = True
+            _STUDY_ID_STATE.last_path = path
+            _STUDY_ID_STATE.last_lineno = lineno
+            _STUDY_ID_STATE.line_count = 1
+
+    return hits
 
 
 # US phone (off by default — noisy). Requires separators to avoid matching
@@ -438,6 +546,87 @@ def _load_allowlist(path: str) -> List["re.Pattern[str]"]:
 
 # ── Main ────────────────────────────────────────────────────────────────────
 
+def scan_lines(
+    rows: List[Tuple[str, int, str]],
+    active: List[Tuple[str, Callable[[str, int, str], List[Tuple[int, str]]]]],
+    allow: Optional[List["re.Pattern[str]"]] = None,
+    on_finding: Optional[Callable[[str, int, int, str, str], None]] = None,
+) -> List[Tuple[str, int, int, str, str]]:
+    """Scan rows of (path, lineno, text) with active detectors and return findings.
+
+    Returns a list of (path, lineno, col, detector_name, message).
+    Pass 1 executes each active detector across the lines sequentially.
+    Pass 2 performs a value-keyed second sweep for any study_id values matched
+    in Pass 1, catching bare or unflagged occurrences across all scanned files
+    (gha#926). When on_finding is supplied, each finding is emitted
+    immediately as it is discovered to stream live output.
+    """
+    _reset_study_id_state()
+    findings: List[Tuple[str, int, int, str, str]] = []
+
+    # Pass 1: standard detector sweep
+    for path, lineno, text in rows:
+        if INLINE_PRAGMA_RE.search(text):
+            continue
+        if allow and any(p.search(text) for p in allow):
+            continue
+        for name, fn in active:
+            for col, message in fn(path, lineno, text):
+                finding = (path, lineno, col, name, message)
+                findings.append(finding)
+                if on_finding is not None:
+                    on_finding(path, lineno, col, name, message)
+
+    # Pass 2: value-keyed second sweep for study_id
+    active_names = {name for name, _ in active}
+    if "study_id" in active_names and _STUDY_ID_STATE.flagged_values:
+        val_patterns = [
+            (
+                val,
+                re.compile(
+                    r"(?<![A-Za-z0-9])" + re.escape(val) + r"(?![A-Za-z0-9])"
+                ),
+            )
+            for val in sorted(_STUDY_ID_STATE.flagged_values)
+        ]
+        for path, lineno, text in rows:
+            if INLINE_PRAGMA_RE.search(text):
+                continue
+            if allow and any(p.search(text) for p in allow):
+                continue
+            key = (path, lineno)
+            spans = _STUDY_ID_STATE.reported_spans.setdefault(key, set())
+            for val, val_re in val_patterns:
+                for m in val_re.finditer(text):
+                    start, end = m.start(), m.end()
+                    overlap = any(
+                        (s_start <= start and end <= s_end)
+                        or (start < s_end and end > s_start)
+                        for s_start, s_end in spans
+                    )
+                    if not overlap:
+                        finding = (
+                            path,
+                            lineno,
+                            start + 1,
+                            "study_id",
+                            "Possible study/participant identifier literal",
+                        )
+                        findings.append(finding)
+                        spans.add((start, end))
+                        if on_finding is not None:
+                            on_finding(
+                                path,
+                                lineno,
+                                start + 1,
+                                "study_id",
+                                "Possible study/participant identifier literal",
+                            )
+
+    findings.sort(key=lambda item: (item[0], item[1], item[2]))
+    return findings
+
+
 def _split_list(value: str) -> List[str]:
     return [tok.strip() for tok in re.split(r"[,\n]", value or "") if tok.strip()]
 
@@ -479,27 +668,22 @@ def main() -> int:
     level = "error" if fail else "warning"
     hint = ("If this is synthetic/non-PHI, add a 'phi-allow' comment on the "
             f"line or an entry in {allowlist_file or DEFAULT_ALLOWLIST}.")
+
     # Stream findings as they are discovered (with `python3 -u`) instead of
     # batching, so a large/violation-heavy scan shows progress live rather than
     # appearing stuck; only a count + file-set are kept for the summary.
     total = 0
     files_hit = set()
-    for path, lineno, text in rows:
-        # The line is the unit of suppression: an inline `phi-allow` pragma or
-        # an allowlist regex matching anywhere on the line suppresses *every*
-        # detector hit on that line (not just one match). This is intentional —
-        # narrow it to per-match only if that model ever proves too coarse.
-        if INLINE_PRAGMA_RE.search(text):
-            continue
-        if allow and any(p.search(text) for p in allow):
-            continue
-        for name, fn in active:
-            for col, message in fn(path, lineno, text):
-                # Value deliberately omitted — never echo PHI to the log.
-                print(f"::{level} file={path},line={lineno},col={col}::"
-                      f"[phi:{name}] {message} (value redacted). {hint}")
-                total += 1
-                files_hit.add(path)
+
+    def report_finding(path: str, lineno: int, col: int, name: str, message: str) -> None:
+        nonlocal total
+        # Value deliberately omitted — never echo PHI to the log.
+        print(f"::{level} file={path},line={lineno},col={col}::"
+              f"[phi:{name}] {message} (value redacted). {hint}")
+        total += 1
+        files_hit.add(path)
+
+    scan_lines(rows, active, allow, on_finding=report_finding)
 
     if not total:
         print("✓ No PHI-like content detected.")

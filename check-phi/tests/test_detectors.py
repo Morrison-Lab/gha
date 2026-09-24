@@ -240,23 +240,116 @@ def test_study_id_negated_membership_keeps_the_token_boundary():
         assert check_phi._detect_study_id("p.sas", 1, line) == [], line
 
 
-def test_study_id_membership_list_needs_only_one_hit():
-    # A multi-value list flags the line on its first element; the detector
-    # reports the line, not an inventory of the values on it.
+def test_study_id_membership_list_flags_every_element():
+    # A multi-value list flags every qualifying quoted literal in the list,
+    # not merely the first (gha#926).
     hits = check_phi._detect_study_id(
         "p.sas", 1, 'where StudyID_c in ("1ABCDEFGHI","AB12345678");')
-    assert len(hits) == 1
+    assert len(hits) == 2
 
 
-def test_study_id_membership_cannot_span_lines():
-    # The scan is line-based, so a wrapped list is missed in full rather than
-    # past its first element: the opening line carries the name and operator
-    # with no literal, and the literal lines carry no name.
-    for line in ("where StudyID_c in (",
-                 '    "1ABCDEFGHI",',
-                 '    "AB12345678"',
-                 ");"):
-        assert check_phi._detect_study_id("p.sas", 1, line) == [], line
+def test_study_id_membership_spans_lines():
+    # A wrapped in (...) list is tracked across lines until its closing paren (gha#926).
+    lines = [
+        "where StudyID_c in (",
+        '    "1ABCDEFGHI",',
+        '    "AB12345678"',
+        ");",
+    ]
+    check_phi._reset_study_id_state()
+    hits = []
+    for lineno, line in enumerate(lines, start=1):
+        hits.extend(check_phi._detect_study_id("p.sas", lineno, line))
+    assert len(hits) == 2
+
+
+def test_study_id_repro_in_list_and_bare_pasted_listing():
+    # Regression test for gha#926: exact 5 findings across in (...) and pasted listing.
+    content = """data a; set b;
+  where StudyID_c in ("AB12345678","CD23456789","EF34567890");
+run;
+/* pasted listing
+AB12345678
+CD23456789
+*/
+"""
+    rows = [
+        ("repro.sas", i, line + "\n")
+        for i, line in enumerate(content.splitlines(), start=1)
+    ]
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active)
+    assert len(findings) == 5
+    # Line 2 has 3 elements
+    line2_findings = [f for f in findings if f[1] == 2]
+    assert len(line2_findings) == 3
+    # Lines 5 and 6 have the bare pasted identifiers
+    bare_findings = [f for f in findings if f[1] > 2]
+    assert len(bare_findings) == 2
+
+
+def test_study_id_value_sweep_across_files():
+    # Value flagged in file 1 sweeps to bare occurrence in file 2.
+    rows = [
+        ("file1.sas", 1, 'patient_id = "X1Y2Z3W4V5"\n'),
+        ("file2.sas", 1, '/* comment referencing X1Y2Z3W4V5 */\n'),
+    ]
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active)
+    assert len(findings) == 2
+    assert findings[0][0] == "file1.sas"
+    assert findings[1][0] == "file2.sas"
+
+
+def test_study_id_value_sweep_does_not_fire_on_unflagged_tokens():
+    # Unflagged tokens resembling study IDs are not flagged in Pass 2.
+    rows = [
+        ("file.sas", 1, '/* ordinary token A1B2C3D4E5 */\n'),
+    ]
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active)
+    assert len(findings) == 0
+
+
+def test_study_id_value_sweep_respects_phi_allow():
+    # Bare occurrence with phi-allow is suppressed in Pass 2.
+    rows = [
+        ("file1.sas", 1, 'patient_id = "X1Y2Z3W4V5"\n'),
+        ("file2.sas", 1, '/* X1Y2Z3W4V5 */  # phi-allow\n'),
+    ]
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active)
+    assert len(findings) == 1
+    assert findings[0][0] == "file1.sas"
+
+
+def test_study_id_value_sweep_respects_allowlist():
+    import re
+    allow = [re.compile(r"ALLOW_ME")]
+    rows = [
+        ("file1.sas", 1, 'patient_id = "X1Y2Z3W4V5"\n'),
+        ("file2.sas", 1, '/* X1Y2Z3W4V5 ALLOW_ME */\n'),
+    ]
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active, allow=allow)
+    assert len(findings) == 1
+    assert findings[0][0] == "file1.sas"
+
+
+def test_study_id_in_list_handles_line_comment_with_paren():
+    # A line comment containing a closing paren does not terminate the list early.
+    rows = [
+        ("script.py", 1, 'where study_id in (  # (first cohort)\n'),
+        ("script.py", 2, '    "1ABCDEFGHI",\n'),
+        ("script.py", 3, '    "AB12345678"\n'),
+        ("script.py", 4, ')\n'),
+    ]
+    check_phi._reset_study_id_state()
+    active = [("study_id", check_phi.DETECTORS["study_id"])]
+    findings = check_phi.scan_lines(rows, active)
+    assert len(findings) == 2
+    assert findings[0][1] == 2
+    assert findings[1][1] == 3
 
 
 def test_study_id_membership_operator_requires_a_preceding_space():
