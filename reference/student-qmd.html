@@ -787,7 +787,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>an included file’s own front matter is dropped. Quarto merges it into the document instead, so a key other than <code>filters</code> gets a warning;</li>
 <li>every answer-key-only div is removed with everything inside it: a div with one of the <code>hidden-classes</code>, and a <code>content-visible</code> or <code>content-hidden</code> div that Quarto shows only under one of the <code>answer-profiles</code> or hides under the <code>student-profile</code>;</li>
 <li>HTML comments outside code, and whole-line <code>#</code> comments in the front matter, are removed, since they carry instructor notes;</li>
-<li>with <code>drop-render-chunks</code>, fenced code blocks that run <code>quarto render</code> are removed too, with any div they leave empty.</li>
+<li>with <code>drop-render-chunks</code>, fenced code blocks that run <code>quarto render</code> are removed too, with any div they leave empty;</li>
+<li>with <code>prune-macros</code>, LaTeX macro definitions (<code>\def</code>, <code>\let</code>, <code>\newcommand</code>, <code>\renewcommand</code>, <code>\providecommand</code>) that the document never uses, directly or through another macro, are removed. Every definition of a used name is kept, since a later <code>\def</code> replaces an earlier one.</li>
 </ul>
 <p>It fails rather than guess on a missing include, unbalanced divs, an unclosed code fence or comment, or two sources with the same file name.</p>
 <p>Write answers with <code>:::</code> div syntax, not raw HTML. Pandoc reads <code>&lt;div class="sol"&gt;</code> as the same div as <code>::: {.sol}</code>, so the assign filter hides it, but the writer removes only <code>:::</code> divs. So a source with a raw <code>&lt;div&gt;</code> carrying one of the <code>hidden-classes</code>, or a <code>content-visible</code> or <code>content-hidden</code> one with a profile attribute, fails with its file and line, whether or not <code>check</code> is on. Code blocks, code spans and HTML comments are not scanned.</p></li>
@@ -857,60 +858,66 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>Also remove fenced code blocks that run <code>quarto render</code>.</td>
 </tr>
 <tr class="even">
+<td><code>prune-macros</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Also remove LaTeX macro definitions the document never uses. A definition inside an answer-key-only div is refused, and so is one whose braces do not close before a blank line or a fence. The check leaves definitions out of its comparison, so a needed one that went missing still fails it, through the math it changes.</td>
+</tr>
+<tr class="odd">
 <td><code>require-answers</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Fail a source with no answer-key-only div; when false, warn instead. A run in which no source has one still fails.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>check</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Check each student file against its source.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>render</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
 <td>Render each student file alone in an empty directory.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>render-to</code></td>
 <td>string</td>
 <td><code>'html'</code></td>
 <td>Output format for that render.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>index-title</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>When set, also write an <code>index.html</code> in <code>output-dir</code> listing the files.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>index-back-href</code></td>
 <td>string</td>
 <td><code>''</code></td>
 <td>A back link for that index page.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>quarto-version</code></td>
 <td>string</td>
 <td><code>'release'</code></td>
 <td>Quarto version to install.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>python-version</code></td>
 <td>string</td>
 <td><code>'3.x'</code></td>
 <td>Python version to set up.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>checkout-submodules</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Initialize the caller’s git submodules first (for includes that live in one).</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>artifact-name</code></td>
 <td>string</td>
 <td><code>''</code></td>
@@ -944,9 +951,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a>        Homework/**/hw*.qmd</span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>        Exams/**/exam*.qmd</span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">      # drop-render-chunks: true      # also drop `quarto render` code blocks</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">      # require-answers: false        # warn, not fail, on a source with no answers</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">      # render: false                 # skip rendering (e.g. cells need R)</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">      # artifact-name: student-qmd    # upload the files</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">      # prune-macros: true            # drop unused LaTeX macro definitions</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">      # require-answers: false        # warn, not fail, on a source with no answers</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">      # render: false                 # skip rendering (e.g. cells need R)</span></span>
+<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">      # artifact-name: student-qmd    # upload the files</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>To publish the files with a site instead, call the composite action in the job that builds the site, with <code>output-dir</code> inside the rendered output.</p>
 </section>
 <section id="what-stays-with-the-caller" class="level2">
