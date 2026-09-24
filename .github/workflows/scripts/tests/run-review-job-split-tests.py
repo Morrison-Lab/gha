@@ -503,7 +503,7 @@ def check_workflow(
         "(empty stale from a failed lookup must not post)",
     )
     conc_review = (
-        "claude-review-${{ github.event.pull_request.number || inputs.pr-number }}"
+        "claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}"
     )
     conc_stash = (
         "claude-review-stash-${{ github.event.pull_request.number || inputs.pr-number }}"
@@ -1190,7 +1190,7 @@ def run_self_test() -> int:
         )
         review_conc = (
             "    concurrency:\n"
-            "      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}\n"
+            "      group: claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}\n"
             "      cancel-in-progress: true\n"
         )
         stash_conc = (
