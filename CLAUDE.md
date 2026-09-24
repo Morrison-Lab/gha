@@ -386,8 +386,9 @@ only ever shipped at `@v3`.
   `action.yml` files).
   `claude-code-review.yml` uses it to restore
   default-branch workflow copies instead of skipping the review (gha#598);
-  `dispatch-review.sh` uses it to omit `--ref` so GitHub executes the
-  default-branch caller rather than the PR head's YAML.
+  `dispatch-review.sh` uses it to skip review dispatch so default-branch
+  dispatches do not preempt in-flight PR-head reviews or register check-runs
+  on the default branch (gha#921).
   A missing `PR_CHANGED_FILES` variable fails closed (exit 2) rather than
   reporting a clean tree.
   Listing the PR's files goes through `list-pr-changed-files.sh`, which
@@ -4773,17 +4774,22 @@ The restore drops `.github/workflows/.restored-from-default-branch` so
 workflow-parsing test suites and audits detect the restore and skip rather
 than measuring the default-branch copy (gha#765).
 
-**Dispatched reviews omit `--ref` when the PR edits workflow YAML**, so
-GitHub executes the default-branch *caller* rather than the PR head's copy.
-That is the trusted-YAML half; the restore is the trusted-on-disk half.
-Fork PRs already omitted `--ref` (gha#289).
-A no-`--ref` dispatch's check-runs land on the default branch (gha#285);
-the review comment still posts on the PR.
-Before gha#598 the guard instead skipped outright, which is what gha#286
-recorded: an `@claude review` comment produced only a `$0.60` cost comment and
-no verdict, because the PR touched `claude-review.yml` itself.
-Check the job's step list rather than its conclusion when reading any run from
-that era.
+**Dispatched reviews skip dispatch when the PR edits workflow YAML (gha#921).**
+Passing `--ref $PR_BRANCH` would execute untrusted PR-head workflow YAML
+under repo credentials (gha#598).
+Dispatching without `--ref` (or with `--ref $DEFAULT_BRANCH`) runs on the
+default branch and registers check-runs against the default branch rather
+than the PR head (gha#285).
+Crucially, default-branch dispatches previously shared the `cancel-in-progress`
+concurrency group (`claude-review-<PR>`) with the automatic `pull_request` run,
+preempting and destroying the only review whose check-runs reached the PR head
+(gha#921).
+Dispatchers (`dispatch-review.sh`, `claude-review.yml`, `claude.yml`, `gemini.yml`,
+and example stubs) now skip review dispatch on workflow-editing PRs with an
+actionable notice explaining that push-triggered reviews evaluate the PR.
+Review workflows also isolate default-branch dispatches into a separate
+concurrency group (`claude-review-default-<PR>`) so manual dispatches cannot
+preempt the PR head's `pull_request` review.
 
 **This does not switch to `pull_request_target`.**
 `pull_request` executes the PR's triggering workflow YAML.

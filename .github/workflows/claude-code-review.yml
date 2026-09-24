@@ -266,7 +266,7 @@ jobs:
         github.event.sender.type != 'Bot'
       )
     concurrency:
-      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
+      group: claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -523,7 +523,7 @@ jobs:
     # after pushing — let the automatic review run alone, or wait for any
     # in-flight dispatched review to finish first.
     concurrency:
-      group: claude-review-${{ github.event.pull_request.number || inputs.pr-number }}
+      group: claude-review-${{ (github.event_name == 'workflow_dispatch' && (github.ref_name == github.event.repository.default_branch || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))) && 'default-' || '' }}${{ github.event.pull_request.number || inputs.pr-number }}
       cancel-in-progress: true
 
     # Dispatched runs review unconditionally (so a review fires on the draft PR

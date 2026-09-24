@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Resolves PR_BRANCH / PR_HEAD_REPO if empty, determines whether --ref should
 # be passed (substituting --ref "$DEFAULT_BRANCH" when known, or omitting --ref,
-# for fork PRs, when PR_BRANCH cannot be resolved, or when the PR edits top-level
-# workflow YAML so GitHub executes the default-branch caller rather than the PR
-# head --- gha#598, gha#931), and dispatches the review workflow via
-# `gh workflow run`. (gha#419)
+# for fork PRs or when PR_BRANCH cannot be resolved --- gha#931; skipping review
+# dispatch when the PR edits top-level workflow YAML to avoid preempting PR-head
+# checks or attaching checks to the default branch --- gha#598, gha#921), and
+# dispatches the review workflow via `gh workflow run`. (gha#419)
 set -euo pipefail
 
 if [[ "${1:-}" == "--self-test" ]]; then
@@ -73,17 +73,15 @@ if [[ -n "$CONTEXT_NOTICE" ]]; then
 fi
 
 # When the PR edits top-level workflow YAML, GitHub would execute the PR
-# head's copy if we pass `--ref $PR_BRANCH`. Omit --ref (or pass the default
-# branch explicitly when known, avoiding an unauthenticated defaultBranchRef
-# GraphQL lookup on private repos --- gha#931) so the default branch's caller
-# runs instead --- trusted YAML, and the review job checkouts the PR head for the code. (gha#598)
+# head's copy if we pass `--ref $PR_BRANCH`, while dispatching from the default
+# branch registers check-runs against the default branch rather than the PR head
+# and preempts the in-flight pull_request review (gha#598, gha#921).
+# Skip review dispatch on workflow edits so the push-triggered pull_request review
+# (which restores default-branch workflows after checkout) runs to completion on
+# the PR head without being destroyed by a default-branch dispatch.
 if [ -z "${PR_CHANGED_FILES+x}" ]; then
   if ! PR_CHANGED_FILES=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$script_dir/list-pr-changed-files.sh"); then
-    if [[ -n "$DEFAULT_BRANCH" ]]; then
-      echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF from the default branch ($DEFAULT_BRANCH) so GitHub executes trusted workflow YAML."
-    else
-      echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref so GitHub executes default-branch workflow YAML."
-    fi
+    echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
     PR_CHANGED_FILES=""
     FORCE_DEFAULT_BRANCH_WORKFLOWS=true
   fi
@@ -92,6 +90,14 @@ workflow_edits=false
 if [ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" != "true" ]; then
   detect_out="$(PR_CHANGED_FILES="$PR_CHANGED_FILES" CALLER_WF_PATH="" bash "$script_dir/detect-pr-workflow-edits.sh")"
   workflow_edits="$(sed -n 's/^workflow_edits=//p' <<<"$detect_out")"
+fi
+
+if [[ "$workflow_edits" == "true" ]]; then
+  echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921). Automatic review runs on push."
+  exit 0
+elif [[ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
+  echo "::notice::Could not verify whether PR #$PR_NUMBER edits workflow files; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921). Automatic review runs on push."
+  exit 0
 fi
 
 if [[ -z "$PR_BRANCH" ]]; then
@@ -121,18 +127,6 @@ else
       REF_ARGS=(--ref "$DEFAULT_BRANCH")
     else
       echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
-    fi
-  fi
-  if [[ "$workflow_edits" == "true" ]]; then
-    echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $REVIEW_WF from the default branch so GitHub executes trusted workflow YAML rather than the PR head (gha#598)."
-    REF_ARGS=()
-    if [[ -n "$DEFAULT_BRANCH" ]]; then
-      REF_ARGS=(--ref "$DEFAULT_BRANCH")
-    fi
-  elif [[ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
-    REF_ARGS=()
-    if [[ -n "$DEFAULT_BRANCH" ]]; then
-      REF_ARGS=(--ref "$DEFAULT_BRANCH")
     fi
   fi
   if [[ "$DRY_RUN" == "true" ]]; then
