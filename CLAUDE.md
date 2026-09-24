@@ -322,11 +322,11 @@ only ever shipped at `@v3`.
   because it has to hold with `check: false`;
   the checker's AST comparison still catches the leak independently when it
   runs.
-  A `when-profile`/`unless-profile` value naming several profiles is split
-  into names, though Quarto 1.10.18 compares the whole value as one name
-  (measured: `when-profile="assign,solution"` shows under no profile);
-  splitting cannot leak an answer, and `hides()`'s docstring records the
-  over-removal it costs;
+  A `when-profile`/`unless-profile` value naming several profiles is refused
+  in both the generator and the checker,
+  since Quarto 1.10.18 compares the whole value as one name
+  (measured: `when-profile="assign,solution"` shows under no profile)
+  and a list-valued attribute can never match;
   `preview/`, `quarto-publish/`, `open-sync-pr/`, and `resolve-pr-info/` are action-only (the last
   two are shared internal helpers: `open-sync-pr` for push-and-open-PR used by `bump-submodule`,
   `sync-shared-fragments`, and `sync-upstream`; `resolve-pr-info` for PR branch/head-repo/fork lookup used by `ai-code-review`, `gemini`, and `dispatch-review`).

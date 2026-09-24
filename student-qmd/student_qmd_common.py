@@ -108,6 +108,19 @@ def parse_bool(value: str, name: str) -> bool:
     raise StudentQmdError(f"{name} must be true or false, got {value!r}")
 
 
+def profile_name(value: str, key: str = "profile") -> str:
+    """Validate that a profile attribute names exactly one profile.
+
+    Quarto matches a when-profile or unless-profile value as a single profile name
+    and does not split on commas or whitespace.
+    A list-valued attribute can never match in Quarto,
+    so refuse it.
+    """
+    if not value or re.search(r"[\s,]", value):
+        raise StudentQmdError(f"{key} must be one profile name, got {value!r}")
+    return value
+
+
 def profile_names(value: str) -> set[str]:
     return set(split_list(value))
 
@@ -116,29 +129,25 @@ def hides(classes: set[str], profile_attrs: list[tuple[str, str]], cfg: Config) 
     """Whether a div with these classes and profile attributes is answer-key-only.
 
     That is a div with a hidden class, or a Quarto profile-visibility div
-    shown only under an answer profile: content-visible when an answer
-    profile, content-visible unless the student profile, content-hidden
-    unless an answer profile, content-hidden when the student profile.
+    shown only under an answer profile:
+    content-visible when an answer profile,
+    content-visible unless the student profile,
+    content-hidden unless an answer profile,
+    content-hidden when the student profile.
     `profile_attrs` holds (`when-profile` or `unless-profile`, value) pairs.
 
-    A value naming several profiles is split into its names. Quarto 1.10.18
-    does not split it: rendering `when-profile="assign,solution"` (or
-    `"assign solution"`) under each of the assign, solution and an unrelated
-    profile showed that Quarto compares the whole value as one profile name,
-    so `when-profile` with a list never matches and `unless-profile` with a
-    list always does. Splitting still removes every div that could carry an
-    answer (a list naming an answer profile is removed, and Quarto never
-    shows it anyway), so the student file cannot leak one. The cost is in
-    the other direction: `content-visible unless-profile` and
-    `content-hidden when-profile` with a list naming the student profile are
-    removed here, though Quarto shows them under every profile.
+    Quarto compares the whole value as one profile name
+    and does not split on commas or whitespace.
+    A list-valued attribute can never match in Quarto,
+    so refuse it.
     """
+    for key, value in profile_attrs:
+        profile_name(value, key)
     if classes & cfg.hidden_classes:
         return True
     for key, value in profile_attrs:
-        names = profile_names(value)
-        answer = bool(names & cfg.answer_profiles)
-        student = cfg.student_profile in names
+        answer = value in cfg.answer_profiles
+        student = value == cfg.student_profile
         if "content-visible" in classes and (
             (key == "when-profile" and answer) or (key == "unless-profile" and student)
         ):
