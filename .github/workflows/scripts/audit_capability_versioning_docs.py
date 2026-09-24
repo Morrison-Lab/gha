@@ -186,6 +186,27 @@ def check_pin_exists_in_git(repo_root: pathlib.Path, tag: str, candidate_paths: 
     return False
 
 
+def repo_has_tags(repo_root: pathlib.Path) -> bool:
+    """Return True if the repository has any git tags fetched."""
+    res = subprocess.run(
+        ["git", "tag", "-l"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return res.returncode == 0 and bool(res.stdout.strip())
+
+
+def git_tag_exists(repo_root: pathlib.Path, tag: str) -> bool:
+    """Return True if git tag `tag` exists in the repository."""
+    res = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"refs/tags/{tag}"],
+        cwd=repo_root,
+        capture_output=True,
+    )
+    return res.returncode == 0
+
+
 def is_git_repo(repo_root: pathlib.Path) -> bool:
     """Return True if `repo_root` is inside a git repository or worktree."""
     git_marker = repo_root / ".git"
@@ -264,7 +285,18 @@ def run_audit(
             )
 
     if check_git_tags and is_git_repo(repo_root):
+        if not repo_has_tags(repo_root):
+            raise AuditError(
+                "No git tags found in repository. Ensure tags are fetched "
+                "(e.g., git fetch --tags or actions/checkout with fetch-depth: 0)."
+            )
         for name, (tag, raw_path) in sorted(pin_infos.items()):
+            if not git_tag_exists(repo_root, tag):
+                findings.append(
+                    f"ABSENT: '{name}' pins {tag} in its own example stub, "
+                    f"but tag {tag} does not exist in git"
+                )
+                continue
             candidates = candidate_paths_for_raw_path(raw_path)
             if not check_pin_exists_in_git(repo_root, tag, candidates):
                 paths_desc = " or ".join(f"'{c}'" for c in candidates)

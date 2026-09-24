@@ -342,6 +342,37 @@ def main() -> int:
             str(findings),
         )
 
+        # Tag does not exist at all (e.g. pinned to v99 while v2/v3 exist)
+        write(
+            root,
+            "examples/cap.yml",
+            "uses: Morrison-Lab/gha/.github/workflows/cap.yml@v99\n",
+        )
+        build_fixture(root, {"cap": ("v99", all_region_indices)})
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit with check_git_tags=True flags non-existent tag explicitly",
+            any("tag v99 does not exist in git" in f for f in findings),
+            str(findings),
+        )
+
+    # -------------------------------- repo_has_tags & tagless git repo
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+        check("repo_has_tags is False when git repo has no tags", audit.repo_has_tags(root) is False)
+        check("git_tag_exists is False for non-existent tag", audit.git_tag_exists(root, "v1") is False)
+        build_fixture(root, {"cap": ("v2", all_region_indices)})
+        try:
+            audit.run_audit(root, check_git_tags=True)
+            check("run_audit with check_git_tags=True on tagless git repo raises AuditError", False)
+        except audit.AuditError as exc:
+            check(
+                "run_audit with check_git_tags=True on tagless git repo raises AuditError",
+                "No git tags found in repository" in str(exc),
+                str(exc),
+            )
+
     print(f"\n{cases - failures}/{cases} checks passed.")
     return 1 if failures else 0
 

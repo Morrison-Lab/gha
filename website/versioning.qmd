@@ -36,7 +36,8 @@ only ever shipped at
 `opposition-research.yml`, and
 `student-qmd.yml`
 only ever shipped at
-`@v3` (too new to exist at the `@v2` tag). See
+`@v3` (too new to exist at the `@v2` tag).
+See
 [Workflows](workflows.qmd#versioning) for the full breakdown, including which
 capabilities still pin `@v1` and why. Breaking changes bump the major tag (`v2`,
 and so on) with migration steps.
