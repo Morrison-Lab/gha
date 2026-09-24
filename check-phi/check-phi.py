@@ -125,19 +125,6 @@ def _detect_dob(path: str, lineno: int, line: str) -> List[Tuple[int, str]]:
 # digits would have passed over most of the sites while reporting a confident
 # number.
 #
-# Precision comes from requiring all three of: an id-suggestive variable name,
-# an assignment, comparison, or membership operator, and a *quoted* literal of
-# at least eight alphanumerics containing at least one digit. An unquoted
-# right-hand side is almost always another variable; a short or all-alphabetic
-# literal is almost always a category label; and the eight-character floor
-# keeps ordinary tokens like "config1" out while still reaching every real id
-# shape seen so far.
-#
-# Known limits, stated rather than papered over.
-#
-# A redacted placeholder of the form STUDYID20 satisfies the pattern, so a
-# repository that pseudonymizes in place needs an allowlist entry for its own
-# placeholder shape.
 # The scan supports both scalar assignments/comparisons and membership lists.
 #
 # A membership `in (...)` list flags every qualifying quoted literal in the
