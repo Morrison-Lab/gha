@@ -550,6 +550,7 @@ def scan_lines(
     rows: List[Tuple[str, int, str]],
     active: List[Tuple[str, Callable[[str, int, str], List[Tuple[int, str]]]]],
     allow: Optional[List["re.Pattern[str]"]] = None,
+    on_finding: Optional[Callable[[str, int, int, str, str], None]] = None,
 ) -> List[Tuple[str, int, int, str, str]]:
     """Scan rows of (path, lineno, text) with active detectors and return findings.
 
@@ -557,7 +558,8 @@ def scan_lines(
     Pass 1 executes each active detector across the lines sequentially.
     Pass 2 performs a value-keyed second sweep for any study_id values matched
     in Pass 1, catching bare or unflagged occurrences across all scanned files
-    (gha#926).
+    (gha#926). When on_finding is supplied, each finding is emitted
+    immediately as it is discovered to stream live output.
     """
     _reset_study_id_state()
     findings: List[Tuple[str, int, int, str, str]] = []
@@ -570,7 +572,10 @@ def scan_lines(
             continue
         for name, fn in active:
             for col, message in fn(path, lineno, text):
-                findings.append((path, lineno, col, name, message))
+                finding = (path, lineno, col, name, message)
+                findings.append(finding)
+                if on_finding is not None:
+                    on_finding(path, lineno, col, name, message)
 
     # Pass 2: value-keyed second sweep for study_id
     active_names = {name for name, _ in active}
@@ -600,16 +605,23 @@ def scan_lines(
                         for s_start, s_end in spans
                     )
                     if not overlap:
-                        findings.append(
-                            (
+                        finding = (
+                            path,
+                            lineno,
+                            start + 1,
+                            "study_id",
+                            "Possible study/participant identifier literal",
+                        )
+                        findings.append(finding)
+                        spans.add((start, end))
+                        if on_finding is not None:
+                            on_finding(
                                 path,
                                 lineno,
                                 start + 1,
                                 "study_id",
                                 "Possible study/participant identifier literal",
                             )
-                        )
-                        spans.add((start, end))
 
     findings.sort(key=lambda item: (item[0], item[1], item[2]))
     return findings
@@ -657,13 +669,21 @@ def main() -> int:
     hint = ("If this is synthetic/non-PHI, add a 'phi-allow' comment on the "
             f"line or an entry in {allowlist_file or DEFAULT_ALLOWLIST}.")
 
-    findings = scan_lines(rows, active, allow)
-    for path, lineno, col, name, message in findings:
+    # Stream findings as they are discovered (with `python3 -u`) instead of
+    # batching, so a large/violation-heavy scan shows progress live rather than
+    # appearing stuck; only a count + file-set are kept for the summary.
+    total = 0
+    files_hit = set()
+
+    def report_finding(path: str, lineno: int, col: int, name: str, message: str) -> None:
+        nonlocal total
+        # Value deliberately omitted — never echo PHI to the log.
         print(f"::{level} file={path},line={lineno},col={col}::"
               f"[phi:{name}] {message} (value redacted). {hint}")
+        total += 1
+        files_hit.add(path)
 
-    total = len(findings)
-    files_hit = {path for path, _, _, _, _ in findings}
+    scan_lines(rows, active, allow, on_finding=report_finding)
 
     if not total:
         print("✓ No PHI-like content detected.")
