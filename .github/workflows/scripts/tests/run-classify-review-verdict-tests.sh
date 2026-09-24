@@ -2234,6 +2234,31 @@ run_test "Review skipped classifies as skipped (gha#932)" "### Verdict
 Review skipped: PR is closed" \
 "false" "skipped"
 
+run_test "Verdict opening with Merged fixes without clean kw classifies as unrecognized not skipped (gha#932)" "### Verdict
+
+Merged in the latest fixes and the diff looks good overall." \
+"false" "unrecognized"
+
+run_test "Verdict opening with Closed nit without clean kw classifies as unrecognized not skipped (gha#932)" "### Verdict
+
+Closed out the remaining nit; looks good." \
+"false" "unrecognized"
+
+run_test "Verdict opening with Closed-form derivation without clean kw classifies as unrecognized not skipped (gha#932)" "### Verdict
+
+Closed-form derivation checks out; no issues found." \
+"false" "unrecognized"
+
+run_test "Verdict opening with Closed-form derivation and approved classifies as approved (gha#932)" "### Verdict
+
+**Approved** — closed-form derivation checks out; no issues found." \
+"true" "approved"
+
+run_test "Verdict opening with Merged fixes and ready for merge classifies as ready-for-merge (gha#932)" "### Verdict
+
+**Ready for merge** — merged in the latest fixes." \
+"true" "ready-for-merge"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

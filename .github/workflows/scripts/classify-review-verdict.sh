@@ -801,7 +801,7 @@ def classify_prose_lines(src_lines):
                    not non_clean_kw.search(norm_line) and \
                    not negated_positive_phrases.search(norm_line):
                     line_matches.append((m.start(), "true", "ready-for-merge"))
-            elif re.search(r'^\s*(?:(?:review\s+)?skipped\b|(?:pr\s+(?:is\s+)?)?(?:closed|merged)\b)', norm_line, re.IGNORECASE):
+            elif re.search(r'^\s*(?:review\s+(?:is\s+)?skipped\b|skipped\b.*?\bpr\b.*?\b(?:closed|merged)\b|(?:this\s+)?pr\s+(?:is\s+)?(?:already\s+)?(?:closed|merged)\b)', norm_line, re.IGNORECASE):
                 line_matches.append((0, "false", "skipped"))
 
         for m in negated_positive_phrases.finditer(norm_line):
