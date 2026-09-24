@@ -140,13 +140,14 @@ jobs:
             echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE without --ref so GitHub executes default-branch workflow YAML (gha#598)."
             REF_ARGS=()
           else
+            files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE without --ref so GitHub executes default-branch workflow YAML (gha#598)."
               REF_ARGS=()
-            elif printf '%s\n' "$files" | grep -qE '^\.github/workflows/[^/]+\.ya?ml$'; then
+            elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
               echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $WF_FILE from the default branch so GitHub executes trusted workflow YAML (gha#598)."
               REF_ARGS=()
             fi
