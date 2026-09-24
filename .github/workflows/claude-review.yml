@@ -78,6 +78,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           PR_NUMBER: ${{ github.event.issue.number }}
           WF_PATH: ${{ steps.this-wf.outputs.path }}
           # Passed via env (not inlined into the script) so the comment body is
@@ -117,47 +118,60 @@ jobs:
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) (/review comment)."
           # A fork PR's head branch only exists in the fork, not in $REPO, so
-          # --ref would fail to resolve there (#289). Fall back to no --ref
+          # --ref would fail to resolve there (#289). Fall back to the default branch
           # for fork PRs; the resulting check-run mis-attributes to the
           # default branch (the pre-#285 behavior), the lesser problem.
+          # Pass --ref explicitly with DEFAULT_BRANCH when falling back, avoiding
+          # an unauthenticated GraphQL defaultBranchRef query on private repos (#931).
+          DEFAULT_REF_ARGS=()
+          if [ -n "${DEFAULT_BRANCH:-}" ]; then
+            DEFAULT_REF_ARGS=(--ref "$DEFAULT_BRANCH")
+          fi
           REF_ARGS=(--ref "$PR_BRANCH")
           if [ "$PR_HEAD_REPO" != "$REPO" ]; then
-            echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE without --ref."
-            REF_ARGS=()
+            echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE from the default branch."
+            REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
           fi
-          # When the PR edits top-level workflow YAML, omit --ref so GitHub
-          # executes the default-branch caller rather than the PR head
-          # (gha#598). Nested paths under workflows/scripts/ are not workflows.
-          # Keep this grep in sync with detect-pr-workflow-edits.sh; this
-          # caller inlines it because a new composite cannot be referenced
-          # at @v2 until that tag slides.
+          # When the PR edits top-level workflow YAML, execute the default-branch
+          # caller rather than the PR head (gha#598). Nested paths under
+          # workflows/scripts/ are not workflows. Keep this grep in sync with
+          # detect-pr-workflow-edits.sh; this caller inlines it because a new
+          # composite cannot be referenced at @v2 until that tag slides.
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). A 200 with a short list is
           # not a complete tree. Keep in sync with list-pr-changed-files.sh.
           changed=$(jq -r '.changed_files' <<< "$PR_JSON")
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
-            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE without --ref so GitHub executes default-branch workflow YAML (gha#598)."
-            REF_ARGS=()
+            echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE from the default branch so GitHub executes default-branch workflow YAML (gha#598)."
+            REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
           else
             files=$(printf '%s' "$files" | tr -d '\r')
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
-              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE without --ref so GitHub executes default-branch workflow YAML (gha#598)."
-              REF_ARGS=()
+              echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $WF_FILE from the default branch so GitHub executes default-branch workflow YAML (gha#598)."
+              REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
             elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
               echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $WF_FILE from the default branch so GitHub executes trusted workflow YAML (gha#598)."
-              REF_ARGS=()
+              REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
             fi
           fi
           # --repo is required: this job doesn't check out the repo, so gh has no
           # git remote to infer it from (and gh doesn't read GITHUB_REPOSITORY).
           gh workflow run "$WF_FILE" --repo "$REPO" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER"
-          gh issue comment "$PR_NUMBER" --repo "$REPO" \
-            --body ":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes." \
-            || echo "::warning::Could not acknowledge the /review comment."
+          # gh issue comment uses the GraphQL addComment mutation which requires
+          # pull_requests: write on pull requests. Use the REST endpoint, which
+          # accepts issues: write (gha#931).
+          NOTICE_BODY=":mag: \`/review\` received — dispatched a Claude review of this PR (see the [dispatch run]($RUN_URL)). The review posts as its own comment when it finishes."
+          if ! printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+            | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                --method POST \
+                -H "Content-Type: application/json" \
+                --input - > /dev/null; then
+            echo "::warning::Could not acknowledge the /review comment."
+          fi
 
   review:
     # pull_request and workflow_dispatch only; the issue_comment path is handled

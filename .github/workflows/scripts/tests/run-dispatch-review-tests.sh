@@ -46,7 +46,7 @@ chmod +x "$tmp_dir/gh"
 if ! command -v jq >/dev/null 2>&1; then
   cat <<'EOF' > "$tmp_dir/jq"
 #!/usr/bin/env bash
-python3 -c "import sys, json; data=json.loads(sys.stdin.read()); field=sys.argv[2].lstrip('.').split(' ')[0]; print(data.get(field) or '')" "$@"
+python3 -c "import sys, json; data=json.loads(sys.stdin.read()); expr=sys.argv[2] if len(sys.argv) > 2 else ''; fields=[f.strip().lstrip('.') for f in expr.split('//') if f.strip() and f.strip() != 'empty']; val = next((data.get(f) for f in fields if data.get(f)), ''); print(val)" "$@"
 EOF
   chmod +x "$tmp_dir/jq"
 fi
@@ -205,6 +205,67 @@ if echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref feature-c
   echo "OK   dispatch-review.sh keeps --ref when the files list is complete"
 else
   echo "::error::dispatch-review.sh omitted --ref for a complete non-workflow list; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 13: Fork PR with DEFAULT_BRANCH includes --ref with the default branch
+out="$(PR_NUMBER="134" PR_BRANCH="feature-fork" PR_HEAD_REPO="external-user/gha" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" PR_CHANGED_FILES="README.md" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'is from a fork' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=134'; then
+  echo "OK   dispatch-review.sh passes default branch --ref for fork PR when DEFAULT_BRANCH is set"
+else
+  echo "::error::dispatch-review.sh failed to pass default branch --ref for fork PR; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 14: Workflow-editing PR with DEFAULT_BRANCH includes --ref with the default branch
+out="$(PR_NUMBER="135" PR_BRANCH="feature-wf" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" PR_CHANGED_FILES=".github/workflows/_selftest.yml" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'edits workflow files' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=135'; then
+  echo "OK   dispatch-review.sh passes default branch --ref for workflow edits when DEFAULT_BRANCH is set"
+else
+  echo "::error::dispatch-review.sh failed to pass default branch --ref for workflow edits; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 15: Unresolvable PR_BRANCH with DEFAULT_BRANCH set passes --ref with the default branch
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+if [[ "$1" == "api" ]]; then
+  exit 1
+fi
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="136" PR_BRANCH="" PR_HEAD_REPO="" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" PR_CHANGED_FILES="README.md" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'PR_BRANCH could not be resolved' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=136'; then
+  echo "OK   dispatch-review.sh passes default branch --ref when PR_BRANCH is unresolvable and DEFAULT_BRANCH is set"
+else
+  echo "::error::dispatch-review.sh failed unresolvable PR_BRANCH with DEFAULT_BRANCH test; got: $out"
+  failures=$((failures + 1))
+fi
+
+# Test 16: Incomplete file set with DEFAULT_BRANCH set passes --ref with the default branch and prints updated notice
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in
+    */files*)
+      printf 'README.md\nCLAUDE.md\n'
+      exit 0
+      ;;
+    */pulls/*)
+      echo '{"changed_files":5}'
+      exit 0
+      ;;
+  esac
+done
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" PR_NUMBER="137" PR_BRANCH="feature-truncated" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DEFAULT_BRANCH="main" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'dispatching claude-code-review.yml from the default branch (main)' && echo "$out" | grep -q 'gh workflow run claude-code-review.yml --ref main -f pr_number=137'; then
+  echo "OK   dispatch-review.sh passes default branch --ref when files list is truncated and DEFAULT_BRANCH is set"
+else
+  echo "::error::dispatch-review.sh failed truncated files list with DEFAULT_BRANCH test; got: $out"
   failures=$((failures + 1))
 fi
 
