@@ -36,6 +36,10 @@ inputs:
     description: Print the gh workflow run command without executing it.
     required: false
     default: 'false'
+  default-branch:
+    description: Default branch name used when falling back (e.g. fork PRs, workflow edits).
+    required: false
+    default: ${{ github.event.repository.default_branch || '' }}
 
 runs:
   using: composite
@@ -50,6 +54,7 @@ runs:
         PR_HEAD_REPO: ${{ inputs.pr-head-repo }}
         REVIEW_WF: ${{ inputs.review-workflow-file }}
         CONTEXT_NOTICE: ${{ inputs.context-notice }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail

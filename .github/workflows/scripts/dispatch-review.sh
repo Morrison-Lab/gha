@@ -18,6 +18,7 @@ PR_HEAD_REPO="${PR_HEAD_REPO:-}"
 REVIEW_WF="${REVIEW_WF:-claude-code-review.yml}"
 REPO="${GH_REPO:-${REPO:-}}"
 CONTEXT_NOTICE="${CONTEXT_NOTICE:-}"
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-}"
 DRY_RUN="${DRY_RUN:-false}"
 
 while [[ $# -gt 0 ]]; do
@@ -28,6 +29,7 @@ while [[ $# -gt 0 ]]; do
     --review-workflow-file) REVIEW_WF="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --context-notice) CONTEXT_NOTICE="$2"; shift 2 ;;
+    --default-branch) DEFAULT_BRANCH="$2"; shift 2 ;;
     --dry-run) DRY_RUN="true"; shift ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -58,9 +60,10 @@ if [[ -n "$CONTEXT_NOTICE" ]]; then
 fi
 
 # When the PR edits top-level workflow YAML, GitHub would execute the PR
-# head's copy if we pass `--ref $PR_BRANCH`. Omit --ref so the default
-# branch's caller runs instead --- trusted YAML, and the review job
-# checkouts the PR head for the code. (gha#598)
+# head's copy if we pass `--ref $PR_BRANCH`. Omit --ref (or pass the default
+# branch explicitly when known, avoiding an unauthenticated defaultBranchRef
+# GraphQL lookup on private repos --- gha#931) so the default branch's caller
+# runs instead --- trusted YAML, and the review job checkouts the PR head for the code. (gha#598)
 if [ -z "${PR_CHANGED_FILES+x}" ]; then
   if ! PR_CHANGED_FILES=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$script_dir/list-pr-changed-files.sh"); then
     echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; dispatching $REVIEW_WF without --ref so GitHub executes default-branch workflow YAML."
@@ -76,10 +79,18 @@ fi
 
 if [[ -z "$PR_BRANCH" ]]; then
   echo "::notice::PR_BRANCH could not be resolved; dispatching $REVIEW_WF without --ref."
+  REF_ARGS=()
+  if [[ -n "$DEFAULT_BRANCH" ]]; then
+    REF_ARGS=(--ref "$DEFAULT_BRANCH")
+  fi
   if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[dry-run] gh workflow run $REVIEW_WF -f pr_number=$PR_NUMBER"
+    if [[ ${#REF_ARGS[@]} -gt 0 ]]; then
+      echo "[dry-run] gh workflow run $REVIEW_WF ${REF_ARGS[*]} -f pr_number=$PR_NUMBER"
+    else
+      echo "[dry-run] gh workflow run $REVIEW_WF -f pr_number=$PR_NUMBER"
+    fi
   else
-    gh workflow run "$REVIEW_WF" -f pr_number="$PR_NUMBER" \
+    gh workflow run "$REVIEW_WF" "${REF_ARGS[@]}" -f pr_number="$PR_NUMBER" \
       || echo "::warning::Could not dispatch $REVIEW_WF$NOTICE_SUFFIX."
   fi
 else
@@ -87,12 +98,21 @@ else
   if [[ "$PR_HEAD_REPO" != "$REPO" ]]; then
     echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $REVIEW_WF without --ref."
     REF_ARGS=()
+    if [[ -n "$DEFAULT_BRANCH" ]]; then
+      REF_ARGS=(--ref "$DEFAULT_BRANCH")
+    fi
   fi
   if [[ "$workflow_edits" == "true" ]]; then
     echo "::notice::PR #$PR_NUMBER edits workflow files; dispatching $REVIEW_WF from the default branch so GitHub executes trusted workflow YAML rather than the PR head (gha#598)."
     REF_ARGS=()
+    if [[ -n "$DEFAULT_BRANCH" ]]; then
+      REF_ARGS=(--ref "$DEFAULT_BRANCH")
+    fi
   elif [[ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
     REF_ARGS=()
+    if [[ -n "$DEFAULT_BRANCH" ]]; then
+      REF_ARGS=(--ref "$DEFAULT_BRANCH")
+    fi
   fi
   if [[ "$DRY_RUN" == "true" ]]; then
     echo "[dry-run] gh workflow run $REVIEW_WF ${REF_ARGS[*]:-} -f pr_number=$PR_NUMBER"
