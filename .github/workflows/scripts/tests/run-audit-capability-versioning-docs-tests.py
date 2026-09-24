@@ -307,7 +307,9 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
-        subprocess.run(["git", "config", "user.email", "audit-test@example.com"], cwd=root, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "audit-test@example.invalid"], cwd=root, check=True
+        )  # phi-allow
         subprocess.run(["git", "config", "user.name", "Audit Test"], cwd=root, check=True)
         build_fixture(root, {"cap": ("v2", all_region_indices)})
         dummy = root / "dummy.txt"
