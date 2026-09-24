@@ -102,7 +102,7 @@ and shows them under the `solution`, `solutions` and `rubric` profiles.
 | `checkout-submodules` | boolean | `false` | Initialize the caller's git submodules first (for includes that live in one). |
 | `artifact-name` | string | `''` | When set, upload the student files as a workflow artifact with this name. |
 
-The composite action (`Morrison-Lab/gha/student-qmd@v2`)
+The composite action (`Morrison-Lab/gha/student-qmd@v3`)
 takes the same inputs except the last two,
 plus `install-quarto` (default `'true'`),
 and outputs `output-dir` (an absolute path) and `count`.
@@ -127,7 +127,7 @@ on:
 
 jobs:
   student-qmd:
-    uses: Morrison-Lab/gha/.github/workflows/student-qmd.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/student-qmd.yml@v3
     with:
       sources: |
         Homework/**/hw*.qmd

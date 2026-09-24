@@ -22,6 +22,7 @@ from __future__ import annotations
 import contextlib
 import io
 import pathlib
+import subprocess
 import sys
 import tempfile
 from collections import defaultdict
@@ -281,6 +282,64 @@ def main() -> int:
         check(
             "audit.main skips with exit 0 when workflows are restored",
             audit.main(["--repo-root", str(root)]) == 0,
+        )
+
+    # -------------------------------- candidate_paths_for_raw_path
+    check(
+        "candidate_paths_for_raw_path keeps .yml as-is",
+        audit.candidate_paths_for_raw_path(".github/workflows/foo.yml")
+        == [".github/workflows/foo.yml"],
+    )
+    check(
+        "candidate_paths_for_raw_path adds action.yml and action.yaml for composite dir",
+        audit.candidate_paths_for_raw_path("composite")
+        == ["composite/action.yml", "composite/action.yaml"],
+    )
+
+    # -------------------------------- is_git_repo
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        check("is_git_repo on plain temp directory is False", audit.is_git_repo(root) is False)
+        subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+        check("is_git_repo on git init repo is True", audit.is_git_repo(root) is True)
+
+    # -------------------------------- git tag existence checks
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", "config", "user.email", "audit-test@example.com"], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Audit Test"], cwd=root, check=True)
+        build_fixture(root, {"cap": ("v2", all_region_indices)})
+        dummy = root / "dummy.txt"
+        dummy.write_text("dummy\n", encoding="utf-8")
+        subprocess.run(["git", "add", "dummy.txt"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-m", "initial"], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", "tag", "v2"], cwd=root, check=True)
+
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit with check_git_tags=True flags capability absent from pinned git tag",
+            any("ABSENT: 'cap' pins v2" in f for f in findings),
+            str(findings),
+        )
+
+        subprocess.run(["git", "add", "."], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-m", "add cap"], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", "tag", "v3"], cwd=root, check=True)
+
+        # Update example to pin v3
+        write(
+            root,
+            "examples/cap.yml",
+            "uses: Morrison-Lab/gha/.github/workflows/cap.yml@v3\n",
+        )
+        # Update docs fixture for cap at v3
+        build_fixture(root, {"cap": ("v3", all_region_indices)})
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit with check_git_tags=True passes when capability exists at pinned git tag",
+            len(findings) == 0,
+            str(findings),
         )
 
     print(f"\n{cases - failures}/{cases} checks passed.")

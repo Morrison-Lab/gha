@@ -103,5 +103,5 @@ jobs:
   check:
     permissions:
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/check-r-package.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-r-package.yml@v3
 ```

@@ -81,5 +81,5 @@ jobs:
   hygiene:
     permissions:
       contents: read
-    uses: Morrison-Lab/gha/.github/workflows/check-repo-hygiene.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-repo-hygiene.yml@v3
 ```
