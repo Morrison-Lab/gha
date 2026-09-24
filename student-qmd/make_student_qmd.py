@@ -49,6 +49,7 @@ import argparse
 import html
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -72,6 +73,7 @@ from student_qmd_common import (  # noqa: E402
     raw_answer_divs,
     split_list,
 )
+from student_qmd_macros import macro_groups, prune_macros  # noqa: E402
 
 DIV_OPEN = re.compile(r"^\s*:{3,}\s*\S")
 DIV_CLOSE = re.compile(r"^\s*(:{3,})\s*$")
@@ -316,11 +318,36 @@ def student_qmd(src: Path, cfg: Config) -> str:
     expanded = expand_includes(src, visit=lambda path, ls: raw.extend(raw_answer_divs(path, ls, cfg)))
     if raw:
         raise StudentQmdError("; ".join(raw))
-    lines = drop_yaml_comments(expanded)
-    lines = drop_hidden_divs(drop_html_comments(lines), cfg)
+    lines = drop_html_comments(drop_yaml_comments(expanded))
+    shown = drop_hidden_divs(lines, cfg)
     if cfg.drop_render_chunks:
-        lines = drop_render_chunks(lines)
-    return tidy("\n".join(lines))
+        shown = drop_render_chunks(shown)
+    if cfg.prune_macros:
+        shown = prune_student_macros(lines, shown)
+    return tidy("\n".join(shown))
+
+
+def body_mask(lines: list[str]) -> list[bool]:
+    """Mark the front matter and code, where no macro definition starts."""
+    end = front_matter_end(lines)
+    return [i < end or in_code for i, in_code in enumerate(code_mask(lines))]
+
+
+def prune_student_macros(lines: list[str], shown: list[str]) -> list[str]:
+    """Drop the macro definitions `shown` never uses.
+
+    A definition inside an answer-key-only div is refused rather than
+    dropped with the div: the check takes definitions out of its comparison,
+    so an answer written into one would reach nothing that notices.
+    """
+    before = Counter(g.name for g in macro_groups(lines, body_mask(lines)))
+    after = Counter(g.name for g in macro_groups(shown, body_mask(shown)))
+    if hidden := sorted(before - after):
+        raise StudentQmdError(
+            "a macro definition inside an answer-key-only div, which prune-macros "
+            f"refuses: \\{hidden[0]}; move it out of the div, or turn prune-macros off"
+        )
+    return prune_macros(shown, body_mask(shown))
 
 
 def write_index(out_dir: Path, names: list[str], title: str, back_href: str) -> None:
@@ -374,6 +401,7 @@ def config_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--answer-profiles", default=" ".join(DEFAULT_ANSWER_PROFILES))
     parser.add_argument("--student-profile", default=DEFAULT_STUDENT_PROFILE)
     parser.add_argument("--drop-render-chunks", default="false")
+    parser.add_argument("--prune-macros", default="false")
 
 
 def config_from(args: argparse.Namespace) -> Config:
@@ -382,6 +410,7 @@ def config_from(args: argparse.Namespace) -> Config:
         answer_profiles=frozenset(split_list(args.answer_profiles)),
         student_profile=args.student_profile.strip(),
         drop_render_chunks=parse_bool(args.drop_render_chunks, "drop-render-chunks"),
+        prune_macros=parse_bool(args.prune_macros, "prune-macros"),
     )
 
 

@@ -55,6 +55,7 @@ from student_qmd_common import (  # noqa: E402
     parse_bool,
     raw_answer_divs,
 )
+from student_qmd_macros import macro_groups  # noqa: E402
 
 # Answer lines shorter than this are too generic to name in the report; the
 # whole-document comparison still covers them.
@@ -210,6 +211,33 @@ def without_answers(node: object, cfg: Config) -> object:
     return out
 
 
+def raw_tex(node: object) -> bool:
+    return is_type(node, "RawBlock") and node["c"][0] in ("tex", "latex")
+
+
+def without_macro_defs(node: object, found: list[str]) -> object:
+    """A copy of `node` with every macro definition taken out of its raw TeX
+    blocks, each appended to `found`, and any block left empty dropped.
+
+    With prune-macros on, both sides go through this before they are
+    compared, since the student file keeps only the definitions it uses.
+    """
+    if raw_tex(node):
+        lines = node["c"][1].split("\n")
+        kept = lines
+        for g in reversed(macro_groups(lines)):
+            found.append("\n".join(lines[g.start : g.end]))
+            kept = kept[: g.start] + kept[g.end :]
+        text = "\n".join(kept)
+        return {"t": "RawBlock", "c": [node["c"][0], text]} if text.strip() else None
+    if isinstance(node, dict):
+        return {k: without_macro_defs(v, found) for k, v in node.items()}
+    if isinstance(node, list):
+        items = (without_macro_defs(item, found) for item in node)
+        return [item for item in items if item is not None]
+    return node
+
+
 def plain(doc: dict, blocks: list) -> str:
     """Render AST blocks as plain text."""
     body = {"pandoc-api-version": doc["pandoc-api-version"], "meta": {}, "blocks": blocks}
@@ -224,7 +252,16 @@ def first_difference(doc: dict, want: list, got: list) -> str:
     """Describe the first block where `got` differs from `want`."""
 
     def show(block: object) -> str:
-        return squash(plain(doc, [block]))[:70] if block else "(nothing)"
+        if not block:
+            return "(nothing)"
+        if text := squash(plain(doc, [block]))[:70]:
+            return text
+        # A block with no text, such as an empty `::: {#refs}` div or raw
+        # TeX, would otherwise read as ''; name its type, and its id if any.
+        kind = block.get("t", "?") if isinstance(block, dict) else "?"
+        attr = block.get("c") if isinstance(block, dict) else None
+        ident = attr[0][0] if kind == "Div" and attr and attr[0] and attr[0][0] else ""
+        return f"(an empty {kind}{' #' + ident if ident else ''})"
 
     for i in range(max(len(want), len(got))):
         w = want[i] if i < len(want) else None
@@ -270,6 +307,15 @@ def check_source(src: Path, source: dict, cfg: Config, require_answers: bool = T
             f"{src}: a div classed {classes}, which the assign filter does not hide; "
             f"an answer goes in a div classed {' or '.join('.' + c for c in sorted(cfg.hidden_classes))}"
         )
+    if cfg.prune_macros:
+        for div in find(source["blocks"], lambda n: answer_div(n, cfg)):
+            defs: list[str] = []
+            without_macro_defs(div, defs)
+            if defs:
+                failures.append(
+                    f"{src}: a macro definition inside an answer-key-only div, which "
+                    f"prune-macros refuses: {defs[-1].splitlines()[0][:70]!r}"
+                )
     if not find(source["blocks"], lambda n: answer_div(n, cfg)):
         message = f"{src}: no answer-key-only divs found, so its student file was not tested"
         if require_answers:
@@ -307,8 +353,19 @@ def check_one(
     if cfg.drop_render_chunks and (found := find(both, render_chunk)):
         failures.append(f"{dest}: {len(found)} code block(s) running quarto render")
     answers = find(source["blocks"], lambda n: answer_div(n, cfg))
-    want = without_answers(source["blocks"], cfg)
-    got = without_answers(student["blocks"], cfg)
+    source_blocks, student_blocks = source["blocks"], student["blocks"]
+    if cfg.prune_macros:
+        source_defs: list[str] = []
+        student_defs: list[str] = []
+        source_blocks = without_macro_defs(source_blocks, source_defs)
+        student_blocks = without_macro_defs(student_blocks, student_defs)
+        for extra in sorted(set(student_defs) - set(source_defs)):
+            failures.append(
+                f"{dest}: a macro definition its source does not have: "
+                f"{extra.splitlines()[0][:70]!r}"
+            )
+    want = without_answers(source_blocks, cfg)
+    got = without_answers(student_blocks, cfg)
     if want != got or without_answers(source["meta"], cfg) != without_answers(student["meta"], cfg):
         failures.append(
             f"{dest}: does not match {src} with its answers and comments removed; "

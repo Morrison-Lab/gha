@@ -80,6 +80,7 @@ class Config:
     answer_profiles: frozenset[str] = frozenset(DEFAULT_ANSWER_PROFILES)
     student_profile: str = DEFAULT_STUDENT_PROFILE
     drop_render_chunks: bool = False
+    prune_macros: bool = False
     misnamed: frozenset[str] = field(init=False)
 
     def __post_init__(self) -> None:

@@ -37,7 +37,12 @@ For each source, three steps, each able to fail the job:
    - HTML comments outside code, and whole-line `#` comments in the front matter,
      are removed, since they carry instructor notes;
    - with `drop-render-chunks`, fenced code blocks that run `quarto render`
-     are removed too, with any div they leave empty.
+     are removed too, with any div they leave empty;
+   - with `prune-macros`, LaTeX macro definitions
+     (`\def`, `\let`, `\newcommand`, `\renewcommand`, `\providecommand`)
+     that the document never uses, directly or through another macro, are removed.
+     Every definition of a used name is kept,
+     since a later `\def` replaces an earlier one.
 
    It fails rather than guess on a missing include, unbalanced divs,
    an unclosed code fence or comment,
@@ -85,6 +90,7 @@ and shows them under the `solution`, `solutions` and `rubric` profiles.
 | `answer-profiles` | string | `'solution solutions rubric'` | Profiles whose `when-profile` content is answer-key only. |
 | `student-profile` | string | `'assign'` | The profile the student copy renders under. |
 | `drop-render-chunks` | boolean | `false` | Also remove fenced code blocks that run `quarto render`. |
+| `prune-macros` | boolean | `false` | Also remove LaTeX macro definitions the document never uses. A definition inside an answer-key-only div is refused; move it out of the div. The check leaves definitions out of its comparison, so a needed one that went missing still fails it, through the math it changes. |
 | `require-answers` | boolean | `true` | Fail a source with no answer-key-only div; when false, warn instead. A run in which no source has one still fails. |
 | `check` | boolean | `true` | Check each student file against its source. |
 | `render` | boolean | `true` | Render each student file alone in an empty directory. |
@@ -127,6 +133,7 @@ jobs:
         Homework/**/hw*.qmd
         Exams/**/exam*.qmd
       # drop-render-chunks: true      # also drop `quarto render` code blocks
+      # prune-macros: true            # drop unused LaTeX macro definitions
       # require-answers: false        # warn, not fail, on a source with no answers
       # render: false                 # skip rendering (e.g. cells need R)
       # artifact-name: student-qmd    # upload the files

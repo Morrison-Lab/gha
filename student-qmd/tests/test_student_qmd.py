@@ -504,3 +504,135 @@ def test_no_answers_anywhere_fails_even_when_not_required(project, capsys):
 
 def test_bad_boolean_is_refused(project):
     assert check("--require-answers", "maybe") == 1
+
+
+# --- prune-macros (gha#927) --------------------------------------------------
+
+MACROS = r"""\providecommand{\vecf}[1]{\tilde{#1}}
+\def\vx{\vecf{x}}
+\def\unused{u}
+\def\vxy{\vecf{xy}}
+\providecommand{\two}[2]{
+  #1 + #2
+}
+\def\vx{\vecf{z}}
+\def\~{\sim}
+"""
+
+MACRO_HOMEWORK = r"""---
+title: "Homework 2"
+---
+
+{{< include /macros.qmd >}}
+
+::: {#exr-m}
+Find $\vx$ and $\two{a}{b}$, where $X \~ N$.
+:::
+
+::: {.sol}
+It is $\vx$.
+:::
+
+```tex
+\def\incode{c}
+```
+"""
+
+
+@pytest.fixture
+def macro_project(project):
+    write(project / "macros.qmd", MACROS)
+    write(project / "hw" / "hw1.qmd", MACRO_HOMEWORK)
+    return project
+
+
+def test_macro_def_name_forms():
+    from student_qmd_macros import macro_def_name
+
+    assert macro_def_name(r"\def\vx{x}") == "vx"
+    assert macro_def_name(r"\let\foo\bar") == "foo"
+    assert macro_def_name(r"\def\~{\sim}") == "~"
+    assert macro_def_name(r"\newcommand*{\cmd}[1]{#1}") == "cmd"
+    assert macro_def_name(r"\renewcommand{\cmd}{x}") == "cmd"
+    assert macro_def_name(r"  \def\vx{x}") is None
+    assert macro_def_name(r"Text \def\vx{x}") is None
+
+
+def test_prune_keeps_used_and_transitive_macros_only(macro_project):
+    assert generate("--prune-macros", "true") == 0
+    text = student(macro_project).read_text()
+    assert r"\providecommand{\vecf}" in text  # used only through \vx
+    assert r"\def\vx{\vecf{x}}" in text
+    assert r"\def\vx{\vecf{z}}" in text  # a redefinition stays: it wins
+    assert r"\unused" not in text
+    assert r"\vxy" not in text  # \vx does not reference \vxy
+    assert "  #1 + #2\n}" in text  # a multi-line definition is kept whole
+    assert r"\def\~{\sim}" in text
+    assert r"\def\incode{c}" in text  # code is left alone
+
+
+def test_prune_is_off_by_default(macro_project):
+    assert generate() == 0
+    assert r"\unused" in student(macro_project).read_text()
+
+
+def test_prune_leaves_an_unbalanced_definition_and_what_follows(macro_project):
+    write(macro_project / "macros.qmd", "\\def\\open{{x}\n\\def\\gone{g}\n")
+    assert generate("--prune-macros", "true") == 0
+    text = student(macro_project).read_text()
+    assert r"\def\open{{x}" in text
+    assert r"\def\gone{g}" in text
+
+
+def test_prune_refuses_a_definition_inside_an_answer(macro_project, capsys):
+    hw = MACRO_HOMEWORK.replace("It is $\\vx$.", "\\def\\key{42}\nIt is $\\vx$.")
+    write(macro_project / "hw" / "hw1.qmd", hw)
+    assert generate("--prune-macros", "true") == 1
+    assert "macro definition inside an answer-key-only div" in capsys.readouterr().out
+    assert generate() == 0
+
+
+@needs_quarto
+def test_check_passes_with_macros_pruned(macro_project, capsys):
+    assert generate("--prune-macros", "true") == 0
+    assert check("--prune-macros", "true") == 0
+    assert "1 answer(s) removed" in capsys.readouterr().out
+
+
+@needs_quarto
+def test_check_fails_when_a_needed_macro_is_dropped(macro_project, capsys):
+    assert generate("--prune-macros", "true") == 0
+    path = student(macro_project)
+    path.write_text(path.read_text().replace("\\providecommand{\\vecf}[1]{\\tilde{#1}}\n", ""))
+    assert check("--prune-macros", "true") == 1
+    assert "does not match" in capsys.readouterr().out
+
+
+@needs_quarto
+def test_check_fails_on_a_macro_the_source_lacks(macro_project, capsys):
+    assert generate("--prune-macros", "true") == 0
+    path = student(macro_project)
+    path.write_text(path.read_text().replace("\\def\\~{\\sim}", "\\def\\~{\\sim}\n\\def\\key{42}"))
+    assert check("--prune-macros", "true") == 1
+    assert "macro definition its source does not have" in capsys.readouterr().out
+
+
+@needs_quarto
+def test_check_refuses_a_macro_inside_an_answer_in_source(macro_project, capsys):
+    assert generate("--prune-macros", "true") == 0
+    hw = MACRO_HOMEWORK.replace("It is $\\vx$.", "\\def\\key{42}\n\nIt is $\\vx$.")
+    write(macro_project / "hw" / "hw1.qmd", hw)
+    assert check("--prune-macros", "true") == 1
+    assert "macro definition inside an answer-key-only div" in capsys.readouterr().out
+
+
+@needs_quarto
+def test_check_names_a_dropped_empty_block(project, capsys):
+    # The empty refs div renders as no text at all, so the message has to
+    # name it rather than print '' against '(nothing)'.
+    write(project / "hw" / "hw1.qmd", HOMEWORK + "\n::: {#refs}\n:::\n")
+    assert generate() == 0
+    path = student(project)
+    path.write_text(path.read_text().replace("::: {#refs}\n:::\n", ""))
+    assert check() == 1
+    assert "expected '(an empty Div #refs)', found '(nothing)'" in capsys.readouterr().out

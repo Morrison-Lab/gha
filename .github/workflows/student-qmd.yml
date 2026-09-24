@@ -36,6 +36,10 @@ on:
         description: Also remove fenced code blocks that run quarto render.
         type: boolean
         default: false
+      prune-macros:
+        description: Keep only the LaTeX macro definitions the student file uses.
+        type: boolean
+        default: false
       require-answers:
         description: Fail a source that has no answer-key-only div, rather than warn.
         type: boolean
@@ -108,6 +112,7 @@ jobs:
           answer-profiles: ${{ inputs.answer-profiles }}
           student-profile: ${{ inputs.student-profile }}
           drop-render-chunks: ${{ inputs.drop-render-chunks }}
+          prune-macros: ${{ inputs.prune-macros }}
           require-answers: ${{ inputs.require-answers }}
           check: ${{ inputs.check }}
           render: ${{ inputs.render }}
