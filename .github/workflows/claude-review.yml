@@ -155,7 +155,9 @@ jobs:
           # Workflow-edit detection routes through detect-pr-workflow-edits.sh (gha#920).
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). A 200 with a short list is
-          # not a complete tree. Keep in sync with list-pr-changed-files.sh.
+          # not a complete tree, and reaching the 3000-file cap fails closed
+          # directly in case .changed_files is clamped or capped (gha#917).
+          # Keep in sync with list-pr-changed-files.sh.
           changed=$(jq -r '.changed_files' <<< "$PR_JSON")
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
@@ -172,9 +174,9 @@ jobs:
             if [ -n "$files" ]; then
               listed=$(printf '%s\n' "$files" | grep -c . || true)
             fi
-            if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
+            if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -ge 3000 ] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
-              NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files, cap 3000). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
               printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
                 | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                     --method POST \

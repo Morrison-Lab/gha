@@ -15,14 +15,21 @@
 #
 # Usage: list-pr-changed-files.sh
 # Env:
-#   REPO        owner/name (required)
-#   PR_NUMBER   pull request number (required)
+#   REPO                owner/name (required)
+#   PR_NUMBER           pull request number (required)
+#   GITHUB_PR_FILES_CAP endpoint file limit (optional, default 3000)
 # Prints filenames to stdout, one per line.
 # Exit:
 #   0  complete list (may be empty)
 #   1  usage
 #   2  API failure or truncated list
 set -euo pipefail
+
+# Cap for GitHub's REST /pulls/{n}/files endpoint (GitHub caps at 3000 files).
+# A listing that reaches or exceeds the cap is treated as truncated regardless
+# of what .changed_files reports, protecting against .changed_files also being
+# capped or clamped (gha#917).
+GITHUB_PR_FILES_CAP="${GITHUB_PR_FILES_CAP:-3000}"
 
 if [ -z "${REPO:-}" ] || [ -z "${PR_NUMBER:-}" ]; then
   echo "list-pr-changed-files.sh: REPO and PR_NUMBER are required" >&2
@@ -50,8 +57,12 @@ if [ -n "$files" ]; then
   listed=$(printf '%s\n' "$files" | grep -c . || true)
 fi
 
-if [ "$listed" -lt "$changed" ]; then
-  echo "list-pr-changed-files.sh: listed $listed of $changed files for PR #$PR_NUMBER (GitHub caps this endpoint at 3000)" >&2
+if [ "$listed" -ge "$GITHUB_PR_FILES_CAP" ] || [ "$listed" -lt "$changed" ]; then
+  if [ "$listed" -ge "$GITHUB_PR_FILES_CAP" ]; then
+    echo "list-pr-changed-files.sh: listed $listed files for PR #$PR_NUMBER, reaching the $GITHUB_PR_FILES_CAP-file endpoint cap (changed_files=$changed); failing closed because the list may be truncated" >&2
+  else
+    echo "list-pr-changed-files.sh: listed $listed of $changed files for PR #$PR_NUMBER (GitHub caps this endpoint at $GITHUB_PR_FILES_CAP)" >&2
+  fi
   exit 2
 fi
 
