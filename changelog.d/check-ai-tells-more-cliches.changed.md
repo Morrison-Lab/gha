@@ -8,3 +8,6 @@
   ("serves as a").
   The multi-word names that `ignore-tells` recognizes are now derived from
   the catalog, so a new pattern name is never split into single words.
+  The reference page now names
+  [*Principles of Scientific Writing*](https://morrison-lab.github.io/psw/chapters/avoid-ai-tells.html)
+  as the canonical list this catalog draws from.
