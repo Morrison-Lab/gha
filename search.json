@@ -736,7 +736,7 @@
     "href": "reference/check-ai-tells.html",
     "title": "check-ai-tells",
     "section": "",
-    "text": "Scans narrative prose in Markdown and Quarto files (*.md, *.qmd, *.Rmd) for AI tell patterns (e.g. overused vocabulary, negation-reversal antithesis, signposting filler), computing tell density per 1,000 words.",
+    "text": "Scans narrative prose in Markdown and Quarto files (*.md, *.qmd, *.Rmd) for AI tell patterns (e.g. overused vocabulary, negation-reversal antithesis, signposting filler), computing tell density per 1,000 words.\nThe catalog is the mechanical subset of the prose rules in Principles of Scientific Writing, which is the canonical list. Add a tell there first, then add a pattern here when a regex can find it.",
     "crumbs": [
       "Overview",
       "Reference",
