@@ -267,7 +267,7 @@ runs:
       # (--max-old-space-size=8192,--max-heap-size=8192) and appends any
       # user-supplied QUARTO_DENO_V8_OPTIONS after those defaults; V8 lets
       # the last occurrence of a flag win, so this override takes effect.
-      # Large multi-chapter sites (d-morrison/rme, ~37 pages) exceed 8 GB
+      # Large multi-chapter sites (Morrison-Lab/rme, ~37 pages) exceed 8 GB
       # of cumulative heap late in `quarto render` and crash with
       # "Fatal JavaScript out of memory" (exit 133); standard GitHub
       # runners have 16 GB of RAM, so 12 GB leaves headroom for R and the
