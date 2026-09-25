@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+# check-one-function-per-file: allow-multiple
 
 # Scans Markdown and Quarto prose for AI tell patterns and computes tell density.
 # Supports full file scanning or diff-scoped scanning against a base ref (gha#382).
