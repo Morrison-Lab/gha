@@ -1,9 +1,17 @@
 #!/usr/bin/env Rscript
+# check-one-function-per-file: allow-multiple
 
 # Scans Markdown and Quarto prose for AI tell patterns and computes tell density.
 # Supports full file scanning or diff-scoped scanning against a base ref (gha#382).
 
 # ── Pattern Catalog ──────────────────────────────────────────────────────────
+
+# The canonical list of AI tells is Principles of Scientific Writing,
+# https://morrison-lab.github.io/psw/chapters/avoid-ai-tells.html
+# (source: Morrison-Lab/psw, chapters/avoid-ai-tells.qmd). This catalog is its
+# regex-checkable subset: add a tell to psw first, then here.
+# tests/test-check-ai-tells.R checks LEXICAL_TELLS against a psw checkout when
+# PSW_AI_TELLS_FILE names that file.
 
 LEXICAL_TELLS <- c(
   "delve", "leverage", "utilize", "seamlessly", "seamless", "robust",
@@ -13,7 +21,10 @@ LEXICAL_TELLS <- c(
   "embark", "unlock", "elevate", "game-changer", "gamechanger",
   "cutting-edge", "state-of-the-art", "ever-evolving", "treasure trove",
   "fast-paced", "in the realm of", "at the heart of", "more than just",
-  "shed light", "dive into", "dive in", "deep dive", "actionable"
+  "shed light", "dive into", "dive in", "deep dive", "actionable",
+  "bolster", "meticulous", "groundbreaking", "empower", "streamline",
+  "synergy", "pave the way", "at its core", "in essence", "boils down to",
+  "key takeaway", "when it comes to", "intersection of"
 )
 
 RHETORICAL_PATTERNS <- list(
@@ -24,6 +35,34 @@ RHETORICAL_PATTERNS <- list(
   list(
     pattern = "(?i)\\b(?:it(?:\\s+is|'s)\\s+worth\\s+noting\\s+that|it(?:\\s+is|'s)\\s+important\\s+to\\s+note|it(?:\\s+is|'s)\\s+essential\\s+to\\s+understand\\s+that)\\b",
     name = "signposting filler"
+  ),
+  list(
+    pattern = "(?i)\\b(?:here(?:'s|\\s+is)\\s+(?:the\\s+thing|why|the\\s+catch)|put\\s+simply|the\\s+short\\s+answer)\\b",
+    name = "throat-clearing lead-in"
+  ),
+  list(
+    pattern = "(?i)\\b(?:the|so\\s+the)\\s+(?:result|answer|catch|twist|takeaway|upshot)\\?",
+    name = "answered rhetorical question"
+  ),
+  list(
+    pattern = "(?i)\\b(?:let(?:'s|\\s+us)\\s+(?:dive|unpack|explore)|great\\s+question|i\\s+hope\\s+this\\s+helps)\\b",
+    name = "assistant chatter"
+  ),
+  list(
+    pattern = "(?i)\\bnot\\s+because\\b[^.!?]*\\bbut\\s+because\\b",
+    name = "not-because reframe"
+  ),
+  list(
+    pattern = "(?i)\\bforces?\\s+(?:you|the\\s+reader|us)\\b",
+    name = "personified abstraction"
+  ),
+  list(
+    pattern = "(?i),\\s+(?:highlighting|underscoring|showcasing|ensuring\\s+that)\\b",
+    name = "editorializing tail"
+  ),
+  list(
+    pattern = "(?i)\\b(?:serves|stands)\\s+as\\s+(?:a|an|the)\\s+(?:bridge|testament|reminder|cornerstone|catalyst|beacon|foundation|gateway|springboard|linchpin)\\b",
+    name = "inflated copula"
   )
 )
 
@@ -229,18 +268,16 @@ scan_file_prose <- function(file_path, added_lines_only = NULL) {
 
 # ── Ignore Tells Parsing ──────────────────────────────────────────────────────
 
-MULTI_WORD_TELLS <- c(
-  "negation-reversal antithesis",
-  "signposting filler",
-  "in the realm of",
-  "at the heart of",
-  "more than just",
-  "shed light",
-  "dive into",
-  "dive in",
-  "deep dive",
-  "treasure trove"
-)
+# Derived from the catalog so a new multi-word tell or pattern name is never
+# split into single words by a space-separated ignore list. Longest first, so a
+# name that contains another is matched before it.
+MULTI_WORD_TELLS <- local({
+  names <- c(
+    vapply(RHETORICAL_PATTERNS, function(rp) rp$name, character(1)),
+    grep(" ", LEXICAL_TELLS, value = TRUE, fixed = TRUE)
+  )
+  unique(names[order(-nchar(names))])
+})
 
 parse_ignore_tells <- function(raw_arg) {
   if (is.null(raw_arg) || !nzchar(raw_arg)) return(character(0))
