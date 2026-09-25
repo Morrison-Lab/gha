@@ -8,6 +8,9 @@ website:
     Central, reusable GitHub Actions for d-morrison / UCD-SERG / ucdavis
     R-package and Quarto repositories.
   site-url: "https://morrison-lab.github.io/gha/"
+  google-analytics: "G-VLDZY2T3JF"
+  cookie-consent:
+    type: implied
   repo-url: "https://github.com/Morrison-Lab/gha"
   repo-subdir: website
   repo-actions: [issue, edit]
