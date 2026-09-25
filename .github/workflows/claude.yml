@@ -1599,7 +1599,7 @@ jobs:
               if [ -n "$files" ]; then
                 listed=$(printf '%s\n' "$files" | grep -c . || true)
               fi
-              if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
+              if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -ge 3000 ] || [ "$listed" -lt "$changed" ]; then
                 echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
                 skip_dispatch=true
               else

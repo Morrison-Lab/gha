@@ -180,6 +180,33 @@ else
   failures=$((failures + 1))
 fi
 
+# Test 11b: A files list reaching the endpoint cap (listed >= GITHUB_PR_FILES_CAP)
+# skips review dispatch even if changed_files matches listed (gha#917).
+cat <<'EOF' > "$tmp_dir/gh"
+#!/usr/bin/env bash
+for arg in "$@"; do
+  case "$arg" in
+    */files*)
+      printf 'README.md\nCLAUDE.md\n'
+      exit 0
+      ;;
+    */pulls/*)
+      echo '{"changed_files":2}'
+      exit 0
+      ;;
+  esac
+done
+echo "Unexpected gh invocation: $@" >&2
+exit 1
+EOF
+out="$(PATH="$tmp_dir:$PATH" GITHUB_PR_FILES_CAP=2 PR_NUMBER="132" PR_BRANCH="feature-capped" PR_HEAD_REPO="Morrison-Lab/gha" GH_REPO="Morrison-Lab/gha" DRY_RUN="true" bash "$dispatch_script")"
+if echo "$out" | grep -q 'Could not list a complete file set' && echo "$out" | grep -q 'skipping review dispatch' && ! echo "$out" | grep -q 'gh workflow run'; then
+  echo "OK   dispatch-review.sh skips dispatch when the files list reaches endpoint cap"
+else
+  echo "::error::dispatch-review.sh did not skip dispatch on an endpoint-capped files list; got: $out"
+  failures=$((failures + 1))
+fi
+
 # Test 12: A complete non-workflow list keeps --ref. Without this, a
 # comparison that always failed would pass test 11 and still look like a
 # fix.

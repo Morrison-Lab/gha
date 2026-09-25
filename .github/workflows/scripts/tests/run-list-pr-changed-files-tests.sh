@@ -154,6 +154,51 @@ else
   fail "empty complete list" "exit $err_code, out=$(printf '%q' "$out")"
 fi
 
+# Reaching endpoint cap (listed >= GITHUB_PR_FILES_CAP) fails closed even when changed_files == listed (gha#917)
+set +e
+err_out="$(PATH="$tmp_dir:$PATH" GITHUB_PR_FILES_CAP=2 GH_PR_BODY='{"changed_files":2}' GH_FILES_BODY=$'README.md\nCLAUDE.md\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>&1)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 2 ] && [[ "$err_out" == *"reaching the 2-file endpoint cap"* ]]; then
+  pass "reaching endpoint cap fails closed (changed_files == listed == cap)"
+else
+  fail "reaching endpoint cap fails closed" "exit $err_code, $err_out"
+fi
+
+# Exceeding endpoint cap (listed > GITHUB_PR_FILES_CAP) fails closed
+set +e
+err_out="$(PATH="$tmp_dir:$PATH" GITHUB_PR_FILES_CAP=2 GH_PR_BODY='{"changed_files":3}' GH_FILES_BODY=$'README.md\nCLAUDE.md\nCONTRIBUTING.md\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>&1)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 2 ] && [[ "$err_out" == *"reaching the 2-file endpoint cap"* ]]; then
+  pass "exceeding endpoint cap fails closed (listed > cap)"
+else
+  fail "exceeding endpoint cap fails closed" "exit $err_code, $err_out"
+fi
+
+# Below endpoint cap with matching changed_files succeeds
+set +e
+out="$(PATH="$tmp_dir:$PATH" GITHUB_PR_FILES_CAP=3 GH_PR_BODY='{"changed_files":2}' GH_FILES_BODY=$'README.md\nCLAUDE.md\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>/dev/null)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 0 ] && [ "$out" = $'README.md\nCLAUDE.md' ]; then
+  pass "list below endpoint cap succeeds when changed_files matches"
+else
+  fail "list below endpoint cap" "exit $err_code, out=$(printf '%q' "$out")"
+fi
+
+# Default 3000 cap test: generating 3000 files with changed_files: 3000 fails closed
+files_3000="$(seq -f "file_%g.txt" 3000)"
+set +e
+err_out="$(PATH="$tmp_dir:$PATH" GH_PR_BODY='{"changed_files":3000}' GH_FILES_BODY="$files_3000" REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>&1)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 2 ] && [[ "$err_out" == *"reaching the 3000-file endpoint cap"* ]]; then
+  pass "default 3000 cap fails closed when PR has 3000 files"
+else
+  fail "default 3000 cap" "exit $err_code, $err_out"
+fi
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures/$checked list-pr-changed-files test(s) failed"
   exit 1

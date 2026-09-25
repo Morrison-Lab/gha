@@ -393,8 +393,9 @@ only ever shipped at `@v3`.
   reporting a clean tree.
   Listing the PR's files goes through `list-pr-changed-files.sh`, which
   fails closed when GitHub's files endpoint returns fewer paths than the
-  PR's `changed_files` count (that endpoint caps at 3000 files; a 200 with
-  a short list is not a complete tree).
+  PR's `changed_files` count or reaches the 3000-file cap (gha#917;
+  that endpoint caps at 3000 files;
+  a 200 with a short list is not a complete tree).
 
 - `.github/actions/restore-default-branch-workflows/` -- wraps
   `scripts/restore-default-branch-workflows.sh`, which deletes
@@ -3374,7 +3375,8 @@ CI runs it in the same `review-fail-check` job.
 `.github/workflows/scripts/tests/run-list-pr-changed-files-tests.sh`
 exercises `list-pr-changed-files.sh` against a stub `gh`: a complete
 two-file list succeeds, a list shorter than `changed_files` fails
-closed, and a missing or non-numeric `changed_files` fails closed.
+closed, reaching or exceeding the endpoint cap fails closed (gha#917),
+and a missing or non-numeric `changed_files` fails closed.
 CI runs it in the same `review-fail-check` job.
 The truncated-list case is the one to keep if the suite is ever trimmed:
 GitHub's files endpoint caps at 3000 and still returns 200, so treating
