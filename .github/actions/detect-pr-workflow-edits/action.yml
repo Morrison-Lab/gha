@@ -62,6 +62,6 @@ runs:
           echo "edited_path=" >> "$GITHUB_OUTPUT"
           echo "list_incomplete=true" >> "$GITHUB_OUTPUT"
         else
-          PR_CHANGED_FILES="$files" bash "$ACTION_SCRIPTS/detect-pr-workflow-edits.sh"
+          bash "$ACTION_SCRIPTS/detect-pr-workflow-edits.sh" - <<< "$files"
           echo "list_incomplete=false" >> "$GITHUB_OUTPUT"
         fi
