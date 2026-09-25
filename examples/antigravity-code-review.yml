@@ -58,6 +58,12 @@ jobs:
         with:
           workflow-ref: ${{ github.workflow_ref }}
 
+      - name: Install helper scripts
+        id: scripts
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
+        with:
+          scripts: 'detect-pr-workflow-edits.sh'
+
       - name: Dispatch Antigravity Review
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -65,6 +71,7 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           PR_NUMBER: ${{ github.event.issue.number }}
           WF_PATH: ${{ steps.this-wf.outputs.path }}
+          SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
@@ -100,7 +107,7 @@ jobs:
           # Skip review dispatch on workflow edits so the push-triggered pull_request review
           # (which restores default-branch workflows after checkout) runs to completion on
           # the PR head without being destroyed by a default-branch dispatch.
-          # Keep this grep in sync with detect-pr-workflow-edits.sh (gha#598).
+          # Workflow-edit detection routes through detect-pr-workflow-edits.sh (gha#920).
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). Keep in sync with
           # list-pr-changed-files.sh.
@@ -129,15 +136,18 @@ jobs:
                     -H "Content-Type: application/json" \
                     --input - > /dev/null || true
               exit 0
-            elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
-              echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
-              NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
-              printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
-                | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-                    --method POST \
-                    -H "Content-Type: application/json" \
-                    --input - > /dev/null || true
-              exit 0
+            else
+              detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
+              if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
+                echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
+                NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+                printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+                  | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                      --method POST \
+                      -H "Content-Type: application/json" \
+                      --input - > /dev/null || true
+                exit 0
+              fi
             fi
           fi
 

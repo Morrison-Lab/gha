@@ -88,7 +88,7 @@ if [ -z "${PR_CHANGED_FILES+x}" ]; then
 fi
 workflow_edits=false
 if [ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" != "true" ]; then
-  detect_out="$(PR_CHANGED_FILES="$PR_CHANGED_FILES" CALLER_WF_PATH="" bash "$script_dir/detect-pr-workflow-edits.sh")"
+  detect_out="$(CALLER_WF_PATH="" bash "$script_dir/detect-pr-workflow-edits.sh" - <<< "$PR_CHANGED_FILES")"
   workflow_edits="$(sed -n 's/^workflow_edits=//p' <<<"$detect_out")"
 fi
 

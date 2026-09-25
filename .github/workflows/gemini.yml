@@ -149,6 +149,16 @@ jobs:
         with:
           pr-number: ${{ github.event.issue.number || github.event.pull_request.number }}
 
+      - name: Install helper scripts
+        id: scripts
+        if: >-
+          steps.detect-mention.outputs.match != 'false' &&
+          steps.detect-review.outputs.match == 'true' &&
+          (github.event.issue.pull_request || github.event.pull_request.number)
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
+        with:
+          scripts: 'detect-pr-workflow-edits.sh'
+
       - name: Dispatch review workflow if @gemini review was requested
         id: dispatch-review
         continue-on-error: true
@@ -165,6 +175,7 @@ jobs:
           PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
+          SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
         run: |
           set -euo pipefail
           if [ -z "$PR_NUMBER" ]; then
@@ -185,7 +196,7 @@ jobs:
             exit 1
           fi
           echo "Dispatching $REVIEW_WF for PR #$PR_NUMBER ($PR_BRANCH)."
-          # Keep this grep in sync with detect-pr-workflow-edits.sh (gha#598).
+          # Workflow-edit detection routes through detect-pr-workflow-edits.sh (gha#598, gha#920).
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). Keep in sync with
           # list-pr-changed-files.sh.
@@ -217,16 +228,19 @@ jobs:
                     --method POST \
                     -H "Content-Type: application/json" \
                     --input - > /dev/null || true
-            elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
-              echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
-              skip_dispatch=true
-              echo "reason=workflow_edits" >> "$GITHUB_OUTPUT"
-              NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
-              printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
-                | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
-                    --method POST \
-                    -H "Content-Type: application/json" \
-                    --input - > /dev/null || true
+            else
+              detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
+              if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
+                echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
+                skip_dispatch=true
+                echo "reason=workflow_edits" >> "$GITHUB_OUTPUT"
+                NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+                printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+                  | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                      --method POST \
+                      -H "Content-Type: application/json" \
+                      --input - > /dev/null || true
+              fi
             fi
           fi
           if [ "$skip_dispatch" = "false" ]; then
@@ -734,6 +748,16 @@ jobs:
           run-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install helper scripts for issue finalization
+        id: scripts-finalize
+        if: |
+          always() &&
+          steps.gate.outputs.skip != 'true' &&
+          steps.push_issue.outputs.pushed == 'true'
+        uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
+        with:
+          scripts: 'detect-pr-workflow-edits.sh'
+
       - name: Finalize PR for issue trigger
         id: finalize_issue
         if: |
@@ -751,6 +775,7 @@ jobs:
           REVIEW_WF: ${{ inputs.review-workflow-file }}
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           GEMINI_OUTCOME: ${{ steps.gemini-run.outcome }}
+          SCRIPTS_DIR: ${{ steps.scripts-finalize.outputs.dir }}
         run: |
           PR_URL="${EAGER_PR_URL:-$EXISTING_PR_URL}"
 
@@ -770,6 +795,7 @@ jobs:
           fi
           gh_review_ref=(--ref "$BRANCH")
           PR_NUM="${PR_URL##*/}"
+          # Workflow-edit detection routes through detect-pr-workflow-edits.sh (gha#598, gha#920).
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). Keep in sync with
           # list-pr-changed-files.sh.
@@ -787,9 +813,12 @@ jobs:
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
               skip_dispatch=true
-            elif grep -qE '^\.github/workflows/[^/]+\.ya?ml$' <<< "$files"; then
-              echo "::notice::PR #$PR_NUM edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#921)."
-              skip_dispatch=true
+            else
+              detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
+              if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
+                echo "::notice::PR #$PR_NUM edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#921)."
+                skip_dispatch=true
+              fi
             fi
           fi
           if [ "$skip_dispatch" = "false" ]; then

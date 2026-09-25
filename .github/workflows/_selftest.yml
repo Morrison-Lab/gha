@@ -967,7 +967,7 @@ jobs:
           # scripts the composite wraps; a wiring skip that never calls
           # them disagrees on a workflow-editing PR.
           if files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash .github/workflows/scripts/list-pr-changed-files.sh); then
-            want=$(PR_CHANGED_FILES="$files" CALLER_WF_PATH=".github/workflows/claude-review.yml" bash .github/workflows/scripts/detect-pr-workflow-edits.sh | sed -n 's/^workflow_edits=//p')
+            want=$(CALLER_WF_PATH=".github/workflows/claude-review.yml" bash .github/workflows/scripts/detect-pr-workflow-edits.sh - <<< "$files" | sed -n 's/^workflow_edits=//p')
             # A composite that always takes the incomplete-list branch
             # (workflow_edits=true, list_incomplete=true, empty path)
             # would still match want=true on this PR. The list succeeded

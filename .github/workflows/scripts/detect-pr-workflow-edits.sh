@@ -15,9 +15,9 @@
 #   - dispatch-review.sh, to omit `--ref` so GitHub executes the
 #     default-branch caller rather than the PR head's YAML
 #
-# Usage: detect-pr-workflow-edits.sh
+# Usage: detect-pr-workflow-edits.sh [-]
 # Env:
-#   PR_CHANGED_FILES  newline-separated paths (required; may be empty)
+#   PR_CHANGED_FILES  newline-separated paths (required unless '-' is passed to read stdin; may be empty)
 #   CALLER_WF_PATH    e.g. .github/workflows/claude-review.yml (optional)
 # Prints:
 #   workflow_edits=true|false
@@ -25,17 +25,21 @@
 #   edited_path=<first matching workflow, or empty>
 set -euo pipefail
 
-# A missing variable is a caller bug: treating it as "no files" would
-# report a clean tree and dispatch `--ref` at an untrusted head.
-if [ -z "${PR_CHANGED_FILES+x}" ]; then
+CALLER_WF_PATH="${CALLER_WF_PATH:-}"
+
+if [ "${1:-}" = "-" ] || [ "${PR_CHANGED_FILES:-}" = "-" ]; then
+  # Read from stdin to avoid kernel MAX_ARG_STRLEN (128 KiB) limits when
+  # passing large file lists in PR_CHANGED_FILES environment variable.
+  files=$(cat | tr -d '\r')
+elif [ -n "${PR_CHANGED_FILES+x}" ]; then
+  # Strip CR so a CRLF list from the GitHub API still matches.
+  files=$(printf '%s' "$PR_CHANGED_FILES" | tr -d '\r')
+else
+  # A missing variable is a caller bug: treating it as "no files" would
+  # report a clean tree and dispatch `--ref` at an untrusted head.
   echo "detect-pr-workflow-edits.sh: PR_CHANGED_FILES is unset" >&2
   exit 2
 fi
-
-CALLER_WF_PATH="${CALLER_WF_PATH:-}"
-
-# Strip CR so a CRLF list from the GitHub API still matches.
-files=$(printf '%s' "$PR_CHANGED_FILES" | tr -d '\r')
 
 workflow_edits=false
 caller_edited=false
