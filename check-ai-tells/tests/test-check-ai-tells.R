@@ -67,6 +67,24 @@ check("Found foster", "foster" %in% tells_found)
 check("Found landscape", "landscape" %in% tells_found)
 check("Found antithesis", "negation-reversal antithesis" %in% tells_found)
 check("Found signposting", "signposting filler" %in% tells_found)
+for (tell in c("throat-clearing lead-in", "answered rhetorical question",
+               "assistant chatter", "not-because reframe",
+               "personified abstraction", "editorializing tail",
+               "inflated copula")) {
+  check(paste("Found", tell), tell %in% tells_found)
+}
+
+# Near-misses for the rhetorical patterns must not fire (gha AI-cliche list).
+near_miss <- tempfile(fileext = ".md")
+writeLines(c(
+  "The result is a faster fit, and the answer was checked by hand.",
+  "It failed because the input was empty, but the retry succeeded.",
+  "The value stands at four, and the server works as a cache.",
+  "Here is the table of results for each run."
+), near_miss)
+res_near <- scan_file_prose(near_miss)
+check("Near-miss sentences have 0 findings", length(res_near$findings) == 0L,
+      sapply(res_near$findings, function(x) x$tell), character(0))
 
 # Test 4: Unified diff parsing and multi-line additions
 sample_diff <- c(
@@ -119,5 +137,11 @@ check("Ignored delve suppressed", !("delve" %in% tells_filtered), "delve" %in% t
 check("Ignored elevate suppressed", !("elevate" %in% tells_filtered), "elevate" %in% tells_filtered, FALSE)
 check("Ignored signposting filler suppressed", !("signposting filler" %in% tells_filtered), "signposting filler" %in% tells_filtered, FALSE)
 check("Unignored holistic remains", "holistic" %in% tells_filtered, "holistic" %in% tells_filtered, TRUE)
+
+# New multi-word pattern names survive a space-separated ignore list.
+res_new_mw <- parse_ignore_tells("inflated copula delve when it comes to")
+check("Parse new multi-word names from a space-separated list",
+      setequal(res_new_mw, c("inflated copula", "when it comes to", "delve")),
+      res_new_mw, c("inflated copula", "when it comes to", "delve"))
 
 cat("\nAll check-ai-tells tests passed successfully.\n")
