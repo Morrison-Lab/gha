@@ -80,11 +80,26 @@ writeLines(c(
   "The result is a faster fit, and the answer was checked by hand.",
   "It failed because the input was empty, but the retry succeeded.",
   "The value stands at four, and the server works as a cache.",
-  "Here is the table of results for each run."
+  "Here is the table of results for each run.",
+  "This file serves as the operator manual for the repository."
 ), near_miss)
 res_near <- scan_file_prose(near_miss)
 check("Near-miss sentences have 0 findings", length(res_near$findings) == 0L,
       sapply(res_near$findings, function(x) x$tell), character(0))
+
+# Test 3b: every lexical tell is in psw's canonical list, when a psw
+# checkout is available (psw is private, so CI may not have one).
+psw_file <- Sys.getenv("PSW_AI_TELLS_FILE")
+if (nzchar(psw_file)) {
+  psw_text <- tolower(paste(readLines(psw_file, warn = FALSE), collapse = " "))
+  not_in_psw <- LEXICAL_TELLS[!vapply(
+    LEXICAL_TELLS, function(w) grepl(w, psw_text, fixed = TRUE), logical(1)
+  )]
+  check("Every lexical tell is in psw avoid-ai-tells", length(not_in_psw) == 0L,
+        not_in_psw, character(0))
+} else {
+  cat("Skipping psw sync check: PSW_AI_TELLS_FILE is not set\n")
+}
 
 # Test 4: Unified diff parsing and multi-line additions
 sample_diff <- c(

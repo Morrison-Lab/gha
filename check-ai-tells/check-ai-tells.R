@@ -5,6 +5,13 @@
 
 # ── Pattern Catalog ──────────────────────────────────────────────────────────
 
+# The canonical list of AI tells is Principles of Scientific Writing,
+# https://morrison-lab.github.io/psw/chapters/avoid-ai-tells.html
+# (source: Morrison-Lab/psw, chapters/avoid-ai-tells.qmd). This catalog is its
+# regex-checkable subset: add a tell to psw first, then here.
+# tests/test-check-ai-tells.R checks LEXICAL_TELLS against a psw checkout when
+# PSW_AI_TELLS_FILE names that file.
+
 LEXICAL_TELLS <- c(
   "delve", "leverage", "utilize", "seamlessly", "seamless", "robust",
   "holistic", "nuanced", "multifaceted", "intricate", "tapestry",
@@ -53,7 +60,7 @@ RHETORICAL_PATTERNS <- list(
     name = "editorializing tail"
   ),
   list(
-    pattern = "(?i)\\b(?:serves|stands)\\s+as\\s+(?:a|an|the)\\b",
+    pattern = "(?i)\\b(?:serves|stands)\\s+as\\s+(?:a|an|the)\\s+(?:bridge|testament|reminder|cornerstone|catalyst|beacon|foundation|gateway|springboard|linchpin)\\b",
     name = "inflated copula"
   )
 )
