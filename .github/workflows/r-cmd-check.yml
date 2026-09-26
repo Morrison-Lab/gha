@@ -217,7 +217,7 @@ jobs:
 
       - name: Set up Pandoc
         if: inputs.setup-pandoc
-        uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
 
       - name: Set up Julia
         if: inputs.setup-julia
@@ -267,14 +267,14 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
 
       - name: Set up R
-        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           r-version: ${{ matrix.config.r }}
           http-user-agent: ${{ matrix.config.http-user-agent }}
           use-public-rspm: true
 
       - name: Set up R dependencies
-        uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           working-directory: ${{ inputs.path }}
           extra-packages: |
@@ -292,7 +292,7 @@ jobs:
             -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
 
       - name: Check
-        uses: r-lib/actions/check-r-package@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/check-r-package@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           working-directory: ${{ inputs.path }}
           upload-snapshots: ${{ inputs.upload-snapshots }}
@@ -331,7 +331,7 @@ jobs:
 
       - name: Set up Pandoc
         if: inputs.setup-pandoc
-        uses: r-lib/actions/setup-pandoc@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-pandoc@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
 
       - name: Set up Julia
         if: inputs.setup-julia
@@ -359,12 +359,12 @@ jobs:
         uses: quarto-dev/quarto-actions/setup@8a96df13519ee81fd526f2dfca5962811136661b # v2.2.0
 
       - name: Set up R
-        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           use-public-rspm: true
 
       - name: Set up R dependencies
-        uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           working-directory: ${{ inputs.path }}
           dependencies: '"hard"'
@@ -391,7 +391,7 @@ jobs:
             -e "using Pkg; Pkg.instantiate(); Pkg.precompile()"
 
       - name: Check
-        uses: r-lib/actions/check-r-package@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/check-r-package@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           working-directory: ${{ inputs.path }}
           upload-snapshots: ${{ inputs.upload-snapshots }}
