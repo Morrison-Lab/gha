@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// check-one-function-per-file: allow-multiple
 // Flag list-item merge splices: a list item spliced directly onto a previous
 // item's continuation line with no intervening blank line (#324).
 //
@@ -114,10 +115,11 @@ function findListItemSplices(path, addedLinesSet) {
   return findings;
 }
 
-function report(findings) {
+function report(findings, fail = true) {
   console.log(`Found ${findings.length} list-item merge splice(s):\n`);
+  const level = fail ? 'error' : 'warning';
   for (const f of findings) {
-    console.log(`::error file=${f.path},line=${f.line}::List-item merged directly onto continuation line without intervening blank line: ${f.lineText}`);
+    console.log(`::${level} file=${f.path},line=${f.line}::List-item merged directly onto continuation line without intervening blank line: ${f.lineText}`);
   }
 }
 
@@ -152,7 +154,7 @@ function main() {
     return;
   }
 
-  report(findings);
+  report(findings, fail);
   if (fail) process.exitCode = 1;
 }
 
