@@ -342,9 +342,11 @@ jobs:
           gh pr checkout "$PR_NUMBER"
           echo "branch=$(git rev-parse --abbrev-ref HEAD)" >> "$GITHUB_OUTPUT"
           echo "starting_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          PR_INFO=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '{head_repo: .head.repo.full_name, state: .state, merged: .merged}')
+          PR_INFO=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '{head_repo: .head.repo.full_name, state: .state, merged: .merged, base_ref: .base.ref, default_branch: .base.repo.default_branch}')
           echo "head_repo=$(echo "$PR_INFO" | jq -r .head_repo)" >> "$GITHUB_OUTPUT"
           echo "is_closed=$(echo "$PR_INFO" | jq -r 'if .state == "closed" or .merged == true then "true" else "false" end')" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$(echo "$PR_INFO" | jq -r '.base_ref // empty')" >> "$GITHUB_OUTPUT"
+          echo "is_stacked=$(echo "$PR_INFO" | jq -r 'if .base_ref and .default_branch and .base_ref != .default_branch then "true" else "false" end')" >> "$GITHUB_OUTPUT"
 
       - name: Set up branch for issue trigger
         id: issue_branch
@@ -670,6 +672,9 @@ jobs:
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
           pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
           is-closed: ${{ steps.pr_checkout.outputs.is_closed }}
+          base-branch: ${{ steps.pr_checkout.outputs.base_branch }}
+          is-stacked: ${{ steps.pr_checkout.outputs.is_stacked }}
+          default-branch: ${{ github.event.repository.default_branch }}
           review-workflow-file: ${{ inputs.review-workflow-file }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 

@@ -11,7 +11,7 @@
 # Used by detect-pr-workflow-edits/action.yml and dispatch-review.sh.
 # Callers that cannot invoke this script (dispatch-on-comment jobs with
 # no checkout; @v2-pinned install-gha-scripts until the tag slides) copy
-# the listed < changed_files comparison; keep those copies in sync.
+# the listed < changed_files and base-branch comparisons; keep those copies in sync.
 #
 # Usage: list-pr-changed-files.sh
 # Env:

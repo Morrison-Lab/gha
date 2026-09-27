@@ -2,9 +2,10 @@
 # Resolves PR_BRANCH / PR_HEAD_REPO if empty, determines whether --ref should
 # be passed (substituting --ref "$DEFAULT_BRANCH" when known, or omitting --ref,
 # for fork PRs or when PR_BRANCH cannot be resolved --- gha#931; skipping review
-# dispatch when the PR edits top-level workflow YAML to avoid preempting PR-head
-# checks or attaching checks to the default branch --- gha#598, gha#921), and
-# dispatches the review workflow via `gh workflow run`. (gha#419)
+# dispatch when the PR edits top-level workflow YAML or targets a non-default base
+# branch / stacked PR to avoid executing untrusted inherited workflow YAML or
+# preempting PR-head checks --- gha#598, gha#916, gha#921), and dispatches the
+# review workflow via `gh workflow run`. (gha#419)
 set -euo pipefail
 
 if [[ "${1:-}" == "--self-test" ]]; then
