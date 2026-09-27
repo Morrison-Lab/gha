@@ -80,6 +80,13 @@ jobs:
         with:
           scripts: 'detect-pr-workflow-edits.sh'
 
+      - name: Resolve PR info
+        id: pr-info
+        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v3
+        with:
+          pr-number: ${{ github.event.issue.number }}
+          default-branch: ${{ github.event.repository.default_branch }}
+
       - name: Dispatch a review for the commented PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -88,6 +95,13 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           WF_PATH: ${{ steps.this-wf.outputs.path }}
           SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
+          IS_CLOSED: ${{ steps.pr-info.outputs.is_closed }}
+          IS_STACKED: ${{ steps.pr-info.outputs.is_stacked }}
+          PR_BASE_BRANCH: ${{ steps.pr-info.outputs.pr_base_branch }}
+          PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
+          PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
+          REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
+          PR_CHANGED_FILES: ${{ steps.pr-info.outputs.pr_changed_files }}
           # Passed via env (not inlined into the script) so the comment body is
           # a shell value, never interpreted as script — avoids injection.
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -114,34 +128,30 @@ jobs:
           # .github/workflows/<file> portion; strip the directory to get just
           # the filename `gh workflow run` expects.
           WF_FILE=$(basename "$WF_PATH")
-          # This job never checks out the repo, so the PR's head branch has to
-          # be looked up explicitly. --ref pins the dispatched run's check-runs
-          # to that branch instead of the default branch workflow_dispatch
-          # falls back to when no ref is given (#285) --- without it,
-          # `require-review`'s check-run lands on the wrong commit and never
-          # supersedes a stale cancelled run tied to the PR's real head SHA.
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
-          PR_STATE=$(jq -r '.state' <<< "$PR_JSON")
-          PR_MERGED=$(jq -r '.merged' <<< "$PR_JSON")
-          if [[ "$PR_STATE" == "closed" || "$PR_MERGED" == "true" ]]; then
+          # Metadata resolved via resolve-pr-info (gha#369, gha#916, gha#932).
+          if [ "$IS_CLOSED" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
             exit 0
           fi
-          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
-          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+          if [ "$IS_STACKED" = "true" ]; then
+            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
+            NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of default branch (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
+            printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+              | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                  --method POST \
+                  -H "Content-Type: application/json" \
+                  --input - > /dev/null || true
+            exit 0
+          fi
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) (/review comment)."
-          # A fork PR's head branch only exists in the fork, not in $REPO, so
-          # --ref would fail to resolve there (#289). Fall back to the default branch
-          # for fork PRs; the resulting check-run mis-attributes to the
-          # default branch (the pre-#285 behavior), the lesser problem.
-          # Pass --ref explicitly with DEFAULT_BRANCH when falling back, avoiding
-          # an unauthenticated GraphQL defaultBranchRef query on private repos (#931).
           DEFAULT_REF_ARGS=()
           if [ -n "${DEFAULT_BRANCH:-}" ]; then
             DEFAULT_REF_ARGS=(--ref "$DEFAULT_BRANCH")
           fi
-          REF_ARGS=(--ref "$PR_BRANCH")
-          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+          REF_ARGS=()
+          if [ -n "$REF_ARG" ]; then
+            REF_ARGS=($REF_ARG)
+          elif [ "$PR_HEAD_REPO" != "$REPO" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE from the default branch."
             REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
           fi
@@ -158,11 +168,11 @@ jobs:
           # not a complete tree, and reaching the 3000-file cap fails closed
           # directly in case .changed_files is clamped or capped (gha#917).
           # Keep in sync with list-pr-changed-files.sh.
-          changed=$(jq -r '.changed_files' <<< "$PR_JSON")
+          changed="$PR_CHANGED_FILES"
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
             echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
-            NOTICE_BODY=":warning: \`/review\` was not dispatched: Could not verify whether PR #$PR_NUMBER edits workflow files (file list API failed). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+            NOTICE_BODY=":warning: \`/review\` was not dispatched: Could not verify whether PR #$PR_NUMBER edits workflow files (file list API failed). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
             printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
               | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                   --method POST \
@@ -176,7 +186,7 @@ jobs:
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -ge 3000 ] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
-              NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files, cap 3000). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files, cap 3000). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
               printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
                 | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                     --method POST \
@@ -187,7 +197,7 @@ jobs:
               detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
               if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
                 echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
-                NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+                NOTICE_BODY=":warning: \`/review\` was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
                 printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
                   | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                       --method POST \

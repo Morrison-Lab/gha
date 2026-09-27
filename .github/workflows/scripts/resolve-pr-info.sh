@@ -11,12 +11,14 @@ fi
 PR_NUMBER="${PR_NUMBER:-}"
 REPO="${GH_REPO:-${REPO:-}}"
 PR_JSON="${PR_JSON:-}"
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --pr-number) PR_NUMBER="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --json-data) PR_JSON="$2"; shift 2 ;;
+    --default-branch) DEFAULT_BRANCH="$2"; shift 2 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
@@ -34,6 +36,9 @@ pr_head_repo=""
 pr_state=""
 pr_merged=""
 is_closed="false"
+pr_base_branch=""
+is_stacked="false"
+pr_changed_files=""
 if [[ -n "$PR_JSON" ]]; then
   pr_branch=$(jq -r '.head.ref // .branch // empty' <<< "$PR_JSON" 2>/dev/null || true)
   pr_head_repo=$(jq -r '.head.repo.full_name // .head_repo // empty' <<< "$PR_JSON" 2>/dev/null || true)
@@ -45,6 +50,13 @@ if [[ -n "$PR_JSON" ]]; then
   if [[ "$pr_state_lower" == "closed" || "$pr_state_lower" == "merged" || "$pr_merged_lower" == "true" || "$is_closed_field" == "true" ]]; then
     is_closed="true"
   fi
+  pr_base_branch=$(jq -r '.base.ref // empty' <<< "$PR_JSON" 2>/dev/null || true)
+  repo_default_branch=$(jq -r '.base.repo.default_branch // empty' <<< "$PR_JSON" 2>/dev/null || true)
+  effective_default="${DEFAULT_BRANCH:-$repo_default_branch}"
+  if [[ -n "$pr_base_branch" && -n "$effective_default" && "$pr_base_branch" != "$effective_default" ]]; then
+    is_stacked="true"
+  fi
+  pr_changed_files=$(jq -r 'if .changed_files != null then (.changed_files | tostring) else empty end' <<< "$PR_JSON" 2>/dev/null || true)
 fi
 
 is_fork="false"
@@ -65,6 +77,9 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   echo "pr_state=$pr_state" >> "$GITHUB_OUTPUT"
   echo "pr_merged=$pr_merged" >> "$GITHUB_OUTPUT"
   echo "is_closed=$is_closed" >> "$GITHUB_OUTPUT"
+  echo "pr_base_branch=$pr_base_branch" >> "$GITHUB_OUTPUT"
+  echo "is_stacked=$is_stacked" >> "$GITHUB_OUTPUT"
+  echo "pr_changed_files=$pr_changed_files" >> "$GITHUB_OUTPUT"
 fi
 
 echo "pr_branch=$pr_branch"
@@ -74,3 +89,6 @@ echo "ref_arg=$ref_arg"
 echo "pr_state=$pr_state"
 echo "pr_merged=$pr_merged"
 echo "is_closed=$is_closed"
+echo "pr_base_branch=$pr_base_branch"
+echo "is_stacked=$is_stacked"
+echo "pr_changed_files=$pr_changed_files"

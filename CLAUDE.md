@@ -393,9 +393,12 @@ only ever shipped at `@v3`.
   reporting a clean tree.
   Listing the PR's files goes through `list-pr-changed-files.sh`, which
   fails closed when GitHub's files endpoint returns fewer paths than the
-  PR's `changed_files` count or reaches the 3000-file cap (gha#917;
+  PR's `changed_files` count,
+  reaches the 3000-file cap (gha#917;
   that endpoint caps at 3000 files;
-  a 200 with a short list is not a complete tree).
+  a 200 with a short list is not a complete tree),
+  or targets a base branch other than the default branch (a stacked PR, gha#916;
+  diffs against a non-default base branch omit workflow changes made in earlier stack layers).
 
 - `.github/actions/restore-default-branch-workflows/` -- wraps
   `scripts/restore-default-branch-workflows.sh`, which deletes
@@ -3376,6 +3379,7 @@ CI runs it in the same `review-fail-check` job.
 exercises `list-pr-changed-files.sh` against a stub `gh`: a complete
 two-file list succeeds, a list shorter than `changed_files` fails
 closed, reaching or exceeding the endpoint cap fails closed (gha#917),
+targeting a non-default base branch fails closed (stacked PR, gha#916),
 and a missing or non-numeric `changed_files` fails closed.
 CI runs it in the same `review-fail-check` job.
 The truncated-list case is the one to keep if the suite is ever trimmed:
@@ -4959,8 +4963,9 @@ and emitting an explanatory notice) when:
 1. `detect-pr-workflow-edits.sh` reports the PR edits top-level
    `.github/workflows/*.yml` (gha#598, gha#921);
 
-2. `list-pr-changed-files.sh` cannot produce a complete file set, which sets
-   `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same skip (gha#598, gha#921).
+2. `list-pr-changed-files.sh` cannot produce a complete file set,
+   or targets a non-default base branch (a stacked PR, gha#916),
+   which sets `FORCE_DEFAULT_BRANCH_WORKFLOWS` and forces the same skip (gha#598, gha#916, gha#921).
 
 The script's own header comment names the two default-branch fallback cases
 and the workflow-edits skip case, while omitting the incomplete-file-list skip case ---

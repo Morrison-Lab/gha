@@ -127,6 +127,7 @@ jobs:
         uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v3
         with:
           pr-number: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
+          default-branch: ${{ github.event.repository.default_branch }}
 
       - name: Try candidate review workflows until one dispatches
         id: dispatch-first-available
@@ -143,6 +144,8 @@ jobs:
           PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
           PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
+          IS_STACKED: ${{ steps.pr-info.outputs.is_stacked }}
+          PR_BASE_BRANCH: ${{ steps.pr-info.outputs.pr_base_branch }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
           WATCH_TIMEOUT: ${{ inputs.watch-timeout }}
           SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
@@ -198,10 +201,13 @@ jobs:
           # Skip review dispatch on workflow edits so the push-triggered pull_request review
           # (which restores default-branch workflows after checkout) runs to completion on
           # the PR head without being destroyed by a default-branch dispatch.
+          if [ "$IS_STACKED" = "true" ]; then
+            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921)."
+            exit 0
+          fi
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). Keep in sync with
-          # list-pr-changed-files.sh. This job cannot install that script
-          # via install-gha-scripts@v2 until the tag slides.
+          # list-pr-changed-files.sh.
           changed=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.changed_files') || changed=""
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
@@ -217,7 +223,7 @@ jobs:
             else
               detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
               if [ "$(sed -n 's/^workflow_edits=//p' <<<"$detect_out")" = "true" ]; then
-                echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921). Automatic review runs on push."
+                echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
                 exit 0
               fi
             fi

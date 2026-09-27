@@ -124,7 +124,7 @@ expected_guard='bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files"'
 for target in "${target_files[@]}"; do
   rel_path="${target#$repo_root/}"
   checked=$((checked + 1))
-  if ! grep -Fq "$expected_install" "$target"; then
+  if ! grep -Eq "scripts: '([^']*,)?detect-pr-workflow-edits\.sh(,[^']*)?'" "$target"; then
     echo "FAIL: $rel_path missing required install-gha-scripts step for detect-pr-workflow-edits.sh" >&2
     failures=$((failures + 1))
   elif ! grep -Fq "$expected_guard" "$target"; then

@@ -2,9 +2,10 @@
 # Resolves PR_BRANCH / PR_HEAD_REPO if empty, determines whether --ref should
 # be passed (substituting --ref "$DEFAULT_BRANCH" when known, or omitting --ref,
 # for fork PRs or when PR_BRANCH cannot be resolved --- gha#931; skipping review
-# dispatch when the PR edits top-level workflow YAML to avoid preempting PR-head
-# checks or attaching checks to the default branch --- gha#598, gha#921), and
-# dispatches the review workflow via `gh workflow run`. (gha#419)
+# dispatch when the PR edits top-level workflow YAML or targets a non-default base
+# branch / stacked PR to avoid executing untrusted inherited workflow YAML or
+# preempting PR-head checks --- gha#598, gha#916, gha#921), and dispatches the
+# review workflow via `gh workflow run`. (gha#419)
 set -euo pipefail
 
 if [[ "${1:-}" == "--self-test" ]]; then
@@ -16,23 +17,27 @@ fi
 PR_NUMBER="${PR_NUMBER:-}"
 PR_BRANCH="${PR_BRANCH:-}"
 PR_HEAD_REPO="${PR_HEAD_REPO:-}"
+PR_BASE_BRANCH="${PR_BASE_BRANCH:-}"
 REVIEW_WF="${REVIEW_WF:-claude-code-review.yml}"
 REPO="${GH_REPO:-${REPO:-}}"
 CONTEXT_NOTICE="${CONTEXT_NOTICE:-}"
 DEFAULT_BRANCH="${DEFAULT_BRANCH:-}"
 DRY_RUN="${DRY_RUN:-false}"
 IS_CLOSED="${IS_CLOSED:-false}"
+IS_STACKED="${IS_STACKED:-false}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --pr-number) PR_NUMBER="$2"; shift 2 ;;
     --pr-branch) PR_BRANCH="$2"; shift 2 ;;
     --pr-head-repo) PR_HEAD_REPO="$2"; shift 2 ;;
+    --base-branch) PR_BASE_BRANCH="$2"; shift 2 ;;
     --review-workflow-file) REVIEW_WF="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --context-notice) CONTEXT_NOTICE="$2"; shift 2 ;;
     --default-branch) DEFAULT_BRANCH="$2"; shift 2 ;;
     --is-closed) IS_CLOSED="$2"; shift 2 ;;
+    --is-stacked) IS_STACKED="$2"; shift 2 ;;
     --dry-run) DRY_RUN="true"; shift ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
@@ -53,16 +58,26 @@ if [[ "$IS_CLOSED" == "true" ]]; then
   exit 0
 fi
 
+if [[ "$IS_STACKED" == "true" ]]; then
+  echo "::notice::PR #$PR_NUMBER targets base branch '${PR_BASE_BRANCH:-non-default}' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
+  exit 0
+fi
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ -z "$PR_BRANCH" ]]; then
   echo "PR_BRANCH is empty from checkout step; attempting API lookup for PR #$PR_NUMBER."
-  info=$("$script_dir/resolve-pr-info.sh" --repo "$REPO" --pr-number "$PR_NUMBER")
+  info=$("$script_dir/resolve-pr-info.sh" --repo "$REPO" --pr-number "$PR_NUMBER" ${DEFAULT_BRANCH:+--default-branch "$DEFAULT_BRANCH"})
   PR_BRANCH=$(echo "$info" | sed -n 's/^pr_branch=//p')
   PR_HEAD_REPO=$(echo "$info" | sed -n 's/^pr_head_repo=//p')
   is_closed=$(echo "$info" | sed -n 's/^is_closed=//p')
   if [[ "$is_closed" == "true" ]]; then
     echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
+    exit 0
+  fi
+  is_stacked=$(echo "$info" | sed -n 's/^is_stacked=//p')
+  if [[ "$is_stacked" == "true" ]]; then
+    echo "::notice::PR #$PR_NUMBER targets base branch '$(echo "$info" | sed -n 's/^pr_base_branch=//p')' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
     exit 0
   fi
 fi
@@ -72,16 +87,17 @@ if [[ -n "$CONTEXT_NOTICE" ]]; then
   NOTICE_SUFFIX=" ($CONTEXT_NOTICE)"
 fi
 
-# When the PR edits top-level workflow YAML, GitHub would execute the PR
-# head's copy if we pass `--ref $PR_BRANCH`, while dispatching from the default
-# branch registers check-runs against the default branch rather than the PR head
-# and preempts the in-flight pull_request review (gha#598, gha#921).
-# Skip review dispatch on workflow edits so the push-triggered pull_request review
-# (which restores default-branch workflows after checkout) runs to completion on
+# When the PR edits top-level workflow YAML or targets a non-default base
+# branch (stacked PR), GitHub would execute unreviewed YAML if we pass
+# `--ref $PR_BRANCH`, while dispatching from the default branch registers
+# check-runs against the default branch rather than the PR head and preempts
+# the in-flight pull_request review (gha#598, gha#916, gha#921).
+# Skip review dispatch so the push-triggered pull_request review (which
+# restores default-branch workflows after checkout) runs to completion on
 # the PR head without being destroyed by a default-branch dispatch.
 if [ -z "${PR_CHANGED_FILES+x}" ]; then
-  if ! PR_CHANGED_FILES=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$script_dir/list-pr-changed-files.sh"); then
-    echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+  if ! PR_CHANGED_FILES=$(DEFAULT_BRANCH="$DEFAULT_BRANCH" REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$script_dir/list-pr-changed-files.sh"); then
+    echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#916, gha#921)."
     PR_CHANGED_FILES=""
     FORCE_DEFAULT_BRANCH_WORKFLOWS=true
   fi
@@ -93,10 +109,10 @@ if [ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" != "true" ]; then
 fi
 
 if [[ "$workflow_edits" == "true" ]]; then
-  echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921). Automatic review runs on push."
+  echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
   exit 0
 elif [[ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
-  echo "::notice::Could not verify whether PR #$PR_NUMBER edits workflow files; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921). Automatic review runs on push."
+  echo "::notice::Could not verify whether PR #$PR_NUMBER edits workflow files; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
   exit 0
 fi
 

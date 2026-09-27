@@ -908,9 +908,31 @@ jobs:
           pr-head-repo: 'Morrison-Lab/gha'
           dry-run: 'true'
       - name: Exercise resolve-pr-info composite action end-to-end
+        id: resolve-pr-info-e2e
         uses: ./.github/actions/resolve-pr-info
         with:
           pr-number: '123'
+          default-branch: 'main'
+      - name: Assert resolve-pr-info exposes expected outputs
+        shell: bash
+        env:
+          IS_STACKED: ${{ steps.resolve-pr-info-e2e.outputs.is_stacked }}
+          IS_CLOSED: ${{ steps.resolve-pr-info-e2e.outputs.is_closed }}
+          PR_BASE_BRANCH: ${{ steps.resolve-pr-info-e2e.outputs.pr_base_branch }}
+          PR_STATE: ${{ steps.resolve-pr-info-e2e.outputs.pr_state }}
+          PR_MERGED: ${{ steps.resolve-pr-info-e2e.outputs.pr_merged }}
+          PR_CHANGED_FILES: ${{ steps.resolve-pr-info-e2e.outputs.pr_changed_files }}
+        run: |
+          set -euo pipefail
+          if [[ "$IS_STACKED" != "true" && "$IS_STACKED" != "false" ]]; then
+            echo "::error::resolve-pr-info did not produce a boolean is_stacked output (got '$IS_STACKED')"
+            exit 1
+          fi
+          if [[ "$IS_CLOSED" != "true" && "$IS_CLOSED" != "false" ]]; then
+            echo "::error::resolve-pr-info did not produce a boolean is_closed output (got '$IS_CLOSED')"
+            exit 1
+          fi
+          echo "resolve-pr-info outputs verified: is_stacked=$IS_STACKED, is_closed=$IS_CLOSED, pr_base_branch=$PR_BASE_BRANCH, pr_state=$PR_STATE, pr_merged=$PR_MERGED, pr_changed_files=$PR_CHANGED_FILES"
       - name: Exercise build-self-review-skip-notice composite action end-to-end
         id: skip-notice-e2e
         uses: ./.github/actions/build-self-review-skip-notice

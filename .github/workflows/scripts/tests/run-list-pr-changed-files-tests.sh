@@ -199,6 +199,51 @@ else
   fail "default 3000 cap" "exit $err_code, $err_out"
 fi
 
+# Stacked PR tests (gha#916):
+# 1. Base branch differs from repo default branch -> fails closed with exit code 2
+set +e
+err_out="$(PATH="$tmp_dir:$PATH" GH_PR_BODY='{"changed_files":1,"base":{"ref":"feature-a","repo":{"default_branch":"main"}}}' GH_FILES_BODY=$'foo.txt\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>&1)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 2 ] && [[ "$err_out" == *"stacked PR"* ]]; then
+  pass "stacked PR (base.ref != default_branch) fails closed"
+else
+  fail "stacked PR fails closed" "exit $err_code, $err_out"
+fi
+
+# 2. Base branch matches repo default branch -> succeeds
+set +e
+out="$(PATH="$tmp_dir:$PATH" GH_PR_BODY='{"changed_files":1,"base":{"ref":"main","repo":{"default_branch":"main"}}}' GH_FILES_BODY=$'foo.txt\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>/dev/null)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 0 ] && [ "$out" = "foo.txt" ]; then
+  pass "PR targeting default branch succeeds"
+else
+  fail "PR targeting default branch" "exit $err_code, out=$(printf '%q' "$out")"
+fi
+
+# 3. DEFAULT_BRANCH env var overrides default branch and matches base.ref -> succeeds
+set +e
+out="$(PATH="$tmp_dir:$PATH" DEFAULT_BRANCH="feature-a" GH_PR_BODY='{"changed_files":1,"base":{"ref":"feature-a","repo":{"default_branch":"main"}}}' GH_FILES_BODY=$'foo.txt\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>/dev/null)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 0 ] && [ "$out" = "foo.txt" ]; then
+  pass "DEFAULT_BRANCH matching base.ref succeeds"
+else
+  fail "DEFAULT_BRANCH matching base.ref" "exit $err_code, out=$(printf '%q' "$out")"
+fi
+
+# 4. DEFAULT_BRANCH env var overrides default branch and differs from base.ref -> fails closed
+set +e
+err_out="$(PATH="$tmp_dir:$PATH" DEFAULT_BRANCH="production" GH_PR_BODY='{"changed_files":1,"base":{"ref":"main","repo":{"default_branch":"main"}}}' GH_FILES_BODY=$'foo.txt\n' REPO=Morrison-Lab/gha PR_NUMBER=1 bash "$list" 2>&1)"
+err_code=$?
+set -e
+if [ "$err_code" -eq 2 ] && [[ "$err_out" == *"stacked PR"* ]]; then
+  pass "DEFAULT_BRANCH differing from base.ref fails closed"
+else
+  fail "DEFAULT_BRANCH differing from base.ref" "exit $err_code, $err_out"
+fi
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures/$checked list-pr-changed-files test(s) failed"
   exit 1

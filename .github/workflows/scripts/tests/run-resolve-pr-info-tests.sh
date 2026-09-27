@@ -10,14 +10,15 @@ resolve_script="$repo_root/.github/workflows/scripts/resolve-pr-info.sh"
 failures=0
 
 # Test 1: Same-repo PR
-same_repo_json='{"head": {"ref": "patch-1", "repo": {"full_name": "Morrison-Lab/gha"}}}'
+same_repo_json='{"head": {"ref": "patch-1", "repo": {"full_name": "Morrison-Lab/gha"}}, "changed_files": 5}'
 output_file="$(mktemp)"
 GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$same_repo_json" >/dev/null
 
 if grep -q '^pr_branch=patch-1$' "$output_file" && \
    grep -q '^pr_head_repo=Morrison-Lab/gha$' "$output_file" && \
    grep -q '^is_fork=false$' "$output_file" && \
-   grep -q '^ref_arg=--ref patch-1$' "$output_file"; then
+   grep -q '^ref_arg=--ref patch-1$' "$output_file" && \
+   grep -q '^pr_changed_files=5$' "$output_file"; then
   echo "OK   resolve-pr-info.sh handles same-repo PR correctly"
 else
   echo "::error::resolve-pr-info.sh failed same-repo PR test"
@@ -102,6 +103,50 @@ if grep -q '^pr_branch=patch-gql$' "$output_file" && \
   echo "OK   resolve-pr-info.sh handles uppercase CLOSED and boolean closed field correctly"
 else
   echo "::error::resolve-pr-info.sh failed uppercase CLOSED test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 7: Non-stacked PR (base.ref == default_branch)
+non_stacked_json='{"head": {"ref": "patch-feature"}, "base": {"ref": "main", "repo": {"default_branch": "main"}}}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$non_stacked_json" >/dev/null
+
+if grep -q '^pr_base_branch=main$' "$output_file" && \
+   grep -q '^is_stacked=false$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh identifies non-stacked PR correctly"
+else
+  echo "::error::resolve-pr-info.sh failed non-stacked PR test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 8: Stacked PR (base.ref != default_branch)
+stacked_json='{"head": {"ref": "patch-feature-2"}, "base": {"ref": "patch-feature-1", "repo": {"default_branch": "main"}}}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$stacked_json" >/dev/null
+
+if grep -q '^pr_base_branch=patch-feature-1$' "$output_file" && \
+   grep -q '^is_stacked=true$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh identifies stacked PR correctly"
+else
+  echo "::error::resolve-pr-info.sh failed stacked PR test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 9: Stacked PR with --default-branch argument override
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --default-branch "patch-feature-1" --json-data "$stacked_json" >/dev/null
+
+if grep -q '^pr_base_branch=patch-feature-1$' "$output_file" && \
+   grep -q '^is_stacked=false$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh handles --default-branch override correctly"
+else
+  echo "::error::resolve-pr-info.sh failed --default-branch override test"
   cat "$output_file"
   failures=$((failures + 1))
 fi

@@ -651,9 +651,11 @@ jobs:
           # in this repo, so a later `gh workflow run --ref <branch>` dispatch
           # would fail to resolve it (#289). Surface the head repo so dispatch
           # steps below can fall back to no --ref for fork PRs.
-          PR_INFO=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '{head_repo: .head.repo.full_name, state: .state, merged: .merged}')
+          PR_INFO=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '{head_repo: .head.repo.full_name, state: .state, merged: .merged, base_ref: .base.ref, default_branch: .base.repo.default_branch}')
           echo "head_repo=$(echo "$PR_INFO" | jq -r .head_repo)" >> "$GITHUB_OUTPUT"
           echo "is_closed=$(echo "$PR_INFO" | jq -r 'if .state == "closed" or .merged == true then "true" else "false" end')" >> "$GITHUB_OUTPUT"
+          echo "base_branch=$(echo "$PR_INFO" | jq -r '.base_ref // empty')" >> "$GITHUB_OUTPUT"
+          echo "is_stacked=$(echo "$PR_INFO" | jq -r 'if .base_ref and .default_branch and .base_ref != .default_branch then "true" else "false" end')" >> "$GITHUB_OUTPUT"
 
       # Create a feature branch for issue triggers so Claude's commits land
       # somewhere durable (agent mode skips the action's built-in setup-branch
@@ -1282,6 +1284,9 @@ jobs:
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
           pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
           is-closed: ${{ steps.pr_checkout.outputs.is_closed }}
+          base-branch: ${{ steps.pr_checkout.outputs.base_branch }}
+          is-stacked: ${{ steps.pr_checkout.outputs.is_stacked }}
+          default-branch: ${{ github.event.repository.default_branch }}
           review-workflow-file: ${{ inputs.review-workflow-file }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -1351,6 +1356,9 @@ jobs:
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
           pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
           is-closed: ${{ steps.pr_checkout.outputs.is_closed }}
+          base-branch: ${{ steps.pr_checkout.outputs.base_branch }}
+          is-stacked: ${{ steps.pr_checkout.outputs.is_stacked }}
+          default-branch: ${{ github.event.repository.default_branch }}
           review-workflow-file: ${{ inputs.review-workflow-file }}
           context-notice: 'for the late review request'
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -1370,6 +1378,9 @@ jobs:
           pr-branch: ${{ steps.pr_checkout.outputs.branch }}
           pr-head-repo: ${{ steps.pr_checkout.outputs.head_repo }}
           is-closed: ${{ steps.pr_checkout.outputs.is_closed }}
+          base-branch: ${{ steps.pr_checkout.outputs.base_branch }}
+          is-stacked: ${{ steps.pr_checkout.outputs.is_stacked }}
+          default-branch: ${{ github.event.repository.default_branch }}
           review-workflow-file: ${{ inputs.review-workflow-file }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -1529,7 +1540,7 @@ jobs:
           steps.push_issue.outputs.pushed == 'true'
         uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
         with:
-          scripts: 'detect-pr-workflow-edits.sh'
+          scripts: 'detect-pr-workflow-edits.sh,resolve-pr-info.sh'
 
       - name: Finalize PR for issue trigger
         id: finalize_issue
@@ -1550,6 +1561,7 @@ jobs:
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           CLAUDE_OUTCOME: ${{ steps.claude.outcome }}
           COST_USD: ${{ steps.cost.outputs.cost }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           SCRIPTS_DIR: ${{ steps.scripts-finalize.outputs.dir }}
         run: |
           # Recomputed rather than carried over: both values come from step
@@ -1589,24 +1601,33 @@ jobs:
             # GET .../files is capped at 3000 files (GitHub REST "List pull
             # requests files", read 2026-08-26). Keep in sync with
             # list-pr-changed-files.sh.
-            changed=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq '.changed_files') || changed=""
-            listed=0
-            if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files?per_page=100" --paginate --jq '.[].filename'); then
-              echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
+            pr_info=$(bash "$SCRIPTS_DIR/resolve-pr-info.sh" --repo "${{ github.repository }}" --pr-number "$PR_NUM" --default-branch "$DEFAULT_BRANCH")
+            is_stacked=$(sed -n 's/^is_stacked=//p' <<< "$pr_info")
+            base_ref=$(sed -n 's/^pr_base_branch=//p' <<< "$pr_info")
+            if [ "$is_stacked" = "true" ]; then
+              echo "::notice::PR #$PR_NUM targets base '$base_ref' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#916, gha#921)."
               skip_dispatch=true
-            else
-              files=$(printf '%s' "$files" | tr -d '\r')
-              if [ -n "$files" ]; then
-                listed=$(printf '%s\n' "$files" | grep -c . || true)
-              fi
-              if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -ge 3000 ] || [ "$listed" -lt "$changed" ]; then
+            fi
+            changed=$(sed -n 's/^pr_changed_files=//p' <<< "$pr_info")
+            if [ "$skip_dispatch" = "false" ]; then
+              listed=0
+              if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files?per_page=100" --paginate --jq '.[].filename'); then
                 echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
                 skip_dispatch=true
               else
-                detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
-                if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
-                  echo "::notice::PR #$PR_NUM edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#921)."
+                files=$(printf '%s' "$files" | tr -d '\r')
+                if [ -n "$files" ]; then
+                  listed=$(printf '%s\n' "$files" | grep -c . || true)
+                fi
+                if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -ge 3000 ] || [ "$listed" -lt "$changed" ]; then
+                  echo "::notice::Could not list a complete file set for PR #$PR_NUM; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
                   skip_dispatch=true
+                else
+                  detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
+                  if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
+                    echo "::notice::PR #$PR_NUM edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#921)."
+                    skip_dispatch=true
+                  fi
                 fi
               fi
             fi
