@@ -67,6 +67,7 @@ jobs:
     permissions:
       actions: write        # dispatch this workflow via `gh workflow run`
       issues: write         # acknowledge the /review comment
+      pull-requests: read   # read PR metadata and changed files list
     steps:
       - name: Parse this workflow's ref
         id: this-wf

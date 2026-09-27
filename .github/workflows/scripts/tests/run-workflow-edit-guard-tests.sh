@@ -144,6 +144,23 @@ else
   echo "OK   gemini.yml contains both detect-pr-workflow-edits.sh dispatch guard sites"
 fi
 
+dispatch_on_comment_files=(
+  "$repo_root/.github/workflows/claude-review.yml"
+  "$repo_root/examples/antigravity-code-review.yml"
+  "$repo_root/examples/claude-code-review.yml"
+)
+
+for target in "${dispatch_on_comment_files[@]}"; do
+  rel_path="${target#$repo_root/}"
+  checked=$((checked + 1))
+  if ! sed -n '/dispatch-on-comment:/,/steps:/p' "$target" | grep -Eq '^\s*pull-requests:\s*read'; then
+    echo "FAIL: $rel_path dispatch-on-comment missing pull-requests: read (gha#612)" >&2
+    failures=$((failures + 1))
+  else
+    echo "OK   $rel_path dispatch-on-comment declares pull-requests: read"
+  fi
+done
+
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures/$checked workflow-edit guard test(s) failed." >&2
   exit 1
