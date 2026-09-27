@@ -116,6 +116,13 @@ jobs:
         with:
           scripts: 'detect-pr-workflow-edits.sh'
 
+      - name: Resolve PR info
+        id: pr-info
+        uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v3
+        with:
+          pr-number: ${{ github.event.issue.number }}
+          default-branch: ${{ github.event.repository.default_branch }}
+
       - name: Dispatch a review for the commented PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -124,6 +131,13 @@ jobs:
           PR_NUMBER: ${{ github.event.issue.number }}
           WF_PATH: ${{ steps.this-wf.outputs.path }}
           SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
+          IS_CLOSED: ${{ steps.pr-info.outputs.is_closed }}
+          IS_STACKED: ${{ steps.pr-info.outputs.is_stacked }}
+          PR_BASE_BRANCH: ${{ steps.pr-info.outputs.pr_base_branch }}
+          PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
+          PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
+          REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
+          PR_CHANGED_FILES: ${{ steps.pr-info.outputs.pr_changed_files }}
           # Passed via env (not inlined) so the comment body is a shell value,
           # never interpreted as script — avoids injection.
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -150,26 +164,14 @@ jobs:
           # This workflow's filename, so the dispatch resolves whatever you
           # name the file — WF_PATH is the .github/workflows/<file> portion.
           WF_FILE=$(basename "$WF_PATH")
-          # This job never checks out the repo, so the PR's head branch has to
-          # be looked up explicitly. --ref pins the dispatched run's check-runs
-          # to that branch instead of the default branch workflow_dispatch
-          # falls back to when no ref is given --- without it, a required
-          # review check-run can land on the wrong commit.
-          PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
-          PR_STATE=$(jq -r '.state' <<< "$PR_JSON")
-          PR_MERGED=$(jq -r '.merged' <<< "$PR_JSON")
-          if [[ "$PR_STATE" == "closed" || "$PR_MERGED" == "true" ]]; then
+          # Metadata resolved via resolve-pr-info (gha#369, gha#916, gha#932).
+          if [ "$IS_CLOSED" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER is closed or merged; skipping review dispatch."
             exit 0
           fi
-          PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
-          PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
-          PR_BASE_BRANCH=$(jq -r '.base.ref // empty' <<< "$PR_JSON")
-          REPO_DEFAULT_BRANCH=$(jq -r '.base.repo.default_branch // empty' <<< "$PR_JSON")
-          EFFECTIVE_DEFAULT="${DEFAULT_BRANCH:-$REPO_DEFAULT_BRANCH}"
-          if [ -n "$PR_BASE_BRANCH" ] && [ -n "$EFFECTIVE_DEFAULT" ] && [ "$PR_BASE_BRANCH" != "$EFFECTIVE_DEFAULT" ]; then
-            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch '$EFFECTIVE_DEFAULT' (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
-            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of \`$EFFECTIVE_DEFAULT\` (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+          if [ "$IS_STACKED" = "true" ]; then
+            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
+            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of default branch (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
             printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
               | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                   --method POST \
@@ -178,18 +180,14 @@ jobs:
             exit 0
           fi
           echo "Dispatching $WF_FILE to review PR #$PR_NUMBER ($PR_BRANCH) ($TRIGGER comment)."
-          # A fork PR's head branch only exists in the fork, not in $REPO, so
-          # --ref would fail to resolve there. Fall back to the default branch for fork
-          # PRs; the resulting check-run mis-attributes to the default branch
-          # (the no-ref behavior), the lesser problem.
-          # Pass --ref explicitly with DEFAULT_BRANCH when falling back, avoiding
-          # an unauthenticated GraphQL defaultBranchRef query on private repos (#931).
           DEFAULT_REF_ARGS=()
           if [ -n "${DEFAULT_BRANCH:-}" ]; then
             DEFAULT_REF_ARGS=(--ref "$DEFAULT_BRANCH")
           fi
-          REF_ARGS=(--ref "$PR_BRANCH")
-          if [ "$PR_HEAD_REPO" != "$REPO" ]; then
+          REF_ARGS=()
+          if [ -n "$REF_ARG" ]; then
+            REF_ARGS=($REF_ARG)
+          elif [ "$PR_HEAD_REPO" != "$REPO" ]; then
             echo "::notice::PR #$PR_NUMBER is from a fork ($PR_HEAD_REPO); dispatching $WF_FILE from the default branch."
             REF_ARGS=("${DEFAULT_REF_ARGS[@]}")
           fi
@@ -204,7 +202,7 @@ jobs:
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). A 200 with a short list is
           # not a complete tree. Keep in sync with list-pr-changed-files.sh.
-          changed=$(jq -r '.changed_files' <<< "$PR_JSON")
+          changed="$PR_CHANGED_FILES"
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
             echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."

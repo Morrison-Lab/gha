@@ -38,6 +38,7 @@ pr_merged=""
 is_closed="false"
 pr_base_branch=""
 is_stacked="false"
+pr_changed_files=""
 if [[ -n "$PR_JSON" ]]; then
   pr_branch=$(jq -r '.head.ref // .branch // empty' <<< "$PR_JSON" 2>/dev/null || true)
   pr_head_repo=$(jq -r '.head.repo.full_name // .head_repo // empty' <<< "$PR_JSON" 2>/dev/null || true)
@@ -55,6 +56,7 @@ if [[ -n "$PR_JSON" ]]; then
   if [[ -n "$pr_base_branch" && -n "$effective_default" && "$pr_base_branch" != "$effective_default" ]]; then
     is_stacked="true"
   fi
+  pr_changed_files=$(jq -r 'if .changed_files != null then (.changed_files | tostring) else empty end' <<< "$PR_JSON" 2>/dev/null || true)
 fi
 
 is_fork="false"
@@ -77,6 +79,7 @@ if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   echo "is_closed=$is_closed" >> "$GITHUB_OUTPUT"
   echo "pr_base_branch=$pr_base_branch" >> "$GITHUB_OUTPUT"
   echo "is_stacked=$is_stacked" >> "$GITHUB_OUTPUT"
+  echo "pr_changed_files=$pr_changed_files" >> "$GITHUB_OUTPUT"
 fi
 
 echo "pr_branch=$pr_branch"
@@ -88,3 +91,4 @@ echo "pr_merged=$pr_merged"
 echo "is_closed=$is_closed"
 echo "pr_base_branch=$pr_base_branch"
 echo "is_stacked=$is_stacked"
+echo "pr_changed_files=$pr_changed_files"

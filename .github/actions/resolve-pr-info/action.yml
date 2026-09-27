@@ -54,6 +54,9 @@ outputs:
     description: >-
       'true' if the PR is closed or merged, else 'false'.
     value: ${{ steps.resolve.outputs.is_closed }}
+  pr_changed_files:
+    description: The number of changed files in the PR.
+    value: ${{ steps.resolve.outputs.pr_changed_files }}
 
 runs:
   using: composite

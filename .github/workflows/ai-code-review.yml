@@ -148,7 +148,6 @@ jobs:
           PR_BASE_BRANCH: ${{ steps.pr-info.outputs.pr_base_branch }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
           WATCH_TIMEOUT: ${{ inputs.watch-timeout }}
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
           # Secret *presence*, not the secret itself: a `secrets.X != ''`
           # comparison is evaluated by Actions, so only the boolean reaches
@@ -203,7 +202,7 @@ jobs:
           # (which restores default-branch workflows after checkout) runs to completion on
           # the PR head without being destroyed by a default-branch dispatch.
           if [ "$IS_STACKED" = "true" ]; then
-            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921). Automatic review runs on push."
+            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921)."
             exit 0
           fi
           # GET .../files is capped at 3000 files (GitHub REST "List pull

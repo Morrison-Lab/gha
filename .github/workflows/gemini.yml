@@ -178,6 +178,7 @@ jobs:
           IS_STACKED: ${{ steps.pr-info.outputs.is_stacked }}
           PR_BASE_BRANCH: ${{ steps.pr-info.outputs.pr_base_branch }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
+          PR_CHANGED_FILES: ${{ steps.pr-info.outputs.pr_changed_files }}
           SCRIPTS_DIR: ${{ steps.scripts.outputs.dir }}
         run: |
           set -euo pipefail
@@ -196,7 +197,7 @@ jobs:
           fi
           if [ "$IS_STACKED" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
-            echo "reason=workflow_edits" >> "$GITHUB_OUTPUT"
+            echo "reason=stacked_pr" >> "$GITHUB_OUTPUT"
             NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of default branch (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
             printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
               | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
@@ -214,7 +215,7 @@ jobs:
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). Keep in sync with
           # list-pr-changed-files.sh.
-          changed=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.changed_files') || changed=""
+          changed="$PR_CHANGED_FILES"
           listed=0
           skip_dispatch=false
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
@@ -279,6 +280,9 @@ jobs:
             skip=true
           elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_REASON" = "workflow_edits" ]; then
             echo "Workflow edits on PR; skipping review dispatch and agent."
+            skip=true
+          elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_REASON" = "stacked_pr" ]; then
+            echo "Stacked PR; skipping review dispatch and agent."
             skip=true
           elif [ "$REVIEW_MATCH" = "true" ] && [ "$DISPATCH_OUTCOME" = "success" ]; then
             echo "Review dispatched to the dedicated reviewer; skipping the agent."
@@ -775,7 +779,7 @@ jobs:
           steps.push_issue.outputs.pushed == 'true'
         uses: Morrison-Lab/gha/.github/actions/install-gha-scripts@v3
         with:
-          scripts: 'detect-pr-workflow-edits.sh'
+          scripts: 'detect-pr-workflow-edits.sh,resolve-pr-info.sh'
 
       - name: Finalize PR for issue trigger
         id: finalize_issue
@@ -820,15 +824,14 @@ jobs:
           # GET .../files is capped at 3000 files (GitHub REST "List pull
           # requests files", read 2026-08-26). Keep in sync with
           # list-pr-changed-files.sh.
-          pr_meta=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM" --jq '{changed_files: .changed_files, base_ref: .base.ref, default_branch: .base.repo.default_branch}') || pr_meta=""
-          changed=$(jq -r '.changed_files // empty' <<< "$pr_meta")
-          base_ref=$(jq -r '.base_ref // empty' <<< "$pr_meta")
-          repo_default_branch=$(jq -r '.default_branch // empty' <<< "$pr_meta")
-          effective_default="${DEFAULT_BRANCH:-$repo_default_branch}"
-          if [ -n "$base_ref" ] && [ -n "$effective_default" ] && [ "$base_ref" != "$effective_default" ]; then
-            echo "::notice::PR #$PR_NUM targets base '$base_ref' instead of default branch '$effective_default' (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#916, gha#921)."
+          pr_info=$(bash "$SCRIPTS_DIR/resolve-pr-info.sh" --repo "${{ github.repository }}" --pr-number "$PR_NUM" --default-branch "$DEFAULT_BRANCH")
+          is_stacked=$(sed -n 's/^is_stacked=//p' <<< "$pr_info")
+          base_ref=$(sed -n 's/^pr_base_branch=//p' <<< "$pr_info")
+          if [ "$is_stacked" = "true" ]; then
+            echo "::notice::PR #$PR_NUM targets base '$base_ref' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight reviews (gha#916, gha#921)."
             skip_dispatch=true
           fi
+          changed=$(sed -n 's/^pr_changed_files=//p' <<< "$pr_info")
           if [ "$skip_dispatch" = "false" ]; then
             listed=0
             if ! files=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUM/files?per_page=100" --paginate --jq '.[].filename'); then

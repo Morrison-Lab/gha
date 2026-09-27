@@ -10,14 +10,15 @@ resolve_script="$repo_root/.github/workflows/scripts/resolve-pr-info.sh"
 failures=0
 
 # Test 1: Same-repo PR
-same_repo_json='{"head": {"ref": "patch-1", "repo": {"full_name": "Morrison-Lab/gha"}}}'
+same_repo_json='{"head": {"ref": "patch-1", "repo": {"full_name": "Morrison-Lab/gha"}}, "changed_files": 5}'
 output_file="$(mktemp)"
 GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$same_repo_json" >/dev/null
 
 if grep -q '^pr_branch=patch-1$' "$output_file" && \
    grep -q '^pr_head_repo=Morrison-Lab/gha$' "$output_file" && \
    grep -q '^is_fork=false$' "$output_file" && \
-   grep -q '^ref_arg=--ref patch-1$' "$output_file"; then
+   grep -q '^ref_arg=--ref patch-1$' "$output_file" && \
+   grep -q '^pr_changed_files=5$' "$output_file"; then
   echo "OK   resolve-pr-info.sh handles same-repo PR correctly"
 else
   echo "::error::resolve-pr-info.sh failed same-repo PR test"
