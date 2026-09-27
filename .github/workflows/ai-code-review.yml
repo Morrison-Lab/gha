@@ -127,6 +127,7 @@ jobs:
         uses: Morrison-Lab/gha/.github/actions/resolve-pr-info@v3
         with:
           pr-number: ${{ inputs.pr-number || github.event.pull_request.number || github.event.issue.number }}
+          default-branch: ${{ github.event.repository.default_branch }}
 
       - name: Try candidate review workflows until one dispatches
         id: dispatch-first-available
@@ -143,6 +144,8 @@ jobs:
           PR_BRANCH: ${{ steps.pr-info.outputs.pr_branch }}
           PR_HEAD_REPO: ${{ steps.pr-info.outputs.pr_head_repo }}
           IS_FORK: ${{ steps.pr-info.outputs.is_fork }}
+          IS_STACKED: ${{ steps.pr-info.outputs.is_stacked }}
+          PR_BASE_BRANCH: ${{ steps.pr-info.outputs.pr_base_branch }}
           REF_ARG: ${{ steps.pr-info.outputs.ref_arg }}
           WATCH_TIMEOUT: ${{ inputs.watch-timeout }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
@@ -199,19 +202,14 @@ jobs:
           # Skip review dispatch on workflow edits so the push-triggered pull_request review
           # (which restores default-branch workflows after checkout) runs to completion on
           # the PR head without being destroyed by a default-branch dispatch.
-          # GET .../files is capped at 3000 files (GitHub REST "List pull
-          # requests files", read 2026-08-26). Keep in sync with
-          # list-pr-changed-files.sh. This job cannot install that script
-          # via install-gha-scripts@v2 until the tag slides.
-          pr_meta=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '{changed_files: .changed_files, base_ref: .base.ref, default_branch: .base.repo.default_branch}') || pr_meta=""
-          changed=$(jq -r '.changed_files // empty' <<< "$pr_meta")
-          base_ref=$(jq -r '.base_ref // empty' <<< "$pr_meta")
-          repo_default_branch=$(jq -r '.default_branch // empty' <<< "$pr_meta")
-          effective_default="${DEFAULT_BRANCH:-$repo_default_branch}"
-          if [ -n "$base_ref" ] && [ -n "$effective_default" ] && [ "$base_ref" != "$effective_default" ]; then
-            echo "::notice::PR #$PR_NUMBER targets base '$base_ref' instead of default branch '$effective_default' (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921). Automatic review runs on push."
+          if [ "$IS_STACKED" = "true" ]; then
+            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921). Automatic review runs on push."
             exit 0
           fi
+          # GET .../files is capped at 3000 files (GitHub REST "List pull
+          # requests files", read 2026-08-26). Keep in sync with
+          # list-pr-changed-files.sh.
+          changed=$(gh api "repos/$REPO/pulls/$PR_NUMBER" --jq '.changed_files') || changed=""
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
             echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
