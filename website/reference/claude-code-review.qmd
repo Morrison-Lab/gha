@@ -143,9 +143,10 @@ On a dispatched review it also omits `--ref`, so GitHub executes the
 default-branch caller rather than the PR head's YAML.
 A files-list response shorter than the PR's `changed_files` count,
 reaching the 3000-file endpoint cap (gha#917),
-or targeting a base branch other than the default branch (a stacked PR, gha#916),
+or targeting a base branch other than the default branch (gha#916),
 is treated the same as a failed listing,
-so a large or stacked PR cannot hide a workflow edit behind the endpoint cap or base diff.
+so a large or stacked PR cannot hide a workflow edit
+behind the endpoint cap or base diff.
 Check-runs for that no-`--ref` dispatch land on the default branch
 ([#285](https://github.com/Morrison-Lab/gha/issues/285)); the review comment
 still posts on the PR.
