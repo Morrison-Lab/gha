@@ -49,8 +49,9 @@ jobs:
       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
     permissions:
-      actions: write
-      issues: write
+      actions: write        # dispatch this workflow via `gh workflow run`
+      issues: write         # acknowledge the /review comment
+      pull-requests: read   # read PR metadata and changed files list
     steps:
       - name: Parse workflow ref
         id: this-wf
