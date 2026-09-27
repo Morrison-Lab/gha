@@ -59,7 +59,7 @@ if [[ "$IS_CLOSED" == "true" ]]; then
 fi
 
 if [[ "$IS_STACKED" == "true" ]]; then
-  echo "::notice::PR #$PR_NUMBER targets base branch '${PR_BASE_BRANCH:-non-default}' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921). Automatic review runs on push."
+  echo "::notice::PR #$PR_NUMBER targets base branch '${PR_BASE_BRANCH:-non-default}' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
   exit 0
 fi
 
@@ -77,7 +77,7 @@ if [[ -z "$PR_BRANCH" ]]; then
   fi
   is_stacked=$(echo "$info" | sed -n 's/^is_stacked=//p')
   if [[ "$is_stacked" == "true" ]]; then
-    echo "::notice::PR #$PR_NUMBER targets base branch '$(echo "$info" | sed -n 's/^pr_base_branch=//p')' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921). Automatic review runs on push."
+    echo "::notice::PR #$PR_NUMBER targets base branch '$(echo "$info" | sed -n 's/^pr_base_branch=//p')' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
     exit 0
   fi
 fi
@@ -109,10 +109,10 @@ if [ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" != "true" ]; then
 fi
 
 if [[ "$workflow_edits" == "true" ]]; then
-  echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921). Automatic review runs on push."
+  echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
   exit 0
 elif [[ "${FORCE_DEFAULT_BRANCH_WORKFLOWS:-false}" == "true" ]]; then
-  echo "::notice::Could not verify whether PR #$PR_NUMBER edits workflow files; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921). Automatic review runs on push."
+  echo "::notice::Could not verify whether PR #$PR_NUMBER edits workflow files; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
   exit 0
 fi
 

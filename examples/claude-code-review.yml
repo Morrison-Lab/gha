@@ -171,7 +171,7 @@ jobs:
           fi
           if [ "$IS_STACKED" = "true" ]; then
             echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
-            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of default branch (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of default branch (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
             printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
               | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                   --method POST \
@@ -206,7 +206,7 @@ jobs:
           listed=0
           if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename'); then
             echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
-            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: Could not verify whether PR #$PR_NUMBER edits workflow files (file list API failed). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+            NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: Could not verify whether PR #$PR_NUMBER edits workflow files (file list API failed). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
             printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
               | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                   --method POST \
@@ -220,7 +220,7 @@ jobs:
             fi
             if [ -z "$changed" ] || [ "$changed" = "null" ] || ! [[ "$changed" =~ ^[0-9]+$ ]] || [ "$listed" -ge 3000 ] || [ "$listed" -lt "$changed" ]; then
               echo "::notice::Could not list a complete file set for PR #$PR_NUMBER; skipping review dispatch to avoid executing untrusted workflow YAML or preempting PR-head checks (gha#598, gha#921)."
-              NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files, cap 3000). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+              NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER file list was truncated ($listed of $changed files, cap 3000). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
               printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
                 | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                     --method POST \
@@ -231,7 +231,7 @@ jobs:
               detect_out="$(CALLER_WF_PATH="" bash "$SCRIPTS_DIR/detect-pr-workflow-edits.sh" - <<< "$files")"
               if [ "$(sed -n 's/^workflow_edits=//p' <<< "$detect_out")" = "true" ]; then
                 echo "::notice::PR #$PR_NUMBER edits workflow files; skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#921)."
-                NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+                NOTICE_BODY=":warning: \`$TRIGGER\` was not dispatched: PR #$PR_NUMBER edits workflow files (\`.github/workflows/*.yml\`). For security, manual dispatches cannot execute untrusted workflow YAML, and default-branch dispatches cannot attach status checks to the PR head (gha#921). When automatic review on pull_request is enabled, it runs with default-branch workflows restored and attaches checks to the PR head."
                 printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
                   | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
                       --method POST \
