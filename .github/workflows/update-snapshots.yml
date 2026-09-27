@@ -85,7 +85,7 @@ jobs:
 
       - name: Fetch PR branch
         if: inputs.pr-mode
-        uses: r-lib/actions/pr-fetch@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/pr-fetch@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           repo-token: ${{ github.token }}
 
@@ -111,12 +111,12 @@ jobs:
           sudo apt-get install -y $APT_PACKAGES
 
       - name: Set up R
-        uses: r-lib/actions/setup-r@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           use-public-rspm: true
 
       - name: Set up R dependencies
-        uses: r-lib/actions/setup-r-dependencies@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           extra-packages: ${{ inputs.extra-packages }}
           needs: ${{ inputs.needs }}
@@ -161,6 +161,6 @@ jobs:
 
       - name: Push (PR mode)
         if: inputs.pr-mode
-        uses: r-lib/actions/pr-push@465b7d8e732ca3921382b1674c59bada9cbf3399 # v2.13.0
+        uses: r-lib/actions/pr-push@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
         with:
           repo-token: ${{ github.token }}
