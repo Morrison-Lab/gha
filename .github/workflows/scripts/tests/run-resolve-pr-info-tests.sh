@@ -107,6 +107,50 @@ else
 fi
 rm -f "$output_file"
 
+# Test 7: Non-stacked PR (base.ref == default_branch)
+non_stacked_json='{"head": {"ref": "patch-feature"}, "base": {"ref": "main", "repo": {"default_branch": "main"}}}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$non_stacked_json" >/dev/null
+
+if grep -q '^pr_base_branch=main$' "$output_file" && \
+   grep -q '^is_stacked=false$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh identifies non-stacked PR correctly"
+else
+  echo "::error::resolve-pr-info.sh failed non-stacked PR test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 8: Stacked PR (base.ref != default_branch)
+stacked_json='{"head": {"ref": "patch-feature-2"}, "base": {"ref": "patch-feature-1", "repo": {"default_branch": "main"}}}'
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --json-data "$stacked_json" >/dev/null
+
+if grep -q '^pr_base_branch=patch-feature-1$' "$output_file" && \
+   grep -q '^is_stacked=true$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh identifies stacked PR correctly"
+else
+  echo "::error::resolve-pr-info.sh failed stacked PR test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
+# Test 9: Stacked PR with --default-branch argument override
+output_file="$(mktemp)"
+GITHUB_OUTPUT="$output_file" bash "$resolve_script" --repo "Morrison-Lab/gha" --default-branch "patch-feature-1" --json-data "$stacked_json" >/dev/null
+
+if grep -q '^pr_base_branch=patch-feature-1$' "$output_file" && \
+   grep -q '^is_stacked=false$' "$output_file"; then
+  echo "OK   resolve-pr-info.sh handles --default-branch override correctly"
+else
+  echo "::error::resolve-pr-info.sh failed --default-branch override test"
+  cat "$output_file"
+  failures=$((failures + 1))
+fi
+rm -f "$output_file"
+
 if [[ "$failures" -gt 0 ]]; then
   echo "::error::$failures resolve-pr-info test case(s) failed"
   exit 1

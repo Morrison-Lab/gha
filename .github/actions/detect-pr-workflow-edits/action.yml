@@ -21,6 +21,10 @@ inputs:
     description: GitHub token used to list the PR's files.
     required: false
     default: ${{ github.token }}
+  default-branch:
+    description: Default branch name to verify PR base against (optional).
+    required: false
+    default: ''
 
 outputs:
   workflow_edits:
@@ -36,9 +40,10 @@ outputs:
     value: ${{ steps.detect.outputs.edited_path }}
   list_incomplete:
     description: >-
-      'true' when the PR file list could not be completed (API failure or
-      GitHub's 3000-file cap). workflow_edits is then true and edited_path
-      is empty --- not a fake workflow filename.
+      'true' when the PR file list could not be completed (API failure,
+      GitHub's 3000-file cap, or stacked PR targeting non-default base).
+      workflow_edits is then true and edited_path is empty --- not a fake
+      workflow filename.
     value: ${{ steps.detect.outputs.list_incomplete }}
 
 runs:
@@ -52,11 +57,12 @@ runs:
         REPO: ${{ inputs.repo }}
         PR_NUMBER: ${{ inputs.pr-number }}
         CALLER_WF_PATH: ${{ inputs.caller-workflow-path }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
       run: |
         set -euo pipefail
         ACTION_SCRIPTS="${{ github.action_path }}/../../workflows/scripts"
-        if ! files=$(REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$ACTION_SCRIPTS/list-pr-changed-files.sh"); then
-          echo "::warning::Could not list a complete file set for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown or truncated PR tree (gha#598)."
+        if ! files=$(DEFAULT_BRANCH="$DEFAULT_BRANCH" REPO="$REPO" PR_NUMBER="$PR_NUMBER" bash "$ACTION_SCRIPTS/list-pr-changed-files.sh"); then
+          echo "::warning::Could not list a complete file set for PR #$PR_NUMBER; treating as a workflow-file edit so the review restores default-branch YAML rather than executing an unknown or truncated PR tree (gha#598, gha#916)."
           echo "workflow_edits=true" >> "$GITHUB_OUTPUT"
           echo "caller_edited=false" >> "$GITHUB_OUTPUT"
           echo "edited_path=" >> "$GITHUB_OUTPUT"

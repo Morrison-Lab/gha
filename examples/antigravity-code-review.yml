@@ -90,6 +90,19 @@ jobs:
           fi
           PR_BRANCH=$(jq -r '.head.ref' <<< "$PR_JSON")
           PR_HEAD_REPO=$(jq -r '.head.repo.full_name' <<< "$PR_JSON")
+          PR_BASE_BRANCH=$(jq -r '.base.ref // empty' <<< "$PR_JSON")
+          REPO_DEFAULT_BRANCH=$(jq -r '.base.repo.default_branch // empty' <<< "$PR_JSON")
+          EFFECTIVE_DEFAULT="${DEFAULT_BRANCH:-$REPO_DEFAULT_BRANCH}"
+          if [ -n "$PR_BASE_BRANCH" ] && [ -n "$EFFECTIVE_DEFAULT" ] && [ "$PR_BASE_BRANCH" != "$EFFECTIVE_DEFAULT" ]; then
+            echo "::notice::PR #$PR_NUMBER targets base '$PR_BASE_BRANCH' instead of default branch '$EFFECTIVE_DEFAULT' (stacked PR); skipping review dispatch because default-branch dispatches cannot attach status checks to the PR head and would preempt in-flight pull_request reviews (gha#916, gha#921)."
+            NOTICE_BODY=":warning: Review was not dispatched: PR #$PR_NUMBER targets base branch \`$PR_BASE_BRANCH\` instead of \`$EFFECTIVE_DEFAULT\` (stacked PR). For security, manual dispatches cannot execute untrusted workflow YAML inherited from base branches, and default-branch dispatches cannot attach status checks to the PR head (gha#916, gha#921). The automatic review triggered on push runs with default-branch workflows restored and attaches checks to the PR head. To trigger a fresh review, push a new commit (or \`git commit --allow-empty\`)."
+            printf '%s' "$NOTICE_BODY" | jq -Rs '{body: .}' \
+              | gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
+                  --method POST \
+                  -H "Content-Type: application/json" \
+                  --input - > /dev/null || true
+            exit 0
+          fi
 
           DEFAULT_REF_ARGS=()
           if [ -n "${DEFAULT_BRANCH:-}" ]; then

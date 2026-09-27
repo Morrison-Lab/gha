@@ -16,6 +16,10 @@ inputs:
     description: GitHub token for API requests.
     required: false
     default: ${{ github.token }}
+  default-branch:
+    description: Default branch name to verify PR base against.
+    required: false
+    default: ${{ github.event.repository.default_branch }}
 
 outputs:
   pr_branch:
@@ -32,6 +36,24 @@ outputs:
     description: >-
       '--ref <branch>' if not a fork and branch is known, else empty.
     value: ${{ steps.resolve.outputs.ref_arg }}
+  pr_base_branch:
+    description: The base branch name the PR targets.
+    value: ${{ steps.resolve.outputs.pr_base_branch }}
+  is_stacked:
+    description: >-
+      'true' if the PR's base branch differs from the repository default branch,
+      else 'false'.
+    value: ${{ steps.resolve.outputs.is_stacked }}
+  pr_state:
+    description: The PR state (open, closed).
+    value: ${{ steps.resolve.outputs.pr_state }}
+  pr_merged:
+    description: Whether the PR is merged (true, false).
+    value: ${{ steps.resolve.outputs.pr_merged }}
+  is_closed:
+    description: >-
+      'true' if the PR is closed or merged, else 'false'.
+    value: ${{ steps.resolve.outputs.is_closed }}
 
 runs:
   using: composite
@@ -43,4 +65,5 @@ runs:
         PR_NUMBER: ${{ inputs.pr-number }}
         GH_REPO: ${{ inputs.repository }}
         GH_TOKEN: ${{ inputs.github-token }}
+        DEFAULT_BRANCH: ${{ inputs.default-branch }}
       run: bash "${{ github.action_path }}/../../workflows/scripts/resolve-pr-info.sh"

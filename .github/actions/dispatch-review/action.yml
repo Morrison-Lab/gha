@@ -45,6 +45,14 @@ inputs:
     description: Whether the PR is known to be closed or merged.
     required: false
     default: ''
+  base-branch:
+    description: PR base branch name if known.
+    required: false
+    default: ''
+  is-stacked:
+    description: Whether the PR targets a non-default base branch.
+    required: false
+    default: ''
 
 runs:
   using: composite
@@ -57,10 +65,12 @@ runs:
         PR_NUMBER: ${{ inputs.pr-number }}
         PR_BRANCH: ${{ inputs.pr-branch }}
         PR_HEAD_REPO: ${{ inputs.pr-head-repo }}
+        PR_BASE_BRANCH: ${{ inputs.base-branch }}
         REVIEW_WF: ${{ inputs.review-workflow-file }}
         CONTEXT_NOTICE: ${{ inputs.context-notice }}
         DEFAULT_BRANCH: ${{ inputs.default-branch }}
         IS_CLOSED: ${{ inputs.is-closed }}
+        IS_STACKED: ${{ inputs.is-stacked }}
         DRY_RUN: ${{ inputs.dry-run }}
       run: |
         set -euo pipefail
