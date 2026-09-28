@@ -191,6 +191,21 @@ def test_indented_code_block_is_not_prose_but_a_list_continuation_is(tmp_path, m
     assert got == [("a.qmd", 10, "in-list.qmd")]
 
 
+def test_escaped_brackets_and_blockquoted_code_are_not_links(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, {
+        "a.qmd": (
+            "\\[not a link\\](gone1.qmd)\n"
+            "> Example:\n"
+            "> ```markdown\n"
+            "> [x](gone2.qmd)\n"
+            "> ```\n"
+            "[a link ending in an escaped backslash\\\\](gone3.qmd)\n"
+            "> A quoted [real link](gone4.qmd).\n"
+        ),
+    })
+    assert got == [("a.qmd", 6, "gone3.qmd"), ("a.qmd", 7, "gone4.qmd")]
+
+
 def test_unincluded_partial_is_skipped_and_escaped_include_includes_nothing(tmp_path, monkeypatch):
     # An outtake kept for reuse: its include is escaped and commented out,
     # so Quarto never renders it and its links resolve from nowhere.

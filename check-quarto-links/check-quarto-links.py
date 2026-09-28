@@ -72,6 +72,7 @@ _HTML_ATTR_RE = re.compile(r"""\b(?:href|src)\s*=\s*(["'])([^"'\n]+)\1""", re.I)
 # match, because ``/*`` follows ``<``.
 _INCLUDE_RE = re.compile(r"""\{\{<\s*include\s+("[^"\n]*"|'[^'\n]*'|[^\s>]+)\s*>\}\}""")
 _SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
+_QUOTE_RE = re.compile(r"^(?:[ ]{0,3}>[ ]?)+")
 _LIST_ITEM_RE = re.compile(r"^\s{0,3}(?:[-*+]|[0-9]+[.)])(?:\s|$)")
 _FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
@@ -176,23 +177,26 @@ def blank_non_prose(text: str) -> str:
     in_indented = False
     prev_blank = True
     last_text: Optional[str] = None  # the last non-blank line outside code
-    for i, line in enumerate(lines):
+    for i, raw_line in enumerate(lines):
+        # Read a blockquoted line by its content, so a fence or an indented
+        # code block inside a `>` quote is recognized as code too.
+        line = _QUOTE_RE.sub("", raw_line)
         m = _FENCE_RE.match(line)
         blank = not line.strip()
         if fence is None:
             indented = not blank and _indent_width(line) >= 4
             if in_indented and (blank or indented):
-                lines[i] = " " * len(line)
+                lines[i] = " " * len(raw_line)
                 continue
             in_indented = False
             if indented and prev_blank and _opens_indented_code(last_text):
                 in_indented = True
-                lines[i] = " " * len(line)
+                lines[i] = " " * len(raw_line)
                 prev_blank = False
                 continue
             if m:
                 fence = m.group(1)
-                lines[i] = " " * len(line)
+                lines[i] = " " * len(raw_line)
             elif not blank:
                 last_text = line
             prev_blank = blank
@@ -200,7 +204,7 @@ def blank_non_prose(text: str) -> str:
             stripped = line.strip()
             if m and set(stripped) == {fence[0]} and len(stripped) >= len(fence):
                 fence = None
-            lines[i] = " " * len(line)
+            lines[i] = " " * len(raw_line)
     text = "\n".join(lines)
     return _CODE_SPAN_RE.sub(_blank, text)
 
@@ -210,6 +214,13 @@ def extract_links(text: str) -> List[tuple]:
     prose = blank_non_prose(text)
     found = []
     for m in _INLINE_LINK_RE.finditer(prose):
+        # `\[text\](x.qmd)` is literal text, not a link: skip a `]` that an
+        # odd run of backslashes escapes.
+        j = m.start()
+        while j > 0 and prose[j - 1] == "\\":
+            j -= 1
+        if (m.start() - j) % 2:
+            continue
         found.append((m.start(1), m.group(1)))
     for m in _REF_DEF_RE.finditer(prose):
         found.append((m.start(1), m.group(1)))

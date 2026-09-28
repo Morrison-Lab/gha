@@ -39,12 +39,14 @@ A target resolves from the linking file's directory, or, when it starts with
 
 Not checked, by design:
 
-- links inside fenced or indented code blocks, code spans, and HTML comments
-  (an indented paragraph continuing a list item is prose, and is checked);
+- links inside fenced or indented code blocks (in a blockquote too), code
+  spans, and HTML comments, and escaped brackets (`\[text\](x.qmd)`);
+  an indented paragraph continuing a list item is prose, and is checked;
 - URLs with a scheme (`https:`, `mailto:`), `//` URLs, and `#anchor`-only
   links;
 - targets built from a shortcode or an inline expression, such as
   `{{< meta >}}`;
+- a reference definition whose target is on the line after its `[label]:`;
 - whether the `#anchor` part of a link exists on the target page.
 
 **Included files resolve from the page that includes them.**
