@@ -888,6 +888,18 @@ cookieconsent.run({
 <td>Install TinyTeX (needed to render PDF outputs).</td>
 </tr>
 <tr class="even">
+<td><code>setup-julia</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Install Julia (<code>julia-actions/setup-julia</code>) before rendering, for pages that execute <code>{julia}</code> chunks; under knitr these run through the R package JuliaCall, so add <code>any::JuliaCall</code> to <code>r-packages</code> (with <code>setup-r</code>). When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and <code>R_LD_LIBRARY_PATH</code> is set to R’s own <code>lib</code> directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. <code>@v3</code> and later.</td>
+</tr>
+<tr class="odd">
+<td><code>julia-version</code></td>
+<td>string</td>
+<td><code>'1'</code></td>
+<td>Julia version to install, in <code>setup-julia</code>’s <code>version</code> syntax. Only used when <code>setup-julia</code> is true. <code>@v3</code> and later.</td>
+</tr>
+<tr class="even">
 <td><code>apt-packages</code></td>
 <td>string</td>
 <td><code>''</code></td>
@@ -1033,22 +1045,24 @@ cookieconsent.run({
 <span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-package: true   # R CMD INSTALL &lt;path&gt; before render (for R packages)</span></span>
 <span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid</span></span>
 <span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="co">    #   tinytex: true           # needed to render PDF outputs</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # extra system packages (space-separated)</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website # Quarto --profile to render with</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache: true      # cache Quarto _freeze across runs</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'</span></span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-julia: true       # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)</span></span>
+<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="co">    #   julia-version: '1'</span></span>
+<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: ''        # extra system packages (space-separated)</span></span>
+<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="co">    #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)</span></span>
+<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="co">    #   render-profile: website # Quarto --profile to render with</span></span>
+<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="co">    #   formats: 'pdf docx revealjs html' # per-format render split to prevent V8 OOM</span></span>
+<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="co">    #   freeze-cache: true      # cache Quarto _freeze across runs</span></span>
+<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deno-v8-options: '--max-old-space-size=12288,--max-heap-size=12288'</span></span>
+<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail-on-render-warning: true # fail if Quarto emits WARN in render log</span></span>
+<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="co">    #   forbid-log-patterns: |  # fail on specific forbidden substrings in render log</span></span>
+<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="co">    #     doesn't match any files or folders</span></span>
+<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true</span></span>
+<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact: demo-media       # inject a prior job's artifact before render</span></span>
+<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pre-render-artifact-path: website/media</span></span>
+<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   deploy: false           # render only (e.g. a build check); skips the gh-pages push</span></span>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #                           # (still grant contents: write; the deploy job is declared)</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    # secrets:</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/quarto-publish.yml"><code>examples/quarto-publish.yml</code></a> for the full caller stub.</p>
 
 
