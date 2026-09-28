@@ -43,7 +43,7 @@ is skipped with a warning rather than widened to the whole tree.
 | Input            | Type    | Default   | Description |
 | ---------------- | ------- | --------- | ----------- |
 | `python-version` | string  | `'3.x'`   | Python version to set up. |
-| `patterns`       | string  | `''`      | Newline-separated Python regular expressions searched for in each line of a code fence. Replaces the default set (`#\s*->`, `#\s*=>`, `#>`, `#\s*[Oo]utput:`); empty uses the defaults. |
+| `patterns`       | string  | `''`      | Newline-separated Python regular expressions searched for in each line of a code fence. Replaces the default set (`#\s*->`, `#\s*=>`, `#>`, `#\s*(?i:output):`); empty uses the defaults. |
 | `globs`          | string  | `'*.qmd'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
 | `paths-ignore`   | string  | `''`      | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `fail`           | boolean | `false`   | Fail the workflow when typed output is found; otherwise findings are warnings only. |

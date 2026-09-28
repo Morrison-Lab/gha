@@ -20,15 +20,15 @@ _DIR = Path(__file__).resolve().parent.parent
 _MOD_PATH = _DIR / "check-typed-output.py"
 _spec = importlib.util.spec_from_file_location("check_typed_output", _MOD_PATH)
 assert _spec is not None and _spec.loader is not None, f"Could not load {_MOD_PATH}"
-tyo = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(tyo)
+typed = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(typed)
 
 FENCE = "```"
-DEFAULTS = tyo.compile_patterns(tyo.DEFAULT_PATTERNS)
+DEFAULTS = typed.compile_patterns(typed.DEFAULT_PATTERNS)
 
 
 def scan(text, patterns=None):
-    return tyo.scan_text(text, DEFAULTS if patterns is None else patterns)
+    return typed.scan_text(text, DEFAULTS if patterns is None else patterns)
 
 
 def lines_of(findings, kind=None):
@@ -55,7 +55,7 @@ def lines_of(findings, kind=None):
     ],
 )
 def test_parse_info_string(info, expected):
-    assert tuple(tyo.parse_info_string(info)) == expected
+    assert tuple(typed.parse_info_string(info)) == expected
 
 
 # ── (a) output comments ──────────────────────────────────────────────────────
@@ -116,13 +116,13 @@ def test_tilde_fence_needs_tilde_close():
 
 
 def test_custom_patterns_replace_defaults():
-    pats = tyo.compile_patterns([r"#\s*returns"])
+    pats = typed.compile_patterns([r"#\s*returns"])
     text = f"{FENCE}python\nf()  # returns 3\ng()  # -> 4\n{FENCE}\n"
     assert lines_of(scan(text, pats), "comment") == [2]
 
 
 def test_invalid_pattern_is_dropped_with_warning(capsys):
-    pats = tyo.compile_patterns(["(unclosed", r"#>"])
+    pats = typed.compile_patterns(["(unclosed", r"#>"])
     assert len(pats) == 1
     assert "Ignoring invalid pattern" in capsys.readouterr().out
 
@@ -189,8 +189,8 @@ _WORKFLOW = _DIR.parent / ".github" / "workflows" / "check-typed-output.yml"
 
 @pytest.mark.parametrize("path", [_ACTION, _WORKFLOW], ids=["action", "workflow"])
 def test_defaults_agree_with_script(path):
-    assert _yaml_default(path, "globs") == tyo._DEFAULT_GLOBS
-    assert _yaml_default(path, "fail") == str(tyo._DEFAULT_FAIL).lower()
+    assert _yaml_default(path, "globs") == typed._DEFAULT_GLOBS
+    assert _yaml_default(path, "fail") == str(typed._DEFAULT_FAIL).lower()
     assert _yaml_default(path, "diff-scoped") == "false"
     assert _yaml_default(path, "patterns") == ""
 
@@ -222,7 +222,7 @@ def _commit(repo, name, text, msg="c"):
 
 def _run(**kw):
     kw.setdefault("patterns", DEFAULTS)
-    return tyo.run(["*.qmd"], tyo.compile_ignores(kw.pop("ignore", [])), **kw)
+    return typed.run(["*.qmd"], typed.compile_ignores(kw.pop("ignore", [])), **kw)
 
 
 def test_whole_tree_reports_legacy(repo):
@@ -316,15 +316,15 @@ def test_base_ref_ignored_when_not_diff_scoped(repo):
 
 @pytest.fixture
 def env(monkeypatch):
-    for name in ("TYO_PATTERNS", "TYO_GLOBS", "TYO_PATHS_IGNORE", "TYO_FAIL",
-                 "TYO_DIFF_SCOPED", "TYO_BASE_REF"):
+    for name in ("TYPED_OUTPUT_PATTERNS", "TYPED_OUTPUT_GLOBS", "TYPED_OUTPUT_PATHS_IGNORE", "TYPED_OUTPUT_FAIL",
+                 "TYPED_OUTPUT_DIFF_SCOPED", "TYPED_OUTPUT_BASE_REF"):
         monkeypatch.delenv(name, raising=False)
     return monkeypatch
 
 
 def test_main_warns_by_default(repo, env, capsys):
     _commit(repo, "a.qmd", LEGACY)
-    assert tyo.main() == 0
+    assert typed.main() == 0
     out = capsys.readouterr().out
     assert "::warning file=a.qmd,line=4::" in out
     assert "`# ->`" in out
@@ -332,30 +332,30 @@ def test_main_warns_by_default(repo, env, capsys):
 
 def test_main_fail_true_exits_1_with_errors(repo, env, capsys):
     _commit(repo, "a.qmd", LEGACY)
-    env.setenv("TYO_FAIL", "true")
-    assert tyo.main() == 1
+    env.setenv("TYPED_OUTPUT_FAIL", "true")
+    assert typed.main() == 1
     assert "::error file=a.qmd,line=4::" in capsys.readouterr().out
 
 
 def test_main_patterns_env_replaces_defaults(repo, env):
     _commit(repo, "a.qmd", LEGACY)
-    env.setenv("TYO_FAIL", "true")
-    env.setenv("TYO_PATTERNS", "#\\s*returns\n")
-    assert tyo.main() == 0
+    env.setenv("TYPED_OUTPUT_FAIL", "true")
+    env.setenv("TYPED_OUTPUT_PATTERNS", "#\\s*returns\n")
+    assert typed.main() == 0
 
 
 def test_main_diff_scoped_env_reaches_run(repo, env, capsys):
     _commit(repo, "a.qmd", LEGACY)
-    env.setenv("TYO_FAIL", "true")
-    env.setenv("TYO_DIFF_SCOPED", "true")
-    env.setenv("TYO_BASE_REF", "HEAD")
-    assert tyo.main() == 0
+    env.setenv("TYPED_OUTPUT_FAIL", "true")
+    env.setenv("TYPED_OUTPUT_DIFF_SCOPED", "true")
+    env.setenv("TYPED_OUTPUT_BASE_REF", "HEAD")
+    assert typed.main() == 0
     assert "No typed output found." in capsys.readouterr().out
 
 
 def test_main_clean_tree_reports_examined_count(repo, env, capsys):
     _commit(repo, "a.qmd", "# Page\n")
-    assert tyo.main() == 0
+    assert typed.main() == 0
     out = capsys.readouterr().out
     assert "Examined 1 file(s)." in out
     assert "No typed output found." in out

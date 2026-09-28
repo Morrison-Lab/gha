@@ -12,7 +12,7 @@ are flagged:
   ``julia`` fence, or an executable ``{r}``/``{python}``/``{julia}`` chunk --
   whose comment stands in for a printed value: ``# ->``, ``#->``, ``# =>``,
   ``#>`` (the prefix R prints output with), ``# Output:``/``# output:``.
-  The patterns are regular expressions and replaceable (``TYO_PATTERNS``).
+  The patterns are regular expressions and replaceable (``TYPED_OUTPUT_PATTERNS``).
   Quarto's own chunk-option comments (``#| output: false``) do not match any
   default pattern, since ``|`` is not whitespace.
 - **A hand-written output block**: a fence with no language, or ``text``/
@@ -21,14 +21,14 @@ are flagged:
   block's opening fence.
 
 Scope:
-- **Whole tree by default** (``TYO_DIFF_SCOPED`` unset or false): every
+- **Whole tree by default** (``TYPED_OUTPUT_DIFF_SCOPED`` unset or false): every
   tracked file the globs match is scanned, so a full run measures how much
   typed output a corpus carries.
-- **Diff-scoped on request** (``TYO_DIFF_SCOPED=true``): only findings on a
-  line the diff since ``TYO_BASE_REF`` adds are reported -- for an output
+- **Diff-scoped on request** (``TYPED_OUTPUT_DIFF_SCOPED=true``): only findings on a
+  line the diff since ``TYPED_OUTPUT_BASE_REF`` adds are reported -- for an output
   block, any added line of the block -- so a repo with legacy occurrences can
   adopt the check without every run reporting them. The diff is taken from
-  the merge base of ``TYO_BASE_REF`` and ``HEAD``, the same anchor
+  the merge base of ``TYPED_OUTPUT_BASE_REF`` and ``HEAD``, the same anchor
   ``check-new-line-breaks`` uses, so a base branch that has advanced does not
   widen what is checked. When the diff cannot be computed (no base ref on a
   push run, or a shallow clone missing the base commit) the check is
@@ -43,17 +43,17 @@ Scope:
   the uncommitted lines too; CI's tree is always clean, so there it stays
   committed-only. An untracked file is not in any diff and is named in a
   warning instead.
-- **Warn-only by default** (``TYO_FAIL`` defaults to false).
+- **Warn-only by default** (``TYPED_OUTPUT_FAIL`` defaults to false).
 
 Configuration (environment variables, set by the composite action):
-  TYO_PATTERNS      Newline-separated regular expressions for output
+  TYPED_OUTPUT_PATTERNS      Newline-separated regular expressions for output
                     comments (default: the five forms above, in four
                     patterns). Blank lines are ignored.
-  TYO_GLOBS         Space-separated git pathspecs to check (default: '*.qmd').
-  TYO_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
-  TYO_FAIL          "true" => exit 1 on findings; default "false".
-  TYO_DIFF_SCOPED   "true" => report only lines added since TYO_BASE_REF.
-  TYO_BASE_REF      Git ref/SHA to diff against in diff-scoped mode.
+  TYPED_OUTPUT_GLOBS         Space-separated git pathspecs to check (default: '*.qmd').
+  TYPED_OUTPUT_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
+  TYPED_OUTPUT_FAIL          "true" => exit 1 on findings; default "false".
+  TYPED_OUTPUT_DIFF_SCOPED   "true" => report only lines added since TYPED_OUTPUT_BASE_REF.
+  TYPED_OUTPUT_BASE_REF      Git ref/SHA to diff against in diff-scoped mode.
 """
 
 import os
@@ -70,7 +70,7 @@ DEFAULT_PATTERNS = [
     r"#\s*->",
     r"#\s*=>",
     r"#>",
-    r"#\s*[Oo]utput:",
+    r"#\s*(?i:output):",
 ]
 
 # Fence languages whose contents are code that prints output.
@@ -452,14 +452,14 @@ _MESSAGES = {
 
 
 def main() -> int:
-    raw_patterns = os.environ.get("TYO_PATTERNS", "")
+    raw_patterns = os.environ.get("TYPED_OUTPUT_PATTERNS", "")
     pattern_list = [p.strip() for p in raw_patterns.split("\n") if p.strip()]
     patterns = compile_patterns(pattern_list or DEFAULT_PATTERNS)
-    globs = os.environ.get("TYO_GLOBS", _DEFAULT_GLOBS).split() or [_DEFAULT_GLOBS]
-    ignores = compile_ignores(_split_list(os.environ.get("TYO_PATHS_IGNORE", "")))
-    fail = _env_flag("TYO_FAIL", _DEFAULT_FAIL)
-    diff_scoped = _env_flag("TYO_DIFF_SCOPED", False)
-    base_ref = os.environ.get("TYO_BASE_REF", "").strip()
+    globs = os.environ.get("TYPED_OUTPUT_GLOBS", _DEFAULT_GLOBS).split() or [_DEFAULT_GLOBS]
+    ignores = compile_ignores(_split_list(os.environ.get("TYPED_OUTPUT_PATHS_IGNORE", "")))
+    fail = _env_flag("TYPED_OUTPUT_FAIL", _DEFAULT_FAIL)
+    diff_scoped = _env_flag("TYPED_OUTPUT_DIFF_SCOPED", False)
+    base_ref = os.environ.get("TYPED_OUTPUT_BASE_REF", "").strip()
 
     result = run(globs, ignores, patterns, diff_scoped, base_ref)
     if result.skipped:

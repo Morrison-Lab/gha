@@ -18,7 +18,7 @@ inputs:
       Newline-separated Python regular expressions, each searched for in every
       line of a python/r/julia code fence or executable chunk. Replaces the
       default set rather than extending it. Empty uses the defaults:
-      `#\s*->`, `#\s*=>`, `#>`, and `#\s*[Oo]utput:`.
+      `#\s*->`, `#\s*=>`, `#>`, and `#\s*(?i:output):`.
     default: ''
   globs:
     description: >-
@@ -61,10 +61,10 @@ runs:
     - name: Check for typed code output
       shell: bash
       env:
-        TYO_PATTERNS: ${{ inputs.patterns }}
-        TYO_GLOBS: ${{ inputs.globs }}
-        TYO_PATHS_IGNORE: ${{ inputs.paths-ignore }}
-        TYO_FAIL: ${{ inputs.fail }}
-        TYO_DIFF_SCOPED: ${{ inputs.diff-scoped }}
-        TYO_BASE_REF: ${{ inputs.base-ref }}
+        TYPED_OUTPUT_PATTERNS: ${{ inputs.patterns }}
+        TYPED_OUTPUT_GLOBS: ${{ inputs.globs }}
+        TYPED_OUTPUT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        TYPED_OUTPUT_FAIL: ${{ inputs.fail }}
+        TYPED_OUTPUT_DIFF_SCOPED: ${{ inputs.diff-scoped }}
+        TYPED_OUTPUT_BASE_REF: ${{ inputs.base-ref }}
       run: python3 -u "$GITHUB_ACTION_PATH/check-typed-output.py"
