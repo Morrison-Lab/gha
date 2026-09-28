@@ -766,6 +766,93 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-new-line-breaks/tests/ -q
+  # check-merge-drops is brand new, so its reusable workflow's internal
+  # `uses: Morrison-Lab/gha/check-merge-drops@v3` step does not resolve until
+  # the tag slides; exercise the local composite directly. The first step is
+  # a real warn-only run over the merges this PR adds. The fixture steps then
+  # commit a merge that keeps one side of a conflicted file on top of the
+  # checkout, and assert the composite blocks on it with `fail: 'true'` and
+  # passes once `paths-ignore` exempts the file -- which is what proves the
+  # `action.yml` inputs reach the script, since the pytest suite calls the
+  # script directly.
+  merge-drops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Check this PR's merges for dropped content
+        uses: ./check-merge-drops
+        with:
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || '' }}
+      - name: Commit a one-sided merge fixture
+        id: fixture
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name selftest
+          git config user.email selftest@example.invalid  # phi-allow
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          f=merge-drops-fixture.md
+          git switch -qc fixture-main
+          printf '# Fixture\n\nShared opening paragraph for the merge-drops fixture.\n' > "$f"
+          git add "$f" && git commit -qm "fixture base"
+          git switch -qc fixture-side
+          # The dropped line carries a commit SHA so its text is not in this
+          # file: the check searches the merge's whole tree for moved content,
+          # and a literal here would count as the line having moved.
+          printf '\nThe side branch adds paragraph %s, which the merge drops.\n' "$(git rev-parse HEAD)" >> "$f"
+          git commit -qam "side paragraph"
+          git switch -q fixture-main
+          printf '\nThe main line adds this paragraph, which the merge keeps.\n' >> "$f"
+          git commit -qam "main paragraph"
+          git merge -q fixture-side || true
+          git checkout --ours "$f"
+          git add "$f" && git commit -qm "Merge keeping one side of the fixture"
+      - name: Expect the one-sided merge to be reported
+        id: blocked
+        continue-on-error: true
+        uses: ./check-merge-drops
+        with:
+          base-ref: ${{ steps.fixture.outputs.base }}
+          fail: 'true'
+      - name: Expect the fixture to pass once paths-ignore exempts it
+        uses: ./check-merge-drops
+        with:
+          base-ref: ${{ steps.fixture.outputs.base }}
+          paths-ignore: merge-drops-fixture.md
+          fail: 'true'
+      - name: Assert the one-sided merge failed the check
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.blocked.outcome }}
+        run: |
+          if [ "$OUTCOME" != failure ]; then
+            echo "::error::check-merge-drops did not block the one-sided merge fixture (outcome: $OUTCOME)."
+            exit 1
+          fi
+  merge-drops-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-merge-drops unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-merge-drops/tests/ -q
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.
