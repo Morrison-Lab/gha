@@ -99,7 +99,7 @@ def test_a_shorter_fence_does_not_close_a_longer_one(tmp_path, monkeypatch):
 def test_urls_anchors_and_other_file_types_are_not_checked(tmp_path, monkeypatch):
     got = _findings(tmp_path, monkeypatch, {
         "a.qmd": (
-            "[u](https://example.org/x.qmd) [m](mailto:a@example.org) "
+            "[u](https://example.org/x.qmd) [m](mailto:a@example.org) "  # phi-allow
             "[h](#sec) [p](//cdn.example.org/x.md) ![i](missing.png) "
             "[s]({{< meta page >}}.qmd) [d](folder/)\n"
         ),

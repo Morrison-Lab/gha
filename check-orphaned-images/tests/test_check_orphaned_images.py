@@ -43,7 +43,7 @@ def _git(cwd: Path, *args: str) -> None:
 def _repo(tmp_path: Path, files: dict, commit: bool = True) -> Path:
     if not (tmp_path / ".git").exists():
         _git(tmp_path, "init", "-q")
-        _git(tmp_path, "config", "user.email", "t@example.invalid")
+        _git(tmp_path, "config", "user.email", "t@example.invalid")  # phi-allow
         _git(tmp_path, "config", "user.name", "t")
     for rel, text in files.items():
         p = tmp_path / rel
