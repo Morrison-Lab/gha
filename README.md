@@ -67,6 +67,7 @@ not reference `@main` from consumers.
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`, `base-ref`, `fail-on-item-splices`, `fail-on-table-splits` |
 | `check-new-line-breaks.yml` | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
+| `check-typed-output.yml` | Flag typed ("faked") code output in `.qmd` files -- a `# ->` / `#>` / `# Output:` comment standing in for a printed value inside a code fence, or a hand-written output block right after one -- whole-tree or diff-scoped, warn-only by default | `python-version`, `patterns`, `globs`, `paths-ignore`, `fail`, `diff-scoped` |
 | `lint-qmd.yml` | markdownlint over the prose sections of tracked `.qmd` Quarto files (code chunks stripped, YAML front matter skipped natively) with a bundled default config; default 80-char line-length ceiling encourages semantic line breaks | `config-file`, `globs`, `paths-ignore`, `fail`, `max-line-length` |
 | `lint-changed-lines.yml` | lintr over only the lines a PR adds or modifies (not whole changed files), so lint rules can be adopted or tightened incrementally | `path`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
 | `lint-changed-files.yml` | lintr over a PR's changed files, a whole package, or a whole project, selected by `scope` | `scope`, `path`, `linter-file`, `install-quarto`, `use-renv`, `renv-cache-version`, `apt-packages`, `extra-packages`, `install-package`, `fail` |
@@ -126,7 +127,7 @@ that need to write must have the **caller** grant it on the calling job:
   `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
   `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`,
-  `check-typos`,
+  `check-typed-output`, `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
   `lint-workflows`, `lint-yaml`, `preview`, `r-cmd-check`, `spellcheck`, `student-qmd`,
   `test-coverage`, `version-check`<!--readonly-workflows:end--> → only
@@ -648,6 +649,7 @@ only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
+`check-typed-output.yml`,
 `opposition-research.yml`, and `student-qmd.yml`
 only ever shipped at `@v3` (too new to exist at the `@v2` tag).
 `quarto-publish.yml` additionally has a genuine
@@ -788,6 +790,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
+`check-typed-output.yml`,
 `opposition-research.yml`, and
 `student-qmd.yml` at `@v3` -- see the
 Versioning section above), and so are **not** SHA-pinned.

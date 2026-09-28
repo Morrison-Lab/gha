@@ -32,6 +32,7 @@ updates:
       - "/check-one-function-per-file"
       - "/check-phi"
       - "/check-python-package"
+      - "/check-typed-output"
       - "/lint-changed-files"
       - "/lint-changed-lines"
       - "/lint-workflows"
