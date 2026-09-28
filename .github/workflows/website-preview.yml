@@ -17,7 +17,7 @@ on:
 jobs:
   build:
     # timeout-minutes is defined in the reusable workflow
-    uses: Morrison-Lab/gha/.github/workflows/preview.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/preview.yml@v3
 
     # This site is pure markdown, not an R package, so turn off the R/renv
     # machinery the preview family defaults on for rme-style consumers.
