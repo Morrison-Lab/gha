@@ -44,6 +44,7 @@ website:
           - reference/check-duplicate-roxygen.qmd
           - reference/check-formatting.qmd
           - reference/check-junk-files.qmd
+          - reference/check-math-definitions.qmd
           - reference/check-non-standard-chars.qmd
           - reference/check-one-function-per-file.qmd
           - reference/check-phi.qmd

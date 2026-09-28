@@ -306,3 +306,179 @@ Var(X) = devn(X)^2 with expanded theorem
     assert data["total_divs"] == 2
     assert len(data["findings"]) >= 1
     assert data["findings"][0]["kind"] == "exact_id_divergence"
+
+
+def test_code_block_fence_ignores_internal_divs():
+    text = """
+# Tutorial
+
+Here is how to write a definition in Quarto:
+
+```markdown
+::: {#def-fake}
+#### Fake Title
+Fake content inside code block.
+:::
+```
+
+And now the real definition:
+
+::: {#def-real}
+#### Real Definition
+Real mathematical content.
+:::
+"""
+    divs = cmd.parse_math_divs_from_text(
+        text=text,
+        file_path="tutorial.qmd",
+        repo_name="demo",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    assert len(divs) == 1
+    assert divs[0].div_id == "def-real"
+    assert divs[0].title == "Real Definition"
+
+
+def test_html_comments_preceding_heading():
+    text = """
+::: {#def-variance}
+<!-- check-math-definitions: allow-divergence -->
+<!-- Some note before heading -->
+#### Variance
+The variance is E[(X - E[X])^2].
+:::
+"""
+    divs = cmd.parse_math_divs_from_text(
+        text=text,
+        file_path="ch1.qmd",
+        repo_name="demo",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    assert len(divs) == 1
+    assert divs[0].title == "Variance"
+    assert divs[0].opted_out
+
+
+def test_bold_label_title_extraction():
+    text1 = """
+::: {#def-var1}
+**Definition 1.1** (Variance)
+Let X be a random variable.
+:::
+"""
+    divs1 = cmd.parse_math_divs_from_text(
+        text=text1,
+        file_path="ch1.qmd",
+        repo_name="demo",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    assert len(divs1) == 1
+    assert divs1[0].title == "Variance"
+
+    text2 = """
+::: {#thm-ltp}
+**Theorem 2.1**: Law of Total Probability
+P(A) = sum_n P(A | B_n) P(B_n).
+:::
+"""
+    divs2 = cmd.parse_math_divs_from_text(
+        text=text2,
+        file_path="ch2.qmd",
+        repo_name="demo",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    assert len(divs2) == 1
+    assert divs2[0].title == "Law of Total Probability"
+
+
+def test_title_collision_prefix_scoped_and_generic_exempted():
+    # exr and sol sharing the same concept title should NOT collide
+    d_exr = cmd.MathDiv(
+        div_id="exr-ols",
+        prefix="exr",
+        title="OLS Estimator",
+        repo="repo1",
+        file_path="ex.qmd",
+        start_line=1,
+        end_line=5,
+        raw_content="Derive OLS",
+        normalized_content="Derive OLS",
+    )
+    d_sol = cmd.MathDiv(
+        div_id="sol-ols",
+        prefix="sol",
+        title="OLS Estimator",
+        repo="repo1",
+        file_path="ex.qmd",
+        start_line=6,
+        end_line=10,
+        raw_content="Solution to OLS",
+        normalized_content="Solution to OLS",
+    )
+    findings = cmd.compare_math_definitions([d_exr, d_sol], check_titles=True)
+    assert len(findings) == 0
+
+    # Generic titles like "Remark 1" vs "Remark 2" should NOT collide
+    d_rem1 = cmd.MathDiv(
+        div_id="rem-1",
+        prefix="rem",
+        title="Remark 1",
+        repo="repo1",
+        file_path="r1.qmd",
+        start_line=1,
+        end_line=5,
+        raw_content="First remark",
+        normalized_content="First remark",
+    )
+    d_rem2 = cmd.MathDiv(
+        div_id="rem-2",
+        prefix="rem",
+        title="Remark 2",
+        repo="repo1",
+        file_path="r2.qmd",
+        start_line=1,
+        end_line=5,
+        raw_content="Second remark",
+        normalized_content="Second remark",
+    )
+    findings_rem = cmd.compare_math_definitions([d_rem1, d_rem2], check_titles=True)
+    assert len(findings_rem) == 0
+
+
+def test_cli_execution_fail_false_warns_without_error(tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "a.qmd").write_text(
+        """::: {#def-x}
+#### Concept X
+Formulation A
+:::
+""",
+        encoding="utf-8",
+    )
+    (repo / "b.qmd").write_text(
+        """::: {#def-x}
+#### Concept X
+Formulation B (divergent)
+:::
+""",
+        encoding="utf-8",
+    )
+
+    script = Path(cmd.__file__).resolve()
+    res = subprocess.run(
+        [
+            sys.executable,
+            str(script),
+            "--path",
+            str(repo),
+            "--fail",
+            "false",
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    assert res.returncode == 0
+    assert "Divergence" in res.stdout or "Divergence" in res.stderr

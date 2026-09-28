@@ -30,6 +30,7 @@ to `@v2`;
 only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-math-definitions.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,

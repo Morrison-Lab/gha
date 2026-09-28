@@ -90,11 +90,42 @@ DIV_FENCE_END = re.compile(r"^(?P<fence>:{3,})\s*$")
 # Prefixes are parameterized, but by default: def, thm, lem, cor, prp, cnj, exr, ...
 ID_ATTR_PATTERN = re.compile(r"#([a-zA-Z0-9_-]+)")
 
-# Title heading on first non-empty lines inside a div:
-# e.g. "#### Variance", "### Bayes' Theorem", "**Definition 1.1** (Variance)"
-TITLE_HEADING_PATTERN = re.compile(
-    r"^(?:#{1,6}\s+|(?:\*\*|__))(.*?)(?:(?:\*\*|__)|(?:\s*#+)?)$"
-)
+CODE_FENCE_PATTERN = re.compile(r"^(`{3,}|~{3,})")
+
+
+def extract_title_from_heading_line(line: str) -> Optional[str]:
+    """Extract clean title concept from a heading or bold label line.
+
+    Supports:
+    - "#### Variance" -> "Variance"
+    - "### Bayes' Theorem" -> "Bayes' Theorem"
+    - "**Definition 1.1** (Variance)" -> "Variance"
+    - "**Theorem**: Law of Total Probability" -> "Law of Total Probability"
+    """
+    stripped = line.strip()
+    if not stripped:
+        return None
+
+    # Markdown heading: e.g. "#### Variance" or "### Bayes' Theorem"
+    m_h = re.match(r"^#{1,6}\s+(.*?)(?:\s*#+)?$", stripped)
+    if m_h:
+        title = m_h.group(1).strip()
+        title = re.sub(r"^[\s(]+|[\s):.]+$", "", title).strip()
+        return title if title else None
+
+    # Bold label: e.g. "**Definition 1.1** (Variance)" or "**Definition 1.1**: Variance"
+    m_bold = re.match(
+        r"^(?:\*\*|__)[^*_]+(?:\*\*|__)\s*(?:[:(]\s*([^)]+?)\s*[):]?|\s*([^*_]+))?$",
+        stripped,
+    )
+    if m_bold:
+        concept = m_bold.group(1) or m_bold.group(2)
+        if concept:
+            concept = concept.strip()
+            concept = re.sub(r"^[\s(]+|[\s):.]+$", "", concept).strip()
+            return concept if concept else None
+
+    return None
 
 
 @dataclass
@@ -142,7 +173,7 @@ def normalize_math_content(raw_text: str) -> str:
         trimmed = line.strip()
         if not trimmed:
             continue
-        if first_non_empty and TITLE_HEADING_PATTERN.match(trimmed):
+        if first_non_empty and extract_title_from_heading_line(trimmed):
             first_non_empty = False
             continue
         first_non_empty = False
@@ -166,17 +197,21 @@ def extract_title_and_body(
 
     for line in lines:
         stripped = line.strip()
-        if not found_title and stripped:
-            m = TITLE_HEADING_PATTERN.match(stripped)
-            if m:
-                extracted = m.group(1).strip()
-                # Clean up punctuation/parentheses from title, e.g. "Variance:" -> "Variance"
-                extracted = re.sub(r"^[\s(]+|[\s):.]+$", "", extracted).strip()
-                title = extracted
+        if not found_title:
+            if not stripped:
+                body_lines.append(line)
+                continue
+            # If line is an HTML comment, skip it while looking for title heading
+            if stripped.startswith("<!--") and stripped.endswith("-->"):
+                body_lines.append(line)
+                continue
+            t = extract_title_from_heading_line(stripped)
+            if t:
+                title = t
                 found_title = True
                 continue
             else:
-                found_title = True  # first line was not a title heading
+                found_title = True  # first non-comment non-empty line was not a title heading
         body_lines.append(line)
 
     raw_body = "\n".join(body_lines)
@@ -197,9 +232,27 @@ def parse_math_divs_from_text(
     stack: List[Tuple[str, Optional[Tuple[str, str, bool]], int, List[str]]] = []
 
     file_opt_out = bool(OPT_OUT_PATTERN.search(text))
+    in_code_block: Optional[str] = None
 
     for line_idx, line in enumerate(lines, start=1):
         stripped = line.strip()
+
+        # Track code block fences (``` or ~~~)
+        fence_match = CODE_FENCE_PATTERN.match(stripped)
+        if fence_match:
+            fence_chars = fence_match.group(1)
+            if in_code_block is None:
+                in_code_block = fence_chars
+            elif fence_chars.startswith(in_code_block[:3]) and len(fence_chars) >= len(in_code_block):
+                in_code_block = None
+
+        if in_code_block is not None:
+            # Inside a code block, ::: does not start or close math divs
+            if stack:
+                for item in stack:
+                    if item[1] is not None:
+                        item[3].append(line)
+            continue
 
         # Check for start fence
         start_match = DIV_FENCE_START.match(stripped)
@@ -417,23 +470,32 @@ def compare_math_definitions(
 
     # 2. Concept / Title Collision (optional stretch goal)
     if check_titles:
-        by_title: Dict[str, List[MathDiv]] = defaultdict(list)
+        GENERIC_TITLES = {
+            "remark", "note", "solution", "proof", "example", "exercise",
+            "definition", "theorem", "lemma", "corollary", "proposition",
+        }
+        by_prefix_and_title: Dict[Tuple[str, str], List[MathDiv]] = defaultdict(list)
         for d in all_divs:
             if not d.opted_out and d.title:
                 norm_title = normalize_whitespace(d.title).lower()
-                if len(norm_title) >= 3:  # Skip trivial titles
-                    by_title[norm_title].append(d)
+                cleaned_title = re.sub(
+                    r"^(?:remark|note|solution|proof|example|exercise|definition|theorem|lemma|corollary|proposition)\s*[\d.]*\s*",
+                    "",
+                    norm_title,
+                ).strip()
+                if len(cleaned_title) >= 3 and norm_title not in GENERIC_TITLES:
+                    by_prefix_and_title[(d.prefix, norm_title)].append(d)
 
-        for title_key, items in sorted(by_title.items()):
+        for (prefix, title_key), items in sorted(by_prefix_and_title.items()):
             distinct_ids = {it.div_id for it in items}
             if len(distinct_ids) > 1:
-                # Same concept title under different IDs!
+                # Same concept title under different IDs within the same div type!
                 findings.append(
                     DivergenceFinding(
                         kind="title_collision",
                         key=title_key,
                         description=(
-                            f"Concept '{items[0].title}' is defined under multiple distinct IDs: "
+                            f"Concept '{items[0].title}' (#{prefix}) is defined under multiple distinct IDs: "
                             f"{', '.join(sorted(distinct_ids))}."
                         ),
                         occurrences=[asdict(it) for it in items],
@@ -455,10 +517,14 @@ def clone_github_repos(
         spec = spec.strip()
         if not spec:
             continue
-        repo_name = spec.split("/")[-1]
+        repo_name = spec.rstrip("/").split("/")[-1]
+        if repo_name.endswith(".git"):
+            repo_name = repo_name[:-4]
         target_dir = work_dir / repo_name
 
-        if "/" in spec:
+        if spec.startswith(("http://", "https://", "git@")):
+            clone_url = spec
+        elif "/" in spec:
             clone_url = f"https://github.com/{spec}.git"
             if gh_token:
                 clone_url = f"https://x-access-token:{gh_token}@github.com/{spec}.git"
@@ -692,12 +758,13 @@ def main() -> int:
                 if first_occ
                 else ""
             )
-            level = "error" if f.kind == "exact_id_divergence" else "warning"
+            level = "error" if f.kind in ("exact_id_divergence", "in_repo_duplicate") else "warning"
             print(f"::{level} {loc}{f.description}", file=sys.stderr)
 
-        if findings and fail_on_divergence:
+        has_errors = any(f.kind in ("exact_id_divergence", "in_repo_duplicate") for f in findings)
+        if has_errors and fail_on_divergence:
             print(
-                f"\n❌ Failure: {len(findings)} math definition divergence or collision issue(s) found.",
+                f"\n❌ Failure: math definition divergence or duplicate ID issue(s) found.",
                 file=sys.stderr,
             )
             return 1

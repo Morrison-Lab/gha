@@ -641,6 +641,7 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-math-definitions.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
@@ -779,6 +780,7 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-math-definitions.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,

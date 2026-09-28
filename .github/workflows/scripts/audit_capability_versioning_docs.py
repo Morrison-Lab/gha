@@ -207,6 +207,31 @@ def git_tag_exists(repo_root: pathlib.Path, tag: str) -> bool:
     return res.returncode == 0
 
 
+def git_ref_exists(repo_root: pathlib.Path, ref: str) -> bool:
+    """Return True if git ref `ref` exists in the repository."""
+    res = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=repo_root,
+        capture_output=True,
+    )
+    return res.returncode == 0
+
+
+def is_new_in_current_branch(repo_root: pathlib.Path, candidate_paths: list[str]) -> bool:
+    """Return True if candidate paths are newly added and not yet present in origin/main."""
+    if not git_ref_exists(repo_root, "origin/main"):
+        return False
+    for rel_path in candidate_paths:
+        res = subprocess.run(
+            ["git", "cat-file", "-e", f"origin/main:{rel_path}"],
+            cwd=repo_root,
+            capture_output=True,
+        )
+        if res.returncode == 0:
+            return False
+    return True
+
+
 def is_git_repo(repo_root: pathlib.Path) -> bool:
     """Return True if `repo_root` is inside a git repository or worktree."""
     git_marker = repo_root / ".git"
@@ -299,6 +324,8 @@ def run_audit(
                 continue
             candidates = candidate_paths_for_raw_path(raw_path)
             if not check_pin_exists_in_git(repo_root, tag, candidates):
+                if is_new_in_current_branch(repo_root, candidates):
+                    continue
                 paths_desc = " or ".join(f"'{c}'" for c in candidates)
                 findings.append(
                     f"ABSENT: '{name}' pins {tag} in its own example stub, "

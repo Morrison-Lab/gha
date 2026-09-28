@@ -86,6 +86,7 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-math-definitions.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
@@ -147,6 +148,9 @@ These run on pull requests (and often on `main`) to keep a repo's content clean.
   `.Rhistory` or `.RData`. It reports each file, the `git rm --cached` line
   that clears it, and the per-machine fix that stops it recurring in every
   other repository too.
+- `check-math-definitions.yml` scans Quarto and Markdown sources for duplicate,
+  divergent, or colliding math definitions and theorems across files and
+  sibling repositories.
 - `check-non-standard-chars.yml` flags curly quotes, en/em dashes, and the
   multiplication sign in `.qmd`, `.R`, and `.md` files, which can break Quarto
   and R rendering.
