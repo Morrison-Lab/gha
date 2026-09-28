@@ -184,7 +184,7 @@
     "href": "reference/check-math-definitions.html",
     "title": "check-math-definitions.yml",
     "section": "",
-    "text": "Check for duplicate, divergent, or colliding mathematical definitions and theorems across Quarto (.qmd) and Markdown (.md) files and sibling repositories.\nIn multi-repo textbook and curriculum ecosystems, mathematical entities (definitions, theorems, lemmas, corollaries, propositions, conjectures, exercises) are frequently cited or duplicated across books and course repositories. check-math-definitions scans cross-reference divs (::: {#def-name}) to enforce cross-document consistency:\nFiles or divs can opt out using directive comments:",
+    "text": "Check for duplicate, divergent, or colliding mathematical definitions and theorems across Quarto (.qmd) and Markdown (.md) files and sibling repositories.\nIn multi-repo textbook and curriculum ecosystems, mathematical entities (definitions, theorems, lemmas, corollaries, propositions, conjectures, exercises) are frequently cited or duplicated across books and course repositories. check-math-definitions scans cross-reference divs (::: {#def-name}) to enforce cross-document consistency:\nA single div opts out with a directive comment inside that div, on its opening fence line or in its own body:\nIt exempts that div only. Other divs in the same file are still checked, and a directive inside a nested div exempts the nested div rather than the one enclosing it.\nA whole file opts out with the separate file-level directive, placed anywhere in the file:",
     "crumbs": [
       "Overview",
       "Reference",
