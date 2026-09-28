@@ -955,18 +955,24 @@ cookieconsent.run({
 <td>Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes).</td>
 </tr>
 <tr class="odd">
+<td><code>max-elements-for-pairwise</code></td>
+<td>string</td>
+<td><code>'500'</code></td>
+<td>Maximum candidate elements per page for pairwise SequenceMatcher diffing; exceeding this skips element-level diffing to prevent quadratic runtime.</td>
+</tr>
+<tr class="even">
 <td><code>banner-index</code></td>
 <td>string</td>
 <td><code>'index.html'</code></td>
 <td>Home page the banner is inserted into, relative to the rendered site root.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>docx-tracked-changes</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Generate Word DOCX documents with tracked changes against the published version on the deployed branch.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>docx-tracked-changes-glob</code></td>
 <td>string</td>
 <td><code>'chapters/*.docx'</code></td>
@@ -1088,8 +1094,9 @@ cookieconsent.run({
 <span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   banner-index: index.html</span></span>
 <span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render</span></span>
 <span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #     build-[0-9a-f]+</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   max-elements-for-pairwise: '500'   # cap candidate elements to avoid quadratic diffing</span></span>
+<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render</span></span>
+<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   docx-tracked-changes-glob: 'chapters/*.docx'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/preview.yml"><code>examples/preview.yml</code></a> for the full caller stub.</p>
 </section>
 <section id="partial-adoption-for-bespoke-builds" class="level2">
