@@ -4173,10 +4173,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p _ci-quarto-links
-          printf '# Page\n\nSee [the old page](renamed-away.qmd).\n' > _ci-quarto-links/page.qmd
-          printf 'not really an image\n' > _ci-quarto-links/unused.png
-          git add -f _ci-quarto-links
+          mkdir -p ci-quarto-links-fixture
+          printf '# Page\n\nSee [the old page](renamed-away.qmd).\n' > ci-quarto-links-fixture/page.qmd
+          # The image's name is built at run time: written out here, it would
+          # appear in this workflow file, which the check reads as a source,
+          # and the image would count as referenced.
+          printf 'not really an image\n' > "ci-quarto-links-fixture/orphan-${GITHUB_RUN_ID}.png"
+          git add -f ci-quarto-links-fixture
       - name: Check links again, expecting a failure
         id: links-expected-failure
         continue-on-error: true
@@ -4204,20 +4207,20 @@ jobs:
       - name: Check again with the fixtures exempted
         uses: ./check-quarto-links
         with:
-          paths-ignore: '_ci-quarto-links'
+          paths-ignore: 'ci-quarto-links-fixture'
       - name: Check images with the default fail
         uses: ./check-orphaned-images
       - name: Check images with the fixture exempted
         uses: ./check-orphaned-images
         with:
-          paths-ignore: '_ci-quarto-links/**'
+          paths-ignore: 'ci-quarto-links-fixture/**'
           fail: 'true'
       - name: Remove the staged fixtures
         if: always()
         shell: bash
         run: |
-          git rm -rq --cached --ignore-unmatch _ci-quarto-links || true
-          rm -rf _ci-quarto-links
+          git rm -rq --cached --ignore-unmatch ci-quarto-links-fixture || true
+          rm -rf ci-quarto-links-fixture
 
   # check-formatting is brand new, so (like check-typos above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
