@@ -3823,7 +3823,7 @@
     "href": "reference/check-math-definitions.html#example",
     "title": "check-math-definitions.yml",
     "section": "Example",
-    "text": "Example\nname: Check Math Definitions\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-math-definitions.yml@v3\n    with:\n      repos: 'Morrison-Lab/rme, Morrison-Lab/pds'\nSee examples/check-math-definitions.yml for caller stubs.",
+    "text": "Example\nname: Check Math Definitions\non:\n  push: { branches: [main] }\n  pull_request:\njobs:\n  check:\n    uses: Morrison-Lab/gha/.github/workflows/check-math-definitions.yml@v3\n    with:\n      repos: 'Morrison-Lab/rme, Morrison-Lab/pds'\nSee the examples/ directory for caller stubs.",
     "crumbs": [
       "Overview",
       "Reference",
