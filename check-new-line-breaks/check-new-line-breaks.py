@@ -85,7 +85,7 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 _ABBREVS = [
     "e.g", "i.e", "vs", "etc", "Dr", "Mr", "Mrs", "Ms", "Jr", "Sr",
     "Fig", "Eq", "Ref", "Sec", "Ch", "Vol", "pp", "No", "approx",
-    "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept",
+    "incl", "excl", "ca", "cf", "ibid", "op", "pt", "Dept", "ed",
     "al",  # et al.
 ]
 
@@ -173,6 +173,28 @@ _SENT_BREAK_RE = re.compile(r"([.!?][`\"')\]*_]*)\s+(?=[A-Z0-9\"'`*\[(_])")
 # has no following space, so the pre-existing `\s+` requirement fails there.
 _SENT_BREAK_LOWER_RE = re.compile(r"(?<=[a-z][a-z])([.!?])\s+(?=[a-z])")
 
+# Numbering / list markers with emphasis (e.g. `**1.**`, `*1.*`, `__1.__`, `_1._`,
+# `**1.1.**`, `**a.**`, `**A.**`, `**i.**`), protected against splitting as a
+# sentence boundary (gha#947).
+#
+# A bare marker has no sentence content of its own; treating its trailing
+# `.**` as a sentence end splits lines like `**1.** Only the sign constraint.`
+# into two pseudo-sentences. Anchoring to line-start, whitespace, or list bullets
+# protects the marker while allowing genuine emphasized sentence boundaries
+# like `**Claim.** Explanation.` (which has words before the period) to split.
+_NUM_MARKER_INNER = (
+    r"(?:"
+    r"\d+(?:\.\d+)*"
+    r"|[a-zA-Z]"
+    r"|x{0,3}(?:i{1,3}|iv|v|vi{0,3}|ix)|x{1,3}"
+    r"|X{0,3}(?:I{1,3}|IV|V|VI{0,3}|IX)|X{1,3}"
+    r"|\(\d+\)|\([a-zA-Z]\)"
+    r")"
+)
+_NUM_MARKER_RE = re.compile(
+    r"(^|\s)([*_]{1,2}" + _NUM_MARKER_INNER + r"\.)([*_]{1,2})(?=\s)"
+)
+
 _PLACEHOLDER = "\x00"
 
 
@@ -187,6 +209,9 @@ def split_sentences(text: str) -> List[str]:
     if not text:
         return []
     protected = _ABBREV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, text)
+    protected = _NUM_MARKER_RE.sub(
+        lambda m: m.group(1) + m.group(2)[:-1] + _PLACEHOLDER + m.group(3), protected
+    )
     protected = re.sub(r"`[^`]+`", _protect_inline_code, protected)
     protected = _SENT_BREAK_RE.sub(lambda m: m.group(1) + "\n", protected)
     # Protect lowercase abbreviation forms only now, after the uppercase branch
@@ -428,13 +453,26 @@ def prose_line_numbers(text: str) -> Set[int]:
     return prose
 
 
+_EMPH_BULLET_RE = re.compile(
+    r"^(\s*)([*_]{1,2}" + _NUM_MARKER_INNER + r"\.[*_]{1,2})\s+(.*)",
+    re.DOTALL,
+)
+
+
 def line_content(line: str) -> str:
-    """Strip a bullet marker or blockquote prefix so the splitter sees plain prose."""
-    bullet_m = _BULLET_RE.match(line)
-    if bullet_m:
-        return bullet_m.group(3)
+    """Strip bullet markers, emphasized numbering markers, or blockquote prefixes so the splitter sees plain prose."""
     if _BQ_RE.match(line):
-        return re.sub(r"^\s*>\s?", "", line).strip()
+        line = re.sub(r"^\s*>\s?", "", line).strip()
+    while True:
+        bullet_m = _BULLET_RE.match(line)
+        if bullet_m:
+            line = bullet_m.group(3)
+            continue
+        emph_m = _EMPH_BULLET_RE.match(line)
+        if emph_m:
+            line = emph_m.group(3)
+            continue
+        break
     return line.strip()
 
 
