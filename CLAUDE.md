@@ -2053,6 +2053,19 @@ CI runs both as the `quarto-links-orphaned-images` job in `_selftest.yml`,
 then calls both composites over this repo's own tree and over a staged dead
 link and unused image.
 
+**Both checks' staged fixtures were invisible to them at first, each for
+the reason the check exists.**
+The fixture directory began with `_`, so `check-quarto-links` skipped its
+page as one Quarto never renders.
+The fixture image's name was written in `_selftest.yml`, which
+`check-orphaned-images` reads as a source, so the image counted as used.
+The fixture now lives in an unprefixed directory, and the image's name is
+built at run time --- the same self-implicating shape the `merge-drops`
+fixture records above.
+The job's reference page met a third form: Quarto expands a shortcode even
+inside a code span, so an example `include` or `meta` shortcode on a page
+must be escaped as `{{</* include ... */>}}`, or the site render fails.
+
 `check-code-similarity/tests/test_check_code_similarity.py` is a pytest suite
 driving `check_code_similarity.py` against a **stub `java`** that writes a
 canned JPlag results CSV --- no 80 MB jar and no JDK, the same remedy
