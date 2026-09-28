@@ -208,7 +208,7 @@ of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`,
 while `opposition-research`, `check-dependency-updates`,
-`check-duplicate-roxygen`, `check-repo-hygiene`,
+`check-duplicate-roxygen`, `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
 `check-quarto-manuscript`, `check-r-package`,
 `check-python-package`, and `student-qmd`
@@ -245,6 +245,13 @@ only ever shipped at `@v3`.
   opt in with their own reformat commit, so a first run going red on an
   unformatted tree is the intended adoption cost rather than
   pre-existing drift to tolerate.
+  `check-merge-drops/` (Python) is scoped to the **merge commits** in a
+  range rather than to a diff: for each merge it compares what either
+  parent added since the merge base against the merge's whole tree, so it
+  finds content a conflict resolution dropped, which no check reading only
+  the current tree can see (gha#958).
+  Warn-only by default, since a merge may legitimately drop a line the other
+  side superseded.
   `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
   the history but the **index** (`git ls-files -i -c -X`), for tracked
   operating-system and editor detritus.
@@ -1695,6 +1702,35 @@ errors unassembled, 1 pre-fix, and 0 post-fix.
 Read that as the general shape: when a test's stated rationale is about a
 downstream tool's verdict, measure that verdict under both answers rather
 than asserting the resolution alone (gha#741 review).
+
+`check-merge-drops/tests/test_check_merge_drops.py` is a pytest suite that
+builds one conflicting merge per case in `tmp_path` and resolves it a
+different way (gha#958): keeping one side of the whole file is reported, a
+hunk-by-hunk resolution is not, and neither is the dropped paragraph moved to
+another file, rewrapped, or reworded (unless `similarity` is `1`).
+It also pins the `++`-prefixed-content diff-header case, the skip on an empty,
+all-zero or unknown base, `fail` through both the flag and
+`MERGE_DROPS_FAIL`, and that `action.yml` and the reusable workflow declare
+the script's defaults.
+Run it with `python3 -m pytest check-merge-drops/tests/ -q`; CI runs it as the
+`merge-drops-tests` job in `_selftest.yml`, beside a `merge-drops` job that
+runs the real composite over the PR's own merges and then over a one-sided
+merge fixture it commits on top of the checkout, asserting `fail: 'true'`
+blocks it and `paths-ignore` exempts it.
+Five mutations turn a named case red: dropping the whole-tree search,
+disabling the rewording test, reporting nothing, treating every `+++` line as
+a header, and ignoring `fail`.
+Checking the same file by line set instead of by flattened text survives, and
+that is the whole-tree search (which also flattens) still holding, not a gap.
+
+**The whole-tree search makes this check's fixtures self-implicating.**
+A dropped line whose text is quoted anywhere in the merge's tree counts as
+moved there, and a selftest fixture's text is quoted in `_selftest.yml`
+itself, so the first draft of the `merge-drops` job reported nothing.
+The fixture now puts a commit SHA into the dropped line, so its text exists
+only in the fixture.
+The same holds for a consumer: a changelog or review note that quotes a
+dropped line hides that drop.
 
 `lint-markdown/check_list_item_splices.mjs` (tested by
 `node lint-markdown/tests/test_list_item_splices.mjs`) flags list-item merge

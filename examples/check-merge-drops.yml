@@ -1,0 +1,24 @@
+# Copy to .github/workflows/check-merge-drops.yml in your repo.
+# Reports content a merge commit silently dropped: lines either side added
+# since the merge base that appear nowhere in the merge's tree -- what
+# resolving a conflict by keeping one side of a whole file looks like.
+# Warn-only by default; the report goes to the job summary.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check merge commits for dropped content
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-merge-drops.yml@v3
+    # with:
+    #   globs: '*.md *.qmd *.R'               # pathspecs whose added lines are checked
+    #   paths-ignore: 'CHANGELOG.md'          # skip known-noisy paths
+    #   min-length: 30                        # skip lines shorter than this
+    #   similarity: 1                         # report reworded lines too
+    #   fail: true                            # block instead of warn

@@ -319,8 +319,8 @@ def main() -> int:
 
         findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
         check(
-            "run_audit with check_git_tags=True flags capability absent from pinned git tag",
-            any("ABSENT: 'cap' pins v2" in f for f in findings),
+            "run_audit treats a capability at no tag, pinning the newest major, as pending",
+            not any("ABSENT" in f for f in findings),
             str(findings),
         )
 
@@ -342,6 +342,33 @@ def main() -> int:
             len(findings) == 0,
             str(findings),
         )
+
+        # gha#928's shape: pinned to an older major the capability never
+        # existed at, while it does exist at a newer one.
+        write(
+            root,
+            "examples/cap.yml",
+            "uses: Morrison-Lab/gha/.github/workflows/cap.yml@v2\n",
+        )
+        build_fixture(root, {"cap": ("v2", all_region_indices)})
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit with check_git_tags=True flags capability absent from an older pinned tag",
+            any("ABSENT: 'cap' pins v2" in f for f in findings),
+            str(findings),
+        )
+
+        # An unreleased capability pinning an OLDER major is not pending:
+        # only the newest major slides past a new merge.
+        build_fixture(root, {"cap": ("v3", all_region_indices), "cap2": ("v2", all_region_indices)})
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit flags an unreleased capability pinning an older major",
+            any("ABSENT: 'cap2' pins v2" in f for f in findings),
+            str(findings),
+        )
+        for stale in (".github/workflows/cap2.yml", "examples/cap2.yml"):
+            (root / stale).unlink()
 
         # Tag does not exist at all (e.g. pinned to v99 while v2/v3 exist)
         write(
