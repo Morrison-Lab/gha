@@ -142,6 +142,55 @@ def test_nested_includes_resolve_from_every_ancestor(tmp_path, monkeypatch):
     assert got == []
 
 
+def test_nested_include_links_resolve_from_the_top_level_page_only(tmp_path, monkeypatch):
+    # Quarto resolves everything an included file contains from the
+    # top-level page's directory, so a target that exists only beside the
+    # intermediate subfile is still dead.
+    got = _findings(tmp_path, monkeypatch, {
+        "chapters/a.qmd": "{{< include _sub/_outer.qmd >}}\n",
+        "chapters/_sub/_outer.qmd": "{{< include _sub/_inner.qmd >}}\n",
+        "chapters/_sub/_inner.qmd": "[B](b.qmd)\n",
+        "chapters/_sub/b.qmd": "# only beside the subfiles\n",
+    })
+    assert got == [("chapters/_sub/_inner.qmd", 1, "b.qmd")]
+
+
+def test_a_subfile_must_resolve_from_every_page_that_includes_it(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, {
+        "a/page.qmd": "{{< include ../_shared/_x.qmd >}}\n",
+        "b/page.qmd": "{{< include ../_shared/_x.qmd >}}\n",
+        "_shared/_x.qmd": "[sibling](sibling.qmd)\n",
+        "a/sibling.qmd": "# only under a/\n",
+    })
+    assert got == [("_shared/_x.qmd", 1, "sibling.qmd")]
+
+
+def test_quoted_include_path_with_a_space(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, {
+        "chapters/a.qmd": '{{< include "_sub/my part.qmd" >}}\n',
+        "chapters/_sub/my part.qmd": "[gone](gone.qmd)\n",
+    })
+    assert got == [("chapters/_sub/my part.qmd", 1, "gone.qmd")]
+
+
+def test_indented_code_block_is_not_prose_but_a_list_continuation_is(tmp_path, monkeypatch):
+    got = _findings(tmp_path, monkeypatch, {
+        "a.qmd": (
+            "Some text.\n"
+            "\n"
+            "    Example: [x](in-code.qmd)\n"
+            "\n"
+            "    still code [y](in-code-too.qmd)\n"
+            "More text.\n"
+            "\n"
+            "- A list item.\n"
+            "\n"
+            "    A continuation paragraph [z](in-list.qmd).\n"
+        ),
+    })
+    assert got == [("a.qmd", 10, "in-list.qmd")]
+
+
 def test_unincluded_partial_is_skipped_and_escaped_include_includes_nothing(tmp_path, monkeypatch):
     # An outtake kept for reuse: its include is escaped and commented out,
     # so Quarto never renders it and its links resolve from nowhere.

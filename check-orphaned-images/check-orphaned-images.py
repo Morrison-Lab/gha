@@ -65,10 +65,11 @@ DEFAULT_SOURCE_EXTENSIONS = (
 
 # Characters that cannot be part of a file name as a source writes it (they
 # delimit a Markdown link, an HTML attribute, a YAML value, a CSS url(), a
-# fragment or a query string). Splitting on them, rather than searching for
+# fragment, a query string, or a key from its value, as in ``logo:x.png``).
+# Splitting on them, rather than searching for
 # names with a lazy pattern, keeps the scan linear on long lines such as an
 # inlined data URI.
-_DELIMITERS_RE = re.compile(r"[\s\"'()<>\[\]{}|,;=`*!#?]+")
+_DELIMITERS_RE = re.compile(r"[\s\"'()<>\[\]{}|,;:=`*!#?]+")
 
 
 class Result(NamedTuple):

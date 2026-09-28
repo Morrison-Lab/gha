@@ -39,7 +39,8 @@ A target resolves from the linking file's directory, or, when it starts with
 
 Not checked, by design:
 
-- links inside fenced code blocks, code spans, and HTML comments;
+- links inside fenced or indented code blocks, code spans, and HTML comments
+  (an indented paragraph continuing a list item is prose, and is checked);
 - URLs with a scheme (`https:`, `mailto:`), `//` URLs, and `#anchor`-only
   links;
 - targets built from a shortcode or an inline expression, such as
@@ -50,8 +51,11 @@ Not checked, by design:
 Quarto splices a `{{< include _sub/_part.qmd >}}` file into the including page
 before it resolves links, so a link in `_part.qmd` is written relative to the
 page, not to `_sub/`.
-The check accepts a link that resolves from the file's own directory or from
-any page that includes it, directly or through other includes.
+That holds however deeply includes nest: everything resolves from the
+directory of the top-level page being rendered.
+A link must resolve from every page that renders it, so a subfile shared by
+pages in two directories is checked from both, and a finding names the
+directory the target was missing from.
 A `_`-prefixed file that nothing includes, such as an outtake kept for reuse,
 is skipped and named in the log, since Quarto never renders it and there is no
 page to resolve its links from.

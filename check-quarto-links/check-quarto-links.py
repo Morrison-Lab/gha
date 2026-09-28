@@ -21,16 +21,16 @@ Design notes:
   clear, so there is no diff scoping (the same reasoning as
   ``check-junk-files``).
 - **Include-aware.** Quarto splices ``{{< include path >}}`` files into the
-  including page before it resolves links, so a link inside a ``_``-prefixed
-  subfile is written relative to the page that includes it, not to the
-  subfile's own directory. A link is therefore accepted when it resolves
-  from the file's own directory *or* from the directory of any page that
-  includes it, directly or transitively.
+  including page before it resolves links, so a link inside an included
+  subfile is resolved from the directory of the rendered page that includes
+  it, however deeply nested, and not from the subfile's own directory. A
+  link must resolve from every page that renders it: the file itself unless
+  it is ``_``-prefixed, plus each page that includes it.
 - **Root-relative links** (``/about.qmd``) resolve against the Quarto
   project directory: the nearest ancestor holding ``_quarto.yml`` (or
   ``_quarto.yaml``), else the repository root.
-- **What is not a link.** Fenced code blocks, inline code spans and HTML
-  comments are blanked out before matching (line numbers are preserved), so
+- **What is not a link.** Fenced and indented code blocks, inline code spans
+  and HTML comments are blanked out before matching (line numbers are preserved), so
   an example link in a code block or an outtake commented out of a page is
   not reported. URLs with a scheme (``https:``, ``mailto:``), protocol-
   relative ``//`` URLs, pure ``#anchors``, and targets containing a
@@ -70,8 +70,9 @@ _REF_DEF_RE = re.compile(r"^[ ]{0,3}\[(?!\^)[^\]\n]+\]:[ \t]*(<[^>\n]+>|\S+)", r
 _HTML_ATTR_RE = re.compile(r"""\b(?:href|src)\s*=\s*(["'])([^"'\n]+)\1""", re.I)
 # ``{{< include path >}}``; the escaped ``{{</* include */>}}`` form does not
 # match, because ``/*`` follows ``<``.
-_INCLUDE_RE = re.compile(r"\{\{<\s*include\s+([^\s>]+)\s*>\}\}")
+_INCLUDE_RE = re.compile(r"""\{\{<\s*include\s+("[^"\n]*"|'[^'\n]*'|[^\s>]+)\s*>\}\}""")
 _SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.\-]*:")
+_LIST_ITEM_RE = re.compile(r"^\s{0,3}(?:[-*+]|[0-9]+[.)])(?:\s|$)")
 _FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 _COMMENT_RE = re.compile(r"<!--.*?-->", re.S)
 _CODE_SPAN_RE = re.compile(r"(`+)(?!`).*?(?<!`)\1(?!`)")
@@ -81,6 +82,9 @@ class Finding(NamedTuple):
     path: str
     line: int
     target: str
+    # The directory the target was resolved from and not found in: the
+    # file's own, or that of the page including it.
+    base: str = "."
 
 
 def _run_git(args: List[str], cwd: Optional[Path] = None) -> Optional[str]:
@@ -138,6 +142,25 @@ def parse_extensions(value: str) -> Set[str]:
     }
 
 
+def _indent_width(line: str) -> int:
+    return len(line.expandtabs(4)) - len(line.expandtabs(4).lstrip())
+
+
+def _opens_indented_code(last_text: Optional[str]) -> bool:
+    """Whether an indented line after a blank line is an indented code block.
+
+    It is, per CommonMark, unless it continues a list item: after a blank
+    line, a list item's further paragraphs are indented just like code. So
+    the line is code only when the last non-blank line before it was neither
+    indented nor a list item. Getting this wrong in the other direction
+    blanks a real paragraph and hides its links, which is why a list context
+    is read as prose.
+    """
+    if last_text is None:
+        return True
+    return _indent_width(last_text) == 0 and not _LIST_ITEM_RE.match(last_text)
+
+
 def blank_non_prose(text: str) -> str:
     """Replace code blocks, code spans and HTML comments with spaces.
 
@@ -150,12 +173,29 @@ def blank_non_prose(text: str) -> str:
     text = _COMMENT_RE.sub(_blank, text)
     lines = text.split("\n")
     fence: Optional[str] = None
+    in_indented = False
+    prev_blank = True
+    last_text: Optional[str] = None  # the last non-blank line outside code
     for i, line in enumerate(lines):
         m = _FENCE_RE.match(line)
+        blank = not line.strip()
         if fence is None:
+            indented = not blank and _indent_width(line) >= 4
+            if in_indented and (blank or indented):
+                lines[i] = " " * len(line)
+                continue
+            in_indented = False
+            if indented and prev_blank and _opens_indented_code(last_text):
+                in_indented = True
+                lines[i] = " " * len(line)
+                prev_blank = False
+                continue
             if m:
                 fence = m.group(1)
                 lines[i] = " " * len(line)
+            elif not blank:
+                last_text = line
+            prev_blank = blank
         else:
             stripped = line.strip()
             if m and set(stripped) == {fence[0]} and len(stripped) >= len(fence):
@@ -211,22 +251,27 @@ def project_root(rel_dir: PurePosixPath, root: Path, tracked: Set[str]) -> PureP
     return PurePosixPath(".")
 
 
-def build_includers(texts: Dict[str, str], root: Path) -> Dict[str, Set[str]]:
-    """Map each included file to the set of files that include it."""
-    includers: Dict[str, Set[str]] = {}
-    tracked = set(texts)
-    for path, text in texts.items():
-        here = PurePosixPath(path).parent
-        for m in _INCLUDE_RE.finditer(text):
-            inc = m.group(1).strip("\"'")
-            if inc.startswith("/"):
-                base = project_root(here, root, tracked)
-                inc_path = base / inc.lstrip("/")
-            else:
-                inc_path = here / inc
-            key = os.path.normpath(inc_path.as_posix())
-            includers.setdefault(key, set()).add(path)
-    return includers
+def include_targets(path: str, text: str, doc_dir: PurePosixPath,
+                    root: Path, tracked: Set[str]) -> List[str]:
+    """Repo-relative paths of the files ``text`` includes.
+
+    Quarto resolves a nested include against the TOP-LEVEL document's
+    directory rather than the including file's, so ``doc_dir`` is that
+    document's directory. The including file's own directory is tried as a
+    fallback, so a path written the other way still maps to its file rather
+    than dropping that file out of the scan.
+    """
+    here = PurePosixPath(path).parent
+    out = []
+    for m in _INCLUDE_RE.finditer(text):
+        inc = m.group(1).strip("\"'")
+        if inc.startswith("/"):
+            cands = [project_root(doc_dir, root, tracked) / inc.lstrip("/")]
+        else:
+            cands = [doc_dir / inc, here / inc]
+        keys = [os.path.normpath(c.as_posix()) for c in cands]
+        out.append(next((k for k in keys if k in tracked), keys[0]))
+    return out
 
 
 def is_partial(path: str) -> bool:
@@ -239,21 +284,32 @@ def is_partial(path: str) -> bool:
     return any(part.startswith(("_", ".")) for part in PurePosixPath(path).parts)
 
 
-def base_dirs(path: str, includers: Dict[str, Set[str]]) -> List[PurePosixPath]:
-    """The file's own directory plus every transitive includer's directory."""
-    seen = {path}
-    stack = [path]
-    dirs = []
-    while stack:
-        cur = stack.pop()
-        d = PurePosixPath(cur).parent
-        if d not in dirs:
-            dirs.append(d)
-        for parent in includers.get(os.path.normpath(cur), ()):
-            if parent not in seen:
-                seen.add(parent)
-                stack.append(parent)
-    return dirs
+def render_contexts(texts: Dict[str, str], root: Path) -> Dict[str, Set[PurePosixPath]]:
+    """Map each file to the directories its links are resolved from.
+
+    A page Quarto renders resolves its own links, and those of everything it
+    includes (however deeply), from its own directory. So a file's contexts
+    are its own directory when it is rendered itself, plus the directory of
+    every rendered page that includes it. A partial file that no rendered
+    page reaches gets no context at all.
+    """
+    tracked = set(texts)
+    contexts: Dict[str, Set[PurePosixPath]] = {}
+    for doc in texts:
+        if is_partial(doc):
+            continue
+        doc_dir = PurePosixPath(doc).parent
+        stack, seen = [doc], {doc}
+        while stack:
+            cur = stack.pop()
+            contexts.setdefault(cur, set()).add(doc_dir)
+            if cur not in texts:
+                continue
+            for inc in include_targets(cur, texts[cur], doc_dir, root, tracked):
+                if inc not in seen:
+                    seen.add(inc)
+                    stack.append(inc)
+    return contexts
 
 
 def find_dead_links(
@@ -265,38 +321,43 @@ def find_dead_links(
 ) -> List[Finding]:
     """Scan ``files`` (repo-relative) under ``root`` for dead page links.
 
-    Partial files (see ``is_partial``) that no scanned file includes are
-    appended to ``skipped`` instead of being checked.
+    A link is dead when it fails to resolve from ANY directory the file is
+    rendered from (see ``render_contexts``): a subfile included by two pages
+    in different directories has to work from both. Partial files that no
+    rendered page includes are appended to ``skipped`` instead of checked.
     """
     if skipped is None:
         skipped = []
     texts: Dict[str, str] = {}
     for rel in files:
         try:
-            texts[rel] = (root / rel).read_text(encoding="utf-8", errors="replace")
+            texts[os.path.normpath(rel)] = (root / rel).read_text(
+                encoding="utf-8", errors="replace")
         except OSError:
             continue
     tracked = set(all_tracked or ()) | set(texts)
-    includers = build_includers(texts, root)
+    contexts = render_contexts(texts, root)
     findings = []
     for rel, text in texts.items():
-        if is_partial(rel) and os.path.normpath(rel) not in includers:
+        dirs = sorted(contexts.get(rel, ()))
+        if not dirs:
             # Quarto never renders a ``_``-prefixed file on its own, and with
             # no page including it there is no directory its links would be
             # resolved from -- an outtake kept for reuse, typically.
             skipped.append(rel)
             continue
-        dirs = base_dirs(rel, includers)
         for line, raw in extract_links(text):
             target = normalize_target(raw, extensions)
             if target is None:
                 continue
-            if target.startswith("/"):
-                cands = [project_root(d, root, tracked) / target.lstrip("/") for d in dirs]
-            else:
-                cands = [d / target for d in dirs]
-            if not any((root / c).exists() for c in cands):
-                findings.append(Finding(rel, line, raw.strip()))
+            for d in dirs:
+                if target.startswith("/"):
+                    cand = project_root(d, root, tracked) / target.lstrip("/")
+                else:
+                    cand = d / target
+                if not (root / cand).exists():
+                    findings.append(Finding(rel, line, raw.strip(), d.as_posix()))
+                    break
     return findings
 
 
@@ -345,7 +406,8 @@ def main() -> int:
     for f in findings:
         print(
             f"::{level} file={f.path},line={f.line},title=Link to a missing page::"
-            f"{_escape_annotation(f.target)} does not exist"
+            f"{_escape_annotation(f.target)} does not exist "
+            f"(resolved from {f.base}/)"
         )
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
     if summary:

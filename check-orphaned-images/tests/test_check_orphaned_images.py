@@ -84,11 +84,11 @@ def test_every_way_of_naming_an_image_counts_as_a_use(tmp_path, monkeypatch, cap
         ),
         "_quarto.yml": "website:\n  favicon: images/favicon.png\n",
         "custom.scss": "body { background: url('images/bg.webp'); }\n",
-        "filters/f.lua": 'local logo = "Logo.PNG"\n',
+        "filters/f.lua": 'local logo = "Logo.PNG"\nlocal t = "icon:pinned.png"\n',
         "images/md.png": "x", "images/with space.png": "x",
         "images/pct name.png": "x", "images/html.svg": "x",
         "images/prose.jpg": "x", "images/favicon.png": "x",
-        "images/bg.webp": "x", "images/logo.png": "x",
+        "images/bg.webp": "x", "images/logo.png": "x", "images/pinned.png": "x",
         "images/unused.png": "x", "images/sub/also-unused.gif": "x",
     })
     assert _main(tmp_path, monkeypatch) == 0

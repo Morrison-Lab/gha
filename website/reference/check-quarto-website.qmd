@@ -86,7 +86,7 @@ in an offline environment).
 | `check-links` | boolean | `true` | Enable lychee link checker. |
 | `lychee-config` | string | `''` | Path to a custom lychee config file. |
 | `lychee-args` | string | `'--exclude-mail'` | Command-line arguments for lychee. |
-| `check-quarto-links` | boolean | `true` | Enable the check for links to missing Quarto pages. |
+| `check-quarto-links` | boolean | `true` | Enable the check for links to missing Quarto pages; blocking or not follows `fail`. |
 | `quarto-links-paths-ignore` | string | `''` | Globs of source files to skip for the Quarto links check. |
 | `check-orphaned-images` | boolean | `true` | Enable the orphaned-images report. |
 | `orphaned-images-paths-ignore` | string | `''` | Globs of images to skip. |

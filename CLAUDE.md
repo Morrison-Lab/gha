@@ -299,9 +299,11 @@ only ever shipped at `@v3`.
   text, so a relative `[x](renamed.qmd)` is never extracted (lychee 0.24.2,
   measured 2026-09-28), while Quarto only warns about it.
   It is whole-tree like `check-junk-files`, and include-aware:
-  a link in a `{{< include >}}`d subfile resolves from every page that
-  includes it, and an unincluded `_`-prefixed file is skipped, since there is
-  no directory to resolve its links from;
+  a link in a `{{< include >}}`d subfile must resolve from the directory of
+  every top-level page that renders it (nested includes resolve from the
+  top-level page, as `student-qmd` measured), and an unincluded
+  `_`-prefixed file is skipped, since there is no directory to resolve its
+  links from;
   `check-orphaned-images/` (Python, gha#960) matches image FILE NAMES rather
   than resolved paths, because resolving every YAML, Lua and CSS reference is
   what a render does, and is warn-only by default for the same reason:
@@ -2003,8 +2005,10 @@ a later whole-tree dogfood of this repo should `paths-ignore`
 suites over throwaway git repositories built in `tmp_path`, never committed,
 since a committed dead link or unused image would be swept into this repo's
 own dogfood of both checks.
-The cases to keep are the negative ones: code, code spans and HTML comments
-are not links, a subfile resolves from its includer, an escaped include
+The cases to keep are the negative ones: code blocks (fenced or indented),
+code spans and HTML comments are not links while a list item's indented
+continuation is, a nested subfile resolves from the top-level page and not
+from its own directory, an escaped include
 includes nothing, an unresolvable `base-ref` skips rather than widening, and
 each way a source names an image counts as a use.
 Each also pins its long-line cost, because the first draft of the image
