@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# check-one-function-per-file: allow-multiple
 """Highlight added and modified text in rendered HTML files compared to deployed branch.
 
 Compares the PR's rendered HTML against the version published on `gh-pages` and
@@ -32,6 +33,8 @@ Configuration (all via environment, set by `preview/action.yml`):
                        Default '' (the branch root).
   NORMALIZE_PATTERNS   Newline-separated regexes whose matches are blanked before
                        comparison, in addition to built-in defaults.
+  MAX_ELEMENTS_FOR_PAIRWISE  Max candidate elements per page for pairwise
+                             SequenceMatcher diffing. Default 500.
   REPO_DIR             Git repository to run in. Default `.`.
 """
 
@@ -76,6 +79,16 @@ ELEMENT_RE = re.compile(
 )
 
 TAG_RE = re.compile(r"<[^>]+>")
+
+def _get_max_elements_for_pairwise():
+    raw = os.environ.get("MAX_ELEMENTS_FOR_PAIRWISE", "500").strip()
+    try:
+        return int(raw) if raw else 500
+    except ValueError:
+        return 500
+
+
+MAX_ELEMENTS_FOR_PAIRWISE = _get_max_elements_for_pairwise()
 
 
 # Aliased to GitError from substrate
@@ -224,7 +237,7 @@ def highlight_changed_elements(old_html, new_html, patterns):
     similarity = difflib.SequenceMatcher(None, norm_old, norm_new).ratio()
 
     old_elements = ELEMENT_RE.findall(old_content)
-    new_elements = ELEMENT_RE.findall(new_content)
+    new_matches = list(ELEMENT_RE.finditer(new_content))
 
     old_elem_list = []
     for elem in old_elements:
@@ -232,13 +245,25 @@ def highlight_changed_elements(old_html, new_html, patterns):
         if text:
             old_elem_list.append((text, normalize_text(text, patterns), elem))
 
+    if len(old_elem_list) > MAX_ELEMENTS_FOR_PAIRWISE or len(new_matches) > MAX_ELEMENTS_FOR_PAIRWISE:
+        print(
+            annotate(
+                "notice",
+                f"Skipping element-level diff highlighting: "
+                f"{len(old_elem_list)} old / {len(new_matches)} new candidate "
+                f"elements exceed the {MAX_ELEMENTS_FOR_PAIRWISE}-element cap",
+            ),
+            file=sys.stderr,
+        )
+        return new_html, 0, similarity
+
     used_old_indices = set()
-    highlighted_main_content = new_content
-    changes_made = 0
+    replacements = []
 
     SIMILARITY_THRESHOLD_MIN = 0.5
 
-    for new_elem in new_elements:
+    for m in new_matches:
+        new_elem = m.group(1)
         new_text = extract_text_from_element(new_elem)
         if not new_text:
             continue
@@ -280,10 +305,7 @@ def highlight_changed_elements(old_html, new_html, patterns):
                 highlighted_inner = highlight_html_diff(old_inner_content, inner_content)
                 if highlighted_inner != inner_content:
                     highlighted_elem = f"{open_tag}{highlighted_inner}{close_tag}"
-                    highlighted_main_content = highlighted_main_content.replace(
-                        new_elem, highlighted_elem, 1
-                    )
-                    changes_made += 1
+                    replacements.append((m.start(), m.end(), highlighted_elem))
 
         elif (best_match_idx is None or best_ratio < SIMILARITY_THRESHOLD_MIN) and new_text:
             tag_match = re.match(r"(<[^>]+>)(.*)(</[^>]+>)", new_elem, re.DOTALL)
@@ -292,19 +314,25 @@ def highlight_changed_elements(old_html, new_html, patterns):
                 highlighted_elem = (
                     f'{open_tag}<mark class="preview-element-added" style="background-color: #cff4fc; color: inherit; padding: 1px 2px; border-radius: 2px;">{inner_content}</mark>{close_tag}'
                 )
-                highlighted_main_content = highlighted_main_content.replace(
-                    new_elem, highlighted_elem, 1
-                )
-                changes_made += 1
+                replacements.append((m.start(), m.end(), highlighted_elem))
 
-    if changes_made > 0:
-        highlighted_new_html = (
-            new_html[:start_idx] + highlighted_main_content + new_html[end_idx:]
-        )
-    else:
-        highlighted_new_html = new_html
+    if not replacements:
+        return new_html, 0, similarity
 
-    return highlighted_new_html, changes_made, similarity
+    pieces = []
+    cursor = 0
+    for start, end, replacement in replacements:
+        pieces.append(new_content[cursor:start])
+        pieces.append(replacement)
+        cursor = end
+    pieces.append(new_content[cursor:])
+    highlighted_main_content = "".join(pieces)
+
+    highlighted_new_html = (
+        new_html[:start_idx] + highlighted_main_content + new_html[end_idx:]
+    )
+
+    return highlighted_new_html, len(replacements), similarity
 
 
 def render_modified_page_banner(similarity):

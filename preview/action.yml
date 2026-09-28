@@ -106,6 +106,11 @@ inputs:
       changes on every render, since a page that always differs makes the whole
       feature noise.
     default: ''
+  max-elements-for-pairwise:
+    description: >-
+      Maximum candidate elements per page for pairwise SequenceMatcher diffing.
+      Defaults to 500. Exceeding this skips element-level diffing to avoid quadratic runtime.
+    default: '500'
   banner-index:
     description: Home page the banner is inserted into, relative to the rendered site root.
     default: 'index.html'
@@ -415,6 +420,7 @@ runs:
         DEPLOYED_BRANCH: ${{ inputs.deployed-branch }}
         DEPLOYED_SUBDIR: ${{ inputs.deployed-subdir }}
         NORMALIZE_PATTERNS: ${{ inputs.changed-chapters-normalize-patterns }}
+        MAX_ELEMENTS_FOR_PAIRWISE: ${{ inputs.max-elements-for-pairwise }}
       run: python3 "$GITHUB_ACTION_PATH/highlight-html-changes.py"
 
     - name: Install Python dependencies for DOCX tracked changes
