@@ -14,6 +14,17 @@ jobs:
     uses: ./.github/workflows/check-links.yml
     with:
       create-issue-on-main: false
+      # Check links to this repo's own files on main against the PR's
+      # checkout, so a page added with its example stub in the same PR
+      # does not 404 on a file main only gains when the PR merges. A link
+      # to a file missing from the checkout still fails. lychee-action runs
+      # its args through `eval`, so the double-quoted GITHUB_WORKSPACE
+      # expands on the runner (the github context is empty in a reusable
+      # workflow's `with:`), while the escaped \$1 reaches lychee as the
+      # remap's capture group.
+      lychee-args: >-
+        --verbose --no-progress './**/*.qmd' './**/*.md' './**/*.html'
+        --remap "https://github.com/Morrison-Lab/gha/blob/main/(.*) file://${GITHUB_WORKSPACE}/\$1"
   # check-non-standard-chars's extensions input is brand new, so (like
   # lint-yaml/lint-markdown below) it isn't at the released `@v2` tag its
   # reusable workflow's internal `uses: Morrison-Lab/gha/check-non-standard-chars@v3`
