@@ -22,7 +22,7 @@ turn it off for a pure-markdown site.
 | `install-package` | boolean | `true` | Run `R CMD INSTALL <path>` to install the caller repo as a local package before rendering. |
 | `setup-chrome` | boolean | `true` | Install Chrome (needed by Quarto for revealjs and screenshot rendering). |
 | `tinytex` | boolean | `false` | Install TinyTeX and enable PDF rendering. When false (default), TinyTeX is installed and PDF is rendered only when the PR is labeled `preview:pdf`. |
-| `setup-julia` | boolean | `false` | Install Julia (`julia-actions/setup-julia`) before rendering, for pages that execute `{julia}` chunks; under knitr these run through the R package JuliaCall, so add `any::JuliaCall` to `r-packages`. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render. `@v3` and later. |
+| `setup-julia` | boolean | `false` | Install Julia (`julia-actions/setup-julia`) before rendering, for pages that execute `{julia}` chunks; under knitr these run through the R package JuliaCall, so add `any::JuliaCall` to `r-packages`. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and `R_LD_LIBRARY_PATH` is set to R's own `lib` directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. `@v3` and later. |
 | `julia-version` | string | `'1'` | Julia version to install, in `setup-julia`'s `version` syntax. Only used when `setup-julia` is true. `@v3` and later. |
 | `submodules` | string | `'recursive'` | Passed to `actions/checkout` `submodules` (`'recursive'`, `'true'`, or `'false'`). |
 | `render-profile` | string | `'website'` | Quarto `--profile` to render with. |

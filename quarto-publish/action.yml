@@ -48,7 +48,10 @@ inputs:
       package JuliaCall, which the caller installs via `r-packages` (or renv);
       when JuliaCall is installed, its own Julia dependencies (RCall and
       Suppressor) are set up in a separate step so a failure there is not
-      buried in the render log.
+      buried in the render log. Also sets R_LD_LIBRARY_PATH to R's own lib
+      directory for the rest of the job, so Julia started by R loads its own
+      libunwind rather than the system one, which segfaults on any Julia
+      exception.
     default: 'false'
   julia-version:
     description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.

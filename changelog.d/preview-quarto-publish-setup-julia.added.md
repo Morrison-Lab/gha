@@ -7,6 +7,13 @@
   `JuliaCall::julia_setup()`, so JuliaCall's Julia dependencies (RCall and
   Suppressor) install before the render instead of partway through it.
   Callers add `any::JuliaCall` to `r-packages`.
+  The same step sets `R_LD_LIBRARY_PATH` to R's own `lib` directory for the rest
+  of the job.
+  Otherwise R's `etc/ldpaths` puts `/usr/lib/x86_64-linux-gnu` first on
+  `LD_LIBRARY_PATH`, Julia started by R loads the system libunwind, and any Julia
+  exception, even a caught one, segfaults the process.
+  That includes the one JuliaCall's display path throws and catches whenever a
+  chunk line returns a value.
   Both inputs are optional and default to today's behaviour, and no
   `permissions:` change is needed.
   They ship at `@v3`, so a caller still pinning `preview.yml` or
