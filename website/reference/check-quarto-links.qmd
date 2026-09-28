@@ -45,12 +45,12 @@ Not checked, by design:
 - URLs with a scheme (`https:`, `mailto:`), `//` URLs, and `#anchor`-only
   links;
 - targets built from a shortcode or an inline expression, such as
-  `{{< meta >}}`;
+  `{{</* meta */>}}`;
 - a reference definition whose target is on the line after its `[label]:`;
 - whether the `#anchor` part of a link exists on the target page.
 
 **Included files resolve from the page that includes them.**
-Quarto splices a `{{< include _sub/_part.qmd >}}` file into the including page
+Quarto splices a `{{</* include _sub/_part.qmd */>}}` file into the including page
 before it resolves links, so a link in `_part.qmd` is written relative to the
 page, not to `_sub/`.
 That holds however deeply includes nest: everything resolves from the
