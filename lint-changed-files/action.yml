@@ -64,7 +64,7 @@ runs:
     # stays a separate capability -- its added-lines diffing is different
     # machinery from these three whole-file scopes (gha#258).
     - name: Set up R
-      uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      uses: r-lib/actions/setup-r@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       with:
         use-public-rspm: true
 
@@ -94,7 +94,7 @@ runs:
 
     - name: Set up R dependencies (DESCRIPTION)
       if: inputs.use-renv != 'true' && steps.desc.outputs.present == 'true'
-      uses: r-lib/actions/setup-r-dependencies@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      uses: r-lib/actions/setup-r-dependencies@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
       with:
@@ -108,7 +108,7 @@ runs:
 
     - name: Restore R dependencies (renv)
       if: inputs.use-renv == 'true'
-      uses: r-lib/actions/setup-renv@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2.12.1
+      uses: r-lib/actions/setup-renv@f9a764fea8d5c63df6ef9a5c7795bf7deb5d7e05 # v2.14.0
       env:
         GITHUB_PAT: ${{ github.token }}
         RENV_CONFIG_INSTALL_REMOTES: false
