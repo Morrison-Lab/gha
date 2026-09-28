@@ -323,6 +323,23 @@ def test_new_block_not_excused_by_unrelated_identical_block(repo):
     assert [(p, f.kind) for p, f in found] == [("b.qmd", "block")]
 
 
+def test_block_added_under_untouched_code_is_new(repo):
+    # Only a span that was itself added can have moved: typing an output
+    # block under code that was already there is new, even when the same
+    # code and output are deleted from another file in the same diff.
+    code = f"{FENCE}r\nx\n{FENCE}\n"
+    block = f"\n{FENCE}text\n[1] 1\n{FENCE}\n"
+    _commit(repo, "a.qmd", code)
+    _commit(repo, "c.qmd", code + block)
+    _git(repo, "checkout", "-qb", "feature")
+    (repo / "c.qmd").write_text("# Gone\n")
+    _commit(repo, "a.qmd", code + block)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "c")
+    found = _run(diff_scoped=True, base_ref="main").findings
+    assert [(p, f.kind) for p, f in found] == [("a.qmd", "block")]
+
+
 def test_pure_rename_is_a_move(repo):
     _commit(repo, "a.qmd", LEGACY)
     _git(repo, "checkout", "-qb", "feature")
