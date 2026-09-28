@@ -260,17 +260,34 @@ runs:
       with:
         version: ${{ inputs.julia-version }}
 
+    # R's etc/ldpaths puts the system library directory
+    # (/usr/lib/x86_64-linux-gnu) on LD_LIBRARY_PATH for every R process and
+    # every process R starts. Julia embedded in R, or started from it, then
+    # loads the system libunwind instead of the one Julia bundles, and the
+    # first exception Julia throws, even one it catches, segfaults the
+    # process (exit 139). JuliaCall's dependency install hits that, and so
+    # does its knitr display path, on any chunk line that returns a value.
+    # ldpaths keeps a preset R_LD_LIBRARY_PATH, so setting it to R's own lib
+    # directory drops the system directory. That directory is on the
+    # loader's default path anyway, so this changes only which copy wins.
+    # Written to GITHUB_ENV so the render step inherits it.
+    #
     # knitr's julia engine calls JuliaCall::julia_setup(), which installs the
     # Julia packages RCall and Suppressor on first use and then precompiles
     # them. Doing that here, before the render, gives an install failure its
     # own step and log instead of surfacing mid-render as a chunk error.
     # Skipped (with a notice) when JuliaCall is not installed, since a page
     # could run Julia some other way.
-    - name: Set up JuliaCall's Julia dependencies
+    - name: Set up JuliaCall and its Julia dependencies
       if: github.event.action != 'closed' && inputs.setup-julia == 'true'
       shell: bash
       run: |
         set -euo pipefail
+        if command -v R >/dev/null 2>&1; then
+          R_LD_LIBRARY_PATH="$(R RHOME)/lib"
+          export R_LD_LIBRARY_PATH
+          echo "R_LD_LIBRARY_PATH=$R_LD_LIBRARY_PATH" >> "$GITHUB_ENV"
+        fi
         if command -v Rscript >/dev/null 2>&1 \
           && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
           Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'

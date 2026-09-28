@@ -2987,9 +2987,12 @@ jobs:
           mkdir -p "$FIXTURE_DIR"
           printf 'project:\n  type: website\n  output-dir: _site\n' > "$FIXTURE_DIR/_quarto.yml"
           # An R chunk before the Julia one, as in a knitr page that mixes
-          # them. The asserted string is built at run time, so it appears in
-          # the output only if the chunk executed: the echoed source holds
-          # `6 * 7`, never `42`.
+          # them. The asserted strings are built at run time, so they appear
+          # in the output only if the chunk executed: the echoed source holds
+          # `6 * 7` and `7 * 6`, never `42`. The chunk's last line returns a
+          # value, which JuliaCall's display path shows; that path throws and
+          # catches an exception internally, so it is what catches a
+          # regression of the R_LD_LIBRARY_PATH fix in the composites.
           cat << 'EOF' > "$FIXTURE_DIR/index.qmd"
           ---
           title: "Selftest Julia chunk"
@@ -3002,6 +3005,7 @@ jobs:
           ```{julia}
           using LinearAlgebra, Statistics
           println("julia-ok-", 6 * 7, "-", dot([1, 2], [3, 4]), "-", mean([1, 2, 3]))
+          s = string("shown-", 7 * 6)
           ```
           EOF
       - name: Build preview with setup-julia
@@ -3025,10 +3029,12 @@ jobs:
           HTML_FILE: ${{ runner.temp }}/_ci-julia/_site/index.html
         run: |
           set -euo pipefail
-          if ! grep -q 'julia-ok-42-11-2.0' "$HTML_FILE"; then
-            echo "::error::The {julia} chunk's output is missing from $HTML_FILE, so the chunk did not run."
-            exit 1
-          fi
+          for expected in 'julia-ok-42-11-2.0' 'shown-42'; do
+            if ! grep -q "$expected" "$HTML_FILE"; then
+              echo "::error::'$expected' is missing from $HTML_FILE, so the {julia} chunk did not run or its value was not displayed."
+              exit 1
+            fi
+          done
 
   publish-julia:
     runs-on: ubuntu-latest
@@ -3047,9 +3053,12 @@ jobs:
           mkdir -p "$FIXTURE_DIR"
           printf 'project:\n  type: website\n  output-dir: _site\n' > "$FIXTURE_DIR/_quarto.yml"
           # An R chunk before the Julia one, as in a knitr page that mixes
-          # them. The asserted string is built at run time, so it appears in
-          # the output only if the chunk executed: the echoed source holds
-          # `6 * 7`, never `42`.
+          # them. The asserted strings are built at run time, so they appear
+          # in the output only if the chunk executed: the echoed source holds
+          # `6 * 7` and `7 * 6`, never `42`. The chunk's last line returns a
+          # value, which JuliaCall's display path shows; that path throws and
+          # catches an exception internally, so it is what catches a
+          # regression of the R_LD_LIBRARY_PATH fix in the composites.
           cat << 'EOF' > "$FIXTURE_DIR/index.qmd"
           ---
           title: "Selftest Julia chunk"
@@ -3062,6 +3071,7 @@ jobs:
           ```{julia}
           using LinearAlgebra, Statistics
           println("julia-ok-", 6 * 7, "-", dot([1, 2], [3, 4]), "-", mean([1, 2, 3]))
+          s = string("shown-", 7 * 6)
           ```
           EOF
       - name: Build the fixture site with setup-julia
@@ -3080,10 +3090,12 @@ jobs:
           HTML_FILE: ${{ runner.temp }}/_ci-julia/_site/index.html
         run: |
           set -euo pipefail
-          if ! grep -q 'julia-ok-42-11-2.0' "$HTML_FILE"; then
-            echo "::error::The {julia} chunk's output is missing from $HTML_FILE, so the chunk did not run."
-            exit 1
-          fi
+          for expected in 'julia-ok-42-11-2.0' 'shown-42'; do
+            if ! grep -q "$expected" "$HTML_FILE"; then
+              echo "::error::'$expected' is missing from $HTML_FILE, so the {julia} chunk did not run or its value was not displayed."
+              exit 1
+            fi
+          done
 
   # check-equation-renders is brand new, so (like check-phi/quarto-publish above)
   # it isn't at the released tag the reusable workflow pins yet. Exercise the
