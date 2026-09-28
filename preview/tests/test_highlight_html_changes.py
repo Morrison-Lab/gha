@@ -561,7 +561,6 @@ def test_exhausted_time_budget_leaves_page_unhighlighted_with_warning(
     assert "chapters/01.html" in captured.out
 
 
-
 def test_budget_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_factory, capsys):
     monkeypatch.setattr(highlighter, "PAGE_TIME_BUDGET_SECONDS", -1.0)
     monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 20)
