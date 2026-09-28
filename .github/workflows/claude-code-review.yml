@@ -599,9 +599,12 @@ jobs:
       # "Skipping CI server installation" and reviews blind to CI state.
       actions: read
       # checks: read -- reinstated for v3 (gha#833). Without it, GET
-      # /repos/{owner}/{repo}/commits/{ref}/check-runs 403s and the
-      # reviewer (and check-pr-fully-clean.py, which it runs) can call a
-      # clean diff blocked (gha#829, ucdavis/bcs#964).
+      # /repos/{owner}/{repo}/commits/{ref}/check-runs 403s, and a reviewer
+      # that reads check-run state can call a clean diff blocked (gha#829,
+      # ucdavis/bcs#964). The reviewer no longer runs
+      # check-pr-fully-clean.py: it is on the review step's deny list,
+      # because from inside the review it counts the review's own job as
+      # in progress (gha#978).
       #
       # History, because the next person to touch this needs it: #830 first
       # added this scope directly to @v2's history. A reusable workflow's
