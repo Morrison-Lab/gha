@@ -464,14 +464,14 @@ def _run_single_page(highlighter, monkeypatch, repo_factory, old_page, new_page)
     return (rendered / "chapters/01.html").read_text(encoding="utf-8")
 
 
-def test_element_spanning_a_widget_script_is_skipped_not_diffed(highlighter, monkeypatch, repo_factory):
+def test_element_spanning_a_widget_script_is_skipped_not_diffed(
+    highlighter, monkeypatch, repo_factory, capsys
+):
     # ELEMENT_RE is tag-agnostic, so a <p> before an htmlwidget matches across
     # the widget's <script> JSON to the next closing tag. Diffing that "element"
     # character by character is quadratic in the JSON's size (Morrison-Lab/mds's
     # algebra.html: 10 MB, never finished). It must be left out, and the real
     # edit on the page still highlighted.
-    import time
-
     def page(widget_json, edited):
         return (
             "<main>\n"
@@ -498,11 +498,14 @@ def test_element_spanning_a_widget_script_is_skipped_not_diffed(highlighter, mon
         chars[i] = "Z"
     new_json = '{"x": "' + "".join(chars) + '"}'
 
-    start = time.monotonic()
+    # No wall-clock assertion: it would flake on a loaded runner. The skip
+    # diagnostic proves the element was left out rather than diffed (the old
+    # code diffed it, taking ~30 s, and printed no such line), and "1" pins
+    # that a widget present on both pages is counted once, not per side.
     result = _run_single_page(
         highlighter, monkeypatch, repo_factory, page(old_json, False), page(new_json, True)
     )
-    assert time.monotonic() - start < 5
+    assert "left 1 element(s) unhighlighted" in capsys.readouterr().err
     assert new_json in result
     assert "preview-text-changed" in result or "preview-text-added" in result
     widget_start = result.index("<script")

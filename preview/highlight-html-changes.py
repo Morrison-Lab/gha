@@ -19,7 +19,7 @@ Ported from `ucdavis/win`'s `.github/scripts/highlight-html-changes.py`
   * Replaces elements strictly within main content scope, avoiding spurious edits
     in navigation, sidebars, or headers.
 
-Configuration (all via environment, set by `preview/action.yml`):
+Configuration is read from the environment. `preview/action.yml` sets these:
 
   RENDERED_DIR         Directory holding this run's rendered site. Required.
   CHANGED_CHAPTERS     JSON array of changed chapter ids. Default `[]`.
@@ -27,21 +27,26 @@ Configuration (all via environment, set by `preview/action.yml`):
   SKIP_REASON          Why comparison was skipped; empty when compared.
   CHAPTER_GLOB         Glob selecting rendered files when CHANGED_CHAPTERS is unset.
                        Default `chapters/*.html`.
-  DEPLOYED_REMOTE      Git remote holding published site. Default `origin`.
-  DEPLOYED_BRANCH      Branch on that remote. Default `gh-pages`.
+  DEPLOYED_BRANCH      Branch on the deployed remote. Default `gh-pages`.
   DEPLOYED_SUBDIR      Path prefix, within deployed branch, at which site root lives.
                        Default '' (the branch root).
   NORMALIZE_PATTERNS   Newline-separated regexes whose matches are blanked before
                        comparison, in addition to built-in defaults.
   MAX_ELEMENTS_FOR_PAIRWISE  Max candidate elements per page for pairwise
                              SequenceMatcher diffing. Default 500.
+
+`preview/action.yml` does not set these, so under the action they always take
+their defaults; they exist for running the script directly (tests, local runs).
+The three budgets are internal safety nets, not action inputs:
+
+  DEPLOYED_REMOTE      Git remote holding published site. Default `origin`.
+  REPO_DIR             Git repository to run in. Default `.`.
   HIGHLIGHT_MAX_ELEMENT_CHARS  Elements with more text than this are left out
                              of the comparison (never highlighted). Default 20000.
   HIGHLIGHT_PAGE_BUDGET_SECONDS  Wall-clock budget for one page's pairwise
                              matching; a page that exceeds it is left
                              unhighlighted with a warning. Default 60.
   HIGHLIGHT_TOTAL_BUDGET_SECONDS  The same budget across all pages. Default 300.
-  REPO_DIR             Git repository to run in. Default `.`.
 """
 
 import difflib
@@ -284,7 +289,9 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
     if norm_old == norm_new:
         return new_html, 0, 1.0
 
-    # Page similarity over word tokens of the visible prose. A character-level
+    # Page similarity over word tokens of the page markup with script/style
+    # blocks removed (tag names and attributes still count as tokens; only
+    # the <script>/<style> payloads are dropped). A character-level
     # SequenceMatcher over the whole page is quadratic in its length, and a
     # page embedding htmlwidgets is megabytes of <script> JSON.
     similarity = difflib.SequenceMatcher(
@@ -302,8 +309,6 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
         text = extract_text_from_element(elem)
         if _comparable(elem, text):
             old_elem_list.append((text, normalize_text(text, patterns), elem))
-        elif text:
-            skipped_elements += 1
 
     if len(old_elem_list) > MAX_ELEMENTS_FOR_PAIRWISE or len(new_matches) > MAX_ELEMENTS_FOR_PAIRWISE:
         print(

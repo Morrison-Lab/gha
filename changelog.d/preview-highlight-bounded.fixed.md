@@ -1,8 +1,8 @@
 - **`preview`: change highlighting no longer hangs on htmlwidget pages**
   ([#975](https://github.com/Morrison-Lab/gha/issues/975)).
-  The page similarity is now computed over word tokens of the visible prose
-  rather than character by character over the whole page, `<script>`/`<style>`
-  blocks included.
+  The page similarity is now computed over word tokens of the page markup with
+  `<script>`/`<style>` blocks removed, rather than character by character over
+  the whole page, those blocks included.
   Elements whose regex match spans a `<script>`/`<style>` block, or whose text
   exceeds `HIGHLIGHT_MAX_ELEMENT_CHARS` (default 20000), are left out of the
   comparison and never highlighted.
