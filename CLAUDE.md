@@ -210,7 +210,8 @@ which is why the capabilities above moved to `@v2`,
 while `opposition-research`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
-`check-quarto-manuscript`, `check-r-package`,
+`check-quarto-manuscript`, `check-quarto-links`,
+`check-orphaned-images`, `check-r-package`,
 `check-python-package`, and `student-qmd`
 only ever shipped at `@v3`.
 
@@ -300,6 +301,20 @@ only ever shipped at `@v3`.
   `gitleaks/gitleaks-action`,
   which is proprietary and needs a paid licence for organization accounts.
   `check-links/` bundles `lychee.default.toml`;
+  `check-quarto-links/` (Python, gha#960) exists because `check-links` cannot
+  do its job: lychee picks a parser by extension and reads a `.qmd` as plain
+  text, so a relative `[x](renamed.qmd)` is never extracted (lychee 0.24.2,
+  measured 2026-09-28), while Quarto only warns about it.
+  It is whole-tree like `check-junk-files`, and include-aware:
+  a link in a `{{< include >}}`d subfile must resolve from the directory of
+  every top-level page that renders it (nested includes resolve from the
+  top-level page, as `student-qmd` measured), and an unincluded
+  `_`-prefixed file is skipped, since there is no directory to resolve its
+  links from;
+  `check-orphaned-images/` (Python, gha#960) matches image FILE NAMES rather
+  than resolved paths, because resolving every YAML, Lua and CSS reference is
+  what a render does, and is warn-only by default for the same reason:
+  a name search cannot see a computed name;
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
@@ -2021,6 +2036,35 @@ The fixture checkout is generated at runtime
 The misspelling is also used as fixture payload in the pytest sources, so
 a later whole-tree dogfood of this repo should `paths-ignore`
 `check-typos/tests/`.
+
+`check-quarto-links/tests/` and `check-orphaned-images/tests/` are pytest
+suites over throwaway git repositories built in `tmp_path`, never committed,
+since a committed dead link or unused image would be swept into this repo's
+own dogfood of both checks.
+The cases to keep are the negative ones: code blocks (fenced or indented),
+code spans and HTML comments are not links while a list item's indented
+continuation is, a nested subfile resolves from the top-level page and not
+from its own directory, an escaped include
+includes nothing, an unresolvable `base-ref` skips rather than widening, and
+each way a source names an image counts as a use.
+Each also pins its long-line cost, because the first draft of the image
+tokenizer used a lazy pattern that went quadratic on an inlined data URI.
+CI runs both as the `quarto-links-orphaned-images` job in `_selftest.yml`,
+then calls both composites over this repo's own tree and over a staged dead
+link and unused image.
+
+**Both checks' staged fixtures were invisible to them at first, each for
+the reason the check exists.**
+The fixture directory began with `_`, so `check-quarto-links` skipped its
+page as one Quarto never renders.
+The fixture image's name was written in `_selftest.yml`, which
+`check-orphaned-images` reads as a source, so the image counted as used.
+The fixture now lives in an unprefixed directory, and the image's name is
+built at run time --- the same self-implicating shape the `merge-drops`
+fixture records above.
+The job's reference page met a third form: Quarto expands a shortcode even
+inside a code span, so an example `include` or `meta` shortcode on a page
+must be escaped as `{{</* include ... */>}}`, or the site render fails.
 
 `check-code-similarity/tests/test_check_code_similarity.py` is a pytest suite
 driving `check_code_similarity.py` against a **stub `java`** that writes a

@@ -1,0 +1,56 @@
+name: Check Orphaned Images (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      paths:
+        description: Space-separated git pathspecs to look for images in.
+        type: string
+        default: '.'
+      extensions:
+        description: Comma- or space-separated image file extensions to examine.
+        type: string
+        default: '.png, .jpg, .jpeg, .gif, .svg, .webp, .avif'
+      source-extensions:
+        description: Comma- or space-separated extensions of the tracked files searched for references.
+        type: string
+        default: '.qmd, .md, .Rmd, .ipynb, .yml, .yaml, .scss, .css, .lua, .html, .tex, .bib'
+      paths-ignore:
+        description: Comma- or newline-separated globs of images to skip.
+        type: string
+        default: ''
+      added-only:
+        description: >-
+          On pull requests, report only images the PR adds. Other events are
+          skipped when this is set, rather than widened to the whole tree.
+        type: boolean
+        default: false
+      fail:
+        description: Fail the job when an unreferenced image is found (default warns only).
+        type: boolean
+        default: false
+
+jobs:
+  check-orphaned-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so added-only can diff against the PR base. Quoted,
+          # because a bare 0 is falsy and `&& 0 || 1` would always give 1.
+          fetch-depth: ${{ inputs.added-only && '0' || '1' }}
+
+      - name: Check for orphaned images
+        if: ${{ !inputs.added-only || github.event_name == 'pull_request' }}
+        uses: Morrison-Lab/gha/check-orphaned-images@v3
+        with:
+          paths: ${{ inputs.paths }}
+          extensions: ${{ inputs.extensions }}
+          source-extensions: ${{ inputs.source-extensions }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          base-ref: ${{ inputs.added-only && github.event.pull_request.base.sha || '' }}

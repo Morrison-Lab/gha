@@ -4227,6 +4227,99 @@ jobs:
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-typos/tests/ -q
 
+  # check-quarto-links and check-orphaned-images are brand new, so (like
+  # check-typos above) they do not exist at the `@v3` tag their reusable
+  # workflows' internal `uses:` steps resolve against yet. Exercise the local
+  # composites directly so the selftest covers the actual PR code. The unit
+  # suites run first; the composite calls then prove action.yml wires its
+  # inputs through, which the suites cannot see because they call the
+  # scripts directly.
+  quarto-links-orphaned-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run the unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-quarto-links/tests/ check-orphaned-images/tests/ -q
+
+      # This repo's own pages carry no dead page links and it tracks no
+      # images, so both calls take the clean path over the real tree.
+      - name: Check this repo's own links
+        uses: ./check-quarto-links
+      - name: Check this repo's own images
+        uses: ./check-orphaned-images
+        with:
+          fail: 'true'
+
+      # A clean call cannot reach the failing path, so stage a dead link and
+      # an unused image into the index (both scans read tracked files, so no
+      # commit is needed) and assert each composite really fails.
+      - name: Stage a dead link and an unused image
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ci-quarto-links-fixture
+          printf '# Page\n\nSee [the old page](renamed-away.qmd).\n' > ci-quarto-links-fixture/page.qmd
+          # The image's name is built at run time: written out here, it would
+          # appear in this workflow file, which the check reads as a source,
+          # and the image would count as referenced.
+          printf 'not really an image\n' > "ci-quarto-links-fixture/orphan-${GITHUB_RUN_ID}.png"
+          git add -f ci-quarto-links-fixture
+      - name: Check links again, expecting a failure
+        id: links-expected-failure
+        continue-on-error: true
+        uses: ./check-quarto-links
+      - name: Check images again with fail on, expecting a failure
+        id: images-expected-failure
+        continue-on-error: true
+        uses: ./check-orphaned-images
+        with:
+          fail: 'true'
+      - name: Assert both failing calls actually failed
+        shell: bash
+        env:
+          LINKS: ${{ steps.links-expected-failure.outcome }}
+          IMAGES: ${{ steps.images-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$LINKS" != "failure" ] || [ "$IMAGES" != "failure" ]; then
+            echo "::error::expected both to fail, got links='$LINKS' images='$IMAGES'"
+            exit 1
+          fi
+          echo "Both composites failed on the staged fixtures, as expected."
+      # And that paths-ignore reaches each script through action.yml, and
+      # that check-orphaned-images warns only by default.
+      - name: Check again with the fixtures exempted
+        uses: ./check-quarto-links
+        with:
+          paths-ignore: 'ci-quarto-links-fixture'
+      - name: Check images with the default fail
+        uses: ./check-orphaned-images
+      - name: Check images with the fixture exempted
+        uses: ./check-orphaned-images
+        with:
+          paths-ignore: 'ci-quarto-links-fixture/**'
+          fail: 'true'
+      - name: Remove the staged fixtures
+        if: always()
+        shell: bash
+        run: |
+          git rm -rq --cached --ignore-unmatch ci-quarto-links-fixture || true
+          rm -rf ci-quarto-links-fixture
+
   # check-formatting is brand new, so (like check-typos above) it does not
   # exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-formatting@v3` step resolves against yet.
