@@ -211,7 +211,7 @@ while `opposition-research`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
 `check-quarto-manuscript`, `check-r-package`,
-`check-python-package`, and `student-qmd`
+`check-python-package`, `check-typed-output`, and `student-qmd`
 only ever shipped at `@v3`.
 
 ### Layout
@@ -232,6 +232,12 @@ only ever shipped at `@v3`.
   exists to avoid; since gha#684 an added line whose exact text was also
   deleted in the same diff is exempted as moved-not-new, so a file split
   does not reflag relocated content either).
+  `check-typed-output/` (Python, gha#959) reuses that diff-scoping --
+  merge-base anchor, skip-not-fallback, moved-not-new exemption,
+  working-tree-aware local runs -- but only on request (`diff-scoped`):
+  its default is a whole-tree scan, warn-only, because measuring how much
+  typed output a corpus carries is half of what it is for, and a warning
+  over legacy occurrences reddens nothing.
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
   every known misspelling the corpus already carries, and unknown jargon
@@ -1577,6 +1583,21 @@ The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 `scripts/semantic-line-breaks.py`, the reformatter this check is the detector
 half of, so a fix to either is owed to the other (porting gha#425's fix there
 is tracked in Morrison-Lab/ai-config#1212).
+
+`check-typed-output/tests/test_check_typed_output.py` is a pytest suite over
+the fence parser, both detectors, and both scopes (throwaway git repos in
+`tmp_path`, nothing committed).
+CI runs it in the `typed-output` job in `_selftest.yml`, followed by real
+`uses: ./check-typed-output` calls: a blocking run over this repo's own
+`*.md *.qmd` (which carry no typed output), a blocking diff-scoped run over
+the PR, a blocking run over a staged page with typed output that must fail,
+and three more over that page that must pass, one per input a wiring typo
+would silently drop (`paths-ignore`, `patterns`, `globs`).
+The cases to keep if the suite is ever trimmed are the ones pinning a
+Pandoc attribute-form fence (`{#lst-id .python ...}`) as a python fence --
+the first draft read only a leading class and missed two of
+`Morrison-Lab/mln`'s occurrences -- and the merge-base anchor, which is
+the one mutation no other case caught.
 
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and

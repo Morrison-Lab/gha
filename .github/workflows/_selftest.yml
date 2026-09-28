@@ -766,6 +766,98 @@ jobs:
           set -euo pipefail
           python3 -m pip install --quiet pytest==9.1.1
           python3 -m pytest check-new-line-breaks/tests/ -q
+  # check-typed-output is brand new, so (like check-new-line-breaks above) its
+  # reusable workflow's internal `uses: Morrison-Lab/gha/check-typed-output@v3`
+  # does not resolve until the tag slides past the merge. Exercise the local
+  # composite directly. The unit tests cover the detectors and both scopes
+  # against throwaway git repos; the composite calls below prove action.yml
+  # wires each input through to the script, which the unit tests (calling
+  # the script directly) cannot see.
+  typed-output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-typed-output unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-typed-output/tests/ -q
+      # This repo's own pages carry no typed output, so a blocking whole-tree
+      # run must pass; the diff-scoped run covers what this PR adds.
+      - name: Check this repo's tree, blocking
+        uses: ./check-typed-output
+        with:
+          globs: '*.md *.qmd'
+          fail: 'true'
+      - name: Check this PR's added lines, blocking
+        uses: ./check-typed-output
+        with:
+          globs: '*.md *.qmd'
+          fail: 'true'
+          diff-scoped: 'true'
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+      # A clean tree cannot reach the failing path, so stage a page with
+      # typed output (whole-tree mode reads the index, so no commit is
+      # needed) and assert the blocking call really fails.
+      - name: Stage a page with typed output
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-typed-output
+          printf '%s\n' '```python' 'print(1)  # -> 1' '```' > _ci-typed-output/page.qmd
+          git add -f _ci-typed-output/page.qmd
+      - name: Check again, expecting a failure
+        id: typed-output-expected-failure
+        continue-on-error: true
+        uses: ./check-typed-output
+        with:
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typed-output-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-typed-output to fail on a staged page with typed output, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-typed-output failed on the staged page, as expected."
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-typed-output
+        with:
+          fail: 'true'
+          paths-ignore: '_ci-typed-output'
+      - name: Check again with the patterns replaced
+        uses: ./check-typed-output
+        with:
+          fail: 'true'
+          patterns: '#\s*returns'
+      - name: Check again with globs excluding the page
+        uses: ./check-typed-output
+        with:
+          fail: 'true'
+          globs: '*.md'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-typed-output || true
+          rm -rf _ci-typed-output
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.

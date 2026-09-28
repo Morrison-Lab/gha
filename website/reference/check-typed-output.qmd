@@ -1,0 +1,91 @@
+---
+title: "check-typed-output.yml"
+---
+
+Flags typed ("faked") code output in Quarto sources.
+A page that shows what code prints should get that output by running the code,
+in an executable `{r}` or `{python}` chunk,
+so the page cannot show a value the code no longer produces.
+The check flags the two shapes that stand in for a run:
+
+- **An output comment.**
+  Inside a plain `python`, `r` or `julia` fence,
+  or an executable `{r}`, `{python}` or `{julia}` chunk,
+  a comment standing in for a printed value:
+  `# ->`, `#->`, `# =>`, `#>` (the prefix R prints output with),
+  and `# Output:` or `# output:`.
+  Quarto's own chunk options (`#| output: false`) do not match.
+- **A hand-written output block.**
+  A fence with no language, or `text` or `output`,
+  placed right after a `python`, `r` or `julia` fence
+  with only blank lines between the two.
+  The finding is reported on the output block's opening fence.
+
+Each finding is reported as `file:line` with the matched text,
+as a warning annotation by default.
+
+Two scopes are available.
+By default the check scans every tracked file its `globs` match,
+which measures how much typed output a repository carries.
+With `diff-scoped: true`, a pull-request run reports only findings on lines
+the pull request adds (for an output block, any added line of the block),
+diffed from the merge base with the PR base,
+the same anchor [`check-new-line-breaks.yml`](check-new-line-breaks.qmd) uses.
+A repository with legacy occurrences can then adopt the check
+and see only what each PR adds.
+An added line whose exact text the same diff also deletes is treated as moved,
+so splitting a chapter into subfiles does not report the output it relocates.
+A diff-scoped run with no PR base, such as a push to `main`,
+is skipped with a warning rather than widened to the whole tree.
+
+## Inputs
+
+| Input            | Type    | Default   | Description |
+| ---------------- | ------- | --------- | ----------- |
+| `python-version` | string  | `'3.x'`   | Python version to set up. |
+| `patterns`       | string  | `''`      | Newline-separated Python regular expressions searched for in each line of a code fence. Replaces the default set (`#\s*->`, `#\s*=>`, `#>`, `#\s*[Oo]utput:`); empty uses the defaults. |
+| `globs`          | string  | `'*.qmd'` | Space-separated git pathspecs of tracked files to check (recursive by default). |
+| `paths-ignore`   | string  | `''`      | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
+| `fail`           | boolean | `false`   | Fail the workflow when typed output is found; otherwise findings are warnings only. |
+| `diff-scoped`    | boolean | `false`   | Report only lines a pull request adds. Skipped with a warning on a run with no PR base. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-typed-output.yml in your repo.
+# Flags typed ("faked") code output in .qmd files: a `# ->` / `#>` / `# Output:`
+# comment standing in for a printed value inside a code fence, and a
+# hand-written ```text output block right after a code fence. Show output by
+# running the code in an executable {r}/{python} chunk instead.
+# Warn-only by default; set diff-scoped: true so a repo with legacy
+# occurrences sees only what each PR adds.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check for typed code output
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-typed-output.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   diff-scoped: true                      # report only lines a PR adds
+    #   patterns: |                            # replaces the default patterns
+    #     #\s*->
+    #     #>
+```
+
+See
+[`examples/check-typed-output.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-typed-output.yml)
+for the full caller stub.

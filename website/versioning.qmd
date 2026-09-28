@@ -33,6 +33,7 @@ only ever shipped at
 `check-python-package.yml`, `check-quarto-book.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
+`check-typed-output.yml`,
 `opposition-research.yml`, and
 `student-qmd.yml`
 only ever shipped at

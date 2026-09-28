@@ -283,6 +283,19 @@ def test_diff_scoped_sees_uncommitted_change(repo):
     assert len(_run(diff_scoped=True, base_ref="main").findings) == 1
 
 
+def test_diff_scoped_anchors_on_merge_base(repo):
+    # The base branch drops the legacy line after the feature branch forked.
+    # Diffing against the base tip would show that line as added on the
+    # feature branch; the merge base shows the feature added nothing.
+    _commit(repo, "a.qmd", LEGACY)
+    _git(repo, "checkout", "-qb", "feature")
+    _commit(repo, "b.qmd", "# Other\n")
+    _git(repo, "checkout", "-q", "main")
+    _commit(repo, "a.qmd", "# Page\n")
+    _git(repo, "checkout", "-q", "feature")
+    assert _run(diff_scoped=True, base_ref="main").findings == []
+
+
 def test_diff_scoped_without_base_skips(repo):
     _commit(repo, "a.qmd", LEGACY)
     assert _run(diff_scoped=True, base_ref="").skipped
