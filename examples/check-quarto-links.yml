@@ -1,0 +1,23 @@
+# Copy to .github/workflows/check-quarto-links.yml in your repo.
+# Fails when a .qmd/.md/.Rmd page links to a page that no longer exists.
+# Quarto only warns about these ("Unable to resolve link target") and
+# check-links (lychee) does not read relative links out of .qmd files, so
+# nothing else in a Quarto site's CI goes red over them. Source level: no
+# render, so it takes seconds.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check Quarto links
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-links.yml@v3
+    # with:
+    #   paths-ignore: 'chapters/outtakes/'     # source files to skip
+    #   target-extensions: '.qmd, .md'         # which link targets to verify
+    #   fail: false                            # warn instead of blocking

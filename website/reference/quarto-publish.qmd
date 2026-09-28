@@ -18,6 +18,8 @@ skip the deploy.
 | `install-package`          | boolean | `false`                                           | Run `R CMD INSTALL <path>` before rendering so package functions are available (requires `setup-r`).                                              |
 | `setup-chrome`             | boolean | `false`                                           | Install Chrome via `browser-actions/setup-chrome` before rendering (needed for revealjs/screenshots/mermaid).                                     |
 | `tinytex`                  | boolean | `false`                                           | Install TinyTeX (needed to render PDF outputs).                                                                                                   |
+| `setup-julia`              | boolean | `false`                                           | Install Julia (`julia-actions/setup-julia`) before rendering, for pages that execute `{julia}` chunks; under knitr these run through the R package JuliaCall, so add `any::JuliaCall` to `r-packages` (with `setup-r`). When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and `R_LD_LIBRARY_PATH` is set to R's own `lib` directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. `@v3` and later. |
+| `julia-version`            | string  | `'1'`                                             | Julia version to install, in `setup-julia`'s `version` syntax. Only used when `setup-julia` is true. `@v3` and later. |
 | `apt-packages`             | string  | `''`                                              | Extra apt packages to install before rendering (space-separated).                                                                                 |
 | `output-dir`               | string  | `'_site'`                                         | Directory the rendered site is written to, relative to `path`; forwarded to `quarto render --output-dir` and overrides any `_quarto.yml` setting. |
 | `render-profile`           | string  | `''`                                              | Quarto `--profile` to render with (e.g. `'website'`). Empty to omit.                                                                              |
@@ -102,6 +104,8 @@ jobs:
     #   install-package: true   # R CMD INSTALL <path> before render (for R packages)
     #   setup-chrome: true      # install Chrome for revealjs/screenshots/mermaid
     #   tinytex: true           # needed to render PDF outputs
+    #   setup-julia: true       # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)
+    #   julia-version: '1'
     #   apt-packages: ''        # extra system packages (space-separated)
     #   output-dir: docs        # render to a dir other than the default _site (overrides _quarto.yml)
     #   render-profile: website # Quarto --profile to render with

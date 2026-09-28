@@ -24,7 +24,7 @@ jobs:
     permissions:
       # Push the rendered site to gh-pages.
       contents: write
-    uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/quarto-publish.yml@v3
     with:
       # The Quarto project lives in website/; it is pure markdown, so the other
       # defaults (setup-r: false, output-dir: _site, deploy: true) are correct.
@@ -38,7 +38,7 @@ jobs:
       && github.event_name != 'pull_request'
     permissions:
       issues: write
-    uses: Morrison-Lab/gha/.github/workflows/report-failure.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/report-failure.yml@v3
     with:
       title: Publish workflow is failing
       body: The documentation site did not deploy, so the published site may be stale.

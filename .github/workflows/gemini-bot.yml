@@ -32,7 +32,7 @@ jobs:
       issues: write
       id-token: write
       actions: write
-    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/gemini.yml@v3
     secrets:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}

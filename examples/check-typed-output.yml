@@ -1,0 +1,28 @@
+# Copy to .github/workflows/check-typed-output.yml in your repo.
+# Flags typed ("faked") code output in .qmd files: a `# ->` / `#>` / `# Output:`
+# comment standing in for a printed value inside a code fence, and a
+# hand-written ```text output block right after a code fence. Show output by
+# running the code in an executable {r}/{python} chunk instead.
+# Warn-only by default; set diff-scoped: true so a repo with legacy
+# occurrences sees only what each PR adds.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check for typed code output
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-typed-output.yml@v3
+    # with:
+    #   globs: '*.qmd'                         # pathspecs to check (recursive)
+    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
+    #   fail: true                             # block instead of warn (defaults to false)
+    #   diff-scoped: true                      # report only lines a PR adds
+    #   patterns: |                            # replaces the default patterns
+    #     #\s*->
+    #     #>

@@ -208,10 +208,12 @@ of `README.md`).
 `@v1` was frozen at the pre-`2.0.0` snapshot and has picked up no fixes since,
 which is why the capabilities above moved to `@v2`,
 while `opposition-research`, `check-dependency-updates`,
-`check-duplicate-roxygen`, `check-math-definitions`, `check-repo-hygiene`,
+`check-duplicate-roxygen`, `check-math-definitions`,
+`check-merge-drops`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
-`check-quarto-manuscript`, `check-r-package`,
-`check-python-package`, and `student-qmd`
+`check-quarto-manuscript`, `check-quarto-links`,
+`check-orphaned-images`, `check-r-package`,
+`check-python-package`, `check-typed-output`, and `student-qmd`
 only ever shipped at `@v3`.
 
 ### Layout
@@ -232,6 +234,17 @@ only ever shipped at `@v3`.
   exists to avoid; since gha#684 an added line whose exact text was also
   deleted in the same diff is exempted as moved-not-new, so a file split
   does not reflag relocated content either).
+  `check-typed-output/` (Python, gha#959) reuses that diff-scoping --
+  merge-base anchor, skip-not-fallback, moved-not-new exemption,
+  working-tree-aware local runs -- but only on request (`diff-scoped`).
+  The exemption matches a finding's whole span as one contiguous deleted
+  run (for an output block, from the code fence it follows), not line by
+  line, because a printed value such as `1` or `TRUE` collides with
+  unrelated deletions far more often than a prose sentence does.
+  Its default is not diff-scoped:
+  it is a whole-tree scan, warn-only, because measuring how much
+  typed output a corpus carries is half of what it is for, and a warning
+  over legacy occurrences reddens nothing.
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
   every known misspelling the corpus already carries, and unknown jargon
@@ -245,6 +258,13 @@ only ever shipped at `@v3`.
   opt in with their own reformat commit, so a first run going red on an
   unformatted tree is the intended adoption cost rather than
   pre-existing drift to tolerate.
+  `check-merge-drops/` (Python) is scoped to the **merge commits** in a
+  range rather than to a diff: for each merge it compares what either
+  parent added since the merge base against the merge's whole tree, so it
+  finds content a conflict resolution dropped, which no check reading only
+  the current tree can see (gha#958).
+  Warn-only by default, since a merge may legitimately drop a line the other
+  side superseded.
   `check-junk-files/` (shell) is a third scoping: it scans neither the diff nor
   the history but the **index** (`git ls-files -i -c -X`), for tracked
   operating-system and editor detritus.
@@ -293,6 +313,20 @@ only ever shipped at `@v3`.
   `gitleaks/gitleaks-action`,
   which is proprietary and needs a paid licence for organization accounts.
   `check-links/` bundles `lychee.default.toml`;
+  `check-quarto-links/` (Python, gha#960) exists because `check-links` cannot
+  do its job: lychee picks a parser by extension and reads a `.qmd` as plain
+  text, so a relative `[x](renamed.qmd)` is never extracted (lychee 0.24.2,
+  measured 2026-09-28), while Quarto only warns about it.
+  It is whole-tree like `check-junk-files`, and include-aware:
+  a link in a `{{< include >}}`d subfile must resolve from the directory of
+  every top-level page that renders it (nested includes resolve from the
+  top-level page, as `student-qmd` measured), and an unincluded
+  `_`-prefixed file is skipped, since there is no directory to resolve its
+  links from;
+  `check-orphaned-images/` (Python, gha#960) matches image FILE NAMES rather
+  than resolved paths, because resolving every YAML, Lua and CSS reference is
+  what a render does, and is warn-only by default for the same reason:
+  a name search cannot see a computed name;
   `check-one-function-per-file/` bundles the composite action, parser script, and pytest suite for enforcing single function definitions per file;
   `check-duplicate-roxygen/` bundles the composite action, parser script, and pytest suite for detecting duplicate roxygen documentation and recommending consolidation via `@inheritParams` or `@inheritDotParams`;
   `student-qmd/` (Python, gha#922) writes a self-contained student `.qmd`
@@ -1578,6 +1612,25 @@ The whole regex is duplicated in `Morrison-Lab/ai-config`'s
 half of, so a fix to either is owed to the other (porting gha#425's fix there
 is tracked in Morrison-Lab/ai-config#1212).
 
+`check-typed-output/tests/test_check_typed_output.py` is a pytest suite over
+the fence parser, both detectors, and both scopes (throwaway git repos in
+`tmp_path`, nothing committed).
+CI runs it in the `typed-output` job in `_selftest.yml`, followed by real
+`uses: ./check-typed-output` calls: a blocking run over this repo's own
+`*.md *.qmd` (which carry no typed output), a blocking diff-scoped run over
+the PR, a blocking run over a staged page with typed output that must fail,
+a diff-scoped run against `HEAD` that must also fail (proving `base-ref`
+arrives) and one with no base that must skip (proving `diff-scoped` does),
+and three more over that page that must pass, one per input a wiring typo
+would silently drop (`paths-ignore`, `patterns`, `globs`).
+An invalid `patterns` expression exits 2 even in warn-only mode, rather than
+being dropped, so a typo cannot switch the comment detector off.
+The cases to keep if the suite is ever trimmed are the ones pinning a
+Pandoc attribute-form fence (`{#lst-id .python ...}`) as a python fence --
+the first draft read only a leading class and missed two of
+`Morrison-Lab/mln`'s occurrences -- and the merge-base anchor, which is
+the one mutation no other case caught.
+
 `.github/workflows/scripts/tests/run-assemble-news-tests.sh` is a shell suite
 over `assemble-news.sh`, covering the heading map, category validation, and
 bullet-marker normalization.
@@ -1695,6 +1748,35 @@ errors unassembled, 1 pre-fix, and 0 post-fix.
 Read that as the general shape: when a test's stated rationale is about a
 downstream tool's verdict, measure that verdict under both answers rather
 than asserting the resolution alone (gha#741 review).
+
+`check-merge-drops/tests/test_check_merge_drops.py` is a pytest suite that
+builds one conflicting merge per case in `tmp_path` and resolves it a
+different way (gha#958): keeping one side of the whole file is reported, a
+hunk-by-hunk resolution is not, and neither is the dropped paragraph moved to
+another file, rewrapped, or reworded (unless `similarity` is `1`).
+It also pins the `++`-prefixed-content diff-header case, the skip on an empty,
+all-zero or unknown base, `fail` through both the flag and
+`MERGE_DROPS_FAIL`, and that `action.yml` and the reusable workflow declare
+the script's defaults.
+Run it with `python3 -m pytest check-merge-drops/tests/ -q`; CI runs it as the
+`merge-drops-tests` job in `_selftest.yml`, beside a `merge-drops` job that
+runs the real composite over the PR's own merges and then over a one-sided
+merge fixture it commits on top of the checkout, asserting `fail: 'true'`
+blocks it and `paths-ignore` exempts it.
+Five mutations turn a named case red: dropping the whole-tree search,
+disabling the rewording test, reporting nothing, treating every `+++` line as
+a header, and ignoring `fail`.
+Checking the same file by line set instead of by flattened text survives, and
+that is the whole-tree search (which also flattens) still holding, not a gap.
+
+**The whole-tree search makes this check's fixtures self-implicating.**
+A dropped line whose text is quoted anywhere in the merge's tree counts as
+moved there, and a selftest fixture's text is quoted in `_selftest.yml`
+itself, so the first draft of the `merge-drops` job reported nothing.
+The fixture now puts a commit SHA into the dropped line, so its text exists
+only in the fixture.
+The same holds for a consumer: a changelog or review note that quotes a
+dropped line hides that drop.
 
 `lint-markdown/check_list_item_splices.mjs` (tested by
 `node lint-markdown/tests/test_list_item_splices.mjs`) flags list-item merge
@@ -1985,6 +2067,35 @@ The fixture checkout is generated at runtime
 The misspelling is also used as fixture payload in the pytest sources, so
 a later whole-tree dogfood of this repo should `paths-ignore`
 `check-typos/tests/`.
+
+`check-quarto-links/tests/` and `check-orphaned-images/tests/` are pytest
+suites over throwaway git repositories built in `tmp_path`, never committed,
+since a committed dead link or unused image would be swept into this repo's
+own dogfood of both checks.
+The cases to keep are the negative ones: code blocks (fenced or indented),
+code spans and HTML comments are not links while a list item's indented
+continuation is, a nested subfile resolves from the top-level page and not
+from its own directory, an escaped include
+includes nothing, an unresolvable `base-ref` skips rather than widening, and
+each way a source names an image counts as a use.
+Each also pins its long-line cost, because the first draft of the image
+tokenizer used a lazy pattern that went quadratic on an inlined data URI.
+CI runs both as the `quarto-links-orphaned-images` job in `_selftest.yml`,
+then calls both composites over this repo's own tree and over a staged dead
+link and unused image.
+
+**Both checks' staged fixtures were invisible to them at first, each for
+the reason the check exists.**
+The fixture directory began with `_`, so `check-quarto-links` skipped its
+page as one Quarto never renders.
+The fixture image's name was written in `_selftest.yml`, which
+`check-orphaned-images` reads as a source, so the image counted as used.
+The fixture now lives in an unprefixed directory, and the image's name is
+built at run time --- the same self-implicating shape the `merge-drops`
+fixture records above.
+The job's reference page met a third form: Quarto expands a shortcode even
+inside a code span, so an example `include` or `meta` shortcode on a page
+must be escaped as `{{</* include ... */>}}`, or the site render fails.
 
 `check-code-similarity/tests/test_check_code_similarity.py` is a pytest suite
 driving `check_code_similarity.py` against a **stub `java`** that writes a

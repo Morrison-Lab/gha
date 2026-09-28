@@ -1,0 +1,65 @@
+name: Check for typed code output (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      patterns:
+        description: >-
+          Newline-separated regular expressions for output comments inside
+          python/r/julia code fences and executable chunks. Replaces the
+          default set; empty uses the defaults.
+        type: string
+        default: ''
+      globs:
+        description: >-
+          Space-separated git pathspecs of tracked files to check (recursive
+          by default).
+        type: string
+        default: '*.qmd'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      fail:
+        description: >-
+          Fail the workflow when typed output is found. Defaults to false
+          (warning annotations only).
+        type: boolean
+        default: false
+      diff-scoped:
+        description: >-
+          Report only lines a pull request adds, diffed against the PR base.
+          Skipped with a warning on runs with no PR base (push).
+        type: boolean
+        default: false
+
+jobs:
+  check-typed-output:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history so a diff-scoped PR run can diff against the base.
+          fetch-depth: 0
+
+      - name: Check for typed code output
+        uses: Morrison-Lab/gha/check-typed-output@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          patterns: ${{ inputs.patterns }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          fail: ${{ inputs.fail }}
+          diff-scoped: ${{ inputs.diff-scoped }}
+          # The PR base when there is one; on a push there is none, so a
+          # diff-scoped run skips rather than scanning the whole tree.
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}

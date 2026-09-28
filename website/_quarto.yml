@@ -45,6 +45,7 @@ website:
           - reference/check-formatting.qmd
           - reference/check-junk-files.qmd
           - reference/check-math-definitions.qmd
+          - reference/check-merge-drops.qmd
           - reference/check-non-standard-chars.qmd
           - reference/check-one-function-per-file.qmd
           - reference/check-phi.qmd
@@ -57,9 +58,12 @@ website:
           - reference/check-python-package.qmd
           - reference/student-qmd.qmd
           - reference/check-links.qmd
+          - reference/check-quarto-links.qmd
+          - reference/check-orphaned-images.qmd
           - reference/lint-yaml.qmd
           - reference/lint-markdown.qmd
           - reference/check-new-line-breaks.qmd
+          - reference/check-typed-output.qmd
           - reference/lint-qmd.qmd
           - reference/lint-changed-lines.qmd
           - reference/lint-changed-files.qmd
