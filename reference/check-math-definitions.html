@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>claude.yml – Morrison-Lab/gha</title>
+<title>check-math-definitions.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/claude-code-review.html" rel="next">
-<link href="../reference/cleanup-pr-previews.html" rel="prev">
+<link href="../reference/check-merge-drops.html" rel="next">
+<link href="../reference/check-junk-files.html" rel="prev">
 <script src="../site_libs/cookie-consent/cookie-consent.js"></script>
 <link href="../site_libs/cookie-consent/cookie-consent.css" rel="stylesheet">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
@@ -361,7 +361,7 @@ cookieconsent.run({
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/claude.html">claude.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-math-definitions.html">check-math-definitions.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -444,7 +444,7 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-math-definitions.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-math-definitions.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-math-definitions.yml</span></a>
   </div>
 </li>
@@ -666,7 +666,7 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/claude.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/claude.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">claude.yml</span></a>
   </div>
 </li>
@@ -803,19 +803,18 @@ cookieconsent.run({
    
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
-  <li><a href="#secrets" id="toc-secrets" class="nav-link" data-scroll-target="#secrets">Secrets</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/claude.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-math-definitions.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/claude.html">claude.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-math-definitions.html">check-math-definitions.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">claude.yml</h1>
+<h1 class="title">check-math-definitions.yml</h1>
 </div>
 
 
@@ -832,14 +831,28 @@ cookieconsent.run({
 </header>
 
 
-<p>Run the agent-mode Claude Code bot. It responds to <code>@claude</code> mentions, edits files, and opens or updates pull requests. It pairs with <code>claude-code-review.yml</code>: when Claude pushes commits (or an <code>@claude review</code> mention fires), it dispatches the review workflow via <code>workflow_dispatch</code>.</p>
-<p>A mention counts as a review request when <code>review</code> follows <code>@claude</code> directly, after punctuation, or after a polite lead-in, and the request then ends its line – <code>@claude review</code>, <code>@claude, review</code>, <code>@claude please review</code>, <code>@claude can you review this?</code>, <code>@claude re-review</code>. The keyword may take an object, but only one pointing back at the pull request itself (<code>@claude review this PR</code>, <code>@claude please review the latest changes</code>).</p>
-<p>Anything else is treated as an ordinary request for the agent: a mention that merely contains the word (<code>@claude the review workflow is broken, can you fix it?</code>), and equally one that asks for something to be examined (<code>@claude can you review this and fix the failing test?</code>). A misfire routes the comment to the read-only reviewer and suppresses the agent’s own reply, so the matcher errs toward answering rather than dispatching. Quoted lines are skipped, so quote-replying to a past request does not dispatch a fresh review.</p>
-<p>It also runs unattended on <code>workflow_dispatch</code>/<code>schedule</code> events (e.g.&nbsp;a periodic skill invocation with no human comment to react to). The caller’s <code>on:</code> needs one of those triggers, and its job-level <code>if:</code> gate needs widening too, or the caller-side check itself skips the job before this reusable workflow ever runs (see the commented example in <code>examples/claude.yml</code>). Both events are trusted by construction: <code>workflow_dispatch</code> requires the dispatching actor to have repo write access, and a <code>schedule</code> trigger has no triggering actor at all, only existing because someone with write access committed its <code>cron:</code> config to the default branch. So the job’s <code>@claude</code>-mention/author-association gate doesn’t apply to either. These runs get no triggering issue/PR, so no branch or draft PR is set up and no reply comment is posted; use the <code>prompt-addendum</code> input to supply the actual task, and have it use whatever tools <code>claude-args</code> grants to persist output (e.g.&nbsp;<code>gh issue create</code>).</p>
-<p>A mention inside a code span, a fenced block, or a blockquote is not an invocation. The caller-side <code>if:</code> is formatting-blind – a GitHub expression cannot strip Markdown – so a quoted mention still invokes this reusable workflow. A cheap <code>mention-filter</code> job then runs <code>detect-bot-mention</code> and withholds the agent job, so the expensive runner never starts (<a href="https://github.com/Morrison-Lab/gha/issues/554">gha#554</a>). Do not approximate CommonMark in the caller <code>if:</code>. Assignment remains a sufficient trigger when <code>dispatch-on-assignee</code> is set: an allowlisted <code>issues.assigned</code> event proceeds even with no mention.</p>
+<p>Check for duplicate, divergent, or colliding mathematical definitions and theorems across Quarto (<code>.qmd</code>) and Markdown (<code>.md</code>) files and sibling repositories.</p>
+<p>In multi-repo textbook and curriculum ecosystems, mathematical entities (definitions, theorems, lemmas, corollaries, propositions, conjectures, exercises) are frequently cited or duplicated across books and course repositories. <code>check-math-definitions</code> scans cross-reference divs (<code>::: {#def-name}</code>) to enforce cross-document consistency:</p>
+<ol type="1">
+<li><strong>Exact ID Divergence:</strong> Flags when the same cross-reference ID (e.g.&nbsp;<code>#def-variance</code>) appears in multiple files or repositories with divergent or conflicting mathematical definitions. Identical content is treated as canonical and passes cleanly.</li>
+<li><strong>Conceptual / Title Collisions:</strong> Flags when the same mathematical concept title (e.g.&nbsp;“Variance”) is defined under multiple distinct IDs within the same prefix category.</li>
+<li><strong>In-Repo Duplicate IDs:</strong> Flags when the same ID is defined more than once in the same repository.</li>
+</ol>
+<p>A single div opts out with a directive comment inside that div, on its opening fence line or in its own body:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- check-math-definitions: allow-divergence --&gt;</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- check-math-definitions: opt-out --&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>It exempts that div only. Other divs in the same file are still checked, and a directive inside a nested div exempts the nested div rather than the one enclosing it.</p>
+<p>A whole file opts out with the separate file-level directive, placed anywhere in the file:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode markdown code-with-copy"><code class="sourceCode markdown"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co">&lt;!-- check-math-definitions: ignore-file --&gt;</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+</colgroup>
 <thead>
 <tr class="header">
 <th>Input</th>
@@ -850,306 +863,78 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>setup-r</code></td>
+<td><code>path</code></td>
+<td>string</td>
+<td><code>'.'</code></td>
+<td>Target directory or file path to scan.</td>
+</tr>
+<tr class="even">
+<td><code>paths</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Comma- or newline-separated list of directories to scan.</td>
+</tr>
+<tr class="odd">
+<td><code>repos</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Comma- or newline-separated list of GitHub repos (<code>owner/repo</code>) to clone and scan.</td>
+</tr>
+<tr class="even">
+<td><code>paths-ignore</code></td>
+<td>string</td>
+<td><code>'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'</code></td>
+<td>Comma- or newline-separated paths or glob patterns to ignore.</td>
+</tr>
+<tr class="odd">
+<td><code>extensions</code></td>
+<td>string</td>
+<td><code>'.qmd, .md, .rmd, .Rmd'</code></td>
+<td>Comma- or space-separated list of file extensions to check.</td>
+</tr>
+<tr class="even">
+<td><code>prefixes</code></td>
+<td>string</td>
+<td><code>'def, thm, lem, cor, prp, cnj, exr, exm, rem, sol, clm'</code></td>
+<td>Comma- or space-separated list of div ID prefixes to track.</td>
+</tr>
+<tr class="odd">
+<td><code>check-titles</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Install R (pandoc plus setup-r) and the package’s dependencies before running Claude.</td>
+<td>Whether to flag matching titles with divergent IDs across repositories.</td>
 </tr>
 <tr class="even">
-<td><code>install-quarto</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Install Quarto (with tinytex) so Claude can render <code>.qmd</code> files.</td>
-</tr>
-<tr class="odd">
-<td><code>apt-packages</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Extra apt packages to install before R/Quarto setup. Empty to skip.</td>
-</tr>
-<tr class="even">
-<td><code>pip-packages</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Python packages to install with <code>pip3 --break-system-packages</code> before Claude runs. Empty to skip.</td>
-</tr>
-<tr class="odd">
-<td><code>use-renv</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Restore dependencies with renv instead of DESCRIPTION-based <code>setup-r-dependencies</code>.</td>
-</tr>
-<tr class="even">
-<td><code>r-extra-packages</code></td>
-<td>string</td>
-<td><code>(long; see workflow file)</code></td>
-<td>Extra packages for <code>setup-r-dependencies</code> (ignored when <code>use-renv</code> is true). Defaults to a devtools/roxygen2/lintr/spelling/rcmdcheck set plus <code>local::.</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>renv-cache-version</code></td>
-<td>string</td>
-<td><code>'1'</code></td>
-<td>renv cache-version passed to setup-renv; bump to invalidate the cached library.</td>
-</tr>
-<tr class="even">
-<td><code>checkout-submodules</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Check out submodules. Private submodules require the <code>SUBMODULES_TOKEN</code> secret.</td>
-</tr>
-<tr class="odd">
-<td><code>link-skills</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Expose the caller repo’s top-level <code>skills/</code> directory to Claude as project skills. A no-op on PR-triggered runs; commit the symlink to the default branch instead.</td>
-</tr>
-<tr class="even">
-<td><code>eager-pr</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>On an issue trigger, open the draft PR up front instead of only at the end. Empty PRs are closed automatically.</td>
-</tr>
-<tr class="odd">
-<td><code>reviewer</code></td>
-<td>string</td>
-<td><code>'d-morrison'</code></td>
-<td>GitHub user re-requested as reviewer when Claude pushes commits to a PR.</td>
-</tr>
-<tr class="even">
-<td><code>review-workflow-file</code></td>
-<td>string</td>
-<td><code>'claude-code-review.yml'</code></td>
-<td>Workflow file in the caller repo dispatched to review Claude’s commits.</td>
-</tr>
-<tr class="odd">
-<td><code>dispatch-review-on-agent-push</code></td>
+<td><code>fail</code></td>
 <td>boolean</td>
 <td><code>true</code></td>
-<td>Automatically dispatch a code review when Claude pushes commits or creates a PR for an issue trigger. Set false to require an explicit <code>@claude review</code> comment instead.</td>
-</tr>
-<tr class="even">
-<td><code>mark-ready-for-review</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>When Claude finishes with committed code, take its draft PR out of draft mode. Set false to leave PRs as drafts.</td>
+<td>Whether to fail the workflow if divergence or duplicate IDs are detected.</td>
 </tr>
 <tr class="odd">
-<td><code>prompt-addendum</code></td>
+<td><code>python-version</code></td>
 <td>string</td>
-<td><code>''</code></td>
-<td>Repo-specific instructions appended to Claude’s prompt.</td>
-</tr>
-<tr class="even">
-<td><code>webfetch-allowlist-url</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>URL of a newline-delimited hostname allowlist; each host becomes a <code>WebFetch(domain:&lt;host&gt;)</code> grant. Empty to disable WebFetch.</td>
-</tr>
-<tr class="odd">
-<td><code>use-ai-config</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Install the <a href="https://github.com/Morrison-Lab/ai-config"><code>Morrison-Lab/ai-config</code></a> plugin (<code>ai-config@Morrison-Lab</code>), giving the agent the lab’s shared skills, slash commands, and standing workflow conventions. Set false to opt out. Distinct from <code>link-skills</code>, which exposes the calling repo’s own <code>skills/</code> directory; the two compose.</td>
-</tr>
-<tr class="even">
-<td><code>use-posit-skills</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Install the <a href="https://github.com/posit-dev/skills"><code>posit-dev/skills</code></a> plugin (<code>posit-dev@posit-dev-skills</code>), giving the agent Posit’s developer skills alongside the lab’s shared skills and workflow conventions. Set false to opt out.</td>
-</tr>
-<tr class="odd">
-<td><code>reference-repos</code></td>
-<td>string</td>
-<td><code>'Morrison-Lab/gha'</code></td>
-<td>Space-, comma-, or newline-separated list of GitHub repositories (<code>owner/repo</code> or <code>owner/repo@ref</code>) checked out into <code>.reference-repos/</code> so the agent can inspect their files and schemas directly. Set to <code>'none'</code> or <code>''</code> to disable.</td>
-</tr>
-<tr class="even">
-<td><code>reference-repos-token</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Optional GitHub token with read access to private reference repositories (e.g.&nbsp;<code>SUBMODULES_TOKEN</code> or a PAT). Public reference repositories clone anonymously.</td>
-</tr>
-<tr class="odd">
-<td><code>plugin-marketplaces</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Extra newline-separated Claude Code plugin marketplace Git URLs, added on top of the marketplaces this workflow already uses (<code>Morrison-Lab/ai-config.git</code> unless <code>use-ai-config</code> is false, and <code>posit-dev/skills.git</code> unless <code>use-posit-skills</code> is false). Pair with <code>plugins</code> below; empty adds none.</td>
-</tr>
-<tr class="even">
-<td><code>plugins</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Extra newline-separated plugin refs to install (<code>&lt;plugin&gt;@&lt;marketplace-name&gt;</code>), added on top of whatever <code>use-ai-config</code> and <code>use-posit-skills</code> install. Each marketplace name must match the name that marketplace declares in its own <code>.claude-plugin/marketplace.json</code>, not the URL given in <code>plugin-marketplaces</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>claude-args</code></td>
-<td>string</td>
-<td><code>(long; see workflow file)</code></td>
-<td>Args passed to claude-code-action (allowed/disallowed tools). Defaults to a read-and-commit toolset with <code>git push</code> omitted and mutation API flags denied best-effort. Write safety is bounded by the trusted-author gate and workflow permissions.</td>
-</tr>
-<tr class="even">
-<td><code>runs-on</code></td>
-<td>string</td>
-<td><code>'ubuntu-latest'</code></td>
-<td>Runner for the agent job. The <code>mention-filter</code> job always uses <code>ubuntu-latest</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>report-cost</code></td>
-<td>boolean</td>
-<td><code>true</code></td>
-<td>Surface the run’s dollar cost (<code>total_cost_usd</code>): appended to whichever comment this workflow already posts, or as its own standalone comment on the one path that posts none otherwise. See <a href="https://github.com/Morrison-Lab/gha#readme">README.md</a>’s feature-parity table for the upstream source citation. Set false to suppress it.</td>
-</tr>
-<tr class="even">
-<td><code>trusted-bot-logins</code></td>
-<td>string</td>
-<td><code>'[]'</code></td>
-<td>JSON array of GitHub bot logins allowed to trigger the workflow even when <code>author_association</code> is not OWNER/MEMBER/COLLABORATOR (App comments are usually <code>NONE</code>). Example: <code>'["cursor[bot]"]'</code>. Default <code>[]</code> keeps the human-collaborator-only gate. Mirror the same logins in the caller job <code>if:</code>, or the reusable workflow is never invoked.</td>
-</tr>
-<tr class="odd">
-<td><code>dispatch-on-assignee</code></td>
-<td>string</td>
-<td><code>'[]'</code></td>
-<td>JSON array of GitHub logins for which an <code>issues.assigned</code> event dispatches a run on its own, with no <code>@claude</code> mention required anywhere in the issue – the assignment is the request. Example: <code>'["claude"]'</code>. Default <code>[]</code> means assignment changes nothing. Gates on the <strong>assignee</strong>, not the assigner: the <code>assigned</code> payload carries no <code>author_association</code> for the sender. Purely additive – an assigned issue that does mention <code>@claude</code> already dispatches without this. Mirror the assignment case in the caller job <code>if:</code> and add <code>assigned</code> to its <code>on: issues: types:</code>, or the reusable workflow is never invoked.</td>
-</tr>
-<tr class="even">
-<td><code>extra-secret-names</code></td>
-<td>string</td>
-<td><code>''</code></td>
-<td>Space-, comma-, or newline-separated caller secret names to export into the agent environment (e.g.&nbsp;<code>'EPI202_TOKEN EPI204_TOKEN'</code>). Requires <code>secrets: inherit</code> on the caller <code>uses:</code>. Secret names must match <code>[A-Z_][A-Z0-9_]*</code> and cannot shadow protected workflow environment variables. Empty to skip.</td>
-</tr>
-<tr class="odd">
-<td><code>timeout-minutes</code></td>
-<td>number</td>
-<td><code>60</code></td>
-<td>Job timeout in minutes for the agent job. Default 60 is the hang ceiling, not a budget; lower it to match a consumer’s own cap, which a caller cannot otherwise do because GitHub rejects <code>timeout-minutes</code> on a job that uses <code>uses:</code>.</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="secrets" class="level2">
-<h2 class="anchored" data-anchor-id="secrets">Secrets</h2>
-<table class="caption-top table">
-<colgroup>
-<col style="width: 13%">
-<col style="width: 4%">
-<col style="width: 82%">
-</colgroup>
-<thead>
-<tr class="header">
-<th>Secret</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><code>CLAUDE_CODE_OAUTH_TOKEN</code></td>
-<td>no</td>
-<td>OAuth token for Claude Code (Claude Max plan).</td>
-</tr>
-<tr class="even">
-<td><code>ANTHROPIC_API_KEY</code></td>
-<td>no</td>
-<td>Direct Anthropic API key (or GitHub App via <code>/install-github-app</code>), used instead of <code>CLAUDE_CODE_OAUTH_TOKEN</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>SUBMODULES_TOKEN</code></td>
-<td>no</td>
-<td>Read access to private submodules.</td>
-</tr>
-<tr class="even">
-<td><code>WORKFLOW_TOKEN</code></td>
-<td>no</td>
-<td>PAT or App token with <code>contents:write</code> plus <code>workflows:write</code>, needed only to push changes under <code>.github/workflows/</code>. Falls back to <code>GITHUB_TOKEN</code> when unset – and when that fallback is rejected, the run reports an error naming this secret and posts the unpushed commits to the thread as a <code>git format-patch</code>.</td>
+<td><code>'3.x'</code></td>
+<td>Python version to set up.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code>, <code>pull-requests: write</code>, <code>issues: write</code>, <code>id-token: write</code>, and <code>actions: write</code>, and add either the <code>CLAUDE_CODE_OAUTH_TOKEN</code> or <code>ANTHROPIC_API_KEY</code> secret.</p>
+<p>Only <code>contents: read</code> (the default), so no extra permissions are required.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/claude.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">NOTE</span><span class="co">: requires either CLAUDE_CODE_OAUTH_TOKEN (Claude Max plan) or</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># ANTHROPIC_API_KEY (direct API / GitHub App via /install-github-app). The</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># calling job grants write permissions so Claude can push branches and open PRs.</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Pass secrets explicitly (below) rather than via `secrets: inherit`: GitHub</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># only inherits secrets into a reusable workflow owned by the same org/user, so</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># a cross-owner caller (e.g. a UCD-SERG-org repo calling this d-morrison</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="co"># user-owned workflow) inherits an empty token.</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Claude Code</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">issue_comment</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">created</span><span class="kw">]</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request_review_comment</span><span class="kw">:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">created</span><span class="kw">]</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">issues</span><span class="kw">:</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    # `assigned` lets an issue that already mentions @claude kick off a run when</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # it's assigned (handy with eager-pr). The trusted-author gate keys on the</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    # issue *author*, so this only fires for issues opened by a collaborator.</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">opened</span><span class="kw">,</span><span class="at"> assigned</span><span class="kw">]</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request_review</span><span class="kw">:</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">types</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">submitted</span><span class="kw">]</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">claude</span><span class="kw">:</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">    # Cheap caller-side gate: only invoke the reusable workflow when an @claude</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">    # mention is present AND the author is trusted (OWNER/MEMBER/COLLABORATOR),</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a><span class="co">    # so an untrusted commenter's mention doesn't even spawn the</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a><span class="co">    # reusable-workflow run. This mirrors the reusable workflow's own</span></span>
-<span id="cb1-30"><a href="#cb1-30" aria-hidden="true" tabindex="-1"></a><span class="co">    # trusted-author gate as defense-in-depth.</span></span>
-<span id="cb1-31"><a href="#cb1-31" aria-hidden="true" tabindex="-1"></a><span class="co">    # This `contains()` is formatting-blind; claude.yml's mention-filter job</span></span>
-<span id="cb1-32"><a href="#cb1-32" aria-hidden="true" tabindex="-1"></a><span class="co">    # is what withholds the agent job for a quoted mention (gha#554).</span></span>
-<span id="cb1-33"><a href="#cb1-33" aria-hidden="true" tabindex="-1"></a><span class="co">    # To also admit a GitHub App bot, OR in a login check here and pass the</span></span>
-<span id="cb1-34"><a href="#cb1-34" aria-hidden="true" tabindex="-1"></a><span class="co">    # same JSON array as trusted-bot-logins (see examples/claude.yml).</span></span>
-<span id="cb1-35"><a href="#cb1-35" aria-hidden="true" tabindex="-1"></a><span class="fu">    if</span><span class="kw">: </span><span class="ch">|</span></span>
-<span id="cb1-36"><a href="#cb1-36" aria-hidden="true" tabindex="-1"></a>      (github.event_name == 'issue_comment' &amp;&amp; contains(github.event.comment.body, '@claude') &amp;&amp; contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||</span>
-<span id="cb1-37"><a href="#cb1-37" aria-hidden="true" tabindex="-1"></a>      (github.event_name == 'pull_request_review_comment' &amp;&amp; contains(github.event.comment.body, '@claude') &amp;&amp; contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||</span>
-<span id="cb1-38"><a href="#cb1-38" aria-hidden="true" tabindex="-1"></a>      (github.event_name == 'pull_request_review' &amp;&amp; contains(github.event.review.body, '@claude') &amp;&amp; contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.review.author_association)) ||</span>
-<span id="cb1-39"><a href="#cb1-39" aria-hidden="true" tabindex="-1"></a>      (github.event_name == 'issues' &amp;&amp; (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')) &amp;&amp; contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))</span>
-<span id="cb1-40"><a href="#cb1-40" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-41"><a href="#cb1-41" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-42"><a href="#cb1-42" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-43"><a href="#cb1-43" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">issues</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-44"><a href="#cb1-44" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">id-token</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-45"><a href="#cb1-45" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">actions</span><span class="kw">:</span><span class="at"> write</span><span class="co"> # dispatch the review workflow via `gh workflow run`</span></span>
-<span id="cb1-46"><a href="#cb1-46" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/claude.yml@v2</span></span>
-<span id="cb1-47"><a href="#cb1-47" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">secrets</span><span class="kw">:</span></span>
-<span id="cb1-48"><a href="#cb1-48" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">CLAUDE_CODE_OAUTH_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}</span><span class="co"> # Max-plan OAuth; empty when using API key</span></span>
-<span id="cb1-49"><a href="#cb1-49" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ANTHROPIC_API_KEY</span><span class="kw">:</span><span class="at"> ${{ secrets.ANTHROPIC_API_KEY }}</span><span class="co"> # direct API key; empty when using OAuth</span></span>
-<span id="cb1-50"><a href="#cb1-50" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">SUBMODULES_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.SUBMODULES_TOKEN }}</span><span class="co"> # optional; empty when unset</span></span>
-<span id="cb1-51"><a href="#cb1-51" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">WORKFLOW_TOKEN</span><span class="kw">:</span><span class="at"> ${{ secrets.WORKFLOW_TOKEN }}</span><span class="co"> # optional; for editing .github/workflows</span></span>
-<span id="cb1-52"><a href="#cb1-52" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-53"><a href="#cb1-53" aria-hidden="true" tabindex="-1"></a><span class="co">    #   setup-r: true               # default; set false for non-R repos</span></span>
-<span id="cb1-54"><a href="#cb1-54" aria-hidden="true" tabindex="-1"></a><span class="co">    #   install-quarto: true        # for Quarto books</span></span>
-<span id="cb1-55"><a href="#cb1-55" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-renv: true              # restore deps with renv instead of DESCRIPTION</span></span>
-<span id="cb1-56"><a href="#cb1-56" aria-hidden="true" tabindex="-1"></a><span class="co">    #   apt-packages: jags libglpk-dev poppler-utils  # system libs deps need</span></span>
-<span id="cb1-57"><a href="#cb1-57" aria-hidden="true" tabindex="-1"></a><span class="co">    #   pip-packages: sympy         # pip3 --break-system-packages</span></span>
-<span id="cb1-58"><a href="#cb1-58" aria-hidden="true" tabindex="-1"></a><span class="co">    #   checkout-submodules: true   # SUBMODULES_TOKEN secret only for private submodules</span></span>
-<span id="cb1-59"><a href="#cb1-59" aria-hidden="true" tabindex="-1"></a><span class="co">    #   link-skills: true           # expose this repo's skills/ as @claude project skills</span></span>
-<span id="cb1-60"><a href="#cb1-60" aria-hidden="true" tabindex="-1"></a><span class="co">    #   eager-pr: true              # open the draft PR up front (Copilot-style)</span></span>
-<span id="cb1-61"><a href="#cb1-61" aria-hidden="true" tabindex="-1"></a><span class="co">    #   mark-ready-for-review: false # keep Claude's PRs as drafts</span></span>
-<span id="cb1-62"><a href="#cb1-62" aria-hidden="true" tabindex="-1"></a><span class="co">    #   reviewer: d-morrison        # re-requested when Claude pushes to a PR</span></span>
-<span id="cb1-63"><a href="#cb1-63" aria-hidden="true" tabindex="-1"></a><span class="co">    #   dispatch-review-on-agent-push: false # require explicit '@claude review' (default true)</span></span>
-<span id="cb1-64"><a href="#cb1-64" aria-hidden="true" tabindex="-1"></a><span class="co">    #   report-cost: false          # suppress the dollar-cost comment (default true)</span></span>
-<span id="cb1-65"><a href="#cb1-65" aria-hidden="true" tabindex="-1"></a><span class="co">    #   trusted-bot-logins: '["cursor[bot]"]'  # admit App bots the caller if: also allows</span></span>
-<span id="cb1-66"><a href="#cb1-66" aria-hidden="true" tabindex="-1"></a><span class="co">    #   dispatch-on-assignee: '["claude"]'     # assigning an issue dispatches a run, no mention needed</span></span>
-<span id="cb1-67"><a href="#cb1-67" aria-hidden="true" tabindex="-1"></a><span class="co">    #   webfetch-allowlist-url: https://raw.githubusercontent.com/d-morrison/stats-allowlist/main/allowlist.txt</span></span>
-<span id="cb1-68"><a href="#cb1-68" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-ai-config: false        # skip the Morrison-Lab/ai-config plugin (installed by default)</span></span>
-<span id="cb1-69"><a href="#cb1-69" aria-hidden="true" tabindex="-1"></a><span class="co">    #   use-posit-skills: false     # skip the posit-dev/skills plugin (installed by default)</span></span>
-<span id="cb1-70"><a href="#cb1-70" aria-hidden="true" tabindex="-1"></a><span class="co">    #   reference-repos: 'Morrison-Lab/gha'  # check out reference repos into .reference-repos/ for the agent</span></span>
-<span id="cb1-71"><a href="#cb1-71" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugin-marketplaces: https://github.com/&lt;owner&gt;/&lt;repo&gt;.git   # further plugin sources</span></span>
-<span id="cb1-72"><a href="#cb1-72" aria-hidden="true" tabindex="-1"></a><span class="co">    #   plugins: &lt;plugin&gt;@&lt;marketplace-name&gt;</span></span>
-<span id="cb1-73"><a href="#cb1-73" aria-hidden="true" tabindex="-1"></a><span class="co">    #   extra-secret-names: EPI202_TOKEN EPI204_TOKEN  # export caller secrets to agent env (needs secrets: inherit)</span></span>
-<span id="cb1-74"><a href="#cb1-74" aria-hidden="true" tabindex="-1"></a><span class="co">    #   timeout-minutes: 50</span></span>
-<span id="cb1-75"><a href="#cb1-75" aria-hidden="true" tabindex="-1"></a><span class="co">    #   prompt-addendum: |</span></span>
-<span id="cb1-76"><a href="#cb1-76" aria-hidden="true" tabindex="-1"></a><span class="co">    #     This is the &lt;name&gt; R package. Before committing, run</span></span>
-<span id="cb1-77"><a href="#cb1-77" aria-hidden="true" tabindex="-1"></a><span class="co">    #     lintr::lint_package(), spelling::spell_check_package(), and</span></span>
-<span id="cb1-78"><a href="#cb1-78" aria-hidden="true" tabindex="-1"></a><span class="co">    #     devtools::test(); add a NEWS.md bullet for user-facing changes.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/claude.yml"><code>examples/claude.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check Math Definitions</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span><span class="at"> </span><span class="kw">{</span><span class="at"> </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">]</span><span class="at"> </span><span class="kw">}</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-math-definitions.yml@v3</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">repos</span><span class="kw">:</span><span class="at"> </span><span class="st">'Morrison-Lab/rme, Morrison-Lab/pds'</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See the <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> directory for caller stubs.</p>
 
 
 </section>
@@ -1570,13 +1355,13 @@ cookieconsent.run({
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/cleanup-pr-previews.html" class="pagination-link" aria-label="cleanup-pr-previews.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">cleanup-pr-previews.yml</span>
+      <a href="../reference/check-junk-files.html" class="pagination-link" aria-label="check-junk-files.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-junk-files.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/claude-code-review.html" class="pagination-link" aria-label="claude-code-review.yml">
-        <span class="nav-page-text">claude-code-review.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/check-merge-drops.html" class="pagination-link" aria-label="check-merge-drops.yml">
+        <span class="nav-page-text">check-merge-drops.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1588,7 +1373,7 @@ cookieconsent.run({
     </div>   
     <div class="nav-footer-center">
 
-<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/claude.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
+<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-math-definitions.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
     <div class="nav-footer-right">
       &nbsp;
     </div>
