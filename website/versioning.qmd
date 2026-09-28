@@ -171,6 +171,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-quarto-book.yml`, `check-quarto-manuscript.yml`,
 `check-quarto-links.yml`, `check-orphaned-images.yml`,
 `check-r-package.yml`, `check-python-package.yml`,
+`check-typed-output.yml`,
 `opposition-research.yml`, and
 `student-qmd.yml` at
 `@v3` - see the
