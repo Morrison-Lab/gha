@@ -1,0 +1,101 @@
+---
+title: "check-merge-drops.yml"
+---
+
+Reports content that a merge commit silently dropped.
+For every merge commit in a range,
+with parents `P1`, `P2` and merge base `B`,
+it collects the lines each side added since the merge base
+(`git diff B P1` and `git diff B P2`, added lines only)
+and reports those that appear nowhere in the merge's tree.
+
+That is what resolving a conflict by keeping one side of a whole file looks like.
+Every line the other side added to that file vanishes,
+while the merge result reads as a clean, plausible file,
+so no check that reads only the current tree can see the loss.
+A line added on one side since the merge base is new to the history,
+so the other side cannot have deleted it;
+a merge that keeps both sides' hunks keeps it,
+and a clean merge reports nothing.
+
+Three kinds of change are deliberately not reported:
+
+- **Moved content.**
+  A line is reported only when its text occurs nowhere
+  in the merge's tree, so a paragraph the resolution moved to another file passes.
+- **Rewrapped content.**
+  Each file is compared as one string with every
+  whitespace run collapsed, so a paragraph rewrapped at different line breaks passes.
+- **Reworded lines.**
+  When both sides edited the same line and the resolution
+  wrote a third version, neither side's line survives verbatim,
+  yet nothing was lost.
+  A missing line is not reported when a line of the merge's copy of the same file
+  is at least `similarity` alike, word by word.
+
+The check is **warn-only by default**,
+since a merge can legitimately drop a line the other side superseded.
+The full report, with the dropped lines grouped by merge, parent and file,
+goes to the job summary,
+and each affected merge gets one warning annotation.
+On a pull request the range is the merges the PR adds;
+on a push it is the merges the push brought in.
+A squash merge is not a merge commit,
+so run the check on pull requests to see a branch's merges before they are squashed.
+
+## Inputs
+
+| Input            | Type    | Default        | Description |
+| ---------------- | ------- | -------------- | ----------- |
+| `python-version` | string  | `'3.x'`        | Python version to set up. |
+| `globs`          | string  | `'*.md *.qmd'` | Space-separated git pathspecs whose added lines are checked (recursive by default). The search for moved content always covers the whole tree. |
+| `paths-ignore`   | string  | `''`           | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
+| `min-length`     | string  | `'20'`         | Minimum length, in characters after whitespace normalisation, for an added line to be checked; inclusive. Shorter lines (fences, list markers, closing `:::`) recur everywhere and are skipped. |
+| `similarity`     | string  | `'0.6'`        | Word-level similarity, 0 to 1, at or above which a line in the merge's copy of the same file counts as a rewording of a missing line. `'1'` reports every line whose exact text is gone. |
+| `fail`           | boolean | `false`        | Fail the workflow when a merge dropped content; otherwise warn only. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+# Copy to .github/workflows/check-merge-drops.yml in your repo.
+# Reports content a merge commit silently dropped: lines either side added
+# since the merge base that appear nowhere in the merge's tree -- what
+# resolving a conflict by keeping one side of a whole file looks like.
+# Warn-only by default; the report goes to the job summary.
+# Only contents:read is needed (the default), so no permissions block is required.
+name: Check merge commits for dropped content
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-merge-drops.yml@v3
+    # with:
+    #   globs: '*.md *.qmd *.R'               # pathspecs whose added lines are checked
+    #   paths-ignore: 'CHANGELOG.md'          # skip known-noisy paths
+    #   min-length: 30                        # skip lines shorter than this
+    #   similarity: 1                         # report reworded lines too
+    #   fail: true                            # block instead of warn
+```
+
+See
+[`examples/check-merge-drops.yml`](https://github.com/Morrison-Lab/gha/blob/main/examples/check-merge-drops.yml)
+for the full caller stub.
+
+## Running it locally
+
+The script takes the same settings as flags,
+so it can audit a repository's existing history:
+
+```bash
+python3 check-merge-drops/check-merge-drops.py --base <older-commit> --head origin/main
+```

@@ -26,6 +26,7 @@ updates:
       - "/check-extra"
       - "/check-formatting"
       - "/check-links"
+      - "/check-merge-drops"
       - "/check-new-line-breaks"
       - "/check-non-standard-chars"
       - "/check-one-function-per-file"

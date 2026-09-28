@@ -49,18 +49,21 @@ not reference `@main` from consumers.
 | `check-code-similarity.yml` | Flag code highly similar to a caller-supplied corpus of prior submissions, using JPlag. Computed entirely on the runner --- nothing is uploaded. Warns rather than fails by default, since shared skeleton code and common idioms raise similarity legitimately | `corpus-path`, `language`, `threshold`, `fail`, `base-code-path` |
 | `check-duplicate-roxygen.yml` | Check for duplicate roxygen parameter documentation across R code files and recommend consolidation using `@inheritParams` and/or `@inheritDotParams` | `path`, `paths-ignore`, `extensions`, `min-desc-length`, `base-ref`, `fail`, `python-version` |
 | `check-junk-files.yml` | Fail when the repository **tracks** operating-system or editor detritus (`.DS_Store`, AppleDouble `._*`, `.Rhistory`, `.RData`, `Thumbs.db`), naming the `git rm --cached` fix and the global-gitignore / `usethis::git_vaccinate()` fix that stops it recurring | `patterns`, `paths-ignore`, `fail` |
+| `check-merge-drops.yml` | Report content a merge commit silently dropped: lines either side added since the merge base that appear nowhere in the merge's tree, the signature of a conflict resolved by keeping one side of a whole file (warn-only by default) | `python-version`, `globs`, `paths-ignore`, `min-length`, `similarity`, `fail` |
 | `check-non-standard-chars.yml` | Detect curly quotes, en/em dashes, and the multiplication sign in `.qmd`, `.R`, and `.md` files | `python-version`, `extensions` |
 | `check-one-function-per-file.yml` | Enforce the one-function-definition-per-file rule across repository code files (`.R`, `.py`, `.sh`, `.js`, `.ts`, `.jl`), with header opt-out comment support | `path`, `paths-ignore`, `extensions`, `opt-out-comment`, `fail`, `python-version` |
 | `check-phi.yml` | Scan PRs (added lines only) for content that looks like PHI -- SSNs, medical record numbers, dates of birth, study/participant identifier literals, PHI column headers in data files | `detectors`, `paths-ignore`, `allowlist-file`, `fail` |
 | `check-secrets.yml` | Scan the repository's git **history** for committed credentials (API tokens, private keys, high-entropy password assignments) with gitleaks | `version`, `checksums-sha256`, `config`, `paths-ignore`, `allowlist-file`, `log-opts`, `fail` |
 | `check-repo-hygiene.yml` | Standard repository hygiene check suite (junk files, secrets, non-standard characters, new line breaks, typos, YAML lint, workflow lint, Markdown lint) | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown` |
-| `check-quarto-website.yml` | Standard check suite for Quarto website repositories: repository hygiene, AI tells, QMD prose linting, lychee link checking, and bibliography DOIs | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois` |
+| `check-quarto-website.yml` | Standard check suite for Quarto website repositories: repository hygiene, AI tells, QMD prose linting, lychee link checking, links to missing Quarto pages, orphaned images, and bibliography DOIs | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-quarto-links`, `check-orphaned-images`, `check-bibliography-dois` |
 | `check-quarto-book.yml` | Standard check suite for Quarto book repositories: repository hygiene, AI tells, QMD prose linting, link checking across chapters, bibliography DOIs, and equation renders | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois`, `check-equation-renders` |
 | `check-quarto-manuscript.yml` | Standard check suite for Quarto manuscript repositories: repository hygiene, AI tells, QMD prose linting, link checking, bibliography DOIs, and equation renders | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `lint-qmd`, `check-links`, `check-bibliography-dois`, `check-equation-renders` |
 | `check-r-package.yml` | Standard check suite for R package repositories: repository hygiene, AI tells, duplicate roxygen docs, one function per file, and Air formatting | `fail`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `check-ai-tells`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-duplicate-roxygen`, `check-one-function-per-file`, `check-formatting` |
 | `check-python-package.yml` | Standard check suite for Python package repositories: repository hygiene, Ruff linting and formatting, and pytest execution | `fail`, `python-version`, `check-junk-files`, `check-secrets`, `check-non-standard-chars`, `check-new-line-breaks`, `check-typos`, `lint-yaml`, `lint-workflows`, `lint-markdown`, `check-ruff`, `check-formatting`, `check-tests` |
 | `student-qmd.yml` | Write a self-contained student `.qmd` per assessment source whose answers sit in `.sol` divs (includes inlined; answer-key-only divs and comments removed), check each against its source with Pandoc, and render each alone in an empty directory | `sources`, `working-directory`, `output-dir`, `hidden-classes`, `answer-profiles`, `student-profile`, `drop-render-chunks`, `prune-macros`, `require-answers`, `check`, `render`, `render-to`, `index-title`, `index-back-href`, `checkout-submodules`, `artifact-name` |
 | `check-links.yml` | lychee link check with bundled config, PR skip-label, and auto-issue on `main` | `lychee-config`, `lychee-args`, `fail`, `fail-if-empty`, `create-issue-on-main`, `skip-label` |
+| `check-quarto-links.yml` | Fail on relative links from `.qmd`/`.md`/`.Rmd` sources to pages that do not exist, which Quarto only warns about (`Unable to resolve link target`) and lychee does not read out of a `.qmd`; source level, include-aware, no render | `globs`, `target-extensions`, `paths-ignore`, `fail` |
+| `check-orphaned-images.yml` | Report tracked images that no tracked source file references by file name; warn-only by default, optionally limited to the images a PR adds | `paths`, `extensions`, `source-extensions`, `paths-ignore`, `added-only`, `fail` |
 | `lint-yaml.yml` | yamllint over tracked YAML with a bundled config, plus a check that flags long `run:` script blocks as decomposition candidates | `python-version`, `config-file`, `paths-ignore`, `fail`, `max-script-lines`, `fail-on-long-scripts` |
 | `lint-markdown.yml` | markdownlint-cli2 over tracked Markdown with a bundled config, plus checks for long fenced code blocks, list-item merge splices, and blank lines that split a table | `config-file`, `globs`, `paths-ignore`, `fail`, `max-code-block-lines`, `fail-on-long-code-blocks`, `base-ref`, `fail-on-item-splices`, `fail-on-table-splits` |
 | `check-new-line-breaks.yml` | Diff-scoped check that flags newly-added Markdown lines packing more than one sentence/clause onto one source line | `python-version`, `globs`, `paths-ignore`, `fail`, `clause-breaks`, `clause-min-length` |
@@ -119,10 +122,10 @@ that need to write must have the **caller** grant it on the calling job:
 
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-junk-files`,
+  `check-formatting`, `check-junk-files`, `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
-  `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`,
-  `check-python-package`, `check-quarto-book`, `check-quarto-manuscript`, `check-quarto-website`,
+  `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
+  `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`,
   `check-typed-output`, `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
@@ -641,7 +644,9 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
+`check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,
@@ -780,7 +785,9 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-merge-drops.yml`, `check-orphaned-images.yml`,
 `check-python-package.yml`, `check-quarto-book.yml`,
+`check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `check-typed-output.yml`,

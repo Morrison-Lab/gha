@@ -1,0 +1,75 @@
+name: Check merge commits for silently dropped content
+description: >-
+  Reports content that a merge commit silently dropped. For every merge
+  commit in a range, it collects the lines each parent added since the merge
+  base and reports those that appear nowhere in the merge's tree -- the
+  signature of a conflict resolved by keeping one side of a whole file.
+  Whitespace is normalised and each file is compared as one flattened
+  string, so content moved to another file or rewrapped is not reported;
+  a line reworded by the resolution (a close near-twin in the same file) is
+  not reported either. Warn-only by default: the report goes to the job
+  summary, with one warning annotation per affected merge.
+inputs:
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+  base-ref:
+    description: >-
+      Start of the range (exclusive): merges reachable from `head-ref` but
+      not from this ref are checked. The reusable workflow passes the PR base
+      SHA, or the pre-push SHA on a push. Needs full history (checkout with
+      fetch-depth: 0). Empty, or an all-zero SHA, skips the check with a
+      warning rather than walking all of history.
+    default: ''
+  head-ref:
+    description: End of the range (inclusive).
+    default: 'HEAD'
+  globs:
+    description: >-
+      Space-separated git pathspecs whose added lines are checked. Git
+      pathspecs match at any depth, so this is recursive by default. The
+      search for moved content always covers the merge's whole tree.
+    default: '*.md *.qmd'
+  paths-ignore:
+    description: >-
+      Comma/newline-separated glob patterns (relative paths) to skip.
+      Supports `*`, `?`, and recursive `**`.
+    default: ''
+  min-length:
+    description: >-
+      Minimum length, in characters after whitespace normalisation, for an
+      added line to be checked; inclusive. Shorter lines (fences, list
+      markers, `---`, closing `:::`) recur everywhere and are skipped.
+    default: '20'
+  similarity:
+    description: >-
+      Word-level similarity, 0 to 1, at or above which a line in the merge's
+      copy of the same file counts as a rewording of a missing line, so the
+      missing line is not reported. '1' reports every line whose exact text
+      is gone.
+    default: '0.6'
+  fail:
+    description: >-
+      Fail the action when a merge dropped content. Defaults to 'false'
+      (warn-only), since a merge can legitimately drop a line the other side
+      superseded.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check merge commits for dropped content
+      shell: bash
+      env:
+        MERGE_DROPS_BASE_REF: ${{ inputs.base-ref }}
+        MERGE_DROPS_HEAD_REF: ${{ inputs.head-ref }}
+        MERGE_DROPS_GLOBS: ${{ inputs.globs }}
+        MERGE_DROPS_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        MERGE_DROPS_MIN_LENGTH: ${{ inputs.min-length }}
+        MERGE_DROPS_SIMILARITY: ${{ inputs.similarity }}
+        MERGE_DROPS_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-merge-drops.py"

@@ -207,6 +207,18 @@ def git_tag_exists(repo_root: pathlib.Path, tag: str) -> bool:
     return res.returncode == 0
 
 
+def major_tags(repo_root: pathlib.Path) -> list[str]:
+    """Return the repository's floating major tags (``v1``, ``v2``, ...), oldest first."""
+    res = subprocess.run(
+        ["git", "tag", "-l", "v*"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    tags = [t for t in res.stdout.split() if re.fullmatch(r"v[0-9]+", t)]
+    return sorted(tags, key=lambda t: int(t[1:]))
+
+
 def is_git_repo(repo_root: pathlib.Path) -> bool:
     """Return True if `repo_root` is inside a git repository or worktree."""
     git_marker = repo_root / ".git"
@@ -290,6 +302,8 @@ def run_audit(
                 "No git tags found in repository. Ensure tags are fetched "
                 "(e.g., git fetch --tags or actions/checkout with fetch-depth: 0)."
             )
+        majors = major_tags(repo_root)
+        newest = majors[-1] if majors else None
         for name, (tag, raw_path) in sorted(pin_infos.items()):
             if not git_tag_exists(repo_root, tag):
                 findings.append(
@@ -299,6 +313,21 @@ def run_audit(
                 continue
             candidates = candidate_paths_for_raw_path(raw_path)
             if not check_pin_exists_in_git(repo_root, tag, candidates):
+                if tag == newest and not any(
+                    check_pin_exists_in_git(repo_root, t, candidates) for t in majors
+                ):
+                    # A brand-new capability: it exists at no released tag,
+                    # and pins the newest major, which it reaches when that
+                    # tag slides past its merge. Erroring here would block
+                    # every new capability's own PR, since the slide can
+                    # only follow the merge. Pinning an OLDER major it never
+                    # existed at (gha#928's shape) is still a finding.
+                    print(
+                        f"::notice::'{name}' pins {tag} but is not released "
+                        f"at any tag yet; it resolves once {tag} slides past "
+                        f"its merge."
+                    )
+                    continue
                 paths_desc = " or ".join(f"'{c}'" for c in candidates)
                 findings.append(
                     f"ABSENT: '{name}' pins {tag} in its own example stub, "
