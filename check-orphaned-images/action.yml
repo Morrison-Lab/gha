@@ -1,0 +1,56 @@
+name: Check for orphaned images
+description: >-
+  Report tracked image files that no tracked source file (.qmd, .md, .yml,
+  .scss, .lua, .html, ... by default) references by file name. A figure
+  that stops being used stays in the repository indefinitely, because a
+  render never notices a file it was not asked to read. Source-tree check:
+  nothing is rendered. Warn-only by default, since an unused file breaks
+  nothing and a name search cannot see every way a file can be used (an
+  image named by a computed string needs paths-ignore). Set base-ref to
+  report only the images a branch adds.
+inputs:
+  paths:
+    description: >-
+      Space-separated git pathspecs to look for images in. Git pathspecs
+      match at any depth, so this is recursive by default.
+    default: '.'
+  extensions:
+    description: Comma- or space-separated image file extensions to examine.
+    default: '.png, .jpg, .jpeg, .gif, .svg, .webp, .avif'
+  source-extensions:
+    description: >-
+      Comma- or space-separated extensions of the tracked files searched for
+      references. Add `.R` or `.py` when a script, rather than a page, names
+      the figure.
+    default: '.qmd, .md, .Rmd, .ipynb, .yml, .yaml, .scss, .css, .lua, .html, .tex, .bib'
+  paths-ignore:
+    description: >-
+      Comma- or newline-separated globs (`*`, `?`, `**`) of images to skip.
+      A plain directory name skips everything under it.
+    default: ''
+  base-ref:
+    description: >-
+      Git ref/SHA to diff against. Empty (the default) examines every
+      tracked image; set, only images added since the merge base with this
+      ref are reported. Needs the base commit in history (checkout with
+      fetch-depth: 0); when the diff cannot be computed the check is skipped
+      with a warning rather than widened to the whole tree.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when an unreferenced image is found. Defaults to
+      `false` (warn only); only an explicit `true` makes it blocking.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Check for orphaned images
+      shell: bash
+      env:
+        OI_PATHS: ${{ inputs.paths }}
+        OI_EXTENSIONS: ${{ inputs.extensions }}
+        OI_SOURCE_EXTENSIONS: ${{ inputs.source-extensions }}
+        OI_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        OI_BASE_REF: ${{ inputs.base-ref }}
+        OI_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-orphaned-images.py"

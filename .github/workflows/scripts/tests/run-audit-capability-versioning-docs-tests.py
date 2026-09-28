@@ -318,10 +318,16 @@ def main() -> int:
         subprocess.run(["git", "tag", "v2"], cwd=root, check=True)
 
         findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        # v2 is the newest major and cap exists at no tag: a capability the
+        # branch introduces, reported as a notice rather than as ABSENT.
         check(
-            "run_audit with check_git_tags=True flags capability absent from pinned git tag",
-            any("ABSENT: 'cap' pins v2" in f for f in findings),
+            "run_audit reports a capability at no tag, pinned to the newest major, as unreleased",
+            [f.split(" ", 1)[0] for f in findings] == [audit.UNRELEASED_PREFIX],
             str(findings),
+        )
+        check(
+            "audit.main exits 0 when the only finding is an unreleased capability",
+            audit.main(["--repo-root", str(root)]) == 0,
         )
 
         subprocess.run(["git", "add", "."], cwd=root, check=True)
@@ -343,6 +349,46 @@ def main() -> int:
             str(findings),
         )
 
+        # The gha#928 shape: the capability exists at v3, but its stub pins
+        # the older v2, where it is absent. Being unreleased must not excuse
+        # this, since v3 carries the capability.
+        write(
+            root,
+            "examples/cap.yml",
+            "uses: Morrison-Lab/gha/.github/workflows/cap.yml@v2\n",
+        )
+        build_fixture(root, {"cap": ("v2", all_region_indices)})
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit flags a stub pinning an older major than the one carrying the capability",
+            any("ABSENT: 'cap' pins v2" in f for f in findings),
+            str(findings),
+        )
+
+        # A capability at no tag but pinned to an OLDER major than the newest
+        # is still ABSENT: sliding the newest tag would not make that pin right.
+        write(root, ".github/workflows/cap2.yml", "on: workflow_call\n")
+        write(
+            root,
+            "examples/cap2.yml",
+            "uses: Morrison-Lab/gha/.github/workflows/cap2.yml@v2\n",
+        )
+        build_fixture(root, {"cap": ("v3", all_region_indices), "cap2": ("v2", all_region_indices)})
+        write(
+            root,
+            "examples/cap.yml",
+            "uses: Morrison-Lab/gha/.github/workflows/cap.yml@v3\n",
+        )
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit flags an untagged capability pinned below the newest major",
+            any("ABSENT: 'cap2' pins v2" in f for f in findings)
+            and not any(f.startswith(audit.UNRELEASED_PREFIX) for f in findings),
+            str(findings),
+        )
+        (root / ".github/workflows/cap2.yml").unlink()
+        (root / "examples/cap2.yml").unlink()
+
         # Tag does not exist at all (e.g. pinned to v99 while v2/v3 exist)
         write(
             root,
@@ -354,6 +400,31 @@ def main() -> int:
         check(
             "run_audit with check_git_tags=True flags non-existent tag explicitly",
             any("tag v99 does not exist in git" in f for f in findings),
+            str(findings),
+        )
+
+    # -------------------------------- a capability dropped from the newest tag
+    # It exists at an older tag but not at the newest one its stub pins, so it
+    # is not "unreleased" -- something removed it -- and stays ABSENT.
+    with tempfile.TemporaryDirectory() as tmp:
+        root = pathlib.Path(tmp)
+        subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
+        email = "audit-test@example.invalid"  # phi-allow
+        subprocess.run(["git", "config", "user.email", email], cwd=root, check=True)
+        subprocess.run(["git", "config", "user.name", "Audit Test"], cwd=root, check=True)
+        build_fixture(root, {"cap": ("v3", all_region_indices)})
+        subprocess.run(["git", "add", "."], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-m", "add cap"], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", "tag", "v2"], cwd=root, check=True)
+        subprocess.run(["git", "rm", "-q", ".github/workflows/cap.yml"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-m", "drop cap"], cwd=root, check=True, capture_output=True)
+        subprocess.run(["git", "tag", "v3"], cwd=root, check=True)
+        build_fixture(root, {"cap": ("v3", all_region_indices)})
+        findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
+        check(
+            "run_audit flags a capability present at an older tag but absent from the newest it pins",
+            any("ABSENT: 'cap' pins v3" in f for f in findings)
+            and not any(f.startswith(audit.UNRELEASED_PREFIX) for f in findings),
             str(findings),
         )
 

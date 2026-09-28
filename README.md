@@ -120,8 +120,8 @@ that need to write must have the **caller** grant it on the calling job:
   `check-code-similarity`, `check-duplicate-roxygen`, `check-equation-renders`, `check-extra`,
   `check-formatting`, `check-junk-files`,
   `check-new-line-breaks`, `check-news`,
-  `check-non-standard-chars`, `check-one-function-per-file`, `check-phi`,
-  `check-python-package`, `check-quarto-book`, `check-quarto-manuscript`, `check-quarto-website`,
+  `check-non-standard-chars`, `check-one-function-per-file`, `check-orphaned-images`, `check-phi`,
+  `check-python-package`, `check-quarto-book`, `check-quarto-links`, `check-quarto-manuscript`, `check-quarto-website`,
   `check-r-package`, `check-repo-hygiene`, `check-secrets`,
   `check-typos`,
   `cursor-code-review`, `lint-changed-files`, `lint-changed-lines`, `lint-markdown`, `lint-qmd`,
@@ -640,7 +640,8 @@ Pin
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-python-package.yml`, `check-quarto-book.yml`,
+`check-orphaned-images.yml`, `check-python-package.yml`,
+`check-quarto-book.yml`, `check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `opposition-research.yml`, and `student-qmd.yml`
@@ -778,7 +779,8 @@ templates intentionally track the moving major tag (currently `@v1`, except
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-python-package.yml`, `check-quarto-book.yml`,
+`check-orphaned-images.yml`, `check-python-package.yml`,
+`check-quarto-book.yml`, `check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `opposition-research.yml`, and

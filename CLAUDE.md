@@ -210,7 +210,8 @@ which is why the capabilities above moved to `@v2`,
 while `opposition-research`, `check-dependency-updates`,
 `check-duplicate-roxygen`, `check-repo-hygiene`,
 `check-quarto-website`, `check-quarto-book`,
-`check-quarto-manuscript`, `check-r-package`,
+`check-quarto-manuscript`, `check-quarto-links`,
+`check-orphaned-images`, `check-r-package`,
 `check-python-package`, and `student-qmd`
 only ever shipped at `@v3`.
 

@@ -131,6 +131,13 @@ def split_list(value: str) -> List[str]:
     return [tok.strip() for tok in re.split(r"[,\s]+", value or "") if tok.strip()]
 
 
+def parse_extensions(value: str) -> Set[str]:
+    """Lower-cased extensions, each with its leading dot."""
+    return {
+        (e if e.startswith(".") else "." + e).lower() for e in split_list(value)
+    }
+
+
 def blank_non_prose(text: str) -> str:
     """Replace code blocks, code spans and HTML comments with spaces.
 
@@ -307,10 +314,10 @@ def _escape_annotation(s: str) -> str:
 
 def main() -> int:
     globs = (os.environ.get("QL_GLOBS") or DEFAULT_GLOBS).split()
-    exts = {
-        e.lower() if e.startswith(".") else "." + e.lower()
-        for e in split_list(os.environ.get("QL_TARGET_EXTENSIONS") or DEFAULT_TARGET_EXTENSIONS)
-    }
+    exts = parse_extensions(os.environ.get("QL_TARGET_EXTENSIONS") or DEFAULT_TARGET_EXTENSIONS)
+    if not exts:
+        print("::error::check-quarto-links: `target-extensions` is empty, so nothing would be checked.")
+        return 1
     ignores = compile_ignores(
         t.strip() for t in re.split(r"[,\n]", os.environ.get("QL_PATHS_IGNORE", "")) if t.strip()
     )

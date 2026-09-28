@@ -1,0 +1,46 @@
+name: Check links to missing Quarto pages
+description: >-
+  Fail when a tracked .qmd/.md/.Rmd file links, by a relative or
+  root-relative path, to a page (.qmd, .md, .Rmd, .ipynb) that does not
+  exist. Quarto does not fail a render over such a link -- it prints
+  "WARN: Unable to resolve link target" and publishes the page with a dead
+  link -- and check-links (lychee) reads .qmd as plain text, so it never
+  checks a relative link from one. Source level: nothing is rendered, and
+  each finding names the source file and line. Include-aware: a link inside
+  a file pulled in with {{< include >}} is resolved from the including
+  page's directory, as Quarto resolves it. Whole tree, not diff-scoped: a
+  dead link committed long ago is still a live defect.
+inputs:
+  globs:
+    description: >-
+      Space-separated git pathspecs of tracked source files to scan. Git
+      pathspecs match at any depth, so this is recursive by default.
+    default: '*.qmd *.md *.Rmd'
+  target-extensions:
+    description: >-
+      Comma- or space-separated extensions of link targets to verify. A link
+      to any other kind of file (an image, a PDF, an .html page) is not
+      checked.
+    default: '.qmd, .md, .Rmd, .ipynb'
+  paths-ignore:
+    description: >-
+      Comma- or newline-separated globs (`*`, `?`, `**`) of source files to
+      skip. A plain directory name skips everything under it.
+    default: ''
+  fail:
+    description: >-
+      Fail the action when a link to a missing page is found (else warn
+      only). Read fail-closed: only an explicit `false` (trimmed,
+      case-insensitive) opts out.
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Check links to missing pages
+      shell: bash
+      env:
+        QL_GLOBS: ${{ inputs.globs }}
+        QL_TARGET_EXTENSIONS: ${{ inputs.target-extensions }}
+        QL_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        QL_FAIL: ${{ inputs.fail }}
+      run: python3 -u "$GITHUB_ACTION_PATH/check-quarto-links.py"

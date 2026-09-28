@@ -86,7 +86,8 @@ input, which does not exist at `@v1` at all. **Pin `preview.yml`,
 `check-one-function-per-file.yml`
 only ever shipped at `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-python-package.yml`, `check-quarto-book.yml`,
+`check-orphaned-images.yml`, `check-python-package.yml`,
+`check-quarto-book.yml`, `check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `opposition-research.yml`, and `student-qmd.yml`
