@@ -17,7 +17,8 @@ inputs:
     description: >-
       Newline-separated Python regular expressions, each searched for in every
       line of a python/r/julia code fence or executable chunk. Replaces the
-      default set rather than extending it. Empty uses the defaults:
+      default set rather than extending it; an invalid expression fails the
+      step rather than being skipped. Empty uses the defaults:
       `#\s*->`, `#\s*=>`, `#>`, and `#\s*(?i:output):`.
     default: ''
   globs:

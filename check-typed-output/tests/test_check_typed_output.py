@@ -142,10 +142,9 @@ def test_custom_patterns_replace_defaults():
     assert lines_of(scan(text, pats), "comment") == [2]
 
 
-def test_invalid_pattern_is_dropped_with_warning(capsys):
-    pats = typed.compile_patterns(["(unclosed", r"#>"])
-    assert len(pats) == 1
-    assert "Ignoring invalid pattern" in capsys.readouterr().out
+def test_invalid_pattern_is_refused():
+    with pytest.raises(typed.PatternError):
+        typed.compile_patterns([r"#>", "(unclosed"])
 
 
 # ── (b) hand-written output blocks ───────────────────────────────────────────
@@ -435,6 +434,13 @@ def test_main_patterns_env_replaces_defaults(repo, env):
     env.setenv("TYPED_OUTPUT_FAIL", "true")
     env.setenv("TYPED_OUTPUT_PATTERNS", "#\\s*returns\n")
     assert typed.main() == 0
+
+
+def test_main_invalid_pattern_exits_2_even_when_warn_only(repo, env, capsys):
+    _commit(repo, "a.qmd", LEGACY)
+    env.setenv("TYPED_OUTPUT_PATTERNS", "(unclosed\n[bad")
+    assert typed.main() == 2
+    assert "::error::" in capsys.readouterr().out
 
 
 def test_main_diff_scoped_env_reaches_run(repo, env, capsys):

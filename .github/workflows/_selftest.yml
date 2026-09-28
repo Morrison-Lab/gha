@@ -834,6 +834,36 @@ jobs:
             exit 1
           fi
           echo "check-typed-output failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change,
+      # so the working-tree-aware scope examines it and the call must fail.
+      # Were base-ref dropped, a diff-scoped run with no base would skip and
+      # pass, so this failure proves base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: typed-output-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-typed-output
+        with:
+          fail: 'true'
+          diff-scoped: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.typed-output-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # Diff-scoped with no base skips (warning, exit 0). Were diff-scoped
+      # dropped, the whole-tree scan would fail on the staged page.
+      - name: Check again diff-scoped with no base, expecting a skip
+        uses: ./check-typed-output
+        with:
+          fail: 'true'
+          diff-scoped: 'true'
+          base-ref: ''
       # Each of these must pass over the same staged page, so each proves its
       # input reached the script: were it dropped, the call would fail as the
       # one above did.

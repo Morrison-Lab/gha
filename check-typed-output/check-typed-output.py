@@ -51,7 +51,8 @@ Scope:
 Configuration (environment variables, set by the composite action):
   TYPED_OUTPUT_PATTERNS      Newline-separated regular expressions for output
                     comments (default: the five forms above, in four
-                    patterns). Blank lines are ignored.
+                    patterns). Blank lines are ignored; an invalid
+                    expression is an error (exit 2), never skipped.
   TYPED_OUTPUT_GLOBS         Space-separated git pathspecs to check (default: '*.qmd').
   TYPED_OUTPUT_PATHS_IGNORE  Comma/newline-separated glob patterns to skip.
   TYPED_OUTPUT_FAIL          "true" => exit 1 on findings; default "false".
@@ -154,13 +155,22 @@ class Finding(NamedTuple):
     span: Tuple[int, ...]
 
 
+class PatternError(ValueError):
+    """A caller-supplied pattern is not a valid regular expression."""
+
+
 def compile_patterns(patterns: List[str]) -> List["re.Pattern[str]"]:
+    """Compile every pattern, refusing the whole set if any is invalid.
+
+    Dropping a bad one instead would let a typo in a ``patterns`` override
+    turn the comment detector off while the run still reports clean.
+    """
     compiled = []
     for pat in patterns:
         try:
             compiled.append(re.compile(pat))
         except re.error as exc:
-            print(f"::warning::Ignoring invalid pattern {pat!r}: {exc}")
+            raise PatternError(f"invalid pattern {pat!r}: {exc}") from None
     return compiled
 
 
@@ -523,7 +533,12 @@ _MESSAGES = {
 def main() -> int:
     raw_patterns = os.environ.get("TYPED_OUTPUT_PATTERNS", "")
     pattern_list = [p.strip() for p in raw_patterns.split("\n") if p.strip()]
-    patterns = compile_patterns(pattern_list or DEFAULT_PATTERNS)
+    try:
+        patterns = compile_patterns(pattern_list or DEFAULT_PATTERNS)
+    except PatternError as exc:
+        print(f"::error::check-typed-output: {exc}; refusing to run rather "
+              "than check with fewer patterns than configured.")
+        return 2
     globs = os.environ.get("TYPED_OUTPUT_GLOBS", _DEFAULT_GLOBS).split() or [_DEFAULT_GLOBS]
     ignores = compile_ignores(_split_list(os.environ.get("TYPED_OUTPUT_PATHS_IGNORE", "")))
     fail = _env_flag("TYPED_OUTPUT_FAIL", _DEFAULT_FAIL)

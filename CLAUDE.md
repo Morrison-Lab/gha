@@ -1596,8 +1596,12 @@ CI runs it in the `typed-output` job in `_selftest.yml`, followed by real
 `uses: ./check-typed-output` calls: a blocking run over this repo's own
 `*.md *.qmd` (which carry no typed output), a blocking diff-scoped run over
 the PR, a blocking run over a staged page with typed output that must fail,
+a diff-scoped run against `HEAD` that must also fail (proving `base-ref`
+arrives) and one with no base that must skip (proving `diff-scoped` does),
 and three more over that page that must pass, one per input a wiring typo
 would silently drop (`paths-ignore`, `patterns`, `globs`).
+An invalid `patterns` expression exits 2 even in warn-only mode, rather than
+being dropped, so a typo cannot switch the comment detector off.
 The cases to keep if the suite is ever trimmed are the ones pinning a
 Pandoc attribute-form fence (`{#lst-id .python ...}`) as a python fence --
 the first draft read only a leading class and missed two of
