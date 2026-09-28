@@ -110,6 +110,24 @@ def test_longer_fence_contents_are_not_parsed_as_fences():
     assert scan(text) == []
 
 
+def test_shorter_run_does_not_close_a_longer_fence():
+    # A three-backtick line inside a four-backtick fence is content, so the
+    # comment after it is still inside the python fence.
+    text = "````python\nprint(1)\n```\nprint(2)  # -> 2\n````\n"
+    assert lines_of(scan(text), "comment") == [4]
+
+
+def test_unclosed_output_block_covers_only_real_lines():
+    text = f"{FENCE}r\nx\n{FENCE}\n{FENCE}text\n1\n"
+    found = scan(text)
+    assert [(f.kind, f.lines) for f in found] == [("block", (4, 5))]
+
+
+def test_fence_inside_list_item_is_scanned():
+    text = f"1.  Run it:\n\n    {FENCE}python\n    print(1)  # -> 1\n    {FENCE}\n"
+    assert lines_of(scan(text), "comment") == [4]
+
+
 def test_tilde_fence_needs_tilde_close():
     text = "~~~python\nprint(1)\n```\n# -> 1\n~~~\n"
     assert lines_of(scan(text), "comment") == [4]

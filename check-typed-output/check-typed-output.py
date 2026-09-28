@@ -159,9 +159,20 @@ def scan_text(text: str, patterns: List["re.Pattern[str]"]) -> List[Finding]:
     Fences are matched CommonMark-style: a fence closes on a line of the same
     character, at least as long, with nothing after it but whitespace, so a
     four-backtick fence quoting a three-backtick example is one block and its
-    contents are not parsed as fences.
+    contents are not parsed as fences. An unclosed fence runs to the end of
+    the file.
+
+    Unlike CommonMark, a fence may be indented any amount rather than at most
+    three spaces: CommonMark measures that cap from the enclosing container,
+    and a code fence inside a list item is routinely indented four spaces or
+    more from the margin, which a flat three-space cap would stop scanning.
+    The cost is that a fence-shaped line inside an indented code block reads
+    as a fence.
     """
     lines = text.split("\n")
+    if lines and lines[-1] == "":
+        # The empty string after a final newline is not a line of the file.
+        lines.pop()
     findings: List[Finding] = []
     i = 0
     n = len(lines)
