@@ -448,3 +448,97 @@ def test_max_elements_for_pairwise_handles_empty_or_invalid_env(highlighter, mon
 
     monkeypatch.setenv("MAX_ELEMENTS_FOR_PAIRWISE", "250")
     assert highlighter._get_max_elements_for_pairwise() == 250
+
+
+def _run_single_page(highlighter, monkeypatch, repo_factory, old_page, new_page):
+    work = repo_factory(published={"chapters/01.html": old_page})
+    rendered = write(work, "_site/chapters/01.html", new_page).parent.parent
+    run_highlighter(
+        highlighter,
+        monkeypatch,
+        REPO_DIR=str(work),
+        RENDERED_DIR=str(rendered),
+        CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
+        DETECTION_STATUS="compared",
+    )
+    return (rendered / "chapters/01.html").read_text(encoding="utf-8")
+
+
+def test_element_spanning_a_widget_script_is_skipped_not_diffed(highlighter, monkeypatch, repo_factory):
+    # ELEMENT_RE is tag-agnostic, so a <p> before an htmlwidget matches across
+    # the widget's <script> JSON to the next closing tag. Diffing that "element"
+    # character by character is quadratic in the JSON's size (Morrison-Lab/mds's
+    # algebra.html: 10 MB, never finished). It must be left out, and the real
+    # edit on the page still highlighted.
+    import time
+
+    def page(widget_json, edited):
+        return (
+            "<main>\n"
+            "<p>Before the figure"
+            "<div class=\"html-widget\"><script type=\"application/json\">"
+            + widget_json
+            + "</script></div>\n"
+            "<p>Caption text.</p>\n"
+            + ("<p>The slope is two.</p>\n" if not edited else "<p>The slope is three.</p>\n")
+            + "</main>"
+        )
+
+    # Near-identical payloads over a wide alphabet: difflib's autojunk
+    # heuristic cannot discard their characters as "popular", so comparing
+    # them is genuinely quadratic (about 8 s for 20000 characters, 130 s for
+    # 50000, measured). Digits-only JSON would be junked and stay fast.
+    import random
+
+    rnd = random.Random(0)
+    alphabet = [chr(c) for c in range(0x100, 0x200)]
+    chars = [rnd.choice(alphabet) for _ in range(25000)]
+    old_json = '{"x": "' + "".join(chars) + '"}'
+    for i in range(0, len(chars), 200):
+        chars[i] = "Z"
+    new_json = '{"x": "' + "".join(chars) + '"}'
+
+    start = time.monotonic()
+    result = _run_single_page(
+        highlighter, monkeypatch, repo_factory, page(old_json, False), page(new_json, True)
+    )
+    assert time.monotonic() - start < 5
+    assert new_json in result
+    assert "preview-text-changed" in result or "preview-text-added" in result
+    widget_start = result.index("<script")
+    assert "<mark" not in result[result.index("Before the figure"):widget_start]
+
+
+def test_over_length_element_is_not_highlighted(highlighter, monkeypatch, repo_factory):
+    monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 50)
+    long_old = "alpha " * 20
+    long_new = "alpha " * 19 + "omega "
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        f"<main>\n<p>{long_old}</p>\n<p>Short one.</p>\n</main>",
+        f"<main>\n<p>{long_new}</p>\n<p>Short two.</p>\n</main>",
+    )
+    long_line = next(line for line in result.splitlines() if "omega" in line)
+    assert "<mark" not in long_line
+    short_line = next(line for line in result.splitlines() if "Short" in line)
+    assert "<mark" in short_line
+
+
+def test_exhausted_time_budget_leaves_page_unhighlighted_with_warning(
+    highlighter, monkeypatch, repo_factory, capsys
+):
+    monkeypatch.setattr(highlighter, "PAGE_TIME_BUDGET_SECONDS", -1.0)
+    new_page = "<main>\n<p>Paragraph with modified wording.</p>\n</main>"
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>Paragraph with original wording.</p>\n</main>",
+        new_page,
+    )
+    assert result == new_page
+    captured = capsys.readouterr()
+    assert "exceeded its time budget" in captured.out
+    assert "chapters/01.html" in captured.out
