@@ -49,7 +49,7 @@ inputs:
       when JuliaCall is installed, its own Julia dependencies (RCall and
       Suppressor) are set up in a separate step so a failure there is not
       buried in the render log. Also sets R_LD_LIBRARY_PATH to R's own lib
-      directory for the rest of the job, so Julia started by R loads its own
+      directory for that step and the render, so Julia started by R loads its own
       libunwind rather than the system one, which segfaults on any Julia
       exception.
     default: 'false'
@@ -171,7 +171,7 @@ runs:
     # ldpaths keeps a preset R_LD_LIBRARY_PATH, so setting it to R's own lib
     # directory drops the system directory. That directory is on the
     # loader's default path anyway, so this changes only which copy wins.
-    # Written to GITHUB_ENV so the render step inherits it.
+    # The render step sets the same value for itself.
     #
     # knitr's julia engine calls JuliaCall::julia_setup(), which installs the
     # Julia packages RCall and Suppressor on first use and then precompiles
@@ -187,7 +187,6 @@ runs:
         if command -v R >/dev/null 2>&1; then
           R_LD_LIBRARY_PATH="$(R RHOME)/lib"
           export R_LD_LIBRARY_PATH
-          echo "R_LD_LIBRARY_PATH=$R_LD_LIBRARY_PATH" >> "$GITHUB_ENV"
         fi
         if command -v Rscript >/dev/null 2>&1 \
           && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
@@ -223,8 +222,14 @@ runs:
         FORMATS: ${{ inputs.formats }}
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
+        SETUP_JULIA: ${{ inputs.setup-julia }}
       run: |
         set -euo pipefail
+        # See "Set up JuliaCall and its Julia dependencies" for why.
+        if [ "$SETUP_JULIA" = "true" ] && command -v R >/dev/null 2>&1; then
+          R_LD_LIBRARY_PATH="$(R RHOME)/lib"
+          export R_LD_LIBRARY_PATH
+        fi
         PROFILE_ARG=()
         if [ -n "${RENDER_PROFILE:-}" ]; then
           PROFILE_ARG=(--profile "$RENDER_PROFILE")

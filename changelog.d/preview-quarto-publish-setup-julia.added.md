@@ -7,8 +7,7 @@
   `JuliaCall::julia_setup()`, so JuliaCall's Julia dependencies (RCall and
   Suppressor) install before the render instead of partway through it.
   Callers add `any::JuliaCall` to `r-packages`.
-  The same step sets `R_LD_LIBRARY_PATH` to R's own `lib` directory for the rest
-  of the job.
+  That step and the render set `R_LD_LIBRARY_PATH` to R's own `lib` directory.
   Otherwise R's `etc/ldpaths` puts `/usr/lib/x86_64-linux-gnu` first on
   `LD_LIBRARY_PATH`, Julia started by R loads the system libunwind, and any Julia
   exception, even a caught one, segfaults the process.
