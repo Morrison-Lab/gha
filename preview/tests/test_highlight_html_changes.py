@@ -448,3 +448,150 @@ def test_max_elements_for_pairwise_handles_empty_or_invalid_env(highlighter, mon
 
     monkeypatch.setenv("MAX_ELEMENTS_FOR_PAIRWISE", "250")
     assert highlighter._get_max_elements_for_pairwise() == 250
+
+
+def _run_single_page(highlighter, monkeypatch, repo_factory, old_page, new_page):
+    work = repo_factory(published={"chapters/01.html": old_page})
+    rendered = write(work, "_site/chapters/01.html", new_page).parent.parent
+    run_highlighter(
+        highlighter,
+        monkeypatch,
+        REPO_DIR=str(work),
+        RENDERED_DIR=str(rendered),
+        CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
+        DETECTION_STATUS="compared",
+    )
+    return (rendered / "chapters/01.html").read_text(encoding="utf-8")
+
+
+def test_edit_after_a_code_chunk_and_widget_is_highlighted(highlighter, monkeypatch, repo_factory):
+    # The real trigger, as Quarto renders it: a downlit code chunk, the
+    # htmlwidget it produces, then a paragraph. Without the word boundary in
+    # ELEMENT_RE, `<p` matched `<pre`, and since no </p> closes a <pre>, one
+    # "element" ran from the <pre> through the widget's <script> JSON to the
+    # paragraph's </p>. Diffing it was quadratic in the JSON (Morrison-Lab/mds's
+    # algebra.html: 10 MB, never finished), and skipping it instead hid the
+    # paragraph's edit. The edit must be highlighted and the widget untouched.
+
+    # Near-identical payloads over a wide alphabet: difflib's autojunk
+    # heuristic cannot discard their characters as "popular", so diffing them
+    # is genuinely quadratic (about 8 s for 20000 characters, 130 s for 50000,
+    # measured). Digits-only JSON would be junked and stay fast.
+    import random
+
+    rnd = random.Random(0)
+    alphabet = [chr(c) for c in range(0x100, 0x200)]
+    chars = [rnd.choice(alphabet) for _ in range(25000)]
+    old_json = '{"x": "' + "".join(chars) + '"}'
+    for i in range(0, len(chars), 200):
+        chars[i] = "Z"
+    new_json = '{"x": "' + "".join(chars) + '"}'
+
+    def page(widget_json, question):
+        return (
+            "<main>\n"
+            '<pre class="downlit sourceCode r code-with-copy"><code class="sourceCode r">'
+            "plot_ly(x = ~x)</code></pre>\n"
+            '<div class="html-widget"><script type="application/json" data-for="w1">'
+            + widget_json
+            + "</script></div>\n"
+            "<p>Exercise 2. For a, b and c, " + question + " the identity hold?</p>\n"
+            "</main>"
+        )
+
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        page(old_json, "when does"),
+        page(new_json, "under what conditions does"),
+    )
+    exercise = result[result.index("<p>Exercise 2"):]
+    exercise = exercise[: exercise.index("</p>")]
+    assert "<mark" in exercise
+    assert "conditions" in exercise
+    assert new_json in result
+    # Nothing between the code chunk and the paragraph is marked. (The page
+    # banner inserted after <main> carries <mark> legend swatches of its own.)
+    assert "<mark" not in result[result.index("<pre"): result.index("<p>Exercise 2")]
+
+
+def test_element_regex_does_not_match_pre(highlighter):
+    assert highlighter.ELEMENT_RE.match("<pre>code</pre><p>text</p>") is None
+    assert highlighter.ELEMENT_RE.match('<p class="x">text</p>')
+
+
+def test_over_length_element_is_not_highlighted(highlighter, monkeypatch, repo_factory, capsys):
+    monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 50)
+    long_old = "alpha " * 20
+    long_new = "alpha " * 19 + "omega "
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        f"<main>\n<p>{long_old}</p>\n<p>Short one.</p>\n</main>",
+        f"<main>\n<p>{long_new}</p>\n<p>Short two.</p>\n</main>",
+    )
+    long_line = next(line for line in result.splitlines() if "omega" in line)
+    assert "<mark" not in long_line
+    short_line = next(line for line in result.splitlines() if "Short" in line)
+    assert "<mark" in short_line
+    # One notice, naming the page and the element by its visible text, and
+    # counting the element once although it is over-length on both pages.
+    out = capsys.readouterr().out
+    assert "::notice::chapters/01.html: left 1 element(s) unhighlighted" in out
+    assert "alpha alpha" in out
+
+
+def test_exhausted_time_budget_leaves_page_unhighlighted_with_warning(
+    highlighter, monkeypatch, repo_factory, capsys
+):
+    monkeypatch.setattr(highlighter, "PAGE_TIME_BUDGET_SECONDS", -1.0)
+    new_page = "<main>\n<p>Paragraph with modified wording.</p>\n</main>"
+    result = _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>Paragraph with original wording.</p>\n</main>",
+        new_page,
+    )
+    assert result == new_page
+    captured = capsys.readouterr()
+    assert "exceeded its time budget" in captured.out
+    assert "chapters/01.html" in captured.out
+
+
+def test_budget_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_factory, capsys):
+    monkeypatch.setattr(highlighter, "PAGE_TIME_BUDGET_SECONDS", -1.0)
+    monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 20)
+    _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>Short original.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+        "<main>\n<p>Short changed.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+    )
+    out = capsys.readouterr().out
+    assert "chapters/01.html: left 1 element(s) unhighlighted" in out
+    assert "exceeded its time budget" in out
+
+
+def test_cap_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_factory, capsys):
+    monkeypatch.setattr(highlighter, "MAX_ELEMENTS_FOR_PAIRWISE", 1)
+    monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 20)
+    _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>One a.</p>\n<p>Two a.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+        "<main>\n<p>One b.</p>\n<p>Two b.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+    )
+    captured = capsys.readouterr()
+    assert "element cap" in captured.err
+    assert "chapters/01.html: left 1 element(s) unhighlighted" in captured.out
+
+
+@pytest.mark.parametrize("value", ["inf", "-inf", "nan", "", "abc"])
+def test_env_float_falls_back_on_non_finite_or_invalid(highlighter, monkeypatch, value):
+    monkeypatch.setenv("HIGHLIGHT_PAGE_BUDGET_SECONDS", value)
+    assert highlighter._env_float("HIGHLIGHT_PAGE_BUDGET_SECONDS", 60.0) == 60.0
