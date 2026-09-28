@@ -318,15 +318,13 @@ def main() -> int:
         subprocess.run(["git", "tag", "v2"], cwd=root, check=True)
 
         findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
-        # v2 is the newest major and cap exists at no tag: a capability the
-        # branch introduces, reported as a notice rather than as ABSENT.
         check(
-            "run_audit reports a capability at no tag, pinned to the newest major, as unreleased",
-            [f.split(" ", 1)[0] for f in findings] == [audit.UNRELEASED_PREFIX],
+            "run_audit treats a capability at no tag, pinning the newest major, as pending",
+            not any("ABSENT" in f for f in findings),
             str(findings),
         )
         check(
-            "audit.main exits 0 when the only finding is an unreleased capability",
+            "audit.main exits 0 when the only gap is an unreleased capability",
             audit.main(["--repo-root", str(root)]) == 0,
         )
 
@@ -349,9 +347,8 @@ def main() -> int:
             str(findings),
         )
 
-        # The gha#928 shape: the capability exists at v3, but its stub pins
-        # the older v2, where it is absent. Being unreleased must not excuse
-        # this, since v3 carries the capability.
+        # gha#928's shape: pinned to an older major the capability never
+        # existed at, while it does exist at a newer one.
         write(
             root,
             "examples/cap.yml",
@@ -360,34 +357,22 @@ def main() -> int:
         build_fixture(root, {"cap": ("v2", all_region_indices)})
         findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
         check(
-            "run_audit flags a stub pinning an older major than the one carrying the capability",
+            "run_audit with check_git_tags=True flags capability absent from an older pinned tag",
             any("ABSENT: 'cap' pins v2" in f for f in findings),
             str(findings),
         )
 
-        # A capability at no tag but pinned to an OLDER major than the newest
-        # is still ABSENT: sliding the newest tag would not make that pin right.
-        write(root, ".github/workflows/cap2.yml", "on: workflow_call\n")
-        write(
-            root,
-            "examples/cap2.yml",
-            "uses: Morrison-Lab/gha/.github/workflows/cap2.yml@v2\n",
-        )
+        # An unreleased capability pinning an OLDER major is not pending:
+        # only the newest major slides past a new merge.
         build_fixture(root, {"cap": ("v3", all_region_indices), "cap2": ("v2", all_region_indices)})
-        write(
-            root,
-            "examples/cap.yml",
-            "uses: Morrison-Lab/gha/.github/workflows/cap.yml@v3\n",
-        )
         findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
         check(
-            "run_audit flags an untagged capability pinned below the newest major",
-            any("ABSENT: 'cap2' pins v2" in f for f in findings)
-            and not any(f.startswith(audit.UNRELEASED_PREFIX) for f in findings),
+            "run_audit flags an unreleased capability pinning an older major",
+            any("ABSENT: 'cap2' pins v2" in f for f in findings),
             str(findings),
         )
-        (root / ".github/workflows/cap2.yml").unlink()
-        (root / "examples/cap2.yml").unlink()
+        for stale in (".github/workflows/cap2.yml", "examples/cap2.yml"):
+            (root / stale).unlink()
 
         # Tag does not exist at all (e.g. pinned to v99 while v2/v3 exist)
         write(
@@ -405,7 +390,7 @@ def main() -> int:
 
     # -------------------------------- a capability dropped from the newest tag
     # It exists at an older tag but not at the newest one its stub pins, so it
-    # is not "unreleased" -- something removed it -- and stays ABSENT.
+    # is not unreleased -- something removed it -- and stays ABSENT.
     with tempfile.TemporaryDirectory() as tmp:
         root = pathlib.Path(tmp)
         subprocess.run(["git", "init"], cwd=root, check=True, capture_output=True)
@@ -423,8 +408,7 @@ def main() -> int:
         findings, _population, _regions = audit.run_audit(root, check_git_tags=True)
         check(
             "run_audit flags a capability present at an older tag but absent from the newest it pins",
-            any("ABSENT: 'cap' pins v3" in f for f in findings)
-            and not any(f.startswith(audit.UNRELEASED_PREFIX) for f in findings),
+            any("ABSENT: 'cap' pins v3" in f for f in findings),
             str(findings),
         )
 

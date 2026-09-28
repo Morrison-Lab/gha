@@ -99,10 +99,6 @@ REGIONS: list[tuple[str, str | None, str]] = [
 
 BASELINE_TAG = "v1"
 
-# Marks a finding that is reported as a notice rather than an error: a
-# capability that exists at no tag yet (see run_audit).
-UNRELEASED_PREFIX = "UNRELEASED:"
-
 
 class AuditError(Exception):
     """The audit could not run to completion -- never a stand-in for 'clean'."""
@@ -212,7 +208,7 @@ def git_tag_exists(repo_root: pathlib.Path, tag: str) -> bool:
 
 
 def major_tags(repo_root: pathlib.Path) -> list[str]:
-    """The repository's ``vN`` major tags, oldest first."""
+    """Return the repository's floating major tags (``v1``, ``v2``, ...), oldest first."""
     res = subprocess.run(
         ["git", "tag", "-l", "v*"],
         cwd=repo_root,
@@ -317,22 +313,22 @@ def run_audit(
                 continue
             candidates = candidate_paths_for_raw_path(raw_path)
             if not check_pin_exists_in_git(repo_root, tag, candidates):
-                paths_desc = " or ".join(f"'{c}'" for c in candidates)
                 if tag == newest and not any(
                     check_pin_exists_in_git(repo_root, t, candidates) for t in majors
                 ):
-                    # A capability this branch introduces exists at no tag
-                    # yet, and pinning the newest major is the only pin that
-                    # becomes right when that tag next slides. Every other
-                    # absence -- a stub pinning an older major than the one
-                    # carrying the capability, which was gha#928 -- is still
-                    # a finding.
-                    findings.append(
-                        f"{UNRELEASED_PREFIX} '{name}' pins {tag}, the newest "
-                        f"major tag, and {paths_desc} exists at no tag yet; "
-                        f"slide {tag} before consumers copy its stub"
+                    # A brand-new capability: it exists at no released tag,
+                    # and pins the newest major, which it reaches when that
+                    # tag slides past its merge. Erroring here would block
+                    # every new capability's own PR, since the slide can
+                    # only follow the merge. Pinning an OLDER major it never
+                    # existed at (gha#928's shape) is still a finding.
+                    print(
+                        f"::notice::'{name}' pins {tag} but is not released "
+                        f"at any tag yet; it resolves once {tag} slides past "
+                        f"its merge."
                     )
                     continue
+                paths_desc = " or ".join(f"'{c}'" for c in candidates)
                 findings.append(
                     f"ABSENT: '{name}' pins {tag} in its own example stub, "
                     f"but {paths_desc} does not exist at tag {tag}"
@@ -365,10 +361,6 @@ def main(argv: list[str] | None = None) -> int:
         f"Checked {capability_count} capabilities against {region_count} "
         f"documented versioning-list regions."
     )
-    notices = [f for f in findings if f.startswith(UNRELEASED_PREFIX)]
-    findings = [f for f in findings if not f.startswith(UNRELEASED_PREFIX)]
-    for notice in notices:
-        print(f"::notice::{notice}")
     if findings:
         for finding in findings:
             print(f"::error::{finding}")

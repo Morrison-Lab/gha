@@ -30,8 +30,9 @@ to `@v2`;
 only ever shipped at
 `@v2` (too new to exist at the frozen `@v1` tag).
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
-`check-orphaned-images.yml`, `check-python-package.yml`,
-`check-quarto-book.yml`, `check-quarto-links.yml`,
+`check-merge-drops.yml`, `check-orphaned-images.yml`,
+`check-python-package.yml`, `check-quarto-book.yml`,
+`check-quarto-links.yml`,
 `check-quarto-manuscript.yml`, `check-quarto-website.yml`,
 `check-r-package.yml`, `check-repo-hygiene.yml`,
 `opposition-research.yml`, and
@@ -164,6 +165,7 @@ intentionally track the moving major tag (currently `@v1`, except `preview.yml`,
 `check-code-similarity.yml`, and
 `check-one-function-per-file.yml` at `@v2`, and
 `check-dependency-updates.yml`, `check-duplicate-roxygen.yml`,
+`check-merge-drops.yml`,
 `check-repo-hygiene.yml`, `check-quarto-website.yml`,
 `check-quarto-book.yml`, `check-quarto-manuscript.yml`,
 `check-quarto-links.yml`, `check-orphaned-images.yml`,
