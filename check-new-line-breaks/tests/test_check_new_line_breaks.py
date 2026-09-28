@@ -99,6 +99,68 @@ def test_bold_close_line_is_flagged_end_to_end():
     assert flagged == "sentence"
 
 
+# ── numbering / list markers with emphasis and ed. abbrev (gha#947) ──────
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "**1.** Only the sign constraint.",
+        "**2.** $2N/C$.",
+        "*1.* Only the sign constraint.",
+        "__1.__ Only the sign constraint.",
+        "_1._ Only the sign constraint.",
+        "**1.1.** Sub-section point.",
+        "**1.2.3.** Multi-level section point.",
+        "**a.** An alphabetic marker.",
+        "**A.** Uppercase marker.",
+        "**i.** Roman numeral marker.",
+        "**iv.** Roman numeral iv marker.",
+        "**vi.** Roman numeral vi marker.",
+        "**ix.** Roman numeral ix marker.",
+        "**x.** Roman numeral x marker.",
+        "**xii.** Roman numeral xii marker.",
+        "**I.** Uppercase Roman numeral marker.",
+        "**IV.** Uppercase Roman numeral iv marker.",
+        "**(1).** Parenthesized digit marker.",
+        "**(a).** Parenthesized letter marker.",
+    ],
+)
+def test_bold_numbering_marker_not_split(line):
+    assert nlb.split_sentences(line) == [line]
+    assert nlb.classify_line(line) is None
+
+
+def test_bold_numbering_marker_with_multiple_sentences_splits():
+    line = "**1.** First sentence. Second sentence."
+    assert nlb.split_sentences(line) == [
+        "**1.** First sentence.",
+        "Second sentence.",
+    ]
+    assert nlb.classify_line(line) == "sentence"
+
+
+def test_bold_word_is_still_a_sentence_boundary():
+    line = "**Claim.** Explanation follows here."
+    assert nlb.split_sentences(line) == [
+        "**Claim.**",
+        "Explanation follows here.",
+    ]
+    assert nlb.classify_line(line) == "sentence"
+
+    recipe = "**Mix.** Stir until combined."
+    assert nlb.split_sentences(recipe) == [
+        "**Mix.**",
+        "Stir until combined.",
+    ]
+    assert nlb.classify_line(recipe) == "sentence"
+
+
+def test_abbreviation_ed_before_bracket_citation():
+    line = "- *An Introduction to Statistical Learning* (2nd ed.) [@james2021islr]."
+    assert nlb.split_sentences(line) == [line]
+    assert nlb.classify_line(line) is None
+
+
 # ── lowercase-opening second sentence (#389) ─────────────────────────────────
 
 def test_lowercase_sentence_start_is_split():
@@ -413,6 +475,25 @@ def test_blockquote_prefix_is_stripped():
 
 def test_plain_line_is_returned_stripped():
     assert nlb.line_content("  plain text  ") == "plain text"
+
+
+def test_emphasized_bullet_marker_is_stripped():
+    assert (
+        nlb.line_content("**1.** Only the sign constraint.")
+        == "Only the sign constraint."
+    )
+    assert (
+        nlb.line_content("- **1.** Only the sign constraint.")
+        == "Only the sign constraint."
+    )
+    assert (
+        nlb.line_content("> **1.** Only the sign constraint.")
+        == "Only the sign constraint."
+    )
+    assert (
+        nlb.line_content("> - **1.** Only the sign constraint.")
+        == "Only the sign constraint."
+    )
 
 
 # ── diff-scoping (find_violations), against small throwaway git repos ───────
