@@ -20,11 +20,14 @@ and a clean merge reports nothing.
 
 Three kinds of change are deliberately not reported:
 
-- **Moved content.** A line is reported only when its text occurs nowhere
+- **Moved content.**
+  A line is reported only when its text occurs nowhere
   in the merge's tree, so a paragraph the resolution moved to another file passes.
-- **Rewrapped content.** Each file is compared as one string with every
+- **Rewrapped content.**
+  Each file is compared as one string with every
   whitespace run collapsed, so a paragraph rewrapped at different line breaks passes.
-- **Reworded lines.** When both sides edited the same line and the resolution
+- **Reworded lines.**
+  When both sides edited the same line and the resolution
   wrote a third version, neither side's line survives verbatim, yet nothing was lost.
   A missing line is not reported when a line of the merge's copy of the same file
   is at least `similarity` alike, word by word.
