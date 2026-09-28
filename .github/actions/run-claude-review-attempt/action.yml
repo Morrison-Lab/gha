@@ -544,7 +544,7 @@ runs:
           --allowedTools
           "Bash,Edit(//tmp/**),WebFetch,WebSearch"
           --disallowedTools
-          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),ScheduleWakeup,SendMessage,Monitor,Agent,Task"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
+          "Bash(git add:*),Bash(git commit:*),Bash(git rm:*),Bash(git push:*),Bash(*git-push.sh*),Bash(gh pr comment:*),Bash(gh pr create:*),Bash(gh pr merge:*),Bash(gh pr close:*),Bash(gh pr reopen:*),Bash(gh pr edit:*),Bash(gh pr ready:*),Bash(gh pr review:*),Bash(gh pr lock:*),Bash(gh pr unlock:*),Bash(gh pr update-branch:*),Bash(gh pr revert:*),Bash(gh issue create:*),Bash(gh issue comment:*),Bash(gh issue close:*),Bash(gh issue reopen:*),Bash(gh issue edit:*),Bash(gh issue delete:*),Bash(gh issue develop:*),Bash(gh issue lock:*),Bash(gh issue unlock:*),Bash(gh issue pin:*),Bash(gh issue unpin:*),Bash(gh issue transfer:*),Bash(gh api:*),Bash(gh release:*),Bash(gh workflow run:*),Bash(gh run cancel:*),Bash(gh run rerun:*),Bash(gh secret:*),Bash(gh variable:*),Bash(gh repo edit:*),Bash(gh repo delete:*),Bash(gh label:*),Bash(gh cache delete:*),Bash(*check-pr-fully-clean*),Bash(*check-mr-fully-clean*),ScheduleWakeup,SendMessage,Monitor,Agent,Task"${{ inputs.model != '' && format(' --model {0}', inputs.model) || '' }}
           --append-system-prompt
           "This is a review-only run. Report every issue you find as part
           of your review. Do NOT modify, stage, commit, or push files, and
@@ -657,6 +657,27 @@ runs:
           verdict on the diff (such as 'Ready for merge', 'Needs more work',
           or another clearly labeled status per the instructions below)
           without gating it on CI.
+
+          Do NOT run `check-pr-fully-clean.py` (or `check-mr-fully-clean.py`)
+          in this job; it is denied here on purpose. That script answers
+          whether the whole PR is ready to merge, and from inside a running
+          review it can never answer yes: it counts this review's own
+          `review / claude-review` job as in progress, and it reads the
+          previous round's verdict (and the `require-clean-verdict` check
+          that failed on it) as current. A review that gates on it repeats a
+          prior NOT_CLEAN forever, however clean the diff is (gha#978,
+          Morrison-Lab/mln#218). For the same reason, never list check-run
+          state as a finding in the review or in the `findings` array: a
+          check still queued or in progress, this review's own job, or a
+          `require-clean-verdict` failure left by an earlier round. Those
+          are merge-gate state, and `require-clean-verdict` plus the merging
+          session's own `check-pr-fully-clean.py` run gate them after every
+          check has finished. If a hook tells you that a 'Ready for merge'
+          verdict needs `check-pr-fully-clean.py`, that guard is meant for a
+          session declaring the PR mergeable, not for this diff review: do
+          not run the script or work around its denial, and keep the
+          verdict the diff earns, adding at most one sentence that it covers
+          the diff and not CI state.
 
           This run is a single, synchronous CI job with a fixed timeout and
           no one to resume it afterward. Do NOT spawn a background agent or
