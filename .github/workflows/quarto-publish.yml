@@ -42,6 +42,17 @@ on:
         description: Install TinyTeX (needed to render PDF outputs).
         type: boolean
         default: false
+      setup-julia:
+        description: >-
+          Install Julia before rendering, for pages that execute `{julia}`
+          chunks (under knitr, through the R package JuliaCall, which goes in
+          r-packages). See the composite's input for details.
+        type: boolean
+        default: false
+      julia-version:
+        description: Julia version to install. Only used when setup-julia is true.
+        type: string
+        default: '1'
       apt-packages:
         description: Extra apt packages to install before rendering (space-separated).
         type: string
@@ -152,6 +163,8 @@ jobs:
           install-package: ${{ inputs.install-package }}
           setup-chrome: ${{ inputs.setup-chrome }}
           tinytex: ${{ inputs.tinytex }}
+          setup-julia: ${{ inputs.setup-julia }}
+          julia-version: ${{ inputs.julia-version }}
           apt-packages: ${{ inputs.apt-packages }}
           output-dir: ${{ inputs.output-dir }}
           render-profile: ${{ inputs.render-profile }}

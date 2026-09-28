@@ -44,6 +44,18 @@ inputs:
       Install TinyTeX and enable PDF rendering. When false (default), TinyTeX
       is installed and PDF is rendered only when the PR is labeled `preview:pdf`.
     default: 'false'
+  setup-julia:
+    description: >-
+      Install Julia with julia-actions/setup-julia before rendering, for pages
+      that execute `{julia}` chunks. Under knitr those run through the R
+      package JuliaCall, which the caller installs via `r-packages` (or renv);
+      when JuliaCall is installed, its own Julia dependencies (RCall and
+      Suppressor) are set up in a separate step so a failure there is not
+      buried in the render log.
+    default: 'false'
+  julia-version:
+    description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.
+    default: '1'
   submodules:
     description: Passed to actions/checkout `submodules` (e.g. 'recursive', 'true', or 'false').
     default: 'recursive'
@@ -241,6 +253,30 @@ runs:
       env:
         PROJECT_PATH: ${{ inputs.path }}
       run: R CMD INSTALL "$PROJECT_PATH"
+
+    - name: Set up Julia
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
+      with:
+        version: ${{ inputs.julia-version }}
+
+    # knitr's julia engine calls JuliaCall::julia_setup(), which installs the
+    # Julia packages RCall and Suppressor on first use and then precompiles
+    # them. Doing that here, before the render, gives an install failure its
+    # own step and log instead of surfacing mid-render as a chunk error.
+    # Skipped (with a notice) when JuliaCall is not installed, since a page
+    # could run Julia some other way.
+    - name: Set up JuliaCall's Julia dependencies
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v Rscript >/dev/null 2>&1 \
+          && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
+          Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'
+        else
+          echo "::notice::setup-julia is true but the R package JuliaCall is not installed, so knitr cannot run {julia} chunks; add it to r-packages (any::JuliaCall) if pages need that."
+        fi
 
     - name: Install TinyTeX packages required for PDF rendering
       if: >-
