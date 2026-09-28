@@ -376,3 +376,64 @@ def test_element_replacement_scoped_to_main_does_not_corrupt_nav(highlighter, mo
 def test_missing_main_or_body_anchor_raises_error(highlighter):
     with pytest.raises(highlighter.HighlightError, match="has no <main> or <body>"):
         highlighter.apply_page_banner("<div>No anchor here</div>", "<!-- banner -->", "doc.html")
+
+
+def test_pairwise_cap_skips_highlighting_on_many_elements(highlighter, monkeypatch, repo_factory, capsys):
+    monkeypatch.setattr(highlighter, "MAX_ELEMENTS_FOR_PAIRWISE", 5)
+
+    old_paras = "\n".join(f"<p>Paragraph {i} original text.</p>" for i in range(10))
+    new_paras = "\n".join(f"<p>Paragraph {i} modified text.</p>" for i in range(10))
+
+    old_page = f"<main>\n{old_paras}\n</main>"
+    new_page = f"<main>\n{new_paras}\n</main>"
+
+    work = repo_factory(published={"chapters/01.html": old_page})
+    rendered = write(work, "_site/chapters/01.html", new_page).parent.parent
+
+    run_highlighter(
+        highlighter,
+        monkeypatch,
+        REPO_DIR=str(work),
+        RENDERED_DIR=str(rendered),
+        CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
+        DETECTION_STATUS="compared",
+    )
+
+    result = (rendered / "chapters/01.html").read_text(encoding="utf-8")
+    assert "preview-text-changed" not in result
+    assert "preview-element-added" not in result
+    captured = capsys.readouterr()
+    assert "exceeds the 5-element cap" in captured.err
+
+
+def test_exact_offset_splice_handles_identical_repeated_elements(highlighter, monkeypatch, repo_factory):
+    old_page = (
+        "<main>\n"
+        "<p>Exact same paragraph text.</p>\n"
+        "<p>Exact same paragraph text.</p>\n"
+        "</main>"
+    )
+    new_page = (
+        "<main>\n"
+        "<p>Exact same paragraph text.</p>\n"
+        "<p>Exact same paragraph text with added detail.</p>\n"
+        "</main>"
+    )
+
+    work = repo_factory(published={"chapters/01.html": old_page})
+    rendered = write(work, "_site/chapters/01.html", new_page).parent.parent
+
+    run_highlighter(
+        highlighter,
+        monkeypatch,
+        REPO_DIR=str(work),
+        RENDERED_DIR=str(rendered),
+        CHANGED_CHAPTERS=json.dumps(["chapters/01"]),
+        DETECTION_STATUS="compared",
+    )
+
+    result = (rendered / "chapters/01.html").read_text(encoding="utf-8")
+    lines = [line.strip() for line in result.splitlines() if line.strip().startswith("<p>")]
+    assert lines[0] == "<p>Exact same paragraph text.</p>"
+    assert "preview-text-changed" in lines[1]
+    assert "text with added detail." in lines[1]
