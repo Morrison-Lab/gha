@@ -13,7 +13,8 @@ The check flags the two shapes that stand in for a run:
   or an executable `{r}`, `{python}` or `{julia}` chunk,
   a comment standing in for a printed value:
   `# ->`, `#->`, `# =>`,
-  `#>` (the output prefix reprex prints, and knitr prints when set up with `comment = "#>"`),
+  `#>` (the output prefix reprex prints,
+  and knitr prints when set up with `comment = "#>"`),
   and `# Output:` or `# output:`.
   knitr's default prefix, `##`, is not matched by default,
   since R code uses `##` for ordinary comments too;
