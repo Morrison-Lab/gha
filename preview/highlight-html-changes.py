@@ -80,7 +80,15 @@ ELEMENT_RE = re.compile(
 
 TAG_RE = re.compile(r"<[^>]+>")
 
-MAX_ELEMENTS_FOR_PAIRWISE = int(os.environ.get("MAX_ELEMENTS_FOR_PAIRWISE") or "500")
+def _get_max_elements_for_pairwise():
+    raw = os.environ.get("MAX_ELEMENTS_FOR_PAIRWISE", "500").strip()
+    try:
+        return int(raw) if raw else 500
+    except ValueError:
+        return 500
+
+
+MAX_ELEMENTS_FOR_PAIRWISE = _get_max_elements_for_pairwise()
 
 
 # Aliased to GitError from substrate
@@ -243,7 +251,7 @@ def highlight_changed_elements(old_html, new_html, patterns):
                 "notice",
                 f"Skipping element-level diff highlighting: "
                 f"{len(old_elem_list)} old / {len(new_matches)} new candidate "
-                f"elements exceeds the {MAX_ELEMENTS_FOR_PAIRWISE}-element cap",
+                f"elements exceed the {MAX_ELEMENTS_FOR_PAIRWISE}-element cap",
             ),
             file=sys.stderr,
         )

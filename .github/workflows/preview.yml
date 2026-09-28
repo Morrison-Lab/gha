@@ -122,6 +122,12 @@ on:
           datetimes).
         type: string
         default: ''
+      max-elements-for-pairwise:
+        description: >-
+          Maximum candidate elements per page for pairwise SequenceMatcher diffing.
+          Defaults to 500. Exceeding this skips element-level diffing to avoid quadratic runtime.
+        type: string
+        default: '500'
       banner-index:
         description: Home page the banner is inserted into, relative to the rendered site root.
         type: string
@@ -220,6 +226,7 @@ jobs:
           deployed-branch: ${{ inputs.deployed-branch }}
           deployed-subdir: ${{ inputs.deployed-subdir }}
           changed-chapters-normalize-patterns: ${{ inputs.changed-chapters-normalize-patterns }}
+          max-elements-for-pairwise: ${{ inputs.max-elements-for-pairwise }}
           banner-index: ${{ inputs.banner-index }}
           docx-tracked-changes: ${{ inputs.docx-tracked-changes }}
           docx-tracked-changes-glob: ${{ inputs.docx-tracked-changes-glob }}

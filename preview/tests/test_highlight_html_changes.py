@@ -403,20 +403,20 @@ def test_pairwise_cap_skips_highlighting_on_many_elements(highlighter, monkeypat
     assert "preview-text-changed" not in result
     assert "preview-element-added" not in result
     captured = capsys.readouterr()
-    assert "exceeds the 5-element cap" in captured.err
+    assert "exceed the 5-element cap" in captured.err
 
 
 def test_exact_offset_splice_handles_identical_repeated_elements(highlighter, monkeypatch, repo_factory):
     old_page = (
         "<main>\n"
-        "<p>Exact same paragraph text.</p>\n"
-        "<p>Exact same paragraph text.</p>\n"
+        "<p>Same text.</p>\n"
+        "<p>Completely unrelated old wording lives here today.</p>\n"
         "</main>"
     )
     new_page = (
         "<main>\n"
-        "<p>Exact same paragraph text.</p>\n"
-        "<p>Exact same paragraph text with added detail.</p>\n"
+        "<p>Same text.</p>\n"
+        "<p>Same text.</p>\n"
         "</main>"
     )
 
@@ -434,6 +434,17 @@ def test_exact_offset_splice_handles_identical_repeated_elements(highlighter, mo
 
     result = (rendered / "chapters/01.html").read_text(encoding="utf-8")
     lines = [line.strip() for line in result.splitlines() if line.strip().startswith("<p>")]
-    assert lines[0] == "<p>Exact same paragraph text.</p>"
-    assert "preview-text-changed" in lines[1]
-    assert "text with added detail." in lines[1]
+    assert lines[0] == "<p>Same text.</p>"
+    assert "preview-element-added" in lines[1]
+    assert "Same text." in lines[1]
+
+
+def test_max_elements_for_pairwise_handles_empty_or_invalid_env(highlighter, monkeypatch):
+    monkeypatch.setenv("MAX_ELEMENTS_FOR_PAIRWISE", "")
+    assert highlighter._get_max_elements_for_pairwise() == 500
+
+    monkeypatch.setenv("MAX_ELEMENTS_FOR_PAIRWISE", "not-a-number")
+    assert highlighter._get_max_elements_for_pairwise() == 500
+
+    monkeypatch.setenv("MAX_ELEMENTS_FOR_PAIRWISE", "250")
+    assert highlighter._get_max_elements_for_pairwise() == 250
