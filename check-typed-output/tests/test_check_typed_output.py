@@ -48,6 +48,9 @@ def lines_of(findings, kind=None):
         ("{r label, eval=TRUE}", ("r", True)),
         ("{.python}", ("python", False)),
         ('{#lst-x .python lst-cap="A listing"}', ("python", False)),
+        ("{.numberLines .python}", ("python", False)),
+        ("{.python .numberLines}", ("python", False)),
+        ("{.numberLines}", ("numberlines", False)),
         ("{=html}", ("{=raw}", False)),
         ("", ("", False)),
         ("text", ("text", False)),
@@ -318,6 +321,26 @@ def test_new_block_not_excused_by_unrelated_identical_block(repo):
     _git(repo, "commit", "-qm", "c")
     found = _run(diff_scoped=True, base_ref="main").findings
     assert [(p, f.kind) for p, f in found] == [("b.qmd", "block")]
+
+
+def test_pure_rename_is_a_move(repo):
+    _commit(repo, "a.qmd", LEGACY)
+    _git(repo, "checkout", "-qb", "feature")
+    _git(repo, "mv", "a.qmd", "b.qmd")
+    _git(repo, "commit", "-qm", "rename")
+    assert _run(diff_scoped=True, base_ref="main").findings == []
+
+
+def test_deletion_from_ignored_path_is_not_a_move(repo):
+    # Content deleted from a path outside the checked population cannot have
+    # moved from it, so promoting an outtake reports its typed output.
+    (repo / "outtakes").mkdir()
+    _commit(repo, "outtakes/old.qmd", LEGACY)
+    _git(repo, "checkout", "-qb", "feature")
+    _git(repo, "rm", "-q", "outtakes/old.qmd")
+    _commit(repo, "new.qmd", LEGACY)
+    found = _run(diff_scoped=True, base_ref="main", ignore=["outtakes"]).findings
+    assert [p for p, _ in found] == ["new.qmd"]
 
 
 def test_diff_scoped_copy_is_not_exempt(repo):

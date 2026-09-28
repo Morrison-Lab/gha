@@ -108,8 +108,9 @@ def parse_info_string(info: str) -> Fence:
     """Classify a fence's info string.
 
     ``{r}``, ``{python echo=FALSE}`` and ``{r label}`` are executable chunks;
-    ``{.python}`` and ``{#lst-id .python}`` are plain fences whose first
-    class names the language; ``{=html}`` is a raw block, which is neither
+    ``{.python}``, ``{#lst-id .python}`` and ``{.numberLines .python}`` are
+    plain fences whose class names the language (a code language wins over
+    any other class, else the first class); ``{=html}`` is a raw block, which is neither
     code nor output; ``{#id}`` with no class has no language; anything else
     takes its first word.
     """
@@ -120,12 +121,15 @@ def parse_info_string(info: str) -> Fence:
         m = _EXEC_CHUNK_RE.match(info)
         if m:
             return Fence(m.group(1).lower(), True)
-        # Pandoc attribute form, `{#lst-id .python lst-cap="..."}`: the first
-        # class names the language, wherever it sits among the attributes.
-        m = _CLASS_LANG_RE.search(info)
-        if m:
-            return Fence(m.group(1).lower(), False)
-        return Fence("", False)
+        # Pandoc attribute form, `{#lst-id .python lst-cap="..."}`: a class
+        # names the language, wherever it sits among the attributes. Prefer
+        # a code language over a modifier class written ahead of it, as in
+        # `{.numberLines .python}`.
+        classes = [c.lower() for c in _CLASS_LANG_RE.findall(info)]
+        for cls in classes:
+            if cls in CODE_LANGUAGES:
+                return Fence(cls, False)
+        return Fence(classes[0] if classes else "", False)
     if not info:
         return Fence("", False)
     return Fence(info.split()[0].lower(), False)
@@ -329,22 +333,31 @@ _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
 def added_lines(
-    base_ref: str, pathspecs: List[str], worktree: bool
+    base_ref: str,
+    pathspecs: List[str],
+    worktree: bool,
+    ignores: Optional[List["re.Pattern[str]"]] = None,
 ) -> Optional[Tuple[Dict[str, Set[int]], List[List[str]]]]:
     """Return ({file: added line numbers}, deleted runs) for the diff from the
     merge base of ``base_ref`` and HEAD, or None when it cannot be computed.
     ``worktree`` diffs against the working tree instead of HEAD. A deleted
-    run is one maximal stretch of consecutive deleted lines, in order."""
+    run is one maximal stretch of consecutive deleted lines, in order; lines
+    deleted from a file ``ignores`` covers are not collected, since content
+    outside the checked population cannot have moved from it."""
     merge_base = (_run_git(["merge-base", base_ref, "HEAD"]) or "").strip()
     if not merge_base:
         return None
     target = [merge_base] if worktree else [f"{merge_base}..HEAD"]
-    diff = _run_git(["diff", "--unified=0", "--no-color", *target, "--", *pathspecs])
+    # --no-renames: a rename then reads as a deletion plus an addition, so a
+    # file moved in from an ignored path is examined, and one moved within
+    # the checked population is exempted by the moved-span match below.
+    diff = _run_git(["diff", "--unified=0", "--no-color", "--no-renames", *target, "--", *pathspecs])
     if diff is None:
         return None
     result: Dict[str, Set[int]] = {}
     runs: List[List[str]] = []
     run_open = False
+    old_ignored = False
     cur: Optional[str] = None
     lineno = 0
     in_hunk = False
@@ -352,6 +365,10 @@ def added_lines(
         if raw.startswith("diff "):
             in_hunk = False
             run_open = False
+            continue
+        if not in_hunk and raw.startswith("--- "):
+            source = raw[4:]
+            old_ignored = source != "/dev/null" and _ignored(source[2:], ignores or [])
             continue
         if not in_hunk and raw.startswith("+++ "):
             target_path = raw[4:]
@@ -368,6 +385,8 @@ def added_lines(
         if not in_hunk:
             continue
         if raw.startswith("-"):
+            if old_ignored:
+                continue
             if not run_open:
                 runs.append([])
                 run_open = True
@@ -419,7 +438,7 @@ def run(
         if not base_ref:
             return Result([], True, 0)
         worktree = _has_uncommitted_changes(globs, ignores)
-        scoped = added_lines(base_ref, globs, worktree)
+        scoped = added_lines(base_ref, globs, worktree, ignores)
         if scoped is None:
             return Result([], True, 0)
         scope, moved_runs = scoped
