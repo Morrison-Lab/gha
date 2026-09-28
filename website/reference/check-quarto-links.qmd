@@ -1,0 +1,96 @@
+---
+title: "check-quarto-links.yml"
+---
+
+Fail when a tracked `.qmd`, `.md`, or `.Rmd` file links to a page that does
+not exist, such as `[Week 6](week-06-logistic-regression.qmd)` after that
+page was renamed.
+
+## Why a separate check
+
+**Quarto does not fail the render.**
+It prints `WARN: Unable to resolve link target: chapters/week-06-logistic-regression.qmd`
+and publishes the page with the dead link, so a green render proves nothing
+about links between pages.
+
+**[`check-links.yml`](check-links.qmd) does not see them either.**
+lychee picks a parser by file extension and reads a `.qmd` as plain text, so it
+extracts only absolute URLs from one and never checks a relative link.
+Measured with lychee 0.24.2, the version `lycheeverse/lychee-action@v2.9.0`
+installs (2026-09-28): a `.qmd` holding two dead relative links reports
+`0 Errors`, with or without `--default-extension md`.
+The same file renamed to `.md` reports both.
+
+A render-log alternative already exists:
+[`preview.yml`](preview.qmd) and [`quarto-publish.yml`](quarto-publish.qmd)
+accept `forbid-log-patterns: 'Unable to resolve link target'`.
+This check needs no render, runs in seconds, and names the source file and
+line rather than the rendered page.
+
+## What it checks
+
+Every Markdown inline link (`[text](target)`, including one whose `](` falls on
+the next line), reference definition (`[label]: target`), and raw HTML `href`
+or `src` in each tracked file matching `globs`, whose target ends in one of
+`target-extensions`.
+A target resolves from the linking file's directory, or, when it starts with
+`/`, from the Quarto project directory (the nearest ancestor holding
+`_quarto.yml`).
+
+Not checked, by design:
+
+- links inside fenced code blocks, code spans, and HTML comments;
+- URLs with a scheme (`https:`, `mailto:`), `//` URLs, and `#anchor`-only
+  links;
+- targets built from a shortcode or template expression (`{{< meta >}}`,
+  `` `r ...` ``);
+- whether the `#anchor` part of a link exists on the target page.
+
+**Included files resolve from the page that includes them.**
+Quarto splices a `{{< include _sub/_part.qmd >}}` file into the including page
+before it resolves links, so a link in `_part.qmd` is written relative to the
+page, not to `_sub/`.
+The check accepts a link that resolves from the file's own directory or from
+any page that includes it, directly or through other includes.
+A `_`-prefixed file that nothing includes, such as an outtake kept for reuse,
+is skipped and named in the log, since Quarto never renders it and there is no
+page to resolve its links from.
+
+**Whole tree, not the pull request's diff.**
+A link that went dead when another pull request renamed its target is still a
+live defect, and the pull request that renamed the page is the one that did not
+touch the link.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `globs` | string | `'*.qmd *.md *.Rmd'` | Space-separated git pathspecs of tracked source files to scan (recursive). |
+| `target-extensions` | string | `'.qmd, .md, .Rmd, .ipynb'` | Extensions of link targets to verify. |
+| `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of source files to skip. |
+| `fail` | boolean | `true` | Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit `false` opts out. |
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check Quarto links
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-quarto-links.yml@v3
+    # with:
+    #   paths-ignore: 'chapters/outtakes/'
+    #   target-extensions: '.qmd, .md'
+    #   fail: false
+```
+
+See `check-quarto-links.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.

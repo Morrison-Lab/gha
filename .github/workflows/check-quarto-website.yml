@@ -143,6 +143,30 @@ on:
         description: Additional command-line arguments to pass to lychee.
         type: string
         default: '--exclude-mail'
+      check-quarto-links:
+        description: Fail on relative links from .qmd/.md/.Rmd sources to pages that do not exist (no render needed).
+        type: boolean
+        default: true
+      quarto-links-paths-ignore:
+        description: Globs of source files to skip for the Quarto links check.
+        type: string
+        default: ''
+      check-orphaned-images:
+        description: Report tracked images that no source file references (warn-only unless orphaned-images-fail is true).
+        type: boolean
+        default: true
+      orphaned-images-paths-ignore:
+        description: Globs of images to skip for the orphaned-images check.
+        type: string
+        default: ''
+      orphaned-images-base-ref:
+        description: Git ref to diff against so only images added since it are reported; empty examines every image.
+        type: string
+        default: ''
+      orphaned-images-fail:
+        description: Fail when an orphaned image is found (the check warns only by default).
+        type: boolean
+        default: false
       check-bibliography-dois:
         description: Validate DOIs in BibTeX bibliography files (.bib).
         type: boolean
@@ -202,5 +226,11 @@ jobs:
           check-links: ${{ inputs.check-links }}
           lychee-config: ${{ inputs.lychee-config }}
           lychee-args: ${{ inputs.lychee-args }}
+          check-quarto-links: ${{ inputs.check-quarto-links }}
+          quarto-links-paths-ignore: ${{ inputs.quarto-links-paths-ignore }}
+          check-orphaned-images: ${{ inputs.check-orphaned-images }}
+          orphaned-images-paths-ignore: ${{ inputs.orphaned-images-paths-ignore }}
+          orphaned-images-base-ref: ${{ inputs.orphaned-images-base-ref }}
+          orphaned-images-fail: ${{ inputs.orphaned-images-fail }}
           check-bibliography-dois: ${{ inputs.check-bibliography-dois }}
           bib-exclude-keys: ${{ inputs.bib-exclude-keys }}

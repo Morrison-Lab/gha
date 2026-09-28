@@ -1,0 +1,84 @@
+---
+title: "check-orphaned-images.yml"
+---
+
+Report tracked image files that no tracked source file references.
+A figure that stops being used, because its page was rewritten or a
+regenerated copy was committed under a new name, stays in the repository
+indefinitely, since a render never notices a file it was not asked to read.
+
+## What counts as a use
+
+An image is used when its **file name** appears in any tracked file whose
+extension is in `source-extensions`: a Markdown image, a YAML key such as
+`favicon:`, a CSS `url()`, a Lua string, an HTML `src`.
+Names are compared case-insensitively and after URL-decoding, so
+`my%20fig.png` matches `my fig.png`.
+Only tracked images are examined, so render output and untracked scratch files
+are never reported.
+
+Matching the file name rather than a resolved path is deliberate, since
+resolving every relative, root-relative, YAML, Lua, and CSS reference is what a
+render does.
+It has two costs:
+
+- two images that share a file name in different directories are both counted
+  as used when either one is;
+- an image named only by a computed string, such as
+  `paste0("fig", i, ".png")`, reads as unused and needs `paths-ignore`.
+
+The default `source-extensions` leave out `.R` and `.py`, since a script that
+*writes* a figure names it too, which would hide the figure no page shows.
+Add them when a script, rather than a page, is what uses a figure.
+
+## Warn-only by default
+
+An unused file breaks nothing, and a name search cannot see every way a file
+can be used, so findings are warnings unless `fail: true`.
+Set `added-only: true` to report only the images a pull request adds, so a
+first run over years of accumulated figures does not bury the one a pull
+request just added.
+With `added-only`, events other than a pull request skip the check rather than
+examine the whole tree.
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `paths` | string | `'.'` | Space-separated git pathspecs to look for images in (recursive). |
+| `extensions` | string | `'.png, .jpg, .jpeg, .gif, .svg, .webp, .avif'` | Image file extensions to examine. |
+| `source-extensions` | string | `'.qmd, .md, .Rmd, .ipynb, .yml, .yaml, .scss, .css, .lua, .html, .tex, .bib'` | Extensions of the tracked files searched for references. |
+| `paths-ignore` | string | `''` | Comma- or newline-separated globs (`*`, `?`, `**`) of images to skip. |
+| `added-only` | boolean | `false` | On pull requests, report only images the PR adds; skip other events. |
+| `fail` | boolean | `false` | Fail the job on a finding (else warn only). |
+
+The composite action takes `base-ref` in place of `added-only`: set, only
+images added since the merge base with that ref are reported, and when the
+merge base cannot be computed the check is skipped with a warning rather than
+widened to the whole tree.
+
+## Permissions
+
+Only `contents: read` (the default), so no `permissions:` block is needed.
+
+## Example
+
+```yaml
+name: Check orphaned images
+on:
+  push: { branches: [main] }
+  pull_request:
+  workflow_dispatch:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-orphaned-images.yml@v3
+    # with:
+    #   paths: 'images/'
+    #   paths-ignore: 'images/generated/**'
+    #   added-only: true
+    #   fail: true
+```
+
+See `check-orphaned-images.yml` in
+[`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+for the full caller stub.
