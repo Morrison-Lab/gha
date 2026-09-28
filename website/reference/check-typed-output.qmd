@@ -12,8 +12,12 @@ The check flags the two shapes that stand in for a run:
   Inside a plain `python`, `r` or `julia` fence,
   or an executable `{r}`, `{python}` or `{julia}` chunk,
   a comment standing in for a printed value:
-  `# ->`, `#->`, `# =>`, `#>` (the prefix R prints output with),
+  `# ->`, `#->`, `# =>`,
+  `#>` (the output prefix reprex prints, and knitr prints when set up with `comment = "#>"`),
   and `# Output:` or `# output:`.
+  knitr's default prefix, `##`, is not matched by default,
+  since R code uses `##` for ordinary comments too;
+  add it through `patterns` if a repository needs it.
   Quarto's own chunk options (`#| output: false`) do not match.
 - **A hand-written output block.**
   A fence with no language, or `text` or `output`,

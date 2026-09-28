@@ -11,7 +11,9 @@ are flagged:
 - **An output comment** inside a code fence -- a plain ``python``/``r``/
   ``julia`` fence, or an executable ``{r}``/``{python}``/``{julia}`` chunk --
   whose comment stands in for a printed value: ``# ->``, ``#->``, ``# =>``,
-  ``#>`` (the prefix R prints output with), ``# Output:``/``# output:``.
+  ``#>`` (the output prefix reprex prints, and knitr prints when set up
+  with ``comment = "#>"``), ``# Output:``/``# output:``. knitr's default
+  prefix ``##`` is left out, since R code uses it for ordinary comments.
   The patterns are regular expressions and replaceable (``TYPED_OUTPUT_PATTERNS``).
   Quarto's own chunk-option comments (``#| output: false``) do not match any
   default pattern, since ``|`` is not whitespace.
