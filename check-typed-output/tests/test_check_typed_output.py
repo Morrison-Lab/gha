@@ -285,6 +285,28 @@ def test_diff_scoped_moved_lines_are_exempt(repo):
     assert _run(diff_scoped=True, base_ref="main").findings == []
 
 
+def test_diff_scoped_moved_block_is_exempt(repo):
+    block = f"{FENCE}python\nprint(1)\n{FENCE}\n\n{FENCE}text\n1\n{FENCE}\n"
+    _commit(repo, "a.qmd", block)
+    _git(repo, "checkout", "-qb", "feature")
+    (repo / "a.qmd").write_text("# Page\n")
+    _commit(repo, "b.qmd", block)
+    assert _run(diff_scoped=True, base_ref="main").findings == []
+
+
+def test_line_added_inside_block_not_excused_by_unrelated_deletion(repo):
+    # The new `1` inside an untouched output block must not be exempted by a
+    # deletion of the same short text in some other file.
+    block = f"{FENCE}python\nprint(1)\n{FENCE}\n\n{FENCE}text\nold\n{FENCE}\n"
+    _commit(repo, "a.qmd", block)
+    _commit(repo, "other.qmd", "x\n1\ny\n")
+    _git(repo, "checkout", "-qb", "feature")
+    (repo / "other.qmd").write_text("x\ny\n")
+    _commit(repo, "a.qmd", block.replace("old\n", "old\n1\n"))
+    found = _run(diff_scoped=True, base_ref="main").findings
+    assert [(p, f.kind, f.line) for p, f in found] == [("a.qmd", "block", 5)]
+
+
 def test_diff_scoped_copy_is_not_exempt(repo):
     # Only a deletion in the same diff exempts a line: duplicating untouched
     # base content is new writing.

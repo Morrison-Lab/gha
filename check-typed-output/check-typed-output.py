@@ -427,10 +427,16 @@ def run(
                 ]
                 if not new:
                     continue
-                # Moved-not-new: every added line of the finding also appears
-                # among this diff's deleted lines, so it was relocated.
+                # Moved-not-new: the finding's own line is added, and every
+                # added line of it also appears among this diff's deleted
+                # lines, so it was relocated. Requiring the reported line (a
+                # block's opening fence) keeps a line added INSIDE an
+                # untouched block from being excused by an unrelated deletion
+                # of the same short text elsewhere, such as a bare `1`.
                 need = Counter(lines[ln - 1] for ln in new)
-                if all(deleted[text_] >= c for text_, c in need.items()):
+                if finding.line in new and all(
+                    deleted[text_] >= c for text_, c in need.items()
+                ):
                     for text_, c in need.items():
                         deleted[text_] -= c
                     continue
