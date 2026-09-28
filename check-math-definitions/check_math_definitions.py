@@ -18,13 +18,20 @@ and validates consistency across files and sibling repositories:
 3. In-Repo Duplicate IDs:
    Flags when the same ID is defined more than once in the same repository.
 
-Files or divs can opt out using directive comments:
+A div opts out with one of these directive comments inside the div itself
+(on its opening fence line or anywhere in its own body, not in a nested div):
   <!-- check-math-definitions: allow-divergence -->
   <!-- check-math-definitions: opt-out -->
   <!-- check-math-definitions: ignore -->
+It exempts that div only; other divs in the same file are still checked.
+
+A whole file opts out with the separate file-level directive, placed anywhere
+in the file:
+  <!-- check-math-definitions: ignore-file -->
 """
 
 import argparse
+import base64
 import fnmatch
 import json
 import os
@@ -46,7 +53,7 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
-DEFAULT_EXTENSIONS = {".qmd", ".md", ".rmd", ".Rmd"}
+DEFAULT_EXTENSIONS = [".qmd", ".md", ".rmd", ".Rmd"]
 
 DEFAULT_PATHS_IGNORE = [
     ".git",
@@ -78,6 +85,16 @@ DEFAULT_PREFIXES = [
 
 OPT_OUT_PATTERN = re.compile(
     r"<!--\s*check-math-definitions:\s*(?:allow-divergence|allow-duplicates|allow|opt-out|ignore|disable)\s*-->",
+    re.IGNORECASE,
+)
+
+# A cloned repository's directory name: no separators, and not "." or "..".
+SAFE_REPO_NAME = re.compile(r"[A-Za-z0-9._-]+")
+
+# File-level opt-out: a distinct directive, so a div-level comment never
+# exempts the rest of the file.
+FILE_OPT_OUT_PATTERN = re.compile(
+    r"<!--\s*check-math-definitions:\s*ignore-file\s*-->",
     re.IGNORECASE,
 )
 
@@ -218,6 +235,29 @@ def extract_title_and_body(
     return title, raw_body
 
 
+def has_file_opt_out(lines: List[str]) -> bool:
+    """Return True if the file-level directive appears outside a code block.
+
+    A page documenting the directive quotes it in a code block, and that
+    quotation must not exempt the page it appears on.
+    """
+    in_code_block: Optional[str] = None
+    for line in lines:
+        stripped = line.strip()
+        fence_match = CODE_FENCE_PATTERN.match(stripped)
+        if fence_match:
+            fence_chars = fence_match.group(1)
+            if in_code_block is None:
+                in_code_block = fence_chars
+                continue
+            if fence_chars.startswith(in_code_block[:3]) and len(fence_chars) >= len(in_code_block):
+                in_code_block = None
+                continue
+        if in_code_block is None and FILE_OPT_OUT_PATTERN.search(line):
+            return True
+    return False
+
+
 def parse_math_divs_from_text(
     text: str,
     file_path: str,
@@ -228,10 +268,28 @@ def parse_math_divs_from_text(
     divs: List[MathDiv] = []
     lines = text.splitlines()
 
-    # Stack of active divs: (fence_str, div_info_dict, line_start, collected_lines)
-    stack: List[Tuple[str, Optional[Tuple[str, str, bool]], int, List[str]]] = []
+    # Stack of active divs:
+    # (fence_str, div_meta, line_start, collected_lines, own_lines)
+    # collected_lines holds everything inside the div, nested divs included,
+    # and is what content comparison uses; own_lines leaves out the lines of
+    # any nested math div, so a nested div's opt-out stays with that div.
+    stack: List[
+        Tuple[str, Optional[Tuple[str, str, bool]], int, List[str], List[str]]
+    ] = []
 
-    file_opt_out = bool(OPT_OUT_PATTERN.search(text))
+    file_opt_out = has_file_opt_out(lines)
+
+    def collect(line: str, in_code: bool = False) -> None:
+        # A directive quoted inside a code block is an example, not a
+        # directive, so code-block lines never reach own_lines.
+        innermost_math = None
+        for item in stack:
+            if item[1] is not None:
+                item[3].append(line)
+                innermost_math = item
+        if innermost_math is not None and not in_code:
+            innermost_math[4].append(line)
+
     in_code_block: Optional[str] = None
 
     for line_idx, line in enumerate(lines, start=1):
@@ -248,10 +306,7 @@ def parse_math_divs_from_text(
 
         if in_code_block is not None:
             # Inside a code block, ::: does not start or close math divs
-            if stack:
-                for item in stack:
-                    if item[1] is not None:
-                        item[3].append(line)
+            collect(line, in_code=True)
             continue
 
         # Check for start fence
@@ -271,7 +326,7 @@ def parse_math_divs_from_text(
                     opt_out = file_opt_out or bool(OPT_OUT_PATTERN.search(line))
                     div_meta = (full_id, prefix_candidate, opt_out)
 
-            stack.append((fence, div_meta, line_idx, []))
+            stack.append((fence, div_meta, line_idx, [], []))
             continue
 
         # Check for closing fence
@@ -280,11 +335,11 @@ def parse_math_divs_from_text(
             # Check if this closes the innermost div on stack
             fence_len = len(end_match.group("fence"))
             if len(stack[-1][0]) <= fence_len:
-                closed_fence, div_meta, start_line, collected = stack.pop()
+                closed_fence, div_meta, start_line, collected, own = stack.pop()
                 if div_meta is not None:
                     div_id, prefix, opt_out = div_meta
                     raw_block = "\n".join(collected)
-                    if OPT_OUT_PATTERN.search(raw_block):
+                    if OPT_OUT_PATTERN.search("\n".join(own)):
                         opt_out = True
 
                     title, raw_body = extract_title_and_body(collected)
@@ -307,10 +362,7 @@ def parse_math_divs_from_text(
                 continue
 
         # If inside one or more divs, collect content for all active divs
-        if stack:
-            for item in stack:
-                if item[1] is not None:
-                    item[3].append(line)
+        collect(line)
 
     return divs
 
@@ -509,7 +561,15 @@ def clone_github_repos(
     repo_specs: List[str],
     work_dir: Path,
 ) -> Dict[str, Path]:
-    """Clone sibling repositories for cross-repo scanning."""
+    """Clone sibling repositories for cross-repo scanning.
+
+    The token, when present, reaches git as an ``http.extraHeader`` through
+    ``GIT_CONFIG_*`` environment variables -- never on the command line, where
+    it would be readable from ``ps`` or ``/proc/<pid>/cmdline`` for the
+    clone's duration. A spec whose repository name is not a plain directory
+    name (``..``, ``.``, or anything with a separator) is refused rather than
+    sanitized, so a clone can never land outside ``work_dir``.
+    """
     cloned_paths: Dict[str, Path] = {}
     gh_token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
 
@@ -520,20 +580,33 @@ def clone_github_repos(
         repo_name = spec.rstrip("/").split("/")[-1]
         if repo_name.endswith(".git"):
             repo_name = repo_name[:-4]
+        if repo_name in ("", ".", "..") or not SAFE_REPO_NAME.fullmatch(repo_name):
+            print(
+                f"::warning::Skipping repository '{spec}': '{repo_name}' is not "
+                "a safe directory name.",
+                file=sys.stderr,
+            )
+            continue
         target_dir = work_dir / repo_name
 
+        env = os.environ.copy()
         if spec.startswith(("http://", "https://", "git@")):
             clone_url = spec
         elif "/" in spec:
             clone_url = f"https://github.com/{spec}.git"
             if gh_token:
-                clone_url = f"https://x-access-token:{gh_token}@github.com/{spec}.git"
+                basic = base64.b64encode(
+                    f"x-access-token:{gh_token}".encode()
+                ).decode()
+                env["GIT_CONFIG_COUNT"] = "1"
+                env["GIT_CONFIG_KEY_0"] = "http.https://github.com/.extraheader"
+                env["GIT_CONFIG_VALUE_0"] = f"AUTHORIZATION: basic {basic}"
         else:
             clone_url = spec
 
         print(f"Cloning {spec} into {target_dir}...", file=sys.stderr)
         cmd = ["git", "clone", "--depth", "1", clone_url, str(target_dir)]
-        res = subprocess.run(cmd, capture_output=True, text=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, env=env)
         if res.returncode != 0:
             print(
                 f"::warning::Failed to clone repository '{spec}': {res.stderr.strip()}",
@@ -618,7 +691,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--extensions",
-        default=os.environ.get("INPUT_EXTENSIONS", ".qmd, .md, .rmd, .Rmd"),
+        default=os.environ.get("INPUT_EXTENSIONS", ", ".join(DEFAULT_EXTENSIONS)),
         help="Comma- or space-separated list of file extensions.",
     )
     parser.add_argument(

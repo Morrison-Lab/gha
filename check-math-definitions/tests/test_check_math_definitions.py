@@ -482,3 +482,189 @@ Formulation B (divergent)
     )
     assert res.returncode == 0
     assert "Divergence" in res.stdout or "Divergence" in res.stderr
+
+
+def test_div_opt_out_does_not_leak_to_sibling_divs():
+    """A div's own opt-out comment exempts that div only, not the rest of the file."""
+    text = """
+::: {#def-custom}
+<!-- check-math-definitions: opt-out -->
+#### Custom Def
+Local definition.
+:::
+
+::: {#def-variance}
+#### Variance
+The variance is E[(X - E[X])^2].
+:::
+"""
+    divs = cmd.parse_math_divs_from_text(
+        text=text,
+        file_path="doc.qmd",
+        repo_name="mln",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    by_id = {d.div_id: d for d in divs}
+    assert set(by_id) == {"def-custom", "def-variance"}
+    assert by_id["def-custom"].opted_out
+    assert not by_id["def-variance"].opted_out
+
+
+def test_nested_div_opt_out_does_not_leak_to_enclosing_div():
+    """An opt-out inside a nested math div exempts the nested div, not its parent."""
+    text = """
+::::: {#thm-outer}
+#### Outer
+Outer statement.
+
+::: {#lem-inner}
+<!-- check-math-definitions: opt-out -->
+Inner statement.
+:::
+:::::
+"""
+    divs = cmd.parse_math_divs_from_text(
+        text=text,
+        file_path="doc.qmd",
+        repo_name="mln",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    by_id = {d.div_id: d for d in divs}
+    assert by_id["lem-inner"].opted_out
+    assert not by_id["thm-outer"].opted_out
+
+
+def test_file_level_opt_out_directive_exempts_every_div():
+    """The separate file-level directive exempts every div in the file."""
+    text = """
+<!-- check-math-definitions: ignore-file -->
+
+::: {#def-custom}
+#### Custom Def
+Local definition.
+:::
+
+::: {#def-variance}
+#### Variance
+The variance is E[(X - E[X])^2].
+:::
+"""
+    divs = cmd.parse_math_divs_from_text(
+        text=text,
+        file_path="doc.qmd",
+        repo_name="mln",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    assert len(divs) == 2
+    assert all(d.opted_out for d in divs)
+
+
+# -- defaults agree across the script, action.yml and the reusable workflow --
+
+_DIR = Path(__file__).resolve().parent.parent
+_ACTION = _DIR / "action.yml"
+_WORKFLOW = _DIR.parent / ".github" / "workflows" / "check-math-definitions.yml"
+
+# Every input both files declare. A drift between them would hand a caller
+# of the reusable workflow different defaults than a caller of the composite.
+_SHARED_INPUTS = [
+    "path",
+    "paths",
+    "repos",
+    "paths-ignore",
+    "extensions",
+    "prefixes",
+    "check-titles",
+    "fail",
+    "python-version",
+]
+
+
+def _yaml_default(path: Path, name: str) -> str:
+    """Read one input's `default:` with a line scan, so the check does not
+    depend on a YAML library being installed."""
+    import re
+
+    lines = path.read_text().splitlines()
+    for i, line in enumerate(lines):
+        if re.match(rf"^\s+{re.escape(name)}:\s*$", line):
+            for follow in lines[i + 1:]:
+                m = re.match(r"^\s+default:\s*(.*)$", follow)
+                if m:
+                    return m.group(1).strip().strip("'\"")
+                if re.match(r"^\s{0,6}[a-z-]+:\s*$", follow):
+                    break
+    raise AssertionError(f"{path.name} declares no default for {name}")
+
+
+@pytest.mark.parametrize("name", _SHARED_INPUTS)
+def test_action_and_workflow_defaults_agree(name):
+    assert _yaml_default(_ACTION, name) == _yaml_default(_WORKFLOW, name)
+
+
+@pytest.mark.parametrize("path", [_ACTION, _WORKFLOW], ids=["action", "workflow"])
+def test_yaml_defaults_agree_with_script(path):
+    assert _yaml_default(path, "paths-ignore") == ", ".join(cmd.DEFAULT_PATHS_IGNORE)
+    assert _yaml_default(path, "extensions") == ", ".join(cmd.DEFAULT_EXTENSIONS)
+    assert _yaml_default(path, "prefixes") == ", ".join(cmd.DEFAULT_PREFIXES)
+
+
+# -- cloning sibling repositories --
+
+
+class _FakeRun:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, args, **kwargs):
+        self.calls.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+
+def test_clone_keeps_token_off_argv(tmp_path, monkeypatch):
+    fake = _FakeRun()
+    monkeypatch.setattr(cmd.subprocess, "run", fake)
+    monkeypatch.setenv("GH_TOKEN", "sekrit-token-value")
+    cloned = cmd.clone_github_repos(["Morrison-Lab/rme"], tmp_path)
+    assert cloned == {"rme": tmp_path / "rme"}
+    (args, kwargs), = fake.calls
+    assert not any("sekrit-token-value" in a for a in args)
+    assert "https://github.com/Morrison-Lab/rme.git" in args
+    env = kwargs["env"]
+    assert env["GIT_CONFIG_KEY_0"] == "http.https://github.com/.extraheader"
+    assert env["GIT_CONFIG_VALUE_0"].startswith("AUTHORIZATION: basic ")
+    assert "sekrit-token-value" not in env["GIT_CONFIG_VALUE_0"]
+
+
+@pytest.mark.parametrize("spec", ["..", "owner/..", ".", "owner/.git"])
+def test_clone_refuses_unsafe_repo_names(tmp_path, monkeypatch, spec):
+    fake = _FakeRun()
+    monkeypatch.setattr(cmd.subprocess, "run", fake)
+    assert cmd.clone_github_repos([spec], tmp_path) == {}
+    assert fake.calls == []
+
+
+def test_directives_quoted_in_code_blocks_do_not_opt_out():
+    """A directive quoted in a code block is an example, not a directive."""
+    text = """
+```markdown
+<!-- check-math-definitions: ignore-file -->
+```
+
+::: {#def-variance}
+#### Variance
+The variance is E[(X - E[X])^2].
+
+```markdown
+<!-- check-math-definitions: opt-out -->
+```
+:::
+"""
+    divs = cmd.parse_math_divs_from_text(
+        text=text,
+        file_path="doc.qmd",
+        repo_name="mln",
+        allowed_prefixes=set(cmd.DEFAULT_PREFIXES),
+    )
+    assert len(divs) == 1
+    assert not divs[0].opted_out

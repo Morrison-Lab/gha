@@ -24,11 +24,24 @@ to enforce cross-document consistency:
 3. **In-Repo Duplicate IDs:** Flags when the same ID is defined more than once
    in the same repository.
 
-Files or divs can opt out using directive comments:
+A single div opts out with a directive comment inside that div,
+on its opening fence line or in its own body:
 
 ```markdown
 <!-- check-math-definitions: allow-divergence -->
 <!-- check-math-definitions: opt-out -->
+```
+
+It exempts that div only.
+Other divs in the same file are still checked,
+and a directive inside a nested div exempts the nested div
+rather than the one enclosing it.
+
+A whole file opts out with the separate file-level directive,
+placed anywhere in the file:
+
+```markdown
+<!-- check-math-definitions: ignore-file -->
 ```
 
 ## Inputs

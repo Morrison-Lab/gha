@@ -181,6 +181,24 @@ jobs:
         with:
           path: fixture_math_clean
           fail: 'true'
+          output-json: math-clean-report.json
+
+      # An exit 0 alone would also pass if the fixture path were silently
+      # skipped, so pin that the one fixture div was actually scanned.
+      - name: Verify clean control scanned the fixture div
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          report = json.load(open("math-clean-report.json", encoding="utf-8"))
+          ids = [d["div_id"] for d in report["divs"]]
+          if report["total_divs"] != 1 or ids != ["def-sample-mean"]:
+              sys.exit(f"Expected exactly def-sample-mean scanned, got {report['total_divs']}: {ids}")
+          if report["findings"]:
+              sys.exit(f"Expected no findings on the clean control, got {report['findings']}")
+          print("Clean control scanned 1 div with 0 findings.")
+          PY
+          rm -f math-clean-report.json
 
       - name: Verify positive control divergence fixture fails closed
         shell: bash
