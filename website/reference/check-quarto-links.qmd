@@ -42,8 +42,8 @@ Not checked, by design:
 - links inside fenced code blocks, code spans, and HTML comments;
 - URLs with a scheme (`https:`, `mailto:`), `//` URLs, and `#anchor`-only
   links;
-- targets built from a shortcode or template expression (`{{< meta >}}`,
-  `` `r ...` ``);
+- targets built from a shortcode or an inline expression, such as
+  `{{< meta >}}`;
 - whether the `#anchor` part of a link exists on the target page.
 
 **Included files resolve from the page that includes them.**
