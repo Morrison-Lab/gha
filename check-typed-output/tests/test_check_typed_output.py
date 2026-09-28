@@ -307,6 +307,19 @@ def test_line_added_inside_block_not_excused_by_unrelated_deletion(repo):
     assert [(p, f.kind, f.line) for p, f in found] == [("a.qmd", "block", 5)]
 
 
+def test_new_block_not_excused_by_unrelated_identical_block(repo):
+    # An unrelated deleted block with the same short body (`2`) is not a
+    # move of the new one: the code fence the new block follows differs.
+    _commit(repo, "old.qmd", f"{FENCE}r\nx + 1\n{FENCE}\n\n{FENCE}\n2\n{FENCE}\n")
+    _git(repo, "checkout", "-qb", "feature")
+    (repo / "old.qmd").write_text("# Gone\n")
+    _commit(repo, "b.qmd", f"{FENCE}python\nprint(2)\n{FENCE}\n\n{FENCE}\n2\n{FENCE}\n")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "c")
+    found = _run(diff_scoped=True, base_ref="main").findings
+    assert [(p, f.kind) for p, f in found] == [("b.qmd", "block")]
+
+
 def test_diff_scoped_copy_is_not_exempt(repo):
     # Only a deletion in the same diff exempts a line: duplicating untouched
     # base content is new writing.

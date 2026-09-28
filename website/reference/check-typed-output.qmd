@@ -33,8 +33,13 @@ diffed from the merge base with the PR base,
 the same anchor [`check-new-line-breaks.yml`](check-new-line-breaks.qmd) uses.
 A repository with legacy occurrences can then adopt the check
 and see only what each PR adds.
-An added line whose exact text the same diff also deletes is treated as moved,
+A finding whose lines the same diff also deletes, contiguously and in order,
+is treated as moved,
 so splitting a chapter into subfiles does not report the output it relocates.
+For an output block, those lines run from the code fence it follows
+through the block's closing fence,
+so a short printed value such as `1` is not excused
+by an unrelated deletion of the same text.
 A diff-scoped run with no PR base, such as a push to `main`,
 is skipped with a warning rather than widened to the whole tree.
 

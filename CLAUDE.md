@@ -234,8 +234,13 @@ only ever shipped at `@v3`.
   does not reflag relocated content either).
   `check-typed-output/` (Python, gha#959) reuses that diff-scoping --
   merge-base anchor, skip-not-fallback, moved-not-new exemption,
-  working-tree-aware local runs -- but only on request (`diff-scoped`):
-  its default is a whole-tree scan, warn-only, because measuring how much
+  working-tree-aware local runs -- but only on request (`diff-scoped`).
+  The exemption matches a finding's whole span as one contiguous deleted
+  run (for an output block, from the code fence it follows), not line by
+  line, because a printed value such as `1` or `TRUE` collides with
+  unrelated deletions far more often than a prose sentence does.
+  Its default is not diff-scoped:
+  it is a whole-tree scan, warn-only, because measuring how much
   typed output a corpus carries is half of what it is for, and a warning
   over legacy occurrences reddens nothing.
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same

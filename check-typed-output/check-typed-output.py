@@ -34,9 +34,12 @@ Scope:
   push run, or a shallow clone missing the base commit) the check is
   *skipped* with a warning rather than falling back to a whole-tree scan,
   which would report exactly the legacy occurrences diff-scoping exists to
-  leave alone. An added line whose exact text was also deleted in the same
-  diff is treated as moved rather than new, so splitting a chapter into
-  subfiles does not report the output it relocates.
+  leave alone. A finding whose lines the same diff also deletes, contiguously
+  and in order, is treated as moved rather than new, so splitting a chapter
+  into subfiles does not report the output it relocates. For an output block
+  those lines run from the code fence it follows through its closing fence,
+  so a short output line such as ``1`` is never excused by an unrelated
+  deletion of the same text.
 - **Working-tree aware, diff-scoped runs only.** When a tracked file the
   globs match carries an uncommitted change, the diff is taken against the
   working tree instead of ``HEAD``, so a local run before committing examines
@@ -134,13 +137,17 @@ class Finding(NamedTuple):
     ``line`` is the 1-based line reported; ``lines`` is every line the
     finding covers (the comment line alone, or an output block's opening
     fence through its closing fence), which diff scoping intersects with the
-    added lines.
+    added lines. ``span`` is what must have moved, contiguously, for the
+    finding to count as relocated rather than new: the comment line alone,
+    or for an output block, the code fence it follows through the block's
+    closing fence.
     """
 
     line: int
     kind: str
     match: str
     lines: Tuple[int, ...]
+    span: Tuple[int, ...]
 
 
 def compile_patterns(patterns: List[str]) -> List["re.Pattern[str]"]:
@@ -179,6 +186,7 @@ def scan_text(text: str, patterns: List["re.Pattern[str]"]) -> List[Finding]:
     # True after a code fence closes, until a non-blank line that is not an
     # output-block opener intervenes.
     after_code = False
+    code_start = 0
     while i < n:
         m = _FENCE_RE.match(lines[i])
         if not m:
@@ -208,9 +216,11 @@ def scan_text(text: str, patterns: List["re.Pattern[str]"]) -> List[Finding]:
                 for pat in patterns:
                     hit = pat.search(lines[k])
                     if hit:
-                        findings.append(
-                            Finding(k + 1, "comment", f"`{hit.group(0)}` in {lines[k].strip()}", (k + 1,))
-                        )
+                        findings.append(Finding(
+                            k + 1, "comment",
+                            f"`{hit.group(0)}` in {lines[k].strip()}",
+                            (k + 1,), (k + 1,),
+                        ))
                         break
         elif after_code and not fence.executable and fence.language in OUTPUT_LANGUAGES:
             info = m.group(3).strip()
@@ -220,8 +230,11 @@ def scan_text(text: str, patterns: List["re.Pattern[str]"]) -> List[Finding]:
                     "block",
                     f"{marker}{info}" if info else f"{marker} (no language)",
                     tuple(range(start + 1, end + 2)),
+                    tuple(range(code_start + 1, end + 2)),
                 )
             )
+        if is_code:
+            code_start = start
         after_code = is_code
         i = j + 1
     return findings
@@ -317,10 +330,11 @@ _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 def added_lines(
     base_ref: str, pathspecs: List[str], worktree: bool
-) -> Optional[Tuple[Dict[str, Set[int]], "Counter[str]"]]:
-    """Return ({file: added line numbers}, deleted-line multiset) for the diff
-    from the merge base of ``base_ref`` and HEAD, or None when it cannot be
-    computed. ``worktree`` diffs against the working tree instead of HEAD."""
+) -> Optional[Tuple[Dict[str, Set[int]], List[List[str]]]]:
+    """Return ({file: added line numbers}, deleted runs) for the diff from the
+    merge base of ``base_ref`` and HEAD, or None when it cannot be computed.
+    ``worktree`` diffs against the working tree instead of HEAD. A deleted
+    run is one maximal stretch of consecutive deleted lines, in order."""
     merge_base = (_run_git(["merge-base", base_ref, "HEAD"]) or "").strip()
     if not merge_base:
         return None
@@ -329,13 +343,15 @@ def added_lines(
     if diff is None:
         return None
     result: Dict[str, Set[int]] = {}
-    deleted: "Counter[str]" = Counter()
+    runs: List[List[str]] = []
+    run_open = False
     cur: Optional[str] = None
     lineno = 0
     in_hunk = False
     for raw in diff.splitlines():
         if raw.startswith("diff "):
             in_hunk = False
+            run_open = False
             continue
         if not in_hunk and raw.startswith("+++ "):
             target_path = raw[4:]
@@ -345,18 +361,36 @@ def added_lines(
             continue
         if raw.startswith("@@"):
             in_hunk = True
+            run_open = False
             m = _HUNK_RE.match(raw)
             lineno = int(m.group(1)) if m else 0
             continue
         if not in_hunk:
             continue
         if raw.startswith("-"):
-            deleted[raw[1:]] += 1
+            if not run_open:
+                runs.append([])
+                run_open = True
+            runs[-1].append(raw[1:])
         elif raw.startswith("+"):
+            run_open = False
             if cur is not None:
                 result[cur].add(lineno)
             lineno += 1
-    return result, deleted
+    return result, runs
+
+
+def take_moved(runs: List[List[str]], block: List[str]) -> bool:
+    """Remove one contiguous occurrence of ``block`` from the deleted runs
+    and return True, or return False when no run contains it. Removing it
+    means one deletion excuses at most one addition."""
+    k = len(block)
+    for idx, run in enumerate(runs):
+        for s in range(len(run) - k + 1):
+            if run[s:s + k] == block:
+                runs[idx:idx + 1] = [run[:s], run[s + k:]]
+                return True
+    return False
 
 
 def tracked_files(pathspecs: List[str]) -> List[str]:
@@ -380,7 +414,7 @@ def run(
     base_ref: str = "",
 ) -> Result:
     scope: Optional[Dict[str, Set[int]]] = None
-    deleted: "Counter[str]" = Counter()
+    moved_runs: List[List[str]] = []
     if diff_scoped:
         if not base_ref:
             return Result([], True, 0)
@@ -388,7 +422,7 @@ def run(
         scoped = added_lines(base_ref, globs, worktree)
         if scoped is None:
             return Result([], True, 0)
-        scope, deleted = scoped
+        scope, moved_runs = scoped
         untracked = _untracked_matches(globs, ignores)
         if untracked:
             print(
@@ -427,18 +461,17 @@ def run(
                 ]
                 if not new:
                     continue
-                # Moved-not-new: the finding's own line is added, and every
-                # added line of it also appears among this diff's deleted
-                # lines, so it was relocated. Requiring the reported line (a
-                # block's opening fence) keeps a line added INSIDE an
-                # untouched block from being excused by an unrelated deletion
-                # of the same short text elsewhere, such as a bare `1`.
-                need = Counter(lines[ln - 1] for ln in new)
-                if finding.line in new and all(
-                    deleted[text_] >= c for text_, c in need.items()
+                # Moved-not-new: the finding's whole span -- for an output
+                # block, the code fence it follows through its closing fence
+                # -- is added, and the same lines were deleted contiguously
+                # elsewhere in this diff, so it was relocated. Matching the
+                # span rather than line by line keeps a short output line
+                # such as `1` or `TRUE` from being excused by an unrelated
+                # deletion of the same text.
+                span_added = all(ln in scope[rel] for ln in finding.span)
+                if span_added and take_moved(
+                    moved_runs, [lines[ln - 1] for ln in finding.span]
                 ):
-                    for text_, c in need.items():
-                        deleted[text_] -= c
                     continue
             out.append((rel, finding))
     return Result(out, False, examined)
