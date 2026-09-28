@@ -2,21 +2,27 @@
 title: "check-math-definitions.yml"
 ---
 
-Check for duplicate, divergent, or colliding mathematical definitions and theorems
-across Quarto (`.qmd`) and Markdown (`.md`) files and sibling repositories.
+Check for duplicate, divergent, or colliding mathematical definitions
+and theorems across Quarto (`.qmd`) and Markdown (`.md`) files
+and sibling repositories.
 
-In multi-repo textbook and curriculum ecosystems, mathematical entities
-(definitions, theorems, lemmas, corollaries, propositions, conjectures, exercises)
+In multi-repo textbook and curriculum ecosystems,
+mathematical entities
+(definitions, theorems, lemmas, corollaries,
+propositions, conjectures, exercises)
 are frequently cited or duplicated across books and course repositories.
-`check-math-definitions` scans cross-reference divs (`::: {#def-name}`) to enforce
-cross-document consistency:
+`check-math-definitions` scans cross-reference divs (`::: {#def-name}`)
+to enforce cross-document consistency:
 
-1. **Exact ID Divergence:** Flags when the same cross-reference ID (e.g. `#def-variance`)
-   appears in multiple files or repositories with divergent or conflicting mathematical definitions.
+1. **Exact ID Divergence:** Flags when the same cross-reference ID
+   (e.g. `#def-variance`) appears in multiple files or repositories
+   with divergent or conflicting mathematical definitions.
    Identical content is treated as canonical and passes cleanly.
-2. **Conceptual / Title Collisions:** Flags when the same mathematical concept title
-   (e.g. "Variance") is defined under multiple distinct IDs within the same prefix category.
-3. **In-Repo Duplicate IDs:** Flags when the same ID is defined more than once in the same repository.
+2. **Conceptual / Title Collisions:** Flags when the same mathematical concept
+   title (e.g. "Variance") is defined under multiple distinct IDs
+   within the same prefix category.
+3. **In-Repo Duplicate IDs:** Flags when the same ID is defined more than once
+   in the same repository.
 
 Files or divs can opt out using directive comments:
 
@@ -57,5 +63,5 @@ jobs:
       repos: 'Morrison-Lab/rme, Morrison-Lab/pds'
 ```
 
-See [`examples/check-math-definitions.yml`](https://github.com/Morrison-Lab/gha/tree/main/examples/check-math-definitions.yml)
-for caller stubs.
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for caller stubs.
