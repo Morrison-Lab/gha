@@ -81,6 +81,12 @@ REQUIRED_DENIALS = {
     "Bash(gh variable:*)": "read or write repository variables",
     "Bash(gh secret:*)": "list secret metadata, or set and delete secrets",
     "Bash(*git-push.sh*)": "push through the action's own push wrapper",
+    # Not a mutation either: a whole-PR merge-readiness instrument that,
+    # run from inside the review, counts the review's own in-progress job and
+    # the previous round's verdict, so it can only ever read not-clean and
+    # turns a clean diff into a NOT_CLEAN loop (gha#978).
+    "Bash(*check-pr-fully-clean*)": "gate the diff verdict on its own in-flight check and a stale prior verdict",
+    "Bash(*check-mr-fully-clean*)": "do the same through the GitLab twin of that instrument",
     # Not forge mutations, but the same load-bearing-after-widening argument:
     # these have no synchronous form or fail without verdicts in a one-shot CI run (gha#392, gha#532, gha#756).
     "ScheduleWakeup": "end the turn waiting for a wakeup that never fires",
