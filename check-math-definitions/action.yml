@@ -1,0 +1,64 @@
+name: Check math definitions and theorems
+description: >-
+  Check for duplicate, divergent, or colliding mathematical definitions and theorems
+  across Quarto/Markdown files and sibling repositories.
+inputs:
+  path:
+    description: Target directory or file path to scan.
+    default: '.'
+  paths:
+    description: Comma- or newline-separated list of directories to scan.
+    default: ''
+  repos:
+    description: Comma- or newline-separated list of GitHub repos (owner/repo) to clone and scan.
+    default: ''
+  paths-ignore:
+    description: Comma- or newline-separated list of paths or glob patterns to ignore.
+    default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'
+  extensions:
+    description: Comma- or space-separated list of file extensions to check.
+    default: '.qmd, .md, .rmd, .Rmd'
+  prefixes:
+    description: Comma- or space-separated list of div ID prefixes (e.g. def, thm, lem, cor, prp, cnj, exr).
+    default: 'def, thm, lem, cor, prp, cnj, exr, exm, rem, sol, clm'
+  check-titles:
+    description: Whether to flag matching titles with divergent IDs or content across repositories.
+    default: 'true'
+  fail:
+    description: Whether to fail the workflow if divergence or duplicate IDs are detected.
+    default: 'true'
+  output-json:
+    description: Path to write structured JSON findings report.
+    default: ''
+  output-markdown:
+    description: Path to write Markdown findings report.
+    default: ''
+  github-token:
+    description: GitHub token for cloning sibling repositories.
+    default: ${{ github.token }}
+  python-version:
+    description: Python version to set up.
+    default: '3.x'
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v5.6.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Check math definitions and theorems
+      shell: bash
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_PATHS: ${{ inputs.paths }}
+        INPUT_REPOS: ${{ inputs.repos }}
+        INPUT_PATHS_IGNORE: ${{ inputs.paths-ignore }}
+        INPUT_EXTENSIONS: ${{ inputs.extensions }}
+        INPUT_PREFIXES: ${{ inputs.prefixes }}
+        INPUT_CHECK_TITLES: ${{ inputs.check-titles }}
+        INPUT_FAIL: ${{ inputs.fail }}
+        INPUT_OUTPUT_JSON: ${{ inputs.output-json }}
+        INPUT_OUTPUT_MARKDOWN: ${{ inputs.output-markdown }}
+        GH_TOKEN: ${{ inputs.github-token }}
+      run: python3 "$GITHUB_ACTION_PATH/check_math_definitions.py"
