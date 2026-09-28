@@ -28,7 +28,8 @@ Three kinds of change are deliberately not reported:
   whitespace run collapsed, so a paragraph rewrapped at different line breaks passes.
 - **Reworded lines.**
   When both sides edited the same line and the resolution
-  wrote a third version, neither side's line survives verbatim, yet nothing was lost.
+  wrote a third version, neither side's line survives verbatim,
+  yet nothing was lost.
   A missing line is not reported when a line of the merge's copy of the same file
   is at least `similarity` alike, word by word.
 
