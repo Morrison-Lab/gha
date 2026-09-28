@@ -522,6 +522,18 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-quarto-links.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-quarto-links.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../reference/check-orphaned-images.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-orphaned-images.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/lint-yaml.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">lint-yaml.yml</span></a>
   </div>
@@ -823,6 +835,8 @@ cookieconsent.run({
 <li><a href="../reference/lint-markdown.html"><code>lint-markdown.yml</code></a>: markdownlint-cli2 over tracked Markdown files</li>
 <li><a href="../reference/lint-qmd.html"><code>lint-qmd.yml</code></a>: markdownlint over prose sections of tracked <code>.qmd</code> files</li>
 <li><a href="../reference/check-links.html"><code>check-links.yml</code></a>: lychee link checker for website pages, references, and external links</li>
+<li><a href="../reference/check-quarto-links.html"><code>check-quarto-links.yml</code></a>: relative links from <code>.qmd</code>/<code>.md</code>/<code>.Rmd</code> sources to pages that do not exist, which Quarto only warns about and lychee does not read out of a <code>.qmd</code></li>
+<li><a href="../reference/check-orphaned-images.html"><code>check-orphaned-images.yml</code></a>: tracked images that no source file references (warn-only by default)</li>
 <li><a href="../reference/check-bibliography-dois.html"><code>check-bibliography-dois.yml</code></a>: validates BibTeX bibliography entries in <code>.bib</code> files</li>
 </ul>
 <p>Every check is enabled by default. Opt out of any specific check by passing its boolean flag as <code>false</code> (for example, <code>check-links: false</code> to skip link validation in an offline environment).</p>
@@ -1054,6 +1068,42 @@ cookieconsent.run({
 <td>string</td>
 <td><code>'--exclude-mail'</code></td>
 <td>Command-line arguments for lychee.</td>
+</tr>
+<tr class="even">
+<td><code>check-quarto-links</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Enable the check for links to missing Quarto pages; blocking or not follows <code>fail</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>quarto-links-paths-ignore</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Globs of source files to skip for the Quarto links check.</td>
+</tr>
+<tr class="even">
+<td><code>check-orphaned-images</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Enable the orphaned-images report.</td>
+</tr>
+<tr class="odd">
+<td><code>orphaned-images-paths-ignore</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Globs of images to skip.</td>
+</tr>
+<tr class="even">
+<td><code>orphaned-images-base-ref</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Base ref so only images added since it are reported; empty examines every image.</td>
+</tr>
+<tr class="odd">
+<td><code>orphaned-images-fail</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Fail on an orphaned image; the report warns only by default, whatever <code>fail</code> says.</td>
 </tr>
 <tr class="even">
 <td><code>check-bibliography-dois</code></td>

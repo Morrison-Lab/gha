@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>cleanup-pr-previews.yml – Morrison-Lab/gha</title>
+<title>check-quarto-links.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/claude.html" rel="next">
-<link href="../reference/check-equation-renders.html" rel="prev">
+<link href="../reference/check-orphaned-images.html" rel="next">
+<link href="../reference/check-links.html" rel="prev">
 <script src="../site_libs/cookie-consent/cookie-consent.js"></script>
 <link href="../site_libs/cookie-consent/cookie-consent.css" rel="stylesheet">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
@@ -361,7 +361,7 @@ cookieconsent.run({
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/cleanup-pr-previews.html">cleanup-pr-previews.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-quarto-links.html">check-quarto-links.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -522,7 +522,7 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-quarto-links.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-quarto-links.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-quarto-links.yml</span></a>
   </div>
 </li>
@@ -648,7 +648,7 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/cleanup-pr-previews.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/cleanup-pr-previews.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">cleanup-pr-previews.yml</span></a>
   </div>
 </li>
@@ -790,19 +790,21 @@ cookieconsent.run({
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
+  <li><a href="#why-a-separate-check" id="toc-why-a-separate-check" class="nav-link active" data-scroll-target="#why-a-separate-check">Why a separate check</a></li>
+  <li><a href="#what-it-checks" id="toc-what-it-checks" class="nav-link" data-scroll-target="#what-it-checks">What it checks</a></li>
+  <li><a href="#inputs" id="toc-inputs" class="nav-link" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/cleanup-pr-previews.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-quarto-links.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/cleanup-pr-previews.html">cleanup-pr-previews.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-quarto-links.html">check-quarto-links.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">cleanup-pr-previews.yml</h1>
+<h1 class="title">check-quarto-links.yml</h1>
 </div>
 
 
@@ -819,15 +821,35 @@ cookieconsent.run({
 </header>
 
 
-<p>The housekeeping half of the PR-preview family. On a schedule, it deletes <code>gh-pages</code> preview directories for pull requests that are no longer open.</p>
+<p>Fail when a tracked <code>.qmd</code>, <code>.md</code>, or <code>.Rmd</code> file links to a page that does not exist, such as <code>[Week 6](week-06-logistic-regression.qmd)</code> after that page was renamed.</p>
+<section id="why-a-separate-check" class="level2">
+<h2 class="anchored" data-anchor-id="why-a-separate-check">Why a separate check</h2>
+<p><strong>Quarto does not fail the render.</strong> It prints <code>WARN: Unable to resolve link target: chapters/week-06-logistic-regression.qmd</code> and publishes the page with the dead link, so a green render proves nothing about links between pages.</p>
+<p><strong><a href="../reference/check-links.html"><code>check-links.yml</code></a> does not see them either.</strong> lychee picks a parser by file extension and reads a <code>.qmd</code> as plain text, so it extracts only absolute URLs from one and never checks a relative link. Measured with lychee 0.24.2, the version <code>lycheeverse/lychee-action@v2.9.0</code> installs (2026-09-28): a <code>.qmd</code> holding two dead relative links reports <code>0 Errors</code>, with or without <code>--default-extension md</code>. The same file renamed to <code>.md</code> reports both.</p>
+<p>A render-log alternative already exists: <a href="../reference/preview.html"><code>preview.yml</code></a> and <a href="../reference/quarto-publish.html"><code>quarto-publish.yml</code></a> accept <code>forbid-log-patterns: 'Unable to resolve link target'</code>. This check needs no render, runs in seconds, and names the source file and line rather than the rendered page.</p>
+</section>
+<section id="what-it-checks" class="level2">
+<h2 class="anchored" data-anchor-id="what-it-checks">What it checks</h2>
+<p>Every Markdown inline link (<code>[text](target)</code>, including one whose <code>](</code> falls on the next line), reference definition (<code>[label]: target</code>), and raw HTML <code>href</code> or <code>src</code> in each tracked file matching <code>globs</code>, whose target ends in one of <code>target-extensions</code>. A target resolves from the linking file’s directory, or, when it starts with <code>/</code>, from the Quarto project directory (the nearest ancestor holding <code>_quarto.yml</code>).</p>
+<p>Not checked, by design:</p>
+<ul>
+<li>links inside fenced or indented code blocks (in a blockquote too), code spans, and HTML comments, and escaped brackets (<code>\[text\](x.qmd)</code>); an indented paragraph continuing a list item is prose, and is checked;</li>
+<li>URLs with a scheme (<code>https:</code>, <code>mailto:</code>), <code>//</code> URLs, and <code>#anchor</code>-only links;</li>
+<li>targets built from a shortcode or an inline expression, such as <code>{{&lt; meta &gt;}}</code>;</li>
+<li>a reference definition whose target is on the line after its <code>[label]:</code>;</li>
+<li>whether the <code>#anchor</code> part of a link exists on the target page.</li>
+</ul>
+<p><strong>Included files resolve from the page that includes them.</strong> Quarto splices a <code>{{&lt; include _sub/_part.qmd &gt;}}</code> file into the including page before it resolves links, so a link in <code>_part.qmd</code> is written relative to the page, not to <code>_sub/</code>. That holds however deeply includes nest: everything resolves from the directory of the top-level page being rendered. A link must resolve from every page that renders it, so a subfile shared by pages in two directories is checked from both, and a finding names the directory the target was missing from. A <code>_</code>-prefixed file that nothing includes, such as an outtake kept for reuse, is skipped and named in the log, since Quarto never renders it and there is no page to resolve its links from.</p>
+<p><strong>Whole tree, not the pull request’s diff.</strong> A link that went dead when another pull request renamed its target is still a live defect, and the pull request that renamed the page is the one that did not touch the link.</p>
+</section>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 6%">
-<col style="width: 2%">
-<col style="width: 5%">
-<col style="width: 85%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
+<col style="width: 25%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -839,50 +861,51 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>preview-dir</code></td>
+<td><code>globs</code></td>
 <td>string</td>
-<td><code>'pr-preview'</code></td>
-<td>Directory on <code>gh-pages</code> that holds the per-PR preview subdirectories.</td>
+<td><code>'*.qmd *.md *.Rmd'</code></td>
+<td>Space-separated git pathspecs of tracked source files to scan (recursive).</td>
 </tr>
 <tr class="even">
-<td><code>compact-history</code></td>
+<td><code>target-extensions</code></td>
+<td>string</td>
+<td><code>'.qmd, .md, .Rmd, .ipynb'</code></td>
+<td>Extensions of link targets to verify.</td>
+</tr>
+<tr class="odd">
+<td><code>paths-ignore</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Comma- or newline-separated globs (<code>*</code>, <code>?</code>, <code>**</code>) of source files to skip.</td>
+</tr>
+<tr class="even">
+<td><code>fail</code></td>
 <td>boolean</td>
-<td><code>false</code></td>
-<td>Orphan-squash the <code>gh-pages</code> branch to a single commit after pruning, discarding accumulated preview/publish history to reclaim the space deleted snapshots still occupy. Safe for branch-based Pages (what the preview family uses).</td>
+<td><code>true</code></td>
+<td>Fail the job on a finding (else warn only). The composite reads it fail-closed: only an explicit <code>false</code> opts out.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code> (commit the deletions to <code>gh-pages</code>) and <code>pull-requests: read</code>.</p>
+<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<p>Do not name a <code>concurrency:</code> group <code>gh-pages</code> anywhere in your caller workflow – neither a top-level block nor one on the calling job, which deadlock identically. Any other group name is fine, and is how you serialize the caller’s own runs. <code>cleanup-pr-previews.yml</code> serializes its gh-pages branch modifications with the deploy workflows on its <code>cleanup</code> job (<code>group: gh-pages</code>). A caller-level block with the same group name deadlocks GitHub Actions against the nested job: <code>cleanup</code> fails with no runner, no steps, and no log. This workflow publishes nothing, so the symptom is not a stale site: the deletions never land, and preview directories for closed PRs accumulate on gh-pages (<a href="https://github.com/Morrison-Lab/gha/issues/809">gha#809</a>).</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/cleanup-pr-previews.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Housekeeping half of the PR-preview family: periodically deletes gh-pages</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># preview directories for PRs that are no longer open. The calling job grants</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># contents:write so it can commit the deletions back to gh-pages.</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Clean up PR Previews</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">schedule</span><span class="kw">:</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">cron</span><span class="kw">:</span><span class="at"> </span><span class="st">"0 0 * * 0"</span><span class="co"> # Weekly on Sunday at midnight UTC</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">cleanup</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">pull-requests</span><span class="kw">:</span><span class="at"> read</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/cleanup-pr-previews.yml@v2</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   preview-dir: pr-preview     # gh-pages dir holding the per-PR previews</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   compact-history: true       # orphan-squash gh-pages to one commit after</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # pruning, so deleted snapshots stop bloating</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">    #                               # the repo. Branch-based Pages only.</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/cleanup-pr-previews.yml"><code>examples/cleanup-pr-previews.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check Quarto links</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span><span class="at"> </span><span class="kw">{</span><span class="at"> </span><span class="fu">branches</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">main</span><span class="kw">]</span><span class="at"> </span><span class="kw">}</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-quarto-links.yml@v3</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/'</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="co">    #   target-extensions: '.qmd, .md'</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: false</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <code>check-quarto-links.yml</code> in <a href="https://github.com/Morrison-Lab/gha/tree/main/examples"><code>examples/</code></a> for the full caller stub.</p>
 
 
 </section>
@@ -1303,13 +1326,13 @@ cookieconsent.run({
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/check-equation-renders.html" class="pagination-link" aria-label="check-equation-renders.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-equation-renders.yml</span>
+      <a href="../reference/check-links.html" class="pagination-link" aria-label="check-links.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-links.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/claude.html" class="pagination-link" aria-label="claude.yml">
-        <span class="nav-page-text">claude.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/check-orphaned-images.html" class="pagination-link" aria-label="check-orphaned-images.yml">
+        <span class="nav-page-text">check-orphaned-images.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1321,7 +1344,7 @@ cookieconsent.run({
     </div>   
     <div class="nav-footer-center">
 
-<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/cleanup-pr-previews.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
+<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-quarto-links.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
     <div class="nav-footer-right">
       &nbsp;
     </div>
