@@ -1,0 +1,66 @@
+name: Check merge commits for silently dropped content (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+      globs:
+        description: >-
+          Space-separated git pathspecs whose added lines are checked
+          (recursive by default).
+        type: string
+        default: '*.md *.qmd'
+      paths-ignore:
+        description: >-
+          Comma/newline-separated glob patterns (relative paths) to skip.
+        type: string
+        default: ''
+      min-length:
+        description: >-
+          Minimum normalised line length, in characters, for an added line
+          to be checked; inclusive.
+        type: string
+        default: '20'
+      similarity:
+        description: >-
+          Word-level similarity (0 to 1) at or above which a line in the
+          merge's copy of the same file counts as a rewording of a missing
+          line. '1' reports every line whose exact text is gone.
+        type: string
+        default: '0.6'
+      fail:
+        description: >-
+          Fail the workflow when a merge dropped content (else warn-only).
+          Defaults to false.
+        type: boolean
+        default: false
+
+jobs:
+  check-merge-drops:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, so every merge in the range and its merge base
+          # are present.
+          fetch-depth: 0
+
+      - name: Check merge commits for dropped content
+        uses: Morrison-Lab/gha/check-merge-drops@v3
+        with:
+          python-version: ${{ inputs.python-version }}
+          globs: ${{ inputs.globs }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          min-length: ${{ inputs.min-length }}
+          similarity: ${{ inputs.similarity }}
+          fail: ${{ inputs.fail }}
+          # On PRs, the merges the PR adds; on a push, the merges the push
+          # brought in (an all-zero `before` on a new branch skips).
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || '' }}
