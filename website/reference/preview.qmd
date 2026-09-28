@@ -36,6 +36,7 @@ turn it off for a pure-markdown site.
 | `deployed-branch` | string | `'gh-pages'` | Branch holding the published render to compare against. |
 | `deployed-subdir` | string | `''` | Path prefix, within the deployed branch, at which the published site root lives. Defaults to the branch root. |
 | `changed-chapters-normalize-patterns` | string | `''` | Newline-separated regexes whose matches are blanked before comparison, in addition to the built-in ones (htmlwidget element ids and ISO-8601 datetimes). |
+| `max-elements-for-pairwise` | string | `'500'` | Maximum candidate elements per page for pairwise SequenceMatcher diffing; exceeding this skips element-level diffing to prevent quadratic runtime. |
 | `banner-index` | string | `'index.html'` | Home page the banner is inserted into, relative to the rendered site root. |
 | `docx-tracked-changes` | boolean | `false` | Generate Word DOCX documents with tracked changes against the published version on the deployed branch. |
 | `docx-tracked-changes-glob` | string | `'chapters/*.docx'` | Glob, relative to the rendered site root, selecting the DOCX files to generate tracked changes for. |
@@ -129,6 +130,7 @@ jobs:
     #   banner-index: index.html
     #   changed-chapters-normalize-patterns: |   # blank anything else that changes every render
     #     build-[0-9a-f]+
+    #   max-elements-for-pairwise: '500'   # cap candidate elements to avoid quadratic diffing
     #   docx-tracked-changes: true         # generate Word DOCX with tracked changes against published render
     #   docx-tracked-changes-glob: 'chapters/*.docx'
 ```

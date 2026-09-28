@@ -57,6 +57,7 @@ NEW_INPUTS = (
     "deployed-branch",
     "deployed-subdir",
     "changed-chapters-normalize-patterns",
+    "max-elements-for-pairwise",
     "banner-index",
     "docx-tracked-changes",
     "docx-tracked-changes-glob",
@@ -185,6 +186,7 @@ def test_step_id_matches_the_output_references(steps):
                 "DEPLOYED_BRANCH",
                 "DEPLOYED_SUBDIR",
                 "NORMALIZE_PATTERNS",
+                "MAX_ELEMENTS_FOR_PAIRWISE",
             },
         ),
         (
