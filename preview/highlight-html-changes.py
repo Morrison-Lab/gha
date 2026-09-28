@@ -52,6 +52,7 @@ The three budgets are internal safety nets, not action inputs:
 import difflib
 import html
 import json
+import math
 import os
 import re
 import sys
@@ -85,8 +86,14 @@ ANCHOR_RES = (
 )
 
 COMPARABLE_ELEMENTS = "p|h[1-6]|li|blockquote"
+# The \b is load-bearing. Without it `<p` also matches `<pre ...>`, and since
+# no `</p>` closes a <pre>, the match runs through the code chunk -- and any
+# htmlwidget <script> JSON after it -- to the next real paragraph's </p>.
+# On Morrison-Lab/mds's algebra.html that made one 10 MB "element" (a downlit
+# <pre>, a plotly widget, and the exercise paragraph after them), whose
+# quadratic ratio() never finished (gha#975, mds#10).
 ELEMENT_RE = re.compile(
-    rf"(<(?:{COMPARABLE_ELEMENTS})[^>]*>.*?</(?:{COMPARABLE_ELEMENTS})>)",
+    rf"(<(?:{COMPARABLE_ELEMENTS})\b[^>]*>.*?</(?:{COMPARABLE_ELEMENTS})>)",
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -104,24 +111,24 @@ MAX_ELEMENTS_FOR_PAIRWISE = _get_max_elements_for_pairwise()
 
 
 def _env_float(name, default):
+    """Read a float from the environment, falling back to `default` when the
+    variable is unset, empty, unparsable, or not finite (inf/nan)."""
     raw = os.environ.get(name, "").strip()
     try:
-        return float(raw) if raw else default
+        value = float(raw) if raw else default
     except ValueError:
         return default
+    return value if math.isfinite(value) else default
 
 
 # The element-count cap above does not bound per-element size, and
-# SequenceMatcher.ratio() is quadratic in its inputs' length. ELEMENT_RE is
-# non-greedy but tag-agnostic, so a match opening on a <p> before an
-# htmlwidget runs across the widget's <script> JSON to the next closing tag:
-# on Morrison-Lab/mds's algebra.html (plotly figures) one "element" carried
-# 10 MB of text, and ratio() on that pair never finished. Such an element is
-# not prose, and an over-length one is not something a reader scans for a
-# changed word, so both are left out of the comparison (never highlighted)
+# SequenceMatcher.ratio() is quadratic in its inputs' length. With the \b in
+# ELEMENT_RE, real Quarto elements stay small; as a backstop against whatever
+# markup next slips through, an element that embeds <script>/<style> or whose
+# text is longer than this is left out of the comparison (never highlighted)
 # rather than compared on a truncated prefix or an approximate ratio, which
-# would silently drop real highlights.
-MAX_ELEMENT_TEXT_CHARS = int(_env_float("HIGHLIGHT_MAX_ELEMENT_CHARS", 20000))
+# would silently drop real highlights. Each one is named in the log.
+MAX_ELEMENT_TEXT_CHARS = max(0, int(_env_float("HIGHLIGHT_MAX_ELEMENT_CHARS", 20000)))
 # Last-resort wall-clock bounds, so no pathological page can consume the job.
 PAGE_TIME_BUDGET_SECONDS = _env_float("HIGHLIGHT_PAGE_BUDGET_SECONDS", 60.0)
 TOTAL_TIME_BUDGET_SECONDS = _env_float("HIGHLIGHT_TOTAL_BUDGET_SECONDS", 300.0)
@@ -133,7 +140,15 @@ SCRIPT_STYLE_BLOCK_RE = re.compile(
 
 
 class BudgetExceeded(Exception):
-    """A page's pairwise matching ran past its wall-clock budget."""
+    """A page's pairwise matching ran past its wall-clock budget.
+
+    `skipped` lists the page's elements left out of the comparison, so the
+    caller can still report them.
+    """
+
+    def __init__(self, skipped=()):
+        super().__init__("pairwise matching exceeded its time budget")
+        self.skipped = list(skipped)
 
 
 def _comparable(elem, text):
@@ -142,6 +157,27 @@ def _comparable(elem, text):
         and len(text) <= MAX_ELEMENT_TEXT_CHARS
         and not NON_PROSE_RE.search(elem)
     )
+
+
+def visible_snippet(elem, width=60):
+    """The first `width` characters of an element's reader-visible text,
+    with script/style payloads dropped, for naming it in a log line."""
+    text = TAG_RE.sub(" ", SCRIPT_STYLE_BLOCK_RE.sub(" ", elem))
+    text = " ".join(html.unescape(text).split())
+    return text if len(text) <= width else text[: width - 3] + "..."
+
+
+def report_skipped(relative, skipped):
+    """Emit one notice naming the page and each element left unhighlighted."""
+    if not skipped:
+        return
+    lines = [
+        f"{relative}: left {len(skipped)} element(s) unhighlighted: each embeds "
+        f"<script>/<style> content or exceeds {MAX_ELEMENT_TEXT_CHARS} characters "
+        f"of text (HIGHLIGHT_MAX_ELEMENT_CHARS)"
+    ]
+    lines += [f"  - {snippet!r}" for snippet in skipped]
+    print(annotate("notice", "\n".join(lines)))
 
 
 # Aliased to GitError from substrate
@@ -276,9 +312,11 @@ def highlight_html_diff(old_html, new_html):
 def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
     """Find and highlight changed paragraphs and sections in the HTML.
 
-    Returns (highlighted_html, changes_count, similarity_ratio). Raises
-    BudgetExceeded when pairwise matching is still running at `deadline`
-    (a time.monotonic() value; None means no limit).
+    Returns (highlighted_html, changes_count, similarity_ratio, skipped),
+    where `skipped` lists a visible-text snippet of each element on the new
+    page left out of the comparison. Raises BudgetExceeded (carrying
+    `skipped`) when pairwise matching is still running at `deadline` (a
+    time.monotonic() value; None means no limit).
     """
     old_content = extract_main_content(old_html)
     new_content, start_idx, end_idx = locate_main_content(new_html)
@@ -287,7 +325,7 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
     norm_new = normalize_text(new_content, patterns)
 
     if norm_old == norm_new:
-        return new_html, 0, 1.0
+        return new_html, 0, 1.0, []
 
     # Page similarity over word tokens of the page markup with script/style
     # blocks removed (tag names and attributes still count as tokens; only
@@ -304,11 +342,23 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
     new_matches = list(ELEMENT_RE.finditer(new_content))
 
     old_elem_list = []
-    skipped_elements = 0
     for elem in old_elements:
         text = extract_text_from_element(elem)
         if _comparable(elem, text):
             old_elem_list.append((text, normalize_text(text, patterns), elem))
+
+    # The new page's elements, classified up front so every exit below can
+    # report the skipped ones. Only the new page's are counted: those are
+    # what a preview reader sees, and an unchanged element skipped on both
+    # sides is one element, not two.
+    new_items = []
+    skipped = []
+    for m in new_matches:
+        new_text = extract_text_from_element(m.group(1))
+        if _comparable(m.group(1), new_text):
+            new_items.append((m, new_text))
+        elif new_text:
+            skipped.append(visible_snippet(m.group(1)))
 
     if len(old_elem_list) > MAX_ELEMENTS_FOR_PAIRWISE or len(new_matches) > MAX_ELEMENTS_FOR_PAIRWISE:
         print(
@@ -320,7 +370,7 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
             ),
             file=sys.stderr,
         )
-        return new_html, 0, similarity
+        return new_html, 0, similarity, skipped
 
     used_old_indices = set()
     replacements = []
@@ -336,14 +386,8 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
     for idx, (_, norm_old_elem_text, _) in enumerate(old_elem_list):
         old_indices_by_text.setdefault(norm_old_elem_text, []).append(idx)
 
-    for m in new_matches:
+    for m, new_text in new_items:
         new_elem = m.group(1)
-        new_text = extract_text_from_element(new_elem)
-        if not _comparable(new_elem, new_text):
-            if new_text:
-                skipped_elements += 1
-            continue
-
         norm_new_elem_text = normalize_text(new_text, patterns)
         best_match_idx = None
         best_ratio = 0.0
@@ -369,7 +413,7 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
                 if idx in used_old_indices:
                     continue
                 if deadline is not None and time.monotonic() > deadline:
-                    raise BudgetExceeded
+                    raise BudgetExceeded(skipped)
                 matcher.set_seq1(norm_old_elem_text)
                 if matcher.real_quick_ratio() <= best_ratio:
                     continue
@@ -410,16 +454,8 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
                 )
                 replacements.append((m.start(), m.end(), highlighted_elem))
 
-    if skipped_elements:
-        print(
-            f"  left {skipped_elements} element(s) unhighlighted: they embed "
-            f"<script>/<style> content or exceed {MAX_ELEMENT_TEXT_CHARS} "
-            f"characters of text (HIGHLIGHT_MAX_ELEMENT_CHARS)",
-            file=sys.stderr,
-        )
-
     if not replacements:
-        return new_html, 0, similarity
+        return new_html, 0, similarity, skipped
 
     pieces = []
     cursor = 0
@@ -434,7 +470,7 @@ def highlight_changed_elements(old_html, new_html, patterns, deadline=None):
         new_html[:start_idx] + highlighted_main_content + new_html[end_idx:]
     )
 
-    return highlighted_new_html, len(replacements), similarity
+    return highlighted_new_html, len(replacements), similarity, skipped
 
 
 def render_modified_page_banner(similarity):
@@ -559,10 +595,11 @@ def process_chapters(
 
         deadline = min(time.monotonic() + PAGE_TIME_BUDGET_SECONDS, total_deadline)
         try:
-            highlighted_html, changes_made, similarity = highlight_changed_elements(
+            highlighted_html, changes_made, similarity, skipped = highlight_changed_elements(
                 old_html, new_html, patterns, deadline=deadline
             )
-        except BudgetExceeded:
+        except BudgetExceeded as exceeded:
+            report_skipped(relative.as_posix(), exceeded.skipped)
             print(annotate(
                 "warning",
                 f"Skipping HTML change highlighting for {relative.as_posix()}: "
@@ -571,6 +608,8 @@ def process_chapters(
                 f"HIGHLIGHT_TOTAL_BUDGET_SECONDS={TOTAL_TIME_BUDGET_SECONDS:g})",
             ))
             continue
+
+        report_skipped(relative.as_posix(), skipped)
 
         if changes_made > 0:
             banner = render_modified_page_banner(similarity)

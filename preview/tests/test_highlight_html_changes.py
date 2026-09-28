@@ -464,30 +464,19 @@ def _run_single_page(highlighter, monkeypatch, repo_factory, old_page, new_page)
     return (rendered / "chapters/01.html").read_text(encoding="utf-8")
 
 
-def test_element_spanning_a_widget_script_is_skipped_not_diffed(
-    highlighter, monkeypatch, repo_factory, capsys
-):
-    # ELEMENT_RE is tag-agnostic, so a <p> before an htmlwidget matches across
-    # the widget's <script> JSON to the next closing tag. Diffing that "element"
-    # character by character is quadratic in the JSON's size (Morrison-Lab/mds's
-    # algebra.html: 10 MB, never finished). It must be left out, and the real
-    # edit on the page still highlighted.
-    def page(widget_json, edited):
-        return (
-            "<main>\n"
-            "<p>Before the figure"
-            "<div class=\"html-widget\"><script type=\"application/json\">"
-            + widget_json
-            + "</script></div>\n"
-            "<p>Caption text.</p>\n"
-            + ("<p>The slope is two.</p>\n" if not edited else "<p>The slope is three.</p>\n")
-            + "</main>"
-        )
+def test_edit_after_a_code_chunk_and_widget_is_highlighted(highlighter, monkeypatch, repo_factory):
+    # The real trigger, as Quarto renders it: a downlit code chunk, the
+    # htmlwidget it produces, then a paragraph. Without the word boundary in
+    # ELEMENT_RE, `<p` matched `<pre`, and since no </p> closes a <pre>, one
+    # "element" ran from the <pre> through the widget's <script> JSON to the
+    # paragraph's </p>. Diffing it was quadratic in the JSON (Morrison-Lab/mds's
+    # algebra.html: 10 MB, never finished), and skipping it instead hid the
+    # paragraph's edit. The edit must be highlighted and the widget untouched.
 
     # Near-identical payloads over a wide alphabet: difflib's autojunk
-    # heuristic cannot discard their characters as "popular", so comparing
-    # them is genuinely quadratic (about 8 s for 20000 characters, 130 s for
-    # 50000, measured). Digits-only JSON would be junked and stay fast.
+    # heuristic cannot discard their characters as "popular", so diffing them
+    # is genuinely quadratic (about 8 s for 20000 characters, 130 s for 50000,
+    # measured). Digits-only JSON would be junked and stay fast.
     import random
 
     rnd = random.Random(0)
@@ -498,21 +487,41 @@ def test_element_spanning_a_widget_script_is_skipped_not_diffed(
         chars[i] = "Z"
     new_json = '{"x": "' + "".join(chars) + '"}'
 
-    # No wall-clock assertion: it would flake on a loaded runner. The skip
-    # diagnostic proves the element was left out rather than diffed (the old
-    # code diffed it, taking ~30 s, and printed no such line), and "1" pins
-    # that a widget present on both pages is counted once, not per side.
+    def page(widget_json, question):
+        return (
+            "<main>\n"
+            '<pre class="downlit sourceCode r code-with-copy"><code class="sourceCode r">'
+            "plot_ly(x = ~x)</code></pre>\n"
+            '<div class="html-widget"><script type="application/json" data-for="w1">'
+            + widget_json
+            + "</script></div>\n"
+            "<p>Exercise 2. For a, b and c, " + question + " the identity hold?</p>\n"
+            "</main>"
+        )
+
     result = _run_single_page(
-        highlighter, monkeypatch, repo_factory, page(old_json, False), page(new_json, True)
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        page(old_json, "when does"),
+        page(new_json, "under what conditions does"),
     )
-    assert "left 1 element(s) unhighlighted" in capsys.readouterr().err
+    exercise = result[result.index("<p>Exercise 2"):]
+    exercise = exercise[: exercise.index("</p>")]
+    assert "<mark" in exercise
+    assert "conditions" in exercise
     assert new_json in result
-    assert "preview-text-changed" in result or "preview-text-added" in result
-    widget_start = result.index("<script")
-    assert "<mark" not in result[result.index("Before the figure"):widget_start]
+    # Nothing between the code chunk and the paragraph is marked. (The page
+    # banner inserted after <main> carries <mark> legend swatches of its own.)
+    assert "<mark" not in result[result.index("<pre"): result.index("<p>Exercise 2")]
 
 
-def test_over_length_element_is_not_highlighted(highlighter, monkeypatch, repo_factory):
+def test_element_regex_does_not_match_pre(highlighter):
+    assert highlighter.ELEMENT_RE.match("<pre>code</pre><p>text</p>") is None
+    assert highlighter.ELEMENT_RE.match('<p class="x">text</p>')
+
+
+def test_over_length_element_is_not_highlighted(highlighter, monkeypatch, repo_factory, capsys):
     monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 50)
     long_old = "alpha " * 20
     long_new = "alpha " * 19 + "omega "
@@ -527,6 +536,11 @@ def test_over_length_element_is_not_highlighted(highlighter, monkeypatch, repo_f
     assert "<mark" not in long_line
     short_line = next(line for line in result.splitlines() if "Short" in line)
     assert "<mark" in short_line
+    # One notice, naming the page and the element by its visible text, and
+    # counting the element once although it is over-length on both pages.
+    out = capsys.readouterr().out
+    assert "::notice::chapters/01.html: left 1 element(s) unhighlighted" in out
+    assert "alpha alpha" in out
 
 
 def test_exhausted_time_budget_leaves_page_unhighlighted_with_warning(
@@ -545,3 +559,40 @@ def test_exhausted_time_budget_leaves_page_unhighlighted_with_warning(
     captured = capsys.readouterr()
     assert "exceeded its time budget" in captured.out
     assert "chapters/01.html" in captured.out
+
+
+
+def test_budget_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_factory, capsys):
+    monkeypatch.setattr(highlighter, "PAGE_TIME_BUDGET_SECONDS", -1.0)
+    monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 20)
+    _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>Short original.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+        "<main>\n<p>Short changed.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+    )
+    out = capsys.readouterr().out
+    assert "chapters/01.html: left 1 element(s) unhighlighted" in out
+    assert "exceeded its time budget" in out
+
+
+def test_cap_exit_still_reports_skipped_elements(highlighter, monkeypatch, repo_factory, capsys):
+    monkeypatch.setattr(highlighter, "MAX_ELEMENTS_FOR_PAIRWISE", 1)
+    monkeypatch.setattr(highlighter, "MAX_ELEMENT_TEXT_CHARS", 20)
+    _run_single_page(
+        highlighter,
+        monkeypatch,
+        repo_factory,
+        "<main>\n<p>One a.</p>\n<p>Two a.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+        "<main>\n<p>One b.</p>\n<p>Two b.</p>\n<p>This paragraph is well over twenty characters.</p>\n</main>",
+    )
+    captured = capsys.readouterr()
+    assert "element cap" in captured.err
+    assert "chapters/01.html: left 1 element(s) unhighlighted" in captured.out
+
+
+@pytest.mark.parametrize("value", ["inf", "-inf", "nan", "", "abc"])
+def test_env_float_falls_back_on_non_finite_or_invalid(highlighter, monkeypatch, value):
+    monkeypatch.setenv("HIGHLIGHT_PAGE_BUDGET_SECONDS", value)
+    assert highlighter._env_float("HIGHLIGHT_PAGE_BUDGET_SECONDS", 60.0) == 60.0
