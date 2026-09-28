@@ -28,7 +28,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    uses: Morrison-Lab/gha/.github/workflows/opencode-code-review.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/opencode-code-review.yml@v3
     secrets:
       OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
       SUBMODULES_TOKEN: ${{ secrets.SUBMODULES_TOKEN }}

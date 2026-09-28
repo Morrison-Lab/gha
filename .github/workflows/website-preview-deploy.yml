@@ -21,4 +21,4 @@ jobs:
       contents: write
       pull-requests: write
       actions: read
-    uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/preview-deploy.yml@v3

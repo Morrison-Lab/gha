@@ -19,4 +19,4 @@ jobs:
 
       contents: read
       actions: read
-    uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v2
+    uses: Morrison-Lab/gha/.github/workflows/check-equation-renders.yml@v3
