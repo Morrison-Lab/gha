@@ -1,0 +1,80 @@
+---
+title: "check-math-definitions.yml"
+---
+
+Check for duplicate, divergent, or colliding mathematical definitions
+and theorems across Quarto (`.qmd`) and Markdown (`.md`) files
+and sibling repositories.
+
+In multi-repo textbook and curriculum ecosystems,
+mathematical entities
+(definitions, theorems, lemmas, corollaries,
+propositions, conjectures, exercises)
+are frequently cited or duplicated across books and course repositories.
+`check-math-definitions` scans cross-reference divs (`::: {#def-name}`)
+to enforce cross-document consistency:
+
+1. **Exact ID Divergence:** Flags when the same cross-reference ID
+   (e.g. `#def-variance`) appears in multiple files or repositories
+   with divergent or conflicting mathematical definitions.
+   Identical content is treated as canonical and passes cleanly.
+2. **Conceptual / Title Collisions:** Flags when the same mathematical concept
+   title (e.g. "Variance") is defined under multiple distinct IDs
+   within the same prefix category.
+3. **In-Repo Duplicate IDs:** Flags when the same ID is defined more than once
+   in the same repository.
+
+A single div opts out with a directive comment inside that div,
+on its opening fence line or in its own body:
+
+```markdown
+<!-- check-math-definitions: allow-divergence -->
+<!-- check-math-definitions: opt-out -->
+```
+
+It exempts that div only.
+Other divs in the same file are still checked,
+and a directive inside a nested div exempts the nested div
+rather than the one enclosing it.
+
+A whole file opts out with the separate file-level directive,
+placed anywhere in the file:
+
+```markdown
+<!-- check-math-definitions: ignore-file -->
+```
+
+## Inputs
+
+| Input | Type | Default | Description |
+| --- | --- | --- | --- |
+| `path` | string | `'.'` | Target directory or file path to scan. |
+| `paths` | string | `''` | Comma- or newline-separated list of directories to scan. |
+| `repos` | string | `''` | Comma- or newline-separated list of GitHub repos (`owner/repo`) to clone and scan. |
+| `paths-ignore` | string | `'.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'` | Comma- or newline-separated paths or glob patterns to ignore. |
+| `extensions` | string | `'.qmd, .md, .rmd, .Rmd'` | Comma- or space-separated list of file extensions to check. |
+| `prefixes` | string | `'def, thm, lem, cor, prp, cnj, exr, exm, rem, sol, clm'` | Comma- or space-separated list of div ID prefixes to track. |
+| `check-titles` | boolean | `true` | Whether to flag matching titles with divergent IDs across repositories. |
+| `fail` | boolean | `true` | Whether to fail the workflow if divergence or duplicate IDs are detected. |
+| `python-version` | string | `'3.x'` | Python version to set up. |
+
+## Permissions
+
+Only `contents: read` (the default), so no extra permissions are required.
+
+## Example
+
+```yaml
+name: Check Math Definitions
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  check:
+    uses: Morrison-Lab/gha/.github/workflows/check-math-definitions.yml@v3
+    with:
+      repos: 'Morrison-Lab/rme, Morrison-Lab/pds'
+```
+
+See the [`examples/`](https://github.com/Morrison-Lab/gha/tree/main/examples)
+directory for caller stubs.

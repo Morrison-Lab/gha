@@ -134,6 +134,89 @@ jobs:
           base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || (github.event.before != '0000000000000000000000000000000000000000' && github.event.before || 'HEAD~1') }}
           fail: 'true'
 
+  math-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Run check-math-definitions unit tests
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pytest==9.1.1 pyyaml==6.0.3
+          python3 -m pytest check-math-definitions/tests/ -v
+
+      - name: Prepare runtime test fixtures for composite action
+        shell: bash
+        run: |
+          mkdir -p fixture_math_clean fixture_math_divergent
+          cat << 'EOF' > fixture_math_clean/defs.qmd
+          ::: {#def-sample-mean}
+          #### Sample Mean
+          The sample mean is $\bar{X} = \frac{1}{n} \sum_{i=1}^n X_i$.
+          :::
+          EOF
+
+          cat << 'EOF' > fixture_math_divergent/a.qmd
+          ::: {#def-variance}
+          #### Variance
+          Direct definition: $\operatorname{Var}(X) = \mathbb{E}[(X - \mathbb{E}[X])^2]$.
+          :::
+          EOF
+
+          cat << 'EOF' > fixture_math_divergent/b.qmd
+          ::: {#def-variance}
+          #### Variance
+          Expanded definition via devn macro.
+          :::
+          EOF
+
+      - name: Exercise check-math-definitions on clean control
+        uses: ./check-math-definitions
+        with:
+          path: fixture_math_clean
+          fail: 'true'
+          output-json: math-clean-report.json
+
+      # An exit 0 alone would also pass if the fixture path were silently
+      # skipped, so pin that the one fixture div was actually scanned.
+      - name: Verify clean control scanned the fixture div
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          report = json.load(open("math-clean-report.json", encoding="utf-8"))
+          ids = [d["div_id"] for d in report["divs"]]
+          if report["total_divs"] != 1 or ids != ["def-sample-mean"]:
+              sys.exit(f"Expected exactly def-sample-mean scanned, got {report['total_divs']}: {ids}")
+          if report["findings"]:
+              sys.exit(f"Expected no findings on the clean control, got {report['findings']}")
+          print("Clean control scanned 1 div with 0 findings.")
+          PY
+          rm -f math-clean-report.json
+
+      - name: Verify positive control divergence fixture fails closed
+        shell: bash
+        run: |
+          if python3 check-math-definitions/check_math_definitions.py --path fixture_math_divergent --fail=true; then
+            echo "Expected positive control divergence fixture to exit 1, but got 0" >&2
+            exit 1
+          fi
+          rm -rf fixture_math_clean fixture_math_divergent
+
+      - name: Check math definitions
+        uses: ./check-math-definitions
+        with:
+          python-version: '3.x'
+          path: '.'
+          fail: 'true'
+
+
   # lint-yaml/lint-markdown are brand new, so (like check-phi below) they
   # aren't at the released `@v2` tag their reusable workflows' internal
   # `uses: Morrison-Lab/gha/lint-*@v2` step resolves against yet. Exercise the

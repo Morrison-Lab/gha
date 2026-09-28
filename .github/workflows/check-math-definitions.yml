@@ -1,0 +1,69 @@
+name: Check Math Definitions (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      path:
+        description: Target directory or file path to scan.
+        type: string
+        default: '.'
+      paths:
+        description: Comma- or newline-separated list of directories to scan.
+        type: string
+        default: ''
+      repos:
+        description: Comma- or newline-separated list of GitHub repos (owner/repo) to clone and scan.
+        type: string
+        default: ''
+      paths-ignore:
+        description: Comma- or newline-separated list of paths or glob patterns to ignore.
+        type: string
+        default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .pytest_cache, .venv, venv'
+      extensions:
+        description: Comma- or space-separated list of file extensions to check.
+        type: string
+        default: '.qmd, .md, .rmd, .Rmd'
+      prefixes:
+        description: Comma- or space-separated list of div ID prefixes (e.g. def, thm, lem, cor, prp, cnj, exr).
+        type: string
+        default: 'def, thm, lem, cor, prp, cnj, exr, exm, rem, sol, clm'
+      check-titles:
+        description: Whether to flag matching titles with divergent IDs or content across repositories.
+        type: boolean
+        default: true
+      fail:
+        description: Whether to fail the workflow if divergence or duplicate IDs are detected.
+        type: boolean
+        default: true
+      python-version:
+        description: Python version to set up.
+        type: string
+        default: '3.x'
+    secrets:
+      WORKFLOW_TOKEN:
+        description: Optional GitHub token with read access to private sibling repositories.
+        required: false
+
+jobs:
+  check-math-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check math definitions and theorems
+        uses: Morrison-Lab/gha/check-math-definitions@v3
+        with:
+          path: ${{ inputs.path }}
+          paths: ${{ inputs.paths }}
+          repos: ${{ inputs.repos }}
+          paths-ignore: ${{ inputs.paths-ignore }}
+          extensions: ${{ inputs.extensions }}
+          prefixes: ${{ inputs.prefixes }}
+          check-titles: ${{ inputs.check-titles }}
+          fail: ${{ inputs.fail }}
+          python-version: ${{ inputs.python-version }}
+          github-token: ${{ secrets.WORKFLOW_TOKEN || github.token }}
