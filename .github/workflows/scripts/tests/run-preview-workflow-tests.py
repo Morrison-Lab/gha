@@ -37,6 +37,8 @@ EXPECTED_COMPOSITE_INPUTS = (
     "install-package",
     "setup-chrome",
     "tinytex",
+    "setup-julia",
+    "julia-version",
     "submodules",
     "render-profile",
     "output-dir",

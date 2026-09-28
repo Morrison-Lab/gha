@@ -36,6 +36,8 @@ jobs:
     #   install-package: true              # `R CMD INSTALL <path>` before rendering
     #   setup-chrome: true                 # needed for revealjs / screenshots
     #   tinytex: false                     # install TinyTeX unconditionally (default: label-gated)
+    #   setup-julia: true                  # run {julia} chunks (add any::JuliaCall to r-packages; needs @v3)
+    #   julia-version: '1'
     #   submodules: recursive
     #   render-profile: website
     #   output-dir: docs                   # render to a dir other than _site

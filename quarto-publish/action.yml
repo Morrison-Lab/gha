@@ -41,6 +41,21 @@ inputs:
   tinytex:
     description: Install TinyTeX (needed to render PDF outputs).
     default: 'false'
+  setup-julia:
+    description: >-
+      Install Julia with julia-actions/setup-julia before rendering, for pages
+      that execute `{julia}` chunks. Under knitr those run through the R
+      package JuliaCall, which the caller installs via `r-packages` (or renv);
+      when JuliaCall is installed, its own Julia dependencies (RCall and
+      Suppressor) are set up in a separate step so a failure there is not
+      buried in the render log. Also sets R_LD_LIBRARY_PATH to R's own lib
+      directory for that step and the render, so Julia started by R loads its own
+      libunwind rather than the system one, which segfaults on any Julia
+      exception.
+    default: 'false'
+  julia-version:
+    description: Julia version to install (setup-julia's `version` syntax). Only used when setup-julia is true.
+    default: '1'
   apt-packages:
     description: Extra apt packages to install before rendering (space-separated).
     default: ''
@@ -140,6 +155,46 @@ runs:
         PROJECT_PATH: ${{ inputs.path }}
       run: R CMD INSTALL "$PROJECT_PATH"
 
+    - name: Set up Julia
+      if: inputs.setup-julia == 'true'
+      uses: julia-actions/setup-julia@fa02766e078afaaf09b14210362cee14137e6a32 # v3.0.2
+      with:
+        version: ${{ inputs.julia-version }}
+
+    # R's etc/ldpaths puts the system library directory
+    # (/usr/lib/x86_64-linux-gnu) on LD_LIBRARY_PATH for every R process and
+    # every process R starts. Julia embedded in R, or started from it, then
+    # loads the system libunwind instead of the one Julia bundles, and the
+    # first exception Julia throws, even one it catches, segfaults the
+    # process (exit 139). JuliaCall's dependency install hits that, and so
+    # does its knitr display path, on any chunk line that returns a value.
+    # ldpaths keeps a preset R_LD_LIBRARY_PATH, so setting it to R's own lib
+    # directory drops the system directory. That directory is on the
+    # loader's default path anyway, so this changes only which copy wins.
+    # The render step sets the same value for itself.
+    #
+    # knitr's julia engine calls JuliaCall::julia_setup(), which installs the
+    # Julia packages RCall and Suppressor on first use and then precompiles
+    # them. Doing that here, before the render, gives an install failure its
+    # own step and log instead of surfacing mid-render as a chunk error.
+    # Skipped (with a notice) when JuliaCall is not installed, since a page
+    # could run Julia some other way.
+    - name: Set up JuliaCall and its Julia dependencies
+      if: inputs.setup-julia == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        if command -v R >/dev/null 2>&1; then
+          R_LD_LIBRARY_PATH="$(R RHOME)/lib"
+          export R_LD_LIBRARY_PATH
+        fi
+        if command -v Rscript >/dev/null 2>&1 \
+          && Rscript -e 'quit(status = !requireNamespace("JuliaCall", quietly = TRUE))'; then
+          Rscript -e 'JuliaCall::julia_setup(installJulia = FALSE)'
+        else
+          echo "::notice::setup-julia is true but the R package JuliaCall is not installed, so knitr cannot run {julia} chunks; add it to r-packages (any::JuliaCall) if pages need that."
+        fi
+
     - name: Restore Quarto freeze
       if: inputs.freeze-cache == 'true'
       uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -167,8 +222,14 @@ runs:
         FORMATS: ${{ inputs.formats }}
         FAIL_ON_WARN: ${{ inputs.fail-on-render-warning }}
         FORBID_PATTERNS: ${{ inputs.forbid-log-patterns }}
+        SETUP_JULIA: ${{ inputs.setup-julia }}
       run: |
         set -euo pipefail
+        # See "Set up JuliaCall and its Julia dependencies" for why.
+        if [ "$SETUP_JULIA" = "true" ] && command -v R >/dev/null 2>&1; then
+          R_LD_LIBRARY_PATH="$(R RHOME)/lib"
+          export R_LD_LIBRARY_PATH
+        fi
         PROFILE_ARG=()
         if [ -n "${RENDER_PROFILE:-}" ]; then
           PROFILE_ARG=(--profile "$RENDER_PROFILE")
