@@ -258,7 +258,8 @@ only ever shipped at `@v3`.
   over legacy occurrences reddens nothing.
   `check-informal-definitions/` (Python, gha#970) flags technical concepts
   defined in running prose rather than in formal Quarto definition divs
-  (`::: {#def-...}`). Like `check-typed-output/`, it supports both whole-tree
+  (`::: {#def-...}`).
+  Like `check-typed-output/`, it supports both whole-tree
   and diff-scoped modes, defaulting to whole-tree and warn-only (`fail: false`).
   `check-typos/` (Python wrapping the crate-ci/typos CLI) uses that same
   skip-not-fallback for misspellings: a whole-tree first run would reflag
