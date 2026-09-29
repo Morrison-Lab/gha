@@ -27,8 +27,9 @@ on:
       similarity:
         description: >-
           Word-level similarity (0 to 1) at or above which a line in the
-          merge's copy of the same file counts as a rewording of a missing
-          line. '1' reports every line whose exact text is gone.
+          merge's copy of the same file that is new in the merge counts as
+          a rewording of a missing line. '1' reports every line whose exact
+          text is gone.
         type: string
         default: '0.6'
       fail:

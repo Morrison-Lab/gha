@@ -265,3 +265,114 @@ def test_yaml_defaults_agree_with_the_script(path):
     assert _yaml_default(path, "min-length") == str(cmd._DEFAULT_MIN_LENGTH)
     assert float(_yaml_default(path, "similarity")) == cmd._DEFAULT_SIMILARITY
     assert _yaml_default(path, "fail") == str(cmd._DEFAULT_FAIL).lower()
+
+
+# ── findings from issue #966 ────────────────────────────────────────────────
+
+def test_near_twin_does_not_mask_dropped_line_from_other_branch(tmp_path):
+    """A line from another branch with similar wording must not hide a dropped line."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "chapter.qmd", INTRO)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+
+    _git(tmp_path, "checkout", "-qb", "feature")
+    _write(tmp_path, "chapter.qmd", INTRO + "\nBranch two adds this unique paragraph about topic two here.\n")
+    _git(tmp_path, "commit", "-qam", "branch two")
+
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "chapter.qmd", INTRO + "\nBranch one adds this unique paragraph about topic one here.\n")
+    _git(tmp_path, "commit", "-qam", "branch one")
+
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "main", check=False)
+    # Resolve by keeping branch two's file, dropping branch one's addition:
+    _git(tmp_path, "checkout", "--ours", "chapter.qmd")
+    _commit_merge(tmp_path)
+
+    drops, examined, unreadable = _find(tmp_path, base)
+    assert examined == 1 and unreadable == []
+    assert len(drops) == 1
+    assert "Branch one adds this unique paragraph about topic one here." in drops[0].lines
+
+
+def test_octopus_merge_three_parents_drops_reported(tmp_path):
+    """An octopus merge attributing drops to parents 2 and 3."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "base.qmd", INTRO)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+
+    # Parent 1: adds p1.qmd
+    _git(tmp_path, "checkout", "-qb", "p1")
+    _write(tmp_path, "p1.qmd", "# P1\n\nP1 adds this first paragraph here.\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "p1")
+    p1 = _git(tmp_path, "rev-parse", "HEAD")
+
+    # Parent 2: adds p2.qmd
+    _git(tmp_path, "checkout", "-qb", "p2", base)
+    _write(tmp_path, "p2.qmd", "# P2\n\nP2 adds this second paragraph here.\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "p2")
+    p2 = _git(tmp_path, "rev-parse", "HEAD")
+
+    # Parent 3: adds p3.qmd
+    _git(tmp_path, "checkout", "-qb", "p3", base)
+    _write(tmp_path, "p3.qmd", "# P3\n\nP3 adds this third paragraph here.\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "p3")
+    p3 = _git(tmp_path, "rev-parse", "HEAD")
+
+    # Create octopus merge on p1, merging p2 and p3 but discarding their files
+    _git(tmp_path, "checkout", "-q", "p1")
+    p1_tree = _git(tmp_path, "rev-parse", "p1^{tree}")
+    merge_sha = _git(tmp_path, "commit-tree", p1_tree, "-p", p1, "-p", p2, "-p", p3, "-m", "Octopus merge")
+    _git(tmp_path, "reset", "--hard", merge_sha)
+
+    drops, examined, unreadable = _find(tmp_path, base)
+    assert examined == 1 and unreadable == []
+    assert len(drops) == 2
+    by_parent = {d.parent_index: d for d in drops}
+    assert 2 in by_parent and 3 in by_parent
+    assert by_parent[2].path == "p2.qmd"
+    assert "P2 adds this second paragraph here." in by_parent[2].lines
+    assert by_parent[3].path == "p3.qmd"
+    assert "P3 adds this third paragraph here." in by_parent[3].lines
+
+
+def test_paragraph_split_into_bullets_is_not_reported(tmp_path):
+    """A paragraph split into a bulleted list during merge resolution is not a drop."""
+    _git(tmp_path, "init", "-q", "-b", "main")
+    _write(tmp_path, "chapter.qmd", INTRO)
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    base = _git(tmp_path, "rev-parse", "HEAD")
+
+    _git(tmp_path, "checkout", "-qb", "feature")
+    long_para = "You must check the following items: first the data, second the code, and third the output.\n"
+    _write(tmp_path, "chapter.qmd", INTRO + "\n" + long_para)
+    _git(tmp_path, "commit", "-qam", "add long para")
+
+    _git(tmp_path, "checkout", "-q", "main")
+    _write(tmp_path, "other.md", "# Other\n\nUnrelated main change.\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "main update")
+
+    _git(tmp_path, "checkout", "-q", "feature")
+    _git(tmp_path, "merge", "-q", "--no-commit", "main")
+    # Resolution splits long_para into bullets in chapter.qmd inside the merge:
+    bulleted = (
+        "You must check the following items:\n"
+        "- first the data,\n"
+        "- second the code,\n"
+        "- and third the output.\n"
+    )
+    _write(tmp_path, "chapter.qmd", INTRO + "\n" + bulleted)
+    _commit_merge(tmp_path)
+
+    drops, examined, unreadable = _find(tmp_path, base)
+    assert examined == 1 and unreadable == []
+    assert drops == []

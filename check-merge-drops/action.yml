@@ -5,10 +5,11 @@ description: >-
   base and reports those that appear nowhere in the merge's tree -- the
   signature of a conflict resolved by keeping one side of a whole file.
   Whitespace is normalised and each file is compared as one flattened
-  string, so content moved to another file or rewrapped is not reported;
-  a line reworded by the resolution (a close near-twin in the same file) is
-  not reported either. Warn-only by default: the report goes to the job
-  summary, with one warning annotation per affected merge.
+  string (with line-leading list markers stripped), so content moved to
+  another file, rewrapped, or split into bullet list items is not reported;
+  a line reworded by the resolution (a close near-twin new to the merge in
+  the same file) is not reported either. Warn-only by default: the report
+  goes to the job summary, with one warning annotation per affected merge.
 inputs:
   python-version:
     description: Python version to set up.
@@ -44,9 +45,9 @@ inputs:
   similarity:
     description: >-
       Word-level similarity, 0 to 1, at or above which a line in the merge's
-      copy of the same file counts as a rewording of a missing line, so the
-      missing line is not reported. '1' reports every line whose exact text
-      is gone.
+      copy of the same file that is new in the merge (not present in any parent)
+      counts as a rewording of a missing line, so the missing line is not
+      reported. '1' reports every line whose exact text is gone.
     default: '0.6'
   fail:
     description: >-
