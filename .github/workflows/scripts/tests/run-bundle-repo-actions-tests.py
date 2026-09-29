@@ -74,14 +74,32 @@ def test_bundled_actions():
         for job_name, job_def in jobs.items():
             for step in job_def.get("steps", []):
                 uses = step.get("uses", "")
-                if uses == f"./{cap}":
+                if uses == f"./{cap}" or uses.startswith(f"Morrison-Lab/gha/{cap}@"):
                     step_with = set(step.get("with", {}).keys())
                     undeclared_wf_with = step_with - action_inputs
                     if undeclared_wf_with:
                         failures.append(
                             f"{wf_path} job '{job_name}' step '{step.get('name')}' "
-                            f"passes undeclared inputs to ./{cap}: {undeclared_wf_with}"
+                            f"passes undeclared inputs to {cap}: {undeclared_wf_with}"
                         )
+                    unforwarded_wf_with = action_inputs - step_with
+                    if unforwarded_wf_with:
+                        failures.append(
+                            f"{wf_path} job '{job_name}' step '{step.get('name')}' "
+                            f"does not forward declared inputs to {cap}: {unforwarded_wf_with}"
+                        )
+
+        if cap in ("check-quarto-website", "check-quarto-book", "check-quarto-manuscript"):
+            callee_actions = [
+                step.get("uses", "").split("/")[2].split("@")[0]
+                for step in action_data.get("runs", {}).get("steps", [])
+                if step.get("uses", "").startswith("Morrison-Lab/gha/")
+            ]
+            for required_step in ("check-quarto-links", "check-orphaned-images"):
+                if required_step not in callee_actions:
+                    failures.append(
+                        f"{cap}/action.yml is missing required callee step: {required_step}"
+                    )
 
         # Validate inputs passed by composite action steps to callee actions
         for step in action_data.get("runs", {}).get("steps", []):
