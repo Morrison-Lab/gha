@@ -14,5 +14,6 @@
   `pack-review-payload` and `claude-code-review.yml` forward the unreviewed
   commit count from `compute-incremental-range.sh` through `payload.json` into
   `classify-review-verdict`.
-  This prevents automated clean classifications on rounds that skipped real
-  unreviewed diffs.
+  Both scripts strip fences, blockquotes, HTML comments, and code spans before
+  evaluating no-diff patterns, preventing false positives on quoted diffs,
+  prompt instructions, and self-referential reviews.

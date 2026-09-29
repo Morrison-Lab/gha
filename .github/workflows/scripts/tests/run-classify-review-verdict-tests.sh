@@ -2299,6 +2299,40 @@ run_test "Unreviewed commits (5) with genuine clean review remains clean (gha#96
 The 5 commits cleanly implement the feature and all tests pass." \
 "true" "ready-for-merge" "5"
 
+run_test "Unreviewed commits (5) with 'no new diff' inside code span remains clean (gha#965)" "### Verdict
+
+**Ready for merge**
+
+The 5 commits implement protection when reviews claim \`no new diff\`." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new diff' inside blockquote remains clean (gha#965)" "> No new commits have landed since the prior review.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits address all feedback and pass tests." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new diff' inside fenced code block remains clean (gha#965)" "\`\`\`diff
++ no new diff exists
+\`\`\`
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new content' in ordinary sentence remains clean (gha#965)" "### Verdict
+
+**Ready for merge**
+
+The 5 commits update layout styling; no new content was added to the chapters." \
+"true" "ready-for-merge" "5"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

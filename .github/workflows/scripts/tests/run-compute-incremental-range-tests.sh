@@ -221,6 +221,17 @@ check "skipped payload comment skipped: lists subject-c4" "yes" "$(grep -q 'subj
 check "skipped payload comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 check "skipped payload comment skipped: mandatory requirement mentions 2 unreviewed commit(s)" "yes" "$(grep -q '2 unreviewed commit(s)' <<<"$out" && echo yes || echo no)"
 
+# 15. Comment discussing "no new diff" in code span or blockquote is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nReviewed all changes. The author added protection against `no new diff` claims.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-codespan.json"
+out=$(run_in "$full" "$tmp/comments-codespan.json")
+check "codespan no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "codespan no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
   exit 1

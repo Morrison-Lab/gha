@@ -56,14 +56,117 @@ fi
 # most recent verdict-bearing bot comment that actually reviewed content --
 # excluding rounds that were skipped, restated a prior clean verdict, or
 # declared "no new diff" (gha#965).
-PRIOR=$(jq -r '
-  [ .[]?
-    | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-             and (.body | test("### (Code Review|Verdict)")))
-    | select(.body | test("(?i)(\\bverdict\\b[: \\t*_#-]*\\bskipped\\b|\"verdict\"\\s*:\\s*\"skipped\"|\\b(no\\s+new\\s+diff|no\\s+new\\s+content|no\\s+new\\s+commits|all\\s+(?:content|changes|code).*(?:already\\s+reviewed|reviewed\\s+in\\s+(?:the\\s+)?(?:prior|previous)\\s+round)|reaffirmed.*no\\s+new\\s+findings)\\b)") | not) ]
-  | last | .body // ""
-' "$COMMENTS_FILE" 2>/dev/null \
-  | grep -oE 'Reviewed commit: [0-9a-f]{40}' | tail -1 | awk '{print $3}' || true)
+PRIOR=$(python3 - "$COMMENTS_FILE" << 'EOF' 2>/dev/null || true
+import json
+import re
+import sys
+
+comments_file = sys.argv[1]
+try:
+    with open(comments_file, "r", encoding="utf-8", errors="replace") as f:
+        comments = json.load(f)
+except Exception:
+    sys.exit(0)
+
+if not isinstance(comments, list):
+    sys.exit(0)
+
+_FENCE_OPEN_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})')
+_FENCE_CLOSE_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})[ \t]*$')
+_BLOCKQUOTE_RE = re.compile(r'^[ \t]*>')
+
+def strip_markup(text):
+    out = []
+    fence_char = ""
+    fence_len = 0
+    in_comment = False
+    for line in text.splitlines():
+        if in_comment:
+            idx = line.find("-->")
+            if idx == -1:
+                continue
+            line = line[idx + 3:]
+            in_comment = False
+        if fence_char:
+            m = _FENCE_CLOSE_RE.match(line)
+            if m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len:
+                fence_char = ""
+                fence_len = 0
+            continue
+        m = _FENCE_OPEN_RE.match(line)
+        if m:
+            fence_char, fence_len = m.group(1)[0], len(m.group(1))
+            continue
+        if _BLOCKQUOTE_RE.match(line):
+            continue
+        while True:
+            opener = line.find("<!--")
+            if opener == -1:
+                break
+            closer = line.find("-->", opener + 2)
+            if closer == -1:
+                line = line[:opener]
+                in_comment = True
+                break
+            line = line[:opener] + line[closer + 3:]
+        line = re.sub(r'`[^`\n]+`', ' codespan ', line)
+        out.append(line)
+    return "\n".join(out)
+
+_NO_DIFF_RE = re.compile(
+    r"(?i)\b("
+    r"verdict\b[: \t*_#-]*\bskipped|"
+    r"no\s+new\s+diff|"
+    r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
+    r"no\s+new\s+commits|"
+    r"no\s+substantive\s+(?:logic\s+)?changes|"
+    r"head\s+has\s+not\s+moved|"
+    r"unchanged\s+head|"
+    r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
+    r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round|"
+    r"no\s+commits\s+have\s+landed|"
+    r"reaffirmed.*no\s+new\s+findings"
+    r")\b"
+)
+
+_PAYLOAD_RE = re.compile(r'<!--\s*review-data:\s*(\{.*?\})\s*-->', re.DOTALL)
+_REVIEWED_COMMIT_RE = re.compile(r'Reviewed commit:\s*([0-9a-f]{40})')
+
+prior = ""
+for c in comments:
+    if not isinstance(c, dict):
+        continue
+    user = c.get("user") or {}
+    login = user.get("login") or ""
+    if login not in ("github-actions[bot]", "claude[bot]"):
+        continue
+    body = c.get("body") or ""
+    if not re.search(r'### (Code Review|Verdict)', body):
+        continue
+
+    # Check structured payload verdict
+    pm = _PAYLOAD_RE.search(body)
+    if pm:
+        try:
+            pdata = json.loads(pm.group(1))
+            if pdata.get("verdict", "").strip().upper() == "SKIPPED":
+                continue
+        except Exception:
+            pass
+
+    # Check stripped prose
+    stripped = strip_markup(body)
+    if _NO_DIFF_RE.search(stripped):
+        continue
+
+    matches = _REVIEWED_COMMIT_RE.findall(body)
+    if matches:
+        prior = matches[-1]
+
+if prior:
+    print(prior)
+EOF
+)
 
 HEAD_NOW="${HEAD_PARAM:-$(git rev-parse HEAD 2>/dev/null || true)}"
 

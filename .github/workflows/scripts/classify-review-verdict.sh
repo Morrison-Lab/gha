@@ -46,7 +46,7 @@ text = ""
 _NO_DIFF_RE = re.compile(
     r"(?i)\b("
     r"no\s+new\s+diff|"
-    r"no\s+new\s+content|"
+    r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
     r"no\s+new\s+commits|"
     r"no\s+substantive\s+(?:logic\s+)?changes|"
     r"head\s+has\s+not\s+moved|"
@@ -58,11 +58,19 @@ _NO_DIFF_RE = re.compile(
     r")\b"
 )
 
+def _has_no_diff_claim():
+    if not text:
+        return False
+    # Strip fences, blockquotes, HTML comments, and code spans so quoted diffs,
+    # prompt instructions, or code discussions are never treated as review claims (gha#965).
+    stripped = "\n".join(strip_machine_payloads(strip_code_spans(text.splitlines())))
+    return bool(_NO_DIFF_RE.search(stripped))
+
 def record(clean, slug):
     if unreviewed_commits > 0:
         if slug == "skipped":
             clean, slug = "false", "unreviewed-commits-skipped"
-        elif clean == "true" and text and _NO_DIFF_RE.search(text):
+        elif clean == "true" and _has_no_diff_claim():
             clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
