@@ -16,9 +16,9 @@
   `classify-review-verdict`.
   `classify-review-verdict.sh` compares the review's claimed commit SHA against
   the expected PR head SHA when unreviewed commits exist, structurally failing
-  closed if an older commit was evaluated and exempting matching reviews from
-  fragile prose checks (falling back to verdict-section prose checks when SHA
-  info is absent).
+  closed if an older commit was evaluated, and runs verdict-section no-diff
+  checks even when the commit matches (failing closed if no new diff is claimed
+  on unreviewed commits).
   `compute-incremental-range.sh` checks the full stripped comment body to
   prevent stale comments with pre-verdict no-diff claims from zeroing out the
   unreviewed count.

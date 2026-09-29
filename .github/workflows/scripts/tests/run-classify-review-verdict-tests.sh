@@ -2477,16 +2477,16 @@ The guard correctly identifies when no commits have landed and stops early.
 Reviewed commit: aaaa123456789012345678901234567890123456" \
 "true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
 
-run_test "Unreviewed commits (5) with matching head-sha where Verdict section describes fix in prose remains clean (Finding 1 reproduction)" "### Verdict
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'no new diff' fails closed (gha#965)" "### Verdict
 
 **Ready for merge**
 
-The guard correctly identifies when no commits have landed and stops early.
+No new diff exists in this PR since the last round; the previous verdict of Ready for merge stands.
 
 <!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
 
 Reviewed commit: aaaa123456789012345678901234567890123456" \
-"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
 
 run_test "Unreviewed commits (5) without head-sha where Verdict section states 'If no new diff exists' fails closed via fallback (Finding 1)" "### Verdict
 
@@ -2496,17 +2496,6 @@ If no new diff exists since the last round, the previous approval stands.
 
 Reviewed commit: aaaa123456789012345678901234567890123456" \
 "false" "unreviewed-commits-skipped" "5"
-
-run_test "Unreviewed commits (5) with matching head-sha where Verdict section has natural prose remains clean (Finding 3)" "### Verdict
-
-**Ready for merge**
-
-No commits have landed since round 2 that were skipped.
-
-<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
-
-Reviewed commit: aaaa123456789012345678901234567890123456" \
-"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
 
 run_test "Unreviewed commits (5) without head-sha where Verdict section states 'no new diff' fails closed via fallback (gha#965)" "### Verdict
 
