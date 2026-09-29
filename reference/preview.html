@@ -904,7 +904,7 @@ cookieconsent.run({
 <td><code>setup-julia</code></td>
 <td>boolean</td>
 <td><code>false</code></td>
-<td>Install Julia (<code>julia-actions/setup-julia</code>) before rendering, for pages that execute <code>{julia}</code> chunks; under knitr these run through the R package JuliaCall, so add <code>any::JuliaCall</code> to <code>r-packages</code>. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and <code>R_LD_LIBRARY_PATH</code> is set to R’s own <code>lib</code> directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. <code>@v3</code> and later.</td>
+<td>Install Julia (<code>julia-actions/setup-julia</code>) before rendering, for pages that execute <code>{julia}</code> chunks; under knitr these run through the R package JuliaCall, so add <code>any::JuliaCall</code> to <code>r-packages</code>. The Julia depot is cached between runs via <code>julia-actions/cache</code>. When JuliaCall is installed, its Julia dependencies (RCall, Suppressor) are set up in their own step before the render, and <code>R_LD_LIBRARY_PATH</code> is set to R’s own <code>lib</code> directory so Julia started by R does not load the system libunwind, which segfaults on any Julia exception. <code>@v3</code> and later.</td>
 </tr>
 <tr class="even">
 <td><code>julia-version</code></td>
