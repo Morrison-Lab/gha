@@ -36,6 +36,11 @@ plus manuscript-specific checks:
 - [`check-links.yml`](check-links.qmd):
   lychee link checker across manuscript sections,
   references, and external links
+- [`check-quarto-links.yml`](check-quarto-links.qmd):
+  relative links from `.qmd`/`.md`/`.Rmd` sources to pages that do not exist,
+  which Quarto only warns about and lychee does not read out of a `.qmd`
+- [`check-orphaned-images.yml`](check-orphaned-images.qmd):
+  tracked images that no source file references (warn-only by default)
 - [`check-bibliography-dois.yml`](check-bibliography-dois.qmd):
   validates BibTeX bibliography entries in `.bib` files
 - [`check-equation-renders.yml`](check-equation-renders.qmd):
@@ -85,6 +90,12 @@ Opt out of any specific check by passing its boolean flag as `false`.
 | `check-links` | boolean | `true` | Enable lychee link checker. |
 | `lychee-config` | string | `''` | Path to a custom lychee config file. |
 | `lychee-args` | string | `'--exclude-mail'` | Command-line arguments for lychee. |
+| `check-quarto-links` | boolean | `true` | Enable the check for links to missing Quarto pages; blocking or not follows `fail`. |
+| `quarto-links-paths-ignore` | string | `''` | Globs of source files to skip for the Quarto links check. |
+| `check-orphaned-images` | boolean | `true` | Enable the orphaned-images report. |
+| `orphaned-images-paths-ignore` | string | `''` | Globs of images to skip. |
+| `orphaned-images-base-ref` | string | `''` | Base ref so only images added since it are reported; empty examines every image. |
+| `orphaned-images-fail` | boolean | `false` | Fail on an orphaned image; the report warns only by default, whatever `fail` says. |
 | `check-bibliography-dois` | boolean | `true` | Enable bibliography DOI validation. |
 | `bib-exclude-keys` | string | `''` | BibTeX keys to skip for DOI validation. |
 | `check-equation-renders` | boolean | `true` | Enable equation render validation. |

@@ -3,8 +3,8 @@ description: >-
   Runs the standard check suite for Quarto manuscript repositories (like Morrison-Lab/qmt):
   repository hygiene (junk files, secrets, non-standard characters, semantic line breaks,
   typos, YAML lint, workflow lint, Markdown lint), AI tells, QMD prose linting,
-  lychee link checking across manuscript sections, bibliography DOI validation,
-  and MathJax equation render validation.
+  lychee link checking across manuscript sections, links to missing Quarto pages,
+  orphaned images, bibliography DOI validation, and MathJax equation render validation.
 inputs:
   fail:
     description: Fail the action when any enabled check reports findings.
@@ -111,6 +111,24 @@ inputs:
   lychee-args:
     description: Additional command-line arguments to pass to lychee.
     default: '--exclude-mail'
+  check-quarto-links:
+    description: Fail on relative links from .qmd/.md/.Rmd sources to pages that do not exist (no render needed).
+    default: 'true'
+  quarto-links-paths-ignore:
+    description: Globs of source files to skip for the Quarto links check.
+    default: ''
+  check-orphaned-images:
+    description: Report tracked images that no source file references (warn-only unless orphaned-images-fail is true).
+    default: 'true'
+  orphaned-images-paths-ignore:
+    description: Globs of images to skip for the orphaned-images check.
+    default: ''
+  orphaned-images-base-ref:
+    description: Git ref to diff against so only images added since it are reported; empty examines every image.
+    default: ''
+  orphaned-images-fail:
+    description: Fail when an orphaned image is found (the check warns only by default).
+    default: 'false'
   check-bibliography-dois:
     description: Validate DOIs in BibTeX bibliography files (.bib).
     default: 'true'
@@ -213,6 +231,21 @@ runs:
         lychee-config: ${{ inputs.lychee-config }}
         lychee-args: ${{ inputs.lychee-args }}
         fail: ${{ inputs.fail }}
+
+    - name: Check links to missing Quarto pages
+      if: inputs.check-quarto-links != 'false'
+      uses: Morrison-Lab/gha/check-quarto-links@v3
+      with:
+        paths-ignore: ${{ inputs.quarto-links-paths-ignore }}
+        fail: ${{ inputs.fail }}
+
+    - name: Check for orphaned images
+      if: inputs.check-orphaned-images != 'false'
+      uses: Morrison-Lab/gha/check-orphaned-images@v3
+      with:
+        paths-ignore: ${{ inputs.orphaned-images-paths-ignore }}
+        base-ref: ${{ inputs.orphaned-images-base-ref }}
+        fail: ${{ inputs.orphaned-images-fail }}
 
     - name: Check bibliography DOIs
       if: inputs.check-bibliography-dois != 'false'
