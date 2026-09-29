@@ -167,6 +167,30 @@ on:
         description: Fail when an orphaned image is found (the check warns only by default).
         type: boolean
         default: false
+      check-typed-output:
+        description: Flag typed or faked code output in Quarto sources (warn-only unless typed-output-fail is true).
+        type: boolean
+        default: true
+      typed-output-globs:
+        description: Space-separated git pathspecs of tracked files to check for typed output.
+        type: string
+        default: '*.qmd'
+      typed-output-paths-ignore:
+        description: Patterns to skip for typed output check.
+        type: string
+        default: ''
+      typed-output-diff-scoped:
+        description: Report only typed output findings on lines added since base-ref.
+        type: boolean
+        default: false
+      typed-output-base-ref:
+        description: Git ref to diff against for diff-scoped typed output check.
+        type: string
+        default: ''
+      typed-output-fail:
+        description: Fail when typed output is found (the check warns only by default).
+        type: boolean
+        default: false
       check-bibliography-dois:
         description: Validate DOIs in BibTeX bibliography files (.bib).
         type: boolean
@@ -232,5 +256,11 @@ jobs:
           orphaned-images-paths-ignore: ${{ inputs.orphaned-images-paths-ignore }}
           orphaned-images-base-ref: ${{ inputs.orphaned-images-base-ref }}
           orphaned-images-fail: ${{ inputs.orphaned-images-fail }}
+          check-typed-output: ${{ inputs.check-typed-output }}
+          typed-output-globs: ${{ inputs.typed-output-globs }}
+          typed-output-paths-ignore: ${{ inputs.typed-output-paths-ignore }}
+          typed-output-diff-scoped: ${{ inputs.typed-output-diff-scoped }}
+          typed-output-base-ref: ${{ inputs.typed-output-base-ref }}
+          typed-output-fail: ${{ inputs.typed-output-fail }}
           check-bibliography-dois: ${{ inputs.check-bibliography-dois }}
           bib-exclude-keys: ${{ inputs.bib-exclude-keys }}
