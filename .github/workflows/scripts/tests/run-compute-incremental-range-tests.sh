@@ -254,16 +254,20 @@ out=$(run_in "$full" "$tmp/comments-unquoted-prose.json")
 check "unquoted-prose no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "unquoted-prose no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 18. Comment discussing no-diff in Code Review prose is NOT skipped under verdict scoping (Finding 2 reproduction).
-jq -n --arg c4 "$C4" '[
+# 18. Comment with pre-heading no-diff claim IS skipped (gha#965).
+jq -n --arg c3 "$C3" --arg c4 "$C4" '[
   {
     "user": {"login": "github-actions[bot]"},
-    "body": ("## Code Review\n\nThe new guard correctly detects when no new commits exist since the last round.\n\n### Verdict\nReady for merge\n\nReviewed commit: " + $c4)
+    "body": ("### Verdict\nReady for merge\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("## Code Review\n\nNo new diff exists in this PR since the last round.\n\nReviewed commit: " + $c4)
   }
 ]' > "$tmp/comments-preheading-no-diff.json"
 out=$(run_in "$full" "$tmp/comments-preheading-no-diff.json")
-check "pre-heading prose comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
-check "pre-heading prose comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+check "pre-heading no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "pre-heading no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
 # 19. Comment discussing qualified trigger phrases is NOT skipped (gha#965).
 jq -n --arg c4 "$C4" '[

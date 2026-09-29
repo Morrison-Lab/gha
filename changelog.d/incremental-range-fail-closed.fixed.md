@@ -16,12 +16,15 @@
   `classify-review-verdict`.
   `classify-review-verdict.sh` compares the review's claimed commit SHA against
   the expected PR head SHA when unreviewed commits exist, structurally failing
-  closed if an older commit was evaluated and exempting matching reviews from
-  fragile prose checks (falling back to prose checks when SHA info is absent).
+  closed if an older commit was evaluated, and runs verdict-section no-diff
+  checks even when the commit matches (failing closed if no new diff is claimed
+  on unreviewed commits).
+  `compute-incremental-range.sh` checks the full stripped comment body to
+  prevent stale comments with pre-verdict no-diff claims from zeroing out the
+  unreviewed count.
   Both scripts strip fences, blockquotes, HTML comments, code spans, and
-  quoted strings (single, double, and curly quotes), scope no-diff detection
-  to the verdict section so code review discussions do not trip false-positive
-  skips, and qualify all trigger patterns (including "no new diff",
-  "head has not moved", "no commits have landed", and "already reviewed in the
-  previous round") with determiner and noun lookaround guards so descriptive
-  mentions in plain prose do not trigger false positives.
+  quoted strings (single, double, and curly quotes), and qualify all trigger
+  patterns (including "no new diff", "head has not moved", "no commits have
+  landed", and "already reviewed in the previous round") with determiner and
+  noun lookaround guards so descriptive mentions in plain prose do not trigger
+  false positives.
