@@ -545,6 +545,7 @@ jobs:
           prompt: |
             ${{ steps.gate.outputs.thread_line }}
             Read the thread, perform any requested code changes or analysis, commit your changes if appropriate, and reply to the thread.
+            If you create temporary scratch files or test scripts, write them outside the repository checkout (such as in `$RUNNER_TEMP` or `/tmp`) so they do not pollute the repository.
             ${{ inputs.prompt-addendum }}
 
       - name: Push PR branch if Gemini committed
@@ -556,6 +557,14 @@ jobs:
           BRANCH: ${{ steps.pr_checkout.outputs.branch }}
           STARTING_SHA: ${{ steps.pr_checkout.outputs.starting_sha }}
         run: |
+          # Remove session scratch files and known setup artifacts so they are
+          # never swept into the auto-commit (gha#981, gha#983).
+          find . -name '.tmp_*' -not -path '*/.git/*' 2>/dev/null | while IFS= read -r p; do
+            git checkout HEAD -- "$p" 2>/dev/null || rm -rf "$p" 2>/dev/null || true
+          done
+          for artifact in .github/pkg.lock .github/r-depends.rds; do
+            git checkout HEAD -- "$artifact" 2>/dev/null || rm -rf "$artifact" 2>/dev/null || true
+          done
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "gemini[bot]"
             git config user.email "gemini[bot]@users.noreply.github.com"
@@ -729,6 +738,14 @@ jobs:
           MARK_READY: ${{ inputs.mark-ready-for-review }}
           GEMINI_OUTCOME: ${{ steps.gemini-run.outcome }}
         run: |
+          # Remove session scratch files and known setup artifacts so they are
+          # never swept into the auto-commit (gha#981, gha#983).
+          find . -name '.tmp_*' -not -path '*/.git/*' 2>/dev/null | while IFS= read -r p; do
+            git checkout HEAD -- "$p" 2>/dev/null || rm -rf "$p" 2>/dev/null || true
+          done
+          for artifact in .github/pkg.lock .github/r-depends.rds; do
+            git checkout HEAD -- "$artifact" 2>/dev/null || rm -rf "$artifact" 2>/dev/null || true
+          done
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "gemini[bot]"
             git config user.email "gemini[bot]@users.noreply.github.com"

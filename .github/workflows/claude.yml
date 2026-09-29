@@ -973,6 +973,11 @@ jobs:
             review; a post-step dispatches the dedicated code-review workflow
             instead.
 
+            If you create temporary scratch files or test scripts, write them
+            outside the repository checkout (such as in `$RUNNER_TEMP` or `/tmp`)
+            so they do not pollute the repository.
+
+
             ${{ steps.checkout-ref-repos.outputs.guidance }}
 
             ${{ inputs.prompt-addendum }}
@@ -1031,6 +1036,14 @@ jobs:
           # its config edits, so only residual scratch work is lost.
           for cfg in .claude .mcp.json .claude.json .gitmodules .ripgreprc CLAUDE.md CLAUDE.local.md .husky; do
             git checkout HEAD -- "$cfg" 2>/dev/null || rm -rf "$cfg" 2>/dev/null || true
+          done
+          # Remove session scratch files and known setup artifacts so they are
+          # never swept into the auto-commit (gha#981, gha#983).
+          find . -name '.tmp_*' -not -path '*/.git/*' 2>/dev/null | while IFS= read -r p; do
+            git checkout HEAD -- "$p" 2>/dev/null || rm -rf "$p" 2>/dev/null || true
+          done
+          for artifact in .github/pkg.lock .github/r-depends.rds; do
+            git checkout HEAD -- "$artifact" 2>/dev/null || rm -rf "$artifact" 2>/dev/null || true
           done
           # Sweep changes Claude staged or left untracked but never committed so
           # they aren't dropped (uncommitted edits never advance HEAD, and the
@@ -1468,6 +1481,14 @@ jobs:
           # this does NOT revert restoreConfigFromBase paths first: that restore
           # only runs in PR contexts (there's no base branch on an issue
           # trigger), so config edits here are genuine and must be committed.
+          # Remove session scratch files and known setup artifacts so they are
+          # never swept into the auto-commit (gha#981, gha#983).
+          find . -name '.tmp_*' -not -path '*/.git/*' 2>/dev/null | while IFS= read -r p; do
+            git checkout HEAD -- "$p" 2>/dev/null || rm -rf "$p" 2>/dev/null || true
+          done
+          for artifact in .github/pkg.lock .github/r-depends.rds; do
+            git checkout HEAD -- "$artifact" 2>/dev/null || rm -rf "$artifact" 2>/dev/null || true
+          done
           if [ -n "$(git status --porcelain)" ]; then
             git config user.name "claude[bot]"
             git config user.email "claude[bot]@users.noreply.github.com"
