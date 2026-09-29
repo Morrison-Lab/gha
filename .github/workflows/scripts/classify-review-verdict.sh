@@ -46,19 +46,31 @@ except Exception:
 text = ""
 payload = None
 
-_NO_DIFF_CANDIDATE_RE = re.compile(
-    r"(?i)\b("
-    r"(?:(?P<determiner>a|an|the|this|that|any|such)\s+)?no\s+new\s+diff(?:\s+(?P<noun>claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|check|checks|guard|guards|pattern|patterns|rule|rules|logic|detection|handling|reproduction|finding|findings|observation|observations|skip|skips))?|"
+_DETERMINER_WORDS = r"a|an|the|this|that|any|such|every|each"
+_NOUN_WORDS = (
+    r"claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|"
+    r"check|checks|guard|guards|pattern|patterns|rule|rules|logic|"
+    r"detection|handling|reproduction|finding|findings|observation|observations|"
+    r"skip|skips|phrase|phrases|trigger|triggers|heuristic|heuristics|behavior|"
+    r"scenario|scenarios|discussion|discussions"
+)
+
+_CORE_PATTERNS = (
+    r"verdict\b[: \t*_#-]*\bskipped|"
+    r"no\s+new\s+diff|"
     r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
-    r"no\s+new\s+commits(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
-    r"no\s+substantive\s+(?:logic\s+)?changes(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
+    r"no\s+new\s+commits|"
+    r"no\s+substantive\s+(?:logic\s+)?changes|"
     r"head\s+has\s+not\s+moved|"
-    r"unchanged\s+head(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
+    r"unchanged\s+head|"
     r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
-    r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round|"
+    r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round(?!\s+(?:is|was|are|were)?\s*not\b)|"
     r"no\s+commits\s+have\s+landed|"
     r"reaffirmed.*no\s+new\s+findings"
-    r")\b"
+)
+
+_NO_DIFF_CANDIDATE_RE = re.compile(
+    rf"(?i)\b(?:(?P<determiner>{_DETERMINER_WORDS})\s+)?(?:{_CORE_PATTERNS})(?:\s+(?P<noun>{_NOUN_WORDS}))?\b"
 )
 
 def strip_quoted_strings(src_lines):

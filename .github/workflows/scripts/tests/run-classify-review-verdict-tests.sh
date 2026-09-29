@@ -2473,6 +2473,50 @@ No new diff exists in this PR since the last round; the previous verdict of Read
 Reviewed commit: aaaa123456789012345678901234567890123456" \
 "false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
 
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'already reviewed in previous round' check remains clean" "### Verdict
+
+**Ready for merge**
+
+The already reviewed in the previous round check was verified.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'head has not moved' bug remains clean" "### Verdict
+
+**Ready for merge**
+
+Fixed the head has not moved bug cleanly.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'no commits have landed' case remains clean" "### Verdict
+
+**Ready for merge**
+
+Handled a no commits have landed case properly.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'is not silently skipped' remains clean" "### Verdict
+
+**Ready for merge**
+
+Ensures that content already reviewed in the previous round is not silently skipped again.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

@@ -269,6 +269,17 @@ out=$(run_in "$full" "$tmp/comments-preheading-no-diff.json")
 check "pre-heading no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "pre-heading no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
+# 19. Comment discussing qualified trigger phrases is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("## Code Review\n\nVerified the already reviewed in the previous round check and fixed the head has not moved bug.\n\n### Verdict\nReady for merge\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-qualified-phrases.json"
+out=$(run_in "$full" "$tmp/comments-qualified-phrases.json")
+check "qualified phrases comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "qualified phrases comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
   exit 1
