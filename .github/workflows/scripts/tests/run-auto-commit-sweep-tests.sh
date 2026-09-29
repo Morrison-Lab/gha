@@ -6,16 +6,13 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../../../.." && pwd)"
+purge_script="$repo_root/.github/workflows/scripts/purge-session-scratch.sh"
+action_file="$repo_root/.github/actions/purge-session-scratch/action.yml"
 
 failures=0
 
 cleanup_sweep() {
-  find . -name '.tmp_*' -not -path '*/.git/*' 2>/dev/null | while IFS= read -r p; do
-    git checkout HEAD -- "$p" 2>/dev/null || rm -rf "$p" 2>/dev/null || true
-  done
-  for artifact in .github/pkg.lock .github/r-depends.rds; do
-    git checkout HEAD -- "$artifact" 2>/dev/null || rm -rf "$artifact" 2>/dev/null || true
-  done
+  bash "$purge_script"
 }
 
 # Test 1: Untracked scratch files and setup artifacts are purged
@@ -45,7 +42,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
     exit 1
   fi
 ) || failures=$((failures + 1))
-echo "OK   cleanup_sweep purges untracked scratch files and setup artifacts"
+echo "OK   purge-session-scratch.sh purges untracked scratch files and setup artifacts"
 
 # Test 2: Tracked scratch files and setup artifacts are restored to HEAD, not deleted
 (
@@ -93,25 +90,38 @@ echo "OK   cleanup_sweep purges untracked scratch files and setup artifacts"
     exit 1
   fi
 ) || failures=$((failures + 1))
-echo "OK   cleanup_sweep restores tracked artifacts to HEAD and preserves legitimate edits"
+echo "OK   purge-session-scratch.sh restores tracked artifacts to HEAD and preserves legitimate edits"
 
-# Test 3: Static check: claude.yml and gemini.yml contain the cleanup block at all auto-commit sites
+# Test 3: Static check: composite action exists and delegates to purge-session-scratch.sh
+if [ ! -f "$action_file" ]; then
+  echo "::error::missing composite action file: $action_file"
+  failures=$((failures + 1))
+else
+  if grep -q "using:[[:space:]]*composite" "$action_file" && grep -q "purge-session-scratch.sh" "$action_file"; then
+    echo "OK   purge-session-scratch composite action is declared and calls purge-session-scratch.sh"
+  else
+    echo "::error::purge-session-scratch action.yml does not define composite using purge-session-scratch.sh"
+    failures=$((failures + 1))
+  fi
+fi
+
+# Test 4: Static check: claude.yml and gemini.yml invoke purge-session-scratch composite action at all 4 auto-commit sites
 claude_yml="$repo_root/.github/workflows/claude.yml"
 gemini_yml="$repo_root/.github/workflows/gemini.yml"
 
-claude_count=$(grep -c "find . -name '.tmp_\*'" "$claude_yml" || true)
+claude_count=$(grep -c "actions/purge-session-scratch@v3" "$claude_yml" || true)
 if [ "$claude_count" -eq 2 ]; then
-  echo "OK   claude.yml contains scratch cleanup in both PR and issue auto-commit steps"
+  echo "OK   claude.yml invokes purge-session-scratch composite action in both PR and issue auto-commit steps"
 else
-  echo "::error::claude.yml expected 2 cleanup blocks, found $claude_count"
+  echo "::error::claude.yml expected 2 purge-session-scratch steps, found $claude_count"
   failures=$((failures + 1))
 fi
 
-gemini_count=$(grep -c "find . -name '.tmp_\*'" "$gemini_yml" || true)
+gemini_count=$(grep -c "actions/purge-session-scratch@v3" "$gemini_yml" || true)
 if [ "$gemini_count" -eq 2 ]; then
-  echo "OK   gemini.yml contains scratch cleanup in both PR and issue auto-commit steps"
+  echo "OK   gemini.yml invokes purge-session-scratch composite action in both PR and issue auto-commit steps"
 else
-  echo "::error::gemini.yml expected 2 cleanup blocks, found $gemini_count"
+  echo "::error::gemini.yml expected 2 purge-session-scratch steps, found $gemini_count"
   failures=$((failures + 1))
 fi
 
