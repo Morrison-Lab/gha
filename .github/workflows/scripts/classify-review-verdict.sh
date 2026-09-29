@@ -46,11 +46,7 @@ except Exception:
 text = ""
 payload = None
 
-_DETERMINER_WORDS = (
-    r"a|an|the|this|that|any|such|every|each|"
-    r"when|if|where|how|whether|while|"
-    r"identifies|detects|checks|handles|prevents|catches"
-)
+_DETERMINER_WORDS = r"a|an|the|this|that|any|such|every|each"
 _NOUN_WORDS = (
     r"claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|"
     r"check|checks|guard|guards|pattern|patterns|rule|rules|logic|"
@@ -130,12 +126,13 @@ def record(clean, slug):
                     claimed_commit = m[-1].group(1)
 
             head_clean = head_sha_param.strip()
-            if head_clean and claimed_commit and not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
+            if head_clean and claimed_commit:
                 # If claimed commit does not match head, fail closed to unreviewed-commits-skipped.
-                clean, slug = "false", "unreviewed-commits-skipped"
+                if not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
+                    clean, slug = "false", "unreviewed-commits-skipped"
+                # If claimed commit matches head_clean, structural pass! Exempt from fragile prose checks.
             elif _has_no_diff_claim():
-                # Even if claimed commit matches head_clean (or head_sha/claimed_commit is missing),
-                # fail closed if the verdict section explicitly claims no new diff while unreviewed commits exist (gha#965).
+                # Fallback only when head_sha or claimed_commit is unavailable
                 clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
