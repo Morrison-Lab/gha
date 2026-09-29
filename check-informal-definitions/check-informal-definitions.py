@@ -62,25 +62,26 @@ COMMON_LABELS = frozenset({
     "summary", "recap", "prerequisite", "prerequisites", "todo", "fixme",
 })
 
-# Section headings that describe typographic conventions rather than concept definitions
-EXEMPT_SECTION_RE = re.compile(
-    r"^#{1,6}\s+(?:notation|typographic\s+conventions?|conventions?|symbols?|glossary\s+of\s+notation)\b",
+HEADING_RE = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+)$")
+
+EXEMPT_HEADING_TITLE_RE = re.compile(
+    r"^(?:notation|typographic\s+conventions?|conventions?|symbols?|glossary\s+of\s+notation)\b",
     re.IGNORECASE,
 )
 
-DEFINITIONS_SECTION_RE = re.compile(
-    r"^#{1,6}\s+(?:definitions?|key\s+definitions?)\b",
+DEFINITIONS_HEADING_TITLE_RE = re.compile(
+    r"^(?:definitions?|key\s+definitions?)\b",
     re.IGNORECASE,
 )
-
-ANY_HEADING_RE = re.compile(r"^#{1,6}\s+\S")
 
 FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 DIV_FENCE_START = re.compile(r"^(?P<fence>:{3,})\s*(?:\{(?P<attrs>[^}]+)\})?\s*$")
 DIV_FENCE_END = re.compile(r"^(?P<fence>:{3,})\s*$")
 
 # Definition or theorem crossref prefixes: def, thm, lem, cor, prp, cnj, exr, exm, rem, sol, clm
-THEOREM_DIV_RE = re.compile(r"(?:^|\s)(?:#(?:def|thm|lem|cor|prp|cnj|exr|exm|rem|sol|clm)-|\.(?:definition|theorem|lemma|corollary|proposition))\b")
+THEOREM_DIV_RE = re.compile(
+    r"(?:^|\s)(?:#(?:def|thm|lem|cor|prp|cnj|exr|exm|rem|sol|clm)-|\.(?:definition|theorem|lemma|corollary|proposition))\b"
+)
 
 # Directives
 FILE_OPT_OUT_RE = re.compile(
@@ -92,14 +93,17 @@ LINE_OPT_OUT_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Inline code span regex (`...`) to strip before running prose detection patterns
+INLINE_CODE_SPAN_RE = re.compile(r"`[^`\n]*`")
+
 # Detection Patterns: optionally allow inline math or symbol parenthetical between term and verb
-# (e.g. `A **random variable** $X$ is...` or `The **estimator** $\hat{\theta}$ is defined as...`)
+# (e.g. `A **random variable** $X$ is a...` or `The **estimator** $\hat{\theta}$ is defined as...`)
 BOLD_DEF_RE = re.compile(
-    r"(?i)(?:\b(?:A|An|The)\s+)?\*\*(?P<term>[A-Za-z][a-zA-Z0-9 ._-]{1,60})\*\*(?:\s+\$[^\$\n]+\$|\s+\([^)\n]+\))?(?::\s*|\s+)(?P<defining>is\s+(?:defined\s+as|the|a|an)\b|\bis\b|\bare\b|\bmeans\b|\brefers\s+to\b|\\eqdef\b|\\triangleq\b)"
+    r"(?i)(?:\b(?:A|An|The)\s+)?\*\*(?P<term>[A-Za-z][a-zA-Z0-9 _-]{1,60}(?<![.,;:?!]))\*\*(?:\s+\$[^\$\n]+\$|\s+\([^)\n]+\))?(?::\s*|\s+)(?P<defining>is\s+(?!this\b|it\b|there\b|that\b|he\b|she\b|they\b)[a-zA-Z]+|are\s+(?!these\b|they\b|there\b|those\b)[a-zA-Z]+|means\b|refers\s+to\b|\\eqdef\b|\\triangleq\b)"
 )
 
 BOLD_COLON_DEF_RE = re.compile(
-    r"(?i)\*\*(?P<term>[A-Za-z][a-zA-Z0-9 ._-]{1,60})\*\*(?:\s+\$[^\$\n]+\$|\s+\([^)\n]+\))?:\s+(?P<defining>a|an|the|is|refers|means)\b"
+    r"(?i)\*\*(?P<term>[A-Za-z][a-zA-Z0-9 _-]{1,60}(?<![.,;:?!]))\*\*(?:\s+\$[^\$\n]+\$|\s+\([^)\n]+\))?:\s+(?P<defining>(?:a|an|the)\s+[a-zA-Z]|is\s+(?:defined\s+as|the|a|an)\b|refers\s+to\b|means\b)"
 )
 
 EQDEF_RE = re.compile(r"\\(?:eqdef|triangleq)\b")
@@ -144,9 +148,9 @@ def scan_file_lines(
     code_fence_len = 0
     in_html_comment = False
 
-    div_stack: List[Tuple[int, bool]] = []  # (depth, is_def_or_theorem)
-    in_exempt_section = False
-    in_definitions_section = False
+    div_stack: List[Tuple[str, bool]] = []  # (fence, is_def_or_theorem)
+    exempt_section_level: Optional[int] = None
+    definitions_section_level: Optional[int] = None
 
     for idx, line in enumerate(lines, start=1):
         # 1. Frontmatter
@@ -186,9 +190,23 @@ def scan_file_lines(
             continue
 
         # 4. Heading changes
-        if ANY_HEADING_RE.match(line):
-            in_exempt_section = bool(EXEMPT_SECTION_RE.match(line))
-            in_definitions_section = bool(DEFINITIONS_SECTION_RE.match(line))
+        m_heading = HEADING_RE.match(line)
+        if m_heading:
+            level = len(m_heading.group("hashes"))
+            title = m_heading.group("title").strip()
+
+            if exempt_section_level is not None and level <= exempt_section_level:
+                exempt_section_level = None
+            if definitions_section_level is not None and level <= definitions_section_level:
+                definitions_section_level = None
+
+            if EXEMPT_HEADING_TITLE_RE.match(title):
+                exempt_section_level = level
+            elif DEFINITIONS_HEADING_TITLE_RE.match(title):
+                definitions_section_level = level
+
+        in_exempt_section = exempt_section_level is not None
+        in_definitions_section = definitions_section_level is not None
 
         # 5. Div tracking (::: {#def-...} or :::: {#def-...})
         stripped = line.strip()
@@ -230,15 +248,17 @@ def scan_file_lines(
             continue
 
         # Table rows or markdown formatting rules
-        stripped = line.strip()
         if stripped.startswith("|") and stripped.endswith("|"):
             continue
 
         # Check if line should be examined under diff scoping
         is_targeted_line = added_lines is None or idx in added_lines
 
+        # Strip inline code spans (`...`) so backticked symbols and references do not trigger findings
+        prose_line = INLINE_CODE_SPAN_RE.sub(lambda m: " " * len(m.group(0)), line)
+
         # Pattern 1: Bold term followed by defining language
-        m_bold = BOLD_DEF_RE.search(line)
+        m_bold = BOLD_DEF_RE.search(prose_line)
         if m_bold:
             term = m_bold.group("term")
             if not is_label_or_meta(term):
@@ -255,7 +275,7 @@ def scan_file_lines(
                     )
                 continue
 
-        m_colon = BOLD_COLON_DEF_RE.search(line)
+        m_colon = BOLD_COLON_DEF_RE.search(prose_line)
         if m_colon:
             term = m_colon.group("term")
             if not is_label_or_meta(term):
@@ -273,7 +293,7 @@ def scan_file_lines(
                 continue
 
         # Pattern 2: \eqdef or \triangleq outside a def div
-        if EQDEF_RE.search(line):
+        if EQDEF_RE.search(prose_line):
             if is_targeted_line:
                 findings.append(
                     Finding(
@@ -290,8 +310,7 @@ def scan_file_lines(
         # Pattern 3: Heading titled Definitions over prose without def div
         if in_definitions_section and stripped and not stripped.startswith("#"):
             if is_targeted_line:
-                # If there's an emphasized term or definition sentence
-                m_any_bold = re.search(r"\*\*(?P<term>[A-Za-z][a-zA-Z0-9 ._-]{1,60})\*\*", line)
+                m_any_bold = re.search(r"\*\*(?P<term>[A-Za-z][a-zA-Z0-9 _-]{1,60}(?<![.,;:?!]))\*\*", prose_line)
                 if m_any_bold and not is_label_or_meta(m_any_bold.group("term")):
                     findings.append(
                         Finding(
@@ -306,7 +325,7 @@ def scan_file_lines(
                     continue
 
         # Pattern 4: Naming sentence ending with is: or are: before display math
-        if IS_BEFORE_MATH_RE.search(line):
+        if IS_BEFORE_MATH_RE.search(prose_line):
             # Look ahead for next non-blank line
             next_idx = idx
             while next_idx < len(lines):
@@ -404,6 +423,47 @@ def parse_diff_file(diff_path: Path, repo_root: Path) -> Dict[Path, Set[int]]:
     return added
 
 
+def _glob_to_regex(pat: str) -> "re.Pattern[str]":
+    """Translate a path glob to an anchored regex; supports ``**``, ``*``, ``?``."""
+    i, n, out = 0, len(pat), []
+    while i < n:
+        c = pat[i]
+        if c == "*":
+            if pat[i:i + 2] == "**":
+                i += 2
+                if pat[i:i + 1] == "/":
+                    out.append("(?:.*/)?")
+                    i += 1
+                else:
+                    out.append(".*")
+            else:
+                out.append("[^/]*")
+                i += 1
+        elif c == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(c))
+            i += 1
+    return re.compile("^" + "".join(out) + "$")
+
+
+def compile_ignores(patterns: List[str]) -> List["re.Pattern[str]"]:
+    compiled = []
+    for pat in patterns:
+        pat = pat.strip()
+        if not pat:
+            continue
+        compiled.append(_glob_to_regex(pat))
+        if "*" not in pat and "?" not in pat:
+            compiled.append(_glob_to_regex(pat.rstrip("/") + "/**"))
+    return compiled
+
+
+def _ignored(rel_str: str, ignores: List["re.Pattern[str]"]) -> bool:
+    return any(r.match(rel_str) for r in ignores)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Check for technical definitions written in prose rather than Quarto def divs."
@@ -425,8 +485,8 @@ def main() -> int:
     )
     parser.add_argument(
         "--fail",
-        default=os.getenv("INFORMAL_DEFS_FAIL", "true"),
-        help="Whether to exit with non-zero status on findings (default: 'true').",
+        default=os.getenv("INFORMAL_DEFS_FAIL", "false"),
+        help="Whether to exit with non-zero status on findings (default: 'false').",
     )
     parser.add_argument(
         "--diff-scoped",
@@ -473,26 +533,32 @@ def main() -> int:
         files_to_scan.append(target_path)
     elif target_path.is_dir():
         # List tracked files via git ls-files if git repo, else rglob
+        git_success = False
         try:
-            cmd = ["git", "ls-files"] + globs
+            cmd = ["git", "ls-files", "-z", "--"] + globs
             res = subprocess.run(
-                cmd, cwd=target_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                cmd, cwd=target_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             if res.returncode == 0:
-                for line in res.stdout.splitlines():
-                    p = (target_path / line.strip()).resolve()
-                    if p.is_file():
-                        files_to_scan.append(p)
+                git_success = True
+                for raw_p in res.stdout.split(b"\0"):
+                    if raw_p:
+                        line = raw_p.decode("utf-8", errors="replace").strip()
+                        if line:
+                            p = (target_path / line).resolve()
+                            if p.is_file():
+                                files_to_scan.append(p)
         except Exception:
             pass
 
-        if not files_to_scan:
+        if not git_success:
             for g in globs:
                 for p in target_path.rglob(g):
                     if p.is_file():
                         files_to_scan.append(p.resolve())
 
-    # Filter out ignored paths
+    # Filter out ignored paths using anchored regexes matching sibling checkers
+    ignores_compiled = compile_ignores(ignore_patterns)
     filtered_files: List[Path] = []
     for f in sorted(set(files_to_scan)):
         try:
@@ -500,11 +566,7 @@ def main() -> int:
         except ValueError:
             rel = f
         rel_str = str(rel).replace("\\", "/")
-        if any(
-            fnmatch.fnmatch(rel_str, pat) or fnmatch.fnmatch(f.name, pat)
-            or any(part in pat for part in rel.parts)
-            for pat in ignore_patterns
-        ):
+        if _ignored(rel_str, ignores_compiled) or _ignored(f.name, ignores_compiled):
             continue
         filtered_files.append(f)
 

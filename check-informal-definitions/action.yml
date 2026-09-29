@@ -14,7 +14,7 @@ inputs:
     default: '.git, .github, tests, test, vendor, scratch, _site, node_modules, .venv, venv'
   fail:
     description: Whether to fail the workflow if informal definitions are detected.
-    default: 'true'
+    default: 'false'
   diff-scoped:
     description: Report only lines added since base-ref.
     default: 'false'

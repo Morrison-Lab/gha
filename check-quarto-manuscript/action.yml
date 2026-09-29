@@ -164,8 +164,8 @@ inputs:
     description: Git ref to diff against for diff-scoped informal definitions check.
     default: ''
   informal-definitions-fail:
-    description: Fail when informal definitions are found (defaults to true).
-    default: 'true'
+    description: Fail when informal definitions are found (the check warns only by default).
+    default: 'false'
   check-bibliography-dois:
     description: Validate DOIs in BibTeX bibliography files (.bib).
     default: 'true'

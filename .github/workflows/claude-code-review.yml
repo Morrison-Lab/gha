@@ -967,7 +967,7 @@ jobs:
             [length limits](https://ucd-serg.github.io/lab-manual/coding-practices.html#function-length-limits),
             testing requirements, the QA checklist, documentation, `{here}`
             for paths, and tidyverse idioms.
-          - [Quarto definitions checklist](https://ucd-serg.github.io/lab-manual/) —
+          - [Quarto definitions checklist](https://github.com/Morrison-Lab/ai-config/blob/main/shared/writing/informal-definitions.md) —
             every technical concept or definition introduced in content or
             manuscript repositories must be enclosed in a formal Quarto
             definition div (`::: {#def-...}`) rather than informal running prose,

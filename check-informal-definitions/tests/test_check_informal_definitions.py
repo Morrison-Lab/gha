@@ -310,3 +310,73 @@ The **estimator** $\\hat{\\theta}$ is defined as the sample mean.
     assert "random variable" in terms
     assert "estimator" in terms
     assert "Confidence interval" in terms
+
+
+def test_inline_code_spans_with_eqdef_or_defining_language_not_flagged():
+    # Finding 2 reproduction: documentation referencing `\eqdef` or `is defined as` in backticks
+    content = """
+# Reference Doc
+
+The check flags:
+- `\\eqdef` or `\\triangleq` used in inline or display math outside a def div.
+- A bold term followed by `is defined as` outside a def div.
+"""
+    findings = scan_file_lines(Path("ref.qmd"), content.splitlines())
+    assert len(findings) == 0
+
+
+def test_nested_subsection_under_notation_remains_exempt():
+    # Finding 6 reproduction: subsection under Notation remains exempt
+    content = """
+### Notation
+
+#### Vectors and Matrices
+
+We let **v** denote a column vector.
+**M** is a symmetric matrix.
+
+### Methods
+
+A **stochastic process** is a collection of random variables.
+"""
+    findings = scan_file_lines(Path("test.qmd"), content.splitlines())
+    assert len(findings) == 1
+    assert findings[0].term == "stochastic process"
+
+
+def test_nested_subsection_under_definitions_remains_in_definitions_scope():
+    content = """
+### Definitions
+
+#### Basic Terms
+
+**State space** of the Markov chain.
+
+### Next Section
+
+**State space** of the Markov chain.
+"""
+    findings = scan_file_lines(Path("test.qmd"), content.splitlines())
+    # The one under Definitions/Basic Terms is flagged by definitions-section-prose;
+    # the one under Next Section is not under definitions section and has no defining verb
+    assert len(findings) == 1
+    assert findings[0].rule == "definitions-section-prose"
+
+
+def test_non_definition_question_with_is_this_not_flagged():
+    content = """
+- **Strategic correctness.** Is this the right algorithm or design for the problem?
+- **Performance.** Is there any memory leak?
+"""
+    findings = scan_file_lines(Path("test.qmd"), content.splitlines())
+    assert len(findings) == 0
+
+
+def test_compile_ignores_and_matching():
+    # Finding 7 reproduction: anchored ignore matching
+    ignores = check_defs.compile_ignores(["tests", "vendor/**", "_site"])
+    assert check_defs._ignored("tests/foo.qmd", ignores)
+    assert check_defs._ignored("vendor/lib/doc.qmd", ignores)
+    assert check_defs._ignored("_site/index.qmd", ignores)
+    assert not check_defs._ignored("content/test-page.qmd", ignores)
+    assert not check_defs._ignored("scratch-notes.qmd", ignores)

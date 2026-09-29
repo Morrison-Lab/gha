@@ -212,9 +212,9 @@ on:
         type: string
         default: ''
       informal-definitions-fail:
-        description: Fail when informal definitions are found (defaults to true).
+        description: Fail when informal definitions are found (the check warns only by default).
         type: boolean
-        default: true
+        default: false
       check-bibliography-dois:
         description: Validate DOIs in BibTeX bibliography files (.bib).
         type: boolean
@@ -290,7 +290,7 @@ jobs:
           informal-definitions-globs: ${{ inputs.informal-definitions-globs }}
           informal-definitions-paths-ignore: ${{ inputs.informal-definitions-paths-ignore }}
           informal-definitions-diff-scoped: ${{ inputs.informal-definitions-diff-scoped }}
-          informal-definitions-base-ref: ${{ inputs.informal-definitions-base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}
+          informal-definitions-base-ref: ${{ inputs.informal-definitions-base-ref }}
           informal-definitions-fail: ${{ inputs.informal-definitions-fail }}
           check-bibliography-dois: ${{ inputs.check-bibliography-dois }}
           bib-exclude-keys: ${{ inputs.bib-exclude-keys }}

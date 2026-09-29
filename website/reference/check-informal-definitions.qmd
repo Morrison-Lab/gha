@@ -2,9 +2,12 @@
 title: "check-informal-definitions.yml"
 ---
 
-Flags technical concepts defined in running prose rather than inside formal Quarto definition divs (`::: {#def-...}`).
-In content repositories (such as Quarto books and sites using theorem-type cross-reference divs),
-technical concepts must be formally defined in dedicated theorem divs (`::: {#def-...}`),
+Flags technical concepts defined in running prose
+rather than inside formal Quarto definition divs (`::: {#def-...}`).
+In content repositories
+(such as Quarto books and sites using theorem-type cross-reference divs),
+technical concepts must be formally defined
+in dedicated theorem divs (`::: {#def-...}`),
 never left in running prose.
 Concepts defined only in prose lack stable cross-reference IDs,
 cannot be cited downstream,
@@ -14,7 +17,8 @@ and escape cross-repository consistency audits.
 The check flags:
 
 - **Bold terms followed by defining language.**
-  A bolded term followed by "is", "are", "means", "refers to", "is defined as", `\eqdef`, or `\triangleq`
+  A bolded term followed by "is", "are", "means", "refers to",
+  "is defined as", `\eqdef`, or `\triangleq`
   outside a formal `::: {#def-...}` (or sibling theorem) div.
 - **Mathematical definition operators outside def divs.**
   `\eqdef` or `\triangleq` used in inline or display math outside a def div.
@@ -22,7 +26,8 @@ The check flags:
   Prose paragraphs or bolded terms directly under a heading titled "Definitions"
   that are not wrapped in formal def divs.
 - **Naming sentences before display math.**
-  Sentences ending in "is:" or "are:" immediately preceding display math (`$$...$$`)
+  Sentences ending in "is:" or "are:"
+  immediately preceding display math (`$$...$$`)
   outside a def div.
 
 Sections titled "Notation", "Typographic Conventions", or "Symbols" are
@@ -30,7 +35,9 @@ recognized as notation guides and exempt from definition requirements.
 
 Individual lines or files can opt out using directive comments:
 
-- Line or block level: `<!-- check-informal-definitions: allow -->` or `<!-- check-informal-definitions: ignore -->`
+- Line or block level:
+  `<!-- check-informal-definitions: allow -->` or
+  `<!-- check-informal-definitions: ignore -->`
 - File level: `<!-- check-informal-definitions: ignore-file -->`
 
 ## Inputs
@@ -40,7 +47,7 @@ Individual lines or files can opt out using directive comments:
 | `path`             | string  | `'.'`                                                                                  | Target directory or file path to scan. |
 | `globs`            | string  | `'*.qmd'`                                                                              | Space-separated file globs to check. |
 | `paths-ignore`     | string  | `'.git, .github, tests, test, vendor, scratch, _site, node_modules, .venv, venv'`     | Comma- or newline-separated paths or glob patterns to ignore. |
-| `fail`             | boolean | `true`                                                                                 | Whether to fail the workflow if informal definitions are detected. |
+| `fail`             | boolean | `false`                                                                                | Whether to fail the workflow if informal definitions are detected (warn-only by default). |
 | `diff-scoped`      | boolean | `false`                                                                                | Report only lines added since base-ref. |
 | `base-ref`         | string  | `''`                                                                                   | Git ref/SHA to diff against when diff-scoped is true. |
 | `diff`             | string  | `''`                                                                                   | Path to unified diff file to scan added lines from. |
@@ -74,7 +81,7 @@ jobs:
     # with:
     #   globs: '*.qmd'                         # pathspecs to check (recursive)
     #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths
-    #   fail: true                             # block instead of warn (defaults to true)
+    #   fail: true                             # block instead of warn (warn-only by default)
     #   diff-scoped: true                      # report only lines a PR adds
 ```
 
