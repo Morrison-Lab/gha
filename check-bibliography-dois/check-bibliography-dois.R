@@ -62,8 +62,15 @@ check_doi_field <- function(entry) {
 #'
 #' @param doi DOI string
 #' @param retry_on_network_error Whether to retry on network errors (default TRUE)
-#' @return List with is_valid, error_message, and status_code
-validate_doi_url <- function(doi, retry_on_network_error = TRUE) {
+#' @param max_attempts Maximum number of attempts (default 3 if retry_on_network_error, else 1)
+#' @param backoff_base_sec Base wait time in seconds for exponential backoff (default 2)
+#' @param http_get HTTP GET function to use (default httr::GET)
+#' @return List with is_valid, warning, error, and status_code
+validate_doi_url <- function(doi,
+                             retry_on_network_error = TRUE,
+                             max_attempts = if (retry_on_network_error) 3 else 1,
+                             backoff_base_sec = 2,
+                             http_get = GET) {
   # Clean up DOI
   doi <- trimws(doi)
 
@@ -73,6 +80,7 @@ validate_doi_url <- function(doi, retry_on_network_error = TRUE) {
   if (is.na(doi_match)) {
     return(list(
       is_valid = FALSE,
+      warning = NULL,
       error = sprintf("Invalid DOI format: %s", doi),
       status_code = NULL
     ))
@@ -81,81 +89,108 @@ validate_doi_url <- function(doi, retry_on_network_error = TRUE) {
   doi_identifier <- doi_match
   doi_url <- sprintf("https://doi.org/%s", doi_identifier)
 
-  # Try up to 3 times on transient network errors
-  max_attempts <- if (retry_on_network_error) 3 else 1
-  last_error <- NULL
+  last_status_code <- NULL
+  last_error_message <- NULL
 
   for (attempt in 1:max_attempts) {
     if (attempt > 1) {
-      # Exponential backoff: 2, 4 seconds
-      wait_time <- 2^(attempt - 1)
-      cat(sprintf("    Retrying after %d seconds (attempt %d/%d)...\n", wait_time, attempt, max_attempts))
-      Sys.sleep(wait_time)
+      if (backoff_base_sec > 0) {
+        # Exponential backoff: 2, 4 seconds (for default base=2)
+        wait_time <- 2^(attempt - 2) * backoff_base_sec
+        cat(sprintf("    Retrying after %d seconds (attempt %d/%d)...\n", wait_time, attempt, max_attempts))
+        Sys.sleep(wait_time)
+      } else {
+        cat(sprintf("    Retrying (attempt %d/%d)...\n", attempt, max_attempts))
+      }
     }
 
-    result <- tryCatch({
-      response <- GET(
+    step_status_code <- NULL
+    step_error_message <- NULL
+
+    step_result <- tryCatch({
+      response <- http_get(
         doi_url,
         timeout(30),
         user_agent(USER_AGENT)
       )
 
-      status_code <- status_code(response)
+      code <- status_code(response)
+      step_status_code <<- code
 
-      if (status_code == 200) {
+      if (code == 200) {
         return(list(
           is_valid = TRUE,
+          warning = NULL,
           error = NULL,
-          status_code = status_code
+          status_code = code
         ))
-      } else if (status_code == 403 || status_code == 405) {
+      } else if (code == 403 || code == 405) {
         # 403: DOI resolved but publisher requires authentication (paywalled).
         # 405: Publisher rejects the GET method for bot requests.
         # Both mean the DOI is valid -- treat as success.
         return(list(
           is_valid = TRUE,
+          warning = NULL,
           error = NULL,
-          status_code = status_code
+          status_code = code
         ))
+      } else if (code == 429 || (code >= 500 && code <= 599)) {
+        # 429 (rate-limited) or 5xx (resolver/publisher server error): transient
+        NULL
       } else {
+        # 404 or other 4xx (client error): non-transient, fail immediately without retry
         return(list(
           is_valid = FALSE,
-          error = sprintf("DOI URL returned status %d", status_code),
-          status_code = status_code
+          warning = NULL,
+          error = sprintf("DOI URL returned status %d", code),
+          status_code = code
         ))
       }
     }, error = function(e) {
-      if (attempt < max_attempts) {
-        # Store error and continue to retry
-        last_error <<- list(
-          is_valid = FALSE,
-          error = sprintf("Error accessing DOI: %s", e$message),
-          status_code = NULL
-        )
-        NULL  # Continue loop
-      } else {
-        return(list(
-          is_valid = FALSE,
-          error = sprintf("Error accessing DOI: %s", e$message),
-          status_code = NULL
-        ))
-      }
+      step_error_message <<- e$message
+      NULL
     })
 
-    # If result is not NULL, it was returned above
-    if (!is.null(result)) {
-      return(result)
+    if (!is.null(step_result)) {
+      return(step_result)
     }
+
+    last_status_code <- step_status_code
+    last_error_message <- step_error_message
   }
 
-  # Return last error if all attempts failed
-  if (!is.null(last_error)) {
-    return(last_error)
+  # All attempts exhausted
+  if (!is.null(last_status_code) && last_status_code >= 500 && last_status_code <= 599) {
+    # If it's still a 5xx after retries, report as a warning rather than failure
+    return(list(
+      is_valid = TRUE,
+      warning = sprintf("DOI URL returned status %d after %d attempts (resolver unavailable, not verified)", last_status_code, max_attempts),
+      error = NULL,
+      status_code = last_status_code
+    ))
   }
 
-  # Should not reach here, but return error just in case
+  if (!is.null(last_status_code)) {
+    return(list(
+      is_valid = FALSE,
+      warning = NULL,
+      error = sprintf("DOI URL returned status %d", last_status_code),
+      status_code = last_status_code
+    ))
+  }
+
+  if (!is.null(last_error_message)) {
+    return(list(
+      is_valid = FALSE,
+      warning = NULL,
+      error = sprintf("Error accessing DOI: %s", last_error_message),
+      status_code = NULL
+    ))
+  }
+
   return(list(
     is_valid = FALSE,
+    warning = NULL,
     error = "Failed after multiple attempts",
     status_code = NULL
   ))
@@ -164,8 +199,9 @@ validate_doi_url <- function(doi, retry_on_network_error = TRUE) {
 #' Get DOI metadata from CrossRef API
 #'
 #' @param doi DOI string
+#' @param http_get HTTP GET function to use (default httr::GET)
 #' @return Metadata list or NULL if failed
-get_doi_metadata <- function(doi) {
+get_doi_metadata <- function(doi, http_get = GET) {
   doi <- trimws(doi)
   doi_match <- str_extract(doi, "10\\.\\d+/[^\\s]+")
 
@@ -177,7 +213,7 @@ get_doi_metadata <- function(doi) {
   api_url <- sprintf("https://api.crossref.org/works/%s", doi_identifier)
 
   tryCatch({
-    response <- GET(
+    response <- http_get(
       api_url,
       timeout(30),
       user_agent(USER_AGENT)
@@ -310,8 +346,13 @@ compare_metadata <- function(entry, metadata) {
 #'
 #' @param filepath Path to bibliography file
 #' @param verify_metadata Whether to verify metadata (default TRUE)
-#' @return List with checked_count, errors_count, and error_messages
-check_bibliography_file <- function(filepath, verify_metadata = TRUE) {
+#' @param http_get HTTP GET function to use (default httr::GET)
+#' @param backoff_base_sec Base wait time in seconds for exponential backoff (default 2)
+#' @return List with checked_count, errors_count, errors, warnings_count, and warnings
+check_bibliography_file <- function(filepath,
+                                    verify_metadata = TRUE,
+                                    http_get = GET,
+                                    backoff_base_sec = 2) {
   cat(sprintf("\nChecking %s...\n", filepath))
 
   # Exclusion list: BibTeX keys that don't have DOIs
@@ -320,10 +361,17 @@ check_bibliography_file <- function(filepath, verify_metadata = TRUE) {
 
   bib_df <- parse_bibtex_file(filepath)
   if (is.null(bib_df)) {
-    return(list(checked_count = 0, errors_count = 1, errors = c("Failed to parse BibTeX file")))
+    return(list(
+      checked_count = 0,
+      errors_count = 1,
+      errors = c("Failed to parse BibTeX file"),
+      warnings_count = 0,
+      warnings = character(0)
+    ))
   }
 
   errors <- c()
+  warnings <- c()
   checked_count <- 0
 
   for (i in seq_len(nrow(bib_df))) {
@@ -345,7 +393,7 @@ check_bibliography_file <- function(filepath, verify_metadata = TRUE) {
     cat(sprintf("  Checking %s '%s'...\n", entry_type, entry$BIBTEXKEY))
 
     # Add delay before checking to avoid rate limiting
-    if (checked_count > 1) {
+    if (checked_count > 1 && backoff_base_sec > 0) {
       Sys.sleep(1)
     }
 
@@ -361,12 +409,20 @@ check_bibliography_file <- function(filepath, verify_metadata = TRUE) {
     cat(sprintf("    DOI: %s\n", doi))
 
     # Check 2: DOI URL is valid
-    url_check <- validate_doi_url(doi)
+    url_check <- validate_doi_url(
+      doi,
+      http_get = http_get,
+      backoff_base_sec = backoff_base_sec
+    )
     if (!url_check$is_valid) {
       error_msg <- sprintf("Entry '%s': %s", entry$BIBTEXKEY, url_check$error)
       errors <- c(errors, error_msg)
       cat(sprintf("    ❌ %s\n", error_msg))
       next
+    } else if (!is.null(url_check$warning)) {
+      warning_msg <- sprintf("Entry '%s': %s", entry$BIBTEXKEY, url_check$warning)
+      warnings <- c(warnings, warning_msg)
+      cat(sprintf("    ⚠️  %s\n", warning_msg))
     } else {
       cat(sprintf("    ✓ DOI URL is valid (status %d)\n", url_check$status_code))
     }
@@ -374,37 +430,43 @@ check_bibliography_file <- function(filepath, verify_metadata = TRUE) {
     # Check 3: Metadata matches (if enabled)
     if (verify_metadata) {
       cat("    Fetching DOI metadata...\n")
-      metadata <- get_doi_metadata(doi)
+      metadata <- get_doi_metadata(doi, http_get = http_get)
 
       if (!is.null(metadata)) {
         comparison <- compare_metadata(entry, metadata)
         if (length(comparison$warnings) > 0) {
           for (warning in comparison$warnings) {
+            warning_msg <- sprintf("Entry '%s': %s", entry$BIBTEXKEY, warning)
+            warnings <- c(warnings, warning_msg)
             cat(sprintf("    ⚠️  %s\n", warning))
           }
         } else {
           cat("    ✓ Metadata appears consistent\n")
         }
       } else {
+        warning_msg <- sprintf("Entry '%s': Could not fetch metadata from CrossRef API", entry$BIBTEXKEY)
+        warnings <- c(warnings, warning_msg)
         cat("    ⚠️  Could not fetch metadata from CrossRef API\n")
       }
 
       # Small delay to be nice to the API
-      Sys.sleep(0.5)
+      if (backoff_base_sec > 0) {
+        Sys.sleep(0.5)
+      }
     }
   }
 
   return(list(
     checked_count = checked_count,
     errors_count = length(errors),
-    errors = errors
+    errors = errors,
+    warnings_count = length(warnings),
+    warnings = warnings
   ))
 }
 
 # Main execution
-run_doi_validation <- function() {
-  args <- commandArgs(trailingOnly = TRUE)
-
+run_doi_validation <- function(args = commandArgs(trailingOnly = TRUE)) {
   # Parse arguments
   no_metadata_check <- "--no-metadata-check" %in% args
   files <- args[!grepl("^--", args)]
@@ -415,6 +477,8 @@ run_doi_validation <- function() {
   }
 
   total_checked <- 0
+  total_warnings <- 0
+  all_warnings <- c()
   total_errors <- 0
   all_errors <- c()
 
@@ -426,6 +490,8 @@ run_doi_validation <- function() {
 
     result <- check_bibliography_file(filepath, verify_metadata = !no_metadata_check)
     total_checked <- total_checked + result$checked_count
+    total_warnings <- total_warnings + result$warnings_count
+    all_warnings <- c(all_warnings, result$warnings)
     total_errors <- total_errors + result$errors_count
     all_errors <- c(all_errors, result$errors)
   }
@@ -436,7 +502,15 @@ run_doi_validation <- function() {
   cat("SUMMARY\n")
   cat(paste(rep("=", 70), collapse = ""), "\n")
   cat(sprintf("Total entries checked: %d\n", total_checked))
+  cat(sprintf("Warnings found: %d\n", total_warnings))
   cat(sprintf("Errors found: %d\n", total_errors))
+
+  if (total_warnings > 0) {
+    cat("\nWARNINGS:\n")
+    for (warning in all_warnings) {
+      cat(sprintf("  • %s\n", warning))
+    }
+  }
 
   if (total_errors > 0) {
     cat("\nERRORS:\n")
@@ -450,5 +524,7 @@ run_doi_validation <- function() {
   }
 }
 
-# Run main function
-run_doi_validation()
+# Only run main execution when directly executed as top-level script, not when sourced
+if (sys.nframe() == 0L && !isTRUE(getOption("check_bibliography_dois.testing"))) {
+  run_doi_validation()
+}

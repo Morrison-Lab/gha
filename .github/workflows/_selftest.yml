@@ -669,6 +669,12 @@ jobs:
         uses: ./check-bibliography-dois
         with:
           no-metadata-check: true
+      - name: Run check-bibliography-dois R unit tests
+        shell: bash
+        run: Rscript check-bibliography-dois/tests/test-check-bibliography-dois.R
+      - name: Run check-bibliography-dois offline test runner
+        shell: bash
+        run: python3 .github/workflows/scripts/tests/run-check-bibliography-dois-tests.py
   # check-phi is brand new, so it doesn't exist at the released `@v1` tag the
   # reusable workflow pins yet. Exercise the local composite directly so the
   # selftest covers the actual PR code (and stays green pre-release); consumers
