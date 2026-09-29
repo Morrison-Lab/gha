@@ -23,11 +23,12 @@
 # Offline tests live in tests/run-classify-review-verdict-tests.sh.
 set -euo pipefail
 
-REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file> [unreviewed-commits]}"
+REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file> [unreviewed-commits] [head-sha]}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
 UNREVIEWED_COMMITS="${2:-${UNREVIEWED_COMMITS:-0}}"
+HEAD_SHA="${3:-${HEAD_SHA:-}}"
 
-python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" "$UNREVIEWED_COMMITS" << 'EOF'
+python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" "$UNREVIEWED_COMMITS" "$HEAD_SHA" << 'EOF'
 import json
 import os
 import re
@@ -36,21 +37,23 @@ import sys
 review_file = sys.argv[1]
 output_file = sys.argv[2]
 unreviewed_commits_str = sys.argv[3] if len(sys.argv) > 3 else (os.environ.get("UNREVIEWED_COMMITS") or "0")
+head_sha_param = sys.argv[4] if len(sys.argv) > 4 else (os.environ.get("HEAD_SHA") or "")
 try:
     unreviewed_commits = int(unreviewed_commits_str)
 except Exception:
     unreviewed_commits = 0
 
 text = ""
+payload = None
 
-_NO_DIFF_RE = re.compile(
+_NO_DIFF_CANDIDATE_RE = re.compile(
     r"(?i)\b("
-    r"no\s+new\s+diff|"
+    r"(?:(?P<determiner>a|an|the|this|that|any|such)\s+)?no\s+new\s+diff(?:\s+(?P<noun>claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|check|checks|guard|guards|pattern|patterns|rule|rules|logic|detection|handling|reproduction|finding|findings|observation|observations|skip|skips))?|"
     r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
-    r"no\s+new\s+commits|"
-    r"no\s+substantive\s+(?:logic\s+)?changes|"
+    r"no\s+new\s+commits(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
+    r"no\s+substantive\s+(?:logic\s+)?changes(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
     r"head\s+has\s+not\s+moved|"
-    r"unchanged\s+head|"
+    r"unchanged\s+head(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
     r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
     r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round|"
     r"no\s+commits\s+have\s+landed|"
@@ -78,14 +81,36 @@ def _has_no_diff_claim():
     # single quotes, double quotes, or curly quotes) are never treated as
     # review claims (gha#965).
     stripped = "\n".join(strip_machine_payloads(strip_quoted_strings(strip_code_spans(text.splitlines()))))
-    return bool(_NO_DIFF_RE.search(stripped))
+    for m in _NO_DIFF_CANDIDATE_RE.finditer(stripped):
+        if m.group("determiner") or m.group("noun"):
+            continue
+        return True
+    return False
 
 def record(clean, slug):
     if unreviewed_commits > 0:
         if slug == "skipped":
             clean, slug = "false", "unreviewed-commits-skipped"
-        elif clean == "true" and _has_no_diff_claim():
-            clean, slug = "false", "unreviewed-commits-skipped"
+        elif clean == "true":
+            # 1. Structural check: compare claimed reviewed commit against head_sha if available
+            claimed_commit = None
+            if isinstance(payload, dict):
+                c = payload.get("commit_sha")
+                if isinstance(c, str) and re.match(r'^[0-9a-fA-F]{7,40}$', c.strip()):
+                    claimed_commit = c.strip()
+            if not claimed_commit and text:
+                m = list(re.finditer(r'(?i)\bReviewed commit:\s*([0-9a-fA-F]{7,40})\b', text))
+                if m:
+                    claimed_commit = m[-1].group(1)
+
+            head_clean = head_sha_param.strip()
+            if head_clean and claimed_commit:
+                if not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
+                    clean, slug = "false", "unreviewed-commits-skipped"
+
+            # 2. Prose no-diff assertion check
+            if clean == "true" and _has_no_diff_claim():
+                clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
             f.write(f"clean={clean}\nverdict={slug}\n")

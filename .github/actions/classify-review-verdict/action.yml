@@ -14,6 +14,10 @@ inputs:
     description: Number of unreviewed commits since last reviewed commit (gha#965).
     required: false
     default: '0'
+  head-sha:
+    description: Expected PR head commit SHA under review (gha#965).
+    required: false
+    default: ''
 
 outputs:
   clean:
@@ -32,8 +36,10 @@ runs:
       env:
         REVIEW_TEXT_FILE: ${{ inputs.review-text-file }}
         UNREVIEWED_COMMITS: ${{ inputs.unreviewed-commits }}
+        HEAD_SHA: ${{ inputs.head-sha }}
       run: >-
         bash
         "$GITHUB_ACTION_PATH/../../workflows/scripts/classify-review-verdict.sh"
         "$REVIEW_TEXT_FILE"
         "$UNREVIEWED_COMMITS"
+        "$HEAD_SHA"

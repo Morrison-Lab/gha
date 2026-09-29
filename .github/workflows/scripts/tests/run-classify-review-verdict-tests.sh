@@ -21,6 +21,7 @@ run_test() {
   local expected_clean="$3"
   local expected_verdict="$4"
   local unreviewed="${5:-0}"
+  local head_sha="${6:-}"
 
   local tmp_file
   tmp_file="$(mktemp)"
@@ -29,7 +30,7 @@ run_test() {
   local out_file
   out_file="$(mktemp)"
 
-  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" "$unreviewed" > /dev/null
+  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" "$unreviewed" "$head_sha" > /dev/null
 
   local actual_clean
   actual_clean="$(grep -E '^clean=' "$out_file" | cut -d= -f2 || true)"
@@ -2376,6 +2377,65 @@ I don't think it's problematic, but we shouldn't allow 'no new diff'.
 
 The 5 commits cleanly implement the feature." \
 "true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with unquoted plain prose 'a no new diff claim' remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares a no new diff claim.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with unquoted plain prose 'fixed the no new diff bug' remains clean (gha#965)" "## Code Review
+
+This change fixed the no new diff bug and handles no new diff checks.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with structural match (commit_sha == head_sha) remains clean (gha#965)" "## Code Review
+
+Everything looks clean and thoroughly reviewed.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1\"} -->
+
+Reviewed commit: 6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1" \
+"true" "ready-for-merge" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) with structural mismatch (commit_sha != head_sha) fails closed (gha#965)" "## Code Review
+
+Everything looks clean.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"45db0b970d4e7cc23993160ae1cb1c5a7796f5a1\"} -->
+
+Reviewed commit: 45db0b970d4e7cc23993160ae1cb1c5a7796f5a1" \
+"false" "unreviewed-commits-skipped" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) with trailer SHA mismatch (!= head_sha) fails closed (gha#965)" "## Code Review
+
+Everything looks clean.
+
+### Verdict
+
+**Ready for merge**
+
+Reviewed commit: 45db0b970d4e7cc23993160ae1cb1c5a7796f5a1" \
+"false" "unreviewed-commits-skipped" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
 
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 

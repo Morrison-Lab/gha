@@ -243,6 +243,17 @@ out=$(run_in "$full" "$tmp/comments-singlequote.json")
 check "single-quote no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "single-quote no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
+# 17. Comment discussing 'a no new diff claim' in unquoted plain prose is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nThe author fixed the bug where a review declares a no new diff claim.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-unquoted-prose.json"
+out=$(run_in "$full" "$tmp/comments-unquoted-prose.json")
+check "unquoted-prose no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "unquoted-prose no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
   exit 1

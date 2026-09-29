@@ -14,7 +14,10 @@
   `pack-review-payload` and `claude-code-review.yml` forward the unreviewed
   commit count from `compute-incremental-range.sh` through `payload.json` into
   `classify-review-verdict`.
+  `classify-review-verdict.sh` compares the review's claimed commit SHA against
+  the expected PR head SHA when unreviewed commits exist, structurally failing
+  closed if an older commit was evaluated.
   Both scripts strip fences, blockquotes, HTML comments, code spans, and
-  quoted strings (single, double, and curly quotes) before evaluating no-diff
-  patterns, preventing false positives on quoted diffs, prompt instructions,
-  and reviews that quote or discuss trigger phrases in prose.
+  quoted strings (single, double, and curly quotes), and qualify no-diff
+  trigger patterns so descriptive mentions in plain prose (such as discussing
+  "a no new diff claim" or bug) do not trigger false positives.

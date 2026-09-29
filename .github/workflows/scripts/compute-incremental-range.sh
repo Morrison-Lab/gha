@@ -140,21 +140,28 @@ def strip_markup(text):
         out.append(line)
     return "\n".join(out)
 
-_NO_DIFF_RE = re.compile(
+_NO_DIFF_CANDIDATE_RE = re.compile(
     r"(?i)\b("
     r"verdict\b[: \t*_#-]*\bskipped|"
-    r"no\s+new\s+diff|"
+    r"(?:(?P<determiner>a|an|the|this|that|any|such)\s+)?no\s+new\s+diff(?:\s+(?P<noun>claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|check|checks|guard|guards|pattern|patterns|rule|rules|logic|detection|handling|reproduction|finding|findings|observation|observations|skip|skips))?|"
     r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
-    r"no\s+new\s+commits|"
-    r"no\s+substantive\s+(?:logic\s+)?changes|"
+    r"no\s+new\s+commits(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
+    r"no\s+substantive\s+(?:logic\s+)?changes(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
     r"head\s+has\s+not\s+moved|"
-    r"unchanged\s+head|"
+    r"unchanged\s+head(?!\s+(?:claim|bug|issue|hazard|case|check|guard|pattern|rule|logic))|"
     r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
     r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round|"
     r"no\s+commits\s+have\s+landed|"
     r"reaffirmed.*no\s+new\s+findings"
     r")\b"
 )
+
+def _has_no_diff_claim(stripped_text):
+    for m in _NO_DIFF_CANDIDATE_RE.finditer(stripped_text):
+        if m.group("determiner") or m.group("noun"):
+            continue
+        return True
+    return False
 
 _PAYLOAD_RE = re.compile(r'<!--\s*review-data:\s*(\{.*?\})\s*-->', re.DOTALL)
 _REVIEWED_COMMIT_RE = re.compile(r'Reviewed commit:\s*([0-9a-f]{40})')
@@ -183,7 +190,7 @@ for c in comments:
 
     # Check stripped prose
     stripped = strip_markup(body)
-    if _NO_DIFF_RE.search(stripped):
+    if _has_no_diff_claim(stripped):
         continue
 
     matches = _REVIEWED_COMMIT_RE.findall(body)

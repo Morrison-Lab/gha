@@ -1862,6 +1862,7 @@ jobs:
         with:
           review-text-file: ${{ steps.payload.outputs.review_text_file }}
           unreviewed-commits: ${{ steps.payload.outputs.unreviewed_commits || needs.claude-review.outputs.unreviewed-commits || '0' }}
+          head-sha: ${{ steps.target.outputs.reviewed_sha }}
 
       - name: Post review comment
         id: post-comment
