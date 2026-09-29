@@ -25,6 +25,7 @@ updates:
       - "/check-duplicate-roxygen"
       - "/check-extra"
       - "/check-formatting"
+      - "/check-informal-definitions"
       - "/check-links"
       - "/check-math-definitions"
       - "/check-merge-drops"

@@ -191,6 +191,30 @@ on:
         description: Fail when typed output is found (the check warns only by default).
         type: boolean
         default: false
+      check-informal-definitions:
+        description: 'Flag technical concepts defined in running prose rather than in formal Quarto def divs (::: {#def-...}).'
+        type: boolean
+        default: true
+      informal-definitions-globs:
+        description: Space-separated git pathspecs of tracked files to check for informal definitions.
+        type: string
+        default: '*.qmd'
+      informal-definitions-paths-ignore:
+        description: Patterns to skip for informal definitions check.
+        type: string
+        default: ''
+      informal-definitions-diff-scoped:
+        description: Report only informal definition findings on lines added since base-ref.
+        type: boolean
+        default: false
+      informal-definitions-base-ref:
+        description: Git ref to diff against for diff-scoped informal definitions check.
+        type: string
+        default: ''
+      informal-definitions-fail:
+        description: Fail when informal definitions are found (defaults to true).
+        type: boolean
+        default: true
       check-bibliography-dois:
         description: Validate DOIs in BibTeX bibliography files (.bib).
         type: boolean
@@ -262,5 +286,11 @@ jobs:
           typed-output-diff-scoped: ${{ inputs.typed-output-diff-scoped }}
           typed-output-base-ref: ${{ inputs.typed-output-base-ref }}
           typed-output-fail: ${{ inputs.typed-output-fail }}
+          check-informal-definitions: ${{ inputs.check-informal-definitions }}
+          informal-definitions-globs: ${{ inputs.informal-definitions-globs }}
+          informal-definitions-paths-ignore: ${{ inputs.informal-definitions-paths-ignore }}
+          informal-definitions-diff-scoped: ${{ inputs.informal-definitions-diff-scoped }}
+          informal-definitions-base-ref: ${{ inputs.informal-definitions-base-ref || (github.event_name == 'pull_request' && github.event.pull_request.base.sha || '') }}
+          informal-definitions-fail: ${{ inputs.informal-definitions-fail }}
           check-bibliography-dois: ${{ inputs.check-bibliography-dois }}
           bib-exclude-keys: ${{ inputs.bib-exclude-keys }}

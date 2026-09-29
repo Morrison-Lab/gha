@@ -223,7 +223,8 @@ while `opposition-research`, `check-dependency-updates`,
 `check-quarto-website`, `check-quarto-book`,
 `check-quarto-manuscript`, `check-quarto-links`,
 `check-orphaned-images`, `check-r-package`,
-`check-python-package`, `check-typed-output`, and `student-qmd`
+`check-python-package`, `check-typed-output`,
+`check-informal-definitions`, and `student-qmd`
 only ever shipped at `@v3`.
 
 ### Layout

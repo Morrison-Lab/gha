@@ -1088,6 +1088,122 @@ jobs:
         run: |
           git rm -q -r --cached --ignore-unmatch _ci-typed-output || true
           rm -rf _ci-typed-output
+  # check-informal-definitions is brand new, so its reusable workflow's
+  # internal `uses: Morrison-Lab/gha/check-informal-definitions@v3`
+  # does not resolve until the tag slides past the merge. Exercise the local
+  # composite directly. The unit tests cover the detectors, block stack, and
+  # both scopes; the composite calls below prove action.yml wires each input
+  # through to the script, which the unit tests (calling the script directly)
+  # cannot see.
+  informal-definitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+      - name: Run check-informal-definitions unit tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet pytest==9.1.1
+          python3 -m pytest check-informal-definitions/tests/ -v
+      # This repo's own pages carry no prose definitions, so a blocking
+      # whole-tree run must pass; the diff-scoped run covers what this PR adds.
+      - name: Check this repo's tree, blocking
+        uses: ./check-informal-definitions
+        with:
+          globs: '*.md *.qmd'
+          fail: 'true'
+      - name: Check this PR's added lines, blocking
+        uses: ./check-informal-definitions
+        with:
+          globs: '*.md *.qmd'
+          fail: 'true'
+          diff-scoped: 'true'
+          base-ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || '' }}
+      # A clean tree cannot reach the failing path, so stage a page with an
+      # informal definition in prose and assert the blocking call really fails.
+      - name: Stage a page with an informal definition
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _ci-informal-defs
+          printf '%s\n' 'A **stochastic process** is a collection of random variables.' > _ci-informal-defs/page.qmd
+          git add -f _ci-informal-defs/page.qmd
+      - name: Check again, expecting a failure
+        id: informal-defs-expected-failure
+        continue-on-error: true
+        uses: ./check-informal-definitions
+        with:
+          fail: 'true'
+      - name: Assert the failing call actually failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.informal-defs-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected check-informal-definitions to fail on a staged page with an informal definition, got outcome='$OUTCOME'"
+            exit 1
+          fi
+          echo "check-informal-definitions failed on the staged page, as expected."
+      # Diff-scoped against HEAD, the staged page is an uncommitted change,
+      # so the working-tree-aware scope examines it and the call must fail.
+      # Were base-ref dropped, a diff-scoped run with no base would skip and
+      # pass, so this failure proves base-ref arrived.
+      - name: Check again diff-scoped against HEAD, expecting a failure
+        id: informal-defs-diff-expected-failure
+        continue-on-error: true
+        uses: ./check-informal-definitions
+        with:
+          fail: 'true'
+          diff-scoped: 'true'
+          base-ref: HEAD
+      - name: Assert the diff-scoped call failed
+        shell: bash
+        env:
+          OUTCOME: ${{ steps.informal-defs-diff-expected-failure.outcome }}
+        run: |
+          set -euo pipefail
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "::error::expected the diff-scoped call to fail on the staged page, got outcome='$OUTCOME'"
+            exit 1
+          fi
+      # Diff-scoped with no base skips (warning, exit 0). Were diff-scoped
+      # dropped, the whole-tree scan would fail on the staged page.
+      - name: Check again diff-scoped with no base, expecting a skip
+        uses: ./check-informal-definitions
+        with:
+          fail: 'true'
+          diff-scoped: 'true'
+          base-ref: ''
+      # Each of these must pass over the same staged page, so each proves its
+      # input reached the script: were it dropped, the call would fail as the
+      # one above did.
+      - name: Check again with the page exempted through paths-ignore
+        uses: ./check-informal-definitions
+        with:
+          fail: 'true'
+          paths-ignore: '_ci-informal-defs'
+      - name: Check again with globs excluding the page
+        uses: ./check-informal-definitions
+        with:
+          fail: 'true'
+          globs: '*.md'
+      - name: Remove the staged page
+        if: always()
+        shell: bash
+        run: |
+          git rm -q -r --cached --ignore-unmatch _ci-informal-defs || true
+          rm -rf _ci-informal-defs
   # check-secrets is brand new, so (like check-phi/check-new-line-breaks above)
   # it doesn't exist at the released `@v2` tag its reusable workflow's internal
   # `uses: Morrison-Lab/gha/check-secrets@v3` step resolves against yet.

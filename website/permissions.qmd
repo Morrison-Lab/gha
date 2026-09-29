@@ -13,7 +13,7 @@ already include the right `permissions:` blocks; copy them as-is.
 - <!--readonly-workflows:begin-->`check-ai-tells`, `check-bibliography-dois`,
   `check-code-similarity`, `check-duplicate-roxygen`,
   `check-equation-renders`, `check-extra`,
-  `check-formatting`, `check-junk-files`, `check-math-definitions`,
+  `check-formatting`, `check-informal-definitions`, `check-junk-files`, `check-math-definitions`,
   `check-merge-drops`,
   `check-new-line-breaks`, `check-news`,
   `check-non-standard-chars`, `check-one-function-per-file`,
