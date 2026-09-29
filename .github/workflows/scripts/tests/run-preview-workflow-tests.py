@@ -190,6 +190,31 @@ def check_preview(
             "preview/action.yml should not repoint TinyTeX repository with tlmgr_repo (gha#907)"
         )
 
+    # 9. Ensure Julia setup pairs with julia-actions/cache (gha#974)
+    steps = composite_doc.get("runs", {}).get("steps", [])
+    julia_cache_step = None
+    for step in steps:
+        uses = str(step.get("uses", ""))
+        if "julia-actions/cache" in uses:
+            julia_cache_step = step
+            break
+
+    if not julia_cache_step:
+        errors.append(
+            "preview/action.yml is missing julia-actions/cache step (gha#974)"
+        )
+    else:
+        jc_if = str(julia_cache_step.get("if", ""))
+        if "inputs.setup-julia == 'true'" not in jc_if or "github.event.action != 'closed'" not in jc_if:
+            errors.append(
+                f"preview/action.yml julia-actions/cache step missing setup-julia and event condition (got {jc_if!r})"
+            )
+        cache_name = str(julia_cache_step.get("with", {}).get("cache-name", ""))
+        if "inputs.julia-version" not in cache_name:
+            errors.append(
+                f"preview/action.yml julia-actions/cache step cache-name must include inputs.julia-version (got {cache_name!r})"
+            )
+
     return errors
 
 
@@ -268,6 +293,34 @@ def run_self_test() -> int:
                 'Rscript -e "tinytex::tlmgr_install',
                 'Rscript -e "tinytex::tlmgr_repo(\'https://example.com\')"\n        Rscript -e "tinytex::tlmgr_install',
             ),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop julia-actions/cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("uses: julia-actions/cache", "uses: ignore/cache"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop julia-version from julia cache-name in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("julia=${{ inputs.julia-version }};", ""),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop setup-julia condition from julia cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("inputs.setup-julia == 'true'", "true"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop closed condition from julia cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("github.event.action != 'closed'", "true"),
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
