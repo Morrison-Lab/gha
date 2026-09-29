@@ -23,10 +23,12 @@
 # Offline tests live in tests/run-classify-review-verdict-tests.sh.
 set -euo pipefail
 
-REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file>}"
+REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file> [unreviewed-commits] [head-sha]}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
+UNREVIEWED_COMMITS="${2:-${UNREVIEWED_COMMITS:-0}}"
+HEAD_SHA="${3:-${HEAD_SHA:-}}"
 
-python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" << 'EOF'
+python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" "$UNREVIEWED_COMMITS" "$HEAD_SHA" << 'EOF'
 import json
 import os
 import re
@@ -34,8 +36,103 @@ import sys
 
 review_file = sys.argv[1]
 output_file = sys.argv[2]
+unreviewed_commits_str = sys.argv[3] if len(sys.argv) > 3 else (os.environ.get("UNREVIEWED_COMMITS") or "0")
+head_sha_param = sys.argv[4] if len(sys.argv) > 4 else (os.environ.get("HEAD_SHA") or "")
+try:
+    unreviewed_commits = int(unreviewed_commits_str)
+except Exception:
+    unreviewed_commits = 0
+
+text = ""
+payload = None
+
+_DETERMINER_WORDS = r"a|an|the|this|that|any|such|every|each"
+_NOUN_WORDS = (
+    r"claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|"
+    r"check|checks|guard|guards|pattern|patterns|rule|rules|logic|"
+    r"detection|handling|reproduction|finding|findings|observation|observations|"
+    r"skip|skips|phrase|phrases|trigger|triggers|heuristic|heuristics|behavior|"
+    r"scenario|scenarios|discussion|discussions"
+)
+
+_CORE_PATTERNS = (
+    r"verdict\b[: \t*_#-]*\bskipped|"
+    r"no\s+new\s+diff|"
+    r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
+    r"no\s+new\s+commits|"
+    r"no\s+substantive\s+(?:logic\s+)?changes|"
+    r"head\s+has\s+not\s+moved|"
+    r"unchanged\s+head|"
+    r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
+    r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round(?!\s+(?:is|was|are|were)?\s*not\b)|"
+    r"no\s+commits\s+have\s+landed(?!\s+(?:and\s+stops|(?:since\s+[^\n.,;]+?\s+)?that\s+were\s+(?:skipped|missed|unreviewed)\b))|"
+    r"reaffirmed.*no\s+new\s+findings"
+)
+
+_NO_DIFF_CANDIDATE_RE = re.compile(
+    rf"(?i)\b(?:(?P<determiner>{_DETERMINER_WORDS})\s+)?(?:{_CORE_PATTERNS})(?:\s+(?P<noun>{_NOUN_WORDS}))?\b"
+)
+
+def strip_quoted_strings(src_lines):
+    out = []
+    for line in src_lines:
+        l = expand_contractions(line)
+        l = re.sub(r"\b[A-Za-z0-9_]+['’](?:s|d|ll|m|re|ve)\b", " ", l)
+        l = re.sub(r'"[^"\n]*"', " ", l)
+        l = re.sub(r'“[^”\n]*”', " ", l)
+        l = re.sub(r'‘[^’\n]*’', " ", l)
+        l = re.sub(r"(?<!\w)'[^'\n]*'(?!\w)", " ", l)
+        out.append(l)
+    return out
+
+_VERDICT_HEADING_RE = re.compile(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict\b', re.IGNORECASE)
+
+def _has_no_diff_claim():
+    if not text:
+        return False
+    # Strip fences, blockquotes, HTML comments, code spans, and quoted strings
+    # so quoted diffs, prompt instructions, or code discussions (in backticks,
+    # single quotes, double quotes, or curly quotes) are never treated as
+    # review claims (gha#965).
+    stripped_lines = strip_machine_payloads(strip_quoted_strings(strip_code_spans(text.splitlines())))
+    # Scope to the verdict section if present so code review discussions of the
+    # PR's changes or bug fixes cannot be misread as verdict statements (gha#965).
+    last_idx = -1
+    for i, line in enumerate(stripped_lines):
+        if _VERDICT_HEADING_RE.search(line):
+            last_idx = i
+    target_lines = stripped_lines[last_idx:] if last_idx != -1 else stripped_lines
+    stripped = "\n".join(target_lines)
+    for m in _NO_DIFF_CANDIDATE_RE.finditer(stripped):
+        if m.group("determiner") or m.group("noun"):
+            continue
+        return True
+    return False
 
 def record(clean, slug):
+    if unreviewed_commits > 0:
+        if slug == "skipped":
+            clean, slug = "false", "unreviewed-commits-skipped"
+        elif clean == "true":
+            # 1. Structural check: compare claimed reviewed commit against head_sha if available
+            claimed_commit = None
+            if isinstance(payload, dict):
+                c = payload.get("commit_sha")
+                if isinstance(c, str) and re.match(r'^[0-9a-fA-F]{7,40}$', c.strip()):
+                    claimed_commit = c.strip()
+            if not claimed_commit and text:
+                m = list(re.finditer(r'(?i)\bReviewed commit:\s*([0-9a-fA-F]{7,40})\b', text))
+                if m:
+                    claimed_commit = m[-1].group(1)
+
+            head_clean = head_sha_param.strip()
+            if head_clean and claimed_commit and not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
+                # If claimed commit does not match head, fail closed to unreviewed-commits-skipped.
+                clean, slug = "false", "unreviewed-commits-skipped"
+            elif _has_no_diff_claim():
+                # Even if claimed commit matches head_clean (or head_sha/claimed_commit is missing),
+                # fail closed if the verdict section explicitly claims no new diff while unreviewed commits exist (gha#965).
+                clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
             f.write(f"clean={clean}\nverdict={slug}\n")

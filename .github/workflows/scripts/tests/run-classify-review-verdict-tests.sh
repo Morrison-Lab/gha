@@ -20,6 +20,8 @@ run_test() {
   local review_text="$2"
   local expected_clean="$3"
   local expected_verdict="$4"
+  local unreviewed="${5:-0}"
+  local head_sha="${6:-}"
 
   local tmp_file
   tmp_file="$(mktemp)"
@@ -28,7 +30,7 @@ run_test() {
   local out_file
   out_file="$(mktemp)"
 
-  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" > /dev/null
+  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" "$unreviewed" "$head_sha" > /dev/null
 
   local actual_clean
   actual_clean="$(grep -E '^clean=' "$out_file" | cut -d= -f2 || true)"
@@ -2258,6 +2260,359 @@ run_test "Verdict opening with Merged fixes and ready for merge classifies as re
 
 **Ready for merge** — merged in the latest fixes." \
 "true" "ready-for-merge"
+
+# --- gha#965: unreviewed commits skip guard ---
+
+run_test "Unreviewed commits with prose 'no new diff' fails closed to unreviewed-commits-skipped (gha#965)" "### Verdict
+
+**Ready for merge**
+
+All changes in this PR were reviewed in the previous round. No new commits or modifications have been made since the last review." \
+"false" "unreviewed-commits-skipped" "5"
+
+run_test "Unreviewed commits with payload CLEAN but text 'no new diff' fails closed (gha#965)" "### Verdict
+
+**Ready for merge**
+
+All content in this PR was already reviewed in round 1; no new diff exists.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"1234567890123456789012345678901234567890\"} -->" \
+"false" "unreviewed-commits-skipped" "3"
+
+run_test "Unreviewed commits with payload SKIPPED fails closed (gha#965)" "### Verdict
+
+**Skipped**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"SKIPPED\", \"findings\": [], \"commit_sha\": \"1234567890123456789012345678901234567890\"} -->" \
+"false" "unreviewed-commits-skipped" "2"
+
+run_test "Unreviewed commits (0) with 'no new diff' remains clean when count is 0 (gha#965)" "### Verdict
+
+**Ready for merge**
+
+No new commits have landed since the prior review." \
+"true" "ready-for-merge" "0"
+
+run_test "Unreviewed commits (5) with genuine clean review remains clean (gha#965)" "### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature and all tests pass." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new diff' inside code span remains clean (gha#965)" "### Verdict
+
+**Ready for merge**
+
+The 5 commits implement protection when reviews claim \`no new diff\`." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new diff' inside blockquote remains clean (gha#965)" "> No new commits have landed since the prior review.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits address all feedback and pass tests." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new diff' inside fenced code block remains clean (gha#965)" "\`\`\`diff
++ no new diff exists
+\`\`\`
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with 'no new content' in ordinary sentence remains clean (gha#965)" "### Verdict
+
+**Ready for merge**
+
+The 5 commits update layout styling; no new content was added to the chapters." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with single-quoted 'no new diff' in plain prose remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares 'no new diff'.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with double-quoted \"no new diff\" in plain prose remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares \"no new diff\".
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with curly-quoted “no new diff” in plain prose remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares “no new diff”.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with contractions and single-quoted 'no new diff' remains clean (gha#965)" "## Code Review
+
+I don't think it's problematic, but we shouldn't allow 'no new diff'.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with unquoted plain prose 'a no new diff claim' remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares a no new diff claim.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with unquoted plain prose 'fixed the no new diff bug' remains clean (gha#965)" "## Code Review
+
+This change fixed the no new diff bug and handles no new diff checks.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with structural match (commit_sha == head_sha) remains clean (gha#965)" "## Code Review
+
+Everything looks clean and thoroughly reviewed.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1\"} -->
+
+Reviewed commit: 6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1" \
+"true" "ready-for-merge" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) with structural mismatch (commit_sha != head_sha) fails closed (gha#965)" "## Code Review
+
+Everything looks clean.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"45db0b970d4e7cc23993160ae1cb1c5a7796f5a1\"} -->
+
+Reviewed commit: 45db0b970d4e7cc23993160ae1cb1c5a7796f5a1" \
+"false" "unreviewed-commits-skipped" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) with trailer SHA mismatch (!= head_sha) fails closed (gha#965)" "## Code Review
+
+Everything looks clean.
+
+### Verdict
+
+**Ready for merge**
+
+Reviewed commit: 45db0b970d4e7cc23993160ae1cb1c5a7796f5a1" \
+"false" "unreviewed-commits-skipped" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) with structural pass and unquoted prose describing fix remains clean (Finding 1 reproduction)" "## Code Review
+
+This fix ensures that content already reviewed in the previous round is not silently skipped again.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1\"} -->
+
+Reviewed commit: 6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1" \
+"true" "ready-for-merge" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) without head-sha where Code Review section discusses all 4 trigger phrases remains clean (Finding 2)" "## Code Review
+
+The author fixed the bug where a review declares no new diff and skips it.
+Ensures no new commits exist since the last round is handled properly.
+This fix ensures that content already reviewed in the previous round is not silently skipped again.
+Also handles when no commits have landed and stops early in tests.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with matching head-sha where Code Review section describes fix in prose remains clean" "## Code Review
+
+The guard correctly identifies when no commits have landed and stops early.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section describes fix in prose remains clean (Finding 1 reproduction)" "### Verdict
+
+**Ready for merge**
+
+The guard correctly identifies when no commits have landed and stops early.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section has natural prose remains clean (Finding 3)" "### Verdict
+
+**Ready for merge**
+
+No commits have landed since round 2 that were skipped.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'no new diff' fails closed (gha#965)" "### Verdict
+
+**Ready for merge**
+
+No new diff exists in this PR since the last round; the previous verdict of Ready for merge stands.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) without head-sha where Verdict section states 'If no new diff exists' fails closed via fallback (Finding 1)" "### Verdict
+
+**Ready for merge**
+
+If no new diff exists since the last round, the previous approval stands.
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5"
+
+run_test "Unreviewed commits (5) without head-sha where Verdict section states 'no new diff' fails closed via fallback (gha#965)" "### Verdict
+
+No new diff exists in this PR since the last round; the previous verdict of Ready for merge stands.
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'already reviewed in previous round' check remains clean" "### Verdict
+
+**Ready for merge**
+
+The already reviewed in the previous round check was verified.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'head has not moved' bug remains clean" "### Verdict
+
+**Ready for merge**
+
+Fixed the head has not moved bug cleanly.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'no commits have landed' case remains clean" "### Verdict
+
+**Ready for merge**
+
+Handled a no commits have landed case properly.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'is not silently skipped' remains clean" "### Verdict
+
+**Ready for merge**
+
+Ensures that content already reviewed in the previous round is not silently skipped again.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'No commits have landed since round 2' fails closed" "### Verdict
+
+**Ready for merge**
+
+No commits have landed since round 2.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'already reviewed in the previous round' fails closed" "### Verdict
+
+**Ready for merge**
+
+All content already reviewed in the previous round.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'head has not moved' fails closed" "### Verdict
+
+**Ready for merge**
+
+The branch head has not moved since the previous evaluation.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'no substantive changes' fails closed" "### Verdict
+
+**Ready for merge**
+
+Found no substantive changes in this round.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
 
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 

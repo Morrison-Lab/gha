@@ -38,7 +38,7 @@ PAYLOAD_DIR="$dir" \
   QUOTA_EXHAUSTED=false QUOTA_REASON='' QUOTA_MESSAGE='' CANCELLED=false RESOLVE_OUTCOME=success \
   HEAD_SHA=abc123 TOTAL_COST_USD=1.25 FAILURE_KIND= \
   DENIALS=0 DENIED_TOOLS="$denied" MAX_DENIALS=5 ATTEMPTS=1 \
-  TRACK_PROGRESS=false REPORT_COST=true REVIEW_TEXT_FILE="$review" \
+  TRACK_PROGRESS=false REPORT_COST=true UNREVIEWED_COMMITS=5 REVIEW_TEXT_FILE="$review" \
   bash "$PACK"
 check "happy: payload.json exists" "true" "$([[ -f $dir/payload.json ]] && echo true || echo false)"
 check "happy: review.txt copied" "true" "$([[ -f $dir/review.txt ]] && echo true || echo false)"
@@ -46,6 +46,7 @@ check "happy: denied_tools.txt copied" "true" "$([[ -f $dir/denied_tools.txt ]] 
 check "happy: review_present" "true" "$(jq -r .review_present "$dir/payload.json")"
 check "happy: pr_number" "12" "$(jq -r .pr_number "$dir/payload.json")"
 check "happy: schema_version" "1" "$(jq -r .schema_version "$dir/payload.json")"
+check "happy: unreviewed_commits" "5" "$(jq -r .unreviewed_commits "$dir/payload.json")"
 check "happy: denied_tools sidecar is verbatim" "$denied" "$(cat "$dir/denied_tools.txt")"
 check "happy: review sidecar is verbatim" "$(cat "$review")" "$(cat "$dir/review.txt")"
 
@@ -56,7 +57,7 @@ check "happy: review sidecar is verbatim" "$(cat "$review")" "$(cat "$dir/review
 # tr -d '\r' strips carriage returns for test portability on Windows environments.
 keys="$(jq -r 'keys[]' "$dir/payload.json" | tr -d '\r' | sort | tr '\n' ',')"
 check "happy: key set" \
-  "attempts,caller_wf_path,cancelled,denials,event_name,failure_kind,head_sha,max_denials,pr_number,quota_exhausted,quota_message,quota_reason,repo,report_cost,resolve_outcome,review_present,run_id,run_url,schema_version,self_mod,skip_notice_posted,total_cost_usd,track_progress,wf_path," \
+  "attempts,caller_wf_path,cancelled,denials,event_name,failure_kind,head_sha,max_denials,pr_number,quota_exhausted,quota_message,quota_reason,repo,report_cost,resolve_outcome,review_present,run_id,run_url,schema_version,self_mod,skip_notice_posted,total_cost_usd,track_progress,unreviewed_commits,wf_path," \
   "$keys"
 check "happy: denied_tools sidecar ends in newline" "" "$(tail -c1 "$dir/denied_tools.txt")"
 

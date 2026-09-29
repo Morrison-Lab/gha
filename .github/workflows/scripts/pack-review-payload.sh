@@ -75,6 +75,7 @@ jq -n \
   --arg attempts "${ATTEMPTS:-}" \
   --arg track_progress "${TRACK_PROGRESS:-false}" \
   --arg report_cost "${REPORT_COST:-true}" \
+  --arg unreviewed_commits "${UNREVIEWED_COMMITS:-0}" \
   --argjson review_present "$review_present" \
   '{
     schema_version: $schema_version,
@@ -100,6 +101,7 @@ jq -n \
     attempts: $attempts,
     track_progress: $track_progress,
     report_cost: $report_cost,
+    unreviewed_commits: ($unreviewed_commits | tonumber? // 0),
     review_present: $review_present
   }' > "$PAYLOAD_DIR/payload.json"
 

@@ -34,23 +34,188 @@
 # carrying backticks cannot close the block early.
 set -euo pipefail
 
-COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file>}"
+COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file]}"
+HEAD_PARAM="${2:-}"
+COUNT_FILE="${3:-}"
 DEEPEN_STEP="${DEEPEN_STEP:-50}"
 DEEPEN_MAX="${DEEPEN_MAX:-500}"
+
+write_count() {
+  if [ -n "$COUNT_FILE" ]; then
+    printf '%s\n' "$1" > "$COUNT_FILE"
+  fi
+}
+
+write_count 0
 
 if [ ! -f "$COMMENTS_FILE" ]; then
   exit 0
 fi
 
-PRIOR=$(jq -r '
-  [ .[]?
-    | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-             and (.body | test("### (Code Review|Verdict)"))) ]
-  | last | .body // ""
-' "$COMMENTS_FILE" 2>/dev/null \
-  | grep -oE 'Reviewed commit: [0-9a-f]{40}' | tail -1 | awk '{print $3}' || true)
+# The prior reviewed commit is the last `Reviewed commit: <sha>` line in the
+# most recent verdict-bearing bot comment that actually reviewed content --
+# excluding rounds that were skipped, restated a prior clean verdict, or
+# declared "no new diff" (gha#965).
+PRIOR=$(python3 - "$COMMENTS_FILE" << 'EOF' 2>/dev/null || true
+import json
+import re
+import sys
 
-HEAD_NOW=$(git rev-parse HEAD 2>/dev/null || true)
+comments_file = sys.argv[1]
+try:
+    with open(comments_file, "r", encoding="utf-8", errors="replace") as f:
+        comments = json.load(f)
+except Exception:
+    sys.exit(0)
+
+if not isinstance(comments, list):
+    sys.exit(0)
+
+_FENCE_OPEN_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})')
+_FENCE_CLOSE_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})[ \t]*$')
+_BLOCKQUOTE_RE = re.compile(r'^[ \t]*>')
+
+_CONTRACTIONS = [
+    (r"\bisn['’]?t\b", "is not"),
+    (r"\bwasn['’]?t\b", "was not"),
+    (r"\baren['’]?t\b", "are not"),
+    (r"\bweren['’]?t\b", "were not"),
+    (r"\bdoesn['’]?t\b", "does not"),
+    (r"\bdon['’]?t\b", "do not"),
+    (r"\bdidn['’]?t\b", "did not"),
+    (r"\bcan['’]?t\b", "can not"),
+    (r"\bcannot\b", "can not"),
+    (r"\bcouldn['’]?t\b", "could not"),
+    (r"\bwon['’]?t\b", "will not"),
+    (r"\bwouldn['’]?t\b", "would not"),
+    (r"\bshouldn['’]?t\b", "should not"),
+    (r"\bhasn['’]?t\b", "has not"),
+    (r"\bhaven['’]?t\b", "have not"),
+    (r"\bhadn['’]?t\b", "had not"),
+    (r"\bain['’]?t\b", "is not"),
+]
+
+def strip_markup(text):
+    out = []
+    fence_char = ""
+    fence_len = 0
+    in_comment = False
+    for line in text.splitlines():
+        if in_comment:
+            idx = line.find("-->")
+            if idx == -1:
+                continue
+            line = line[idx + 3:]
+            in_comment = False
+        if fence_char:
+            m = _FENCE_CLOSE_RE.match(line)
+            if m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len:
+                fence_char = ""
+                fence_len = 0
+            continue
+        m = _FENCE_OPEN_RE.match(line)
+        if m:
+            fence_char, fence_len = m.group(1)[0], len(m.group(1))
+            continue
+        if _BLOCKQUOTE_RE.match(line):
+            continue
+        while True:
+            opener = line.find("<!--")
+            if opener == -1:
+                break
+            closer = line.find("-->", opener + 2)
+            if closer == -1:
+                line = line[:opener]
+                in_comment = True
+                break
+            line = line[:opener] + line[closer + 3:]
+        line = re.sub(r'`[^`\n]+`', ' codespan ', line)
+        for p, r in _CONTRACTIONS:
+            line = re.sub(p, r, line, flags=re.IGNORECASE)
+        line = re.sub(r"\b[A-Za-z0-9_]+['’](?:s|d|ll|m|re|ve)\b", " ", line)
+        line = re.sub(r'"[^"\n]*"', " ", line)
+        line = re.sub(r'“[^”\n]*”', " ", line)
+        line = re.sub(r'‘[^’\n]*’', " ", line)
+        line = re.sub(r"(?<!\w)'[^'\n]*'(?!\w)", " ", line)
+        out.append(line)
+    return "\n".join(out)
+
+_DETERMINER_WORDS = r"a|an|the|this|that|any|such|every|each"
+_NOUN_WORDS = (
+    r"claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|"
+    r"check|checks|guard|guards|pattern|patterns|rule|rules|logic|"
+    r"detection|handling|reproduction|finding|findings|observation|observations|"
+    r"skip|skips|phrase|phrases|trigger|triggers|heuristic|heuristics|behavior|"
+    r"scenario|scenarios|discussion|discussions"
+)
+
+_CORE_PATTERNS = (
+    r"verdict\b[: \t*_#-]*\bskipped|"
+    r"no\s+new\s+diff|"
+    r"no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr)|"
+    r"no\s+new\s+commits|"
+    r"no\s+substantive\s+(?:logic\s+)?changes|"
+    r"head\s+has\s+not\s+moved|"
+    r"unchanged\s+head|"
+    r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
+    r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round(?!\s+(?:is|was|are|were)?\s*not\b)|"
+    r"no\s+commits\s+have\s+landed(?!\s+(?:and\s+stops|(?:since\s+[^\n.,;]+?\s+)?that\s+were\s+(?:skipped|missed|unreviewed)\b))|"
+    r"reaffirmed.*no\s+new\s+findings"
+)
+
+_NO_DIFF_CANDIDATE_RE = re.compile(
+    rf"(?i)\b(?:(?P<determiner>{_DETERMINER_WORDS})\s+)?(?:{_CORE_PATTERNS})(?:\s+(?P<noun>{_NOUN_WORDS}))?\b"
+)
+
+def _has_no_diff_claim(stripped_text):
+    for m in _NO_DIFF_CANDIDATE_RE.finditer(stripped_text):
+        if m.group("determiner") or m.group("noun"):
+            continue
+        return True
+    return False
+
+_PAYLOAD_RE = re.compile(r'<!--\s*review-data:\s*(\{.*?\})\s*-->', re.DOTALL)
+_REVIEWED_COMMIT_RE = re.compile(r'Reviewed commit:\s*([0-9a-f]{40})')
+
+prior = ""
+for c in comments:
+    if not isinstance(c, dict):
+        continue
+    user = c.get("user") or {}
+    login = user.get("login") or ""
+    if login not in ("github-actions[bot]", "claude[bot]"):
+        continue
+    body = c.get("body") or ""
+    if not re.search(r'### (Code Review|Verdict)', body):
+        continue
+
+    # Check structured payload verdict
+    pm = _PAYLOAD_RE.search(body)
+    if pm:
+        try:
+            pdata = json.loads(pm.group(1))
+            if pdata.get("verdict", "").strip().upper() in ("SKIPPED", "UNREVIEWED_COMMITS_SKIPPED", "UNREVIEWED-COMMITS-SKIPPED"):
+                continue
+        except Exception:
+            pass
+
+    # Check stripped prose for no-diff claims anywhere in the comment body.
+    # Testing the whole stripped body avoids accepting a stale comment with a pre-heading
+    # no-diff claim as a valid reviewed boundary (which would wrongly zero out
+    # unreviewed-commits and disable the classify-review-verdict fail-closed guard; gha#965).
+    if _has_no_diff_claim(strip_markup(body)):
+        continue
+
+    matches = _REVIEWED_COMMIT_RE.findall(body)
+    if matches:
+        prior = matches[-1]
+
+if prior:
+    print(prior)
+EOF
+)
+
+HEAD_NOW="${HEAD_PARAM:-$(git rev-parse HEAD 2>/dev/null || true)}"
 
 if [ -z "$PRIOR" ] || [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
   exit 0
@@ -73,14 +238,18 @@ until git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; do
   # the ordinary pull_request checkout is refs/pull/<n>/merge -- not on any
   # branch -- so the bare form never reaches the prior there (gha#717
   # review round 2, confirmed against both checkout topologies).
-  git fetch -q --deepen="$DEEPEN_STEP" origin "$HEAD_NOW" 2>/dev/null || exit 0
+  git fetch -q --deepen="$DEEPEN_STEP" origin "$HEAD_NOW" 2>/dev/null || git fetch -q --deepen="$DEEPEN_STEP" 2>/dev/null || exit 0
   deepened=$((deepened + DEEPEN_STEP))
 done
 
-LOG=$(git log --oneline "$PRIOR..$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
+LOG=$(git log --oneline --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
 if [ -z "$LOG" ]; then
   exit 0
 fi
+
+COMMIT_COUNT=$(git rev-list --count --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null || echo "0")
+write_count "$COMMIT_COUNT"
+
 STAT=$(git diff --stat "$PRIOR" "$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
 
 printf '%s\n' \
@@ -88,8 +257,10 @@ printf '%s\n' \
   '' \
   "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The range below was computed by the workflow with git itself. When you describe what changed since the last round, describe THIS range rather than deriving your own, and examine every commit and file in it:" \
   '' \
-  "    \$ git log --oneline ${PRIOR:0:8}..${HEAD_NOW:0:8}" \
+  "    \$ git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8}" \
   "$LOG" \
   '' \
   "    \$ git diff --stat ${PRIOR:0:8} ${HEAD_NOW:0:8}" \
-  "$STAT"
+  "$STAT" \
+  '' \
+  "**Mandatory review requirement:** $COMMIT_COUNT unreviewed commit(s) exist in this range (${PRIOR:0:8}..${HEAD_NOW:0:8}). You MUST examine these commits and the diff above. Every commit in this range must be thoroughly reviewed."

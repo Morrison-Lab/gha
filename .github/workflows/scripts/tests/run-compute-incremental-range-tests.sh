@@ -158,6 +158,143 @@ check "orphaned prior: emits nothing" "" "$out"
 out=$(run_in "$full" "$tmp/does-not-exist.json")
 check "missing comments file: emits nothing" "" "$out"
 
+# 10. Restated clean / "no new diff" comment skipped (gha#965).
+# Comment 1 is genuine on C3; comment 2 is on C4 claiming no new diff.
+# The script must skip comment 2, select C3 as prior, and list C4 and C5.
+C4=$(sha_of HEAD~1)
+jq -n --arg c3 "$C3" --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nAll changes in this PR were reviewed in the previous round. No new commits or modifications have been made since the last review.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-restated.json"
+out=$(run_in "$full" "$tmp/comments-restated.json")
+check "restated comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "restated comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+check "restated comment skipped: mandatory requirement mentions 2 unreviewed commit(s)" "yes" "$(grep -q '2 unreviewed commit(s)' <<<"$out" && echo yes || echo no)"
+
+# 11. Explicit head-sha passed as argument 2 bounds the range to C4.
+out=$(cd "$full" && bash "$script" "$tmp/comments-c3.json" "$C4")
+check "explicit head-sha: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "explicit head-sha: does not list subject-c5" "no" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 12. Count-file passed as argument 3 records the commit count.
+count_file="$tmp/commit-count.txt"
+( cd "$full" && bash "$script" "$tmp/comments-c3.json" "$C5" "$count_file" ) >/dev/null
+count_val=$(cat "$count_file" 2>/dev/null || echo "")
+check "count-file records commit count 2" "2" "$count_val"
+
+# 13. Merge commit excluded from log and count via --no-merges (gha#965).
+mergerepo="$tmp/mergerepo"
+$GIT clone -q "file://$origin" "$mergerepo"
+( cd "$mergerepo"
+  $GIT checkout -q -b side HEAD~2
+  echo "side content" > "side.txt"
+  $GIT add "side.txt"
+  $GIT commit -q -m "subject-side"
+  $GIT checkout -q main
+  $GIT merge -q --no-ff side -m "Merge branch side"
+)
+HEAD_MERGE=$(cd "$mergerepo" && $GIT rev-parse HEAD)
+merge_count_file="$tmp/merge-count.txt"
+out=$(cd "$mergerepo" && bash "$script" "$tmp/comments-c3.json" "$HEAD_MERGE" "$merge_count_file")
+check "merge commit not listed in log" "no" "$(grep -q 'Merge branch side' <<<"$out" && echo yes || echo no)"
+check "merge count excludes merge commit (c4, c5, side = 3)" "3" "$(cat "$merge_count_file")"
+
+# 14. Skipped review comment with structured payload skipped (gha#965).
+jq -n --arg c3 "$C3" --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\n\n**Skipped**\n\n<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"SKIPPED\", \"findings\": [], \"commit_sha\": \"" + $c4 + "\"} -->\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-skipped.json"
+out=$(run_in "$full" "$tmp/comments-skipped.json")
+check "skipped payload comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "skipped payload comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+check "skipped payload comment skipped: mandatory requirement mentions 2 unreviewed commit(s)" "yes" "$(grep -q '2 unreviewed commit(s)' <<<"$out" && echo yes || echo no)"
+
+# 15. Comment discussing "no new diff" in code span or blockquote is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nReviewed all changes. The author added protection against `no new diff` claims.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-codespan.json"
+out=$(run_in "$full" "$tmp/comments-codespan.json")
+check "codespan no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "codespan no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 16. Comment discussing 'no new diff' in single-quoted prose is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nThe author fixed the bug where a review declares '\''no new diff'\''.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-singlequote.json"
+out=$(run_in "$full" "$tmp/comments-singlequote.json")
+check "single-quote no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "single-quote no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 17. Comment discussing 'a no new diff claim' in unquoted plain prose is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nThe author fixed the bug where a review declares a no new diff claim.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-unquoted-prose.json"
+out=$(run_in "$full" "$tmp/comments-unquoted-prose.json")
+check "unquoted-prose no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "unquoted-prose no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 18. Comment with pre-heading no-diff claim IS skipped (gha#965).
+jq -n --arg c3 "$C3" --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("## Code Review\n\nNo new diff exists in this PR since the last round.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-preheading-no-diff.json"
+out=$(run_in "$full" "$tmp/comments-preheading-no-diff.json")
+check "pre-heading no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "pre-heading no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 19. Comment discussing qualified trigger phrases is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("## Code Review\n\nVerified the already reviewed in the previous round check and fixed the head has not moved bug.\n\n### Verdict\nReady for merge\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-qualified-phrases.json"
+out=$(run_in "$full" "$tmp/comments-qualified-phrases.json")
+check "qualified phrases comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "qualified phrases comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
+# 20. Comment with unqualified no-diff claim in Verdict section IS skipped (gha#965).
+jq -n --arg c3 "$C3" --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nNo new diff exists since the last round.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-verdict-no-diff.json"
+out=$(run_in "$full" "$tmp/comments-verdict-no-diff.json")
+check "verdict no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "verdict no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
   exit 1
