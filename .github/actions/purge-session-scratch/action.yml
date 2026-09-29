@@ -1,0 +1,15 @@
+name: Purge session scratch files
+description: >-
+  Purges session scratch files (.tmp_*) and untracked setup artifacts (.github/pkg.lock,
+  .github/r-depends.rds) prior to residual auto-commit sweeps, restoring tracked
+  versions to HEAD if present (gha#981, gha#983). Located via github.action_path
+  rather than a checked-out script path because calling workflow steps operate on
+  the caller's checkout, not Morrison-Lab/gha's own tree.
+
+runs:
+  using: composite
+  steps:
+    - name: Purge scratch files
+      id: purge
+      shell: bash
+      run: bash "${{ github.action_path }}/../../workflows/scripts/purge-session-scratch.sh"
