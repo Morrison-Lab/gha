@@ -187,6 +187,13 @@ def run_self_test() -> int:
             ),
         ),
         (
+            "drop setup-julia in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("uses: julia-actions/setup-julia", "uses: ignore/setup-julia"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
             "drop julia-actions/cache in action.yml",
             DEFAULT_COMPOSITE,
             baseline_composite.replace("uses: julia-actions/cache", "uses: ignore/cache"),
@@ -197,6 +204,13 @@ def run_self_test() -> int:
             "drop julia-version from julia cache-name in action.yml",
             DEFAULT_COMPOSITE,
             baseline_composite.replace("julia=${{ inputs.julia-version }};", ""),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop setup-julia condition from julia cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("inputs.setup-julia == 'true'", "true"),
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
@@ -231,6 +245,12 @@ def main() -> int:
 
     if args.self_test:
         return run_self_test()
+
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+    from workflow_discovery import skip_if_restored
+
+    if skip_if_restored(DEFAULT_WORKFLOW.parent, "quarto-publish workflow tests"):
+        return 0
 
     errors = check_quarto_publish()
     if errors:

@@ -310,6 +310,20 @@ def run_self_test() -> int:
             DEFAULT_WORKFLOW,
             baseline_workflow,
         ),
+        (
+            "drop setup-julia condition from julia cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("inputs.setup-julia == 'true'", "true"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
+        (
+            "drop closed condition from julia cache in action.yml",
+            DEFAULT_COMPOSITE,
+            baseline_composite.replace("github.event.action != 'closed'", "true"),
+            DEFAULT_WORKFLOW,
+            baseline_workflow,
+        ),
     ]
 
     with tempfile.TemporaryDirectory() as tmpdir:
