@@ -545,7 +545,17 @@ jobs:
           prompt: |
             ${{ steps.gate.outputs.thread_line }}
             Read the thread, perform any requested code changes or analysis, commit your changes if appropriate, and reply to the thread.
+            If you create temporary scratch files or test scripts, write them
+            outside the repository checkout (such as in `$RUNNER_TEMP` or `/tmp`)
+            so they do not pollute the repository.
+
             ${{ inputs.prompt-addendum }}
+
+      # Purge session scratch files and setup artifacts before the auto-commit
+      # sweep so they are never committed onto the branch (gha#981, gha#983).
+      - name: Purge session scratch files
+        if: always() && steps.gate.outputs.skip != 'true' && steps.pr_checkout.outputs.branch != ''
+        uses: Morrison-Lab/gha/.github/actions/purge-session-scratch@v3
 
       - name: Push PR branch if Gemini committed
         id: push_pr
@@ -707,6 +717,15 @@ jobs:
           else
             echo "No new commits on PR head; skipping reviewer re-request."
           fi
+
+      # Purge session scratch files and setup artifacts before the auto-commit
+      # sweep so they are never committed onto the branch (gha#981, gha#983).
+      - name: Purge session scratch files
+        if: |
+          always() &&
+          steps.gate.outputs.skip != 'true' &&
+          steps.issue_branch.outputs.branch != ''
+        uses: Morrison-Lab/gha/.github/actions/purge-session-scratch@v3
 
       - name: Push branch for issue trigger
         id: push_issue
