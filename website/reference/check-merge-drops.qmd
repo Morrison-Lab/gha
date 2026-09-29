@@ -20,18 +20,27 @@ and a clean merge reports nothing.
 
 Three kinds of change are deliberately not reported:
 
-- **Moved content.**
+- **Moved or bullet-split content.**
   A line is reported only when its text occurs nowhere
-  in the merge's tree, so a paragraph the resolution moved to another file passes.
+  in the merge's tree.
+  Whitespace runs are collapsed and line-leading list item markers
+  (`-`, `*`, `+`, `1.`) are stripped when comparing flattened text,
+  so a paragraph the resolution moved to another file,
+  rewrapped at different line breaks,
+  or split into a bulleted list passes.
 - **Rewrapped content.**
   Each file is compared as one string with every
-  whitespace run collapsed, so a paragraph rewrapped at different line breaks passes.
+  whitespace run collapsed,
+  so a paragraph rewrapped at different line breaks passes.
 - **Reworded lines.**
   When both sides edited the same line and the resolution
-  wrote a third version, neither side's line survives verbatim,
+  wrote a third version combining them,
+  neither side's line survives verbatim,
   yet nothing was lost.
-  A missing line is not reported when a line of the merge's copy of the same file
+  A missing line is not reported when a line in the merge's copy of the same file
+  that is new in the merge (not present in any parent)
   is at least `similarity` alike, word by word.
+  Unrelated lines from other parents or the merge base cannot mask a dropped line.
 
 The check is **warn-only by default**,
 since a merge can legitimately drop a line the other side superseded.
@@ -51,7 +60,7 @@ so run the check on pull requests to see a branch's merges before they are squas
 | `globs`          | string  | `'*.md *.qmd'` | Space-separated git pathspecs whose added lines are checked (recursive by default). The search for moved content always covers the whole tree. |
 | `paths-ignore`   | string  | `''`           | Comma- or newline-separated glob patterns (relative paths) to skip; supports `*`, `?`, and recursive `**`. |
 | `min-length`     | string  | `'20'`         | Minimum length, in characters after whitespace normalisation, for an added line to be checked; inclusive. Shorter lines (fences, list markers, closing `:::`) recur everywhere and are skipped. |
-| `similarity`     | string  | `'0.6'`        | Word-level similarity, 0 to 1, at or above which a line in the merge's copy of the same file counts as a rewording of a missing line. `'1'` reports every line whose exact text is gone. |
+| `similarity`     | string  | `'0.6'`        | Word-level similarity, 0 to 1, at or above which a line in the merge's copy of the same file that is new in the merge counts as a rewording of a missing line. `'1'` reports every line whose exact text is gone. |
 | `fail`           | boolean | `false`        | Fail the workflow when a merge dropped content; otherwise warn only. |
 
 ## Permissions

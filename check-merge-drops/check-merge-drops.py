@@ -19,18 +19,21 @@ Design notes:
   new to the history, so the other side cannot have deleted it; a merge that
   keeps both sides' hunks keeps it. Only a resolution that discards one side
   (or an "evil merge" editing content by hand) can drop it.
-- **Moved or rewrapped content is not a drop.** Each file is compared as
-  one string with every whitespace run collapsed, and a line is reported only
-  when its normalised text occurs nowhere in ``M``'s tree. So a paragraph the
-  resolution moved to another file, or rewrapped at different line breaks,
-  passes.
+- **Moved, rewrapped, or bullet-split content is not a drop.** Each file is
+  compared as one string with every whitespace run collapsed (and with
+  line-leading list item markers optionally stripped), and a line is
+  reported only when its normalised text occurs nowhere in ``M``'s tree. So a
+  paragraph the resolution moved to another file, rewrapped at different line
+  breaks, or split into bullet items, passes.
 - **A reworded line is not a drop.** When both sides edited the same line
   and the resolution wrote a third version combining them, neither side's
   line survives verbatim, yet nothing was lost. So a line is reported only
-  when no line of ``M``'s copy of the same file is at least
-  ``MERGE_DROPS_SIMILARITY`` similar to it (word-level
-  ``difflib.SequenceMatcher`` ratio, default 0.6; 1 means exact matches
-  only). A paragraph dropped wholesale has no such near-twin.
+  when no line of ``M``'s copy of the same file that is **new in the merge**
+  (not present in any parent) is at least ``MERGE_DROPS_SIMILARITY`` similar
+  to it (word-level ``difflib.SequenceMatcher`` ratio, default 0.6; 1 means
+  exact matches only). Unrelated lines from other parents or the merge base
+  cannot mask a dropped line as a near-twin. A paragraph dropped wholesale
+  has no such near-twin.
 - **Short and blank lines are skipped** (``MERGE_DROPS_MIN_LENGTH``, default
   20 characters after normalisation): fences, list markers, ``---``, closing
   ``:::`` and similar boilerplate recur everywhere and would add noise
@@ -69,7 +72,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set
+from typing import Dict, FrozenSet, List, NamedTuple, Optional, Sequence, Set, Tuple, Union
 
 _DEFAULT_GLOBS = "*.md *.qmd"
 _DEFAULT_MIN_LENGTH = 20
@@ -186,12 +189,24 @@ def parse_added_lines(diff: str) -> Dict[str, List[str]]:
 
 # ── the check ───────────────────────────────────────────────────────────────
 
+def unbullet_line(line: str) -> str:
+    """Strip line-leading markdown list item markers (-, *, +, 1.)."""
+    return re.sub(r"^\s*(?:[-*+]|\d+\.)\s+", "", line).strip()
+
+
+def _unbullet_text(text: str) -> str:
+    """Flatten text after stripping line-leading markdown list item markers."""
+    stripped = [re.sub(r"^\s*(?:[-*+]|\d+\.)\s+", "", line) for line in text.splitlines()]
+    return " ".join(" ".join(stripped).split())
+
+
 class _Blob(NamedTuple):
     lines: FrozenSet[str]  # long-enough normalised lines, for rewording checks
     flat: str              # the whole text with every whitespace run collapsed
+    flat_unbulleted: str   # whole text with line-leading list markers stripped
 
 
-_EMPTY_BLOB = _Blob(frozenset(), "")
+_EMPTY_BLOB = _Blob(frozenset(), "", "")
 
 
 class _TreeIndex:
@@ -202,7 +217,7 @@ class _TreeIndex:
         self._min_length = min_length
         self._blobs: Dict[str, _Blob] = {}
         self._tree_key: Optional[str] = None
-        self._tree_flat = ""
+        self._tree_flat: Tuple[str, str] = ("", "")
 
     def blob(self, sha: str) -> _Blob:
         if sha not in self._blobs:
@@ -211,34 +226,39 @@ class _TreeIndex:
                 self._blobs[sha] = _EMPTY_BLOB
             else:
                 lines = {n for n in map(normalise, text.splitlines()) if len(n) >= self._min_length}
-                self._blobs[sha] = _Blob(frozenset(lines), normalise(text))
+                self._blobs[sha] = _Blob(frozenset(lines), normalise(text), _unbullet_text(text))
         return self._blobs[sha]
 
     def at_path(self, commit: str, path: str) -> _Blob:
         out = _git(["rev-parse", "--verify", "--quiet", f"{commit}:{path}"], cwd=self._cwd)
         return self.blob(out.strip()) if out else _EMPTY_BLOB
 
-    def tree_flat(self, commit: str) -> str:
+    def tree_flat(self, commit: str) -> Tuple[str, str]:
         """Every text blob in ``commit``'s tree, flattened, one per line.
 
-        Only the latest tree is kept: consecutive lookups are for the same
-        merge, and holding every merge's tree would grow without bound.
+        Returns ``(flat, flat_unbulleted)``. Only the latest tree is kept:
+        consecutive lookups are for the same merge, and holding every merge's
+        tree would grow without bound.
         """
         if self._tree_key != commit:
             listing = _git(["ls-tree", "-r", "-l", "-z", commit], cwd=self._cwd) or ""
             flats: List[str] = []
+            unbulleted_flats: List[str] = []
             for entry in listing.split("\0"):
                 meta = entry.partition("\t")[0].split()
                 if len(meta) < 4 or meta[1] != "blob":
                     continue
                 if not meta[3].isdigit() or int(meta[3]) > _MAX_BLOB_BYTES:
                     continue
-                flats.append(self.blob(meta[2]).flat)
-            self._tree_key, self._tree_flat = commit, "\n".join(flats)
+                b = self.blob(meta[2])
+                flats.append(b.flat)
+                unbulleted_flats.append(b.flat_unbulleted)
+            self._tree_key = commit
+            self._tree_flat = ("\n".join(flats), "\n".join(unbulleted_flats))
         return self._tree_flat
 
 
-def has_near_twin(line: str, others: FrozenSet[str], threshold: float) -> bool:
+def has_near_twin(line: str, others: Union[Set[str], FrozenSet[str]], threshold: float) -> bool:
     """True when some line in ``others`` is a rewording of ``line``.
 
     Compared word by word, so a changed number or link target costs one token
@@ -304,13 +324,20 @@ def check_merge(
             if not candidates:
                 continue
             same_file = index.at_path(merge, path)
-            missing = [c for c in candidates if c not in same_file.flat]
+            missing = [c for c in candidates
+                       if c not in same_file.flat
+                       and unbullet_line(c) not in same_file.flat_unbulleted]
             if not missing:
                 continue
-            anywhere = index.tree_flat(merge)
+            anywhere, anywhere_unbulleted = index.tree_flat(merge)
+            parent_lines: Set[str] = set()
+            for p in parents:
+                parent_lines.update(index.at_path(p, path).lines)
+            resolution_lines = same_file.lines - parent_lines
             missing = [c for c in missing
                        if c not in anywhere
-                       and not has_near_twin(c, same_file.lines, similarity)]
+                       and unbullet_line(c) not in anywhere_unbulleted
+                       and not has_near_twin(c, resolution_lines, similarity)]
             if missing:
                 drops.append(Drop(merge, subject, i, parent, path, missing))
     return drops
@@ -468,8 +495,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
     drops, merges_examined, unreadable = result
     for sha in unreadable:
-        print(f"::warning::Could not examine merge {sha[:12]} (a parent or its merge "
-              f"base is missing from this clone); it was skipped.")
+        print(f"::warning::Could not examine merge {sha[:12]} (no merge base found, "
+              f"or a parent is missing from this clone); it was skipped.")
 
     report = render_report(drops, merges_examined, base, args.head)
     print(report)
