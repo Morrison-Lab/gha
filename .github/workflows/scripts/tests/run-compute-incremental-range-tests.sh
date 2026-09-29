@@ -254,16 +254,20 @@ out=$(run_in "$full" "$tmp/comments-unquoted-prose.json")
 check "unquoted-prose no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "unquoted-prose no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
-# 18. Comment discussing 'already reviewed in the previous round' in Code Review prose is NOT skipped (Finding 3 reproduction).
-jq -n --arg c4 "$C4" '[
+# 18. Comment with pre-heading no-diff claim is skipped (gha#965 Finding 2).
+jq -n --arg c3 "$C3" --arg c4 "$C4" '[
   {
     "user": {"login": "github-actions[bot]"},
-    "body": ("## Code Review\n\nThis fix ensures that content already reviewed in the previous round is not silently skipped again.\n\n### Verdict\nReady for merge\n\nReviewed commit: " + $c4)
+    "body": ("### Verdict\nReady for merge\n\nReviewed commit: " + $c3)
+  },
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("## Code Review\n\nNo new diff exists since the last round.\n\n### Verdict\nReady for merge\n\nReviewed commit: " + $c4)
   }
-]' > "$tmp/comments-finding3-repro.json"
-out=$(run_in "$full" "$tmp/comments-finding3-repro.json")
-check "finding3-repro comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
-check "finding3-repro comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+]' > "$tmp/comments-preheading-no-diff.json"
+out=$(run_in "$full" "$tmp/comments-preheading-no-diff.json")
+check "pre-heading no-diff comment skipped: lists subject-c4" "yes" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "pre-heading no-diff comment skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
