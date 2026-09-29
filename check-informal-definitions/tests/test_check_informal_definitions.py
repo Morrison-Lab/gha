@@ -14,6 +14,7 @@ Tests cover:
 """
 
 import importlib.util
+import json
 from pathlib import Path
 import pytest
 
@@ -263,7 +264,40 @@ def test_cli_failing_file_exits_one_and_writes_reports(tmp_path, monkeypatch):
     assert md_out.exists()
     assert "**Random**" in md_out.read_text(encoding="utf-8")
     assert json_out.exists()
-    assert "Random" in json_out.read_text(encoding="utf-8")
+    data = json.loads(json_out.read_text(encoding="utf-8"))
+    assert data["total_findings"] == 1
+    assert len(data["findings"]) == 1
+    assert data["findings"][0]["term"] == "Random"
+
+
+def test_cli_clean_file_writes_reports(tmp_path, monkeypatch):
+    clean_file = tmp_path / "clean.qmd"
+    clean_file.write_text(
+        "::: {#def-random}\n## Random\nDefinition content\n:::\n",
+        encoding="utf-8",
+    )
+    md_out = tmp_path / "report.md"
+    json_out = tmp_path / "report.json"
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "check-informal-definitions.py",
+            "--path",
+            str(clean_file),
+            "--fail=true",
+            "--output-markdown",
+            str(md_out),
+            "--output-json",
+            str(json_out),
+        ],
+    )
+    assert check_defs.main() == 0
+    assert md_out.exists()
+    assert "Clean. No informal definitions found." in md_out.read_text(encoding="utf-8")
+    assert json_out.exists()
+    data = json.loads(json_out.read_text(encoding="utf-8"))
+    assert data["total_findings"] == 0
+    assert len(data["findings"]) == 0
 
 
 def test_cli_failing_file_with_fail_false_exits_zero(tmp_path, monkeypatch):

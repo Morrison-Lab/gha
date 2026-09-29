@@ -622,11 +622,15 @@ def main() -> int:
                 f"::{severity} file={rel_str},line={f.line},title=Informal definition in prose::[{f.rule}] {f.message}"
             )
 
-        if args.output_markdown:
-            out_md = Path(args.output_markdown)
-            out_md.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_md, "w", encoding="utf-8") as mdf:
-                mdf.write("### Informal Definitions in Prose\n\n")
+    else:
+        print("check-informal-definitions: Clean. No informal definitions found.")
+
+    if args.output_markdown:
+        out_md = Path(args.output_markdown)
+        out_md.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_md, "w", encoding="utf-8") as mdf:
+            mdf.write("### Informal Definitions in Prose\n\n")
+            if all_findings:
                 mdf.write(
                     "The following technical concepts appear to be defined in running prose "
                     "rather than inside formal Quarto definition divs (`::: {#def-...}`). "
@@ -638,34 +642,37 @@ def main() -> int:
                         rel = f.file.relative_to(repo_root)
                     except ValueError:
                         rel = f.file
-                    mdf.write(f"- `{rel}:{f.line}`: **{f.term}** ({f.rule})\n  > {f.snippet}\n")
+                    rel_str = str(rel).replace("\\", "/")
+                    mdf.write(f"- `{rel_str}:{f.line}`: **{f.term}** ({f.rule})\n  > {f.snippet}\n")
+            else:
+                mdf.write("Clean. No informal definitions found.\n")
 
-        if args.output_json:
-            import json
+    if args.output_json:
+        import json
 
-            out_json = Path(args.output_json)
-            out_json.parent.mkdir(parents=True, exist_ok=True)
-            with open(out_json, "w", encoding="utf-8") as jf:
-                json.dump(
-                    [
-                        {
-                            "file": str(f.file.relative_to(repo_root) if repo_root in f.file.parents else f.file),
-                            "line": f.line,
-                            "rule": f.rule,
-                            "term": f.term,
-                            "message": f.message,
-                            "snippet": f.snippet,
-                        }
-                        for f in all_findings
-                    ],
-                    jf,
-                    indent=2,
-                )
+        out_json = Path(args.output_json)
+        out_json.parent.mkdir(parents=True, exist_ok=True)
+        report_data = {
+            "total_findings": len(all_findings),
+            "findings": [
+                {
+                    "file": str(
+                        f.file.relative_to(repo_root) if repo_root in f.file.parents else f.file
+                    ).replace("\\", "/"),
+                    "line": f.line,
+                    "rule": f.rule,
+                    "term": f.term,
+                    "message": f.message,
+                    "snippet": f.snippet,
+                }
+                for f in all_findings
+            ],
+        }
+        with open(out_json, "w", encoding="utf-8") as jf:
+            json.dump(report_data, jf, indent=2)
 
-        if should_fail:
-            return 1
-    else:
-        print("check-informal-definitions: Clean. No informal definitions found.")
+    if all_findings and should_fail:
+        return 1
 
     return 0
 
