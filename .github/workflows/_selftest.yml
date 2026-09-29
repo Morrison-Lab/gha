@@ -1221,7 +1221,7 @@ jobs:
         uses: ./check-informal-definitions
         with:
           fail: 'true'
-          globs: '*.md'
+          globs: 'website/*.qmd'
       - name: Remove the staged page
         if: always()
         shell: bash
