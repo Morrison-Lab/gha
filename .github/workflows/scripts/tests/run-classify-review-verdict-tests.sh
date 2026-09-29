@@ -2464,14 +2464,23 @@ Also handles when no commits have landed and stops early in tests.
 The 5 commits cleanly implement the feature." \
 "true" "ready-for-merge" "5"
 
-run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'no new diff' fails closed (Finding 1)" "### Verdict
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section describes fix in prose remains clean (Finding 1 reproduction)" "### Verdict
 
-No new diff exists in this PR since the last round; the previous verdict of Ready for merge stands.
+**Ready for merge**
+
+The guard correctly identifies when no commits have landed and stops early.
 
 <!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
 
 Reviewed commit: aaaa123456789012345678901234567890123456" \
-"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) without head-sha where Verdict section states 'no new diff' fails closed via fallback (gha#965)" "### Verdict
+
+No new diff exists in this PR since the last round; the previous verdict of Ready for merge stands.
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5"
 
 run_test "Unreviewed commits (5) with matching head-sha where Verdict section contains qualified 'already reviewed in previous round' check remains clean" "### Verdict
 

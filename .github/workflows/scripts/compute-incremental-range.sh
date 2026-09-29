@@ -199,11 +199,15 @@ for c in comments:
         except Exception:
             pass
 
-    # Check stripped prose for no-diff claims anywhere in the comment body.
-    # Testing the whole stripped body avoids accepting a stale comment with a pre-heading
-    # no-diff claim as a valid reviewed boundary (which would wrongly zero out
-    # unreviewed-commits and disable the classify-review-verdict fail-closed guard; gha#965).
-    if _has_no_diff_claim(strip_markup(body)):
+    # Check stripped prose scoped to the verdict section so code review discussions
+    # of the feature or bug fix do not disqualify valid prior comments (gha#965).
+    stripped_lines = strip_markup(body).splitlines()
+    last_idx = -1
+    for i, line in enumerate(stripped_lines):
+        if re.search(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict\b', line, re.IGNORECASE):
+            last_idx = i
+    target_lines = stripped_lines[last_idx:] if last_idx != -1 else stripped_lines
+    if _has_no_diff_claim("\n".join(target_lines)):
         continue
 
     matches = _REVIEWED_COMMIT_RE.findall(body)
