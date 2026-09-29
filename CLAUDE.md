@@ -28,6 +28,16 @@ Guidance for Claude Code when working in this repository.
   read from the paginated check-runs endpoint rather than `gh pr checks`.
   "Merged work that consumers need" is the motivation, not the gate.
 
+- **Require that no independent review on the commits being slid is still pending.**
+  And no review this session requested or is waiting on for the PRs that
+  introduced those commits is still pending.
+  Check runs alone miss reviews that are not check runs, such as an
+  independent adversarial review a session dispatched and is waiting on
+  (gha#976).
+  CI and the review bot can pass on an interim fix while an in-flight review
+  catches that the fix addressed a symptom rather than the cause, so hold the
+  slide until any requested review returns clean.
+
 - **Green is necessary and not sufficient: check the callee's
   `permissions:` blocks before every slide.**
   `README.md`'s ["Widening permissions is a breaking
