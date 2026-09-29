@@ -304,6 +304,7 @@ def check_merge(
     subject = (_git(["log", "-1", "--format=%s", merge], cwd=cwd) or "").strip()
 
     drops: List[Drop] = []
+    resolution_cache: Dict[str, Set[str]] = {}
     for i, parent in enumerate(parents, start=1):
         diff = _git(
             ["diff", "--no-color", "--no-ext-diff", "-U0", "-M", base, parent, "--", *globs],
@@ -330,10 +331,12 @@ def check_merge(
             if not missing:
                 continue
             anywhere, anywhere_unbulleted = index.tree_flat(merge)
-            parent_lines: Set[str] = set()
-            for p in parents:
-                parent_lines.update(index.at_path(p, path).lines)
-            resolution_lines = same_file.lines - parent_lines
+            if path not in resolution_cache:
+                parent_lines: Set[str] = set()
+                for p in parents:
+                    parent_lines.update(index.at_path(p, path).lines)
+                resolution_cache[path] = same_file.lines - parent_lines
+            resolution_lines = resolution_cache[path]
             missing = [c for c in missing
                        if c not in anywhere
                        and unbullet_line(c) not in anywhere_unbulleted

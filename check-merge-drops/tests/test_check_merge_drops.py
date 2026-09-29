@@ -362,8 +362,8 @@ def test_paragraph_split_into_bullets_is_not_reported(tmp_path):
     _git(tmp_path, "commit", "-qm", "main update")
 
     _git(tmp_path, "checkout", "-q", "feature")
-    _git(tmp_path, "merge", "-q", "main", check=False)
-    # Resolution splits long_para into bullets in chapter.qmd:
+    _git(tmp_path, "merge", "-q", "--no-commit", "main")
+    # Resolution splits long_para into bullets in chapter.qmd inside the merge:
     bulleted = (
         "You must check the following items:\n"
         "- first the data,\n"
