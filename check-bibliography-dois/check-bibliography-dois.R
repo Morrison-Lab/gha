@@ -1,4 +1,5 @@
 #!/usr/bin/env Rscript
+# check-one-function-per-file: allow-multiple
 # Check bibliography files for DOI requirements:
 # 1. Every book and article must have a DOI field
 # 2. Every DOI must resolve to a valid URL
@@ -115,7 +116,7 @@ validate_doi_url <- function(doi,
       )
 
       code <- status_code(response)
-      step_status_code <<- code
+      step_status_code <- code
 
       if (code == 200) {
         return(list(
@@ -198,8 +199,7 @@ validate_doi_url <- function(doi,
 
 #' Get DOI metadata from CrossRef API
 #'
-#' @param doi DOI string
-#' @param http_get HTTP GET function to use (default httr::GET)
+#' @inheritParams validate_doi_url
 #' @return Metadata list or NULL if failed
 get_doi_metadata <- function(doi, http_get = GET) {
   doi <- trimws(doi)
@@ -346,8 +346,7 @@ compare_metadata <- function(entry, metadata) {
 #'
 #' @param filepath Path to bibliography file
 #' @param verify_metadata Whether to verify metadata (default TRUE)
-#' @param http_get HTTP GET function to use (default httr::GET)
-#' @param backoff_base_sec Base wait time in seconds for exponential backoff (default 2)
+#' @inheritParams validate_doi_url
 #' @return List with checked_count, errors_count, errors, warnings_count, and warnings
 check_bibliography_file <- function(filepath,
                                     verify_metadata = TRUE,
