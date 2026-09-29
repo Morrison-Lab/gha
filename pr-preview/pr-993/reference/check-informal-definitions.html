@@ -890,8 +890,8 @@ cookieconsent.run({
 <tr class="even">
 <td><code>fail</code></td>
 <td>boolean</td>
-<td><code>true</code></td>
-<td>Whether to fail the workflow if informal definitions are detected.</td>
+<td><code>false</code></td>
+<td>Whether to fail the workflow if informal definitions are detected (warn-only by default).</td>
 </tr>
 <tr class="odd">
 <td><code>diff-scoped</code></td>
@@ -957,7 +957,7 @@ cookieconsent.run({
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.qmd'                         # pathspecs to check (recursive)</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (defaults to true)</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (warn-only by default)</span></span>
 <span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   diff-scoped: true                      # report only lines a PR adds</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-informal-definitions.yml"><code>examples/check-informal-definitions.yml</code></a> for the full caller stub.</p>
 
