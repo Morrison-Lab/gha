@@ -232,6 +232,17 @@ out=$(run_in "$full" "$tmp/comments-codespan.json")
 check "codespan no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
 check "codespan no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
 
+# 16. Comment discussing 'no new diff' in single-quoted prose is NOT skipped (gha#965).
+jq -n --arg c4 "$C4" '[
+  {
+    "user": {"login": "github-actions[bot]"},
+    "body": ("### Verdict\nReady for merge\n\nThe author fixed the bug where a review declares '\''no new diff'\''.\n\nReviewed commit: " + $c4)
+  }
+]' > "$tmp/comments-singlequote.json"
+out=$(run_in "$full" "$tmp/comments-singlequote.json")
+check "single-quote no-diff comment not skipped: does not list subject-c4" "no" "$(grep -q 'subject-c4' <<<"$out" && echo yes || echo no)"
+check "single-quote no-diff comment not skipped: lists subject-c5" "yes" "$(grep -q 'subject-c5' <<<"$out" && echo yes || echo no)"
+
 if [ "$failures" -gt 0 ]; then
   echo "::error::$failures compute-incremental-range case(s) failed" >&2
   exit 1

@@ -75,6 +75,26 @@ _FENCE_OPEN_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})')
 _FENCE_CLOSE_RE = re.compile(r'^[ \t]*(`{3,}|~{3,})[ \t]*$')
 _BLOCKQUOTE_RE = re.compile(r'^[ \t]*>')
 
+_CONTRACTIONS = [
+    (r"\bisn['’]?t\b", "is not"),
+    (r"\bwasn['’]?t\b", "was not"),
+    (r"\baren['’]?t\b", "are not"),
+    (r"\bweren['’]?t\b", "were not"),
+    (r"\bdoesn['’]?t\b", "does not"),
+    (r"\bdon['’]?t\b", "do not"),
+    (r"\bdidn['’]?t\b", "did not"),
+    (r"\bcan['’]?t\b", "can not"),
+    (r"\bcannot\b", "can not"),
+    (r"\bcouldn['’]?t\b", "could not"),
+    (r"\bwon['’]?t\b", "will not"),
+    (r"\bwouldn['’]?t\b", "would not"),
+    (r"\bshouldn['’]?t\b", "should not"),
+    (r"\bhasn['’]?t\b", "has not"),
+    (r"\bhaven['’]?t\b", "have not"),
+    (r"\bhadn['’]?t\b", "had not"),
+    (r"\bain['’]?t\b", "is not"),
+]
+
 def strip_markup(text):
     out = []
     fence_char = ""
@@ -110,6 +130,13 @@ def strip_markup(text):
                 break
             line = line[:opener] + line[closer + 3:]
         line = re.sub(r'`[^`\n]+`', ' codespan ', line)
+        for p, r in _CONTRACTIONS:
+            line = re.sub(p, r, line, flags=re.IGNORECASE)
+        line = re.sub(r"\b[A-Za-z0-9_]+['’](?:s|d|ll|m|re|ve)\b", " ", line)
+        line = re.sub(r'"[^"\n]*"', " ", line)
+        line = re.sub(r'“[^”\n]*”', " ", line)
+        line = re.sub(r'‘[^’\n]*’', " ", line)
+        line = re.sub(r"(?<!\w)'[^'\n]*'(?!\w)", " ", line)
         out.append(line)
     return "\n".join(out)
 

@@ -58,12 +58,26 @@ _NO_DIFF_RE = re.compile(
     r")\b"
 )
 
+def strip_quoted_strings(src_lines):
+    out = []
+    for line in src_lines:
+        l = expand_contractions(line)
+        l = re.sub(r"\b[A-Za-z0-9_]+['’](?:s|d|ll|m|re|ve)\b", " ", l)
+        l = re.sub(r'"[^"\n]*"', " ", l)
+        l = re.sub(r'“[^”\n]*”', " ", l)
+        l = re.sub(r'‘[^’\n]*’', " ", l)
+        l = re.sub(r"(?<!\w)'[^'\n]*'(?!\w)", " ", l)
+        out.append(l)
+    return out
+
 def _has_no_diff_claim():
     if not text:
         return False
-    # Strip fences, blockquotes, HTML comments, and code spans so quoted diffs,
-    # prompt instructions, or code discussions are never treated as review claims (gha#965).
-    stripped = "\n".join(strip_machine_payloads(strip_code_spans(text.splitlines())))
+    # Strip fences, blockquotes, HTML comments, code spans, and quoted strings
+    # so quoted diffs, prompt instructions, or code discussions (in backticks,
+    # single quotes, double quotes, or curly quotes) are never treated as
+    # review claims (gha#965).
+    stripped = "\n".join(strip_machine_payloads(strip_quoted_strings(strip_code_spans(text.splitlines()))))
     return bool(_NO_DIFF_RE.search(stripped))
 
 def record(clean, slug):

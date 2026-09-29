@@ -2333,6 +2333,50 @@ run_test "Unreviewed commits (5) with 'no new content' in ordinary sentence rema
 The 5 commits update layout styling; no new content was added to the chapters." \
 "true" "ready-for-merge" "5"
 
+run_test "Unreviewed commits (5) with single-quoted 'no new diff' in plain prose remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares 'no new diff'.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with double-quoted \"no new diff\" in plain prose remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares \"no new diff\".
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with curly-quoted “no new diff” in plain prose remains clean (gha#965)" "## Code Review
+
+The author fixed the bug where a review declares “no new diff”.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
+run_test "Unreviewed commits (5) with contractions and single-quoted 'no new diff' remains clean (gha#965)" "## Code Review
+
+I don't think it's problematic, but we shouldn't allow 'no new diff'.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

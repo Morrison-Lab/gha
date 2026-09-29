@@ -14,6 +14,7 @@
   `pack-review-payload` and `claude-code-review.yml` forward the unreviewed
   commit count from `compute-incremental-range.sh` through `payload.json` into
   `classify-review-verdict`.
-  Both scripts strip fences, blockquotes, HTML comments, and code spans before
-  evaluating no-diff patterns, preventing false positives on quoted diffs,
-  prompt instructions, and self-referential reviews.
+  Both scripts strip fences, blockquotes, HTML comments, code spans, and
+  quoted strings (single, double, and curly quotes) before evaluating no-diff
+  patterns, preventing false positives on quoted diffs, prompt instructions,
+  and reviews that quote or discuss trigger phrases in prose.
