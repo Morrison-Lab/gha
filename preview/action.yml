@@ -263,6 +263,12 @@ runs:
       with:
         version: ${{ inputs.julia-version }}
 
+    - name: Cache Julia packages
+      if: github.event.action != 'closed' && inputs.setup-julia == 'true'
+      uses: julia-actions/cache@a7bed9df697e5d7309d68afe7542a87621a8b6c8 # v3.3.0
+      with:
+        cache-name: julia-cache;julia=${{ inputs.julia-version }};workflow=${{ github.workflow }};job=${{ github.job }}
+
     # R's etc/ldpaths puts the system library directory
     # (/usr/lib/x86_64-linux-gnu) on LD_LIBRARY_PATH for every R process and
     # every process R starts. Julia embedded in R, or started from it, then

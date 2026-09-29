@@ -281,6 +281,10 @@ jobs:
         run: |
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-preview-workflow-tests.py
+      - name: Run quarto-publish workflow contract tests
+        run: |
+          python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py --self-test
+          python3 .github/workflows/scripts/tests/run-quarto-publish-workflow-tests.py
 
   bundle-repo-actions-tests:
     runs-on: ubuntu-latest
