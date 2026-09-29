@@ -95,7 +95,7 @@ def test_bundled_actions():
                 for step in action_data.get("runs", {}).get("steps", [])
                 if step.get("uses", "").startswith("Morrison-Lab/gha/")
             ]
-            for required_step in ("check-quarto-links", "check-orphaned-images"):
+            for required_step in ("check-quarto-links", "check-orphaned-images", "check-typed-output"):
                 if required_step not in callee_actions:
                     failures.append(
                         f"{cap}/action.yml is missing required callee step: {required_step}"

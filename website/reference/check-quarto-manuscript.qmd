@@ -41,6 +41,8 @@ plus manuscript-specific checks:
   which Quarto only warns about and lychee does not read out of a `.qmd`
 - [`check-orphaned-images.yml`](check-orphaned-images.qmd):
   tracked images that no source file references (warn-only by default)
+- [`check-typed-output.yml`](check-typed-output.qmd):
+  typed or faked code output in Quarto sources (warn-only by default)
 - [`check-bibliography-dois.yml`](check-bibliography-dois.qmd):
   validates BibTeX bibliography entries in `.bib` files
 - [`check-equation-renders.yml`](check-equation-renders.qmd):
@@ -96,6 +98,12 @@ Opt out of any specific check by passing its boolean flag as `false`.
 | `orphaned-images-paths-ignore` | string | `''` | Globs of images to skip. |
 | `orphaned-images-base-ref` | string | `''` | Base ref so only images added since it are reported; empty examines every image. |
 | `orphaned-images-fail` | boolean | `false` | Fail on an orphaned image; the report warns only by default, whatever `fail` says. |
+| `check-typed-output` | boolean | `true` | Enable the check for typed or faked code output. |
+| `typed-output-globs` | string | `'*.qmd'` | Space-separated git pathspecs of tracked files to check. |
+| `typed-output-paths-ignore` | string | `''` | Patterns to skip for typed output check. |
+| `typed-output-diff-scoped` | boolean | `false` | Report only findings on lines added since `typed-output-base-ref`. |
+| `typed-output-base-ref` | string | `''` | Base ref for diff-scoped typed output check. |
+| `typed-output-fail` | boolean | `false` | Fail on typed code output; the check warns only by default, whatever `fail` says. |
 | `check-bibliography-dois` | boolean | `true` | Enable bibliography DOI validation. |
 | `bib-exclude-keys` | string | `''` | BibTeX keys to skip for DOI validation. |
 | `check-equation-renders` | boolean | `true` | Enable equation render validation. |

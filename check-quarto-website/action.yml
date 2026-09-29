@@ -3,8 +3,8 @@ description: >-
   Runs the standard check suite for Quarto website repositories (like Morrison-Lab/qwt):
   repository hygiene (junk files, secrets, non-standard characters, semantic line breaks,
   typos, YAML lint, workflow lint, Markdown lint), AI tells, QMD prose linting,
-  lychee link checking, links to missing Quarto pages, orphaned images, and
-  bibliography DOI validation.
+  lychee link checking, links to missing Quarto pages, orphaned images,
+  typed code output, and bibliography DOI validation.
 inputs:
   fail:
     description: Fail the action when any enabled check reports findings.
@@ -129,6 +129,24 @@ inputs:
   orphaned-images-fail:
     description: Fail when an orphaned image is found (the check warns only by default).
     default: 'false'
+  check-typed-output:
+    description: Flag typed or faked code output in Quarto sources (warn-only unless typed-output-fail is true).
+    default: 'true'
+  typed-output-globs:
+    description: Space-separated git pathspecs of tracked files to check for typed output.
+    default: '*.qmd'
+  typed-output-paths-ignore:
+    description: Patterns to skip for typed output check.
+    default: ''
+  typed-output-diff-scoped:
+    description: Report only typed output findings on lines added since base-ref.
+    default: 'false'
+  typed-output-base-ref:
+    description: Git ref to diff against for diff-scoped typed output check.
+    default: ''
+  typed-output-fail:
+    description: Fail when typed output is found (the check warns only by default).
+    default: 'false'
   check-bibliography-dois:
     description: Validate DOIs in BibTeX bibliography files (.bib).
     default: 'true'
@@ -240,6 +258,16 @@ runs:
         paths-ignore: ${{ inputs.orphaned-images-paths-ignore }}
         base-ref: ${{ inputs.orphaned-images-base-ref }}
         fail: ${{ inputs.orphaned-images-fail }}
+
+    - name: Check for typed code output
+      if: inputs.check-typed-output != 'false'
+      uses: Morrison-Lab/gha/check-typed-output@v3
+      with:
+        globs: ${{ inputs.typed-output-globs }}
+        paths-ignore: ${{ inputs.typed-output-paths-ignore }}
+        diff-scoped: ${{ inputs.typed-output-diff-scoped }}
+        base-ref: ${{ inputs.typed-output-base-ref }}
+        fail: ${{ inputs.typed-output-fail }}
 
     - name: Check bibliography DOIs
       if: inputs.check-bibliography-dois != 'false'
