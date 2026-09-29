@@ -23,10 +23,11 @@
 # Offline tests live in tests/run-classify-review-verdict-tests.sh.
 set -euo pipefail
 
-REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file>}"
+REVIEW_FILE="${1:?usage: classify-review-verdict.sh <review-text-file> [unreviewed-commits]}"
 GITHUB_OUTPUT="${GITHUB_OUTPUT:-/dev/null}"
+UNREVIEWED_COMMITS="${2:-${UNREVIEWED_COMMITS:-0}}"
 
-python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" << 'EOF'
+python3 - "$REVIEW_FILE" "$GITHUB_OUTPUT" "$UNREVIEWED_COMMITS" << 'EOF'
 import json
 import os
 import re
@@ -34,8 +35,35 @@ import sys
 
 review_file = sys.argv[1]
 output_file = sys.argv[2]
+unreviewed_commits_str = sys.argv[3] if len(sys.argv) > 3 else (os.environ.get("UNREVIEWED_COMMITS") or "0")
+try:
+    unreviewed_commits = int(unreviewed_commits_str)
+except Exception:
+    unreviewed_commits = 0
+
+text = ""
+
+_NO_DIFF_RE = re.compile(
+    r"(?i)\b("
+    r"no\s+new\s+diff|"
+    r"no\s+new\s+content|"
+    r"no\s+new\s+commits|"
+    r"no\s+substantive\s+(?:logic\s+)?changes|"
+    r"head\s+has\s+not\s+moved|"
+    r"unchanged\s+head|"
+    r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
+    r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round|"
+    r"no\s+commits\s+have\s+landed|"
+    r"reaffirmed.*no\s+new\s+findings"
+    r")\b"
+)
 
 def record(clean, slug):
+    if unreviewed_commits > 0:
+        if slug == "skipped":
+            clean, slug = "false", "unreviewed-commits-skipped"
+        elif clean == "true" and text and _NO_DIFF_RE.search(text):
+            clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
             f.write(f"clean={clean}\nverdict={slug}\n")

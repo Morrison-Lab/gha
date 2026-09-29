@@ -34,23 +34,38 @@
 # carrying backticks cannot close the block early.
 set -euo pipefail
 
-COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file>}"
+COMMENTS_FILE="${1:?usage: compute-incremental-range.sh <comments-json-file> [head-sha] [count-file]}"
+HEAD_PARAM="${2:-}"
+COUNT_FILE="${3:-}"
 DEEPEN_STEP="${DEEPEN_STEP:-50}"
 DEEPEN_MAX="${DEEPEN_MAX:-500}"
+
+write_count() {
+  if [ -n "$COUNT_FILE" ]; then
+    printf '%s\n' "$1" > "$COUNT_FILE"
+  fi
+}
+
+write_count 0
 
 if [ ! -f "$COMMENTS_FILE" ]; then
   exit 0
 fi
 
+# The prior reviewed commit is the last `Reviewed commit: <sha>` line in the
+# most recent verdict-bearing bot comment that actually reviewed content --
+# excluding rounds that were skipped, restated a prior clean verdict, or
+# declared "no new diff" (gha#965).
 PRIOR=$(jq -r '
   [ .[]?
     | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-             and (.body | test("### (Code Review|Verdict)"))) ]
+             and (.body | test("### (Code Review|Verdict)")))
+    | select(.body | test("(?i)(\\bverdict\\b[: \\t*_#-]*\\bskipped\\b|\"verdict\"\\s*:\\s*\"skipped\"|\\b(no\\s+new\\s+diff|no\\s+new\\s+content|no\\s+new\\s+commits|all\\s+(?:content|changes|code).*(?:already\\s+reviewed|reviewed\\s+in\\s+(?:the\\s+)?(?:prior|previous)\\s+round)|reaffirmed.*no\\s+new\\s+findings)\\b)") | not) ]
   | last | .body // ""
 ' "$COMMENTS_FILE" 2>/dev/null \
   | grep -oE 'Reviewed commit: [0-9a-f]{40}' | tail -1 | awk '{print $3}' || true)
 
-HEAD_NOW=$(git rev-parse HEAD 2>/dev/null || true)
+HEAD_NOW="${HEAD_PARAM:-$(git rev-parse HEAD 2>/dev/null || true)}"
 
 if [ -z "$PRIOR" ] || [ -z "$HEAD_NOW" ] || [ "$PRIOR" = "$HEAD_NOW" ]; then
   exit 0
@@ -73,14 +88,18 @@ until git merge-base --is-ancestor "$PRIOR" "$HEAD_NOW" 2>/dev/null; do
   # the ordinary pull_request checkout is refs/pull/<n>/merge -- not on any
   # branch -- so the bare form never reaches the prior there (gha#717
   # review round 2, confirmed against both checkout topologies).
-  git fetch -q --deepen="$DEEPEN_STEP" origin "$HEAD_NOW" 2>/dev/null || exit 0
+  git fetch -q --deepen="$DEEPEN_STEP" origin "$HEAD_NOW" 2>/dev/null || git fetch -q --deepen="$DEEPEN_STEP" 2>/dev/null || exit 0
   deepened=$((deepened + DEEPEN_STEP))
 done
 
-LOG=$(git log --oneline "$PRIOR..$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
+LOG=$(git log --oneline --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
 if [ -z "$LOG" ]; then
   exit 0
 fi
+
+COMMIT_COUNT=$(git rev-list --count --no-merges "$PRIOR..$HEAD_NOW" 2>/dev/null || echo "0")
+write_count "$COMMIT_COUNT"
+
 STAT=$(git diff --stat "$PRIOR" "$HEAD_NOW" 2>/dev/null | sed 's/^/    /' || true)
 
 printf '%s\n' \
@@ -88,8 +107,10 @@ printf '%s\n' \
   '' \
   "The prior round reviewed commit \`$PRIOR\`; this checkout's head is \`$HEAD_NOW\`. The range below was computed by the workflow with git itself. When you describe what changed since the last round, describe THIS range rather than deriving your own, and examine every commit and file in it:" \
   '' \
-  "    \$ git log --oneline ${PRIOR:0:8}..${HEAD_NOW:0:8}" \
+  "    \$ git log --oneline --no-merges ${PRIOR:0:8}..${HEAD_NOW:0:8}" \
   "$LOG" \
   '' \
   "    \$ git diff --stat ${PRIOR:0:8} ${HEAD_NOW:0:8}" \
-  "$STAT"
+  "$STAT" \
+  '' \
+  "**Mandatory review requirement:** $COMMIT_COUNT unreviewed commit(s) exist in this range (${PRIOR:0:8}..${HEAD_NOW:0:8}). You MUST examine these commits and the diff above. Every commit in this range must be thoroughly reviewed."

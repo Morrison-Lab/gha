@@ -573,6 +573,7 @@ jobs:
       # model reviewed; using that later SHA would post a stale review
       # as current.
       reviewed-head: ${{ github.event.pull_request.head.sha }}
+      unreviewed-commits: ${{ steps.increment.outputs.unreviewed_commits || '0' }}
 
     env:
       # The commit the reviewer names as reviewed, in the review-data JSON's
@@ -1113,17 +1114,22 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number || inputs.pr-number }}
           SCRIPTS_DIR: ${{ steps.increment-scripts.outputs.dir }}
+          HEAD_SHA: ${{ steps.prhead.outputs.sha || github.event.pull_request.head.sha || needs.gather-context.outputs.stash-head }}
         run: |
           set -euo pipefail
           COMMENTS_FILE="$(mktemp)"
+          COUNT_FILE="$(mktemp)"
           gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate 2>/dev/null \
             | jq -s 'add // []' > "$COMMENTS_FILE" || echo '[]' > "$COMMENTS_FILE"
-          CONTEXT=$(bash "$SCRIPTS_DIR/compute-incremental-range.sh" "$COMMENTS_FILE" || true)
+          CONTEXT=$(bash "$SCRIPTS_DIR/compute-incremental-range.sh" "$COMMENTS_FILE" "$HEAD_SHA" "$COUNT_FILE" || true)
+          UNREVIEWED_COMMITS=$(cat "$COUNT_FILE" 2>/dev/null || echo "0")
+          rm -f "$COMMENTS_FILE" "$COUNT_FILE"
           DELIMITER="eof_$(openssl rand -hex 8)"
           {
             echo "context<<${DELIMITER}"
             printf '%s\n' "$CONTEXT"
             echo "${DELIMITER}"
+            echo "unreviewed_commits=${UNREVIEWED_COMMITS:-0}"
           } >> "$GITHUB_OUTPUT"
 
       # The actual claude-code-action call (allowedTools/disallowedTools,
@@ -1560,6 +1566,7 @@ jobs:
           attempts: ${{ steps.claude-review-retry.outcome == 'skipped' && '1' || '2' }}
           track-progress: 'false'
           report-cost: ${{ inputs.report-cost }}
+          unreviewed-commits: ${{ steps.increment.outputs.unreviewed_commits || '0' }}
           review-text-file: ${{ steps.resolve-final.outputs.review_text_file }}
 
   # Download the model job's artifact and post. Holds pull-requests: write
@@ -1718,6 +1725,7 @@ jobs:
             "max_denials=\(.max_denials)",
             "attempts=\(.attempts)",
             "report_cost=\(.report_cost)",
+            "unreviewed_commits=\(.unreviewed_commits // 0)",
             "review_present=\(.review_present)"
           ' "$PAYLOAD_DIR/payload.json" >> "$GITHUB_OUTPUT"
           # quota_message is API-authored free text (gha#804): delimiter form,
@@ -1853,6 +1861,7 @@ jobs:
         uses: Morrison-Lab/gha/.github/actions/classify-review-verdict@v3
         with:
           review-text-file: ${{ steps.payload.outputs.review_text_file }}
+          unreviewed-commits: ${{ steps.payload.outputs.unreviewed_commits || needs.claude-review.outputs.unreviewed-commits || '0' }}
 
       - name: Post review comment
         id: post-comment

@@ -115,6 +115,10 @@ inputs:
     description: "'true' to have the posting job emit the cost comment."
     required: false
     default: 'true'
+  unreviewed-commits:
+    description: Number of unreviewed commits since last reviewed commit (gha#965).
+    required: false
+    default: '0'
   review-text-file:
     description: Path to the extracted review text. Empty when there is none.
     required: false
@@ -169,6 +173,7 @@ runs:
         ATTEMPTS: ${{ inputs.attempts }}
         TRACK_PROGRESS: ${{ inputs.track-progress }}
         REPORT_COST: ${{ inputs.report-cost }}
+        UNREVIEWED_COMMITS: ${{ inputs.unreviewed-commits }}
         REVIEW_TEXT_FILE: ${{ inputs.review-text-file }}
         INPUT_ARTIFACT_NAME: ${{ inputs.artifact-name }}
         PACK_SCRIPT: ${{ github.action_path }}/../../workflows/scripts/pack-review-payload.sh

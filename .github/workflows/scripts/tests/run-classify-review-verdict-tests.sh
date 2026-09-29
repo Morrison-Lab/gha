@@ -20,6 +20,7 @@ run_test() {
   local review_text="$2"
   local expected_clean="$3"
   local expected_verdict="$4"
+  local unreviewed="${5:-0}"
 
   local tmp_file
   tmp_file="$(mktemp)"
@@ -28,7 +29,7 @@ run_test() {
   local out_file
   out_file="$(mktemp)"
 
-  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" > /dev/null
+  GITHUB_OUTPUT="$out_file" bash "$CLASSIFIER" "$tmp_file" "$unreviewed" > /dev/null
 
   local actual_clean
   actual_clean="$(grep -E '^clean=' "$out_file" | cut -d= -f2 || true)"
@@ -2258,6 +2259,45 @@ run_test "Verdict opening with Merged fixes and ready for merge classifies as re
 
 **Ready for merge** — merged in the latest fixes." \
 "true" "ready-for-merge"
+
+# --- gha#965: unreviewed commits skip guard ---
+
+run_test "Unreviewed commits with prose 'no new diff' fails closed to unreviewed-commits-skipped (gha#965)" "### Verdict
+
+**Ready for merge**
+
+All changes in this PR were reviewed in the previous round. No new commits or modifications have been made since the last review." \
+"false" "unreviewed-commits-skipped" "5"
+
+run_test "Unreviewed commits with payload CLEAN but text 'no new diff' fails closed (gha#965)" "### Verdict
+
+**Ready for merge**
+
+All content in this PR was already reviewed in round 1; no new diff exists.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"1234567890123456789012345678901234567890\"} -->" \
+"false" "unreviewed-commits-skipped" "3"
+
+run_test "Unreviewed commits with payload SKIPPED fails closed (gha#965)" "### Verdict
+
+**Skipped**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"SKIPPED\", \"findings\": [], \"commit_sha\": \"1234567890123456789012345678901234567890\"} -->" \
+"false" "unreviewed-commits-skipped" "2"
+
+run_test "Unreviewed commits (0) with 'no new diff' remains clean when count is 0 (gha#965)" "### Verdict
+
+**Ready for merge**
+
+No new commits have landed since the prior review." \
+"true" "ready-for-merge" "0"
+
+run_test "Unreviewed commits (5) with genuine clean review remains clean (gha#965)" "### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature and all tests pass." \
+"true" "ready-for-merge" "5"
 
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 

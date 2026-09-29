@@ -10,6 +10,10 @@ inputs:
   review-text-file:
     description: Path to the extracted review assistant text.
     required: true
+  unreviewed-commits:
+    description: Number of unreviewed commits since last reviewed commit (gha#965).
+    required: false
+    default: '0'
 
 outputs:
   clean:
@@ -27,7 +31,9 @@ runs:
       shell: bash
       env:
         REVIEW_TEXT_FILE: ${{ inputs.review-text-file }}
+        UNREVIEWED_COMMITS: ${{ inputs.unreviewed-commits }}
       run: >-
         bash
         "$GITHUB_ACTION_PATH/../../workflows/scripts/classify-review-verdict.sh"
         "$REVIEW_TEXT_FILE"
+        "$UNREVIEWED_COMMITS"
