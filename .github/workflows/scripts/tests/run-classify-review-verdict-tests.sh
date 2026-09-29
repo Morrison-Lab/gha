@@ -2437,6 +2437,33 @@ Everything looks clean.
 Reviewed commit: 45db0b970d4e7cc23993160ae1cb1c5a7796f5a1" \
 "false" "unreviewed-commits-skipped" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
 
+run_test "Unreviewed commits (5) with structural pass and unquoted prose describing fix remains clean (Finding 1 reproduction)" "## Code Review
+
+This fix ensures that content already reviewed in the previous round is not silently skipped again.
+
+### Verdict
+
+**Ready for merge**
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1\"} -->
+
+Reviewed commit: 6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1" \
+"true" "ready-for-merge" "5" "6fb3ebc60d4e7cc23993160ae1cb1c5a7796f5a1"
+
+run_test "Unreviewed commits (5) without head-sha where Code Review section discusses all 4 trigger phrases remains clean (Finding 2)" "## Code Review
+
+The author fixed the bug where a review declares no new diff and skips it.
+Ensures no new commits exist since the last round is handled properly.
+This fix ensures that content already reviewed in the previous round is not silently skipped again.
+Also handles when no commits have landed and stops early in tests.
+
+### Verdict
+
+**Ready for merge**
+
+The 5 commits cleanly implement the feature." \
+"true" "ready-for-merge" "5"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

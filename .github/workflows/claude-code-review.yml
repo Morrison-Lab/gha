@@ -1892,7 +1892,7 @@ jobs:
           fi
           COMMIT_SHA="$HEAD_SHA"
           BODY_FILE="$(mktemp)"
-          if [[ "$VERDICT" == "skipped" ]]; then
+          if [[ "$VERDICT" == "skipped" || "$VERDICT" == "unreviewed-commits-skipped" ]]; then
             printf '%s\n\n---\n\n%s' \
               "**Claude finished review** — [View run]($RUN_URL)" \
               "$REVIEW" > "$BODY_FILE"

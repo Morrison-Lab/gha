@@ -16,8 +16,10 @@
   `classify-review-verdict`.
   `classify-review-verdict.sh` compares the review's claimed commit SHA against
   the expected PR head SHA when unreviewed commits exist, structurally failing
-  closed if an older commit was evaluated.
+  closed if an older commit was evaluated and exempting matching reviews from
+  prose checks.
   Both scripts strip fences, blockquotes, HTML comments, code spans, and
-  quoted strings (single, double, and curly quotes), and qualify no-diff
-  trigger patterns so descriptive mentions in plain prose (such as discussing
-  "a no new diff claim" or bug) do not trigger false positives.
+  quoted strings (single, double, and curly quotes), scope no-diff detection
+  to the verdict section, and qualify trigger patterns so descriptive mentions
+  in plain prose (such as discussing "a no new diff claim" or bug) do not
+  trigger false positives.

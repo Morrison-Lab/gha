@@ -183,14 +183,20 @@ for c in comments:
     if pm:
         try:
             pdata = json.loads(pm.group(1))
-            if pdata.get("verdict", "").strip().upper() == "SKIPPED":
+            if pdata.get("verdict", "").strip().upper() in ("SKIPPED", "UNREVIEWED_COMMITS_SKIPPED", "UNREVIEWED-COMMITS-SKIPPED"):
                 continue
         except Exception:
             pass
 
-    # Check stripped prose
-    stripped = strip_markup(body)
-    if _has_no_diff_claim(stripped):
+    # Check stripped prose scoped to the verdict section so code review discussions
+    # of the feature or bug fix do not disqualify valid prior comments (gha#965).
+    stripped_lines = strip_markup(body).splitlines()
+    last_idx = -1
+    for i, line in enumerate(stripped_lines):
+        if re.search(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict\b', line, re.IGNORECASE):
+            last_idx = i
+    target_lines = stripped_lines[last_idx:] if last_idx != -1 else stripped_lines
+    if _has_no_diff_claim("\n".join(target_lines)):
         continue
 
     matches = _REVIEWED_COMMIT_RE.findall(body)

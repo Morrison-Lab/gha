@@ -73,6 +73,8 @@ def strip_quoted_strings(src_lines):
         out.append(l)
     return out
 
+_VERDICT_HEADING_RE = re.compile(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict\b', re.IGNORECASE)
+
 def _has_no_diff_claim():
     if not text:
         return False
@@ -80,7 +82,15 @@ def _has_no_diff_claim():
     # so quoted diffs, prompt instructions, or code discussions (in backticks,
     # single quotes, double quotes, or curly quotes) are never treated as
     # review claims (gha#965).
-    stripped = "\n".join(strip_machine_payloads(strip_quoted_strings(strip_code_spans(text.splitlines()))))
+    stripped_lines = strip_machine_payloads(strip_quoted_strings(strip_code_spans(text.splitlines())))
+    # Scope to the verdict section if present so code review discussions of the
+    # PR's changes or bug fixes cannot be misread as verdict statements (gha#965).
+    last_idx = -1
+    for i, line in enumerate(stripped_lines):
+        if _VERDICT_HEADING_RE.search(line):
+            last_idx = i
+    target_lines = stripped_lines[last_idx:] if last_idx != -1 else stripped_lines
+    stripped = "\n".join(target_lines)
     for m in _NO_DIFF_CANDIDATE_RE.finditer(stripped):
         if m.group("determiner") or m.group("noun"):
             continue
@@ -105,11 +115,12 @@ def record(clean, slug):
 
             head_clean = head_sha_param.strip()
             if head_clean and claimed_commit:
+                # If claimed commit does not match head, fail closed to unreviewed-commits-skipped.
                 if not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
                     clean, slug = "false", "unreviewed-commits-skipped"
-
-            # 2. Prose no-diff assertion check
-            if clean == "true" and _has_no_diff_claim():
+                # If claimed commit matches head_clean, structural pass! Exempt from fragile prose checks.
+            elif _has_no_diff_claim():
+                # Fallback only when head_sha or claimed_commit is unavailable
                 clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
