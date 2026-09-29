@@ -159,7 +159,7 @@ _CORE_PATTERNS = (
     r"unchanged\s+head|"
     r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
     r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round(?!\s+(?:is|was|are|were)?\s*not\b)|"
-    r"no\s+commits\s+have\s+landed|"
+    r"no\s+commits\s+have\s+landed(?!\s+(?:and\s+stops|(?:since\s+[^\n.,;]+?\s+)?that\s+were\s+(?:skipped|missed|unreviewed)\b))|"
     r"reaffirmed.*no\s+new\s+findings"
 )
 

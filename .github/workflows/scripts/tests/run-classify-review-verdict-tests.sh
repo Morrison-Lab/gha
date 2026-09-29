@@ -2570,6 +2570,50 @@ Ensures that content already reviewed in the previous round is not silently skip
 Reviewed commit: aaaa123456789012345678901234567890123456" \
 "true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
 
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'No commits have landed since round 2' fails closed" "### Verdict
+
+**Ready for merge**
+
+No commits have landed since round 2.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'already reviewed in the previous round' fails closed" "### Verdict
+
+**Ready for merge**
+
+All content already reviewed in the previous round.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'head has not moved' fails closed" "### Verdict
+
+**Ready for merge**
+
+The branch head has not moved since the previous evaluation.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'no substantive changes' fails closed" "### Verdict
+
+**Ready for merge**
+
+Found no substantive changes in this round.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"false" "unreviewed-commits-skipped" "5" "aaaa123456789012345678901234567890123456"
+
 echo "classify-review-verdict tests: $passed passed, $failed failed."
 
 if (( failed > 0 )); then

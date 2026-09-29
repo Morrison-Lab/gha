@@ -16,15 +16,14 @@
   `classify-review-verdict`.
   `classify-review-verdict.sh` compares the review's claimed commit SHA against
   the expected PR head SHA when unreviewed commits exist, structurally failing
-  closed if an older commit was evaluated, and runs verdict-section bare no-diff
-  checks even when the commit matches (failing closed if no new diff is claimed
-  on unreviewed commits).
+  closed if an older commit was evaluated, and evaluates verdict-section
+  stale-claim checks across all core trigger patterns even when the commit
+  matches (failing closed if a stale claim is made over unreviewed commits).
   `compute-incremental-range.sh` checks the full stripped comment body to
   prevent stale comments with pre-verdict no-diff claims from zeroing out the
   unreviewed count.
   Both scripts strip fences, blockquotes, HTML comments, code spans, and
-  quoted strings (single, double, and curly quotes), and qualify all trigger
-  patterns (including "no new diff", "head has not moved", "no commits have
-  landed", and "already reviewed in the previous round") with determiner and
-  noun lookaround guards so descriptive mentions in plain prose do not trigger
-  false positives.
+  quoted strings (single, double, and curly quotes), qualify trigger patterns
+  with determiner and noun lookaround guards, and tighten "no commits have
+  landed" with trailing qualifier negative lookaheads so descriptive mentions
+  in plain prose do not trigger false positives.

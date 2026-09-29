@@ -65,16 +65,12 @@ _CORE_PATTERNS = (
     r"unchanged\s+head|"
     r"all\s+(?:content|changes|code).*(?:already\s+reviewed|reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round)|"
     r"already\s+reviewed\s+in\s+(?:the\s+)?(?:prior|previous)\s+round(?!\s+(?:is|was|are|were)?\s*not\b)|"
-    r"no\s+commits\s+have\s+landed|"
+    r"no\s+commits\s+have\s+landed(?!\s+(?:and\s+stops|(?:since\s+[^\n.,;]+?\s+)?that\s+were\s+(?:skipped|missed|unreviewed)\b))|"
     r"reaffirmed.*no\s+new\s+findings"
 )
 
 _NO_DIFF_CANDIDATE_RE = re.compile(
     rf"(?i)\b(?:(?P<determiner>{_DETERMINER_WORDS})\s+)?(?:{_CORE_PATTERNS})(?:\s+(?P<noun>{_NOUN_WORDS}))?\b"
-)
-
-_BARE_NO_DIFF_RE = re.compile(
-    rf"(?i)\b(?:(?P<determiner>{_DETERMINER_WORDS})\s+)?(?:no\s+new\s+diff|no\s+new\s+content\s+(?:exists|versus|since|in\s+this\s+pr))(?:\s+(?P<noun>{_NOUN_WORDS}))?\b"
 )
 
 def strip_quoted_strings(src_lines):
@@ -91,7 +87,7 @@ def strip_quoted_strings(src_lines):
 
 _VERDICT_HEADING_RE = re.compile(r'^[ \t]*#{1,6}[ \t]+(\*\*)?verdict\b', re.IGNORECASE)
 
-def _has_no_diff_claim(candidate_re=_NO_DIFF_CANDIDATE_RE):
+def _has_no_diff_claim():
     if not text:
         return False
     # Strip fences, blockquotes, HTML comments, code spans, and quoted strings
@@ -107,7 +103,7 @@ def _has_no_diff_claim(candidate_re=_NO_DIFF_CANDIDATE_RE):
             last_idx = i
     target_lines = stripped_lines[last_idx:] if last_idx != -1 else stripped_lines
     stripped = "\n".join(target_lines)
-    for m in candidate_re.finditer(stripped):
+    for m in _NO_DIFF_CANDIDATE_RE.finditer(stripped):
         if m.group("determiner") or m.group("noun"):
             continue
         return True
@@ -130,15 +126,12 @@ def record(clean, slug):
                     claimed_commit = m[-1].group(1)
 
             head_clean = head_sha_param.strip()
-            if head_clean and claimed_commit:
+            if head_clean and claimed_commit and not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
                 # If claimed commit does not match head, fail closed to unreviewed-commits-skipped.
-                if not (head_clean.lower().startswith(claimed_commit.lower()) or claimed_commit.lower().startswith(head_clean.lower())):
-                    clean, slug = "false", "unreviewed-commits-skipped"
-                elif _has_no_diff_claim(_BARE_NO_DIFF_RE):
-                    # Even under a matching SHA, a bare "no new diff" claim in the verdict section fails closed (gha#965).
-                    clean, slug = "false", "unreviewed-commits-skipped"
+                clean, slug = "false", "unreviewed-commits-skipped"
             elif _has_no_diff_claim():
-                # Fallback only when head_sha or claimed_commit is unavailable: full candidate pattern set.
+                # Even if claimed commit matches head_clean (or head_sha/claimed_commit is missing),
+                # fail closed if the verdict section explicitly claims no new diff while unreviewed commits exist (gha#965).
                 clean, slug = "false", "unreviewed-commits-skipped"
     if output_file and output_file != "/dev/null" and os.path.exists(output_file):
         with open(output_file, "a", encoding="utf-8") as f:
