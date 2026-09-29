@@ -140,7 +140,11 @@ def strip_markup(text):
         out.append(line)
     return "\n".join(out)
 
-_DETERMINER_WORDS = r"a|an|the|this|that|any|such|every|each"
+_DETERMINER_WORDS = (
+    r"a|an|the|this|that|any|such|every|each|"
+    r"when|if|where|how|whether|while|"
+    r"identifies|detects|checks|handles|prevents|catches"
+)
 _NOUN_WORDS = (
     r"claim|claims|bug|bugs|issue|issues|hazard|hazards|case|cases|"
     r"check|checks|guard|guards|pattern|patterns|rule|rules|logic|"

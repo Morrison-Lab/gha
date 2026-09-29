@@ -2477,6 +2477,17 @@ The guard correctly identifies when no commits have landed and stops early.
 Reviewed commit: aaaa123456789012345678901234567890123456" \
 "true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
 
+run_test "Unreviewed commits (5) with matching head-sha where Verdict section describes fix in prose remains clean (Finding 1 reproduction)" "### Verdict
+
+**Ready for merge**
+
+The guard correctly identifies when no commits have landed and stops early.
+
+<!-- review-data: {\"schema_version\": \"1\", \"verdict\": \"CLEAN\", \"findings\": [], \"commit_sha\": \"aaaa123456789012345678901234567890123456\"} -->
+
+Reviewed commit: aaaa123456789012345678901234567890123456" \
+"true" "ready-for-merge" "5" "aaaa123456789012345678901234567890123456"
+
 run_test "Unreviewed commits (5) with matching head-sha where Verdict section states 'no new diff' fails closed (gha#965)" "### Verdict
 
 **Ready for merge**

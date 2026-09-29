@@ -25,6 +25,7 @@
   Both scripts strip fences, blockquotes, HTML comments, code spans, and
   quoted strings (single, double, and curly quotes), and qualify all trigger
   patterns (including "no new diff", "head has not moved", "no commits have
-  landed", and "already reviewed in the previous round") with determiner and
-  noun lookaround guards so descriptive mentions in plain prose do not trigger
-  false positives.
+  landed", and "already reviewed in the previous round") with preceding
+  qualifying words (determiners, subordinating conjunctions like "when" and
+  "if", and verbs like "identifies" and "detects") and noun lookaround guards
+  so descriptive mentions in plain prose do not trigger false positives.
