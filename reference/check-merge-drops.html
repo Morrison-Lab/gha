@@ -834,11 +834,10 @@ cookieconsent.run({
 
 <p>Reports content that a merge commit silently dropped. For every merge commit in a range, with parents <code>P1</code>, <code>P2</code> and merge base <code>B</code>, it collects the lines each side added since the merge base (<code>git diff B P1</code> and <code>git diff B P2</code>, added lines only) and reports those that appear nowhere in the merge’s tree.</p>
 <p>That is what resolving a conflict by keeping one side of a whole file looks like. Every line the other side added to that file vanishes, while the merge result reads as a clean, plausible file, so no check that reads only the current tree can see the loss. A line added on one side since the merge base is new to the history, so the other side cannot have deleted it; a merge that keeps both sides’ hunks keeps it, and a clean merge reports nothing.</p>
-<p>Three kinds of change are deliberately not reported:</p>
+<p>Deliberately not reported:</p>
 <ul>
-<li><strong>Moved content.</strong> A line is reported only when its text occurs nowhere in the merge’s tree, so a paragraph the resolution moved to another file passes.</li>
-<li><strong>Rewrapped content.</strong> Each file is compared as one string with every whitespace run collapsed, so a paragraph rewrapped at different line breaks passes.</li>
-<li><strong>Reworded lines.</strong> When both sides edited the same line and the resolution wrote a third version, neither side’s line survives verbatim, yet nothing was lost. A missing line is not reported when a line of the merge’s copy of the same file is at least <code>similarity</code> alike, word by word.</li>
+<li><strong>Moved, rewrapped, or bullet-split content.</strong> A line is reported only when its text occurs nowhere in the merge’s tree. Whitespace runs are collapsed and line-leading list item markers (<code>-</code>, <code>*</code>, <code>+</code>, <code>1.</code>) are stripped when comparing flattened text, so a paragraph the resolution moved to another file, rewrapped at different line breaks, or split into a bulleted list passes.</li>
+<li><strong>Reworded lines.</strong> When both sides edited the same line and the resolution wrote a third version combining them, neither side’s line survives verbatim, yet nothing was lost. A missing line is not reported when a line in the merge’s copy of the same file that is new in the merge (not present in any parent) is at least <code>similarity</code> alike, word by word. Unrelated lines from other parents or the merge base cannot mask a dropped line.</li>
 </ul>
 <p>The check is <strong>warn-only by default</strong>, since a merge can legitimately drop a line the other side superseded. The full report, with the dropped lines grouped by merge, parent and file, goes to the job summary, and each affected merge gets one warning annotation. On a pull request the range is the merges the PR adds; on a push it is the merges the push brought in. A squash merge is not a merge commit, so run the check on pull requests to see a branch’s merges before they are squashed.</p>
 <section id="inputs" class="level2">
@@ -887,7 +886,7 @@ cookieconsent.run({
 <td><code>similarity</code></td>
 <td>string</td>
 <td><code>'0.6'</code></td>
-<td>Word-level similarity, 0 to 1, at or above which a line in the merge’s copy of the same file counts as a rewording of a missing line. <code>'1'</code> reports every line whose exact text is gone.</td>
+<td>Word-level similarity, 0 to 1, at or above which a line in the merge’s copy of the same file that is new in the merge counts as a rewording of a missing line. <code>'1'</code> reports every line whose exact text is gone.</td>
 </tr>
 <tr class="even">
 <td><code>fail</code></td>
