@@ -564,6 +564,12 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
+  <a href="../reference/check-informal-definitions.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">check-informal-definitions.yml</span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
   <a href="../reference/lint-qmd.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">lint-qmd.yml</span></a>
   </div>
@@ -850,6 +856,7 @@ cookieconsent.run({
 <li><a href="../reference/check-quarto-links.html"><code>check-quarto-links.yml</code></a>: relative links from <code>.qmd</code>/<code>.md</code>/<code>.Rmd</code> sources to pages that do not exist, which Quarto only warns about and lychee does not read out of a <code>.qmd</code></li>
 <li><a href="../reference/check-orphaned-images.html"><code>check-orphaned-images.yml</code></a>: tracked images that no source file references (warn-only by default)</li>
 <li><a href="../reference/check-typed-output.html"><code>check-typed-output.yml</code></a>: typed or faked code output in Quarto sources (warn-only by default)</li>
+<li><a href="../reference/check-informal-definitions.html"><code>check-informal-definitions.yml</code></a>: flags technical concepts defined in running prose rather than formal Quarto definition divs (<code>::: {#def-...}</code>) (warn-only by default)</li>
 <li><a href="../reference/check-bibliography-dois.html"><code>check-bibliography-dois.yml</code></a>: validates BibTeX bibliography entries in <code>.bib</code> files</li>
 <li><a href="../reference/check-equation-renders.html"><code>check-equation-renders.yml</code></a>: crawls rendered HTML manuscript pages to ensure MathJax typesets all equations without errors (active when <code>equation-renders-site-dir</code> is specified)</li>
 </ul>
@@ -1154,6 +1161,42 @@ cookieconsent.run({
 <td>boolean</td>
 <td><code>false</code></td>
 <td>Fail on typed code output; the check warns only by default, whatever <code>fail</code> says.</td>
+</tr>
+<tr class="even">
+<td><code>check-informal-definitions</code></td>
+<td>boolean</td>
+<td><code>true</code></td>
+<td>Enable check for informal definitions in prose.</td>
+</tr>
+<tr class="odd">
+<td><code>informal-definitions-globs</code></td>
+<td>string</td>
+<td><code>'*.qmd'</code></td>
+<td>Space-separated git pathspecs of tracked files to check.</td>
+</tr>
+<tr class="even">
+<td><code>informal-definitions-paths-ignore</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Patterns to skip for informal definitions check.</td>
+</tr>
+<tr class="odd">
+<td><code>informal-definitions-diff-scoped</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Report only findings on lines added since <code>informal-definitions-base-ref</code>.</td>
+</tr>
+<tr class="even">
+<td><code>informal-definitions-base-ref</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Base ref for diff-scoped informal definitions check.</td>
+</tr>
+<tr class="odd">
+<td><code>informal-definitions-fail</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Fail on informal definitions; the check warns only by default, whatever <code>fail</code> says.</td>
 </tr>
 <tr class="even">
 <td><code>check-bibliography-dois</code></td>

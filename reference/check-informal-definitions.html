@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>update-snapshots.yml – Morrison-Lab/gha</title>
+<title>check-informal-definitions.yml – Morrison-Lab/gha</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -71,8 +71,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="../site_libs/quarto-search/fuse.min.js"></script>
 <script src="../site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="../">
-<link href="../reference/summary.html" rel="next">
-<link href="../reference/r-cmd-check.html" rel="prev">
+<link href="../reference/lint-qmd.html" rel="next">
+<link href="../reference/check-typed-output.html" rel="prev">
 <script src="../site_libs/cookie-consent/cookie-consent.js"></script>
 <link href="../site_libs/cookie-consent/cookie-consent.css" rel="stylesheet">
 <script src="../site_libs/quarto-html/quarto.js" type="module"></script>
@@ -361,7 +361,7 @@ cookieconsent.run({
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/update-snapshots.html">update-snapshots.yml</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-informal-definitions.html">check-informal-definitions.yml</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -564,7 +564,7 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/check-informal-definitions.html" class="sidebar-item-text sidebar-link">
+  <a href="../reference/check-informal-definitions.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">check-informal-definitions.yml</span></a>
   </div>
 </li>
@@ -624,7 +624,7 @@ cookieconsent.run({
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="../reference/update-snapshots.html" class="sidebar-item-text sidebar-link active">
+  <a href="../reference/update-snapshots.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">update-snapshots.yml</span></a>
   </div>
 </li>
@@ -810,18 +810,17 @@ cookieconsent.run({
   <ul>
   <li><a href="#inputs" id="toc-inputs" class="nav-link active" data-scroll-target="#inputs">Inputs</a></li>
   <li><a href="#permissions" id="toc-permissions" class="nav-link" data-scroll-target="#permissions">Permissions</a></li>
-  <li><a href="#when-are-the-updated-snapshots-checked" id="toc-when-are-the-updated-snapshots-checked" class="nav-link" data-scroll-target="#when-are-the-updated-snapshots-checked">When are the updated snapshots checked?</a></li>
   <li><a href="#example" id="toc-example" class="nav-link" data-scroll-target="#example">Example</a></li>
   </ul>
-<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/update-snapshots.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
+<div class="toc-actions"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-informal-definitions.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div></nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 
-<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/update-snapshots.html">update-snapshots.yml</a></li></ol></nav>
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="../reference/check-ai-tells.html">Reference</a></li><li class="breadcrumb-item"><a href="../reference/check-informal-definitions.html">check-informal-definitions.yml</a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">update-snapshots.yml</h1>
+<h1 class="title">check-informal-definitions.yml</h1>
 </div>
 
 
@@ -838,15 +837,28 @@ cookieconsent.run({
 </header>
 
 
-<p>Regenerate <a href="https://testthat.r-lib.org/articles/snapshotting.html">testthat snapshots</a> for an R package: run the test suite, accept the output the code now produces (<code>testthat::snapshot_accept()</code>), re-run the tests, then commit and push the changed files under <code>tests/testthat/_snaps/</code>. Optionally sets up Julia first, for packages whose tests call a bundled Julia project.</p>
+<p>Flags technical concepts defined in running prose rather than inside formal Quarto definition divs (<code>::: {#def-...}</code>). In content repositories (such as Quarto books and sites using theorem-type cross-reference divs), technical concepts must be formally defined in dedicated theorem divs (<code>::: {#def-...}</code>), never left in running prose. Concepts defined only in prose lack stable cross-reference IDs, cannot be cited downstream, break hyperlink-on-first-mention requirements, and escape cross-repository consistency audits.</p>
+<p>The check flags:</p>
+<ul>
+<li><strong>Bold terms followed by defining language.</strong> A bolded term followed by “is”, “are”, “means”, “refers to”, “is defined as”, <code>\eqdef</code>, or <code>\triangleq</code> outside a formal <code>::: {#def-...}</code> (or sibling theorem) div.</li>
+<li><strong>Mathematical definition operators outside def divs.</strong> <code>\eqdef</code> or <code>\triangleq</code> used in inline or display math outside a def div.</li>
+<li><strong>Prose paragraphs under Definitions headings.</strong> Prose paragraphs or bolded terms directly under a heading titled “Definitions” that are not wrapped in formal def divs.</li>
+<li><strong>Naming sentences before display math.</strong> Sentences ending in “is:” or “are:” immediately preceding display math (<code>$$...$$</code>) outside a def div.</li>
+</ul>
+<p>Sections titled “Notation”, “Typographic Conventions”, or “Symbols” are recognized as notation guides and exempt from definition requirements.</p>
+<p>Individual lines or files can opt out using directive comments:</p>
+<ul>
+<li>Line or block level: <code>&lt;!-- check-informal-definitions: allow --&gt;</code> or <code>&lt;!-- check-informal-definitions: ignore --&gt;</code></li>
+<li>File level: <code>&lt;!-- check-informal-definitions: ignore-file --&gt;</code></li>
+</ul>
 <section id="inputs" class="level2">
 <h2 class="anchored" data-anchor-id="inputs">Inputs</h2>
 <table class="caption-top table">
 <colgroup>
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
-<col style="width: 25%">
+<col style="width: 14%">
+<col style="width: 5%">
+<col style="width: 70%">
+<col style="width: 9%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -858,124 +870,96 @@ cookieconsent.run({
 </thead>
 <tbody>
 <tr class="odd">
-<td><code>ref</code></td>
+<td><code>path</code></td>
+<td>string</td>
+<td><code>'.'</code></td>
+<td>Target directory or file path to scan.</td>
+</tr>
+<tr class="even">
+<td><code>globs</code></td>
+<td>string</td>
+<td><code>'*.qmd'</code></td>
+<td>Space-separated file globs to check.</td>
+</tr>
+<tr class="odd">
+<td><code>paths-ignore</code></td>
+<td>string</td>
+<td><code>'.git, .github, tests, test, vendor, scratch, _site, node_modules, .venv, venv'</code></td>
+<td>Comma- or newline-separated paths or glob patterns to ignore.</td>
+</tr>
+<tr class="even">
+<td><code>fail</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Whether to fail the workflow if informal definitions are detected (warn-only by default).</td>
+</tr>
+<tr class="odd">
+<td><code>diff-scoped</code></td>
+<td>boolean</td>
+<td><code>false</code></td>
+<td>Report only lines added since base-ref.</td>
+</tr>
+<tr class="even">
+<td><code>base-ref</code></td>
 <td>string</td>
 <td><code>''</code></td>
-<td>Branch or SHA to check out. Defaults to the event ref when empty; pass a branch name for <code>workflow_dispatch</code> callers or <code>github.head_ref</code> for <code>pull_request</code> callers.</td>
-</tr>
-<tr class="even">
-<td><code>pr-mode</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Use <code>r-lib/actions/pr-fetch</code> and <code>pr-push</code> instead of direct checkout and push. Set <code>true</code> for PR-comment (<code>issue_comment</code>) triggers.</td>
+<td>Git ref/SHA to diff against when diff-scoped is true.</td>
 </tr>
 <tr class="odd">
-<td><code>julia</code></td>
-<td>boolean</td>
-<td><code>false</code></td>
-<td>Set up the Julia runtime before running tests.</td>
+<td><code>diff</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Path to unified diff file to scan added lines from.</td>
 </tr>
 <tr class="even">
-<td><code>julia-version</code></td>
+<td><code>output-markdown</code></td>
 <td>string</td>
-<td><code>'1'</code></td>
-<td>Julia version to install. Only used when <code>julia</code> is true.</td>
+<td><code>''</code></td>
+<td>Path to write Markdown findings report.</td>
 </tr>
 <tr class="odd">
-<td><code>julia-project</code></td>
+<td><code>output-json</code></td>
 <td>string</td>
-<td><code>'inst/julia'</code></td>
-<td>Path to the Julia project to instantiate. Only used when <code>julia</code> is true.</td>
+<td><code>''</code></td>
+<td>Path to write structured JSON findings report.</td>
 </tr>
 <tr class="even">
-<td><code>extra-packages</code></td>
+<td><code>python-version</code></td>
 <td>string</td>
-<td><code>'any::testthat'</code></td>
-<td>Extra R packages forwarded to <code>r-lib/actions/setup-r-dependencies</code>.</td>
-</tr>
-<tr class="odd">
-<td><code>needs</code></td>
-<td>string</td>
-<td><code>'check'</code></td>
-<td><code>needs</code> label forwarded to <code>r-lib/actions/setup-r-dependencies</code>.</td>
-</tr>
-<tr class="even">
-<td><code>apt-packages</code></td>
-<td>string</td>
-<td>(standard R system-deps list)</td>
-<td>Space-separated apt packages to install before R setup. The default covers the system libraries a typical R package’s dependencies need to build from source (Cairo, fonts, graphics, gettext, OpenMP). Pass your own list to override, or an empty string to skip the install step.</td>
-</tr>
-<tr class="odd">
-<td><code>commit-message</code></td>
-<td>string</td>
-<td><code>'Update testthat snapshots [auto]'</code></td>
-<td>Commit message for the snapshot update commit.</td>
-</tr>
-<tr class="even">
-<td><code>committer-name</code></td>
-<td>string</td>
-<td><code>'github-actions[bot]'</code></td>
-<td>Git committer name.</td>
-</tr>
-<tr class="odd">
-<td><code>committer-email</code></td>
-<td>string</td>
-<td><code>'41898282+github-actions[bot]@users.noreply.github.com'</code></td>
-<td>Git committer email.</td>
+<td><code>'3.x'</code></td>
+<td>Python version to set up.</td>
 </tr>
 </tbody>
 </table>
 </section>
 <section id="permissions" class="level2">
 <h2 class="anchored" data-anchor-id="permissions">Permissions</h2>
-<p>Grant <code>contents: write</code> so the job can push the snapshot commit back to the branch.</p>
-</section>
-<section id="when-are-the-updated-snapshots-checked" class="level2">
-<h2 class="anchored" data-anchor-id="when-are-the-updated-snapshots-checked">When are the updated snapshots checked?</h2>
-<p>The workflow itself checks only <strong>consistency</strong>, never <strong>correctness</strong>. Its test-and-accept step:</p>
-<ol type="1">
-<li>runs the test suite once, so that failing snapshot expectations write their pending new snapshot files (a <code>tryCatch</code> keeps a hard R error, e.g.&nbsp;a test file that errors outright, from killing the job before the accept step; plain expectation failures don’t stop this run anyway, since <a href="https://devtools.r-lib.org/reference/test.html"><code>devtools::test()</code></a> defaults to <code>stop_on_failure = FALSE</code>);</li>
-<li>calls <a href="https://testthat.r-lib.org/reference/snapshot_accept.html"><code>testthat::snapshot_accept()</code></a>, which accepts whatever the new output is, unconditionally;</li>
-<li>runs <code>devtools::test(stop_on_failure = TRUE)</code> a second time, failing the job, and skipping the commit-and-push steps, if the suite still fails.</li>
-</ol>
-<p>That second test run proves the suite passes against the freshly accepted snapshots. It cannot judge whether the new output is <em>right</em>: code that produces wrong-but-stable output passes it.</p>
-<p>The semantic check, “do the updated snapshots make sense?”, is left to <strong>pull request review</strong>. When the workflow runs against a PR’s head branch (<code>pr-mode: true</code> from an <code>issue_comment</code> trigger, a <code>workflow_dispatch</code> with <code>ref</code> set to the PR’s branch, or a <code>pull_request</code>-triggered caller passing <code>ref: github.head_ref</code>), the snapshot commit lands on the PR, and the reviewer inspects the <code>tests/testthat/_snaps/</code> diff before merge. That review is the only point where snapshot <em>content</em> is judged; nothing re-checks it after merge.</p>
-<p>Two consequences worth planning around:</p>
-<ul>
-<li><strong>Dispatching against a plain branch skips review entirely.</strong> The <a href="#example">example caller stub</a> defaults to <code>main</code>, where the snapshot commit lands directly, with no reviewable diff in between. Prefer running against a PR branch when the snapshot changes deserve eyes.</li>
-<li><strong>The snapshot commit does not re-trigger CI normally.</strong> The push uses the workflow’s own <code>GITHUB_TOKEN</code>, and <a href="https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow">events triggered by <code>GITHUB_TOKEN</code> do not create new workflow runs</a> (the same behavior the <code>WORKFLOW_TOKEN</code> note on <a href="../permissions.html">Permissions</a> describes), with one exception that applies here: on a pull request, the resulting <code>synchronize</code> event creates the runs in an <strong>approval-required</strong> state, and a user with write access starts them from the “Approve workflows to run” prompt in the PR’s merge box. For a direct push to a plain branch there is no such prompt; re-trigger checks yourself if you need them, e.g.&nbsp;by pushing an empty commit.</li>
-</ul>
+<p>Only <code>contents: read</code> (the default), so no <code>permissions:</code> block is needed.</p>
 </section>
 <section id="example" class="level2">
 <h2 class="anchored" data-anchor-id="example">Example</h2>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/update-snapshots.yml in your repo.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Update snapshots</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">inputs</span><span class="kw">:</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">branch</span><span class="kw">:</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">description</span><span class="kw">:</span><span class="at"> Branch to update snapshots on</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">required</span><span class="kw">:</span><span class="at"> </span><span class="ch">true</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">default</span><span class="kw">:</span><span class="at"> main</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">update-snapshots</span><span class="kw">:</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/update-snapshots.yml@v2</span></span>
-<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">permissions</span><span class="kw">:</span></span>
-<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">contents</span><span class="kw">:</span><span class="at"> write</span></span>
-<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">with</span><span class="kw">:</span></span>
-<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">ref</span><span class="kw">:</span><span class="at"> ${{ inputs.branch }}</span></span>
-<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">      # julia: true</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">      # julia-version: '1'</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">      # julia-project: inst/julia</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a><span class="co">      # apt-packages: ''   # default installs the standard R system-deps list; set '' to skip, or pass your own</span></span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a><span class="co">      # extra-packages: any::testthat</span></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="co">      # needs: check</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a><span class="co">      # commit-message: 'Update testthat snapshots [auto]'</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a><span class="co">      # committer-name: github-actions[bot]</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a><span class="co">      # committer-email: 41898282+github-actions[bot]@users.noreply.github.com</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/update-snapshots.yml"><code>examples/update-snapshots.yml</code></a> for the full caller stub.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy to .github/workflows/check-informal-definitions.yml in your repo.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Flags technical concepts defined in running prose rather than inside formal</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Quarto definition divs (`::: {#def-...}`).</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Only contents:read is needed (the default), so no permissions block is required.</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">name</span><span class="kw">:</span><span class="at"> Check informal definitions in prose</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">on</span><span class="kw">:</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">push</span><span class="kw">:</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">branches</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="kw">-</span><span class="at"> main</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">pull_request</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">workflow_dispatch</span><span class="kw">:</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">jobs</span><span class="kw">:</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">check</span><span class="kw">:</span></span>
+<span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">uses</span><span class="kw">:</span><span class="at"> Morrison-Lab/gha/.github/workflows/check-informal-definitions.yml@v3</span></span>
+<span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a><span class="co">    # with:</span></span>
+<span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a><span class="co">    #   globs: '*.qmd'                         # pathspecs to check (recursive)</span></span>
+<span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a><span class="co">    #   paths-ignore: 'chapters/outtakes/**'   # skip known-noisy paths</span></span>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a><span class="co">    #   fail: true                             # block instead of warn (warn-only by default)</span></span>
+<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a><span class="co">    #   diff-scoped: true                      # report only lines a PR adds</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<p>See <a href="https://github.com/Morrison-Lab/gha/blob/main/examples/check-informal-definitions.yml"><code>examples/check-informal-definitions.yml</code></a> for the full caller stub.</p>
 
 
 </section>
@@ -1396,13 +1380,13 @@ cookieconsent.run({
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="../reference/r-cmd-check.html" class="pagination-link" aria-label="r-cmd-check.yml">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">r-cmd-check.yml</span>
+      <a href="../reference/check-typed-output.html" class="pagination-link" aria-label="check-typed-output.yml">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">check-typed-output.yml</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="../reference/summary.html" class="pagination-link" aria-label="summary.yml">
-        <span class="nav-page-text">summary.yml</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="../reference/lint-qmd.html" class="pagination-link" aria-label="lint-qmd.yml">
+        <span class="nav-page-text">lint-qmd.yml</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
@@ -1414,7 +1398,7 @@ cookieconsent.run({
     </div>   
     <div class="nav-footer-center">
 
-<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/update-snapshots.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
+<div class="toc-actions d-sm-block d-md-none"><ul><li><a href="https://github.com/Morrison-Lab/gha/issues/new" class="toc-action"><i class="bi bi-github"></i>Report an issue</a></li><li><a href="https://github.com/Morrison-Lab/gha/edit/main/website/reference/check-informal-definitions.qmd" class="toc-action"><i class="bi empty"></i>Edit this page</a></li></ul></div><div class="cookie-consent-footer"><a href="#" id="open_preferences_center">Cookie Preferences</a></div></div>
     <div class="nav-footer-right">
       &nbsp;
     </div>
