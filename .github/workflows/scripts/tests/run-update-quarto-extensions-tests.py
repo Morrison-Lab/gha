@@ -171,6 +171,17 @@ class TestUpdateQuartoExtensionsLogic(unittest.TestCase):
         self.assertEqual(parsed_kv.get("div-anchors"), "d-morrison/div-anchors")
         self.assertEqual(parsed_kv.get("other"), "org/other")
 
+        # Default extension repos
+        self.assertEqual(
+            uqe.DEFAULT_EXTENSION_REPOS.get("slidebreak"),
+            "Morrison-Lab/slidebreak",
+        )
+        self.assertIn("code-language-labels", uqe.DEFAULT_EXTENSION_REPOS)
+        self.assertIn("div-anchors", uqe.DEFAULT_EXTENSION_REPOS)
+        self.assertIn("equation-anchors", uqe.DEFAULT_EXTENSION_REPOS)
+        self.assertIn("revealjs-html-links", uqe.DEFAULT_EXTENSION_REPOS)
+        self.assertNotIn("callouty-theorem", uqe.DEFAULT_EXTENSION_REPOS)
+
     def test_discovery_flat_and_nested_layouts(self):
         with tempfile.TemporaryDirectory() as tmp_dir_str:
             tmp_dir = pathlib.Path(tmp_dir_str)

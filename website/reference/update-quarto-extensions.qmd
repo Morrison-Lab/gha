@@ -53,15 +53,14 @@ jobs:
       contents: write
       pull-requests: write
     uses: Morrison-Lab/gha/.github/workflows/update-quarto-extensions.yml@v3
-    with:
-      # Optional: custom extension repository mapping (owner/repo). Built-in
-      # defaults already cover common d-morrison extensions (code-language-labels,
-      # div-anchors, equation-anchors, slidebreak, revealjs-html-links,
-      # callouty-theorem).
-      # extension-repos: |
-      #   my-extension: my-org/my-extension
-      # extensions-dir: _extensions
-      # dry-run: false
+    # with:
+    #   # Optional: custom extension repository mapping (owner/repo). Built-in
+    #   # defaults cover common extensions (code-language-labels,
+    #   # div-anchors, equation-anchors, slidebreak, revealjs-html-links).
+    #   extension-repos: |
+    #     my-extension: my-org/my-extension
+    #   extensions-dir: _extensions
+    #   dry-run: false
     secrets:
       # Optional: set only if the bot must push to a protected branch or
       # trigger subsequent pull_request checks; otherwise omit and falls back to

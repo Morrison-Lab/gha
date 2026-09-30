@@ -321,6 +321,32 @@ jobs:
           python3 .github/workflows/scripts/tests/run-update-quarto-extensions-tests.py --self-test
           python3 .github/workflows/scripts/tests/run-update-quarto-extensions-tests.py
 
+      - name: Prepare test fixture for composite action
+        shell: bash
+        run: |
+          mkdir -p fixture_extensions/test-ext
+          cat << 'EOF' > fixture_extensions/test-ext/_extension.yml
+          title: Test Extension
+          name: test-ext
+          version: 1.0.0
+          EOF
+
+      - name: Exercise update-quarto-extensions composite action (dry-run)
+        id: exercise_composite
+        uses: ./.github/actions/update-quarto-extensions
+        with:
+          extensions-dir: fixture_extensions
+          dry-run: 'true'
+
+      - name: Verify composite outputs
+        shell: bash
+        run: |
+          if [ "${{ steps.exercise_composite.outputs.updated }}" != "false" ]; then
+            echo "Expected updated output to be 'false', got '${{ steps.exercise_composite.outputs.updated }}'" >&2
+            exit 1
+          fi
+          rm -rf fixture_extensions
+
   bundle-repo-actions-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10

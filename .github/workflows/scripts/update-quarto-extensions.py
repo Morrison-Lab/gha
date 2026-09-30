@@ -31,9 +31,8 @@ DEFAULT_EXTENSION_REPOS: Dict[str, str] = {
     "code-language-labels": "d-morrison/code-language-labels",
     "div-anchors": "d-morrison/div-anchors",
     "equation-anchors": "d-morrison/equation-anchors",
-    "slidebreak": "d-morrison/slidebreak",
+    "slidebreak": "Morrison-Lab/slidebreak",
     "revealjs-html-links": "d-morrison/revealjs-html-links",
-    "callouty-theorem": "d-morrison/callouty-theorem",
 }
 
 SEMVER_PATTERN = re.compile(
@@ -176,8 +175,19 @@ def fetch_github_api(
                 cmd, capture_output=True, text=True, check=True
             )
             return json.loads(res.stdout)
-        except Exception:
-            pass
+        except subprocess.CalledProcessError as e:
+            err = (e.stderr or "").strip()
+            print(
+                f"Notice: 'gh api {clean_endpoint}' failed ({err}); "
+                "falling back to urllib.",
+                file=sys.stderr,
+            )
+        except Exception as e:
+            print(
+                f"Notice: 'gh api {clean_endpoint}' encountered error ({e}); "
+                "falling back to urllib.",
+                file=sys.stderr,
+            )
 
     # Fallback to urllib.request
     url = f"https://api.github.com/{clean_endpoint}"
@@ -205,10 +215,25 @@ def download_github_tarball(
         cmd = ["gh", "api", f"repos/{repo}/tarball/{ref}"]
         try:
             with open(dest_tarball, "wb") as f:
-                subprocess.run(cmd, stdout=f, check=True)
+                subprocess.run(
+                    cmd, stdout=f, check=True, stderr=subprocess.PIPE
+                )
             return
-        except Exception:
-            pass
+        except subprocess.CalledProcessError as e:
+            err = (
+                e.stderr.decode("utf-8", errors="replace") if e.stderr else ""
+            ).strip()
+            print(
+                f"Notice: 'gh api repos/{repo}/tarball/{ref}' failed ({err}); "
+                "falling back to urllib.",
+                file=sys.stderr,
+            )
+        except Exception as e:
+            print(
+                f"Notice: 'gh api repos/{repo}/tarball/{ref}' encountered "
+                f"error ({e}); falling back to urllib.",
+                file=sys.stderr,
+            )
 
     url = f"https://api.github.com/repos/{repo}/tarball/{ref}"
     headers = {
@@ -238,6 +263,11 @@ def extract_tarball_extension_dir(
         if hasattr(tarfile, "data_filter"):
             tf.extractall(extract_temp_dir, filter="data")
         else:
+            print(
+                "::warning::Python tarfile PEP 706 data filter unavailable; "
+                "extracting without filter.",
+                file=sys.stderr,
+            )
             tf.extractall(extract_temp_dir)
 
     # GitHub tarballs unpack into {owner}-{repo}-{sha}/
