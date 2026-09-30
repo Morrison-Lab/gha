@@ -58,11 +58,13 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
+      actions: read
     steps:
       - name: Check out gh-pages branch
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: gh-pages
+          fetch-depth: 100
 
       - name: Prune stale previews and publish
         id: cleanup
@@ -138,10 +140,22 @@ jobs:
 
               # PR was merged. Verify that the merged main publish workflow has succeeded and deployed.
               local check_base="${base_ref:-main}"
-              local wf_pattern="publish|deploy|pages-build-deployment"
-              if [ -n "$PUBLISH_WORKFLOW" ]; then
-                wf_pattern="${PUBLISH_WORKFLOW//\*/.*}"
-              fi
+              local jq_filter='
+                def matches($target; $p):
+                  ($target | ascii_downcase) as $t
+                  | ($p | ascii_downcase) as $pat
+                  | if $pat == "" then
+                      ($t | contains("publish") or contains("deploy") or contains("pages-build-deployment"))
+                    elif ($pat | endswith("*")) and ($pat | startswith("*")) then
+                      ($t | contains($pat[1:-1]))
+                    elif $pat | endswith("*") then
+                      ($t | startswith($pat[:-1]))
+                    elif $pat | startswith("*") then
+                      ($t | endswith($pat[1:]))
+                    else
+                      ($t == $pat or ($t | contains($pat)))
+                    end;
+              '
 
               local runs_json="[]" commit_runs_match="" commit_runs_success="" commit_runs_pending="" deploy_commit_found=""
               if [ -n "$merge_oid" ]; then
@@ -149,17 +163,17 @@ jobs:
                   --json headSha,conclusion,status,name,workflowName,event 2>/dev/null || echo "[]")
               fi
 
-              commit_runs_match=$(jq -r --arg pat "$wf_pattern" '
+              commit_runs_match=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
                 | select((.workflowName // .name // "") | test("preview"; "i") | not)
-                | select((.workflowName // .name // "") | test($pat; "i"))
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | (.workflowName // .name)
               ' <<< "$runs_json" | head -n1)
 
-              commit_runs_success=$(jq -r --arg pat "$wf_pattern" '
+              commit_runs_success=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
                 | select((.workflowName // .name // "") | test("preview"; "i") | not)
-                | select((.workflowName // .name // "") | test($pat; "i"))
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | select(.status == "completed" and .conclusion == "success")
                 | (.workflowName // .name)
               ' <<< "$runs_json" | head -n1)
@@ -171,10 +185,10 @@ jobs:
                 continue
               fi
 
-              commit_runs_pending=$(jq -r --arg pat "$wf_pattern" '
+              commit_runs_pending=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
                 | select((.workflowName // .name // "") | test("preview"; "i") | not)
-                | select((.workflowName // .name // "") | test($pat; "i"))
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | select(.status != "completed")
                 | "\(.workflowName // .name): \(.status)"
               ' <<< "$runs_json" | head -n1)
@@ -199,12 +213,12 @@ jobs:
               # Check push runs on the base branch
               local base_runs_json base_runs_match subsequent_success
               base_runs_json=$(gh run list --repo "$GITHUB_REPOSITORY" --branch "$check_base" --event push \
-                -L 25 --json headSha,conclusion,status,name,workflowName,createdAt 2>/dev/null || echo "[]")
+                -L 100 --json headSha,conclusion,status,name,workflowName,createdAt 2>/dev/null || echo "[]")
 
-              base_runs_match=$(jq -r --arg pat "$wf_pattern" '
+              base_runs_match=$(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
                 | select((.workflowName // .name // "") | test("preview"; "i") | not)
-                | select((.workflowName // .name // "") | test($pat; "i"))
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | (.workflowName // .name)
               ' <<< "$base_runs_json" | head -n1)
 
@@ -233,10 +247,10 @@ jobs:
                     fi
                   fi
                 fi
-              done < <(jq -r --arg pat "$wf_pattern" '
+              done < <(jq -r --arg pat "$PUBLISH_WORKFLOW" "$jq_filter"'
                 .[]
                 | select((.workflowName // .name // "") | test("preview"; "i") | not)
-                | select((.workflowName // .name // "") | test($pat; "i"))
+                | select(matches(.workflowName // ""; $pat) or matches(.name // ""; $pat))
                 | [.headSha // "", .status // "", .conclusion // "", .workflowName // .name // ""]
                 | @tsv
               ' <<< "$base_runs_json")

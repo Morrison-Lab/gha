@@ -306,8 +306,9 @@ that need to write must have the **caller** grant it on the calling job:
   authorizes a label read on an issue object that is a pull request against
   the pull-requests permission.
 
-- `cleanup-pr-previews` (commits deletions to `gh-pages`) → grant
-  `contents: write`, `pull-requests: read`.
+- `cleanup-pr-previews` (commits deletions to `gh-pages` and queries
+  workflow runs to verify deployment before pruning) → grant
+  `contents: write`, `pull-requests: read`, `actions: read`.
 - `bump-submodule`, `sync-shared-fragments`, `sync-upstream` (open a PR) → grant
   `contents: write`, `pull-requests: write`, and enable Settings → Actions →
   General → "Allow GitHub Actions to create and approve pull requests" so the

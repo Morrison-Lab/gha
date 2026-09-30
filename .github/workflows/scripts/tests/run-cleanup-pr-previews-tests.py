@@ -13,6 +13,7 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import unittest
 
@@ -42,18 +43,48 @@ def load_yaml(path: pathlib.Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
+def extract_jq_filter(workflow_path: pathlib.Path) -> str:
+    content = workflow_path.read_text(encoding="utf-8")
+    m = re.search(r"local jq_filter='(.*?)'", content, re.DOTALL)
+    if not m:
+        raise ValueError("Could not find jq_filter in cleanup-pr-previews.yml")
+    return m.group(1).strip()
+
+
+JQ_FILTER = extract_jq_filter(DEFAULT_WORKFLOW)
+
+
 def matches_publish_workflow(name: str, wf_name: str, target_wf: str = "") -> bool:
-    low_name = (name or "").lower()
-    low_wf = (wf_name or "").lower()
-    if "preview" in low_name or "preview" in low_wf:
-        return False
-    if target_wf:
-        pattern = target_wf.lower()
-        if "*" in pattern:
-            regex = "^" + re.escape(pattern).replace(r"\*", ".*") + "$"
-            return bool(re.search(regex, low_name) or re.search(regex, low_wf))
-        return pattern in low_name or pattern in low_wf
-    return any(k in low_name or k in low_wf for k in ("publish", "deploy", "pages-build-deployment"))
+    """Execute the exact jq filter from cleanup-pr-previews.yml via jq subprocess."""
+    script = f"""
+    {JQ_FILTER}
+    def check($n; $w; $p):
+      ((($n // "") | ascii_downcase | contains("preview")) or (($w // "") | ascii_downcase | contains("preview"))) as $is_preview
+      | if $is_preview then false
+        else (matches($n // ""; $p) or matches($w // ""; $p))
+        end;
+    check($name; $wf_name; $target)
+    """
+    proc = subprocess.run(
+        [
+            "jq",
+            "-n",
+            "--arg",
+            "name",
+            name or "",
+            "--arg",
+            "wf_name",
+            wf_name or "",
+            "--arg",
+            "target",
+            target_wf or "",
+            script,
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return proc.stdout.strip() == "true"
 
 
 class TestCleanupPrPreviewsContract(unittest.TestCase):
@@ -75,14 +106,14 @@ class TestCleanupPrPreviewsContract(unittest.TestCase):
         self.assertEqual(inputs["publish-workflow"].get("default"), "")
 
     def test_permissions_are_not_widened(self):
-        """Widening permissions breaks existing callers at parse time (gha#685, versioning.qmd)."""
+        """Verify permissions block includes actions:read for gh run list (gha#994, gha#995)."""
         wf = load_yaml(DEFAULT_WORKFLOW)
         cleanup_job = wf.get("jobs", {}).get("cleanup", {})
         perms = cleanup_job.get("permissions", {})
         self.assertEqual(
             perms,
-            {"contents": "write", "pull-requests": "read"},
-            "cleanup-pr-previews job permissions must remain strictly contents:write and pull-requests:read",
+            {"contents": "write", "pull-requests": "read", "actions": "read"},
+            "cleanup-pr-previews job permissions must include contents:write, pull-requests:read, actions:read",
         )
 
     def test_example_and_reference_consistency(self):
@@ -91,8 +122,10 @@ class TestCleanupPrPreviewsContract(unittest.TestCase):
 
         self.assertIn("publish-workflow", example_text)
         self.assertIn("wait-for-publish", example_text)
+        self.assertIn("actions: read", example_text)
         self.assertIn("`publish-workflow`", ref_text)
         self.assertIn("`wait-for-publish`", ref_text)
+        self.assertIn("`actions: read`", ref_text)
 
 
 class TestPublishWorkflowMatcher(unittest.TestCase):
@@ -112,6 +145,33 @@ class TestPublishWorkflowMatcher(unittest.TestCase):
         self.assertTrue(matches_publish_workflow("Quarto Publish", "quarto-publish.yml", "quarto-publish*"))
         self.assertFalse(matches_publish_workflow("Other Build", "build.yml", "quarto-publish*"))
         self.assertTrue(matches_publish_workflow("Custom Site Deploy", "custom.yml", "custom site deploy"))
+
+    def test_unanchored_glob_substring_not_matched(self):
+        """A glob like 'quarto-publish*' must NOT match 'not-quarto-publish-workflow' (Finding 3)."""
+        self.assertFalse(
+            matches_publish_workflow(
+                "Not Quarto Publish Workflow",
+                "not-quarto-publish-workflow.yml",
+                "quarto-publish*",
+            )
+        )
+
+    def test_unescaped_parentheses_and_brackets_do_not_crash_jq(self):
+        """Names with parentheses or brackets must not crash jq (Finding 5)."""
+        self.assertTrue(
+            matches_publish_workflow(
+                "Quarto Publish (website)",
+                "quarto-publish.yml",
+                "Quarto Publish (website)",
+            )
+        )
+        self.assertTrue(
+            matches_publish_workflow(
+                "Quarto Publish [website]",
+                "quarto-publish.yml",
+                "Quarto Publish [website]",
+            )
+        )
 
 
 class TestPruneStaleJqLogic(unittest.TestCase):

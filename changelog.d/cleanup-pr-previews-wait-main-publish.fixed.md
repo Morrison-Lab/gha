@@ -7,3 +7,4 @@
   If the base-branch publish run for the merge commit is queued,
   in progress, or failed without a subsequent successful publish,
   the preview directory is retained instead of being pruned immediately.
+  Requires `actions: read` permission to inspect workflow run statuses.
